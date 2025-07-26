@@ -1,0 +1,104 @@
+# MarketPulse - Marketing Dashboard
+
+## Overview
+
+MarketPulse is a modern web application for tracking marketing campaign performance and metrics. It provides a comprehensive dashboard for managing advertising campaigns across multiple platforms, monitoring key performance indicators, and integrating with various marketing services.
+
+The application is built as a full-stack solution with a React frontend and Express.js backend, utilizing modern web technologies and a clean architectural pattern.
+
+## User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+## System Architecture
+
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite for fast development and optimized builds
+- **UI Library**: Radix UI components with shadcn/ui styling system
+- **Styling**: Tailwind CSS with custom design tokens
+- **State Management**: TanStack Query (React Query) for server state management
+- **Routing**: Wouter for lightweight client-side routing
+- **Forms**: React Hook Form with Zod validation
+
+### Backend Architecture
+- **Runtime**: Node.js with Express.js framework
+- **Language**: TypeScript for type safety
+- **Data Layer**: Drizzle ORM with PostgreSQL (configured for Neon Database)
+- **API Design**: RESTful APIs with proper error handling
+- **Development**: Hot reload with Vite integration
+
+### Data Storage Solutions
+- **Database**: PostgreSQL with Drizzle ORM
+- **Schema**: Strongly typed database schemas with Zod validation
+- **Migrations**: Drizzle Kit for database migrations
+- **Development Storage**: In-memory storage class for development/testing
+
+## Key Components
+
+### Data Models
+- **Campaigns**: Marketing campaigns with metrics (impressions, clicks, spend)
+- **Metrics**: Key performance indicators with trend data
+- **Integrations**: Third-party platform connections (Facebook, Google, LinkedIn)
+- **Performance Data**: Time-series performance metrics
+
+### Frontend Components
+- **Dashboard**: Main analytics view with metrics cards, charts, and campaign tables
+- **Integrations**: Platform connection management
+- **UI Components**: Comprehensive component library based on Radix UI
+- **Charts**: Performance visualizations using Recharts
+
+### Backend Services
+- **Storage Interface**: Abstracted data layer supporting multiple implementations
+- **API Routes**: RESTful endpoints for CRUD operations
+- **Validation**: Schema validation using Zod
+- **Error Handling**: Centralized error handling middleware
+
+## Data Flow
+
+1. **Client Requests**: Frontend makes API calls using TanStack Query
+2. **API Layer**: Express.js routes handle requests with validation
+3. **Storage Layer**: Abstract storage interface processes data operations
+4. **Database**: PostgreSQL stores persistent data via Drizzle ORM
+5. **Response**: Typed responses sent back to frontend components
+6. **UI Updates**: React Query manages cache updates and re-renders
+
+## External Dependencies
+
+### Production Dependencies
+- **Database**: Neon Database (PostgreSQL)
+- **UI Components**: Radix UI primitives
+- **Charts**: Recharts for data visualization
+- **Validation**: Zod for runtime type checking
+- **Forms**: React Hook Form for form management
+
+### Development Tools
+- **Build**: Vite with TypeScript support
+- **Linting**: ESLint configuration
+- **Styling**: Tailwind CSS with PostCSS
+- **Development**: Hot reload and error overlay
+
+### Third-party Integrations
+- **Marketing Platforms**: Facebook Ads, Google Analytics, LinkedIn Ads
+- **Authentication**: Prepared for OAuth integration flows
+- **API Connections**: Credential management for platform APIs
+
+## Deployment Strategy
+
+### Development
+- **Local Development**: Vite dev server with Express backend
+- **Hot Reload**: Automatic refresh for frontend and backend changes
+- **Environment**: Development mode with debugging enabled
+
+### Production Build
+- **Frontend**: Vite production build with optimization
+- **Backend**: ESBuild compilation to single JavaScript file
+- **Assets**: Static file serving from Express
+- **Environment**: Production configuration with performance optimizations
+
+### Database Setup
+- **Migrations**: Drizzle Kit for schema management
+- **Connection**: Environment-based database URL configuration
+- **Seeding**: Empty state initialization (no mock data)
+
+The application follows a monorepo structure with shared TypeScript types between frontend and backend, ensuring type safety across the entire stack. The architecture supports easy scaling and maintenance while providing a smooth development experience.

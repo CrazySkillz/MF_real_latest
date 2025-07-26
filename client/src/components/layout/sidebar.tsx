@@ -37,10 +37,10 @@ export default function Sidebar() {
             
             return (
               <Link key={item.path} href={item.path}>
-                <a className={`nav-link ${isActive ? 'nav-link-active' : 'nav-link-inactive'}`}>
+                <div className={`nav-link ${isActive ? 'nav-link-active' : 'nav-link-inactive'}`}>
                   <Icon className="w-5 h-5" />
                   <span>{item.label}</span>
-                </a>
+                </div>
               </Link>
             );
           })}
@@ -85,10 +85,10 @@ export default function Sidebar() {
           )}
           
           <Link href="/integrations">
-            <a className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary/5 rounded-lg transition-colors flex items-center">
+            <div className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary hover:bg-opacity-5 rounded-lg transition-colors flex items-center cursor-pointer">
               <Plus className="w-4 h-4 mr-2" />
               Add Integration
-            </a>
+            </div>
           </Link>
         </div>
       </div>

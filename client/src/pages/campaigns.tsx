@@ -269,56 +269,7 @@ export default function Campaigns() {
               </Dialog>
             </div>
 
-            {/* Campaign Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Budget</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalSpend.toString())}</p>
-                    </div>
-                    <DollarSign className="w-8 h-8 text-emerald-600" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Impressions</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(totalImpressions)}</p>
-                    </div>
-                    <Eye className="w-8 h-8 text-primary" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Clicks</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(totalClicks)}</p>
-                    </div>
-                    <Target className="w-8 h-8 text-accent" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Average CTR</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{avgCTR}%</p>
-                    </div>
-                    <BarChart3 className="w-8 h-8 text-warning" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+
           </div>
 
           {/* Campaigns Table */}

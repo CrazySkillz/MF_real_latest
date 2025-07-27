@@ -58,8 +58,16 @@ export class MemStorage implements IStorage {
   async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
     const id = randomUUID();
     const campaign: Campaign = { 
-      ...insertCampaign, 
       id,
+      name: insertCampaign.name,
+      clientWebsite: insertCampaign.clientWebsite || null,
+      label: insertCampaign.label || null,
+      budget: insertCampaign.budget || null,
+      type: insertCampaign.type || null,
+      platform: insertCampaign.platform || null,
+      impressions: insertCampaign.impressions || 0,
+      clicks: insertCampaign.clicks || 0,
+      spend: insertCampaign.spend || "0",
       status: insertCampaign.status || "active",
       createdAt: new Date()
     };

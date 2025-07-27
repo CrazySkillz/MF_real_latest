@@ -6,11 +6,14 @@ import { z } from "zod";
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  type: text("type").notNull(),
-  platform: text("platform").notNull(),
-  impressions: integer("impressions").notNull(),
-  clicks: integer("clicks").notNull(),
-  spend: decimal("spend", { precision: 10, scale: 2 }).notNull(),
+  clientWebsite: text("client_website"),
+  label: text("label"),
+  budget: decimal("budget", { precision: 10, scale: 2 }),
+  type: text("type"),
+  platform: text("platform"),
+  impressions: integer("impressions").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default("0"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -44,6 +47,9 @@ export const performanceData = pgTable("performance_data", {
 
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   name: true,
+  clientWebsite: true,
+  label: true,
+  budget: true,
   type: true,
   platform: true,
   impressions: true,

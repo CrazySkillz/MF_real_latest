@@ -21,7 +21,17 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 const campaignFormSchema = insertCampaignSchema.extend({
-  spend: z.string().min(1, "Budget is required")
+  name: z.string().min(1, "Campaign name is required"),
+  clientWebsite: z.string().optional(),
+  label: z.string().optional(),
+  budget: z.string().optional(),
+}).omit({
+  type: true,
+  platform: true,
+  impressions: true,
+  clicks: true,
+  spend: true,
+  status: true,
 });
 
 type CampaignFormData = z.infer<typeof campaignFormSchema>;
@@ -39,21 +49,25 @@ export default function Campaigns() {
     resolver: zodResolver(campaignFormSchema),
     defaultValues: {
       name: "",
-      type: "",
-      platform: "",
-      impressions: 0,
-      clicks: 0,
-      spend: "",
-      status: "active",
+      clientWebsite: "",
+      label: "",
+      budget: "",
     },
   });
 
   const createCampaignMutation = useMutation({
     mutationFn: async (data: CampaignFormData) => {
       const response = await apiRequest("POST", "/api/campaigns", {
-        ...data,
-        impressions: parseInt(data.impressions.toString()) || 0,
-        clicks: parseInt(data.clicks.toString()) || 0,
+        name: data.name,
+        clientWebsite: data.clientWebsite || null,
+        label: data.label || null,
+        budget: data.budget ? parseFloat(data.budget) : null,
+        type: "campaign",
+        platform: "manual",
+        impressions: 0,
+        clicks: 0,
+        spend: 0,
+        status: "active",
       });
       return response.json();
     },
@@ -76,7 +90,7 @@ export default function Campaigns() {
   });
 
   const updateCampaignMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<CampaignFormData> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: { status?: string } }) => {
       const response = await apiRequest("PATCH", `/api/campaigns/${id}`, data);
       return response.json();
     },
@@ -101,7 +115,8 @@ export default function Campaigns() {
     });
   };
 
-  const formatCurrency = (value: string) => {
+  const formatCurrency = (value: string | null) => {
+    if (!value) return "$0.00";
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
@@ -145,7 +160,7 @@ export default function Campaigns() {
     }
   };
 
-  const totalSpend = campaigns.reduce((sum, campaign) => sum + parseFloat(campaign.spend), 0);
+  const totalSpend = campaigns.reduce((sum, campaign) => sum + (campaign.budget ? parseFloat(campaign.budget.toString()) : 0), 0);
   const totalImpressions = campaigns.reduce((sum, campaign) => sum + campaign.impressions, 0);
   const totalClicks = campaigns.reduce((sum, campaign) => sum + campaign.clicks, 0);
   const avgCTR = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0.00";
@@ -182,7 +197,7 @@ export default function Campaigns() {
                   
                   <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Campaign Name</Label>
+                      <Label htmlFor="name">Campaign Name *</Label>
                       <Input
                         id="name"
                         placeholder="Enter campaign name"
@@ -193,49 +208,42 @@ export default function Campaigns() {
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="type">Campaign Type</Label>
-                        <Select onValueChange={(value) => form.setValue("type", value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="awareness">Brand Awareness</SelectItem>
-                            <SelectItem value="traffic">Website Traffic</SelectItem>
-                            <SelectItem value="conversions">Conversions</SelectItem>
-                            <SelectItem value="leads">Lead Generation</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="platform">Platform</Label>
-                        <Select onValueChange={(value) => form.setValue("platform", value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select platform" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Facebook">Facebook</SelectItem>
-                            <SelectItem value="Google Ads">Google Ads</SelectItem>
-                            <SelectItem value="LinkedIn">LinkedIn</SelectItem>
-                            <SelectItem value="Twitter">Twitter</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="clientWebsite">Client's Website (optional)</Label>
+                      <Input
+                        id="clientWebsite"
+                        type="url"
+                        placeholder="https://example.com"
+                        {...form.register("clientWebsite")}
+                      />
+                      {form.formState.errors.clientWebsite && (
+                        <p className="text-sm text-destructive">{form.formState.errors.clientWebsite.message}</p>
+                      )}
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="spend">Budget ($)</Label>
+                      <Label htmlFor="label">Label (optional)</Label>
                       <Input
-                        id="spend"
+                        id="label"
+                        placeholder="Add a label or tag"
+                        {...form.register("label")}
+                      />
+                      {form.formState.errors.label && (
+                        <p className="text-sm text-destructive">{form.formState.errors.label.message}</p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="budget">Budget (optional)</Label>
+                      <Input
+                        id="budget"
                         type="number"
                         step="0.01"
-                        placeholder="Enter budget amount"
-                        {...form.register("spend")}
+                        placeholder="Enter budget amount in USD"
+                        {...form.register("budget")}
                       />
-                      {form.formState.errors.spend && (
-                        <p className="text-sm text-destructive">{form.formState.errors.spend.message}</p>
+                      {form.formState.errors.budget && (
+                        <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
                       )}
                     </div>
                     
@@ -267,7 +275,7 @@ export default function Campaigns() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Budget</p>
                       <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalSpend.toString())}</p>
                     </div>
                     <DollarSign className="w-8 h-8 text-emerald-600" />
@@ -345,7 +353,7 @@ export default function Campaigns() {
                         <TableHead>Impressions</TableHead>
                         <TableHead>Clicks</TableHead>
                         <TableHead>CTR</TableHead>
-                        <TableHead>Spend</TableHead>
+                        <TableHead>Budget</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -356,13 +364,15 @@ export default function Campaigns() {
                           <TableCell>
                             <div>
                               <div className="font-medium text-slate-900 dark:text-white">{campaign.name}</div>
-                              <div className="text-sm text-slate-500 dark:text-slate-400">{campaign.type}</div>
+                              <div className="text-sm text-slate-500 dark:text-slate-400">
+                                {campaign.label && <span className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs mr-2">{campaign.label}</span>}
+                                {campaign.clientWebsite && <span className="text-xs">{campaign.clientWebsite}</span>}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
-                              <i className={getPlatformIcon(campaign.platform)}></i>
-                              <span className="text-sm">{campaign.platform}</span>
+                              <span className="text-sm">{campaign.platform || "Manual"}</span>
                             </div>
                           </TableCell>
                           <TableCell className="text-sm">
@@ -375,7 +385,7 @@ export default function Campaigns() {
                             {calculateCTR(campaign.clicks, campaign.impressions)}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {formatCurrency(campaign.spend)}
+                            {formatCurrency(campaign.budget)}
                           </TableCell>
                           <TableCell>
                             {getStatusBadge(campaign.status)}

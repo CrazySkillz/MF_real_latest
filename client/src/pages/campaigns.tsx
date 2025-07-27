@@ -12,10 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye } from "lucide-react";
+import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle } from "lucide-react";
+import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -36,8 +38,149 @@ const campaignFormSchema = insertCampaignSchema.extend({
 
 type CampaignFormData = z.infer<typeof campaignFormSchema>;
 
+interface DataConnectorsStepProps {
+  onComplete: (selectedPlatforms: string[]) => void;
+  onBack: () => void;
+  isLoading: boolean;
+}
+
+const platforms = [
+  {
+    id: "facebook",
+    name: "Facebook Ads",
+    icon: SiFacebook,
+    color: "text-blue-600",
+    description: "Connect your Facebook Ads account"
+  },
+  {
+    id: "google",
+    name: "Google Ads",
+    icon: SiGoogle,
+    color: "text-red-500",
+    description: "Connect your Google Ads account"
+  },
+  {
+    id: "linkedin",
+    name: "LinkedIn Ads",
+    icon: SiLinkedin,
+    color: "text-blue-700",
+    description: "Connect your LinkedIn Ads account"
+  },
+  {
+    id: "twitter",
+    name: "X (Twitter) Ads",
+    icon: SiX,
+    color: "text-slate-900 dark:text-white",
+    description: "Connect your X (Twitter) Ads account"
+  }
+];
+
+function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsStepProps) {
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [credentials, setCredentials] = useState<Record<string, { apiKey: string; secret: string }>>({});
+
+  const handlePlatformToggle = (platformId: string) => {
+    setSelectedPlatforms(prev => 
+      prev.includes(platformId) 
+        ? prev.filter(id => id !== platformId)
+        : [...prev, platformId]
+    );
+  };
+
+  const handleCredentialChange = (platformId: string, field: string, value: string) => {
+    setCredentials(prev => ({
+      ...prev,
+      [platformId]: {
+        ...prev[platformId],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleComplete = () => {
+    onComplete(selectedPlatforms);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-4">
+        <h4 className="text-sm font-medium">Select platforms to connect:</h4>
+        
+        {platforms.map((platform) => {
+          const Icon = platform.icon;
+          const isSelected = selectedPlatforms.includes(platform.id);
+          
+          return (
+            <div key={platform.id} className="space-y-3">
+              <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => handlePlatformToggle(platform.id)}
+                />
+                <Icon className={`w-5 h-5 ${platform.color}`} />
+                <div className="flex-1">
+                  <div className="font-medium">{platform.name}</div>
+                  <div className="text-sm text-slate-500">{platform.description}</div>
+                </div>
+              </div>
+              
+              {isSelected && (
+                <div className="ml-8 space-y-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="space-y-2">
+                    <Label htmlFor={`${platform.id}-key`}>API Key</Label>
+                    <Input
+                      id={`${platform.id}-key`}
+                      type="password"
+                      placeholder="Enter your API key"
+                      value={credentials[platform.id]?.apiKey || ""}
+                      onChange={(e) => handleCredentialChange(platform.id, "apiKey", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`${platform.id}-secret`}>API Secret</Label>
+                    <Input
+                      id={`${platform.id}-secret`}
+                      type="password"
+                      placeholder="Enter your API secret"
+                      value={credentials[platform.id]?.secret || ""}
+                      onChange={(e) => handleCredentialChange(platform.id, "secret", e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      
+      <div className="flex items-center space-x-3 pt-4">
+        <Button 
+          type="button" 
+          variant="outline" 
+          className="flex-1"
+          onClick={onBack}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+        <Button 
+          type="button" 
+          className="flex-1"
+          onClick={handleComplete}
+          disabled={isLoading}
+        >
+          {isLoading ? "Creating..." : "Create Campaign"}
+          <CheckCircle className="w-4 h-4 ml-2" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function Campaigns() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showConnectorsStep, setShowConnectorsStep] = useState(false);
+  const [campaignData, setCampaignData] = useState<CampaignFormData | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const { toast } = useToast();
 
@@ -78,6 +221,8 @@ export default function Campaigns() {
         description: "Your new campaign has been created successfully.",
       });
       setIsCreateModalOpen(false);
+      setShowConnectorsStep(false);
+      setCampaignData(null);
       form.reset();
     },
     onError: () => {
@@ -104,7 +249,18 @@ export default function Campaigns() {
   });
 
   const handleSubmit = (data: CampaignFormData) => {
-    createCampaignMutation.mutate(data);
+    setCampaignData(data);
+    setShowConnectorsStep(true);
+  };
+
+  const handleConnectorsComplete = (selectedPlatforms: string[]) => {
+    if (campaignData) {
+      createCampaignMutation.mutate(campaignData);
+    }
+  };
+
+  const handleBackToForm = () => {
+    setShowConnectorsStep(false);
   };
 
   const toggleCampaignStatus = (campaign: Campaign) => {
@@ -187,15 +343,21 @@ export default function Campaigns() {
                     New Campaign
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className={showConnectorsStep ? "sm:max-w-2xl" : "sm:max-w-md"}>
                   <DialogHeader>
-                    <DialogTitle>Create New Campaign</DialogTitle>
+                    <DialogTitle>
+                      {showConnectorsStep ? "Connect Data Sources" : "Create New Campaign"}
+                    </DialogTitle>
                     <DialogDescription>
-                      Set up a new marketing campaign with your preferred settings.
+                      {showConnectorsStep 
+                        ? "Select social media platforms and enter your credentials to connect your data sources."
+                        : "Set up a new marketing campaign with your preferred settings."
+                      }
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                  {!showConnectorsStep ? (
+                    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Campaign Name *</Label>
                       <Input
@@ -259,12 +421,18 @@ export default function Campaigns() {
                       <Button 
                         type="submit" 
                         className="flex-1"
-                        disabled={createCampaignMutation.isPending}
                       >
-                        Create Campaign
+                        Next
                       </Button>
                     </div>
-                  </form>
+                    </form>
+                  ) : (
+                    <DataConnectorsStep 
+                      onComplete={handleConnectorsComplete}
+                      onBack={handleBackToForm}
+                      isLoading={createCampaignMutation.isPending}
+                    />
+                  )}
                 </DialogContent>
               </Dialog>
             </div>

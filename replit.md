@@ -22,11 +22,12 @@ Preferred communication style: Simple, everyday language.
 - **Forms**: React Hook Form with Zod validation
 
 ### Backend Architecture
-- **Runtime**: Node.js with Express.js framework
-- **Language**: TypeScript for type safety
-- **Data Layer**: Drizzle ORM with PostgreSQL (configured for Neon Database)
-- **API Design**: RESTful APIs with proper error handling
-- **Development**: Hot reload with Vite integration
+- **Runtime**: Python with FastAPI framework
+- **Language**: Python 3.11 with type hints and Pydantic models
+- **Data Layer**: SQLAlchemy ORM with PostgreSQL support (in-memory storage for development)
+- **API Design**: RESTful APIs with automatic OpenAPI documentation
+- **Development**: Hot reload with Uvicorn server
+- **Legacy**: Node.js/TypeScript backend available for reference (server/ directory)
 
 ### Data Storage Solutions
 - **Database**: PostgreSQL with Drizzle ORM
@@ -101,4 +102,13 @@ Preferred communication style: Simple, everyday language.
 - **Connection**: Environment-based database URL configuration
 - **Seeding**: Empty state initialization (no mock data)
 
-The application follows a monorepo structure with shared TypeScript types between frontend and backend, ensuring type safety across the entire stack. The architecture supports easy scaling and maintenance while providing a smooth development experience.
+## Recent Changes
+
+### January 2025 - Python Backend Refactor
+- **Backend Migration**: Converted Express.js/TypeScript backend to Python/FastAPI
+- **API Structure**: Created modular Python API with models, storage, and endpoints  
+- **Type Safety**: Implemented Pydantic models for request/response validation
+- **Data Management**: Built abstract storage interface with in-memory implementation
+- **Development Setup**: Configured Python environment with FastAPI and Uvicorn
+
+The application follows a hybrid structure with React/TypeScript frontend and Python/FastAPI backend, ensuring type safety and modern development practices across the entire stack. The architecture supports easy scaling and maintenance while providing a smooth development experience.

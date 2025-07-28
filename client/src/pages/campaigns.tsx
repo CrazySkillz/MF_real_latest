@@ -50,8 +50,8 @@ const platforms = [
     name: "Google Analytics",
     icon: SiGoogle,
     color: "text-orange-500",
-    description: "Connect your Google Analytics account with one click",
-    type: "oauth",
+    description: "Connect your Google Analytics account",
+    type: "credentials",
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth"
   },
   {
@@ -90,7 +90,7 @@ const platforms = [
 
 function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: DataConnectorsStepProps & { campaignData: CampaignFormData }) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [credentials, setCredentials] = useState<Record<string, { apiKey: string; secret: string }>>({});
+  const [credentials, setCredentials] = useState<Record<string, { apiKey?: string; secret?: string; propertyId?: string; measurementId?: string }>>({});
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
   const { toast } = useToast();
 
@@ -224,26 +224,85 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
               )}
               
               {isSelected && platform.id === "google-analytics" && !isConnected && (
-                <div className="ml-8 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <div className="text-sm text-blue-700 dark:text-blue-400 mb-3">
-                    Click "Connect" to sign in with your Google account - no API keys needed!
+                <div className="ml-8 space-y-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="ga-property-id">GA4 Property ID *</Label>
+                      <Input
+                        id="ga-property-id"
+                        placeholder="e.g., 123456789"
+                        value={credentials[platform.id]?.propertyId || ""}
+                        onChange={(e) => handleCredentialChange(platform.id, "propertyId", e.target.value)}
+                      />
+                      <div className="text-xs text-slate-500">
+                        Find this in Google Analytics → Admin → Property Settings
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="ga-measurement-id">Measurement ID (optional)</Label>
+                      <Input
+                        id="ga-measurement-id"
+                        placeholder="e.g., G-XXXXXXXXXX"
+                        value={credentials[platform.id]?.measurementId || ""}
+                        onChange={(e) => handleCredentialChange(platform.id, "measurementId", e.target.value)}
+                      />
+                      <div className="text-xs text-slate-500">
+                        Find this in Google Analytics → Admin → Data Streams → Web
+                      </div>
+                    </div>
+                    
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() => {
+                        if (credentials[platform.id]?.propertyId) {
+                          setConnectedPlatforms(prev => [...prev, platform.id]);
+                          toast({
+                            title: "Google Analytics Connected",
+                            description: `Connected with Property ID: ${credentials[platform.id]?.propertyId}`,
+                          });
+                        } else {
+                          toast({
+                            title: "Property ID Required",
+                            description: "Please enter your GA4 Property ID to connect",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      disabled={!credentials[platform.id]?.propertyId}
+                    >
+                      Connect with Credentials
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    className="w-full"
-                    onClick={() => handleOAuthConnect(platform.id)}
-                  >
-                    <SiGoogle className="w-4 h-4 mr-2" />
-                    Connect with Google
-                  </Button>
+                  
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <div className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                      Or connect via OAuth for easier setup:
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleOAuthConnect(platform.id)}
+                    >
+                      <SiGoogle className="w-4 h-4 mr-2" />
+                      Connect with Google OAuth
+                    </Button>
+                  </div>
                 </div>
               )}
               
-              {isSelected && platform.type === "oauth" && isConnected && (
+              {isSelected && isConnected && (
                 <div className="ml-8 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                   <div className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
                     <CheckCircle className="w-4 h-4" />
                     Successfully connected to {platform.name}
+                    {platform.id === "google-analytics" && credentials[platform.id]?.propertyId && (
+                      <span className="text-xs bg-green-100 dark:bg-green-800 px-2 py-1 rounded">
+                        Property: {credentials[platform.id]?.propertyId}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}

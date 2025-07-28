@@ -46,38 +46,52 @@ interface DataConnectorsStepProps {
 
 const platforms = [
   {
+    id: "google-analytics",
+    name: "Google Analytics",
+    icon: SiGoogle,
+    color: "text-orange-500",
+    description: "Connect your Google Analytics account",
+    type: "oauth",
+    authUrl: "https://accounts.google.com/o/oauth2/v2/auth"
+  },
+  {
     id: "facebook",
     name: "Facebook Ads",
     icon: SiFacebook,
     color: "text-blue-600",
-    description: "Connect your Facebook Ads account"
+    description: "Connect your Facebook Ads account",
+    type: "credentials"
   },
   {
-    id: "google",
+    id: "google-ads",
     name: "Google Ads",
     icon: SiGoogle,
     color: "text-red-500",
-    description: "Connect your Google Ads account"
+    description: "Connect your Google Ads account",
+    type: "credentials"
   },
   {
     id: "linkedin",
     name: "LinkedIn Ads",
     icon: SiLinkedin,
     color: "text-blue-700",
-    description: "Connect your LinkedIn Ads account"
+    description: "Connect your LinkedIn Ads account",
+    type: "credentials"
   },
   {
     id: "twitter",
     name: "X (Twitter) Ads",
     icon: SiX,
     color: "text-slate-900 dark:text-white",
-    description: "Connect your X (Twitter) Ads account"
+    description: "Connect your X (Twitter) Ads account",
+    type: "credentials"
   }
 ];
 
 function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsStepProps) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [credentials, setCredentials] = useState<Record<string, { apiKey: string; secret: string }>>({});
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
 
   const handlePlatformToggle = (platformId: string) => {
     setSelectedPlatforms(prev => 
@@ -97,6 +111,36 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
     }));
   };
 
+  const handleOAuthConnect = (platformId: string) => {
+    if (platformId === "google-analytics") {
+      // Create OAuth URL with your client ID
+      const clientId = "your-google-client-id"; // You'll need to add this to environment
+      const scope = "https://www.googleapis.com/auth/analytics.readonly";
+      const redirectUri = window.location.origin + "/oauth/callback";
+      
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${clientId}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `scope=${encodeURIComponent(scope)}&` +
+        `response_type=code&` +
+        `access_type=offline&` +
+        `prompt=consent`;
+      
+      // Open OAuth popup
+      const popup = window.open(authUrl, 'oauth', 'width=500,height=600');
+      
+      // Listen for OAuth callback
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          // Mark as connected (in real app, verify the auth code)
+          setConnectedPlatforms(prev => [...prev, platformId]);
+          setSelectedPlatforms(prev => [...prev, platformId]);
+        }
+      }, 1000);
+    }
+  };
+
   const handleComplete = () => {
     onComplete(selectedPlatforms);
   };
@@ -109,6 +153,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
         {platforms.map((platform) => {
           const Icon = platform.icon;
           const isSelected = selectedPlatforms.includes(platform.id);
+          const isConnected = connectedPlatforms.includes(platform.id);
           
           return (
             <div key={platform.id} className="space-y-3">
@@ -119,12 +164,25 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
                 />
                 <Icon className={`w-5 h-5 ${platform.color}`} />
                 <div className="flex-1">
-                  <div className="font-medium">{platform.name}</div>
+                  <div className="font-medium flex items-center gap-2">
+                    {platform.name}
+                    {isConnected && <CheckCircle className="w-4 h-4 text-green-500" />}
+                  </div>
                   <div className="text-sm text-slate-500">{platform.description}</div>
                 </div>
+                
+                {platform.type === "oauth" && !isConnected && isSelected && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => handleOAuthConnect(platform.id)}
+                  >
+                    Connect
+                  </Button>
+                )}
               </div>
               
-              {isSelected && (
+              {isSelected && platform.type === "credentials" && (
                 <div className="ml-8 space-y-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="space-y-2">
                     <Label htmlFor={`${platform.id}-key`}>API Key</Label>
@@ -145,6 +203,15 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
                       value={credentials[platform.id]?.secret || ""}
                       onChange={(e) => handleCredentialChange(platform.id, "secret", e.target.value)}
                     />
+                  </div>
+                </div>
+              )}
+              
+              {isSelected && platform.type === "oauth" && isConnected && (
+                <div className="ml-8 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <div className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    Successfully connected to {platform.name}
                   </div>
                 </div>
               )}

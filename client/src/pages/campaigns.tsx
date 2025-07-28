@@ -460,15 +460,15 @@ export default function Campaigns() {
 
   const handleConnectorsComplete = (selectedPlatforms: string[]) => {
     if (campaignData) {
-      // Create campaign with connected platforms data
+      // Create campaign with connected platforms data - no artificial metrics
       const campaignWithPlatforms = {
         ...campaignData,
         platform: selectedPlatforms.join(', '), // Store connected platforms
         status: "active" as const,
         type: "campaign" as const,
-        impressions: 0,
-        clicks: 0,
-        spend: 0,
+        impressions: 0, // Start with 0 - will be populated from real API data
+        clicks: 0,      // Start with 0 - will be populated from real API data  
+        spend: "0",     // Start with 0 - will be populated from real API data
       };
       createCampaignMutation.mutate(campaignWithPlatforms);
     }

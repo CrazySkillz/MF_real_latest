@@ -111,27 +111,64 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
     }));
   };
 
-  const handleOAuthConnect = (platformId: string) => {
+  const handleOAuthConnect = async (platformId: string) => {
     if (platformId === "google-analytics") {
-      // For development: simulate OAuth flow
-      // In production, you'll replace this with real Google OAuth
-      const confirmConnect = window.confirm(
-        "This will connect your Google Analytics account.\n\n" +
-        "In production, this would open Google's account picker where you can:\n" +
-        "• Choose which Gmail account to use\n" +
-        "• Grant permission to access Analytics data\n" +
-        "• Complete secure OAuth authentication\n\n" +
-        "Click OK to simulate successful connection."
-      );
-      
-      if (confirmConnect) {
-        // Simulate successful OAuth connection
-        setTimeout(() => {
-          setConnectedPlatforms(prev => [...prev, platformId]);
-          if (!selectedPlatforms.includes(platformId)) {
-            setSelectedPlatforms(prev => [...prev, platformId]);
+      try {
+        // Get OAuth URL from backend
+        const response = await fetch("/api/auth/google/url");
+        const data = await response.json();
+        
+        if (data.setup_required) {
+          // Show setup instructions if Google OAuth isn't configured
+          const setupConfirm = window.confirm(
+            "Google Analytics Setup Required\n\n" +
+            data.instructions + "\n\n" +
+            "Would you like to continue with the setup simulation for now?\n\n" +
+            "Click OK to simulate connection, or Cancel to set up real OAuth first."
+          );
+          
+          if (setupConfirm) {
+            // Simulate connection
+            setConnectedPlatforms(prev => [...prev, platformId]);
+            if (!selectedPlatforms.includes(platformId)) {
+              setSelectedPlatforms(prev => [...prev, platformId]);
+            }
           }
-        }, 500);
+          return;
+        }
+        
+        if (data.oauth_url) {
+          // Open real Google OAuth in popup
+          const popup = window.open(
+            data.oauth_url, 
+            'google-oauth', 
+            'width=500,height=600,scrollbars=yes,resizable=yes'
+          );
+          
+          // Listen for OAuth completion
+          const checkClosed = setInterval(() => {
+            if (popup?.closed) {
+              clearInterval(checkClosed);
+              
+              // Check URL parameters for success/error
+              const urlParams = new URLSearchParams(window.location.search);
+              if (urlParams.get('google_connected') === 'true') {
+                setConnectedPlatforms(prev => [...prev, platformId]);
+                if (!selectedPlatforms.includes(platformId)) {
+                  setSelectedPlatforms(prev => [...prev, platformId]);
+                }
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+              } else if (urlParams.get('error')) {
+                alert(`OAuth Error: ${urlParams.get('error')}`);
+                window.history.replaceState({}, document.title, window.location.pathname);
+              }
+            }
+          }, 1000);
+        }
+      } catch (error) {
+        console.error("OAuth setup error:", error);
+        alert("Failed to initiate Google OAuth. Please try again.");
       }
     }
   };

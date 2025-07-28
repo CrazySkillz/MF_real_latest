@@ -113,31 +113,26 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
 
   const handleOAuthConnect = (platformId: string) => {
     if (platformId === "google-analytics") {
-      // Create OAuth URL with your client ID
-      const clientId = "your-google-client-id"; // You'll need to add this to environment
-      const scope = "https://www.googleapis.com/auth/analytics.readonly";
-      const redirectUri = window.location.origin + "/oauth/callback";
+      // For development: simulate OAuth flow
+      // In production, you'll replace this with real Google OAuth
+      const confirmConnect = window.confirm(
+        "This will connect your Google Analytics account.\n\n" +
+        "In production, this would open Google's account picker where you can:\n" +
+        "• Choose which Gmail account to use\n" +
+        "• Grant permission to access Analytics data\n" +
+        "• Complete secure OAuth authentication\n\n" +
+        "Click OK to simulate successful connection."
+      );
       
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${clientId}&` +
-        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `scope=${encodeURIComponent(scope)}&` +
-        `response_type=code&` +
-        `access_type=offline&` +
-        `prompt=select_account`;
-      
-      // Open OAuth popup
-      const popup = window.open(authUrl, 'oauth', 'width=500,height=600');
-      
-      // Listen for OAuth callback
-      const checkClosed = setInterval(() => {
-        if (popup?.closed) {
-          clearInterval(checkClosed);
-          // Mark as connected (in real app, verify the auth code)
+      if (confirmConnect) {
+        // Simulate successful OAuth connection
+        setTimeout(() => {
           setConnectedPlatforms(prev => [...prev, platformId]);
-          setSelectedPlatforms(prev => [...prev, platformId]);
-        }
-      }, 1000);
+          if (!selectedPlatforms.includes(platformId)) {
+            setSelectedPlatforms(prev => [...prev, platformId]);
+          }
+        }, 500);
+      }
     }
   };
 

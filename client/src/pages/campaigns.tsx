@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
@@ -88,10 +88,11 @@ const platforms = [
   }
 ];
 
-function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsStepProps) {
+function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: DataConnectorsStepProps & { campaignData: CampaignFormData }) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [credentials, setCredentials] = useState<Record<string, { apiKey: string; secret: string }>>({});
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+  const { toast } = useToast();
 
   const handlePlatformToggle = (platformId: string) => {
     setSelectedPlatforms(prev => 
@@ -125,52 +126,37 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
         console.log("OAuth response:", data); // Debug log
         
         if (data.setup_required) {
-          // Show setup instructions if Google OAuth isn't configured
-          const setupConfirm = window.confirm(
-            "Google Analytics Setup Required\n\n" +
-            data.instructions + "\n\n" +
-            "Would you like to continue with the setup simulation for now?\n\n" +
-            "Click OK to simulate connection, or Cancel to set up real OAuth first."
-          );
-          
-          if (setupConfirm) {
-            // Simulate connection
-            setConnectedPlatforms(prev => [...prev, platformId]);
-            if (!selectedPlatforms.includes(platformId)) {
-              setSelectedPlatforms(prev => [...prev, platformId]);
-            }
+          // For a seamless experience, simulate the connection immediately
+          // and show a helpful message about setup
+          setConnectedPlatforms(prev => [...prev, platformId]);
+          if (!selectedPlatforms.includes(platformId)) {
+            setSelectedPlatforms(prev => [...prev, platformId]);
           }
+          
+          // Show a toast message instead of blocking popup
+          toast({
+            title: "Google Analytics Connected (Demo Mode)",
+            description: "Add GOOGLE_CLIENT_ID to Replit secrets for real OAuth integration",
+            duration: 5000,
+          });
           return;
         }
         
         if (data.oauth_url) {
-          // Open real Google OAuth in popup
-          const popup = window.open(
-            data.oauth_url, 
-            'google-oauth', 
-            'width=500,height=600,scrollbars=yes,resizable=yes'
-          );
+          // Redirect directly to Google OAuth instead of popup
+          // Store the current campaign data in sessionStorage so we can restore it
+          sessionStorage.setItem('pendingCampaign', JSON.stringify({
+            name: campaignData.name,
+            clientWebsite: campaignData.clientWebsite,
+            label: campaignData.label,
+            budget: campaignData.budget,
+            selectedPlatforms,
+            connectedPlatforms,
+            pendingPlatform: platformId
+          }));
           
-          // Listen for OAuth completion
-          const checkClosed = setInterval(() => {
-            if (popup?.closed) {
-              clearInterval(checkClosed);
-              
-              // Check URL parameters for success/error
-              const urlParams = new URLSearchParams(window.location.search);
-              if (urlParams.get('google_connected') === 'true') {
-                setConnectedPlatforms(prev => [...prev, platformId]);
-                if (!selectedPlatforms.includes(platformId)) {
-                  setSelectedPlatforms(prev => [...prev, platformId]);
-                }
-                // Clean up URL
-                window.history.replaceState({}, document.title, window.location.pathname);
-              } else if (urlParams.get('error')) {
-                alert(`OAuth Error: ${urlParams.get('error')}`);
-                window.history.replaceState({}, document.title, window.location.pathname);
-              }
-            }
-          }, 1000);
+          // Redirect to Google OAuth
+          window.location.href = data.oauth_url;
         }
       } catch (error) {
         console.error("OAuth setup error:", error);
@@ -300,6 +286,48 @@ export default function Campaigns() {
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
   });
+
+  // Handle OAuth callback when returning from Google
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const googleConnected = urlParams.get('google_connected');
+    const error = urlParams.get('error');
+    
+    if (googleConnected === 'true' || error) {
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Restore campaign data from sessionStorage
+      const pendingCampaignData = sessionStorage.getItem('pendingCampaign');
+      if (pendingCampaignData) {
+        try {
+          const restored = JSON.parse(pendingCampaignData);
+          
+          if (googleConnected === 'true') {
+            // Success - show modal with restored data and connection success
+            setCampaignData(restored);
+            setIsCreateModalOpen(true);
+            setShowConnectorsStep(true);
+            
+            toast({
+              title: "Google Analytics Connected",
+              description: "Successfully connected to your Google Analytics account",
+            });
+          } else if (error) {
+            toast({
+              title: "Connection Failed",
+              description: `OAuth Error: ${error}`,
+              variant: "destructive",
+            });
+          }
+          
+          sessionStorage.removeItem('pendingCampaign');
+        } catch (e) {
+          console.error('Failed to restore campaign data:', e);
+        }
+      }
+    }
+  }, [toast]);
 
   const form = useForm<CampaignFormData>({
     resolver: zodResolver(campaignFormSchema),
@@ -544,6 +572,7 @@ export default function Campaigns() {
                       onComplete={handleConnectorsComplete}
                       onBack={handleBackToForm}
                       isLoading={createCampaignMutation.isPending}
+                      campaignData={campaignData!}
                     />
                   )}
                 </DialogContent>

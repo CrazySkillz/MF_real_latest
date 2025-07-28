@@ -697,13 +697,7 @@ export default function Campaigns() {
                       {campaigns.map((campaign) => (
                         <TableRow key={campaign.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                           <TableCell>
-                            <div>
-                              <div className="font-medium text-slate-900 dark:text-white">{campaign.name}</div>
-                              <div className="text-sm text-slate-500 dark:text-slate-400">
-                                {campaign.label && <span className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs mr-2">{campaign.label}</span>}
-                                {campaign.clientWebsite && <span className="text-xs">{campaign.clientWebsite}</span>}
-                              </div>
-                            </div>
+                            <div className="font-medium text-slate-900 dark:text-white">{campaign.name}</div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">

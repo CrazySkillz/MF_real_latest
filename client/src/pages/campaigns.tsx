@@ -166,7 +166,12 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
   };
 
   const handleComplete = () => {
-    onComplete(selectedPlatforms);
+    // Get platform names for display
+    const connectedPlatformNames = connectedPlatforms.map(id => {
+      const platform = platforms.find(p => p.id === id);
+      return platform ? platform.name : id;
+    });
+    onComplete(connectedPlatformNames);
   };
 
   return (
@@ -399,18 +404,18 @@ export default function Campaigns() {
   });
 
   const createCampaignMutation = useMutation({
-    mutationFn: async (data: CampaignFormData) => {
+    mutationFn: async (data: CampaignFormData & { platform?: string; status?: string; type?: string; impressions?: number; clicks?: number; spend?: number }) => {
       const response = await apiRequest("POST", "/api/campaigns", {
         name: data.name,
         clientWebsite: data.clientWebsite || null,
         label: data.label || null,
         budget: data.budget ? parseFloat(data.budget) : null,
-        type: "campaign",
-        platform: "manual",
-        impressions: 0,
-        clicks: 0,
-        spend: 0,
-        status: "active",
+        type: data.type || "campaign",
+        platform: data.platform || "manual",
+        impressions: data.impressions || 0,
+        clicks: data.clicks || 0,
+        spend: data.spend || 0,
+        status: data.status || "active",
       });
       return response.json();
     },
@@ -455,7 +460,17 @@ export default function Campaigns() {
 
   const handleConnectorsComplete = (selectedPlatforms: string[]) => {
     if (campaignData) {
-      createCampaignMutation.mutate(campaignData);
+      // Create campaign with connected platforms data
+      const campaignWithPlatforms = {
+        ...campaignData,
+        platform: selectedPlatforms.join(', '), // Store connected platforms
+        status: "active" as const,
+        type: "campaign" as const,
+        impressions: 0,
+        clicks: 0,
+        spend: 0,
+      };
+      createCampaignMutation.mutate(campaignWithPlatforms);
     }
   };
 
@@ -692,6 +707,18 @@ export default function Campaigns() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
+                              {campaign.platform?.includes('Google Analytics') && (
+                                <SiGoogle className="w-4 h-4 text-orange-500" />
+                              )}
+                              {campaign.platform?.includes('Facebook') && (
+                                <SiFacebook className="w-4 h-4 text-blue-600" />
+                              )}
+                              {campaign.platform?.includes('LinkedIn') && (
+                                <SiLinkedin className="w-4 h-4 text-blue-700" />
+                              )}
+                              {campaign.platform?.includes('Twitter') && (
+                                <SiX className="w-4 h-4 text-slate-900 dark:text-white" />
+                              )}
                               <span className="text-sm">{campaign.platform || "Manual"}</span>
                             </div>
                           </TableCell>

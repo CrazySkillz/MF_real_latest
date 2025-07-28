@@ -6,7 +6,7 @@ import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -494,15 +494,6 @@ export default function Campaigns() {
     }).format(parseFloat(value));
   };
 
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('en-US').format(value);
-  };
-
-  const calculateCTR = (clicks: number, impressions: number) => {
-    if (impressions === 0) return "0.00%";
-    return ((clicks / impressions) * 100).toFixed(2) + "%";
-  };
-
   const getPlatformIcon = (platform: string) => {
     switch (platform.toLowerCase()) {
       case "facebook":
@@ -531,10 +522,7 @@ export default function Campaigns() {
     }
   };
 
-  const totalSpend = campaigns.reduce((sum, campaign) => sum + (campaign.budget ? parseFloat(campaign.budget.toString()) : 0), 0);
-  const totalImpressions = campaigns.reduce((sum, campaign) => sum + campaign.impressions, 0);
-  const totalClicks = campaigns.reduce((sum, campaign) => sum + campaign.clicks, 0);
-  const avgCTR = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0.00";
+
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -656,111 +644,92 @@ export default function Campaigns() {
 
           </div>
 
-          {/* Campaigns Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">All Campaigns</CardTitle>
-              <CardDescription>Manage and monitor your marketing campaigns</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="space-y-4">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-16 bg-slate-100 dark:bg-slate-700 rounded animate-pulse"></div>
-                  ))}
-                </div>
-              ) : campaigns.length === 0 ? (
-                <div className="text-center py-8">
+          {/* Campaigns Cards */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">All Campaigns</h2>
+                <p className="text-slate-600 dark:text-slate-400">Manage and monitor your marketing campaigns</p>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="h-32 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                ))}
+              </div>
+            ) : campaigns.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
                   <div className="text-lg font-medium text-slate-900 dark:text-white mb-2">No campaigns found</div>
                   <p className="text-slate-500 dark:text-slate-400 mb-4">Get started by creating your first marketing campaign</p>
                   <Button onClick={() => setIsCreateModalOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Create Campaign
                   </Button>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Campaign</TableHead>
-                        <TableHead>Platform</TableHead>
-                        <TableHead>Impressions</TableHead>
-                        <TableHead>Clicks</TableHead>
-                        <TableHead>CTR</TableHead>
-                        <TableHead>Budget</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {campaigns.map((campaign) => (
-                        <TableRow key={campaign.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
-                          <TableCell>
-                            <div className="font-medium text-slate-900 dark:text-white">{campaign.name}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              {campaign.platform?.includes('Google Analytics') && (
-                                <SiGoogle className="w-4 h-4 text-orange-500" />
-                              )}
-                              {campaign.platform?.includes('Facebook') && (
-                                <SiFacebook className="w-4 h-4 text-blue-600" />
-                              )}
-                              {campaign.platform?.includes('LinkedIn') && (
-                                <SiLinkedin className="w-4 h-4 text-blue-700" />
-                              )}
-                              {campaign.platform?.includes('Twitter') && (
-                                <SiX className="w-4 h-4 text-slate-900 dark:text-white" />
-                              )}
-                              <span className="text-sm">{campaign.platform || "Manual"}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {formatNumber(campaign.impressions)}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {formatNumber(campaign.clicks)}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {calculateCTR(campaign.clicks, campaign.impressions)}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {formatCurrency(campaign.budget)}
-                          </TableCell>
-                          <TableCell>
-                            {getStatusBadge(campaign.status)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleCampaignStatus(campaign)}
-                                disabled={updateCampaignMutation.isPending}
-                              >
-                                {campaign.status === "active" ? (
-                                  <Pause className="w-4 h-4" />
-                                ) : (
-                                  <Play className="w-4 h-4" />
-                                )}
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {campaigns.map((campaign) => (
+                  <Card key={campaign.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{campaign.name}</h3>
+                          <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
+                            {campaign.platform?.includes('Google Analytics') && (
+                              <SiGoogle className="w-4 h-4 text-orange-500" />
+                            )}
+                            {campaign.platform?.includes('Facebook') && (
+                              <SiFacebook className="w-4 h-4 text-blue-600" />
+                            )}
+                            {campaign.platform?.includes('LinkedIn') && (
+                              <SiLinkedin className="w-4 h-4 text-blue-700" />
+                            )}
+                            {campaign.platform?.includes('Twitter') && (
+                              <SiX className="w-4 h-4 text-slate-900 dark:text-white" />
+                            )}
+                            <span>{campaign.platform || "Manual"}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {getStatusBadge(campaign.status)}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-slate-500 dark:text-slate-400">
+                          Budget: {formatCurrency(campaign.budget)}
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleCampaignStatus(campaign)}
+                            disabled={updateCampaignMutation.isPending}
+                          >
+                            {campaign.status === "active" ? (
+                              <Pause className="w-4 h-4" />
+                            ) : (
+                              <Play className="w-4 h-4" />
+                            )}
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </main>
       </div>
     </div>

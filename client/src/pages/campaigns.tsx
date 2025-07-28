@@ -124,7 +124,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
         `scope=${encodeURIComponent(scope)}&` +
         `response_type=code&` +
         `access_type=offline&` +
-        `prompt=consent`;
+        `prompt=select_account`;
       
       // Open OAuth popup
       const popup = window.open(authUrl, 'oauth', 'width=500,height=600');

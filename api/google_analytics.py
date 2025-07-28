@@ -8,9 +8,9 @@ class GoogleAnalyticsService:
     """Service for handling Google Analytics OAuth and data fetching"""
     
     def __init__(self):
-        self.client_id = None  # Will be set from environment or user setup
-        self.client_secret = None
-        self.redirect_uri = None
+        self.client_id: Optional[str] = None  # Will be set from environment or user setup
+        self.client_secret: Optional[str] = None
+        self.redirect_uri: Optional[str] = None
         
     def get_oauth_url(self, state: str = None) -> str:
         """Generate Google OAuth URL for user authentication"""
@@ -39,7 +39,7 @@ class GoogleAnalyticsService:
         if state:
             params["state"] = state
             
-        query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+        query_string = "&".join([f"{k}={v}" for k, v in params.items() if v])
         return f"{base_url}?{query_string}"
     
     async def exchange_code_for_tokens(self, auth_code: str) -> Dict:

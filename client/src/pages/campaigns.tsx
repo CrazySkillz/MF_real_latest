@@ -116,7 +116,13 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
       try {
         // Get OAuth URL from backend
         const response = await fetch("/api/auth/google/url");
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        console.log("OAuth response:", data); // Debug log
         
         if (data.setup_required) {
           // Show setup instructions if Google OAuth isn't configured

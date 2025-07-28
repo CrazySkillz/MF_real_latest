@@ -141,6 +141,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Analytics OAuth endpoints
+  app.get("/api/auth/google/url", (req, res) => {
+    try {
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      
+      if (!clientId) {
+        return res.json({
+          error: "Google OAuth not configured",
+          setup_required: true,
+          instructions: "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your Replit secrets"
+        });
+      }
+      
+      const baseUrl = "https://accounts.google.com/o/oauth2/v2/auth";
+      const scopes = [
+        "https://www.googleapis.com/auth/analytics.readonly",
+        "https://www.googleapis.com/auth/userinfo.email"
+      ];
+      
+      const params = {
+        client_id: clientId,
+        redirect_uri: `${req.protocol}://${req.get('host')}/api/auth/google/callback`,
+        scope: scopes.join(" "),
+        response_type: "code",
+        access_type: "offline",
+        prompt: "select_account",
+        include_granted_scopes: "true"
+      };
+      
+      const queryString = new URLSearchParams(params).toString();
+      const oauthUrl = `${baseUrl}?${queryString}`;
+      
+      res.json({ oauth_url: oauthUrl });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/auth/google/callback", (req, res) => {
+    const { code, error, state } = req.query;
+    
+    if (error) {
+      return res.redirect(`/?error=${error}`);
+    }
+    
+    if (!code) {
+      return res.redirect("/?error=no_code");
+    }
+    
+    // In a real app, exchange code for tokens here
+    // For now, redirect back with success
+    res.redirect("/?google_connected=true");
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

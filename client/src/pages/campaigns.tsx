@@ -166,7 +166,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
                   <div className="text-sm text-slate-500">{platform.description}</div>
                 </div>
                 
-                {platform.type === "oauth" && !isConnected && isSelected && (
+                {platform.type === "oauth" && platform.id === "google-analytics" && !isConnected && isSelected && (
                   <Button
                     type="button"
                     size="sm"

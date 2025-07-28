@@ -50,7 +50,7 @@ const platforms = [
     name: "Google Analytics",
     icon: SiGoogle,
     color: "text-orange-500",
-    description: "Connect your Google Analytics account",
+    description: "Connect your Google Analytics account with one click",
     type: "oauth",
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth"
   },
@@ -182,7 +182,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
                 )}
               </div>
               
-              {isSelected && platform.type === "credentials" && (
+              {isSelected && platform.type === "credentials" && platform.id !== "google-analytics" && (
                 <div className="ml-8 space-y-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="space-y-2">
                     <Label htmlFor={`${platform.id}-key`}>API Key</Label>
@@ -204,6 +204,22 @@ function DataConnectorsStep({ onComplete, onBack, isLoading }: DataConnectorsSte
                       onChange={(e) => handleCredentialChange(platform.id, "secret", e.target.value)}
                     />
                   </div>
+                </div>
+              )}
+              
+              {isSelected && platform.id === "google-analytics" && !isConnected && (
+                <div className="ml-8 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="text-sm text-blue-700 dark:text-blue-400 mb-3">
+                    Click "Connect" to sign in with your Google account - no API keys needed!
+                  </div>
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={() => handleOAuthConnect(platform.id)}
+                  >
+                    <SiGoogle className="w-4 h-4 mr-2" />
+                    Connect with Google
+                  </Button>
                 </div>
               )}
               

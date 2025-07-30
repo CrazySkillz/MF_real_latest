@@ -44,6 +44,11 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
   });
 
+  const { data: ga4Metrics, isLoading: ga4Loading } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
+    enabled: !!campaignId && !!campaign?.platform?.includes("Google Analytics"),
+  });
+
   // Determine connected platforms based on campaign data
   const connectedPlatformNames = campaign?.platform?.split(', ') || [];
   
@@ -51,12 +56,12 @@ export default function CampaignDetail() {
     {
       platform: "Google Analytics",
       connected: connectedPlatformNames.includes("Google Analytics"),
-      impressions: 0,
-      clicks: 0,
-      conversions: 0,
-      spend: "0.00",
-      ctr: "0.00%",
-      cpc: "$0.00"
+      impressions: ga4Metrics?.impressions || 0,
+      clicks: ga4Metrics?.clicks || 0,
+      conversions: ga4Metrics?.conversions || 0,
+      spend: "0.00", // GA4 doesn't track spend directly
+      ctr: ga4Metrics?.impressions > 0 ? `${((ga4Metrics.clicks / ga4Metrics.impressions) * 100).toFixed(2)}%` : "0.00%",
+      cpc: "$0.00" // GA4 doesn't track cost per click
     },
     {
       platform: "Facebook Ads", 

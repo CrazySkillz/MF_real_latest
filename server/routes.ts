@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema } from "@shared/schema";
 import { z } from "zod";
+import { ga4Service } from "./analytics";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Campaign routes
@@ -193,6 +194,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // In a real app, exchange code for tokens here
     // For now, redirect back with success
     res.redirect("/?google_connected=true");
+  });
+
+  // GA4 Integration endpoints
+  app.post("/api/integrations/ga4/connect", async (req, res) => {
+    try {
+      const { propertyId, measurementId, campaignId } = req.body;
+      
+      if (!propertyId || !measurementId) {
+        return res.status(400).json({ error: "Property ID and Measurement ID are required" });
+      }
+
+      // Test the connection first
+      const connectionValid = await ga4Service.testConnection({ propertyId, measurementId });
+      
+      if (!connectionValid) {
+        return res.status(400).json({ error: "Unable to connect to GA4. Please verify your Property ID and ensure proper API access." });
+      }
+
+      // Store the integration
+      const integration = await storage.createIntegration({
+        platform: "Google Analytics",
+        name: "Google Analytics 4",
+        connected: true,
+        credentials: JSON.stringify({ propertyId, measurementId })
+      });
+
+      res.json({ 
+        success: true, 
+        integration,
+        message: "Successfully connected to Google Analytics 4"
+      });
+    } catch (error) {
+      console.error("GA4 connection error:", error);
+      res.status(500).json({ 
+        error: "Failed to connect to GA4. Please check your credentials and ensure you have the proper Google Analytics Data API access." 
+      });
+    }
+  });
+
+  app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { dateRange = '30daysAgo' } = req.query;
+
+      // Find GA4 integration for this campaign
+      const integrations = await storage.getIntegrations();
+      const ga4Integration = integrations.find(i => i.platform === "Google Analytics" && i.connected);
+
+      if (!ga4Integration || !ga4Integration.credentials) {
+        return res.status(404).json({ error: "No GA4 integration found for this campaign" });
+      }
+
+      const credentials = JSON.parse(ga4Integration.credentials);
+      const metrics = await ga4Service.getMetrics(credentials, dateRange as string);
+
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching GA4 metrics:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch GA4 metrics. Please ensure your GA4 property is properly configured." 
+      });
+    }
+  });
+
+  app.post("/api/integrations/ga4/test", async (req, res) => {
+    try {
+      const { propertyId, measurementId } = req.body;
+      
+      if (!propertyId || !measurementId) {
+        return res.status(400).json({ error: "Property ID and Measurement ID are required" });
+      }
+
+      const isValid = await ga4Service.testConnection({ propertyId, measurementId });
+      
+      res.json({ 
+        valid: isValid,
+        message: isValid ? "Connection successful" : "Unable to connect. Please verify your credentials." 
+      });
+    } catch (error) {
+      console.error("GA4 test connection error:", error);
+      res.status(500).json({ 
+        error: "Failed to test GA4 connection",
+        valid: false 
+      });
+    }
   });
 
   const httpServer = createServer(app);

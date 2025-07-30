@@ -113,6 +113,98 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
     }));
   };
 
+  const handleGA4Connect = async (platformId: string) => {
+    const creds = credentials[platformId];
+    if (!creds?.propertyId) {
+      toast({
+        title: "Property ID Required",
+        description: "Please enter your GA4 Property ID to connect",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/integrations/ga4/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          propertyId: creds.propertyId,
+          measurementId: creds.measurementId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setConnectedPlatforms(prev => [...prev, platformId]);
+        if (!selectedPlatforms.includes(platformId)) {
+          setSelectedPlatforms(prev => [...prev, platformId]);
+        }
+        
+        toast({
+          title: "Google Analytics Connected",
+          description: data.message || "Successfully connected to GA4",
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: data.error || "Failed to connect to GA4",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("GA4 connection error:", error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect to GA4. Please check your credentials.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGA4Test = async (platformId: string) => {
+    const creds = credentials[platformId];
+    if (!creds?.propertyId) {
+      toast({
+        title: "Property ID Required",
+        description: "Please enter your GA4 Property ID to test",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/integrations/ga4/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          propertyId: creds.propertyId,
+          measurementId: creds.measurementId,
+        }),
+      });
+
+      const data = await response.json();
+
+      toast({
+        title: data.valid ? "Connection Test Passed" : "Connection Test Failed",
+        description: data.message,
+        variant: data.valid ? "default" : "destructive",
+      });
+    } catch (error) {
+      console.error("GA4 test error:", error);
+      toast({
+        title: "Test Failed",
+        description: "Failed to test GA4 connection",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleOAuthConnect = async (platformId: string) => {
     if (platformId === "google-analytics") {
       try {
@@ -261,24 +353,10 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                     <Button
                       type="button"
                       className="w-full"
-                      onClick={() => {
-                        if (credentials[platform.id]?.propertyId) {
-                          setConnectedPlatforms(prev => [...prev, platform.id]);
-                          toast({
-                            title: "Google Analytics Connected",
-                            description: `Connected with Property ID: ${credentials[platform.id]?.propertyId}`,
-                          });
-                        } else {
-                          toast({
-                            title: "Property ID Required",
-                            description: "Please enter your GA4 Property ID to connect",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
+                      onClick={() => handleGA4Connect(platform.id)}
                       disabled={!credentials[platform.id]?.propertyId}
                     >
-                      Connect with Credentials
+                      Connect & Test GA4
                     </Button>
                   </div>
                   

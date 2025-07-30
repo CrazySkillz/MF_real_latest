@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import Campaigns from "@/pages/campaigns";
+import CampaignDetail from "@/pages/campaign-detail";
 import Audiences from "@/pages/audiences";
 import Analytics from "@/pages/analytics";
 import Integrations from "@/pages/integrations";
@@ -15,6 +16,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/campaigns" component={Campaigns} />
+      <Route path="/campaigns/:id" component={CampaignDetail} />
       <Route path="/audiences" component={Audiences} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/integrations" component={Integrations} />

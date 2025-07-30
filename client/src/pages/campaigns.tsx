@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -673,59 +674,72 @@ export default function Campaigns() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {campaigns.map((campaign) => (
-                  <Card key={campaign.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{campaign.name}</h3>
-                          <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
-                            {campaign.platform?.includes('Google Analytics') && (
-                              <SiGoogle className="w-4 h-4 text-orange-500" />
-                            )}
-                            {campaign.platform?.includes('Facebook') && (
-                              <SiFacebook className="w-4 h-4 text-blue-600" />
-                            )}
-                            {campaign.platform?.includes('LinkedIn') && (
-                              <SiLinkedin className="w-4 h-4 text-blue-700" />
-                            )}
-                            {campaign.platform?.includes('Twitter') && (
-                              <SiX className="w-4 h-4 text-slate-900 dark:text-white" />
-                            )}
-                            <span>{campaign.platform || "Manual"}</span>
+                  <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
+                    <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{campaign.name}</h3>
+                            <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
+                              {campaign.platform?.includes('Google Analytics') && (
+                                <SiGoogle className="w-4 h-4 text-orange-500" />
+                              )}
+                              {campaign.platform?.includes('Facebook') && (
+                                <SiFacebook className="w-4 h-4 text-blue-600" />
+                              )}
+                              {campaign.platform?.includes('LinkedIn') && (
+                                <SiLinkedin className="w-4 h-4 text-blue-700" />
+                              )}
+                              {campaign.platform?.includes('Twitter') && (
+                                <SiX className="w-4 h-4 text-slate-900 dark:text-white" />
+                              )}
+                              <span>{campaign.platform || "Manual"}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            {getStatusBadge(campaign.status)}
                           </div>
                         </div>
-                        <div className="flex items-center space-x-1">
-                          {getStatusBadge(campaign.status)}
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-slate-500 dark:text-slate-400">
+                            Budget: {formatCurrency(campaign.budget)}
+                          </div>
+                          <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                toggleCampaignStatus(campaign);
+                              }}
+                              disabled={updateCampaignMutation.isPending}
+                            >
+                              {campaign.status === "active" ? (
+                                <Pause className="w-4 h-4" />
+                              ) : (
+                                <Play className="w-4 h-4" />
+                              )}
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={(e) => e.preventDefault()}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={(e) => e.preventDefault()}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-slate-500 dark:text-slate-400">
-                          Budget: {formatCurrency(campaign.budget)}
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleCampaignStatus(campaign)}
-                            disabled={updateCampaignMutation.isPending}
-                          >
-                            {campaign.status === "active" ? (
-                              <Pause className="w-4 h-4" />
-                            ) : (
-                              <Play className="w-4 h-4" />
-                            )}
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             )}

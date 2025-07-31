@@ -124,45 +124,24 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
       return;
     }
 
-    try {
-      const response = await fetch("/api/integrations/ga4/connect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          propertyId: creds.propertyId,
-          measurementId: creds.measurementId,
-        }),
-      });
+    // Store credentials and redirect to Google OAuth
+    sessionStorage.setItem('ga4Credentials', JSON.stringify({
+      propertyId: creds.propertyId,
+      measurementId: creds.measurementId,
+    }));
+    
+    sessionStorage.setItem('pendingCampaign', JSON.stringify({
+      name: campaignData.name,
+      clientWebsite: campaignData.clientWebsite,
+      label: campaignData.label,
+      budget: campaignData.budget,
+      selectedPlatforms,
+      connectedPlatforms,
+      pendingPlatform: platformId
+    }));
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setConnectedPlatforms(prev => [...prev, platformId]);
-        if (!selectedPlatforms.includes(platformId)) {
-          setSelectedPlatforms(prev => [...prev, platformId]);
-        }
-        
-        toast({
-          title: "Google Analytics Connected",
-          description: data.message || "Successfully connected to GA4",
-        });
-      } else {
-        toast({
-          title: "Connection Failed",
-          description: data.error || "Failed to connect to GA4",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("GA4 connection error:", error);
-      toast({
-        title: "Connection Error",
-        description: "Failed to connect to GA4. Please check your credentials.",
-        variant: "destructive",
-      });
-    }
+    // Redirect to Google OAuth for GA4 access
+    handleOAuthConnect(platformId);
   };
 
   const handleGA4Test = async (platformId: string) => {
@@ -176,30 +155,50 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
       return;
     }
 
+    // For testing, we need an access token, so redirect to OAuth first
+    toast({
+      title: "OAuth Required",
+      description: "Click 'Connect & Test GA4' to authenticate with Google first",
+      variant: "default",
+    });
+  };
+
+  const completeGA4Connection = async (ga4Creds: any, accessToken: string, platformId: string) => {
     try {
-      const response = await fetch("/api/integrations/ga4/test", {
+      const response = await fetch("/api/integrations/ga4/connect", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          propertyId: creds.propertyId,
-          measurementId: creds.measurementId,
+          propertyId: ga4Creds.propertyId,
+          measurementId: ga4Creds.measurementId,
+          accessToken: accessToken,
         }),
       });
 
       const data = await response.json();
 
-      toast({
-        title: data.valid ? "Connection Test Passed" : "Connection Test Failed",
-        description: data.message,
-        variant: data.valid ? "default" : "destructive",
-      });
+      if (response.ok && data.success) {
+        toast({
+          title: "Google Analytics Connected",
+          description: "Successfully connected to GA4 with real data access",
+        });
+        
+        // Store access token for later use (in a real app, use secure storage)
+        sessionStorage.setItem('ga4AccessToken', accessToken);
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: data.error || "Failed to connect to GA4",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error("GA4 test error:", error);
+      console.error("GA4 connection completion error:", error);
       toast({
-        title: "Test Failed",
-        description: "Failed to test GA4 connection",
+        title: "Connection Error",
+        description: "Failed to complete GA4 connection",
         variant: "destructive",
       });
     }
@@ -434,6 +433,7 @@ export default function Campaigns() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const googleConnected = urlParams.get('google_connected');
+    const accessToken = urlParams.get('access_token');
     const error = urlParams.get('error');
     
     if (googleConnected === 'true' || error) {
@@ -442,12 +442,26 @@ export default function Campaigns() {
       
       // Restore campaign data from sessionStorage
       const pendingCampaignData = sessionStorage.getItem('pendingCampaign');
+      const ga4CredsData = sessionStorage.getItem('ga4Credentials');
+      
       if (pendingCampaignData) {
         try {
           const restored = JSON.parse(pendingCampaignData);
           
-          if (googleConnected === 'true') {
-            // Success - show modal with restored data and connection success
+          if (googleConnected === 'true' && accessToken && ga4CredsData) {
+            const ga4Creds = JSON.parse(ga4CredsData);
+            
+            // Complete GA4 connection with access token
+            completeGA4Connection(ga4Creds, accessToken, restored.pendingPlatform);
+            
+            // Success - show modal with restored data
+            setCampaignData(restored);
+            setIsCreateModalOpen(true);
+            setShowConnectorsStep(true);
+            
+            sessionStorage.removeItem('ga4Credentials');
+          } else if (googleConnected === 'true') {
+            // Regular OAuth success without GA4 credentials
             setCampaignData(restored);
             setIsCreateModalOpen(true);
             setShowConnectorsStep(true);

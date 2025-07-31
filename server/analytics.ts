@@ -1,8 +1,7 @@
-import { BetaAnalyticsDataClient } from '@google-analytics/data';
-
 interface GA4Credentials {
   propertyId: string;
   measurementId: string;
+  accessToken?: string;
 }
 
 interface GA4Metrics {
@@ -16,38 +15,42 @@ interface GA4Metrics {
 }
 
 export class GoogleAnalytics4Service {
-  private client: BetaAnalyticsDataClient;
-
-  constructor() {
-    // Initialize GA4 client - requires service account credentials
-    this.client = new BetaAnalyticsDataClient({
-      // If GOOGLE_APPLICATION_CREDENTIALS env var is set, it will use that
-      // Otherwise, we'll need to handle authentication differently
-    });
-  }
-
-  async getMetrics(credentials: GA4Credentials, dateRange = '30daysAgo'): Promise<GA4Metrics> {
+  async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = '30daysAgo'): Promise<GA4Metrics> {
     try {
-      const [response] = await this.client.runReport({
-        property: `properties/${credentials.propertyId}`,
-        dateRanges: [
-          {
-            startDate: dateRange,
-            endDate: 'today',
-          },
-        ],
-        metrics: [
-          { name: 'sessions' },
-          { name: 'screenPageViews' },
-          { name: 'bounceRate' },
-          { name: 'averageSessionDuration' },
-          { name: 'conversions' },
-          { name: 'totalUsers' },
-        ],
-        dimensions: [
-          { name: 'date' },
-        ],
+      // Use Google Analytics Data API REST endpoint with user's access token
+      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${credentials.propertyId}:runReport`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateRanges: [
+            {
+              startDate: dateRange,
+              endDate: 'today',
+            },
+          ],
+          metrics: [
+            { name: 'sessions' },
+            { name: 'screenPageViews' },
+            { name: 'bounceRate' },
+            { name: 'averageSessionDuration' },
+            { name: 'conversions' },
+            { name: 'totalUsers' },
+          ],
+          dimensions: [
+            { name: 'date' },
+          ],
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`GA4 API Error: ${errorData.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json();
 
       // Process the response and extract metrics
       let totalSessions = 0;
@@ -58,8 +61,8 @@ export class GoogleAnalytics4Service {
       let totalSessionDuration = 0;
       let rowCount = 0;
 
-      if (response.rows) {
-        for (const row of response.rows) {
+      if (data.rows) {
+        for (const row of data.rows) {
           if (row.metricValues) {
             totalSessions += parseInt(row.metricValues[0]?.value || '0');
             totalPageviews += parseInt(row.metricValues[1]?.value || '0');
@@ -87,21 +90,27 @@ export class GoogleAnalytics4Service {
     }
   }
 
-  async testConnection(credentials: GA4Credentials): Promise<boolean> {
+  async testConnection(credentials: GA4Credentials, accessToken: string): Promise<boolean> {
     try {
-      const [response] = await this.client.runReport({
-        property: `properties/${credentials.propertyId}`,
-        dateRanges: [
-          {
-            startDate: '7daysAgo',
-            endDate: 'today',
-          },
-        ],
-        metrics: [{ name: 'sessions' }],
-        limit: 1,
+      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${credentials.propertyId}:runReport`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateRanges: [
+            {
+              startDate: '7daysAgo',
+              endDate: 'today',
+            },
+          ],
+          metrics: [{ name: 'sessions' }],
+          limit: 1,
+        }),
       });
 
-      return response.rows !== undefined;
+      return response.ok;
     } catch (error) {
       console.error('GA4 connection test failed:', error);
       return false;

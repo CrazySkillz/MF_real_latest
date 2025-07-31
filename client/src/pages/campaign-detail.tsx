@@ -47,6 +47,30 @@ export default function CampaignDetail() {
   const { data: ga4Metrics, isLoading: ga4Loading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId && !!campaign?.platform?.includes("Google Analytics"),
+    queryFn: async () => {
+      const accessToken = sessionStorage.getItem('ga4AccessToken');
+      if (!accessToken) {
+        throw new Error('GA4 access token not found. Please reconnect to Google Analytics.');
+      }
+      
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accessToken: accessToken,
+          dateRange: '30daysAgo'
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch GA4 metrics');
+      }
+      
+      return response.json();
+    },
   });
 
   // Determine connected platforms based on campaign data

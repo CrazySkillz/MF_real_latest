@@ -180,7 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/auth/google/callback", (req, res) => {
+  app.get("/api/auth/google/callback", async (req, res) => {
     const { code, error, state } = req.query;
     
     if (error) {
@@ -191,28 +191,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.redirect("/?error=no_code");
     }
     
-    // In a real app, exchange code for tokens here
-    // For now, redirect back with success
-    res.redirect("/?google_connected=true");
+    try {
+      // Exchange authorization code for access token
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      
+      if (!clientId || !clientSecret) {
+        return res.redirect("/?error=missing_oauth_config");
+      }
+      
+      const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          code: code as string,
+          grant_type: "authorization_code",
+          redirect_uri: `${req.protocol}://${req.get('host')}/api/auth/google/callback`,
+        }),
+      });
+      
+      const tokenData = await tokenResponse.json();
+      
+      if (!tokenResponse.ok) {
+        console.error("Token exchange failed:", tokenData);
+        return res.redirect("/?error=token_exchange_failed");
+      }
+      
+      // Store the access token in session or pass it to frontend
+      // For now, redirect with the access token (in production, use secure session storage)
+      const accessToken = tokenData.access_token;
+      res.redirect(`/?google_connected=true&access_token=${accessToken}`);
+      
+    } catch (error) {
+      console.error("OAuth callback error:", error);
+      res.redirect("/?error=oauth_callback_failed");
+    }
   });
 
   // GA4 Integration endpoints
   app.post("/api/integrations/ga4/connect", async (req, res) => {
     try {
-      const { propertyId, measurementId, campaignId } = req.body;
+      const { propertyId, measurementId, accessToken } = req.body;
       
-      if (!propertyId || !measurementId) {
-        return res.status(400).json({ error: "Property ID and Measurement ID are required" });
+      if (!propertyId || !accessToken) {
+        return res.status(400).json({ error: "Property ID and access token are required" });
       }
 
       // Test the connection first
-      const connectionValid = await ga4Service.testConnection({ propertyId, measurementId });
+      const connectionValid = await ga4Service.testConnection({ propertyId, measurementId }, accessToken);
       
       if (!connectionValid) {
-        return res.status(400).json({ error: "Unable to connect to GA4. Please verify your Property ID and ensure proper API access." });
+        return res.status(400).json({ error: "Unable to connect to GA4. Please verify your Property ID and access token." });
       }
 
-      // Store the integration
+      // Store the integration (without storing the access token for security)
       const integration = await storage.createIntegration({
         platform: "Google Analytics",
         name: "Google Analytics 4",
@@ -233,10 +269,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {
+  app.post("/api/campaigns/:id/ga4-metrics", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { dateRange = '30daysAgo' } = req.query;
+      const { dateRange = '30daysAgo', accessToken } = req.body;
+
+      if (!accessToken) {
+        return res.status(400).json({ error: "Access token is required" });
+      }
 
       // Find GA4 integration for this campaign
       const integrations = await storage.getIntegrations();
@@ -247,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const credentials = JSON.parse(ga4Integration.credentials);
-      const metrics = await ga4Service.getMetrics(credentials, dateRange as string);
+      const metrics = await ga4Service.getMetrics(credentials, accessToken, dateRange as string);
 
       res.json(metrics);
     } catch (error) {
@@ -260,13 +300,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/integrations/ga4/test", async (req, res) => {
     try {
-      const { propertyId, measurementId } = req.body;
+      const { propertyId, measurementId, accessToken } = req.body;
       
-      if (!propertyId || !measurementId) {
-        return res.status(400).json({ error: "Property ID and Measurement ID are required" });
+      if (!propertyId || !accessToken) {
+        return res.status(400).json({ error: "Property ID and access token are required" });
       }
 
-      const isValid = await ga4Service.testConnection({ propertyId, measurementId });
+      const isValid = await ga4Service.testConnection({ propertyId, measurementId }, accessToken);
       
       res.json({ 
         valid: isValid,

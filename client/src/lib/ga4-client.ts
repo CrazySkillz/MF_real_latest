@@ -11,8 +11,14 @@ interface GA4Metrics {
   conversions: number;
 }
 
+interface TokenInfo {
+  access_token: string;
+  refresh_token?: string;
+  expires_at: number;
+}
+
 export class GA4ClientService {
-  private accessToken: string | null = null;
+  private tokenInfo: TokenInfo | null = null;
   private isInitialized = false;
 
   constructor() {
@@ -40,29 +46,57 @@ export class GA4ClientService {
     this.isInitialized = true;
   }
 
-  setAccessToken(token: string): void {
-    this.accessToken = token;
+  setAccessToken(token: string, expiresIn: number = 3600): void {
+    this.tokenInfo = {
+      access_token: token,
+      expires_at: Date.now() + (expiresIn * 1000) // Convert seconds to milliseconds
+    };
+    
+    // Store in sessionStorage for persistence across page reloads
+    sessionStorage.setItem('ga4_token_info', JSON.stringify(this.tokenInfo));
+  }
+
+  private isTokenExpired(): boolean {
+    if (!this.tokenInfo) return true;
+    return Date.now() >= this.tokenInfo.expires_at;
+  }
+
+  private loadTokenFromStorage(): void {
+    const stored = sessionStorage.getItem('ga4_token_info');
+    if (stored) {
+      try {
+        this.tokenInfo = JSON.parse(stored);
+      } catch (e) {
+        console.error('Failed to parse stored token info:', e);
+        sessionStorage.removeItem('ga4_token_info');
+      }
+    }
   }
 
   async signIn(): Promise<string> {
-    // This method is now mainly for backwards compatibility
-    // The actual token setting is done via setAccessToken
-    if (this.accessToken) {
-      return this.accessToken;
+    // Load token from storage if available
+    this.loadTokenFromStorage();
+    
+    if (this.tokenInfo && !this.isTokenExpired()) {
+      return this.tokenInfo.access_token;
     }
-    throw new Error('Access token not set. Please use the modal to authenticate.');
+    
+    // Token expired or not available
+    throw new Error('Access token expired or not set. Please re-authenticate.');
   }
 
   async getMetrics(propertyId: string, dateRange = '30daysAgo'): Promise<GA4Metrics> {
-    if (!this.accessToken) {
-      throw new Error('Not authenticated. Please sign in first.');
+    this.loadTokenFromStorage();
+    
+    if (!this.tokenInfo || this.isTokenExpired()) {
+      throw new Error('Access token expired. Please re-authenticate through the campaign setup.');
     }
 
     try {
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
+          'Authorization': `Bearer ${this.tokenInfo.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -133,15 +167,21 @@ export class GA4ClientService {
   }
 
   signOut(): void {
-    if (window.gapi?.auth2) {
-      const authInstance = window.gapi.auth2.getAuthInstance();
-      authInstance.signOut();
-    }
-    this.accessToken = null;
+    this.tokenInfo = null;
+    sessionStorage.removeItem('ga4_token_info');
+    sessionStorage.removeItem('ga4PropertyId');
+    sessionStorage.removeItem('ga4AccessToken');
+    sessionStorage.removeItem('ga4MeasurementId');
   }
 
   isSignedIn(): boolean {
-    return !!this.accessToken;
+    this.loadTokenFromStorage();
+    return !!(this.tokenInfo && !this.isTokenExpired());
+  }
+
+  getTokenExpiryTime(): number | null {
+    this.loadTokenFromStorage();
+    return this.tokenInfo?.expires_at || null;
   }
 }
 

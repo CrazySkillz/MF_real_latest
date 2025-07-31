@@ -48,28 +48,29 @@ export default function CampaignDetail() {
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId && !!campaign?.platform?.includes("Google Analytics"),
     queryFn: async () => {
-      const accessToken = sessionStorage.getItem('ga4AccessToken');
-      if (!accessToken) {
-        throw new Error('GA4 access token not found. Please reconnect to Google Analytics.');
+      const propertyId = sessionStorage.getItem('ga4PropertyId');
+      if (!propertyId) {
+        throw new Error('GA4 property ID not found. Please reconnect to Google Analytics.');
       }
       
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          accessToken: accessToken,
-          dateRange: '30daysAgo'
-        }),
-      });
+      const { ga4Client } = await import('@/lib/ga4-client');
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch GA4 metrics');
+      if (!ga4Client.isSignedIn()) {
+        throw new Error('Not signed in to Google Analytics. Please reconnect.');
       }
       
-      return response.json();
+      const metrics = await ga4Client.getMetrics(propertyId, '30daysAgo');
+      
+      // Transform to match expected format
+      return {
+        impressions: metrics.users, // Using users as impressions equivalent
+        clicks: metrics.sessions, // Using sessions as clicks equivalent
+        sessions: metrics.sessions,
+        pageviews: metrics.pageviews,
+        bounceRate: metrics.bounceRate,
+        averageSessionDuration: metrics.averageSessionDuration,
+        conversions: metrics.conversions,
+      };
     },
   });
 

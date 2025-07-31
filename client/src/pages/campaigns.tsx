@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { GA4AuthModal } from "@/components/GA4AuthModal";
 import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -93,6 +94,9 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [credentials, setCredentials] = useState<Record<string, { apiKey?: string; secret?: string; propertyId?: string; measurementId?: string }>>({});
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+  const [showGA4AuthModal, setShowGA4AuthModal] = useState(false);
+  const [ga4ConnectPlatformId, setGA4ConnectPlatformId] = useState<string>('');
+  const [isConnecting, setIsConnecting] = useState(false);
   const { toast } = useToast();
 
   const handlePlatformToggle = (platformId: string) => {
@@ -124,24 +128,63 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
       return;
     }
 
-    // Store credentials and redirect to Google OAuth
-    sessionStorage.setItem('ga4Credentials', JSON.stringify({
-      propertyId: creds.propertyId,
-      measurementId: creds.measurementId,
-    }));
-    
-    sessionStorage.setItem('pendingCampaign', JSON.stringify({
-      name: campaignData.name,
-      clientWebsite: campaignData.clientWebsite,
-      label: campaignData.label,
-      budget: campaignData.budget,
-      selectedPlatforms,
-      connectedPlatforms,
-      pendingPlatform: platformId
-    }));
+    // Open the GA4 authentication modal
+    setGA4ConnectPlatformId(platformId);
+    setShowGA4AuthModal(true);
+  };
 
-    // Redirect to Google OAuth for GA4 access
-    handleOAuthConnect(platformId);
+  const handleGA4AuthSubmit = async (accessToken: string) => {
+    const platformId = ga4ConnectPlatformId;
+    const creds = credentials[platformId];
+    
+    if (!creds?.propertyId) return;
+
+    setIsConnecting(true);
+    
+    try {
+      const { ga4Client } = await import('@/lib/ga4-client');
+      
+      // Set the access token
+      ga4Client.setAccessToken(accessToken);
+      
+      // Test the connection with the provided property ID
+      const isValid = await ga4Client.testConnection(creds.propertyId);
+      
+      if (isValid) {
+        setConnectedPlatforms(prev => [...prev, platformId]);
+        if (!selectedPlatforms.includes(platformId)) {
+          setSelectedPlatforms(prev => [...prev, platformId]);
+        }
+        
+        // Store the property ID for later use
+        sessionStorage.setItem('ga4PropertyId', creds.propertyId);
+        sessionStorage.setItem('ga4AccessToken', accessToken);
+        if (creds.measurementId) {
+          sessionStorage.setItem('ga4MeasurementId', creds.measurementId);
+        }
+        
+        setShowGA4AuthModal(false);
+        toast({
+          title: "Google Analytics Connected",
+          description: "Successfully connected to your GA4 property with live data access",
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: "Unable to access the specified GA4 property. Please check your Property ID and access token.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("GA4 connection error:", error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect to Google Analytics. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   const handleGA4Test = async (platformId: string) => {
@@ -155,12 +198,40 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
       return;
     }
 
-    // For testing, we need an access token, so redirect to OAuth first
-    toast({
-      title: "OAuth Required",
-      description: "Click 'Connect & Test GA4' to authenticate with Google first",
-      variant: "default",
-    });
+    try {
+      const { ga4Client } = await import('@/lib/ga4-client');
+      
+      if (!ga4Client.isSignedIn()) {
+        toast({
+          title: "Authentication Required",
+          description: "Please connect to Google Analytics first using the 'Connect & Test GA4' button",
+          variant: "default",
+        });
+        return;
+      }
+
+      toast({
+        title: "Testing Connection",
+        description: "Verifying access to your GA4 property...",
+      });
+
+      const isValid = await ga4Client.testConnection(creds.propertyId);
+      
+      toast({
+        title: isValid ? "Connection Test Passed" : "Connection Test Failed",
+        description: isValid 
+          ? "Successfully connected to your GA4 property" 
+          : "Unable to access the GA4 property. Please check your Property ID and permissions.",
+        variant: isValid ? "default" : "destructive",
+      });
+    } catch (error) {
+      console.error("GA4 test error:", error);
+      toast({
+        title: "Test Failed",
+        description: "Failed to test GA4 connection",
+        variant: "destructive",
+      });
+    }
   };
 
   const completeGA4Connection = async (ga4Creds: any, accessToken: string, platformId: string) => {
@@ -414,6 +485,13 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
           <CheckCircle className="w-4 h-4 ml-2" />
         </Button>
       </div>
+      
+      <GA4AuthModal
+        isOpen={showGA4AuthModal}
+        onClose={() => setShowGA4AuthModal(false)}
+        onSubmit={handleGA4AuthSubmit}
+        isLoading={isConnecting}
+      />
     </div>
   );
 }

@@ -133,53 +133,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (isConnected) {
             const connection = realGA4Client.getConnection(campaign.id);
             if (connection?.propertyId) {
-              console.log(`Fetching real GA4 metrics for campaign ${campaign.id}`);
-              const ga4Metrics = await realGA4Client.getRealTimeMetrics(campaign.id, connection.propertyId);
-              
-              if (ga4Metrics) {
-                // Convert GA4 metrics to our metric format and store them
-                const metricEntries = [
-                  {
-                    name: 'Total Sessions',
-                    value: ga4Metrics.sessions.toString(),
-                    type: 'number' as const,
-                    changePercentage: '+12.5',
-                    period: 'vs last month',
-                    source: `GA4 Property ${connection.propertyId}`
-                  },
-                  {
-                    name: 'Page Views',
-                    value: ga4Metrics.pageviews.toString(),
-                    type: 'number' as const,
-                    changePercentage: '+8.3',
-                    period: 'vs last month',
-                    source: `GA4 Property ${connection.propertyId}`
-                  },
-                  {
-                    name: 'Bounce Rate',
-                    value: `${ga4Metrics.bounceRate.toFixed(1)}%`,
-                    type: 'percentage' as const,
-                    changePercentage: '-2.1',
-                    period: 'vs last month',
-                    source: `GA4 Property ${connection.propertyId}`
-                  },
-                  {
-                    name: 'Conversions',
-                    value: ga4Metrics.conversions.toString(),
-                    type: 'number' as const,
-                    changePercentage: '+15.7',
-                    period: 'vs last month',
-                    source: `GA4 Property ${connection.propertyId}`
+              try {
+                console.log(`Fetching real GA4 metrics for campaign ${campaign.id}`);
+                const ga4Metrics = await realGA4Client.getRealTimeMetrics(campaign.id, connection.propertyId);
+                
+                if (ga4Metrics) {
+                  // Convert GA4 metrics to our metric format and store them
+                  const metricEntries = [
+                    {
+                      name: 'Total Sessions',
+                      value: ga4Metrics.sessions.toString(),
+                      type: 'number' as const,
+                      changePercentage: '+12.5',
+                      period: 'vs last month',
+                      source: `GA4 Property ${connection.propertyId}`
+                    },
+                    {
+                      name: 'Page Views',
+                      value: ga4Metrics.pageviews.toString(),
+                      type: 'number' as const,
+                      changePercentage: '+8.3',
+                      period: 'vs last month',
+                      source: `GA4 Property ${connection.propertyId}`
+                    },
+                    {
+                      name: 'Bounce Rate',
+                      value: `${ga4Metrics.bounceRate.toFixed(1)}%`,
+                      type: 'percentage' as const,
+                      changePercentage: '-2.1',
+                      period: 'vs last month',
+                      source: `GA4 Property ${connection.propertyId}`
+                    },
+                    {
+                      name: 'Conversions',
+                      value: ga4Metrics.conversions.toString(),
+                      type: 'number' as const,
+                      changePercentage: '+15.7',
+                      period: 'vs last month',
+                      source: `GA4 Property ${connection.propertyId}`
+                    }
+                  ];
+                  
+                  // Store these metrics for future requests
+                  for (const metric of metricEntries) {
+                    await storage.createMetric(metric);
                   }
-                ];
-                
-                // Store these metrics for future requests
-                for (const metric of metricEntries) {
-                  await storage.createMetric(metric);
+                  
+                  metrics = await storage.getMetrics();
+                  break; // Use first connected campaign
                 }
-                
-                metrics = await storage.getMetrics();
-                break; // Use first connected campaign
+              } catch (error: any) {
+                console.error(`GA4 API error for campaign ${campaign.id}:`, error.message);
+                // If Google API is not configured, return helpful error
+                if (error.message.includes('Google Analytics API not configured')) {
+                  return res.status(424).json({ 
+                    message: "Google Analytics API not configured", 
+                    requiresSetup: true,
+                    instructions: "To pull real GA4 metrics, please add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your Replit secrets."
+                  });
+                }
               }
             }
           }

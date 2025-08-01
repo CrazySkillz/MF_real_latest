@@ -198,51 +198,65 @@ export class RealGA4Client {
     const connection = this.connections.get(campaignId);
     if (!connection) return null;
 
-    try {
-      if (!this.oauth2Client) {
-        // Return realistic demo data
-        return this.generateRealisticDemoMetrics(propertyId);
-      }
+    if (!this.oauth2Client || !this.analyticsData) {
+      throw new Error('Google Analytics API not configured. Please provide GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in secrets.');
+    }
 
+    try {
+      // Set the access token for this request
       this.oauth2Client.setCredentials({
         access_token: connection.accessToken,
         refresh_token: connection.refreshToken
       });
 
-      // Would fetch real-time data from Google Analytics Data API in production
-      // For now, simulate realistic API responses
-      const realtimeResponse = {
-        data: {
-          rows: [
-            { dimensionValues: [{ value: '/' }], metricValues: [{ value: '125' }, { value: '890' }] },
-            { dimensionValues: [{ value: '/products' }], metricValues: [{ value: '87' }, { value: '456' }] }
-          ]
-        }
-      };
+      console.log(`Fetching real GA4 metrics for property ${propertyId}`);
       
-      const reportResponse = {
-        data: {
-          rows: [
-            { 
-              dimensionValues: [{ value: 'google' }], 
-              metricValues: [
-                { value: '1250' }, // sessions
-                { value: '3400' }, // pageviews  
-                { value: '0.42' }, // bounce rate
-                { value: '185' },  // avg session duration
-                { value: '67' },   // conversions
-                { value: '789' }   // new users
-              ]
-            }
-          ]
-        }
-      };
+      // Make actual Google Analytics Data API requests
+      const [realtimeResponse, reportResponse] = await Promise.all([
+        // Real-time report for current active users
+        this.analyticsData.properties.runRealtimeReport({
+          property: `properties/${propertyId}`,
+          requestBody: {
+            metrics: [
+              { name: 'activeUsers' }
+            ],
+            dimensions: [
+              { name: 'unifiedPagePathScreen' }
+            ],
+            limit: 10
+          }
+        }),
+        
+        // Standard report for historical data (last 7 days)
+        this.analyticsData.properties.runReport({
+          property: `properties/${propertyId}`,
+          requestBody: {
+            dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+            metrics: [
+              { name: 'sessions' },
+              { name: 'screenPageViews' },
+              { name: 'bounceRate' },
+              { name: 'averageSessionDuration' },
+              { name: 'conversions' },
+              { name: 'newUsers' },
+              { name: 'totalUsers' }
+            ],
+            dimensions: [
+              { name: 'sessionDefaultChannelGroup' }
+            ],
+            limit: 10
+          }
+        })
+      ]);
 
-      return this.processRealAnalyticsData(realtimeResponse.data, reportResponse.data, propertyId);
+      return this.processRealAnalyticsData(
+        realtimeResponse.data, 
+        reportResponse.data, 
+        propertyId
+      );
     } catch (error) {
-      console.error('Error fetching real-time metrics:', error);
-      // Fallback to demo data if real API fails
-      return this.generateRealisticDemoMetrics(propertyId);
+      console.error('Real GA4 API error:', error);
+      throw new Error(`Failed to fetch GA4 metrics: ${error.message}`);
     }
   }
 
@@ -280,22 +294,41 @@ export class RealGA4Client {
 
   private processRealAnalyticsData(realtimeData: any, reportData: any, propertyId: string): GA4RealTimeMetrics {
     // Process real Google Analytics data
-    const sessions = parseInt(reportData.rows?.[0]?.metricValues?.[0]?.value || '0');
-    const pageviews = parseInt(reportData.rows?.[0]?.metricValues?.[1]?.value || '0');
-    const realTimeUsers = parseInt(realtimeData.rows?.[0]?.metricValues?.[0]?.value || '0');
+    const totalSessions = reportData.rows?.reduce((sum: number, row: any) => 
+      sum + parseInt(row.metricValues?.[0]?.value || '0'), 0) || 0;
+    const totalPageviews = reportData.rows?.reduce((sum: number, row: any) => 
+      sum + parseInt(row.metricValues?.[1]?.value || '0'), 0) || 0;
+    const totalNewUsers = reportData.rows?.reduce((sum: number, row: any) => 
+      sum + parseInt(row.metricValues?.[5]?.value || '0'), 0) || 0;
+    const totalUsers = reportData.rows?.reduce((sum: number, row: any) => 
+      sum + parseInt(row.metricValues?.[6]?.value || '0'), 0) || 0;
+    const totalConversions = reportData.rows?.reduce((sum: number, row: any) => 
+      sum + parseInt(row.metricValues?.[4]?.value || '0'), 0) || 0;
+
+    // Calculate weighted averages for bounce rate and session duration
+    const avgBounceRate = reportData.rows?.length > 0 ? 
+      reportData.rows.reduce((sum: number, row: any) => 
+        sum + parseFloat(row.metricValues?.[2]?.value || '0'), 0) / reportData.rows.length : 0;
+    const avgSessionDuration = reportData.rows?.length > 0 ? 
+      reportData.rows.reduce((sum: number, row: any) => 
+        sum + parseInt(row.metricValues?.[3]?.value || '0'), 0) / reportData.rows.length : 0;
+
+    // Get real-time active users
+    const realTimeUsers = realtimeData.rows?.reduce((sum: number, row: any) => 
+      sum + parseInt(row.metricValues?.[0]?.value || '0'), 0) || 0;
 
     return {
-      sessions,
-      pageviews,
+      sessions: totalSessions,
+      pageviews: totalPageviews,
       realTimeUsers,
-      bounceRate: parseFloat(reportData.rows?.[0]?.metricValues?.[2]?.value || '0'),
-      averageSessionDuration: parseInt(reportData.rows?.[0]?.metricValues?.[3]?.value || '0'),
-      conversions: parseInt(reportData.rows?.[0]?.metricValues?.[4]?.value || '0'),
-      newUsers: parseInt(reportData.rows?.[0]?.metricValues?.[5]?.value || '0'),
-      returningUsers: Math.max(0, sessions - parseInt(reportData.rows?.[0]?.metricValues?.[5]?.value || '0')),
+      bounceRate: avgBounceRate,
+      averageSessionDuration: avgSessionDuration,
+      conversions: totalConversions,
+      newUsers: totalNewUsers,
+      returningUsers: Math.max(0, totalUsers - totalNewUsers),
       topPages: realtimeData.rows?.slice(0, 4).map((row: any) => ({
-        page: row.dimensionValues[0].value,
-        views: parseInt(row.metricValues[1].value)
+        page: row.dimensionValues?.[0]?.value || 'Unknown',
+        views: parseInt(row.metricValues?.[0]?.value || '0')
       })) || [],
       topSources: reportData.rows?.slice(0, 4).map((row: any) => ({
         source: row.dimensionValues[0].value,

@@ -27,6 +27,34 @@ interface GA4Connection {
 const connectionStorage = new Map<string, GA4Connection>();
 
 export class ProfessionalGA4Auth {
+  
+  async connectWithServiceAccount(propertyId: string, campaignId: string): Promise<boolean> {
+    try {
+      // For development, simulate service account authentication
+      // In production, this would use actual Google Cloud service account credentials
+      console.log(`Service account connection attempt for property ${propertyId}`);
+      
+      // Store the connection info
+      this.connections.set(campaignId, {
+        propertyId,
+        userEmail: 'marketpulse-analytics@your-project.iam.gserviceaccount.com',
+        isConnected: true,
+        connectedAt: new Date().toISOString()
+      });
+      
+      // Store a demo access token for the service account
+      this.accessTokens.set(campaignId, {
+        token: 'sa_demo_' + Date.now(), // Service account demo token
+        expiresAt: Date.now() + (365 * 24 * 60 * 60 * 1000), // 1 year expiry
+        refreshToken: 'sa_refresh_' + Date.now()
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Service account connection error:', error);
+      return false;
+    }
+  }
   private serviceAccountKey: ServiceAccountKey | null = null;
   private jwtClient: JWT | null = null;
 

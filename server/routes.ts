@@ -501,69 +501,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       
-      // Check simple GA4 connection first
+      // Try professional service account authentication first (Supermetrics method)
+      let accessToken = await professionalGA4Auth.getValidAccessToken(campaignId);
+      let connectionInfo = professionalGA4Auth.getConnectionInfo(campaignId);
+      
+      if (accessToken && connectionInfo?.propertyId) {
+        try {
+          console.log(`Fetching real GA4 metrics using service account for property ${connectionInfo.propertyId}`);
+          
+          // Use real Google Analytics Data API with service account token
+          const metrics = await ga4Service.getMetricsWithToken(connectionInfo.propertyId, accessToken);
+          
+          return res.json({
+            ...metrics,
+            connectionType: 'service_account',
+            propertyId: connectionInfo.propertyId,
+            email: connectionInfo.userEmail,
+            lastUpdated: new Date().toISOString(),
+            isRealTime: true // Real Google Analytics data
+          });
+        } catch (error) {
+          console.error('Service account GA4 metrics error:', error);
+          // Continue to fallback methods
+        }
+      }
+
+      // Check simple GA4 connection (fallback)
       const simpleConnection = global.simpleGA4Connections?.get(campaignId);
       
       if (simpleConnection && simpleConnection.connected) {
-        // For simple connections, we need to implement real GA4 API calls
-        // Currently this is a simulation - in production this would use actual Google Analytics Data API
-        try {
-          console.log(`Fetching real-time GA4 metrics for property ${simpleConnection.propertyId}`);
-          
-          // In a real implementation, this would use the stored OAuth tokens to call:
-          // https://analyticsdata.googleapis.com/v1beta/properties/{propertyId}:runReport
-          
-          const realTimeMetrics = {
-            sessions: Math.floor(Math.random() * 1000) + 100,
-            pageviews: Math.floor(Math.random() * 2000) + 500,
-            bounceRate: (Math.random() * 0.3 + 0.4).toFixed(2),
-            averageSessionDuration: Math.floor(Math.random() * 180) + 120,
-            conversions: Math.floor(Math.random() * 50) + 10,
-            impressions: Math.floor(Math.random() * 10000) + 2000,
-            clicks: Math.floor(Math.random() * 500) + 100,
-            connectionType: 'simple_auth',
-            propertyId: simpleConnection.propertyId,
-            email: simpleConnection.email,
-            lastUpdated: new Date().toISOString(),
-            isRealTime: false // Set to true when using actual GA4 API
-          };
-          
-          return res.json(realTimeMetrics);
-        } catch (error) {
-          console.error('Simple GA4 metrics error:', error);
-          return res.status(500).json({ message: "Failed to fetch GA4 metrics from simple connection" });
-        }
+        console.log(`Using simple connection for property ${simpleConnection.propertyId} (demonstration mode)`);
+        
+        const demoMetrics = {
+          sessions: Math.floor(Math.random() * 1000) + 100,
+          pageviews: Math.floor(Math.random() * 2000) + 500,
+          bounceRate: (Math.random() * 0.3 + 0.4).toFixed(2),
+          averageSessionDuration: Math.floor(Math.random() * 180) + 120,
+          conversions: Math.floor(Math.random() * 50) + 10,
+          impressions: Math.floor(Math.random() * 10000) + 2000,
+          clicks: Math.floor(Math.random() * 500) + 100,
+          connectionType: 'simple_auth_demo',
+          propertyId: simpleConnection.propertyId,
+          email: simpleConnection.email,
+          lastUpdated: new Date().toISOString(),
+          isRealTime: false // Demo data
+        };
+        
+        return res.json(demoMetrics);
       }
       
-      // Try professional authentication
-      let accessToken = await professionalGA4Auth.getValidAccessToken(campaignId);
-      let propertyId = professionalGA4Auth.getConnectionInfo(campaignId)?.propertyId;
+      // Try OAuth professional authentication as secondary method
       
-      // Fallback to basic OAuth if professional not available
-      if (!accessToken || !propertyId) {
-        accessToken = await googleAuthService.getValidAccessToken(campaignId);
-        propertyId = googleAuthService.getPropertyId(campaignId);
-      }
+      accessToken = await googleAuthService.getValidAccessToken(campaignId);
+      let propertyId = googleAuthService.getPropertyId(campaignId);
       
       if (!accessToken || !propertyId) {
         return res.status(401).json({ 
           message: "Google Analytics not connected for this campaign",
           requiresAuth: true,
-          authMethods: ['simple', 'professional', 'basic']
+          authMethods: ['service_account', 'oauth', 'manual_token']
         });
       }
       
-      // Fetch metrics using the professional service with real GA4 API
+      // Fetch metrics using OAuth with real GA4 API
       const metrics = await ga4Service.getMetricsWithToken(propertyId, accessToken);
       res.json({
         ...metrics,
-        connectionInfo: professionalGA4Auth.getConnectionInfo(campaignId),
-        connectionType: 'professional_auth',
+        connectionType: 'oauth_auth',
+        propertyId,
+        lastUpdated: new Date().toISOString(),
         isRealTime: true
       });
     } catch (error) {
       console.error('GA4 metrics error:', error);
       res.status(500).json({ message: "Failed to fetch GA4 metrics" });
+    }
+  });
+
+  // Service Account connection (actual Supermetrics method)
+  app.post("/api/auth/google/service-account-connect", async (req, res) => {
+    try {
+      const { campaignId, propertyId } = req.body;
+      
+      if (!campaignId || !propertyId) {
+        return res.status(400).json({ message: "Campaign ID and Property ID are required" });
+      }
+
+      console.log(`Attempting service account connection for property ${propertyId}`);
+      
+      // Use the professional service account authentication
+      const success = await professionalGA4Auth.connectWithServiceAccount(propertyId, campaignId);
+      
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: "Successfully connected via service account",
+          propertyId,
+          method: "service_account"
+        });
+      } else {
+        res.status(403).json({ 
+          message: "Service account access denied. Please add the service account email to your GA4 property with Viewer permissions.",
+          requiresSetup: true
+        });
+      }
+    } catch (error) {
+      console.error('Service account connection error:', error);
+      res.status(500).json({ message: "Connection failed. Please try again." });
     }
   });
 

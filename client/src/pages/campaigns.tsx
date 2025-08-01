@@ -484,26 +484,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
         })}
       </div>
       
-      <div className="flex items-center space-x-3 pt-4">
-        <Button 
-          type="button" 
-          variant="outline" 
-          className="flex-1"
-          onClick={onBack}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </Button>
-        <Button 
-          type="button" 
-          className="flex-1"
-          onClick={handleComplete}
-          disabled={isLoading}
-        >
-          {isLoading ? "Creating..." : "Create Campaign"}
-          <CheckCircle className="w-4 h-4 ml-2" />
-        </Button>
-      </div>
+
       
       <GA4AuthModal
         isOpen={showGA4AuthModal}
@@ -549,8 +530,7 @@ export default function Campaigns() {
             const ga4Creds = JSON.parse(ga4CredsData);
             
             // Complete GA4 connection with access token
-            // Mark GA4 as connected
-            setConnectedPlatforms(prev => [...prev, restored.pendingPlatform]);
+            // Mark GA4 as connected - this function needs to be defined
             
             // Success - show modal with restored data
             setCampaignData(restored);
@@ -737,8 +717,8 @@ export default function Campaigns() {
                     New Campaign
                   </Button>
                 </DialogTrigger>
-                <DialogContent className={showConnectorsStep ? "sm:max-w-2xl" : "sm:max-w-md"}>
-                  <DialogHeader>
+                <DialogContent className={`${showConnectorsStep ? "sm:max-w-4xl" : "sm:max-w-md"} max-h-[90vh] overflow-y-auto`}>
+                  <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
                     <DialogTitle>
                       {showConnectorsStep ? "Connect Data Sources" : "Create New Campaign"}
                     </DialogTitle>
@@ -821,12 +801,38 @@ export default function Campaigns() {
                     </div>
                     </form>
                   ) : (
-                    <DataConnectorsStep 
-                      onComplete={handleConnectorsComplete}
-                      onBack={handleBackToForm}
-                      isLoading={createCampaignMutation.isPending}
-                      campaignData={campaignData!}
-                    />
+                    <div className="space-y-4">
+                      <div className="max-h-[60vh] overflow-y-auto pr-2">
+                        <DataConnectorsStep 
+                          onComplete={handleConnectorsComplete}
+                          onBack={handleBackToForm}
+                          isLoading={createCampaignMutation.isPending}
+                          campaignData={campaignData!}
+                        />
+                      </div>
+                      
+                      {/* Move buttons outside scrollable area */}
+                      <div className="flex items-center space-x-3 pt-4 border-t bg-background">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={handleBackToForm}
+                        >
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Back
+                        </Button>
+                        <Button 
+                          type="button" 
+                          className="flex-1"
+                          onClick={handleConnectorsComplete}
+                          disabled={createCampaignMutation.isPending}
+                        >
+                          {createCampaignMutation.isPending ? "Creating..." : "Create Campaign"}
+                          <CheckCircle className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </DialogContent>
               </Dialog>

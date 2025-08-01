@@ -554,7 +554,8 @@ export default function Campaigns() {
             const ga4Creds = JSON.parse(ga4CredsData);
             
             // Complete GA4 connection with access token
-            handleGA4Connected(restored.pendingPlatform);
+            // Mark GA4 as connected
+            setConnectedPlatforms(prev => [...prev, restored.pendingPlatform]);
             
             // Success - show modal with restored data
             setCampaignData(restored);

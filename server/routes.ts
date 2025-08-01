@@ -577,7 +577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create a simulated Google OAuth consent page
-      res.send(`
+      const authPageHtml = `
         <html>
           <head>
             <title>Connect Google Analytics</title>
@@ -617,14 +617,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               function authorize() {
                 // Simulate successful authorization
                 const code = 'demo_auth_code_' + Date.now();
-                const callbackUrl = '/api/auth/google/callback?code=' + code + '&state=${state}';
+                const campaignState = '${state}';
+                const callbackUrl = '/api/auth/google/callback?code=' + code + '&state=' + campaignState;
                 console.log('Redirecting to:', callbackUrl);
                 window.location.href = callbackUrl;
               }
             </script>
           </body>
         </html>
-      `);
+      `;
+      
+      res.send(authPageHtml);
     } catch (error) {
       console.error('Integrated OAuth auth page error:', error);
       res.status(500).send("Authentication setup failed");

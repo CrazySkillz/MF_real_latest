@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head><title>Direct Popup Test</title></head>
+<body>
+<h2>Direct Popup Test</h2>
+<button onclick="testDirectPopup()">Test Direct Popup</button>
+<div id="status"></div>
+
+<script>
+function testDirectPopup() {
+    document.getElementById('status').innerHTML = 'Opening popup...';
+    
+    // Open the simulation auth page directly
+    const popup = window.open(
+        '/api/auth/google/simulation-auth?state=direct-popup-test',
+        'test-popup',
+        'width=500,height=600'
+    );
+    
+    if (!popup) {
+        document.getElementById('status').innerHTML = 'Popup blocked!';
+        return;
+    }
+    
+    // Monitor popup
+    const checkClosed = setInterval(() => {
+        if (popup.closed) {
+            clearInterval(checkClosed);
+            document.getElementById('status').innerHTML = 'Popup closed. Checking connection...';
+            
+            // Check if connection was made
+            fetch('/api/campaigns/direct-popup-test/ga4-connection-status')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('status').innerHTML = 
+                        `Connection status: ${data.connected ? 'Connected!' : 'Not Connected'}<br>
+                         Email: ${data.email || 'N/A'}<br>
+                         Properties: ${(data.properties || []).length}`;
+                })
+                .catch(err => {
+                    document.getElementById('status').innerHTML = `Error: ${err.message}`;
+                });
+        }
+    }, 1000);
+}
+</script>
+</body>
+</html>

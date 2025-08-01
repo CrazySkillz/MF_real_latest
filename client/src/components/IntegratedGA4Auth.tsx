@@ -64,17 +64,36 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
               onError("Failed to open authentication window. Please try again.");
             };
 
-            // Listen for completion
+            // Listen for completion and messages from popup
+            const handlePopupMessage = (event) => {
+              if (event.origin !== window.location.origin) return;
+              
+              if (event.data?.type === 'auth_success') {
+                clearInterval(checkClosed);
+                popup.close();
+                checkConnectionStatus();
+              } else if (event.data?.type === 'auth_error') {
+                clearInterval(checkClosed);
+                popup.close();
+                setIsConnecting(false);
+                onError(event.data.error || "Authentication failed");
+              }
+            };
+            
+            window.addEventListener('message', handlePopupMessage);
+
             const checkClosed = setInterval(() => {
               try {
                 if (popup?.closed) {
                   clearInterval(checkClosed);
+                  window.removeEventListener('message', handlePopupMessage);
                   // Check if connection was successful
                   checkConnectionStatus();
                 }
               } catch (error) {
                 console.error("Error checking popup status:", error);
                 clearInterval(checkClosed);
+                window.removeEventListener('message', handlePopupMessage);
                 setIsConnecting(false);
                 onError("Authentication window error. Please try again.");
               }

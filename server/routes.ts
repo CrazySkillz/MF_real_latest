@@ -684,9 +684,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               <h2 style="color: #4285f4;">🎉 Successfully Connected!</h2>
               <p>Your Google Analytics account is now connected to MarketPulse.</p>
               <p>You can now access real-time metrics and data.</p>
-              <button onclick="window.close()" style="background: #4285f4; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close Window</button>
+              <button onclick="closeWindow()" style="background: #4285f4; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close Window</button>
               <script>
-                setTimeout(() => window.close(), 3000);
+                function closeWindow() {
+                  try {
+                    // Notify parent window of success
+                    if (window.opener) {
+                      window.opener.postMessage({ type: 'auth_success' }, window.location.origin);
+                    }
+                  } catch (e) {
+                    console.log('Could not notify parent:', e);
+                  }
+                  window.close();
+                }
+                
+                // Auto-close after 3 seconds
+                setTimeout(closeWindow, 3000);
               </script>
             </body>
           </html>
@@ -698,7 +711,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
               <h2 style="color: #d93025;">Authentication Failed</h2>
               <p>Error: ${result.error}</p>
-              <button onclick="window.close()" style="background: #d93025; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close</button>
+              <button onclick="closeWithError()" style="background: #d93025; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close</button>
+              <script>
+                function closeWithError() {
+                  try {
+                    if (window.opener) {
+                      window.opener.postMessage({ 
+                        type: 'auth_error', 
+                        error: '${result.error}' 
+                      }, window.location.origin);
+                    }
+                  } catch (e) {
+                    console.log('Could not notify parent:', e);
+                  }
+                  window.close();
+                }
+              </script>
             </body>
           </html>
         `);

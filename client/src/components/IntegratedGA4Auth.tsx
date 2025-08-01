@@ -122,7 +122,9 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
         setConnectionInfo(data);
         toast({
           title: "Google Analytics Connected",
-          description: "Successfully authenticated and ready for real-time metrics",
+          description: data.isRealOAuth 
+            ? "Real Google Analytics API connected successfully" 
+            : "Demo mode - realistic simulation data",
         });
         onSuccess();
       } else {

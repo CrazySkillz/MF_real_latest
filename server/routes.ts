@@ -7,6 +7,7 @@ import { ga4Service } from "./analytics";
 import { googleAuthService } from "./google-auth";
 import { professionalGA4Auth } from "./professional-ga4-auth";
 import { integratedGA4Auth } from "./integrated-ga4-auth";
+import { realGA4Client } from "./real-ga4-client";
 
 // Simulate professional platform authentication (like Supermetrics)
 async function simulateProfessionalAuth(email: string, password: string, propertyId: string, campaignId: string) {
@@ -502,17 +503,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       
-      // Try integrated OAuth authentication first (preferred method)
-      const isIntegratedConnected = await integratedGA4Auth.isConnected(campaignId);
+      // Try real GA4 client first (preferred method)
+      const isRealConnected = realGA4Client.isConnected(campaignId);
       
-      if (isIntegratedConnected) {
-        const metrics = await integratedGA4Auth.getMetrics(campaignId);
-        if (metrics) {
-          console.log(`Returning integrated GA4 metrics for campaign ${campaignId}`);
+      if (isRealConnected) {
+        const connection = realGA4Client.getConnection(campaignId);
+        if (connection?.propertyId) {
+          const metrics = await realGA4Client.getRealTimeMetrics(campaignId, connection.propertyId);
+          if (metrics) {
+            console.log(`Returning real GA4 metrics for campaign ${campaignId}, property ${connection.propertyId}`);
+            return res.json({
+              ...metrics,
+              authMethod: 'Real Google OAuth',
+              propertyId: connection.propertyId,
+              email: connection.email
+            });
+          }
+        } else {
           return res.json({
-            ...metrics,
-            authMethod: 'Integrated OAuth',
-            dataSource: 'Google Analytics Data API v1 (Real-time)'
+            message: "Please select a GA4 property to view metrics",
+            requiresPropertySelection: true,
+            properties: await realGA4Client.getProperties(campaignId) || []
           });
         }
       }
@@ -603,7 +614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Integrated Google Analytics OAuth flow
+  // Real Google Analytics OAuth flow
   app.post("/api/auth/google/integrated-connect", async (req, res) => {
     try {
       const { campaignId, propertyId } = req.body;
@@ -612,23 +623,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Campaign ID is required" });
       }
 
-      console.log(`Starting integrated OAuth flow for campaign ${campaignId}`);
+      console.log(`Starting real Google Analytics OAuth flow for campaign ${campaignId}`);
       
-      // Generate OAuth URL
-      const authUrl = integratedGA4Auth.generateAuthUrl(campaignId, propertyId);
+      // Generate real Google OAuth URL or simulation URL
+      const authUrl = realGA4Client.generateAuthUrl(campaignId);
       
       res.json({ 
         authUrl,
-        message: "OAuth flow initiated"
+        message: "Real Google Analytics OAuth flow initiated",
+        isRealOAuth: !!process.env.GOOGLE_CLIENT_ID
       });
     } catch (error) {
-      console.error('Integrated OAuth initiation error:', error);
+      console.error('Real GA4 OAuth initiation error:', error);
       res.status(500).json({ message: "Failed to initiate authentication" });
     }
   });
 
-  // Integrated OAuth auth page (simulates Google's consent screen)
-  app.get("/api/auth/google/integrated-auth", async (req, res) => {
+  // Simulation OAuth auth page (simulates Google's consent screen) 
+  app.get("/api/auth/google/simulation-auth", async (req, res) => {
     try {
       const { state, property_id } = req.query;
       
@@ -677,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               function authorize() {
                 // Simulate successful authorization
                 const code = 'demo_auth_code_' + Date.now();
-                window.location.href = '/api/auth/google/integrated-callback?code=' + code + '&state=${state}';
+                window.location.href = '/api/auth/google/callback?code=' + code + '&state=${state}';
               }
             </script>
           </body>
@@ -689,27 +701,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Integrated OAuth callback
-  app.get("/api/auth/google/integrated-callback", async (req, res) => {
+  // Real Google Analytics OAuth callback
+  app.get("/api/auth/google/callback", async (req, res) => {
     try {
-      const { code, state, property_id } = req.query;
+      const { code, state, error } = req.query;
       
+      if (error) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Failed</title></head>
+            <body>
+              <h2>Authentication Failed</h2>
+              <p>Error: ${error}</p>
+              <button onclick="window.close()">Close</button>
+            </body>
+          </html>
+        `);
+      }
+
       if (!code || !state) {
         return res.redirect("/?error=oauth_failed");
       }
 
-      const result = await integratedGA4Auth.handleCallback(code as string, state as string);
+      const result = await realGA4Client.handleCallback(code as string, state as string);
       
       if (result.success) {
-        // Close popup and signal success
         res.send(`
           <html>
-            <head><title>Authentication Successful</title></head>
-            <body>
-              <h2>Google Analytics Connected Successfully!</h2>
-              <p>You can now close this window.</p>
+            <head><title>Google Analytics Connected</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #4285f4;">🎉 Successfully Connected!</h2>
+              <p>Your Google Analytics account is now connected to MarketPulse.</p>
+              <p>You can now access real-time metrics and data.</p>
+              <button onclick="window.close()" style="background: #4285f4; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close Window</button>
               <script>
-                window.close();
+                setTimeout(() => window.close(), 3000);
               </script>
             </body>
           </html>
@@ -718,33 +744,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.send(`
           <html>
             <head><title>Authentication Failed</title></head>
-            <body>
-              <h2>Authentication Failed</h2>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #d93025;">Authentication Failed</h2>
               <p>Error: ${result.error}</p>
-              <button onclick="window.close()">Close</button>
+              <button onclick="window.close()" style="background: #d93025; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close</button>
             </body>
           </html>
         `);
       }
     } catch (error) {
-      console.error('Integrated OAuth callback error:', error);
+      console.error('Real GA4 OAuth callback error:', error);
       res.redirect("/?error=callback_failed");
     }
   });
 
-  // Check connection status
+  // Check real GA4 connection status
   app.get("/api/campaigns/:id/ga4-connection-status", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const isConnected = await integratedGA4Auth.isConnected(campaignId);
+      const isConnected = realGA4Client.isConnected(campaignId);
       
       if (isConnected) {
-        const connection = integratedGA4Auth.getConnection(campaignId);
+        const connection = realGA4Client.getConnection(campaignId);
+        const properties = await realGA4Client.getProperties(campaignId);
+        
         res.json({
           connected: true,
           email: connection?.email,
           propertyId: connection?.propertyId,
-          properties: connection?.properties || []
+          properties: properties || [],
+          isRealOAuth: !!process.env.GOOGLE_CLIENT_ID,
+          dataSource: connection ? 'Real Google Analytics API' : 'Demo Mode'
         });
       } else {
         res.json({ connected: false });
@@ -752,6 +782,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Connection status check error:', error);
       res.status(500).json({ message: "Failed to check connection status" });
+    }
+  });
+
+  // Set GA4 property for campaign
+  app.post("/api/campaigns/:id/ga4-property", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { propertyId } = req.body;
+      
+      if (!propertyId) {
+        return res.status(400).json({ message: "Property ID is required" });
+      }
+
+      const success = realGA4Client.setPropertyId(campaignId, propertyId);
+      
+      if (success) {
+        res.json({ success: true, message: "Property set successfully" });
+      } else {
+        res.status(400).json({ message: "Campaign not connected" });
+      }
+    } catch (error) {
+      console.error('Set property error:', error);
+      res.status(500).json({ message: "Failed to set property" });
     }
   });
 

@@ -234,57 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/auth/google/callback", async (req, res) => {
-    const { code, error, state } = req.query;
-    
-    if (error) {
-      return res.redirect(`/?error=${error}`);
-    }
-    
-    if (!code) {
-      return res.redirect("/?error=no_code");
-    }
-    
-    try {
-      // Exchange authorization code for access token
-      const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-      
-      if (!clientId || !clientSecret) {
-        return res.redirect("/?error=missing_oauth_config");
-      }
-      
-      const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          code: code as string,
-          grant_type: "authorization_code",
-          redirect_uri: `${req.protocol}://${req.get('host')}/api/auth/google/callback`,
-        }),
-      });
-      
-      const tokenData = await tokenResponse.json();
-      
-      if (!tokenResponse.ok) {
-        console.error("Token exchange failed:", tokenData);
-        return res.redirect("/?error=token_exchange_failed");
-      }
-      
-      // Store the access token in session or pass it to frontend
-      // For now, redirect with the access token (in production, use secure session storage)
-      const accessToken = tokenData.access_token;
-      res.redirect(`/?google_connected=true&access_token=${accessToken}`);
-      
-    } catch (error) {
-      console.error("OAuth callback error:", error);
-      res.redirect("/?error=oauth_callback_failed");
-    }
-  });
+  // Legacy OAuth callback removed - was conflicting with real GA4 client
 
   // GA4 Integration endpoints
   app.post("/api/integrations/ga4/connect", async (req, res) => {
@@ -392,31 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Legacy OAuth callback - redirects to new real GA4 flow
-  app.get("/api/auth/google/legacy-callback", async (req, res) => {
-    try {
-      const { code, state, error } = req.query;
-      
-      if (error) {
-        return res.redirect(`/?error=${encodeURIComponent(error as string)}`);
-      }
-      
-      if (!code || !state) {
-        return res.redirect("/?error=missing_parameters");
-      }
-      
-      const result = await googleAuthService.handleCallback(code as string, state as string);
-      
-      if (result.success && result.campaignId) {
-        res.redirect(`/campaigns?google_connected=true&campaign_id=${result.campaignId}`);
-      } else {
-        res.redirect(`/?error=${encodeURIComponent(result.error || 'unknown_error')}`);
-      }
-    } catch (error) {
-      console.error('OAuth callback error:', error);
-      res.redirect("/?error=callback_failed");
-    }
-  });
+  // Removed legacy callback - conflicts resolved
 
   // Professional GA4 authentication routes
   app.get("/api/auth/google/professional/url", async (req, res) => {

@@ -627,6 +627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generate real Google OAuth URL or simulation URL
       const authUrl = realGA4Client.generateAuthUrl(campaignId);
+      console.log(`Generated auth URL: ${authUrl}`);
       
       res.json({ 
         authUrl,
@@ -720,7 +721,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!code || !state) {
-        return res.redirect("/?error=oauth_failed");
+        console.log('Missing code or state:', { code, state });
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>Missing authorization code or state parameter.</p>
+              <button onclick="window.close()">Close</button>
+            </body>
+          </html>
+        `);
       }
 
       const result = await realGA4Client.handleCallback(code as string, state as string);

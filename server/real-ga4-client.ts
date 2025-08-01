@@ -58,9 +58,13 @@ export class RealGA4Client {
   }
 
   generateAuthUrl(campaignId: string): string {
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.REPLIT_DOMAIN || 'https://your-app.replit.app'
+      : 'http://localhost:5000';
+      
     if (!this.oauth2Client) {
       // Return simulation URL if no real OAuth configured
-      return `http://localhost:5000/api/auth/google/simulation-auth?state=${campaignId}`;
+      return `${baseUrl}/api/auth/google/simulation-auth?state=${campaignId}`;
     }
 
     const scopes = [

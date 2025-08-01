@@ -48,6 +48,8 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
               'google-auth',
               'width=500,height=700,scrollbars=yes,resizable=yes,location=yes,status=yes,menubar=no,toolbar=no'
             );
+            
+            console.log("Popup opened for URL:", data.authUrl);
 
             if (!popup) {
               setIsConnecting(false);
@@ -252,7 +254,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Opening authentication window... If you see "Not Found", please make sure popups are enabled.
+                Opening authentication window... This will simulate the Google OAuth flow for real-time data access.
               </AlertDescription>
             </Alert>
           )}

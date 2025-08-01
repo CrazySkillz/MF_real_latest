@@ -392,7 +392,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/auth/google/callback", async (req, res) => {
+  // Legacy OAuth callback - redirects to new real GA4 flow
+  app.get("/api/auth/google/legacy-callback", async (req, res) => {
     try {
       const { code, state, error } = req.query;
       
@@ -734,7 +735,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       }
 
+      console.log(`Processing OAuth callback for campaign ${state} with code ${code}`);
       const result = await realGA4Client.handleCallback(code as string, state as string);
+      console.log('OAuth callback result:', result);
       
       if (result.success) {
         res.send(`

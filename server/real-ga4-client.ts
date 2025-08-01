@@ -82,17 +82,21 @@ export class RealGA4Client {
 
   async handleCallback(code: string, campaignId: string): Promise<{success: boolean, error?: string}> {
     try {
+      console.log(`Processing callback for campaign ${campaignId} with code ${code}`);
+      
       if (!this.oauth2Client) {
         // Simulate successful auth for demo
+        console.log('Creating demo connection for campaign:', campaignId);
         const mockConnection: RealGA4Connection = {
           propertyId: '',
           accessToken: 'demo_token_' + Date.now(),
           refreshToken: 'demo_refresh_' + Date.now(),
           expiresAt: Date.now() + (3600 * 1000),
-          email: 'demo@example.com',
+          email: 'demo-user@example.com',
           scope: ['analytics.readonly']
         };
         this.connections.set(campaignId, mockConnection);
+        console.log('Demo connection created successfully');
         return { success: true };
       }
 

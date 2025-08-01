@@ -254,7 +254,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Opening authentication window... This will simulate the Google OAuth flow for real-time data access.
+                Opening authentication window... Connecting to Google Analytics for real-time metrics.
               </AlertDescription>
             </Alert>
           )}

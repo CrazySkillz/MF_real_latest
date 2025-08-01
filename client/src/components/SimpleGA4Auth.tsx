@@ -38,17 +38,15 @@ export function SimpleGA4Auth({ campaignId, propertyId, onSuccess, onError }: Si
     try {
       // Simulate the professional platform experience
       const response = await apiRequest("POST", "/api/auth/google/simple-connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          email: credentials.email,
-          password: credentials.password,
-          propertyId: credentials.propertyId
-        })
+        campaignId,
+        email: credentials.email,
+        password: credentials.password,
+        propertyId: credentials.propertyId
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (data.success) {
         setHasConnection(true);
         toast({
           title: "Google Analytics Connected",
@@ -56,8 +54,7 @@ export function SimpleGA4Auth({ campaignId, propertyId, onSuccess, onError }: Si
         });
         onSuccess();
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Connection failed");
+        throw new Error(data.message || "Connection failed");
       }
     } catch (error) {
       console.error('Simple GA4 connection error:', error);

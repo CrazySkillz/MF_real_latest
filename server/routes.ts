@@ -60,6 +60,12 @@ async function simulateProfessionalAuth(email: string, password: string, propert
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Critical: Ensure API routes are handled before any other middleware
+  app.use('/api', (req, res, next) => {
+    // Mark this as an API request to prevent Vite middleware interference
+    req.isApiRoute = true;
+    next();
+  });
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {

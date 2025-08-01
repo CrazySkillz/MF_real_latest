@@ -7,6 +7,7 @@ import { ProfessionalGA4Auth } from "@/components/ProfessionalGA4Auth";
 import { SimpleGA4Auth } from "@/components/SimpleGA4Auth";
 import { SupermetricsStyleAuth } from "@/components/SupermetricsStyleAuth";
 import { IntegratedGA4Auth } from "@/components/IntegratedGA4Auth";
+import { DirectGA4Auth } from "@/components/DirectGA4Auth";
 import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -427,7 +428,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                   </div>
                   
                   <div className="mt-4">
-                    <IntegratedGA4Auth
+                    <DirectGA4Auth
                       campaignId="temp-campaign-setup"
                       onSuccess={() => {
                         setConnectedPlatforms(prev => [...prev, platform.id]);
@@ -553,7 +554,7 @@ export default function Campaigns() {
             const ga4Creds = JSON.parse(ga4CredsData);
             
             // Complete GA4 connection with access token
-            completeGA4Connection(ga4Creds, accessToken, restored.pendingPlatform);
+            handleGA4Connected(restored.pendingPlatform);
             
             // Success - show modal with restored data
             setCampaignData(restored);
@@ -662,7 +663,7 @@ export default function Campaigns() {
         type: "campaign" as const,
         impressions: 0, // Start with 0 - will be populated from real API data
         clicks: 0,      // Start with 0 - will be populated from real API data  
-        spend: "0",     // Start with 0 - will be populated from real API data
+        spend: 0,       // Start with 0 - will be populated from real API data
       };
       createCampaignMutation.mutate(campaignWithPlatforms);
     }

@@ -787,10 +787,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual token connection method
+  app.post("/api/auth/google/manual-token-connect", async (req, res) => {
+    try {
+      const { campaignId, accessToken, refreshToken, propertyId } = req.body;
+      
+      if (!campaignId || !accessToken || !propertyId) {
+        return res.status(400).json({ message: "Campaign ID, access token, and property ID are required" });
+      }
+
+      // Store the manual token connection
+      const connectionData = {
+        campaignId,
+        accessToken,
+        refreshToken,
+        propertyId,
+        email: "manual-token@user.com",
+        connected: true,
+        connectedAt: new Date().toISOString(),
+        method: "manual_token"
+      };
+
+      // Store connection (in production, encrypt tokens)
+      const success = realGA4Client.storeManualConnection(campaignId, connectionData);
+      
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: "Successfully connected via manual token",
+          propertyId,
+          method: "manual_token"
+        });
+      } else {
+        res.status(400).json({ message: "Failed to store connection" });
+      }
+    } catch (error) {
+      console.error('Manual token connection error:', error);
+      res.status(500).json({ message: "Connection failed. Please try again." });
+    }
+  });
+
   // Service Account connection (actual Supermetrics method)
   app.post("/api/auth/google/service-account-connect", async (req, res) => {
     try {
-      const { campaignId, propertyId } = req.body;
+      const { campaignId, propertyId, serviceAccountKey } = req.body;
       
       if (!campaignId || !propertyId) {
         return res.status(400).json({ message: "Campaign ID and Property ID are required" });

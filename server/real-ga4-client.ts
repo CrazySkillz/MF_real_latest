@@ -124,6 +124,19 @@ export class RealGA4Client {
     }
   }
 
+  storeManualConnection(campaignId: string, connectionData: any): boolean {
+    try {
+      this.connections.set(campaignId, connectionData);
+      console.log(`Stored manual token connection for campaign ${campaignId}`);
+      return true;
+    } catch (error) {
+      console.error('Error storing manual connection:', error);
+      return false;
+    }
+  }
+
+
+
   async getProperties(campaignId: string): Promise<Array<{id: string, name: string}> | null> {
     const connection = this.connections.get(campaignId);
     if (!connection) return null;

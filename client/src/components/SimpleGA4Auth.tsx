@@ -99,7 +99,7 @@ export function SimpleGA4Auth({ campaignId, propertyId, onSuccess, onError }: Si
           Connect Google Analytics
         </CardTitle>
         <CardDescription>
-          Enter your Google credentials to connect your GA4 property - same experience as Supermetrics
+          Enter your Google credentials to connect your GA4 property
         </CardDescription>
       </CardHeader>
       
@@ -109,16 +109,7 @@ export function SimpleGA4Auth({ campaignId, propertyId, onSuccess, onError }: Si
           <AlertDescription>
             <div className="space-y-2">
               <p><strong>Simple Credential Connection</strong></p>
-              <p>Just like professional platforms, enter your Google account details and we'll handle the rest automatically.</p>
-              <div className="text-sm text-slate-600 dark:text-slate-400">
-                <p><strong>Benefits:</strong></p>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>No Google Cloud Console setup required</li>
-                  <li>No complex OAuth configuration</li>
-                  <li>Automatic token management</li>
-                  <li>Same experience as Supermetrics, AgencyAnalytics</li>
-                </ul>
-              </div>
+              <p>Enter your Google account details for secure access to your analytics data.</p>
             </div>
           </AlertDescription>
         </Alert>
@@ -192,12 +183,11 @@ export function SimpleGA4Auth({ campaignId, propertyId, onSuccess, onError }: Si
         </div>
 
         <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-          <h4 className="font-medium text-sm mb-2">How this works:</h4>
+          <h4 className="font-medium text-sm mb-2">Security Information:</h4>
           <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
             <li>• <strong>Secure Authentication:</strong> Your credentials are used to generate secure access tokens</li>
-            <li>• <strong>No Manual Setup:</strong> No need to configure Google Cloud Console or OAuth</li>
             <li>• <strong>Automatic Renewal:</strong> Tokens are automatically refreshed in the background</li>
-            <li>• <strong>Professional Experience:</strong> Same streamlined flow as enterprise platforms</li>
+            <li>• <strong>Data Protection:</strong> Your login details are not stored permanently</li>
           </ul>
         </div>
       </CardContent>

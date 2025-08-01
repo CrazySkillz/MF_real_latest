@@ -38,12 +38,12 @@ export class IntegratedGA4Auth {
 
   generateAuthUrl(campaignId: string, propertyId?: string): string {
     // In production, this would generate a real Google OAuth URL
-    // For demo purposes, we'll simulate the flow
+    // For demo purposes, we'll create a simulated auth page
     const baseUrl = process.env.NODE_ENV === 'production' 
       ? 'https://your-app.replit.app' 
       : 'http://localhost:5000';
     
-    return `${baseUrl}/api/auth/google/integrated-callback?state=${campaignId}&property_id=${propertyId || ''}`;
+    return `${baseUrl}/api/auth/google/integrated-auth?state=${campaignId}&property_id=${propertyId || ''}`;
   }
 
   async handleCallback(code: string, state: string): Promise<{success: boolean, campaignId?: string, error?: string}> {

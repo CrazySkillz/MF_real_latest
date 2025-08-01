@@ -627,6 +627,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Integrated OAuth auth page (simulates Google's consent screen)
+  app.get("/api/auth/google/integrated-auth", async (req, res) => {
+    try {
+      const { state, property_id } = req.query;
+      
+      if (!state) {
+        return res.status(400).send("Missing state parameter");
+      }
+
+      // Create a simulated Google OAuth consent page
+      res.send(`
+        <html>
+          <head>
+            <title>Connect Google Analytics</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
+              .consent-box { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background: #f9f9f9; }
+              .logo { text-align: center; margin-bottom: 20px; }
+              .permissions { margin: 20px 0; }
+              .permissions li { margin: 8px 0; }
+              button { background: #4285f4; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
+              button:hover { background: #3367d6; }
+              .cancel { background: #f8f9fa; color: #3c4043; border: 1px solid #dadce0; margin-top: 10px; }
+              .cancel:hover { background: #f1f3f4; }
+            </style>
+          </head>
+          <body>
+            <div class="consent-box">
+              <div class="logo">
+                <h2>🔗 Connect Google Analytics</h2>
+                <p>MarketPulse wants to access your Google Analytics account</p>
+              </div>
+              
+              <div class="permissions">
+                <p><strong>This will allow MarketPulse to:</strong></p>
+                <ul>
+                  <li>✓ Read your Google Analytics data</li>
+                  <li>✓ Access real-time metrics and reports</li>
+                  <li>✓ View your GA4 properties</li>
+                </ul>
+              </div>
+              
+              <button onclick="authorize()">Allow</button>
+              <button class="cancel" onclick="window.close()">Cancel</button>
+            </div>
+            
+            <script>
+              function authorize() {
+                // Simulate successful authorization
+                const code = 'demo_auth_code_' + Date.now();
+                window.location.href = '/api/auth/google/integrated-callback?code=' + code + '&state=${state}';
+              }
+            </script>
+          </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error('Integrated OAuth auth page error:', error);
+      res.status(500).send("Authentication setup failed");
+    }
+  });
+
   // Integrated OAuth callback
   app.get("/api/auth/google/integrated-callback", async (req, res) => {
     try {

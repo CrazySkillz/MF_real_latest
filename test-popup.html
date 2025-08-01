@@ -1,30 +1,75 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>Test Popup</title>
-</head>
+<head><title>Final Popup Test</title></head>
 <body>
-    <h2>Test Google Analytics Connection</h2>
-    <button onclick="testPopup()">Test Popup</button>
+<h1>Test Popup Authentication</h1>
+<button onclick="startAuth()" style="padding: 20px; font-size: 16px; background: #4285f4; color: white; border: none; border-radius: 5px;">
+  Start Authentication Test
+</button>
+<div id="result" style="margin-top: 20px; padding: 20px; border: 1px solid #ddd;"></div>
+
+<script>
+async function startAuth() {
+    const result = document.getElementById('result');
+    result.innerHTML = 'Starting authentication...';
     
-    <script>
-        function testPopup() {
-            const url = 'http://localhost:5000/api/auth/google/integrated-auth?state=test-campaign';
-            console.log('Opening popup with URL:', url);
-            
-            const popup = window.open(
-                url,
-                'google-auth',
-                'width=500,height=600,scrollbars=yes,resizable=yes'
-            );
-            
-            if (!popup) {
-                alert('Popup was blocked. Please allow popups.');
-                return;
-            }
-            
-            console.log('Popup opened successfully');
+    try {
+        // Step 1: Initiate OAuth
+        const response = await fetch('/api/auth/google/integrated-connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ campaignId: 'popup-auth-test' })
+        });
+        
+        const data = await response.json();
+        result.innerHTML = 'Opening popup...';
+        
+        // Step 2: Open popup
+        const popup = window.open(data.authUrl, 'auth-popup', 'width=500,height=600');
+        
+        if (!popup) {
+            result.innerHTML = 'ERROR: Popup was blocked by browser';
+            return;
         }
-    </script>
+        
+        // Step 3: Monitor popup
+        const monitor = setInterval(async () => {
+            if (popup.closed) {
+                clearInterval(monitor);
+                result.innerHTML = 'Popup closed. Checking connection status...';
+                
+                // Step 4: Check if authentication worked
+                try {
+                    const statusResponse = await fetch('/api/campaigns/popup-auth-test/ga4-connection-status');
+                    const statusData = await statusResponse.json();
+                    
+                    if (statusData.connected) {
+                        result.innerHTML = `
+                            <div style="color: green;">
+                                <h3>✅ SUCCESS! Authentication worked!</h3>
+                                <p>Email: ${statusData.email}</p>
+                                <p>Properties: ${statusData.properties.length}</p>
+                                <p>Data Source: ${statusData.dataSource}</p>
+                            </div>
+                        `;
+                    } else {
+                        result.innerHTML = `
+                            <div style="color: red;">
+                                <h3>❌ FAILED: Not connected</h3>
+                                <p>Status: ${JSON.stringify(statusData)}</p>
+                            </div>
+                        `;
+                    }
+                } catch (err) {
+                    result.innerHTML = `<div style="color: red;">Error checking status: ${err.message}</div>`;
+                }
+            }
+        }, 1000);
+        
+    } catch (error) {
+        result.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+    }
+}
+</script>
 </body>
 </html>

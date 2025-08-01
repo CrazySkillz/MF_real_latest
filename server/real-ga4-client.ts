@@ -147,6 +147,17 @@ export class RealGA4Client {
     }
   }
 
+  // Add missing method for setting selected property
+  setSelectedProperty(campaignId: string, propertyId: string): boolean {
+    const connection = this.connections.get(campaignId);
+    if (!connection) return false;
+    
+    connection.propertyId = propertyId;
+    this.connections.set(campaignId, connection);
+    console.log(`Set property ${propertyId} for campaign ${campaignId}`);
+    return true;
+  }
+
   storeManualConnection(campaignId: string, connectionData: any): boolean {
     try {
       this.connections.set(campaignId, connectionData);

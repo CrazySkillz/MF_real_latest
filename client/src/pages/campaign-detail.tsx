@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SiGoogle, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
+import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 
 interface Campaign {
   id: string;

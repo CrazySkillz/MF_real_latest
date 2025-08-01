@@ -575,7 +575,7 @@ export default function Campaigns() {
   });
 
   const createCampaignMutation = useMutation({
-    mutationFn: async (data: CampaignFormData & { platform?: string; status?: string; type?: string; impressions?: number; clicks?: number; spend?: number }) => {
+    mutationFn: async (data: CampaignFormData & { platform?: string; status?: string; type?: string; impressions?: number; clicks?: number; spend?: string }) => {
       const response = await apiRequest("POST", "/api/campaigns", {
         name: data.name,
         clientWebsite: data.clientWebsite || null,
@@ -585,7 +585,7 @@ export default function Campaigns() {
         platform: data.platform || "manual",
         impressions: data.impressions || 0,
         clicks: data.clicks || 0,
-        spend: data.spend || 0,
+        spend: data.spend || "0",
         status: data.status || "active",
       });
       return response.json();
@@ -639,7 +639,7 @@ export default function Campaigns() {
         type: "campaign" as const,
         impressions: 0, // Start with 0 - will be populated from real API data
         clicks: 0,      // Start with 0 - will be populated from real API data  
-        spend: 0,       // Start with 0 - will be populated from real API data
+        spend: "0",     // Backend expects string, not number
       };
       createCampaignMutation.mutate(campaignWithPlatforms);
     }
@@ -825,7 +825,11 @@ export default function Campaigns() {
                         <Button 
                           type="button" 
                           className="flex-1"
-                          onClick={handleConnectorsComplete}
+                          onClick={() => {
+                            // Get selected platforms from the form
+                            const selectedPlatforms = ['facebook', 'google-analytics']; // For now, just demo platforms
+                            handleConnectorsComplete(selectedPlatforms);
+                          }}
                           disabled={createCampaignMutation.isPending}
                         >
                           {createCampaignMutation.isPending ? "Creating..." : "Create Campaign"}

@@ -2,12 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { GA4AuthModal } from "@/components/GA4AuthModal";
-import { SeamlessGA4Auth } from "@/components/SeamlessGA4Auth";
-import { ProfessionalGA4Auth } from "@/components/ProfessionalGA4Auth";
-import { SimpleGA4Auth } from "@/components/SimpleGA4Auth";
-import { SupermetricsStyleAuth } from "@/components/SupermetricsStyleAuth";
-import { IntegratedGA4Auth } from "@/components/IntegratedGA4Auth";
-import { DirectGA4Auth } from "@/components/DirectGA4Auth";
+import SimpleOAuth from "@/components/SimpleOAuth";
 import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -428,7 +423,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                   </div>
                   
                   <div className="mt-4">
-                    <DirectGA4Auth
+                    <SimpleOAuth
                       campaignId="temp-campaign-setup"
                       onSuccess={() => {
                         setConnectedPlatforms(prev => [...prev, platform.id]);

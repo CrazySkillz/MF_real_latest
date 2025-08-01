@@ -6,6 +6,7 @@ import { SeamlessGA4Auth } from "@/components/SeamlessGA4Auth";
 import { ProfessionalGA4Auth } from "@/components/ProfessionalGA4Auth";
 import { SimpleGA4Auth } from "@/components/SimpleGA4Auth";
 import { SupermetricsStyleAuth } from "@/components/SupermetricsStyleAuth";
+import { IntegratedGA4Auth } from "@/components/IntegratedGA4Auth";
 import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -426,9 +427,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                   </div>
                   
                   <div className="mt-4">
-                    <SupermetricsStyleAuth
+                    <IntegratedGA4Auth
                       campaignId="temp-campaign-setup"
-                      propertyId={credentials[platform.id]?.propertyId || ""}
                       onSuccess={() => {
                         setConnectedPlatforms(prev => [...prev, platform.id]);
                         if (!selectedPlatforms.includes(platform.id)) {
@@ -436,7 +436,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                         }
                         toast({
                           title: "Google Analytics Connected",
-                          description: "Successfully connected with enterprise authentication",
+                          description: "Successfully connected with real-time metrics enabled",
                         });
                       }}
                       onError={(error) => {

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { googleAuthService } from "./google-auth";
 import { professionalGA4Auth } from "./professional-ga4-auth";
+import { integratedGA4Auth } from "./integrated-ga4-auth";
 
 // Simulate professional platform authentication (like Supermetrics)
 async function simulateProfessionalAuth(email: string, password: string, propertyId: string, campaignId: string) {
@@ -496,10 +497,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enhanced GA4 metrics with professional authentication
+  // Enhanced GA4 metrics with multiple authentication methods
   app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      
+      // Try integrated OAuth authentication first (preferred method)
+      const isIntegratedConnected = await integratedGA4Auth.isConnected(campaignId);
+      
+      if (isIntegratedConnected) {
+        const metrics = await integratedGA4Auth.getMetrics(campaignId);
+        if (metrics) {
+          console.log(`Returning integrated GA4 metrics for campaign ${campaignId}`);
+          return res.json({
+            ...metrics,
+            authMethod: 'Integrated OAuth',
+            dataSource: 'Google Analytics Data API v1 (Real-time)'
+          });
+        }
+      }
       
       // Try professional service account authentication first (Supermetrics method)
       let accessToken = await professionalGA4Auth.getValidAccessToken(campaignId);
@@ -584,6 +600,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('GA4 metrics error:', error);
       res.status(500).json({ message: "Failed to fetch GA4 metrics" });
+    }
+  });
+
+  // Integrated Google Analytics OAuth flow
+  app.post("/api/auth/google/integrated-connect", async (req, res) => {
+    try {
+      const { campaignId, propertyId } = req.body;
+      
+      if (!campaignId) {
+        return res.status(400).json({ message: "Campaign ID is required" });
+      }
+
+      console.log(`Starting integrated OAuth flow for campaign ${campaignId}`);
+      
+      // Generate OAuth URL
+      const authUrl = integratedGA4Auth.generateAuthUrl(campaignId, propertyId);
+      
+      res.json({ 
+        authUrl,
+        message: "OAuth flow initiated"
+      });
+    } catch (error) {
+      console.error('Integrated OAuth initiation error:', error);
+      res.status(500).json({ message: "Failed to initiate authentication" });
+    }
+  });
+
+  // Integrated OAuth callback
+  app.get("/api/auth/google/integrated-callback", async (req, res) => {
+    try {
+      const { code, state, property_id } = req.query;
+      
+      if (!code || !state) {
+        return res.redirect("/?error=oauth_failed");
+      }
+
+      const result = await integratedGA4Auth.handleCallback(code as string, state as string);
+      
+      if (result.success) {
+        // Close popup and signal success
+        res.send(`
+          <html>
+            <head><title>Authentication Successful</title></head>
+            <body>
+              <h2>Google Analytics Connected Successfully!</h2>
+              <p>You can now close this window.</p>
+              <script>
+                window.close();
+              </script>
+            </body>
+          </html>
+        `);
+      } else {
+        res.send(`
+          <html>
+            <head><title>Authentication Failed</title></head>
+            <body>
+              <h2>Authentication Failed</h2>
+              <p>Error: ${result.error}</p>
+              <button onclick="window.close()">Close</button>
+            </body>
+          </html>
+        `);
+      }
+    } catch (error) {
+      console.error('Integrated OAuth callback error:', error);
+      res.redirect("/?error=callback_failed");
+    }
+  });
+
+  // Check connection status
+  app.get("/api/campaigns/:id/ga4-connection-status", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const isConnected = await integratedGA4Auth.isConnected(campaignId);
+      
+      if (isConnected) {
+        const connection = integratedGA4Auth.getConnection(campaignId);
+        res.json({
+          connected: true,
+          email: connection?.email,
+          propertyId: connection?.propertyId,
+          properties: connection?.properties || []
+        });
+      } else {
+        res.json({ connected: false });
+      }
+    } catch (error) {
+      console.error('Connection status check error:', error);
+      res.status(500).json({ message: "Failed to check connection status" });
     }
   });
 

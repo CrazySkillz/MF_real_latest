@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head><title>Final Auth Test</title></head>
+<body>
+<h1>Complete Authentication Test</h1>
+<p>This will test the exact popup flow the user experiences.</p>
+<button onclick="runTest()" style="padding: 15px 30px; font-size: 18px; background: #4285f4; color: white; border: none; border-radius: 8px; cursor: pointer;">
+  🔗 Test Google Analytics Connection
+</button>
+<div id="status" style="margin-top: 20px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;"></div>
+
+<script>
+async function runTest() {
+    const status = document.getElementById('status');
+    status.innerHTML = '⏳ Starting authentication test...';
+    
+    try {
+        // Step 1: Get auth URL exactly like the frontend does
+        console.log('Step 1: Getting auth URL...');
+        const response = await fetch('/api/auth/google/integrated-connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ campaignId: 'final-auth-test' })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to get auth URL: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Auth URL received:', data.authUrl);
+        
+        status.innerHTML = '🔗 Opening Google OAuth popup...';
+        
+        // Step 2: Open popup exactly like the component does
+        const popup = window.open(
+            data.authUrl,
+            'google-auth',
+            'width=500,height=600,scrollbars=yes,resizable=yes'
+        );
+        
+        if (!popup) {
+            throw new Error('Popup was blocked by browser');
+        }
+        
+        status.innerHTML = '👀 Waiting for user to click "Allow" in popup...';
+        
+        // Step 3: Monitor popup closure
+        const checkInterval = setInterval(async () => {
+            if (popup.closed) {
+                clearInterval(checkInterval);
+                status.innerHTML = '✅ Popup closed. Checking connection status...';
+                
+                try {
+                    // Step 4: Verify connection was created
+                    const statusResponse = await fetch('/api/campaigns/final-auth-test/ga4-connection-status');
+                    const statusData = await statusResponse.json();
+                    
+                    if (statusData.connected) {
+                        status.innerHTML = `
+                            <div style="color: green; font-weight: bold;">
+                                🎉 SUCCESS! Authentication completed successfully!
+                                <br><br>
+                                <strong>Connection Details:</strong><br>
+                                📧 Email: ${statusData.email}<br>
+                                🏠 Properties: ${statusData.properties ? statusData.properties.length : 0}<br>
+                                📊 Data Source: ${statusData.dataSource}<br>
+                                🔐 OAuth Type: ${statusData.isRealOAuth ? 'Real Google OAuth' : 'Simulation Mode'}
+                                <br><br>
+                                <button onclick="testMetrics()" style="padding: 10px 20px; background: #34a853; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                    📈 Test Live Metrics
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        status.innerHTML = `
+                            <div style="color: red; font-weight: bold;">
+                                ❌ FAILED: Authentication did not complete
+                                <br><br>
+                                <strong>Debug Info:</strong><br>
+                                Status: ${JSON.stringify(statusData, null, 2)}
+                            </div>
+                        `;
+                    }
+                } catch (err) {
+                    status.innerHTML = `
+                        <div style="color: red;">
+                            ❌ Error checking connection status: ${err.message}
+                        </div>
+                    `;
+                }
+            }
+        }, 1000);
+        
+    } catch (error) {
+        status.innerHTML = `
+            <div style="color: red; font-weight: bold;">
+                ❌ Error: ${error.message}
+            </div>
+        `;
+    }
+}
+
+async function testMetrics() {
+    const status = document.getElementById('status');
+    
+    try {
+        const response = await fetch('/api/campaigns/final-auth-test/ga4-metrics');
+        const metrics = await response.json();
+        
+        if (response.ok && metrics.sessions) {
+            status.innerHTML += `
+                <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 5px;">
+                    <strong>📊 Live Metrics Retrieved:</strong><br>
+                    Sessions: ${metrics.sessions.toLocaleString()}<br>
+                    Pageviews: ${metrics.pageviews.toLocaleString()}<br>
+                    New Users: ${metrics.newUsers.toLocaleString()}<br>
+                    Real-time Users: ${metrics.realTimeUsers}<br>
+                    Bounce Rate: ${(metrics.bounceRate * 100).toFixed(1)}%<br>
+                    Conversions: ${metrics.conversions}
+                </div>
+            `;
+        } else {
+            status.innerHTML += `
+                <div style="margin-top: 20px; color: red;">
+                    Failed to retrieve metrics: ${metrics.message || 'Unknown error'}
+                </div>
+            `;
+        }
+    } catch (err) {
+        status.innerHTML += `
+            <div style="margin-top: 20px; color: red;">
+                Error retrieving metrics: ${err.message}
+            </div>
+        `;
+    }
+}
+</script>
+</body>
+</html>

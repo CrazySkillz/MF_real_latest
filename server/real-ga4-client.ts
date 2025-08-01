@@ -124,6 +124,29 @@ export class RealGA4Client {
     }
   }
 
+  // Add missing createTestConnection method
+  async createTestConnection(campaignId: string, propertyId: string): Promise<boolean> {
+    try {
+      console.log(`Creating test GA4 connection for campaign ${campaignId}, property ${propertyId}`);
+      
+      const testConnection: RealGA4Connection = {
+        propertyId,
+        accessToken: 'test_access_token_' + Date.now(),
+        refreshToken: 'test_refresh_token_' + Date.now(),
+        expiresAt: Date.now() + (60 * 60 * 1000), // 1 hour from now
+        email: 'user@example.com',
+        scope: ['https://www.googleapis.com/auth/analytics.readonly']
+      };
+      
+      this.connections.set(campaignId, testConnection);
+      console.log(`Test GA4 connection created successfully for campaign ${campaignId}`);
+      return true;
+    } catch (error) {
+      console.error('Failed to create test connection:', error);
+      return false;
+    }
+  }
+
   storeManualConnection(campaignId: string, connectionData: any): boolean {
     try {
       this.connections.set(campaignId, connectionData);

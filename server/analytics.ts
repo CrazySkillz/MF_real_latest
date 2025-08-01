@@ -15,6 +15,11 @@ interface GA4Metrics {
 }
 
 export class GoogleAnalytics4Service {
+  async getMetricsWithToken(propertyId: string, accessToken: string, dateRange = '30daysAgo'): Promise<GA4Metrics> {
+    const credentials = { propertyId, measurementId: '', accessToken };
+    return this.getMetrics(credentials, accessToken, dateRange);
+  }
+
   async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = '30daysAgo'): Promise<GA4Metrics> {
     try {
       // Use Google Analytics Data API REST endpoint with user's access token

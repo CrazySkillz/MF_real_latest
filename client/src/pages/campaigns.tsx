@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { GA4AuthModal } from "@/components/GA4AuthModal";
+import { SeamlessGA4Auth } from "@/components/SeamlessGA4Auth";
+import { ProfessionalGA4Auth } from "@/components/ProfessionalGA4Auth";
 import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -419,29 +421,49 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                         Find this in Google Analytics → Admin → Data Streams → Web
                       </div>
                     </div>
-                    
-                    <Button
-                      type="button"
-                      className="w-full"
-                      onClick={() => handleGA4Connect(platform.id)}
-                      disabled={!credentials[platform.id]?.propertyId}
-                    >
-                      Connect & Test GA4
-                    </Button>
                   </div>
                   
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                    <div className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                      Or connect via OAuth for easier setup:
+                  <div className="mt-4">
+                    <ProfessionalGA4Auth
+                      campaignId="temp-campaign-setup"
+                      propertyId={credentials[platform.id]?.propertyId || ""}
+                      userEmail={undefined}
+                      onSuccess={() => {
+                        setConnectedPlatforms(prev => [...prev, platform.id]);
+                        if (!selectedPlatforms.includes(platform.id)) {
+                          setSelectedPlatforms(prev => [...prev, platform.id]);
+                        }
+                        toast({
+                          title: "Professional GA4 Connected",
+                          description: "Successfully connected with enterprise-grade authentication",
+                        });
+                      }}
+                      onError={(error) => {
+                        toast({
+                          title: "Connection Error",
+                          description: error,
+                          variant: "destructive",
+                        });
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
+                      Alternative: Manual Token Method
+                    </div>
+                    <div className="text-xs text-slate-500 mb-3">
+                      For testing only (1-hour sessions)
                     </div>
                     <Button
                       type="button"
                       variant="outline"
+                      size="sm"
                       className="w-full"
-                      onClick={() => handleOAuthConnect(platform.id)}
+                      onClick={() => handleGA4Connect(platform.id)}
+                      disabled={!credentials[platform.id]?.propertyId}
                     >
-                      <SiGoogle className="w-4 h-4 mr-2" />
-                      Connect with Google OAuth
+                      Connect with Manual Token
                     </Button>
                   </div>
                 </div>

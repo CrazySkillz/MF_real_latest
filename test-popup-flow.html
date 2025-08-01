@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Popup Flow</title>
+</head>
+<body>
+    <h2>Test Complete OAuth Flow</h2>
+    <button onclick="testCompleteFlow()">Test Complete Flow</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testCompleteFlow() {
+            try {
+                // Step 1: Get auth URL
+                const authResponse = await fetch('/api/auth/google/integrated-connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ campaignId: 'test-complete-flow' })
+                });
+                
+                const authData = await authResponse.json();
+                console.log('Auth URL:', authData.authUrl);
+                
+                // Step 2: Open popup
+                const popup = window.open(authData.authUrl, 'test-popup', 'width=500,height=600');
+                
+                // Step 3: Monitor popup
+                const checkClosed = setInterval(async () => {
+                    if (popup?.closed) {
+                        clearInterval(checkClosed);
+                        
+                        // Step 4: Check connection status
+                        const statusResponse = await fetch('/api/campaigns/test-complete-flow/ga4-connection-status');
+                        const statusData = await statusResponse.json();
+                        
+                        document.getElementById('result').innerHTML = 
+                            `<p>Status: ${statusData.connected ? 'Connected' : 'Not Connected'}</p>
+                             <p>Email: ${statusData.email || 'N/A'}</p>
+                             <p>Properties: ${JSON.stringify(statusData.properties || [])}</p>`;
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

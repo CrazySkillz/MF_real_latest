@@ -617,7 +617,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               function authorize() {
                 // Simulate successful authorization
                 const code = 'demo_auth_code_' + Date.now();
-                window.location.href = '/api/auth/google/callback?code=' + code + '&state=${state}';
+                const callbackUrl = '/api/auth/google/callback?code=' + code + '&state=${state}';
+                console.log('Redirecting to:', callbackUrl);
+                window.location.href = callbackUrl;
               }
             </script>
           </body>

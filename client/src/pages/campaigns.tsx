@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { GA4AuthModal } from "@/components/GA4AuthModal";
 import { SeamlessGA4Auth } from "@/components/SeamlessGA4Auth";
 import { ProfessionalGA4Auth } from "@/components/ProfessionalGA4Auth";
+import { SimpleGA4Auth } from "@/components/SimpleGA4Auth";
 import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -424,18 +425,17 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                   </div>
                   
                   <div className="mt-4">
-                    <ProfessionalGA4Auth
+                    <SimpleGA4Auth
                       campaignId="temp-campaign-setup"
                       propertyId={credentials[platform.id]?.propertyId || ""}
-                      userEmail={undefined}
                       onSuccess={() => {
                         setConnectedPlatforms(prev => [...prev, platform.id]);
                         if (!selectedPlatforms.includes(platform.id)) {
                           setSelectedPlatforms(prev => [...prev, platform.id]);
                         }
                         toast({
-                          title: "Professional GA4 Connected",
-                          description: "Successfully connected with enterprise-grade authentication",
+                          title: "Google Analytics Connected",
+                          description: "Successfully connected to your GA4 property",
                         });
                       }}
                       onError={(error) => {

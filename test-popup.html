@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Popup</title>
+</head>
+<body>
+    <h2>Test Google Analytics Connection</h2>
+    <button onclick="testPopup()">Test Popup</button>
+    
+    <script>
+        function testPopup() {
+            const url = 'http://localhost:5000/api/auth/google/integrated-auth?state=test-campaign';
+            console.log('Opening popup with URL:', url);
+            
+            const popup = window.open(
+                url,
+                'google-auth',
+                'width=500,height=600,scrollbars=yes,resizable=yes'
+            );
+            
+            if (!popup) {
+                alert('Popup was blocked. Please allow popups.');
+                return;
+            }
+            
+            console.log('Popup opened successfully');
+        }
+    </script>
+</body>
+</html>

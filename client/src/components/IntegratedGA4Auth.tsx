@@ -27,39 +27,72 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
 
     try {
       // Start the integrated OAuth flow
+      console.log("Starting integrated Google Analytics connection...");
       const response = await apiRequest("POST", "/api/auth/google/integrated-connect", {
         campaignId,
         propertyId: propertyId || undefined
       });
 
       const data = await response.json();
+      console.log("Auth response:", data);
 
       if (data.authUrl) {
-        // Open OAuth flow in popup
-        const popup = window.open(
-          data.authUrl,
-          'google-auth',
-          'width=500,height=600,scrollbars=yes,resizable=yes'
-        );
-
-        // Listen for completion
-        const checkClosed = setInterval(() => {
-          if (popup?.closed) {
-            clearInterval(checkClosed);
-            // Check if connection was successful
-            checkConnectionStatus();
-          }
-        }, 1000);
-
-        // Timeout after 5 minutes
+        console.log("Opening popup with URL:", data.authUrl);
+        
+        // Add a small delay to ensure the URL is fully processed
         setTimeout(() => {
-          clearInterval(checkClosed);
-          if (popup && !popup.closed) {
-            popup.close();
+          try {
+            // Open OAuth flow in popup with more permissive settings
+            const popup = window.open(
+              data.authUrl,
+              'google-auth',
+              'width=500,height=700,scrollbars=yes,resizable=yes,location=yes,status=yes,menubar=no,toolbar=no'
+            );
+
+            if (!popup) {
+              setIsConnecting(false);
+              onError("Popup was blocked. Please allow popups for this site and try again.");
+              return;
+            }
+
+            // Add error handling for popup
+            popup.onerror = () => {
+              console.error("Popup error occurred");
+              setIsConnecting(false);
+              onError("Failed to open authentication window. Please try again.");
+            };
+
+            // Listen for completion
+            const checkClosed = setInterval(() => {
+              try {
+                if (popup?.closed) {
+                  clearInterval(checkClosed);
+                  // Check if connection was successful
+                  checkConnectionStatus();
+                }
+              } catch (error) {
+                console.error("Error checking popup status:", error);
+                clearInterval(checkClosed);
+                setIsConnecting(false);
+                onError("Authentication window error. Please try again.");
+              }
+            }, 1000);
+
+            // Timeout after 5 minutes
+            setTimeout(() => {
+              clearInterval(checkClosed);
+              if (popup && !popup.closed) {
+                popup.close();
+                setIsConnecting(false);
+                onError("Authentication timeout. Please try again.");
+              }
+            }, 300000);
+          } catch (error) {
+            console.error("Error opening popup:", error);
             setIsConnecting(false);
-            onError("Authentication timeout. Please try again.");
+            onError("Failed to open authentication window. Please try again.");
           }
-        }, 300000);
+        }, 100);
 
       } else if (data.success) {
         setHasConnection(true);
@@ -201,7 +234,10 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
             size="lg"
           >
             {isConnecting ? (
-              "Connecting..."
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Connecting...
+              </>
             ) : (
               <>
                 <SiGoogle className="w-4 h-4 mr-2" />
@@ -209,6 +245,15 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
               </>
             )}
           </Button>
+
+          {isConnecting && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Opening authentication window... If you see "Not Found", please make sure popups are enabled.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">

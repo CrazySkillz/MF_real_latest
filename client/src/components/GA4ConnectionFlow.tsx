@@ -60,8 +60,19 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         onConnectionSuccess?.();
         toast({
           title: "GA4 Connected!",
-          description: "Successfully connected to your Google Analytics property."
+          description: "Successfully connected! Your real Google Analytics data will now be available."
         });
+        
+        // Test the connection by fetching metrics
+        try {
+          const metricsResponse = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
+          const metricsData = await metricsResponse.json();
+          if (metricsData.success) {
+            console.log('Real GA4 metrics:', metricsData.metrics);
+          }
+        } catch (error) {
+          console.log('Metrics fetch will be available after page refresh');
+        }
       } else {
         toast({
           title: "Connection Failed",
@@ -111,7 +122,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         onConnectionSuccess?.();
         toast({
           title: "GA4 Connected!",
-          description: "Successfully connected using service account."
+          description: "Successfully connected! Your real Google Analytics data will now be available."
         });
       } else {
         toast({

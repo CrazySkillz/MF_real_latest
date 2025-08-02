@@ -37,6 +37,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get real GA4 metrics for a campaign
+  app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const userConnections = (global as any).userGA4Connections;
+      
+      if (!userConnections || !userConnections.has(campaignId)) {
+        return res.status(404).json({ 
+          error: "No GA4 connection found for this campaign. Please connect your Google Analytics first." 
+        });
+      }
+      
+      const connection = userConnections.get(campaignId);
+      
+      if (connection.method === 'access_token') {
+        const metrics = await ga4Service.getMetricsWithToken(
+          connection.propertyId, 
+          connection.accessToken
+        );
+        
+        res.json({
+          success: true,
+          metrics,
+          propertyId: connection.propertyId,
+          lastUpdated: new Date().toISOString()
+        });
+      } else {
+        // Service account method would require additional setup
+        res.json({
+          error: "Service account metrics not yet implemented",
+          method: connection.method
+        });
+      }
+    } catch (error) {
+      console.error('GA4 metrics error:', error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : 'Failed to fetch GA4 metrics' 
+      });
+    }
+  });
+
   // Google Analytics OAuth endpoints
   app.post("/api/auth/google/url", (req, res) => {
     try {

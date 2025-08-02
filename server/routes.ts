@@ -411,6 +411,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test real GA4 connection with user credentials
+  app.post("/api/ga4/test-real-connection", async (req, res) => {
+    try {
+      const { propertyId, accessToken } = req.body;
+      
+      if (!propertyId || !accessToken) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Property ID and access token are required" 
+        });
+      }
+
+      // Test the connection by making a real API call to Google Analytics
+      const testResponse = await fetch(
+        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runRealtimeReport`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            metrics: [{ name: 'activeUsers' }]
+          })
+        }
+      );
+
+      if (testResponse.ok) {
+        const data = await testResponse.json();
+        
+        // Get property details
+        const propertyResponse = await fetch(
+          `https://analyticsadmin.googleapis.com/v1alpha/properties/${propertyId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          }
+        );
+        
+        let propertyName = `GA4 Property ${propertyId}`;
+        if (propertyResponse.ok) {
+          const propertyData = await propertyResponse.json();
+          propertyName = propertyData.displayName || propertyName;
+        }
+        
+        // Store the real connection for this session
+        (global as any).realGA4Connections = (global as any).realGA4Connections || new Map();
+        (global as any).realGA4Connections.set('temp-campaign-setup', {
+          propertyId,
+          accessToken,
+          propertyName,
+          connectedAt: new Date().toISOString(),
+          isReal: true
+        });
+        
+        res.json({
+          success: true,
+          propertyName,
+          activeUsers: data.rows?.[0]?.metricValues?.[0]?.value || '0',
+          message: "Successfully connected to real GA4 property"
+        });
+      } else {
+        const errorData = await testResponse.json().catch(() => ({}));
+        res.json({
+          success: false,
+          error: `GA4 API Error: ${errorData.error?.message || 'Invalid credentials or property access'}`
+        });
+      }
+    } catch (error) {
+      console.error('Real GA4 connection test error:', error);
+      res.json({
+        success: false,
+        error: "Failed to test GA4 connection. Please check your credentials."
+      });
+    }
+  });
+
   // Google OAuth routes
   app.get("/api/auth/google/url", async (req, res) => {
     try {

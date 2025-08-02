@@ -94,6 +94,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
   const [ga4Properties, setGA4Properties] = useState<Array<{id: string, name: string}>>([]);
   const [selectedGA4Property, setSelectedGA4Property] = useState<string>('');
   const [showPropertySelector, setShowPropertySelector] = useState(false);
+  const [ga4AccessToken, setGA4AccessToken] = useState<string>('');
   const { toast } = useToast();
 
   const handlePlatformConnect = async (platformId: string) => {
@@ -120,11 +121,63 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
   };
 
 
+  const handleTestRealConnection = async () => {
+    if (!selectedGA4Property || !ga4AccessToken) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter both Property ID and Access Token",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsConnecting(prev => ({ ...prev, 'google-analytics': true }));
+    
+    try {
+      // Test real GA4 connection
+      const response = await fetch("/api/ga4/test-real-connection", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          propertyId: selectedGA4Property,
+          accessToken: ga4AccessToken
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setConnectedPlatforms(prev => [...prev, 'google-analytics']);
+        setSelectedPlatforms(prev => [...prev, 'google-analytics']);
+        
+        toast({
+          title: "Real GA4 Connection Successful!",
+          description: `Connected to ${data.propertyName || 'your GA4 property'} with live data access`,
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: data.error || "Failed to connect to GA4. Check your credentials.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Real GA4 connection error:', error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to test GA4 connection. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(prev => ({ ...prev, 'google-analytics': false }));
+    }
+  };
+
   const handleGA4Connect = async () => {
     setIsConnecting(prev => ({ ...prev, 'google-analytics': true }));
     
     try {
-      // Get OAuth URL from backend
+      // For demo OAuth flow
       const response = await fetch("/api/auth/google/url", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -308,7 +361,18 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                     />
                   )}
                   
-                  {!isConnected && (
+                  {!isConnected && platform.id === 'google-analytics' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePlatformConnect(platform.id)}
+                      disabled={platformConnecting}
+                    >
+                      {platformConnecting ? 'Connecting...' : 'Test Real Connection'}
+                    </Button>
+                  )}
+                  
+                  {!isConnected && platform.id !== 'google-analytics' && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -320,6 +384,53 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                   )}
                 </div>
               </div>
+              
+              {platform.id === 'google-analytics' && !isConnected && (
+                <div className="ml-8 mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-3">Test with Real GA4 Data</h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+                    Enter your Google Analytics credentials to test with real data from your GA4 property.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="ga4-property-id" className="text-sm font-medium">GA4 Property ID *</Label>
+                      <Input
+                        id="ga4-property-id"
+                        placeholder="e.g., 123456789"
+                        className="mt-1"
+                        onChange={(e) => setSelectedGA4Property(e.target.value)}
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Find in GA4: Admin → Property → Property Settings
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="ga4-access-token" className="text-sm font-medium">Access Token *</Label>
+                      <Input
+                        id="ga4-access-token"
+                        type="password"
+                        placeholder="Your Google Analytics access token"
+                        className="mt-1"
+                        onChange={(e) => setGA4AccessToken(e.target.value)}
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Get from: <a href="https://developers.google.com/oauthplayground" target="_blank" className="text-blue-600 hover:underline">OAuth 2.0 Playground</a>
+                      </p>
+                    </div>
+                    
+                    <Button
+                      onClick={handleTestRealConnection}
+                      disabled={!selectedGA4Property || !ga4AccessToken || platformConnecting}
+                      className="w-full"
+                      size="sm"
+                    >
+                      {platformConnecting ? 'Testing Connection...' : 'Test Real GA4 Connection'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}

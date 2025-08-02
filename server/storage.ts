@@ -28,6 +28,7 @@ export interface IStorage {
   getGA4Connection(campaignId: string): Promise<GA4Connection | undefined>;
   createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection>;
   updateGA4Connection(campaignId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined>;
+  updateGA4ConnectionTokens(campaignId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined>;
   deleteGA4Connection(campaignId: string): Promise<boolean>;
 }
 
@@ -199,6 +200,20 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
+  async updateGA4ConnectionTokens(campaignId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined> {
+    const existing = this.ga4Connections.get(campaignId);
+    if (!existing) return undefined;
+    
+    const updated: GA4Connection = {
+      ...existing,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken || existing.refreshToken,
+    };
+    
+    this.ga4Connections.set(campaignId, updated);
+    return updated;
+  }
+
   async deleteGA4Connection(campaignId: string): Promise<boolean> {
     return this.ga4Connections.delete(campaignId);
   }
@@ -303,6 +318,19 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(ga4Connections)
       .set(connection)
+      .where(eq(ga4Connections.campaignId, campaignId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async updateGA4ConnectionTokens(campaignId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined> {
+    const [updated] = await db
+      .update(ga4Connections)
+      .set({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        // Note: expiresAt field would need to be added to schema if tracking token expiry
+      })
       .where(eq(ga4Connections.campaignId, campaignId))
       .returning();
     return updated || undefined;

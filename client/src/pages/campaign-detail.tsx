@@ -46,9 +46,20 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
   });
 
+  // Check GA4 connection status
+  const { data: ga4Connection } = useQuery({
+    queryKey: ["/api/ga4/check-connection", campaignId],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
+      if (!response.ok) return { connected: false };
+      return response.json();
+    },
+  });
+
   const { data: ga4Metrics, isLoading: ga4Loading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
-    enabled: !!campaignId && !!campaign?.platform?.includes("Google Analytics"),
+    enabled: !!campaignId && !!ga4Connection?.connected,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
       if (!response.ok) {
@@ -74,13 +85,13 @@ export default function CampaignDetail() {
     },
   });
 
-  // Determine connected platforms based on campaign data
+  // Determine connected platforms based on actual connections
   const connectedPlatformNames = campaign?.platform?.split(', ') || [];
   
   const platformMetrics: PlatformMetrics[] = [
     {
       platform: "Google Analytics",
-      connected: connectedPlatformNames.includes("Google Analytics"),
+      connected: !!ga4Connection?.connected,
       impressions: ga4Metrics?.impressions || 0,
       clicks: ga4Metrics?.clicks || 0,
       conversions: ga4Metrics?.conversions || 0,

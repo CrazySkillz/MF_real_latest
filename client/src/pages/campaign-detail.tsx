@@ -338,23 +338,35 @@ export default function CampaignDetail() {
                   </CardHeader>
                   <CardContent>
                     {platform.connected ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Impressions</p>
-                          <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatNumber(platform.impressions)}</p>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">Impressions</p>
+                            <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatNumber(platform.impressions)}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">Clicks</p>
+                            <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatNumber(platform.clicks)}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">CTR</p>
+                            <p className="text-lg font-semibold text-slate-900 dark:text-white">{platform.ctr}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">Spend</p>
+                            <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatCurrency(platform.spend)}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Clicks</p>
-                          <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatNumber(platform.clicks)}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">CTR</p>
-                          <p className="text-lg font-semibold text-slate-900 dark:text-white">{platform.ctr}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Spend</p>
-                          <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatCurrency(platform.spend)}</p>
-                        </div>
+                        {platform.platform === "Google Analytics" && (
+                          <div className="pt-2 border-t">
+                            <Link href={`/campaigns/${campaign.id}/ga4-metrics`}>
+                              <Button variant="outline" size="sm" className="w-full">
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                View Detailed Analytics
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center py-4">

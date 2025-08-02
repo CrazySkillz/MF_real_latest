@@ -346,6 +346,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, accessToken, refreshToken, propertyId } = req.body;
       
+      console.log('GA4 connect-token request:', {
+        campaignId,
+        propertyId,
+        accessTokenLength: accessToken ? accessToken.length : 0,
+        accessTokenStart: accessToken ? accessToken.substring(0, 20) : 'NULL',
+        hasRefreshToken: !!refreshToken
+      });
+      
       if (!campaignId || !accessToken || !propertyId) {
         return res.status(400).json({ 
           success: false, 
@@ -354,7 +362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Store the user's GA4 connection in database
-      await storage.createGA4Connection({
+      const connection = await storage.createGA4Connection({
         campaignId,
         propertyId,
         accessToken,
@@ -362,6 +370,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         method: 'access_token',
         propertyName: `GA4 Property ${propertyId}`,
         serviceAccountKey: null
+      });
+      
+      console.log('GA4 connection created:', {
+        id: connection.id,
+        campaignId: connection.campaignId,
+        accessTokenStored: !!connection.accessToken,
+        accessTokenLength: connection.accessToken ? connection.accessToken.length : 0
       });
 
       res.json({

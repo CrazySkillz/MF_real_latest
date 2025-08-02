@@ -86,7 +86,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('GA4 metrics error:', error);
       
       // Handle token expiration gracefully
-      if (error instanceof Error && error.message === 'TOKEN_EXPIRED') {
+      if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
+        console.log('Sending TOKEN_EXPIRED response to client');
         res.status(401).json({ 
           error: 'TOKEN_EXPIRED',
           message: 'Your Google Analytics access has expired. Please reconnect to continue viewing metrics.',

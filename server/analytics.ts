@@ -63,6 +63,8 @@ export class GoogleAnalytics4Service {
     try {
       return await this.getMetricsWithToken(connection.propertyId, accessToken!, '30daysAgo');
     } catch (error: any) {
+      console.log('GA4 error details:', error.message);
+      
       // If token expired, provide user-friendly error for reconnection
       if (error.message.includes('invalid_grant') || 
           error.message.includes('401') || 
@@ -70,12 +72,16 @@ export class GoogleAnalytics4Service {
           error.message.includes('invalid authentication credentials') ||
           error.message.includes('Request had invalid authentication credentials')) {
         
+        console.log('Token expired, marking for reconnection');
+        
         // Mark connection as expired for UI to handle
         await storage.updateGA4Connection(campaignId, {
           accessToken: null // Clear expired token
         });
         
-        throw new Error('TOKEN_EXPIRED');
+        const tokenExpiredError = new Error('TOKEN_EXPIRED');
+        (tokenExpiredError as any).isTokenExpired = true;
+        throw tokenExpiredError;
       }
       throw error;
     }

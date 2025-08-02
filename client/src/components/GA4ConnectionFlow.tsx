@@ -42,12 +42,21 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const data = await response.json();
 
       if (data.oauth_url) {
-        // Open OAuth popup with your SaaS platform's OAuth flow
+        // Open OAuth popup with Google's OAuth flow
         const popup = window.open(
           data.oauth_url,
           'ga4-oauth',
           'width=500,height=600,scrollbars=yes,resizable=yes'
         );
+
+        if (!popup) {
+          toast({
+            title: "Popup Blocked",
+            description: "Please allow popups for this site to connect to Google Analytics.",
+            variant: "destructive"
+          });
+          return;
+        }
 
         // Listen for OAuth completion
         const checkClosed = setInterval(() => {
@@ -57,16 +66,16 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           }
         }, 1000);
 
-        // Listen for OAuth success message
+        // Listen for OAuth success message from popup
         const messageHandler = (event: MessageEvent) => {
           if (event.origin !== window.location.origin) return;
           
-          if (event.data.type === 'GA4_OAUTH_SUCCESS') {
+          if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
             popup?.close();
             clearInterval(checkClosed);
             window.removeEventListener('message', messageHandler);
-            handleOAuthSuccess(event.data.properties);
-          } else if (event.data.type === 'GA4_OAUTH_ERROR') {
+            handleOAuthSuccess(event.data.data.properties);
+          } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
             popup?.close();
             clearInterval(checkClosed);
             window.removeEventListener('message', messageHandler);

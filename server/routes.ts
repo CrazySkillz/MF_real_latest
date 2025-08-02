@@ -4,9 +4,6 @@ import { storage } from "./storage";
 import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
-import { googleAuthService } from "./google-auth";
-import { professionalGA4Auth } from "./professional-ga4-auth";
-import { integratedGA4Auth } from "./integrated-ga4-auth";
 import { realGA4Client } from "./real-ga4-client";
 
 // Simulate professional platform authentication (like Supermetrics)
@@ -40,8 +37,8 @@ async function simulateProfessionalAuth(email: string, password: string, propert
       };
       
       // Store in memory (in production, this would be in a database)
-      global.simpleGA4Connections = global.simpleGA4Connections || new Map();
-      global.simpleGA4Connections.set(campaignId, mockConnection);
+      (global as any).simpleGA4Connections = (global as any).simpleGA4Connections || new Map();
+      (global as any).simpleGA4Connections.set(campaignId, mockConnection);
       
       return { success: true };
     } else {
@@ -63,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Critical: Ensure API routes are handled before any other middleware
   app.use('/api', (req, res, next) => {
     // Mark this as an API request to prevent Vite middleware interference
-    req.isApiRoute = true;
+    (req as any).isApiRoute = true;
     next();
   });
   // Campaign routes
@@ -330,31 +327,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Analytics OAuth endpoints
   app.post("/api/auth/google/url", (req, res) => {
     try {
-      const { campaignId } = req.body;
+      const { campaignId, returnUrl } = req.body;
       
-      // SaaS Platform OAuth - Your platform handles the OAuth flow
-      const isSaaSPlatformConfigured = false; // Set to true when you configure your platform's OAuth
+      // Check if OAuth credentials are configured
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
       
-      if (!isSaaSPlatformConfigured) {
+      if (!clientId || !clientSecret) {
+        console.log('Google OAuth credentials not configured. Using demo mode.');
         return res.json({
           setup_required: true,
           message: "Platform OAuth ready for configuration"
         });
       }
       
+      // Generate OAuth URL
       const baseUrl = "https://accounts.google.com/o/oauth2/v2/auth";
       const scopes = [
         "https://www.googleapis.com/auth/analytics.readonly",
         "https://www.googleapis.com/auth/userinfo.email"
       ];
       
+      // Store campaign context for callback
+      const state = Buffer.from(JSON.stringify({ campaignId, returnUrl })).toString('base64');
+      
       const params = {
         client_id: clientId,
-        redirect_uri: `${req.protocol}://${req.get('host')}/api/auth/google/callback`,
+        redirect_uri: `${req.protocol}://${req.get('host')}/auth/google/callback`,
         scope: scopes.join(" "),
         response_type: "code",
         access_type: "offline",
         prompt: "select_account",
+        state: state,
         include_granted_scopes: "true"
       };
       
@@ -363,11 +367,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ oauth_url: oauthUrl });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('OAuth URL generation error:', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
-  // Legacy OAuth callback removed - was conflicting with real GA4 client
+  // OAuth callback endpoint
+  app.post("/api/auth/google/callback", async (req, res) => {
+    try {
+      const { code, state } = req.body;
+      
+      if (!code) {
+        return res.status(400).json({ error: 'Authorization code is required' });
+      }
+      
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      
+      if (!clientId || !clientSecret) {
+        return res.status(500).json({ error: 'OAuth not configured' });
+      }
+      
+      // Parse state to get campaign context
+      let campaignId = 'unknown';
+      try {
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        campaignId = stateData.campaignId || 'unknown';
+      } catch (e) {
+        console.warn('Could not parse OAuth state:', e);
+      }
+      
+      // Exchange authorization code for tokens
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          code: code,
+          grant_type: 'authorization_code',
+          redirect_uri: `${req.protocol}://${req.get('host')}/auth/google/callback`
+        })
+      });
+      
+      const tokenData = await tokenResponse.json();
+      
+      if (!tokenResponse.ok) {
+        console.error('Token exchange failed:', tokenData);
+        return res.status(400).json({ 
+          error: tokenData.error_description || 'Failed to exchange authorization code' 
+        });
+      }
+      
+      // Get user info and Analytics properties
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`
+        }
+      });
+      
+      let userInfo = null;
+      if (userInfoResponse.ok) {
+        userInfo = await userInfoResponse.json();
+      }
+      
+      // Get Analytics accounts and properties
+      const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`
+        }
+      });
+      
+      let properties = [];
+      if (accountsResponse.ok) {
+        const accountsData = await accountsResponse.json();
+        
+        // Get properties for each account
+        for (const account of accountsData.accounts || []) {
+          try {
+            const propertiesResponse = await fetch(`https://analyticsadmin.googleapis.com/v1alpha/${account.name}/properties`, {
+              headers: {
+                'Authorization': `Bearer ${tokenData.access_token}`
+              }
+            });
+            
+            if (propertiesResponse.ok) {
+              const propertiesData = await propertiesResponse.json();
+              for (const property of propertiesData.properties || []) {
+                properties.push({
+                  id: property.name.split('/').pop(),
+                  name: property.displayName,
+                  account: account.displayName
+                });
+              }
+            }
+          } catch (error) {
+            console.warn('Error fetching properties for account:', account.name, error);
+          }
+        }
+      }
+      
+      // Store the OAuth connection
+      (global as any).oauthConnections = (global as any).oauthConnections || new Map();
+      (global as any).oauthConnections.set(campaignId, {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        expiresAt: Date.now() + (tokenData.expires_in * 1000),
+        userInfo,
+        properties,
+        connectedAt: new Date().toISOString()
+      });
+      
+      res.json({
+        success: true,
+        user: userInfo,
+        properties,
+        message: 'Successfully authenticated with Google Analytics'
+      });
+    } catch (error) {
+      console.error('OAuth callback error:', error);
+      res.status(500).json({ error: 'Authentication failed' });
+    }
+  });
 
   // GA4 Integration endpoints
   app.post("/api/integrations/ga4/connect", async (req, res) => {
@@ -609,105 +732,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Google OAuth routes
-  app.get("/api/auth/google/url", async (req, res) => {
+  // Check OAuth connection status
+  app.get("/api/ga4/check-connection/:campaignId", async (req, res) => {
     try {
-      const { campaignId, propertyId } = req.query;
+      const campaignId = req.params.campaignId;
+      const connections = (global as any).oauthConnections;
+      
+      if (!connections || !connections.has(campaignId)) {
+        return res.json({ connected: false });
+      }
+      
+      const connection = connections.get(campaignId);
+      res.json({
+        connected: true,
+        properties: connection.properties || [],
+        user: connection.userInfo
+      });
+    } catch (error) {
+      console.error('Connection check error:', error);
+      res.status(500).json({ error: 'Failed to check connection status' });
+    }
+  });
+
+  // Select GA4 property for campaign
+  app.post("/api/ga4/select-property", async (req, res) => {
+    try {
+      const { campaignId, propertyId } = req.body;
       
       if (!campaignId || !propertyId) {
-        return res.status(400).json({ message: "Campaign ID and Property ID are required" });
+        return res.status(400).json({ error: 'Campaign ID and Property ID are required' });
       }
       
-      const authUrl = googleAuthService.generateAuthUrl(campaignId as string, propertyId as string);
-      res.json({ authUrl });
+      const connections = (global as any).oauthConnections;
+      if (!connections || !connections.has(campaignId)) {
+        return res.status(404).json({ error: 'No OAuth connection found for this campaign' });
+      }
+      
+      const connection = connections.get(campaignId);
+      
+      // Update connection with selected property
+      connection.selectedPropertyId = propertyId;
+      connection.selectedProperty = connection.properties?.find(p => p.id === propertyId);
+      
+      // Store in real GA4 connections for metrics access
+      (global as any).realGA4Connections = (global as any).realGA4Connections || new Map();
+      (global as any).realGA4Connections.set(campaignId, {
+        propertyId,
+        accessToken: connection.accessToken,
+        refreshToken: connection.refreshToken,
+        connectedAt: connection.connectedAt,
+        isReal: true,
+        propertyName: connection.selectedProperty?.name || `Property ${propertyId}`
+      });
+      
+      res.json({
+        success: true,
+        selectedProperty: connection.selectedProperty
+      });
     } catch (error) {
-      console.error('Auth URL generation error:', error);
-      res.status(500).json({ message: "Failed to generate auth URL" });
+      console.error('Property selection error:', error);
+      res.status(500).json({ error: 'Failed to select property' });
     }
   });
 
-  // Removed legacy callback - conflicts resolved
 
-  // Professional GA4 authentication routes
-  app.get("/api/auth/google/professional/url", async (req, res) => {
-    try {
-      const { campaignId, propertyId, userEmail, method } = req.query;
-      
-      if (!campaignId || !propertyId) {
-        return res.status(400).json({ message: "Campaign ID and Property ID are required" });
-      }
-
-      // Method 1: Try Service Account first (if configured)
-      if (method === 'service-account') {
-        const success = await professionalGA4Auth.connectWithServiceAccount(
-          propertyId as string, 
-          campaignId as string
-        );
-        
-        if (success) {
-          return res.json({ 
-            success: true, 
-            method: 'service-account',
-            message: 'Connected via Service Account'
-          });
-        }
-      }
-
-      // Method 2: Domain delegation (if user email provided)
-      if (method === 'domain-delegation' && userEmail) {
-        const success = await professionalGA4Auth.connectWithDomainDelegation(
-          propertyId as string,
-          campaignId as string,
-          userEmail as string
-        );
-        
-        if (success) {
-          return res.json({ 
-            success: true, 
-            method: 'domain-delegation',
-            message: 'Connected via Domain Delegation'
-          });
-        }
-      }
-
-      // Method 3: Professional OAuth flow
-      const authUrl = professionalGA4Auth.generateProfessionalOAuthUrl(
-        campaignId as string,
-        propertyId as string,
-        userEmail as string
-      );
-      
-      res.json({ authUrl, method: 'oauth' });
-    } catch (error) {
-      console.error('Professional auth URL generation error:', error);
-      res.status(500).json({ message: "Failed to generate auth URL", error: error.message });
-    }
-  });
-
-  app.get("/api/auth/google/professional/callback", async (req, res) => {
-    try {
-      const { code, state, error } = req.query;
-      
-      if (error) {
-        return res.redirect(`/?error=${encodeURIComponent(error as string)}`);
-      }
-      
-      if (!code || !state) {
-        return res.redirect("/?error=missing_parameters");
-      }
-      
-      const result = await professionalGA4Auth.handleProfessionalCallback(code as string, state as string);
-      
-      if (result.success && result.campaignId) {
-        res.redirect(`/campaigns?professional_connected=true&campaign_id=${result.campaignId}`);
-      } else {
-        res.redirect(`/?error=${encodeURIComponent(result.error || 'unknown_error')}`);
-      }
-    } catch (error) {
-      console.error('Professional OAuth callback error:', error);
-      res.redirect("/?error=professional_callback_failed");
-    }
-  });
 
   // Enhanced GA4 metrics with multiple authentication methods
   app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {

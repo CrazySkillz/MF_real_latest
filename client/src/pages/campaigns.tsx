@@ -20,6 +20,8 @@ import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
+import { DirectGA4Auth } from "@/components/DirectGA4Auth";
 
 const campaignFormSchema = insertCampaignSchema.extend({
   name: z.string().min(1, "Campaign name is required"),

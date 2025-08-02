@@ -37,6 +37,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get a single campaign by ID
+  app.get("/api/campaigns/:id", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const campaign = await storage.getCampaign(campaignId);
+      
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      res.json(campaign);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch campaign" });
+    }
+  });
+
   // Get real GA4 metrics for a campaign
   app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {
     try {

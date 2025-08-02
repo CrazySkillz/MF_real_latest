@@ -87,7 +87,7 @@ export default function CampaignDetail() {
       clicks: ga4Metrics?.clicks || 0,
       conversions: ga4Metrics?.conversions || 0,
       spend: "0.00", // GA4 doesn't track spend directly
-      ctr: ga4Metrics?.impressions > 0 ? `${((ga4Metrics.clicks / ga4Metrics.impressions) * 100).toFixed(2)}%` : "0.00%",
+      ctr: ga4Metrics?.impressions && ga4Metrics.impressions > 0 ? `${((ga4Metrics.clicks / ga4Metrics.impressions) * 100).toFixed(2)}%` : "0.00%",
       cpc: "$0.00" // GA4 doesn't track cost per click
     },
     {

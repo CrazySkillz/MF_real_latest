@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import Campaigns from "@/pages/campaigns";
 import CampaignDetail from "@/pages/campaign-detail";
+import CampaignAnalytics from "@/pages/campaign-analytics";
 import Audiences from "@/pages/audiences";
 import Analytics from "@/pages/analytics";
 import Integrations from "@/pages/integrations";
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/campaigns" component={Campaigns} />
       <Route path="/campaigns/:id" component={CampaignDetail} />
+      <Route path="/campaigns/:id/analytics" component={CampaignAnalytics} />
       <Route path="/audiences" component={Audiences} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/integrations" component={Integrations} />

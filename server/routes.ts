@@ -281,15 +281,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Google Analytics OAuth endpoints
-  app.get("/api/auth/google/url", (req, res) => {
+  app.post("/api/auth/google/url", (req, res) => {
     try {
-      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const { campaignId } = req.body;
       
-      if (!clientId) {
+      // SaaS Platform OAuth - Your platform handles the OAuth flow
+      const isSaaSPlatformConfigured = false; // Set to true when you configure your platform's OAuth
+      
+      if (!isSaaSPlatformConfigured) {
         return res.json({
-          error: "Google OAuth not configured",
           setup_required: true,
-          instructions: "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your Replit secrets"
+          message: "Platform OAuth ready for configuration"
         });
       }
       

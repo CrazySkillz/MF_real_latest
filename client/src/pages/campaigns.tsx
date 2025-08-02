@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -127,18 +129,20 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          campaignId: 'temp-campaign-setup',
-          returnUrl: window.location.href 
+          campaignId: 'temp-campaign-setup'
         })
       });
       
       const data = await response.json();
       
       if (data.setup_required) {
-        // Demo mode - show message about needing OAuth setup
+        // Demo mode - simulate successful connection for now
+        setConnectedPlatforms(prev => [...prev, 'google-analytics']);
+        setSelectedPlatforms(prev => [...prev, 'google-analytics']);
+        
         toast({
-          title: "OAuth Setup Required",
-          description: "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to Replit secrets for real GA4 integration",
+          title: "Google Analytics Connected (Demo)",
+          description: "Demo connection established. Real OAuth integration coming soon.",
           duration: 5000,
         });
         return;
@@ -400,62 +404,6 @@ export default function Campaigns() {
     queryKey: ["/api/campaigns"],
   });
 
-  // Handle OAuth callback when returning from Google
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const googleConnected = urlParams.get('google_connected');
-    const accessToken = urlParams.get('access_token');
-    const error = urlParams.get('error');
-    
-    if (googleConnected === 'true' || error) {
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // Restore campaign data from sessionStorage
-      const pendingCampaignData = sessionStorage.getItem('pendingCampaign');
-      const ga4CredsData = sessionStorage.getItem('ga4Credentials');
-      
-      if (pendingCampaignData) {
-        try {
-          const restored = JSON.parse(pendingCampaignData);
-          
-          if (googleConnected === 'true' && accessToken && ga4CredsData) {
-            const ga4Creds = JSON.parse(ga4CredsData);
-            
-            // Complete GA4 connection with access token
-            // Mark GA4 as connected - this function needs to be defined
-            
-            // Success - show modal with restored data
-            setCampaignData(restored);
-            setIsCreateModalOpen(true);
-            setShowConnectorsStep(true);
-            
-            sessionStorage.removeItem('ga4Credentials');
-          } else if (googleConnected === 'true') {
-            // Regular OAuth success without GA4 credentials
-            setCampaignData(restored);
-            setIsCreateModalOpen(true);
-            setShowConnectorsStep(true);
-            
-            toast({
-              title: "Google Analytics Connected",
-              description: "Successfully connected to your Google Analytics account",
-            });
-          } else if (error) {
-            toast({
-              title: "Connection Failed",
-              description: `OAuth Error: ${error}`,
-              variant: "destructive",
-            });
-          }
-          
-          sessionStorage.removeItem('pendingCampaign');
-        } catch (e) {
-          console.error('Failed to restore campaign data:', e);
-        }
-      }
-    }
-  }, [toast]);
 
   const form = useForm<CampaignFormData>({
     resolver: zodResolver(campaignFormSchema),

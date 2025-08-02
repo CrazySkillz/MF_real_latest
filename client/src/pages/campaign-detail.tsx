@@ -50,28 +50,26 @@ export default function CampaignDetail() {
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId && !!campaign?.platform?.includes("Google Analytics"),
     queryFn: async () => {
-      const propertyId = sessionStorage.getItem('ga4PropertyId');
-      if (!propertyId) {
-        throw new Error('GA4 property ID not found. Please reconnect to Google Analytics.');
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch GA4 metrics');
+      }
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'GA4 metrics request failed');
       }
       
-      const { ga4Client } = await import('@/lib/ga4-client');
-      
-      if (!ga4Client.isSignedIn()) {
-        throw new Error('Not signed in to Google Analytics. Please reconnect.');
-      }
-      
-      const metrics = await ga4Client.getMetrics(propertyId, '30daysAgo');
-      
-      // Transform to match expected format
+      // Return the real metrics from your Google Analytics
       return {
-        impressions: metrics.users, // Using users as impressions equivalent
-        clicks: metrics.sessions, // Using sessions as clicks equivalent
-        sessions: metrics.sessions,
-        pageviews: metrics.pageviews,
-        bounceRate: metrics.bounceRate,
-        averageSessionDuration: metrics.averageSessionDuration,
-        conversions: metrics.conversions,
+        impressions: data.metrics.impressions, // Real users from your GA4
+        clicks: data.metrics.clicks, // Real sessions from your GA4  
+        sessions: data.metrics.sessions,
+        pageviews: data.metrics.pageviews,
+        bounceRate: data.metrics.bounceRate,
+        averageSessionDuration: data.metrics.averageSessionDuration,
+        conversions: data.metrics.conversions,
       };
     },
   });

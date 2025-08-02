@@ -344,8 +344,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Manual GA4 token connection for users
   app.post("/api/ga4/connect-token", async (req, res) => {
     try {
-      // Add proper validation like other routes
-      const validatedData = insertGA4ConnectionSchema.parse(req.body);
+      // Add proper validation for the fields the frontend sends
+      const frontendSchema = insertGA4ConnectionSchema.pick({
+        campaignId: true,
+        accessToken: true, 
+        refreshToken: true,
+        propertyId: true
+      });
+      const validatedData = frontendSchema.parse(req.body);
       const { campaignId, accessToken, refreshToken, propertyId } = validatedData;
       
       console.log('GA4 connect-token request (AFTER validation):', {
@@ -472,8 +478,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Service account GA4 connection for users
   app.post("/api/ga4/connect-service-account", async (req, res) => {
     try {
-      // Add proper validation like other routes
-      const validatedData = insertGA4ConnectionSchema.parse(req.body);
+      // Add proper validation for the fields the frontend sends  
+      const serviceAccountSchema = insertGA4ConnectionSchema.pick({
+        campaignId: true,
+        serviceAccountKey: true,
+        propertyId: true
+      });
+      const validatedData = serviceAccountSchema.parse(req.body);
       const { campaignId, serviceAccountKey, propertyId } = validatedData;
       
       if (!campaignId || !serviceAccountKey || !propertyId) {

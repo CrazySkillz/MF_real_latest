@@ -368,6 +368,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Transfer GA4 connection from temporary campaign ID to real campaign ID
+  app.post("/api/ga4/transfer-connection", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+      
+      if (!fromCampaignId || !toCampaignId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Both fromCampaignId and toCampaignId are required" 
+        });
+      }
+
+      // Get the existing connection
+      const existingConnection = await storage.getGA4Connection(fromCampaignId);
+      
+      if (!existingConnection) {
+        return res.status(404).json({
+          success: false,
+          error: "No GA4 connection found for the source campaign"
+        });
+      }
+
+      // Create new connection with the real campaign ID
+      await storage.createGA4Connection({
+        campaignId: toCampaignId,
+        propertyId: existingConnection.propertyId,
+        accessToken: existingConnection.accessToken,
+        refreshToken: existingConnection.refreshToken,
+        method: existingConnection.method,
+        propertyName: existingConnection.propertyName,
+        serviceAccountKey: existingConnection.serviceAccountKey
+      });
+
+      // Delete the temporary connection
+      await storage.deleteGA4Connection(fromCampaignId);
+
+      res.json({
+        success: true,
+        message: 'GA4 connection transferred successfully'
+      });
+    } catch (error) {
+      console.error('GA4 connection transfer error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to transfer GA4 connection'
+      });
+    }
+  });
+
   // Service account GA4 connection for users
   app.post("/api/ga4/connect-service-account", async (req, res) => {
     try {

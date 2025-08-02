@@ -477,7 +477,23 @@ export default function Campaigns() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async (newCampaign) => {
+      // Transfer GA4 connection from temporary ID to real campaign ID if GA4 was connected
+      if (connectedPlatforms.includes('google-analytics')) {
+        try {
+          await fetch('/api/ga4/transfer-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromCampaignId: 'temp-campaign-setup',
+              toCampaignId: newCampaign.id
+            })
+          });
+        } catch (error) {
+          console.error('Failed to transfer GA4 connection:', error);
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       toast({
         title: "Campaign created",
@@ -486,6 +502,7 @@ export default function Campaigns() {
       setIsCreateModalOpen(false);
       setShowConnectorsStep(false);
       setCampaignData(null);
+      setConnectedPlatforms([]); // Reset for next campaign
       form.reset();
     },
     onError: () => {

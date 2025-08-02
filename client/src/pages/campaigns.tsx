@@ -319,7 +319,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                       onClick={() => handlePlatformConnect(platform.id)}
                       disabled={platformConnecting}
                     >
-                      {platformConnecting ? 'Connecting...' : 'Test Real Connection'}
+                      {platformConnecting ? 'Connecting...' : 'Connect'}
                     </Button>
                   )}
                   

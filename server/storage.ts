@@ -1,5 +1,7 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, campaigns, metrics, integrations, performanceData, ga4Connections } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Campaigns
@@ -202,4 +204,116 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  // Campaign methods
+  async getCampaigns(): Promise<Campaign[]> {
+    return db.select().from(campaigns).orderBy(campaigns.createdAt);
+  }
+
+  async getCampaign(id: string): Promise<Campaign | undefined> {
+    const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, id));
+    return campaign || undefined;
+  }
+
+  async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
+    const [campaign] = await db
+      .insert(campaigns)
+      .values(insertCampaign)
+      .returning();
+    return campaign;
+  }
+
+  async updateCampaign(id: string, updateData: Partial<InsertCampaign>): Promise<Campaign | undefined> {
+    const [campaign] = await db
+      .update(campaigns)
+      .set(updateData)
+      .where(eq(campaigns.id, id))
+      .returning();
+    return campaign || undefined;
+  }
+
+  // Metrics methods
+  async getMetrics(): Promise<Metric[]> {
+    return db.select().from(metrics).orderBy(metrics.date);
+  }
+
+  async createMetric(insertMetric: InsertMetric): Promise<Metric> {
+    const [metric] = await db
+      .insert(metrics)
+      .values(insertMetric)
+      .returning();
+    return metric;
+  }
+
+  // Integration methods
+  async getIntegrations(): Promise<Integration[]> {
+    return db.select().from(integrations).orderBy(integrations.createdAt);
+  }
+
+  async getIntegration(id: string): Promise<Integration | undefined> {
+    const [integration] = await db.select().from(integrations).where(eq(integrations.id, id));
+    return integration || undefined;
+  }
+
+  async createIntegration(insertIntegration: InsertIntegration): Promise<Integration> {
+    const [integration] = await db
+      .insert(integrations)
+      .values(insertIntegration)
+      .returning();
+    return integration;
+  }
+
+  async updateIntegration(id: string, updateData: Partial<InsertIntegration>): Promise<Integration | undefined> {
+    const [integration] = await db
+      .update(integrations)
+      .set({ ...updateData, lastSync: new Date() })
+      .where(eq(integrations.id, id))
+      .returning();
+    return integration || undefined;
+  }
+
+  // Performance Data methods
+  async getPerformanceData(): Promise<PerformanceData[]> {
+    return db.select().from(performanceData);
+  }
+
+  async createPerformanceData(insertData: InsertPerformanceData): Promise<PerformanceData> {
+    const [data] = await db
+      .insert(performanceData)
+      .values(insertData)
+      .returning();
+    return data;
+  }
+
+  // GA4 Connection methods
+  async getGA4Connection(campaignId: string): Promise<GA4Connection | undefined> {
+    const [connection] = await db.select().from(ga4Connections).where(eq(ga4Connections.campaignId, campaignId));
+    return connection || undefined;
+  }
+
+  async createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection> {
+    const [ga4Connection] = await db
+      .insert(ga4Connections)
+      .values(connection)
+      .returning();
+    return ga4Connection;
+  }
+
+  async updateGA4Connection(campaignId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined> {
+    const [updated] = await db
+      .update(ga4Connections)
+      .set(connection)
+      .where(eq(ga4Connections.campaignId, campaignId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteGA4Connection(campaignId: string): Promise<boolean> {
+    const result = await db
+      .delete(ga4Connections)
+      .where(eq(ga4Connections.campaignId, campaignId));
+    return (result.rowCount || 0) > 0;
+  }
+}
+
+export const storage = new DatabaseStorage();

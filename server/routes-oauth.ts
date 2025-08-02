@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -344,14 +344,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Manual GA4 token connection for users
   app.post("/api/ga4/connect-token", async (req, res) => {
     try {
-      const { campaignId, accessToken, refreshToken, propertyId } = req.body;
+      // Add proper validation like other routes
+      const validatedData = insertGA4ConnectionSchema.parse(req.body);
+      const { campaignId, accessToken, refreshToken, propertyId } = validatedData;
       
-      console.log('GA4 connect-token request:', {
+      console.log('GA4 connect-token request (AFTER validation):', {
         campaignId,
         propertyId,
         accessTokenLength: accessToken ? accessToken.length : 0,
         accessTokenStart: accessToken ? accessToken.substring(0, 20) : 'NULL',
-        hasRefreshToken: !!refreshToken
+        hasRefreshToken: !!refreshToken,
+        validatedDataKeys: Object.keys(validatedData)
       });
       
       if (!campaignId || !accessToken || !propertyId) {
@@ -361,7 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Store the user's GA4 connection in database
+      // Store the user's GA4 connection in database using validated data
       const connection = await storage.createGA4Connection({
         campaignId,
         propertyId,
@@ -387,6 +390,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('GA4 token connection error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Invalid GA4 connection data", 
+          details: error.errors 
+        });
+      }
       res.status(500).json({
         success: false,
         error: 'Failed to connect with access token'
@@ -462,7 +472,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Service account GA4 connection for users
   app.post("/api/ga4/connect-service-account", async (req, res) => {
     try {
-      const { campaignId, serviceAccountKey, propertyId } = req.body;
+      // Add proper validation like other routes
+      const validatedData = insertGA4ConnectionSchema.parse(req.body);
+      const { campaignId, serviceAccountKey, propertyId } = validatedData;
       
       if (!campaignId || !serviceAccountKey || !propertyId) {
         return res.status(400).json({ 
@@ -501,6 +513,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('GA4 service account connection error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Invalid GA4 service account data", 
+          details: error.errors 
+        });
+      }
       res.status(500).json({
         success: false,
         error: 'Failed to connect with service account'

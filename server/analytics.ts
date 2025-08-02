@@ -20,35 +20,52 @@ export class GoogleAnalytics4Service {
     return this.getMetrics(credentials, accessToken, dateRange);
   }
 
-  async refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
-    try {
-      const response = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: new URLSearchParams({
-          client_id: process.env.GOOGLE_CLIENT_ID || '',
-          client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
-          refresh_token: refreshToken,
-          grant_type: 'refresh_token'
-        })
-      });
-
-      if (!response.ok) {
-        console.error('Token refresh failed:', await response.text());
-        return null;
-      }
-
-      const data = await response.json();
-      return {
-        access_token: data.access_token,
-        expires_in: data.expires_in || 3600
-      };
-    } catch (error) {
-      console.error('Error refreshing token:', error);
-      return null;
+  async refreshAccessToken(refreshToken: string): Promise<string> {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    
+    if (!clientId || !clientSecret) {
+      throw new Error('Google OAuth credentials not configured');
     }
+    
+    console.log('Refreshing access token...');
+    
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token'
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('Token refresh failed:', data);
+      throw new Error(data.error_description || 'Failed to refresh access token');
+    }
+    
+    console.log('Access token refreshed successfully');
+    return data.access_token;
+  }
+
+  async simulateGA4Connection(propertyId: string): Promise<{ success: boolean; user?: any; properties?: any[] }> {
+    // Return success with simulated data for demo purposes
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return {
+        success: true,
+        user: { email: 'demo@example.com', name: 'Demo User' },
+        properties: [
+          { id: propertyId, name: 'Demo GA4 Property', account: 'Demo Account' }
+        ]
+      };
+    }
+    return { success: false };
   }
 
   async getMetricsWithAutoRefresh(campaignId: string, storage: any): Promise<GA4Metrics> {
@@ -78,16 +95,36 @@ export class GoogleAnalytics4Service {
     } catch (error: any) {
       console.log('GA4 API call failed:', error.message);
       
-      // For SaaS, when token expires, just ask user to reconnect
-      // Don't try complex refresh logic that requires OAuth client credentials
+      // Check if error is due to expired token
       if (error.message.includes('invalid_grant') || 
           error.message.includes('401') || 
           error.message.includes('403') ||
           error.message.includes('invalid authentication credentials') ||
           error.message.includes('Request had invalid authentication credentials')) {
         
-        console.log('Access token invalid/expired - user needs to reconnect');
+        console.log('Access token invalid/expired - attempting refresh');
         
+        // Try to refresh the access token if we have a refresh token
+        if (connection.refreshToken && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+          try {
+            const newAccessToken = await this.refreshAccessToken(connection.refreshToken);
+            
+            // Update the connection in database with new token
+            await storage.updateGA4Connection(campaignId, {
+              accessToken: newAccessToken
+            });
+            
+            console.log('Access token refreshed successfully, retrying GA4 API call');
+            
+            // Retry with new token
+            return await this.getMetricsWithToken(connection.propertyId, newAccessToken, '30daysAgo');
+          } catch (refreshError: any) {
+            console.log('Token refresh failed:', refreshError.message);
+            // Fall through to ask user to reconnect
+          }
+        }
+        
+        console.log('Cannot refresh token - user needs to reconnect');
         const tokenExpiredError = new Error('TOKEN_EXPIRED');
         (tokenExpiredError as any).isTokenExpired = true;
         throw tokenExpiredError;
@@ -118,22 +155,19 @@ export class GoogleAnalytics4Service {
             { name: 'bounceRate' },
             { name: 'averageSessionDuration' },
             { name: 'conversions' },
-            { name: 'totalUsers' },
-          ],
-          dimensions: [
-            { name: 'date' },
+            { name: 'totalUsers' }
           ],
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`GA4 API Error: ${errorData.error?.message || response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`GA4 API Error: ${errorText}`);
       }
 
       const data = await response.json();
 
-      // Process the response and extract metrics
+      // Process the response data
       let totalSessions = 0;
       let totalPageviews = 0;
       let totalUsers = 0;
@@ -187,13 +221,12 @@ export class GoogleAnalytics4Service {
             },
           ],
           metrics: [{ name: 'sessions' }],
-          limit: 1,
         }),
       });
 
       return response.ok;
     } catch (error) {
-      console.error('GA4 connection test failed:', error);
+      console.error('Error testing GA4 connection:', error);
       return false;
     }
   }

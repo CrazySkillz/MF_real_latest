@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { GA4AuthModal } from "@/components/GA4AuthModal";
-import SimpleOAuth from "@/components/SimpleOAuth";
 import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -11,10 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -93,245 +87,179 @@ const platforms = [
 
 function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: DataConnectorsStepProps & { campaignData: CampaignFormData }) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [credentials, setCredentials] = useState<Record<string, { apiKey?: string; secret?: string; propertyId?: string; measurementId?: string }>>({});
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
-  const [showGA4AuthModal, setShowGA4AuthModal] = useState(false);
-  const [ga4ConnectPlatformId, setGA4ConnectPlatformId] = useState<string>('');
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({});
+  const [ga4Properties, setGA4Properties] = useState<Array<{id: string, name: string}>>([]);
+  const [selectedGA4Property, setSelectedGA4Property] = useState<string>('');
+  const [showPropertySelector, setShowPropertySelector] = useState(false);
   const { toast } = useToast();
 
-  const handlePlatformToggle = (platformId: string) => {
-    setSelectedPlatforms(prev => 
-      prev.includes(platformId) 
-        ? prev.filter(id => id !== platformId)
-        : [...prev, platformId]
-    );
-  };
-
-  const handleCredentialChange = (platformId: string, field: string, value: string) => {
-    setCredentials(prev => ({
-      ...prev,
-      [platformId]: {
-        ...prev[platformId],
-        [field]: value
-      }
-    }));
-  };
-
-  const handleGA4Connect = async (platformId: string) => {
-    const creds = credentials[platformId];
-    if (!creds?.propertyId) {
-      toast({
-        title: "Property ID Required",
-        description: "Please enter your GA4 Property ID to connect",
-        variant: "destructive",
-      });
+  const handlePlatformConnect = async (platformId: string) => {
+    if (connectedPlatforms.includes(platformId)) {
+      // Already connected, just toggle selection
+      setSelectedPlatforms(prev => 
+        prev.includes(platformId) 
+          ? prev.filter(id => id !== platformId)
+          : [...prev, platformId]
+      );
       return;
     }
 
-    // Open the GA4 authentication modal
-    setGA4ConnectPlatformId(platformId);
-    setShowGA4AuthModal(true);
-  };
-
-  const handleGA4AuthSubmit = async (accessToken: string) => {
-    const platformId = ga4ConnectPlatformId;
-    const creds = credentials[platformId];
-    
-    if (!creds?.propertyId) return;
-
-    setIsConnecting(true);
-    
-    try {
-      const { ga4Client } = await import('@/lib/ga4-client');
-      
-      // Set the access token
-      ga4Client.setAccessToken(accessToken);
-      
-      // Test the connection with the provided property ID
-      const isValid = await ga4Client.testConnection(creds.propertyId);
-      
-      if (isValid) {
-        setConnectedPlatforms(prev => [...prev, platformId]);
-        if (!selectedPlatforms.includes(platformId)) {
-          setSelectedPlatforms(prev => [...prev, platformId]);
-        }
-        
-        // Store the property ID for later use
-        sessionStorage.setItem('ga4PropertyId', creds.propertyId);
-        sessionStorage.setItem('ga4AccessToken', accessToken);
-        if (creds.measurementId) {
-          sessionStorage.setItem('ga4MeasurementId', creds.measurementId);
-        }
-        
-        setShowGA4AuthModal(false);
-        toast({
-          title: "Google Analytics Connected",
-          description: "Successfully connected to your GA4 property with live data access",
-        });
-      } else {
-        toast({
-          title: "Connection Failed",
-          description: "Unable to access the specified GA4 property. Please check your Property ID and access token.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("GA4 connection error:", error);
+    // Start connection process
+    if (platformId === 'google-analytics') {
+      await handleGA4Connect();
+    } else {
+      // For other platforms, show coming soon message
       toast({
-        title: "Connection Error",
-        description: "Failed to connect to Google Analytics. Please try again.",
-        variant: "destructive",
+        title: "Coming Soon",
+        description: `${platforms.find(p => p.id === platformId)?.name} integration will be available soon.`,
       });
-    } finally {
-      setIsConnecting(false);
     }
   };
 
-  const handleGA4Test = async (platformId: string) => {
-    const creds = credentials[platformId];
-    if (!creds?.propertyId) {
-      toast({
-        title: "Property ID Required",
-        description: "Please enter your GA4 Property ID to test",
-        variant: "destructive",
-      });
-      return;
-    }
 
+  const handleGA4Connect = async () => {
+    setIsConnecting(prev => ({ ...prev, 'google-analytics': true }));
+    
     try {
-      const { ga4Client } = await import('@/lib/ga4-client');
+      // Get OAuth URL from backend
+      const response = await fetch("/api/auth/google/url", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          campaignId: 'temp-campaign-setup',
+          returnUrl: window.location.href 
+        })
+      });
       
-      if (!ga4Client.isSignedIn()) {
+      const data = await response.json();
+      
+      if (data.setup_required) {
+        // Demo mode - show message about needing OAuth setup
         toast({
-          title: "Authentication Required",
-          description: "Please connect to Google Analytics first using the 'Connect & Test GA4' button",
-          variant: "default",
+          title: "OAuth Setup Required",
+          description: "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to Replit secrets for real GA4 integration",
+          duration: 5000,
         });
         return;
       }
-
-      toast({
-        title: "Testing Connection",
-        description: "Verifying access to your GA4 property...",
-      });
-
-      const isValid = await ga4Client.testConnection(creds.propertyId);
       
-      toast({
-        title: isValid ? "Connection Test Passed" : "Connection Test Failed",
-        description: isValid 
-          ? "Successfully connected to your GA4 property" 
-          : "Unable to access the GA4 property. Please check your Property ID and permissions.",
-        variant: isValid ? "default" : "destructive",
-      });
-    } catch (error) {
-      console.error("GA4 test error:", error);
-      toast({
-        title: "Test Failed",
-        description: "Failed to test GA4 connection",
-        variant: "destructive",
-      });
-    }
-  };
+      if (data.oauth_url) {
+        // Open OAuth popup
+        const popup = window.open(
+          data.oauth_url,
+          'ga4-oauth',
+          'width=500,height=600,scrollbars=yes,resizable=yes'
+        );
 
-  const completeGA4Connection = async (ga4Creds: any, accessToken: string, platformId: string) => {
-    try {
-      const response = await fetch("/api/integrations/ga4/connect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          propertyId: ga4Creds.propertyId,
-          measurementId: ga4Creds.measurementId,
-          accessToken: accessToken,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast({
-          title: "Google Analytics Connected",
-          description: "Successfully connected to GA4 with real data access",
-        });
-        
-        // Store access token for later use (in a real app, use secure storage)
-        sessionStorage.setItem('ga4AccessToken', accessToken);
-      } else {
-        toast({
-          title: "Connection Failed",
-          description: data.error || "Failed to connect to GA4",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("GA4 connection completion error:", error);
-      toast({
-        title: "Connection Error",
-        description: "Failed to complete GA4 connection",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleOAuthConnect = async (platformId: string) => {
-    if (platformId === "google-analytics") {
-      try {
-        // Get OAuth URL from backend
-        const response = await fetch("/api/auth/google/url");
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log("OAuth response:", data); // Debug log
-        
-        if (data.setup_required) {
-          // For a seamless experience, simulate the connection immediately
-          // and show a helpful message about setup
-          setConnectedPlatforms(prev => [...prev, platformId]);
-          if (!selectedPlatforms.includes(platformId)) {
-            setSelectedPlatforms(prev => [...prev, platformId]);
+        // Listen for OAuth completion
+        const checkClosed = setInterval(() => {
+          if (popup?.closed) {
+            clearInterval(checkClosed);
+            checkOAuthResult();
           }
+        }, 1000);
+
+        // Listen for OAuth success message
+        const messageHandler = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
           
-          // Show a toast message instead of blocking popup
-          toast({
-            title: "Google Analytics Connected (Demo Mode)",
-            description: "Add GOOGLE_CLIENT_ID to Replit secrets for real OAuth integration",
-            duration: 5000,
-          });
-          return;
-        }
-        
-        if (data.oauth_url) {
-          // Redirect directly to Google OAuth instead of popup
-          // Store the current campaign data in sessionStorage so we can restore it
-          sessionStorage.setItem('pendingCampaign', JSON.stringify({
-            name: campaignData.name,
-            clientWebsite: campaignData.clientWebsite,
-            label: campaignData.label,
-            budget: campaignData.budget,
-            selectedPlatforms,
-            connectedPlatforms,
-            pendingPlatform: platformId
-          }));
-          
-          // Redirect to Google OAuth
-          window.location.href = data.oauth_url;
-        }
-      } catch (error) {
-        console.error("OAuth setup error:", error);
-        alert("Failed to initiate Google OAuth. Please try again.");
+          if (event.data.type === 'GA4_OAUTH_SUCCESS') {
+            popup?.close();
+            clearInterval(checkClosed);
+            window.removeEventListener('message', messageHandler);
+            handleOAuthSuccess(event.data.properties);
+          } else if (event.data.type === 'GA4_OAUTH_ERROR') {
+            popup?.close();
+            clearInterval(checkClosed);
+            window.removeEventListener('message', messageHandler);
+            handleOAuthError(event.data.error);
+          }
+        };
+
+        window.addEventListener('message', messageHandler);
       }
+    } catch (error) {
+      console.error('OAuth setup error:', error);
+      toast({
+        title: "Connection Failed",
+        description: "Failed to start Google Analytics connection. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(prev => ({ ...prev, 'google-analytics': false }));
     }
   };
+
+  const checkOAuthResult = async () => {
+    try {
+      const response = await fetch('/api/ga4/check-connection/temp-campaign-setup');
+      const data = await response.json();
+      
+      if (data.connected && data.properties) {
+        handleOAuthSuccess(data.properties);
+      }
+    } catch (error) {
+      console.error('Failed to check OAuth result:', error);
+    }
+  };
+
+  const handleOAuthSuccess = (properties: Array<{id: string, name: string}>) => {
+    setGA4Properties(properties);
+    setShowPropertySelector(true);
+    
+    toast({
+      title: "Google Analytics Connected!",
+      description: "Please select a GA4 property to start pulling metrics."
+    });
+  };
+
+  const handleOAuthError = (error: string) => {
+    toast({
+      title: "Connection Failed",
+      description: error || "Failed to connect to Google Analytics",
+      variant: "destructive"
+    });
+  };
+
+  const handlePropertySelection = async () => {
+    if (!selectedGA4Property) return;
+
+    try {
+      const response = await fetch('/api/ga4/select-property', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId: 'temp-campaign-setup',
+          propertyId: selectedGA4Property
+        })
+      });
+
+      if (response.ok) {
+        setConnectedPlatforms(prev => [...prev, 'google-analytics']);
+        setSelectedPlatforms(prev => [...prev, 'google-analytics']);
+        setShowPropertySelector(false);
+        
+        toast({
+          title: "Property Connected!",
+          description: "Starting to pull real-time metrics from your GA4 property."
+        });
+      }
+    } catch (error) {
+      console.error('Property selection error:', error);
+      toast({
+        title: "Selection Failed",
+        description: "Failed to connect to the selected property.",
+        variant: "destructive"
+      });
+    }
+  };
+
+
 
   const handleComplete = () => {
     // Get platform names for display
-    const connectedPlatformNames = connectedPlatforms.map(id => {
+    const connectedPlatformNames = selectedPlatforms.map(id => {
       const platform = platforms.find(p => p.id === id);
       return platform ? platform.name : id;
     });
@@ -341,157 +269,122 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
   return (
     <div className="space-y-4">
       <div className="space-y-4">
-        <h4 className="text-sm font-medium">Select platforms to connect:</h4>
+        <div className="text-center mb-6">
+          <h3 className="text-lg font-semibold mb-2">Connect Your Marketing Platforms</h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Connect your marketing platforms to pull real-time metrics and performance data for this campaign.
+          </p>
+        </div>
         
         {platforms.map((platform) => {
           const Icon = platform.icon;
           const isSelected = selectedPlatforms.includes(platform.id);
           const isConnected = connectedPlatforms.includes(platform.id);
+          const platformConnecting = isConnecting[platform.id] || false;
           
           return (
             <div key={platform.id} className="space-y-3">
-              <div className="flex items-center space-x-3 p-3 border rounded-lg">
-                <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={() => handlePlatformToggle(platform.id)}
-                />
-                <Icon className={`w-5 h-5 ${platform.color}`} />
-                <div className="flex-1">
-                  <div className="font-medium flex items-center gap-2">
-                    {platform.name}
-                    {isConnected && <CheckCircle className="w-4 h-4 text-green-500" />}
+              <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
+                <div className="flex items-center space-x-3">
+                  <Icon className={`w-6 h-6 ${platform.color}`} />
+                  <div className="flex-1">
+                    <div className="font-medium flex items-center gap-2">
+                      {platform.name}
+                      {isConnected && <CheckCircle className="w-4 h-4 text-green-500" />}
+                    </div>
+                    <div className="text-sm text-slate-500">{platform.description}</div>
                   </div>
-                  <div className="text-sm text-slate-500">{platform.description}</div>
                 </div>
                 
-
-              </div>
-              
-              {isSelected && platform.type === "credentials" && platform.id !== "google-analytics" && (
-                <div className="ml-8 space-y-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="space-y-2">
-                    <Label htmlFor={`${platform.id}-key`}>API Key</Label>
-                    <Input
-                      id={`${platform.id}-key`}
-                      type="password"
-                      placeholder="Enter your API key"
-                      value={credentials[platform.id]?.apiKey || ""}
-                      onChange={(e) => handleCredentialChange(platform.id, "apiKey", e.target.value)}
+                <div className="flex items-center gap-2">
+                  {isConnected && (
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => handlePlatformConnect(platform.id)}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`${platform.id}-secret`}>API Secret</Label>
-                    <Input
-                      id={`${platform.id}-secret`}
-                      type="password"
-                      placeholder="Enter your API secret"
-                      value={credentials[platform.id]?.secret || ""}
-                      onChange={(e) => handleCredentialChange(platform.id, "secret", e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-              
-              {isSelected && platform.id === "google-analytics" && !isConnected && (
-                <div className="ml-8 space-y-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="ga-property-id">GA4 Property ID *</Label>
-                      <Input
-                        id="ga-property-id"
-                        placeholder="e.g., 123456789"
-                        value={credentials[platform.id]?.propertyId || ""}
-                        onChange={(e) => handleCredentialChange(platform.id, "propertyId", e.target.value)}
-                      />
-                      <div className="text-xs text-slate-500">
-                        Find this in Google Analytics → Admin → Property Settings
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="ga-measurement-id">Measurement ID (optional)</Label>
-                      <Input
-                        id="ga-measurement-id"
-                        placeholder="e.g., G-XXXXXXXXXX"
-                        value={credentials[platform.id]?.measurementId || ""}
-                        onChange={(e) => handleCredentialChange(platform.id, "measurementId", e.target.value)}
-                      />
-                      <div className="text-xs text-slate-500">
-                        Find this in Google Analytics → Admin → Data Streams → Web
-                      </div>
-                    </div>
-                  </div>
+                  )}
                   
-                  <div className="mt-4">
-                    <SimpleOAuth
-                      campaignId="temp-campaign-setup"
-                      onSuccess={() => {
-                        setConnectedPlatforms(prev => [...prev, platform.id]);
-                        if (!selectedPlatforms.includes(platform.id)) {
-                          setSelectedPlatforms(prev => [...prev, platform.id]);
-                        }
-                        toast({
-                          title: "Google Analytics Connected",
-                          description: "Successfully connected with real-time metrics enabled",
-                        });
-                      }}
-                      onError={(error) => {
-                        toast({
-                          title: "Connection Error",
-                          description: error,
-                          variant: "destructive",
-                        });
-                      }}
-                    />
-                  </div>
-                  
-                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
-                      Alternative: Manual Token Method
-                    </div>
-                    <div className="text-xs text-slate-500 mb-3">
-                      For testing only (1-hour sessions)
-                    </div>
+                  {!isConnected && (
                     <Button
-                      type="button"
                       variant="outline"
                       size="sm"
-                      className="w-full"
-                      onClick={() => handleGA4Connect(platform.id)}
-                      disabled={!credentials[platform.id]?.propertyId}
+                      onClick={() => handlePlatformConnect(platform.id)}
+                      disabled={platformConnecting}
                     >
-                      Connect with Manual Token
+                      {platformConnecting ? 'Connecting...' : 'Connect'}
                     </Button>
-                  </div>
+                  )}
                 </div>
-              )}
-              
-              {isSelected && isConnected && (
-                <div className="ml-8 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <div className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    Successfully connected to {platform.name}
-                    {platform.id === "google-analytics" && credentials[platform.id]?.propertyId && (
-                      <span className="text-xs bg-green-100 dark:bg-green-800 px-2 py-1 rounded">
-                        Property: {credentials[platform.id]?.propertyId}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           );
         })}
       </div>
       
-
+      <div className="flex justify-between pt-6 border-t">
+        <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+        <Button 
+          onClick={handleComplete}
+          disabled={selectedPlatforms.length === 0 || isLoading}
+        >
+          Continue with {selectedPlatforms.length} platform{selectedPlatforms.length !== 1 ? 's' : ''}
+        </Button>
+      </div>
       
-      <GA4AuthModal
-        isOpen={showGA4AuthModal}
-        onClose={() => setShowGA4AuthModal(false)}
-        onSubmit={handleGA4AuthSubmit}
-        isLoading={isConnecting}
-      />
+      {/* GA4 Property Selection Modal */}
+      {showPropertySelector && (
+        <Dialog open={showPropertySelector} onOpenChange={setShowPropertySelector}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Select GA4 Property</DialogTitle>
+              <DialogDescription>
+                Choose which Google Analytics property to connect for this campaign
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-3">
+                {ga4Properties.map((property) => (
+                  <label key={property.id} className="flex items-center space-x-3 cursor-pointer p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
+                    <input
+                      type="radio"
+                      name="property"
+                      value={property.id}
+                      checked={selectedGA4Property === property.id}
+                      onChange={(e) => setSelectedGA4Property(e.target.value)}
+                      className="text-blue-600"
+                    />
+                    <div>
+                      <div className="font-medium">{property.name}</div>
+                      <div className="text-sm text-gray-500">ID: {property.id}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowPropertySelector(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handlePropertySelection}
+                  disabled={!selectedGA4Property}
+                  className="flex-1"
+                >
+                  Connect Property
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

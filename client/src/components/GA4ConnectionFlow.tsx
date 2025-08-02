@@ -84,20 +84,12 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         };
 
         window.addEventListener('message', messageHandler);
-      } else if (data.setup_required) {
-        // For SaaS platforms, show helpful message about OAuth configuration
+      } else {
         toast({
-          title: "SaaS OAuth Ready",
-          description: "Your platform is ready for Google Analytics integration. Configure your OAuth credentials to enable real connections.",
-          duration: 5000
+          title: "Setup Required",
+          description: "Please configure Google OAuth credentials to connect to Google Analytics.",
+          variant: "destructive"
         });
-        
-        // Simulate successful connection for demo purposes
-        const mockProperties = [
-          { id: "123456789", name: "Demo Website - GA4" },
-          { id: "987654321", name: "Demo Store - GA4" }
-        ];
-        handleOAuthSuccess(mockProperties);
       }
     } catch (error) {
       console.error('OAuth setup error:', error);

@@ -10,7 +10,6 @@ import Audiences from "@/pages/audiences";
 import Analytics from "@/pages/analytics";
 import Integrations from "@/pages/integrations";
 import GoogleAuthCallback from "@/pages/auth/google-callback";
-import OAuthTest from "@/pages/oauth-test";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -22,7 +21,6 @@ function Router() {
       <Route path="/audiences" component={Audiences} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/integrations" component={Integrations} />
-      <Route path="/oauth-test" component={OAuthTest} />
       <Route path="/auth/google/callback" component={GoogleAuthCallback} />
       <Route component={NotFound} />
     </Switch>

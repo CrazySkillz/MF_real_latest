@@ -6,40 +6,6 @@ import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 
-// Simulate professional platform authentication (like Supermetrics)
-async function simulateProfessionalAuth(email: string, password: string, propertyId: string, campaignId: string) {
-  try {
-    console.log(`Professional auth simulation for ${email}`);
-    
-    if (email.includes('@') && password.length >= 6 && propertyId.match(/^\d+$/)) {
-      console.log(`Storing GA4 connection for campaign ${campaignId}`);
-      
-      const mockConnection = {
-        email,
-        propertyId,
-        connected: true,
-        connectedAt: new Date().toISOString(),
-        tokenType: 'professional_oauth'
-      };
-      
-      (global as any).simpleGA4Connections = (global as any).simpleGA4Connections || new Map();
-      (global as any).simpleGA4Connections.set(campaignId, mockConnection);
-      
-      return { success: true };
-    } else {
-      return { 
-        success: false, 
-        error: "Invalid credentials or property ID format" 
-      };
-    }
-  } catch (error) {
-    console.error('Professional auth simulation error:', error);
-    return { 
-      success: false, 
-      error: "Authentication service temporarily unavailable" 
-    };
-  }
-}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Critical: Ensure API routes are handled before any other middleware
@@ -80,10 +46,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
       
       if (!clientId || !clientSecret) {
-        console.log('Google OAuth credentials not configured. Using demo mode.');
-        return res.json({
-          setup_required: true,
-          message: "Platform OAuth ready for configuration"
+        return res.status(400).json({
+          error: "Google OAuth credentials not configured. Please add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your environment variables."
         });
       }
       
@@ -296,101 +260,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Manual token connection
-  app.post("/api/auth/google/manual-token-connect", async (req, res) => {
-    try {
-      const { campaignId, accessToken, refreshToken, propertyId } = req.body;
-      
-      if (!campaignId || !accessToken || !propertyId) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Campaign ID, access token, and property ID are required" 
-        });
-      }
 
-      // Store the manual token connection
-      (global as any).realGA4Connections = (global as any).realGA4Connections || new Map();
-      (global as any).realGA4Connections.set(campaignId, {
-        propertyId,
-        accessToken,
-        refreshToken: refreshToken || null,
-        connectedAt: new Date().toISOString(),
-        isReal: true,
-        method: 'manual_token',
-        propertyName: `Property ${propertyId}`
-      });
 
-      res.json({
-        success: true,
-        method: 'manual_token',
-        propertyId,
-        message: 'Successfully connected with manual token'
-      });
-    } catch (error) {
-      console.error('Manual token connection error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to connect with manual token'
-      });
-    }
-  });
-
-  // Service account connection
-  app.post("/api/auth/google/service-account-connect", async (req, res) => {
-    try {
-      const { campaignId, propertyId, serviceAccountKey } = req.body;
-      
-      if (!campaignId || !propertyId || !serviceAccountKey) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Campaign ID, property ID, and service account key are required" 
-        });
-      }
-
-      // For now, simulate service account connection
-      res.json({
-        success: true,
-        message: 'Service account connection requires additional setup',
-        requiresSetup: true,
-        method: 'service_account'
-      });
-    } catch (error) {
-      console.error('Service account connection error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to connect with service account'
-      });
-    }
-  });
-
-  // Simple credentials connection
-  app.post("/api/auth/google/simple-connect", async (req, res) => {
-    try {
-      const { campaignId, email, password, propertyId } = req.body;
-      
-      if (!campaignId || !email || !password || !propertyId) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "All fields are required" 
-        });
-      }
-
-      const result = await simulateProfessionalAuth(email, password, propertyId, campaignId);
-      
-      res.json({
-        success: result.success,
-        email: email,
-        propertyId: propertyId,
-        error: result.error
-      });
-    } catch (error) {
-      console.error('Simple credentials connection error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to connect with credentials'
-      });
-    }
-  });
 
   const server = createServer(app);
   return server;

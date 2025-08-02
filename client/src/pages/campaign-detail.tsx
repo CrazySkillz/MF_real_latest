@@ -318,91 +318,65 @@ export default function CampaignDetail() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              {platformMetrics.map((platform) => {
-                const CardWrapper = ({ children }: { children: React.ReactNode }) => {
-                  if (platform.platform === "Google Analytics" && platform.connected) {
-                    return (
-                      <Link href={`/campaigns/${campaign.id}/analytics`}>
-                        <Card className={`cursor-pointer hover:shadow-md transition-shadow ${platform.connected ? "border-green-200 dark:border-green-800" : ""}`}>
-                          {children}
-                        </Card>
-                      </Link>
-                    );
-                  }
-                  return (
-                    <Card className={platform.connected ? "border-green-200 dark:border-green-800" : ""}>
-                      {children}
-                    </Card>
-                  );
-                };
-
-                return (
-                  <CardWrapper key={platform.platform}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          {getPlatformIcon(platform.platform)}
-                          <div>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              {platform.platform}
-                              {platform.platform === "Google Analytics" && platform.connected && (
-                                <span className="text-sm text-blue-600 dark:text-blue-400 font-normal">
-                                  (Click for details)
-                                </span>
-                              )}
-                            </CardTitle>
-                            <CardDescription>
-                              {platform.connected ? "Connected & syncing data" : "Not connected"}
-                            </CardDescription>
-                          </div>
+              {platformMetrics.map((platform) => (
+                <Card key={platform.platform} className={platform.connected ? "border-green-200 dark:border-green-800" : ""}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        {getPlatformIcon(platform.platform)}
+                        <div>
+                          <CardTitle className="text-lg">{platform.platform}</CardTitle>
+                          <CardDescription>
+                            {platform.connected ? "Connected & syncing data" : "Not connected"}
+                          </CardDescription>
                         </div>
-                        <Badge variant={platform.connected ? "default" : "secondary"}>
-                          {platform.connected ? "Connected" : "Not Connected"}
-                        </Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      {platform.connected ? (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">Impressions</p>
-                            <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatNumber(platform.impressions)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">Clicks</p>
-                            <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatNumber(platform.clicks)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">CTR</p>
-                            <p className="text-lg font-semibold text-slate-900 dark:text-white">{platform.ctr}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">Spend</p>
-                            <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatCurrency(platform.spend)}</p>
-                          </div>
+                      <Badge variant={platform.connected ? "default" : "secondary"}>
+                        {platform.connected ? "Connected" : "Not Connected"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {platform.connected ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Impressions</p>
+                          <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatNumber(platform.impressions)}</p>
                         </div>
-                      ) : (
-                        <div className="text-center py-4">
-                          <p className="text-slate-500 dark:text-slate-400 mb-3">Connect this platform to view metrics</p>
-                          {platform.platform === "Google Analytics" ? (
-                            <GA4ConnectionFlow 
-                              campaignId={campaign.id} 
-                              onConnectionSuccess={() => {
-                                // Refresh data after connection
-                                window.location.reload();
-                              }}
-                            />
-                          ) : (
-                            <Button variant="outline" size="sm">
-                              Connect Platform
-                            </Button>
-                          )}
+                        <div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Clicks</p>
+                          <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatNumber(platform.clicks)}</p>
                         </div>
-                      )}
-                    </CardContent>
-                  </CardWrapper>
-                );
-              })}
+                        <div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">CTR</p>
+                          <p className="text-lg font-semibold text-slate-900 dark:text-white">{platform.ctr}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Spend</p>
+                          <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatCurrency(platform.spend)}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-slate-500 dark:text-slate-400 mb-3">Connect this platform to view metrics</p>
+                        {platform.platform === "Google Analytics" ? (
+                          <GA4ConnectionFlow 
+                            campaignId={campaign.id} 
+                            onConnectionSuccess={() => {
+                              // Refresh data after connection
+                              window.location.reload();
+                            }}
+                          />
+                        ) : (
+                          <Button variant="outline" size="sm">
+                            Connect Platform
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
         </main>

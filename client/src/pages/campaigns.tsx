@@ -95,6 +95,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
   const [selectedGA4Property, setSelectedGA4Property] = useState<string>('');
   const [showPropertySelector, setShowPropertySelector] = useState(false);
   const [ga4AccessToken, setGA4AccessToken] = useState<string>('');
+  const [ga4RefreshToken, setGA4RefreshToken] = useState<string>('');
   const { toast } = useToast();
 
   const handlePlatformConnect = async (platformId: string) => {
@@ -140,7 +141,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           propertyId: selectedGA4Property,
-          accessToken: ga4AccessToken
+          accessToken: ga4AccessToken,
+          refreshToken: ga4RefreshToken || null
         })
       });
       
@@ -152,7 +154,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
         
         toast({
           title: "Real GA4 Connection Successful!",
-          description: `Connected to ${data.propertyName || 'your GA4 property'} with live data access`,
+          description: `Connected to ${data.propertyName || 'your GA4 property'} - ${data.tokenStatus}`,
         });
       } else {
         toast({
@@ -387,9 +389,9 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
               
               {platform.id === 'google-analytics' && !isConnected && (
                 <div className="ml-8 mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-3">Test with Real GA4 Data</h4>
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-3">Connect Real GA4 Data</h4>
                   <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-                    Enter your Google Analytics credentials to test with real data from your GA4 property.
+                    Connect your Google Analytics account to pull real-time metrics. Supports automatic token refresh for production deployment.
                   </p>
                   
                   <div className="space-y-3">
@@ -416,7 +418,21 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                         onChange={(e) => setGA4AccessToken(e.target.value)}
                       />
                       <p className="text-xs text-slate-500 mt-1">
-                        Get from: <a href="https://developers.google.com/oauthplayground" target="_blank" className="text-blue-600 hover:underline">OAuth 2.0 Playground</a>
+                        Generate from: <a href="https://developers.google.com/oauthplayground" target="_blank" className="text-blue-600 hover:underline">OAuth 2.0 Playground</a> (select Google Analytics Data API)
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="ga4-refresh-token" className="text-sm font-medium">Refresh Token (optional)</Label>
+                      <Input
+                        id="ga4-refresh-token"
+                        type="password"
+                        placeholder="Refresh token for auto-renewal"
+                        className="mt-1"
+                        onChange={(e) => setGA4RefreshToken(e.target.value)}
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        ✨ Enables automatic token refresh - prevents 1-hour expiration for production deployments
                       </p>
                     </div>
                     

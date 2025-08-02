@@ -59,27 +59,23 @@ export class GoogleAnalytics4Service {
 
     let accessToken = connection.accessToken;
     
-    // Try with current token first
+    // Try with current token
     try {
       return await this.getMetricsWithToken(connection.propertyId, accessToken!, '30daysAgo');
     } catch (error: any) {
-      // If token expired and we have refresh token, try to refresh
-      if (error.message.includes('invalid_grant') || error.message.includes('401') || error.message.includes('403')) {
-        if (connection.refreshToken) {
-          console.log('Access token expired, refreshing...');
-          const newToken = await this.refreshAccessToken(connection.refreshToken);
-          
-          if (newToken) {
-            // Update stored token
-            await storage.updateGA4Connection(campaignId, {
-              accessToken: newToken.access_token
-            });
-            
-            // Retry with new token
-            return await this.getMetricsWithToken(connection.propertyId, newToken.access_token, '30daysAgo');
-          }
-        }
-        throw new Error('GA4 token expired and refresh failed. Please reconnect your Google Analytics.');
+      // If token expired, provide user-friendly error for reconnection
+      if (error.message.includes('invalid_grant') || 
+          error.message.includes('401') || 
+          error.message.includes('403') ||
+          error.message.includes('invalid authentication credentials') ||
+          error.message.includes('Request had invalid authentication credentials')) {
+        
+        // Mark connection as expired for UI to handle
+        await storage.updateGA4Connection(campaignId, {
+          accessToken: null // Clear expired token
+        });
+        
+        throw new Error('TOKEN_EXPIRED');
       }
       throw error;
     }

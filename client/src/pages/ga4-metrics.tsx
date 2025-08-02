@@ -59,6 +59,12 @@ export default function GA4Metrics() {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Handle token expiration specifically
+        if (errorData.error === 'TOKEN_EXPIRED' && errorData.requiresReconnection) {
+          throw new Error('TOKEN_EXPIRED');
+        }
+        
         throw new Error(errorData.error || 'Failed to fetch GA4 metrics');
       }
       const data = await response.json();
@@ -248,16 +254,36 @@ export default function GA4Metrics() {
               ))}
             </div>
           ) : ga4Error ? (
-            <Card className="mb-8">
-              <CardContent className="text-center py-12">
-                <BarChart3 className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load Metrics</h3>
-                <p className="text-slate-500 dark:text-slate-400 mb-4">{ga4Error.message}</p>
-                <Button onClick={() => window.location.reload()}>
-                  Try Again
-                </Button>
-              </CardContent>
-            </Card>
+            ga4Error.message === 'TOKEN_EXPIRED' ? (
+              <Card className="mb-8">
+                <CardContent className="text-center py-12">
+                  <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-6">
+                    <SiGoogle className="w-8 h-8 text-orange-500" />
+                  </div>
+                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Google Analytics Access Expired</h3>
+                  <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-md mx-auto">
+                    Your Google Analytics access has expired. Please reconnect to continue viewing your metrics.
+                  </p>
+                  <GA4ConnectionFlow 
+                    campaignId={campaign.id}
+                    onConnectionSuccess={() => {
+                      window.location.reload();
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="mb-8">
+                <CardContent className="text-center py-12">
+                  <BarChart3 className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load Metrics</h3>
+                  <p className="text-slate-500 dark:text-slate-400 mb-4">{ga4Error.message}</p>
+                  <Button onClick={() => window.location.reload()}>
+                    Try Again
+                  </Button>
+                </CardContent>
+              </Card>
+            )
           ) : (
             <>
               {/* Key Metrics */}

@@ -84,9 +84,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error('GA4 metrics error:', error);
-      res.status(500).json({ 
-        error: error instanceof Error ? error.message : 'Failed to fetch GA4 metrics' 
-      });
+      
+      // Handle token expiration gracefully
+      if (error instanceof Error && error.message === 'TOKEN_EXPIRED') {
+        res.status(401).json({ 
+          error: 'TOKEN_EXPIRED',
+          message: 'Your Google Analytics access has expired. Please reconnect to continue viewing metrics.',
+          requiresReconnection: true
+        });
+      } else {
+        res.status(500).json({ 
+          error: error instanceof Error ? error.message : 'Failed to fetch GA4 metrics' 
+        });
+      }
     }
   });
 

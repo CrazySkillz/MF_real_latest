@@ -49,11 +49,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      if (connection.method === 'access_token' && connection.accessToken) {
-        const metrics = await ga4Service.getMetricsWithToken(
-          connection.propertyId, 
-          connection.accessToken
-        );
+      if (connection.method === 'access_token') {
+        // Use auto-refresh method that handles token expiration
+        const metrics = await ga4Service.getMetricsWithAutoRefresh(campaignId, storage);
         
         res.json({
           success: true,

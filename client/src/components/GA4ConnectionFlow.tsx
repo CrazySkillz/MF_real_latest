@@ -239,7 +239,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   onChange={(e) => setRefreshToken(e.target.value)}
                 />
                 <p className="text-xs text-gray-500">
-                  For automatic token renewal
+                  <strong>Highly recommended:</strong> Enables automatic token renewal so connection never expires
                 </p>
               </div>
               

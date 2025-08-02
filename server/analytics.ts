@@ -20,6 +20,71 @@ export class GoogleAnalytics4Service {
     return this.getMetrics(credentials, accessToken, dateRange);
   }
 
+  async refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
+    try {
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID || '',
+          client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token'
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Token refresh failed:', await response.text());
+        return null;
+      }
+
+      const data = await response.json();
+      return {
+        access_token: data.access_token,
+        expires_in: data.expires_in || 3600
+      };
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      return null;
+    }
+  }
+
+  async getMetricsWithAutoRefresh(campaignId: string, storage: any): Promise<GA4Metrics> {
+    const connection = await storage.getGA4Connection(campaignId);
+    if (!connection || connection.method !== 'access_token') {
+      throw new Error('No valid access token connection found');
+    }
+
+    let accessToken = connection.accessToken;
+    
+    // Try with current token first
+    try {
+      return await this.getMetricsWithToken(connection.propertyId, accessToken!, '30daysAgo');
+    } catch (error: any) {
+      // If token expired and we have refresh token, try to refresh
+      if (error.message.includes('invalid_grant') || error.message.includes('401') || error.message.includes('403')) {
+        if (connection.refreshToken) {
+          console.log('Access token expired, refreshing...');
+          const newToken = await this.refreshAccessToken(connection.refreshToken);
+          
+          if (newToken) {
+            // Update stored token
+            await storage.updateGA4Connection(campaignId, {
+              accessToken: newToken.access_token
+            });
+            
+            // Retry with new token
+            return await this.getMetricsWithToken(connection.propertyId, newToken.access_token, '30daysAgo');
+          }
+        }
+        throw new Error('GA4 token expired and refresh failed. Please reconnect your Google Analytics.');
+      }
+      throw error;
+    }
+  }
+
   async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = '30daysAgo'): Promise<GA4Metrics> {
     try {
       // Use Google Analytics Data API REST endpoint with user's access token

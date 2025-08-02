@@ -125,74 +125,52 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
 
 
   const handleGA4Connect = async () => {
+    if (!selectedGA4Property || !ga4AccessToken) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide both GA4 Property ID and Access Token.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsConnecting(prev => ({ ...prev, 'google-analytics': true }));
     
     try {
-      // For demo OAuth flow
-      const response = await fetch("/api/auth/google/url", {
+      const response = await fetch('/api/ga4/connect-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          campaignId: 'temp-campaign-setup'
+        body: JSON.stringify({
+          campaignId: 'temp-campaign-setup',
+          accessToken: ga4AccessToken,
+          refreshToken: ga4RefreshToken,
+          propertyId: selectedGA4Property
         })
       });
       
       const data = await response.json();
       
-      if (data.setup_required) {
-        // Demo mode - simulate successful connection for now
+      if (data.success) {
         setConnectedPlatforms(prev => [...prev, 'google-analytics']);
         setSelectedPlatforms(prev => [...prev, 'google-analytics']);
         
         toast({
-          title: "Google Analytics Connected (Demo)",
-          description: "Demo connection established. Real OAuth integration coming soon.",
-          duration: 5000,
+          title: "GA4 Connected!",
+          description: "Successfully connected! Your real Google Analytics data will be available."
         });
-        return;
-      }
-      
-      if (data.oauth_url) {
-        // Open OAuth popup
-        const popup = window.open(
-          data.oauth_url,
-          'ga4-oauth',
-          'width=500,height=600,scrollbars=yes,resizable=yes'
-        );
-
-        // Listen for OAuth completion
-        const checkClosed = setInterval(() => {
-          if (popup?.closed) {
-            clearInterval(checkClosed);
-            checkOAuthResult();
-          }
-        }, 1000);
-
-        // Listen for OAuth success message
-        const messageHandler = (event: MessageEvent) => {
-          if (event.origin !== window.location.origin) return;
-          
-          if (event.data.type === 'GA4_OAUTH_SUCCESS') {
-            popup?.close();
-            clearInterval(checkClosed);
-            window.removeEventListener('message', messageHandler);
-            handleOAuthSuccess(event.data.properties);
-          } else if (event.data.type === 'GA4_OAUTH_ERROR') {
-            popup?.close();
-            clearInterval(checkClosed);
-            window.removeEventListener('message', messageHandler);
-            handleOAuthError(event.data.error);
-          }
-        };
-
-        window.addEventListener('message', messageHandler);
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: data.error || "Failed to connect with provided credentials.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
-      console.error('OAuth setup error:', error);
+      console.error('GA4 connection error:', error);
       toast({
         title: "Connection Failed",
-        description: "Failed to start Google Analytics connection. Please try again.",
-        variant: "destructive",
+        description: "Failed to connect to Google Analytics. Please check your credentials.",
+        variant: "destructive"
       });
     } finally {
       setIsConnecting(prev => ({ ...prev, 'google-analytics': false }));
@@ -316,8 +294,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handlePlatformConnect(platform.id)}
-                      disabled={platformConnecting}
+                      onClick={() => handleGA4Connect()}
+                      disabled={platformConnecting || !selectedGA4Property || !ga4AccessToken}
                     >
                       {platformConnecting ? 'Connecting...' : 'Connect'}
                     </Button>

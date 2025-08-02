@@ -251,22 +251,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check OAuth connection status
+  // Check GA4 connection status (checks actual database storage)
   app.get("/api/ga4/check-connection/:campaignId", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
-      const connections = (global as any).oauthConnections;
       
-      if (!connections || !connections.has(campaignId)) {
-        return res.json({ connected: false });
+      // Check if there's a GA4 connection in the database
+      const ga4Connection = await storage.getGA4Connection(campaignId);
+      
+      if (ga4Connection) {
+        return res.json({
+          connected: true,
+          propertyId: ga4Connection.propertyId,
+          propertyName: ga4Connection.propertyName,
+          method: ga4Connection.method,
+          connectedAt: ga4Connection.connectedAt
+        });
+      }
+
+      // Fallback: check temporary OAuth connections for backward compatibility
+      const connections = (global as any).oauthConnections;
+      if (connections && connections.has(campaignId)) {
+        const connection = connections.get(campaignId);
+        return res.json({
+          connected: true,
+          properties: connection.properties || [],
+          user: connection.userInfo
+        });
       }
       
-      const connection = connections.get(campaignId);
-      res.json({
-        connected: true,
-        properties: connection.properties || [],
-        user: connection.userInfo
-      });
+      res.json({ connected: false });
     } catch (error) {
       console.error('Connection check error:', error);
       res.status(500).json({ error: 'Failed to check connection status' });

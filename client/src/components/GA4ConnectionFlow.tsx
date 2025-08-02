@@ -30,6 +30,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const { toast } = useToast();
 
   const handleTokenConnect = async () => {
+    console.log('GA4 Connect button clicked!', { campaignId, accessToken: accessToken.substring(0, 10) + '...', propertyId });
+    
     if (!accessToken || !propertyId) {
       toast({
         title: "Missing Information",
@@ -42,6 +44,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     setIsConnecting(true);
     
     try {
+      console.log('Making GA4 connection request...');
       const response = await fetch('/api/ga4/connect-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -53,7 +56,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         })
       });
       
+      console.log('GA4 response received:', response.status);
       const data = await response.json();
+      console.log('GA4 response data:', data);
 
       if (data.success) {
         setConnectionStep('connected');

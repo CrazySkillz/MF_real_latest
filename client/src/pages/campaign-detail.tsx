@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useRoute } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign } from "lucide-react";
 import { Link } from "wouter";
@@ -159,6 +160,9 @@ export default function CampaignDetail() {
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
   };
+
+  // Add state for managing GA4 connection dialog
+  const [showGA4Connection, setShowGA4Connection] = useState<string | null>(null);
 
   if (campaignLoading) {
     return (
@@ -346,9 +350,19 @@ export default function CampaignDetail() {
                     ) : (
                       <div className="text-center py-4">
                         <p className="text-slate-500 dark:text-slate-400 mb-3">Connect this platform to view metrics</p>
-                        <Button variant="outline" size="sm">
-                          Connect Platform
-                        </Button>
+                        {platform.platform === "Google Analytics" ? (
+                          <GA4ConnectionFlow 
+                            campaignId={campaign.id} 
+                            onConnectionSuccess={() => {
+                              // Refresh data after connection
+                              window.location.reload();
+                            }}
+                          />
+                        ) : (
+                          <Button variant="outline" size="sm">
+                            Connect Platform
+                          </Button>
+                        )}
                       </div>
                     )}
                   </CardContent>

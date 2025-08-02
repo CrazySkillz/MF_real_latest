@@ -169,7 +169,13 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const ga4Connection: GA4Connection = {
       id,
-      ...connection,
+      campaignId: connection.campaignId,
+      propertyId: connection.propertyId,
+      accessToken: connection.accessToken || null,
+      refreshToken: connection.refreshToken || null,
+      serviceAccountKey: connection.serviceAccountKey || null,
+      method: connection.method,
+      propertyName: connection.propertyName || null,
       connectedAt: new Date(),
       createdAt: new Date(),
     };

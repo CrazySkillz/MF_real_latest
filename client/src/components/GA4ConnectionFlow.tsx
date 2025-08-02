@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { ExternalLink, BarChart3, Users, MousePointer, TrendingUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BarChart3, Users, MousePointer, TrendingUp, Key, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -20,131 +22,34 @@ interface GA4Property {
 export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4ConnectionFlowProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [properties, setProperties] = useState<GA4Property[]>([]);
-  const [selectedProperty, setSelectedProperty] = useState<string>('');
-  const [connectionStep, setConnectionStep] = useState<'connect' | 'select-property' | 'connected'>('connect');
+  const [connectionStep, setConnectionStep] = useState<'connect' | 'connected'>('connect');
+  const [accessToken, setAccessToken] = useState('');
+  const [refreshToken, setRefreshToken] = useState('');
+  const [propertyId, setPropertyId] = useState('');
+  const [serviceAccountKey, setServiceAccountKey] = useState('');
   const { toast } = useToast();
 
-  const handleConnectGA4 = async () => {
+  const handleTokenConnect = async () => {
+    if (!accessToken || !propertyId) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide both access token and property ID.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsConnecting(true);
     
     try {
-      // Start OAuth flow through SaaS platform
-      const response = await fetch('/api/auth/google/url', {
+      const response = await fetch('/api/ga4/connect-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId,
-          returnUrl: window.location.href
-        })
-      });
-      
-      const data = await response.json();
-
-      if (data.oauth_url) {
-        // Open OAuth popup with Google's OAuth flow
-        const popup = window.open(
-          data.oauth_url,
-          'ga4-oauth',
-          'width=500,height=600,scrollbars=yes,resizable=yes'
-        );
-
-        if (!popup) {
-          toast({
-            title: "Popup Blocked",
-            description: "Please allow popups for this site to connect to Google Analytics.",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        // Listen for OAuth completion
-        const checkClosed = setInterval(() => {
-          if (popup?.closed) {
-            clearInterval(checkClosed);
-            checkOAuthResult();
-          }
-        }, 1000);
-
-        // Listen for OAuth success message from popup
-        const messageHandler = (event: MessageEvent) => {
-          if (event.origin !== window.location.origin) return;
-          
-          if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-            popup?.close();
-            clearInterval(checkClosed);
-            window.removeEventListener('message', messageHandler);
-            handleOAuthSuccess(event.data.data.properties);
-          } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
-            popup?.close();
-            clearInterval(checkClosed);
-            window.removeEventListener('message', messageHandler);
-            handleOAuthError(event.data.error);
-          }
-        };
-
-        window.addEventListener('message', messageHandler);
-      } else {
-        toast({
-          title: "Setup Required",
-          description: "Please configure Google OAuth credentials to connect to Google Analytics.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('OAuth setup error:', error);
-      toast({
-        title: "Connection Failed",
-        description: "Failed to start Google Analytics connection. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  const checkOAuthResult = async () => {
-    try {
-      const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
-      const data = await response.json();
-      
-      if (data.connected && data.properties) {
-        handleOAuthSuccess(data.properties);
-      }
-    } catch (error) {
-      console.error('Failed to check OAuth result:', error);
-    }
-  };
-
-  const handleOAuthSuccess = (availableProperties: GA4Property[]) => {
-    setProperties(availableProperties);
-    setIsConnected(true);
-    setConnectionStep('select-property');
-    
-    toast({
-      title: "Google Analytics Connected!",
-      description: "Please select a GA4 property to start pulling metrics."
-    });
-  };
-
-  const handleOAuthError = (error: string) => {
-    toast({
-      title: "Connection Failed",
-      description: error || "Failed to connect to Google Analytics",
-      variant: "destructive"
-    });
-  };
-
-  const handlePropertySelection = async () => {
-    if (!selectedProperty) return;
-
-    try {
-      const response = await fetch('/api/ga4/select-property', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId,
-          propertyId: selectedProperty
+          accessToken,
+          refreshToken,
+          propertyId
         })
       });
       
@@ -153,21 +58,80 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       if (data.success) {
         setConnectionStep('connected');
         onConnectionSuccess?.();
-        
         toast({
-          title: "Property Connected!",
-          description: "Your SaaS platform will now pull real-time metrics from your GA4 property."
+          title: "GA4 Connected!",
+          description: "Successfully connected to your Google Analytics property."
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: data.error || "Failed to connect with provided credentials.",
+          variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('Property selection error:', error);
+      console.error('Token connection error:', error);
       toast({
-        title: "Selection Failed",
-        description: "Failed to connect to the selected property.",
+        title: "Connection Failed",
+        description: "Failed to connect to Google Analytics. Please check your credentials.",
         variant: "destructive"
       });
+    } finally {
+      setIsConnecting(false);
     }
   };
+
+  const handleServiceAccountConnect = async () => {
+    if (!serviceAccountKey || !propertyId) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide both service account key and property ID.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsConnecting(true);
+    
+    try {
+      const response = await fetch('/api/ga4/connect-service-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          serviceAccountKey,
+          propertyId
+        })
+      });
+      
+      const data = await response.json();
+
+      if (data.success) {
+        setConnectionStep('connected');
+        onConnectionSuccess?.();
+        toast({
+          title: "GA4 Connected!",
+          description: "Successfully connected using service account."
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: data.error || "Failed to connect with service account.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Service account connection error:', error);
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect to Google Analytics. Please check your service account key.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
 
   if (connectionStep === 'connected') {
     return (
@@ -201,92 +165,119 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     );
   }
 
-  if (connectionStep === 'select-property') {
-    return (
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Select GA4 Property</CardTitle>
-          <CardDescription>
-            Choose which Google Analytics property to connect for this campaign
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            {properties.map((property) => (
-              <label key={property.id} className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="property"
-                  value={property.id}
-                  checked={selectedProperty === property.id}
-                  onChange={(e) => setSelectedProperty(e.target.value)}
-                  className="text-blue-600"
-                />
-                <div>
-                  <div className="font-medium">{property.name}</div>
-                  <div className="text-sm text-gray-500">ID: {property.id}</div>
-                </div>
-              </label>
-            ))}
-          </div>
-          
-          <Button 
-            onClick={handlePropertySelection}
-            disabled={!selectedProperty}
-            className="w-full"
-          >
-            Connect Property
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-2xl">
       <CardHeader className="text-center">
         <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
           <BarChart3 className="w-6 h-6 text-blue-600" />
         </div>
-        <CardTitle>Connect Google Analytics</CardTitle>
+        <CardTitle>Connect Google Analytics 4</CardTitle>
         <CardDescription>
           Connect your GA4 property to pull real-time metrics and performance data
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              Real-time
-            </Badge>
-            <span className="text-sm">Live sessions & pageviews</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              Authentic
-            </Badge>
-            <span className="text-sm">Direct from Google Analytics</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-              Secure
-            </Badge>
-            <span className="text-sm">OAuth 2.0 authentication</span>
-          </div>
-        </div>
-
-        <Button 
-          onClick={handleConnectGA4}
-          disabled={isConnecting}
-          className="w-full"
-        >
-          {isConnecting ? 'Connecting...' : 'Connect Google Analytics'}
-          <ExternalLink className="w-4 h-4 ml-2" />
-        </Button>
-        
-        <p className="text-xs text-gray-500 text-center">
-          You'll be redirected to Google to authorize access to your Analytics data
-        </p>
+      <CardContent>
+        <Tabs defaultValue="access-token" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="access-token" className="flex items-center gap-2">
+              <Key className="w-4 h-4" />
+              Access Token
+            </TabsTrigger>
+            <TabsTrigger value="service-account" className="flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              Service Account
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="access-token" className="space-y-4 mt-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="property-id">GA4 Property ID *</Label>
+                <Input
+                  id="property-id"
+                  placeholder="123456789"
+                  value={propertyId}
+                  onChange={(e) => setPropertyId(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">
+                  Find this in GA4: Admin → Property Settings → Property ID
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="access-token">Access Token *</Label>
+                <Textarea
+                  id="access-token"
+                  placeholder="ya29.a0..."
+                  value={accessToken}
+                  onChange={(e) => setAccessToken(e.target.value)}
+                  rows={3}
+                />
+                <p className="text-xs text-gray-500">
+                  Get from Google Cloud Console or OAuth Playground
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="refresh-token">Refresh Token (Optional)</Label>
+                <Input
+                  id="refresh-token"
+                  placeholder="1//04..."
+                  value={refreshToken}
+                  onChange={(e) => setRefreshToken(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">
+                  For automatic token renewal
+                </p>
+              </div>
+              
+              <Button 
+                onClick={handleTokenConnect}
+                disabled={isConnecting}
+                className="w-full"
+              >
+                {isConnecting ? 'Connecting...' : 'Connect with Access Token'}
+              </Button>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="service-account" className="space-y-4 mt-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="sa-property-id">GA4 Property ID *</Label>
+                <Input
+                  id="sa-property-id"
+                  placeholder="123456789"
+                  value={propertyId}
+                  onChange={(e) => setPropertyId(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="service-account">Service Account JSON *</Label>
+                <Textarea
+                  id="service-account"
+                  placeholder='{"type": "service_account", "project_id": "...", ...}'
+                  value={serviceAccountKey}
+                  onChange={(e) => setServiceAccountKey(e.target.value)}
+                  rows={6}
+                />
+                <p className="text-xs text-gray-500">
+                  Paste your service account JSON key from Google Cloud Console
+                </p>
+              </div>
+              
+              <Button 
+                onClick={handleServiceAccountConnect}
+                disabled={isConnecting}
+                className="w-full"
+              >
+                {isConnecting ? 'Connecting...' : 'Connect with Service Account'}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

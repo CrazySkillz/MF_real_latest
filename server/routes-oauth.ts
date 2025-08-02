@@ -263,6 +263,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Manual GA4 token connection for users
+  app.post("/api/ga4/connect-token", async (req, res) => {
+    try {
+      const { campaignId, accessToken, refreshToken, propertyId } = req.body;
+      
+      if (!campaignId || !accessToken || !propertyId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Campaign ID, access token, and property ID are required" 
+        });
+      }
+
+      // Store the user's GA4 connection
+      (global as any).userGA4Connections = (global as any).userGA4Connections || new Map();
+      (global as any).userGA4Connections.set(campaignId, {
+        propertyId,
+        accessToken,
+        refreshToken: refreshToken || null,
+        connectedAt: new Date().toISOString(),
+        method: 'access_token',
+        propertyName: `GA4 Property ${propertyId}`
+      });
+
+      res.json({
+        success: true,
+        method: 'access_token',
+        propertyId,
+        message: 'Successfully connected with access token'
+      });
+    } catch (error) {
+      console.error('GA4 token connection error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to connect with access token'
+      });
+    }
+  });
+
+  // Service account GA4 connection for users
+  app.post("/api/ga4/connect-service-account", async (req, res) => {
+    try {
+      const { campaignId, serviceAccountKey, propertyId } = req.body;
+      
+      if (!campaignId || !serviceAccountKey || !propertyId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Campaign ID, service account key, and property ID are required" 
+        });
+      }
+
+      // Validate JSON format
+      let parsedKey;
+      try {
+        parsedKey = JSON.parse(serviceAccountKey);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid JSON format for service account key"
+        });
+      }
+
+      // Store the user's GA4 service account connection
+      (global as any).userGA4Connections = (global as any).userGA4Connections || new Map();
+      (global as any).userGA4Connections.set(campaignId, {
+        propertyId,
+        serviceAccountKey: parsedKey,
+        connectedAt: new Date().toISOString(),
+        method: 'service_account',
+        propertyName: `GA4 Property ${propertyId}`
+      });
+
+      res.json({
+        success: true,
+        method: 'service_account',
+        propertyId,
+        message: 'Successfully connected with service account'
+      });
+    } catch (error) {
+      console.error('GA4 service account connection error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to connect with service account'
+      });
+    }
+  });
+
   const server = createServer(app);
   return server;
 }

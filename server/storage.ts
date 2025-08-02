@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -21,6 +21,12 @@ export interface IStorage {
   // Performance Data
   getPerformanceData(): Promise<PerformanceData[]>;
   createPerformanceData(data: InsertPerformanceData): Promise<PerformanceData>;
+  
+  // GA4 Connections
+  getGA4Connection(campaignId: string): Promise<GA4Connection | undefined>;
+  createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection>;
+  updateGA4Connection(campaignId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined>;
+  deleteGA4Connection(campaignId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -28,12 +34,14 @@ export class MemStorage implements IStorage {
   private metrics: Map<string, Metric>;
   private integrations: Map<string, Integration>;
   private performanceData: Map<string, PerformanceData>;
+  private ga4Connections: Map<string, GA4Connection>;
 
   constructor() {
     this.campaigns = new Map();
     this.metrics = new Map();
     this.integrations = new Map();
     this.performanceData = new Map();
+    this.ga4Connections = new Map();
     
     // Initialize with empty data - no mock data
     this.initializeEmptyData();
@@ -150,6 +158,41 @@ export class MemStorage implements IStorage {
     const data: PerformanceData = { ...insertData, id };
     this.performanceData.set(id, data);
     return data;
+  }
+
+  // GA4 Connection methods
+  async getGA4Connection(campaignId: string): Promise<GA4Connection | undefined> {
+    return this.ga4Connections.get(campaignId);
+  }
+
+  async createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection> {
+    const id = randomUUID();
+    const ga4Connection: GA4Connection = {
+      id,
+      ...connection,
+      connectedAt: new Date(),
+      createdAt: new Date(),
+    };
+    
+    this.ga4Connections.set(connection.campaignId, ga4Connection);
+    return ga4Connection;
+  }
+
+  async updateGA4Connection(campaignId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined> {
+    const existing = this.ga4Connections.get(campaignId);
+    if (!existing) return undefined;
+    
+    const updated: GA4Connection = {
+      ...existing,
+      ...connection,
+    };
+    
+    this.ga4Connections.set(campaignId, updated);
+    return updated;
+  }
+
+  async deleteGA4Connection(campaignId: string): Promise<boolean> {
+    return this.ga4Connections.delete(campaignId);
   }
 }
 

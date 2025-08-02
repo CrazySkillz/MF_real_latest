@@ -45,6 +45,19 @@ export const performanceData = pgTable("performance_data", {
   conversions: integer("conversions").notNull(),
 });
 
+export const ga4Connections = pgTable("ga4_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  propertyId: text("property_id").notNull(),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  serviceAccountKey: text("service_account_key"), // JSON string
+  method: text("method").notNull(), // 'access_token' or 'service_account'
+  propertyName: text("property_name"),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   name: true,
   clientWebsite: true,
@@ -79,6 +92,16 @@ export const insertPerformanceDataSchema = createInsertSchema(performanceData).p
   conversions: true,
 });
 
+export const insertGA4ConnectionSchema = createInsertSchema(ga4Connections).pick({
+  campaignId: true,
+  propertyId: true,
+  accessToken: true,
+  refreshToken: true,
+  serviceAccountKey: true,
+  method: true,
+  propertyName: true,
+});
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Metric = typeof metrics.$inferSelect;
@@ -87,3 +110,5 @@ export type Integration = typeof integrations.$inferSelect;
 export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
 export type PerformanceData = typeof performanceData.$inferSelect;
 export type InsertPerformanceData = z.infer<typeof insertPerformanceDataSchema>;
+export type GA4Connection = typeof ga4Connections.$inferSelect;
+export type InsertGA4Connection = z.infer<typeof insertGA4ConnectionSchema>;

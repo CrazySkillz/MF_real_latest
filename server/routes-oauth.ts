@@ -41,17 +41,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const userConnections = (global as any).userGA4Connections;
+      const connection = await storage.getGA4Connection(campaignId);
       
-      if (!userConnections || !userConnections.has(campaignId)) {
+      if (!connection) {
         return res.status(404).json({ 
           error: "No GA4 connection found for this campaign. Please connect your Google Analytics first." 
         });
       }
       
-      const connection = userConnections.get(campaignId);
-      
-      if (connection.method === 'access_token') {
+      if (connection.method === 'access_token' && connection.accessToken) {
         const metrics = await ga4Service.getMetricsWithToken(
           connection.propertyId, 
           connection.accessToken
@@ -316,15 +314,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Store the user's GA4 connection
-      (global as any).userGA4Connections = (global as any).userGA4Connections || new Map();
-      (global as any).userGA4Connections.set(campaignId, {
+      // Store the user's GA4 connection in database
+      await storage.createGA4Connection({
+        campaignId,
         propertyId,
         accessToken,
         refreshToken: refreshToken || null,
-        connectedAt: new Date().toISOString(),
         method: 'access_token',
-        propertyName: `GA4 Property ${propertyId}`
+        propertyName: `GA4 Property ${propertyId}`,
+        serviceAccountKey: null
       });
 
       res.json({
@@ -365,14 +363,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Store the user's GA4 service account connection
-      (global as any).userGA4Connections = (global as any).userGA4Connections || new Map();
-      (global as any).userGA4Connections.set(campaignId, {
+      // Store the user's GA4 service account connection in database
+      await storage.createGA4Connection({
+        campaignId,
         propertyId,
-        serviceAccountKey: parsedKey,
-        connectedAt: new Date().toISOString(),
+        accessToken: null,
+        refreshToken: null,
         method: 'service_account',
-        propertyName: `GA4 Property ${propertyId}`
+        propertyName: `GA4 Property ${propertyId}`,
+        serviceAccountKey: JSON.stringify(parsedKey)
       });
 
       res.json({

@@ -65,23 +65,65 @@ export class GoogleAnalytics4Service {
     } catch (error: any) {
       console.log('GA4 error details:', error.message);
       
-      // If token expired, provide user-friendly error for reconnection
+      // If token expired, try to refresh it
       if (error.message.includes('invalid_grant') || 
           error.message.includes('401') || 
           error.message.includes('403') ||
           error.message.includes('invalid authentication credentials') ||
           error.message.includes('Request had invalid authentication credentials')) {
         
-        console.log('Token expired, marking for reconnection');
+        console.log('Access token expired, attempting to refresh...');
         
-        // Mark connection as expired for UI to handle
-        await storage.updateGA4Connection(campaignId, {
-          accessToken: null // Clear expired token
-        });
-        
-        const tokenExpiredError = new Error('TOKEN_EXPIRED');
-        (tokenExpiredError as any).isTokenExpired = true;
-        throw tokenExpiredError;
+        // Try to refresh the token if we have a refresh token
+        if (connection.refreshToken) {
+          const refreshResult = await this.refreshAccessToken(connection.refreshToken);
+          
+          if (refreshResult) {
+            console.log('Successfully refreshed access token');
+            
+            // Update the stored token
+            await storage.updateGA4Connection(campaignId, {
+              accessToken: refreshResult.access_token
+            });
+            
+            // Try again with the new token
+            try {
+              return await this.getMetricsWithToken(connection.propertyId, refreshResult.access_token, '30daysAgo');
+            } catch (retryError: any) {
+              console.log('Even refreshed token failed:', retryError.message);
+              // If even the refreshed token fails, mark as expired
+              await storage.updateGA4Connection(campaignId, {
+                accessToken: null
+              });
+              
+              const tokenExpiredError = new Error('TOKEN_EXPIRED');
+              (tokenExpiredError as any).isTokenExpired = true;
+              throw tokenExpiredError;
+            }
+          } else {
+            console.log('Token refresh failed, marking for reconnection');
+            
+            // Mark connection as expired for UI to handle
+            await storage.updateGA4Connection(campaignId, {
+              accessToken: null
+            });
+            
+            const tokenExpiredError = new Error('TOKEN_EXPIRED');
+            (tokenExpiredError as any).isTokenExpired = true;
+            throw tokenExpiredError;
+          }
+        } else {
+          console.log('No refresh token available, marking for reconnection');
+          
+          // No refresh token, mark as expired for UI to handle
+          await storage.updateGA4Connection(campaignId, {
+            accessToken: null
+          });
+          
+          const tokenExpiredError = new Error('TOKEN_EXPIRED');
+          (tokenExpiredError as any).isTokenExpired = true;
+          throw tokenExpiredError;
+        }
       }
       throw error;
     }

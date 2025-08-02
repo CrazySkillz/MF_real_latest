@@ -260,9 +260,9 @@ export default function GA4Metrics() {
                   <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-6">
                     <SiGoogle className="w-8 h-8 text-orange-500" />
                   </div>
-                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Google Analytics Access Expired</h3>
+                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Refresh Your Google Analytics Access</h3>
                   <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-md mx-auto">
-                    Your Google Analytics access has expired. Please reconnect to continue viewing your metrics.
+                    Your access token has expired (Google tokens expire after 1 hour). Get fresh tokens from <a href="https://developers.google.com/oauthplayground" target="_blank" rel="noopener" className="text-blue-600 hover:underline">OAuth 2.0 Playground</a> to continue viewing your metrics.
                   </p>
                   <GA4ConnectionFlow 
                     campaignId={campaign.id}

@@ -20,39 +20,7 @@ export class GoogleAnalytics4Service {
     return this.getMetrics(credentials, accessToken, dateRange);
   }
 
-  async refreshAccessToken(refreshToken: string): Promise<string> {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    
-    if (!clientId || !clientSecret) {
-      throw new Error('Google OAuth credentials not configured');
-    }
-    
-    console.log('Refreshing access token...');
-    
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token'
-      })
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      console.error('Token refresh failed:', data);
-      throw new Error(data.error_description || 'Failed to refresh access token');
-    }
-    
-    console.log('Access token refreshed successfully');
-    return data.access_token;
-  }
+  // Token refresh handled through UI flow - no server-side OAuth needed
 
   async simulateGA4Connection(propertyId: string): Promise<{ success: boolean; user?: any; properties?: any[] }> {
     // Return success with simulated data for demo purposes
@@ -104,25 +72,8 @@ export class GoogleAnalytics4Service {
         
         console.log('Access token invalid/expired - attempting refresh');
         
-        // Try to refresh the access token if we have a refresh token
-        if (connection.refreshToken && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-          try {
-            const newAccessToken = await this.refreshAccessToken(connection.refreshToken);
-            
-            // Update the connection in database with new token
-            await storage.updateGA4Connection(campaignId, {
-              accessToken: newAccessToken
-            });
-            
-            console.log('Access token refreshed successfully, retrying GA4 API call');
-            
-            // Retry with new token
-            return await this.getMetricsWithToken(connection.propertyId, newAccessToken, '30daysAgo');
-          } catch (refreshError: any) {
-            console.log('Token refresh failed:', refreshError.message);
-            // Fall through to ask user to reconnect
-          }
-        }
+        // For SaaS UI experience, provide helpful guidance for token refresh
+        console.log('Access token expired - will prompt user for UI refresh');
         
         console.log('Cannot refresh token - user needs to reconnect');
         const tokenExpiredError = new Error('TOKEN_EXPIRED');

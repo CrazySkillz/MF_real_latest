@@ -409,6 +409,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the existing connection
       const existingConnection = await storage.getGA4Connection(fromCampaignId);
       
+      console.log('Transfer connection - existing connection:', {
+        fromCampaignId,
+        toCampaignId,
+        found: !!existingConnection,
+        hasAccessToken: !!existingConnection?.accessToken,
+        accessTokenLength: existingConnection?.accessToken?.length || 0,
+        hasRefreshToken: !!existingConnection?.refreshToken
+      });
+      
       if (!existingConnection) {
         return res.status(404).json({
           success: false,
@@ -417,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create new connection with the real campaign ID
-      await storage.createGA4Connection({
+      const newConnection = await storage.createGA4Connection({
         campaignId: toCampaignId,
         propertyId: existingConnection.propertyId,
         accessToken: existingConnection.accessToken,
@@ -425,6 +434,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         method: existingConnection.method,
         propertyName: existingConnection.propertyName,
         serviceAccountKey: existingConnection.serviceAccountKey
+      });
+      
+      console.log('Transfer connection - new connection created:', {
+        id: newConnection.id,
+        campaignId: newConnection.campaignId,
+        hasAccessToken: !!newConnection.accessToken,
+        accessTokenLength: newConnection.accessToken?.length || 0
       });
 
       // Delete the temporary connection

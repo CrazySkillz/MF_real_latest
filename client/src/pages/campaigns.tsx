@@ -21,7 +21,6 @@ import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
-import { DirectGA4Auth } from "@/components/DirectGA4Auth";
 
 const campaignFormSchema = insertCampaignSchema.extend({
   name: z.string().min(1, "Campaign name is required"),
@@ -124,58 +123,6 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
   };
 
 
-  const handleTestRealConnection = async () => {
-    if (!selectedGA4Property || !ga4AccessToken) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter both Property ID and Access Token",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsConnecting(prev => ({ ...prev, 'google-analytics': true }));
-    
-    try {
-      // Test real GA4 connection
-      const response = await fetch("/api/ga4/test-real-connection", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          propertyId: selectedGA4Property,
-          accessToken: ga4AccessToken,
-          refreshToken: ga4RefreshToken || null
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setConnectedPlatforms(prev => [...prev, 'google-analytics']);
-        setSelectedPlatforms(prev => [...prev, 'google-analytics']);
-        
-        toast({
-          title: "Real GA4 Connection Successful!",
-          description: `Connected to ${data.propertyName || 'your GA4 property'} - ${data.tokenStatus}`,
-        });
-      } else {
-        toast({
-          title: "Connection Failed",
-          description: data.error || "Failed to connect to GA4. Check your credentials.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Real GA4 connection error:', error);
-      toast({
-        title: "Connection Error",
-        description: "Failed to test GA4 connection. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsConnecting(prev => ({ ...prev, 'google-analytics': false }));
-    }
-  };
 
   const handleGA4Connect = async () => {
     setIsConnecting(prev => ({ ...prev, 'google-analytics': true }));
@@ -438,14 +385,6 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                       </p>
                     </div>
                     
-                    <Button
-                      onClick={handleTestRealConnection}
-                      disabled={!selectedGA4Property || !ga4AccessToken || platformConnecting}
-                      className="w-full"
-                      size="sm"
-                    >
-                      {platformConnecting ? 'Testing Connection...' : 'Test Real GA4 Connection'}
-                    </Button>
                   </div>
                 </div>
               )}

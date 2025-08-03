@@ -247,6 +247,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log('About to store OAuth connection...');
+      console.log('Campaign ID:', campaignId);
+      console.log('Properties found:', properties.length);
+      console.log('Token data available:', !!tokenData.access_token, !!tokenData.refresh_token);
+      
       // Store the OAuth connection
       (global as any).oauthConnections = (global as any).oauthConnections || new Map();
       (global as any).oauthConnections.set(campaignId, {

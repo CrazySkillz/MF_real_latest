@@ -311,11 +311,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, propertyId } = req.body;
       
+      console.log('Property selection request:', { campaignId, propertyId });
+      
       if (!campaignId || !propertyId) {
         return res.status(400).json({ error: 'Campaign ID and Property ID are required' });
       }
       
       const connections = (global as any).oauthConnections;
+      console.log('Available connections:', {
+        hasGlobalConnections: !!connections,
+        connectionKeys: connections ? Array.from(connections.keys()) : [],
+        hasThisCampaign: connections ? connections.has(campaignId) : false
+      });
+      
       if (!connections || !connections.has(campaignId)) {
         return res.status(404).json({ error: 'No OAuth connection found for this campaign' });
       }

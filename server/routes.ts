@@ -669,46 +669,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Select GA4 property for campaign
-  app.post("/api/ga4/select-property", async (req, res) => {
-    try {
-      const { campaignId, propertyId } = req.body;
-      
-      if (!campaignId || !propertyId) {
-        return res.status(400).json({ error: 'Campaign ID and Property ID are required' });
-      }
-      
-      const connections = (global as any).oauthConnections;
-      if (!connections || !connections.has(campaignId)) {
-        return res.status(404).json({ error: 'No OAuth connection found for this campaign' });
-      }
-      
-      const connection = connections.get(campaignId);
-      
-      // Update connection with selected property
-      connection.selectedPropertyId = propertyId;
-      connection.selectedProperty = connection.properties?.find(p => p.id === propertyId);
-      
-      // Store in real GA4 connections for metrics access
-      (global as any).realGA4Connections = (global as any).realGA4Connections || new Map();
-      (global as any).realGA4Connections.set(campaignId, {
-        propertyId,
-        accessToken: connection.accessToken,
-        refreshToken: connection.refreshToken,
-        connectedAt: connection.connectedAt,
-        isReal: true,
-        propertyName: connection.selectedProperty?.name || `Property ${propertyId}`
-      });
-      
-      res.json({
-        success: true,
-        selectedProperty: connection.selectedProperty
-      });
-    } catch (error) {
-      console.error('Property selection error:', error);
-      res.status(500).json({ error: 'Failed to select property' });
-    }
-  });
 
 
 

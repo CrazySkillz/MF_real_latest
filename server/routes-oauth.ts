@@ -472,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         propertyId: existingConnection.propertyId,
         accessToken: existingConnection.accessToken,
         refreshToken: existingConnection.refreshToken,
-        method: existingConnection.method,
+        method: 'access_token', // Ensure OAuth connections use access_token method
         propertyName: existingConnection.propertyName,
         serviceAccountKey: existingConnection.serviceAccountKey
       });
@@ -736,7 +736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           accessToken: access_token,
           refreshToken: refresh_token || null,
           propertyId: '', // Will be set when user selects property
-          method: 'oauth',
+          method: 'access_token',
           propertyName: 'OAuth Connection'
         });
 

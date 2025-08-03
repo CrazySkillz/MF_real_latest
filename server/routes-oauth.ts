@@ -551,7 +551,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, authCode, clientId, clientSecret, redirectUri } = req.body;
       
+      // Debug logging
+      console.log('OAuth exchange request body:', {
+        campaignId: !!campaignId,
+        authCode: !!authCode,
+        clientId: !!clientId,
+        clientSecret: !!clientSecret,
+        clientSecretLength: clientSecret?.length || 0,
+        redirectUri: !!redirectUri
+      });
+      
       if (!campaignId || !authCode || !clientId || !clientSecret || !redirectUri) {
+        console.log('Missing required fields:', {
+          campaignId: !campaignId,
+          authCode: !authCode,
+          clientId: !clientId,
+          clientSecret: !clientSecret,
+          redirectUri: !redirectUri
+        });
         return res.status(400).json({
           success: false,
           error: "Missing required fields: campaignId, authCode, clientId, clientSecret, redirectUri"
@@ -559,16 +576,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Exchange authorization code for tokens
+      const tokenParams = {
+        code: authCode,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code'
+      };
+      
+      console.log('Token exchange params:', {
+        code: !!authCode,
+        client_id: !!clientId,
+        client_secret: !!clientSecret,
+        client_secret_length: clientSecret.length,
+        redirect_uri: !!redirectUri,
+        grant_type: 'authorization_code'
+      });
+      
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          code: authCode,
-          client_id: clientId,
-          client_secret: clientSecret,
-          redirect_uri: redirectUri,
-          grant_type: 'authorization_code'
-        })
+        body: new URLSearchParams(tokenParams)
       });
 
       if (!tokenResponse.ok) {

@@ -639,12 +639,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // For each account, get its properties
           for (const account of accountsData.accounts || []) {
             try {
+              console.log(`Fetching properties for account: ${account.name} (${account.displayName})`);
               const propertiesResponse = await fetch(`https://analyticsadmin.googleapis.com/v1alpha/${account.name}/properties`, {
                 headers: { 'Authorization': `Bearer ${access_token}` }
               });
               
+              console.log(`Properties response status for ${account.name}:`, propertiesResponse.status);
+              
               if (propertiesResponse.ok) {
                 const propertiesData = await propertiesResponse.json();
+                console.log(`Properties data for ${account.name}:`, {
+                  propertiesCount: propertiesData.properties?.length || 0,
+                  properties: propertiesData.properties?.map((p: any) => ({
+                    name: p.name,
+                    displayName: p.displayName
+                  })) || []
+                });
+                
                 for (const property of propertiesData.properties || []) {
                   properties.push({
                     id: property.name.split('/').pop(),
@@ -652,6 +663,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     account: account.displayName
                   });
                 }
+              } else {
+                const errorText = await propertiesResponse.text();
+                console.error(`Failed to fetch properties for ${account.name}:`, propertiesResponse.status, errorText);
               }
             } catch (error) {
               console.warn('Error fetching properties for account:', account.name, error);

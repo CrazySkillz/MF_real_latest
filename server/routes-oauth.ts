@@ -626,86 +626,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get GA4 properties using the access token
       try {
-        // Try to fetch all properties directly (this may work better)
-        const propertiesResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/properties', {
+        let properties = [];
+        
+        // Step 1: Get all accounts first
+        console.log('Step 1: Fetching Google Analytics accounts...');
+        const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
           headers: { 'Authorization': `Bearer ${access_token}` }
         });
 
-        let properties = [];
-        console.log('Direct properties response status:', propertiesResponse.status);
-        
-        if (propertiesResponse.ok) {
-          const propertiesData = await propertiesResponse.json();
-          console.log('Direct properties data:', {
-            propertiesCount: propertiesData.properties?.length || 0,
-            properties: propertiesData.properties?.map((p: any) => ({
-              name: p.name,
-              displayName: p.displayName
-            })) || []
-          });
-          
-          for (const property of propertiesData.properties || []) {
-            properties.push({
-              id: property.name.split('/').pop(),
-              name: property.displayName || `Property ${property.name.split('/').pop()}`,
-              account: 'Google Analytics'
-            });
-          }
-        } else {
-          const errorText = await propertiesResponse.text();
-          console.error('Failed to fetch properties directly:', propertiesResponse.status, errorText);
-          
-          // Fallback: Try the account-based approach with correct endpoint format
-          console.log('Trying fallback approach with accounts...');
-          const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
-            headers: { 'Authorization': `Bearer ${access_token}` }
-          });
+        if (!accountsResponse.ok) {
+          const errorText = await accountsResponse.text();
+          console.error('Failed to fetch accounts:', accountsResponse.status, errorText);
+          throw new Error(`Failed to fetch accounts: ${accountsResponse.status}`);
+        }
 
-          if (accountsResponse.ok) {
-            const accountsData = await accountsResponse.json();
-            console.log('Accounts fetched (fallback):', accountsData.accounts?.length || 0);
-            
-            // For each account, get its properties using correct endpoint format
-            for (const account of accountsData.accounts || []) {
-              try {
-                console.log(`Fetching properties for account: ${account.name} (${account.displayName})`);
-                // Use the correct endpoint format: properties?filter=parent:accounts/{account_id}
-                const accountId = account.name.split('/').pop();
-                const propertiesResponse = await fetch(`https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${accountId}`, {
-                  headers: { 'Authorization': `Bearer ${access_token}` }
+        const accountsData = await accountsResponse.json();
+        console.log('Accounts found:', {
+          count: accountsData.accounts?.length || 0,
+          accounts: accountsData.accounts?.map((a: any) => ({
+            name: a.name,
+            displayName: a.displayName
+          })) || []
+        });
+
+        // Step 2: For each account, fetch properties using both v1alpha and v1beta
+        for (const account of accountsData.accounts || []) {
+          const accountId = account.name.split('/').pop();
+          console.log(`\nStep 2: Fetching properties for account: ${account.name} (${account.displayName})`);
+          console.log(`Account ID extracted: ${accountId}`);
+          
+          // Try v1beta first (more stable)
+          const endpoints = [
+            `https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/${accountId}`,
+            `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${accountId}`
+          ];
+          
+          let success = false;
+          for (let i = 0; i < endpoints.length; i++) {
+            const endpoint = endpoints[i];
+            try {
+              console.log(`Trying endpoint ${i + 1}/${endpoints.length}: ${endpoint}`);
+              const propertiesResponse = await fetch(endpoint, {
+                headers: { 'Authorization': `Bearer ${access_token}` }
+              });
+              
+              console.log(`Response status: ${propertiesResponse.status}`);
+              
+              if (propertiesResponse.ok) {
+                const propertiesData = await propertiesResponse.json();
+                console.log(`Success! Properties data:`, {
+                  propertiesCount: propertiesData.properties?.length || 0,
+                  properties: propertiesData.properties?.map((p: any) => ({
+                    name: p.name,
+                    displayName: p.displayName
+                  })) || []
                 });
                 
-                console.log(`Properties response status for ${account.name}:`, propertiesResponse.status);
-                
-                if (propertiesResponse.ok) {
-                  const propertiesData = await propertiesResponse.json();
-                  console.log(`Properties data for ${account.name}:`, {
-                    propertiesCount: propertiesData.properties?.length || 0,
-                    properties: propertiesData.properties?.map((p: any) => ({
-                      name: p.name,
-                      displayName: p.displayName
-                    })) || []
+                for (const property of propertiesData.properties || []) {
+                  properties.push({
+                    id: property.name.split('/').pop(),
+                    name: property.displayName || `Property ${property.name.split('/').pop()}`,
+                    account: account.displayName
                   });
-                  
-                  for (const property of propertiesData.properties || []) {
-                    properties.push({
-                      id: property.name.split('/').pop(),
-                      name: property.displayName || `Property ${property.name.split('/').pop()}`,
-                      account: account.displayName
-                    });
-                  }
-                } else {
-                  const errorText = await propertiesResponse.text();
-                  console.error(`Failed to fetch properties for ${account.name}:`, propertiesResponse.status, errorText);
                 }
-              } catch (error) {
-                console.warn('Error fetching properties for account:', account.name, error);
+                success = true;
+                break; // Successfully got properties, stop trying other endpoints
+              } else {
+                const errorText = await propertiesResponse.text();
+                console.error(`Failed with status ${propertiesResponse.status}:`, errorText);
               }
+            } catch (error) {
+              console.error(`Error with endpoint ${endpoint}:`, error);
             }
+          }
+          
+          if (!success) {
+            console.warn(`Could not fetch properties for account ${account.name} using any endpoint`);
           }
         }
         
+        console.log('\nStep 3: Final results:');
         console.log('Total properties found:', properties.length);
+        console.log('Properties summary:', properties.map(p => ({
+          id: p.id,
+          name: p.name,
+          account: p.account
+        })));
 
         // Create GA4 connection with tokens (no property selected yet)
         await storage.createGA4Connection({

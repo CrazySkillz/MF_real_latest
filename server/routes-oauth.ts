@@ -740,6 +740,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           propertyName: 'OAuth Connection'
         });
 
+        // CRITICAL: Also store in global oauthConnections for property selection
+        (global as any).oauthConnections = (global as any).oauthConnections || new Map();
+        (global as any).oauthConnections.set(campaignId, {
+          accessToken: access_token,
+          refreshToken: refresh_token,
+          expiresAt: Date.now() + (tokens.expires_in * 1000),
+          properties,
+          connectedAt: new Date().toISOString()
+        });
+        
+        console.log('OAuth connection stored for campaignId:', campaignId);
+        console.log('Total connections after storage:', (global as any).oauthConnections.size);
+        console.log('All connection keys:', Array.from((global as any).oauthConnections.keys()));
+
         res.json({
           success: true,
           properties,

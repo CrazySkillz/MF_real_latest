@@ -342,6 +342,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       connection.selectedPropertyId = propertyId;
       connection.selectedProperty = connection.properties?.find((p: any) => p.id === propertyId);
       
+      // CRITICAL: Update the database connection with the selected property ID
+      const propertyName = connection.selectedProperty?.name || `Property ${propertyId}`;
+      await storage.updateGA4Connection(campaignId, {
+        propertyId,
+        propertyName
+      });
+      
+      console.log('Updated database connection with property:', {
+        campaignId,
+        propertyId,
+        propertyName
+      });
+      
       // Store in real GA4 connections for metrics access
       (global as any).realGA4Connections = (global as any).realGA4Connections || new Map();
       (global as any).realGA4Connections.set(campaignId, {
@@ -350,7 +363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         refreshToken: connection.refreshToken,
         connectedAt: connection.connectedAt,
         isReal: true,
-        propertyName: connection.selectedProperty?.name || `Property ${propertyId}`
+        propertyName
       });
       
       res.json({

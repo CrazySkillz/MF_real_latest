@@ -592,11 +592,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         redirect_uri: !!redirectUri,
         grant_type: 'authorization_code'
       });
+
+      // Create URLSearchParams and log exactly what's being sent
+      const urlParams = new URLSearchParams(tokenParams);
+      const requestBody = urlParams.toString();
+      console.log('Request body being sent to Google:', requestBody);
+      console.log('URLSearchParams entries:', Array.from(urlParams.entries()));
       
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(tokenParams)
+        body: requestBody
       });
 
       if (!tokenResponse.ok) {

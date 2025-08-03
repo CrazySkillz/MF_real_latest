@@ -315,55 +315,18 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
               </div>
               
               {platform.id === 'google-analytics' && !isConnected && (
-                <div className="ml-8 mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-3">Connect Real GA4 Data</h4>
-                  <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-                    Connect your Google Analytics account to pull real-time metrics. Supports automatic token refresh for production deployment.
-                  </p>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="ga4-property-id" className="text-sm font-medium">GA4 Property ID *</Label>
-                      <Input
-                        id="ga4-property-id"
-                        placeholder="e.g., 123456789"
-                        className="mt-1"
-                        onChange={(e) => setSelectedGA4Property(e.target.value)}
-                      />
-                      <p className="text-xs text-slate-500 mt-1">
-                        Find in GA4: Admin → Property → Property Settings
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="ga4-access-token" className="text-sm font-medium">Access Token *</Label>
-                      <Input
-                        id="ga4-access-token"
-                        type="password"
-                        placeholder="Your Google Analytics access token"
-                        className="mt-1"
-                        onChange={(e) => setGA4AccessToken(e.target.value)}
-                      />
-                      <p className="text-xs text-slate-500 mt-1">
-                        Generate from: <a href="https://developers.google.com/oauthplayground" target="_blank" className="text-blue-600 hover:underline">OAuth 2.0 Playground</a> (select Google Analytics Data API)
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="ga4-refresh-token" className="text-sm font-medium">Refresh Token (optional)</Label>
-                      <Input
-                        id="ga4-refresh-token"
-                        type="password"
-                        placeholder="Refresh token for auto-renewal"
-                        className="mt-1"
-                        onChange={(e) => setGA4RefreshToken(e.target.value)}
-                      />
-                      <p className="text-xs text-slate-500 mt-1">
-                        ✨ Enables automatic token refresh - prevents 1-hour expiration for production deployments
-                      </p>
-                    </div>
-                    
-                  </div>
+                <div className="ml-8 mt-3">
+                  <GA4ConnectionFlow
+                    campaignId="temp-campaign-setup"
+                    onConnectionSuccess={() => {
+                      setConnectedPlatforms(prev => [...prev, 'google-analytics']);
+                      setSelectedPlatforms(prev => [...prev, 'google-analytics']);
+                      toast({
+                        title: "GA4 Connected!",
+                        description: "Successfully connected with automatic token refresh for marketing professionals."
+                      });
+                    }}
+                  />
                 </div>
               )}
             </div>

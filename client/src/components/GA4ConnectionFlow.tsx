@@ -32,6 +32,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [selectedProperty, setSelectedProperty] = useState('');
   const [showPropertySelection, setShowPropertySelection] = useState(false);
   const [clientId, setClientId] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
   const [showClientIdInput, setShowClientIdInput] = useState(false);
   const { toast } = useToast();
 
@@ -104,11 +105,11 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   };
 
   const handleGoogleOAuth = async () => {
-    if (!clientId) {
+    if (!clientId || !clientSecret) {
       setShowClientIdInput(true);
       toast({
-        title: "Client ID Required",
-        description: "Please enter your Google OAuth Client ID to continue.",
+        title: "OAuth Credentials Required",
+        description: "Please enter both your Google OAuth Client ID and Client Secret to continue.",
         variant: "destructive"
       });
       return;
@@ -211,6 +212,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           campaignId,
           authCode,
           clientId,
+          clientSecret,
           redirectUri: `${window.location.origin}/oauth-callback.html`
         })
       });
@@ -439,23 +441,35 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   </div>
                   
                   {showClientIdInput && (
-                    <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border">
-                      <Label htmlFor="client-id">Your Google OAuth Client ID</Label>
-                      <Input
-                        id="client-id"
-                        placeholder="123456789-abc123.apps.googleusercontent.com"
-                        value={clientId}
-                        onChange={(e) => setClientId(e.target.value)}
-                      />
+                    <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border">
+                      <div className="space-y-2">
+                        <Label htmlFor="client-id">Google OAuth Client ID</Label>
+                        <Input
+                          id="client-id"
+                          placeholder="123456789-abc123.apps.googleusercontent.com"
+                          value={clientId}
+                          onChange={(e) => setClientId(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="client-secret">Google OAuth Client Secret</Label>
+                        <Input
+                          id="client-secret"
+                          type="password"
+                          placeholder="GOCSPX-abc123xyz789..."
+                          value={clientSecret}
+                          onChange={(e) => setClientSecret(e.target.value)}
+                        />
+                      </div>
                       <p className="text-xs text-slate-600 dark:text-slate-400">
-                        Get this from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" className="text-blue-600 hover:underline">Google Cloud Console</a> → APIs & Services → Credentials
+                        Get both credentials from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" className="text-blue-600 hover:underline">Google Cloud Console</a> → APIs & Services → Credentials
                       </p>
                     </div>
                   )}
                   
                   <Button 
                     onClick={handleGoogleOAuth}
-                    disabled={isOAuthLoading}
+                    disabled={isOAuthLoading || (!clientId || !clientSecret) && showClientIdInput}
                     size="lg"
                     className="w-full bg-blue-600 hover:bg-blue-700"
                   >
@@ -479,7 +493,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                       className="w-full"
                     >
                       <Key className="w-4 h-4 mr-2" />
-                      Enter OAuth Client ID
+                      Enter OAuth Credentials
                     </Button>
                   )}
                 </div>

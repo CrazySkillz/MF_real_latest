@@ -549,12 +549,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // OAuth code exchange endpoint for client-side OAuth
   app.post("/api/ga4/oauth-exchange", async (req, res) => {
     try {
-      const { campaignId, authCode, clientId, redirectUri } = req.body;
+      const { campaignId, authCode, clientId, clientSecret, redirectUri } = req.body;
       
-      if (!campaignId || !authCode || !clientId || !redirectUri) {
+      if (!campaignId || !authCode || !clientId || !clientSecret || !redirectUri) {
         return res.status(400).json({
           success: false,
-          error: "Missing required fields: campaignId, authCode, clientId, redirectUri"
+          error: "Missing required fields: campaignId, authCode, clientId, clientSecret, redirectUri"
         });
       }
 
@@ -565,6 +565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: new URLSearchParams({
           code: authCode,
           client_id: clientId,
+          client_secret: clientSecret,
           redirect_uri: redirectUri,
           grant_type: 'authorization_code'
         })

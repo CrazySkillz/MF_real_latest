@@ -626,18 +626,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get GA4 properties using the access token
       try {
-        const propertiesResponse = await fetch('https://analyticsdata.googleapis.com/v1beta/properties', {
+        // First get accounts, then properties for each account
+        const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
           headers: { 'Authorization': `Bearer ${access_token}` }
         });
 
         let properties = [];
-        if (propertiesResponse.ok) {
-          const propertiesData = await propertiesResponse.json();
-          properties = propertiesData.properties?.map((prop: any) => ({
-            id: prop.name.split('/')[1],
-            name: prop.displayName || `Property ${prop.name.split('/')[1]}`
-          })) || [];
+        if (accountsResponse.ok) {
+          const accountsData = await accountsResponse.json();
+          console.log('Accounts fetched:', accountsData.accounts?.length || 0);
+          
+          // For each account, get its properties
+          for (const account of accountsData.accounts || []) {
+            try {
+              const propertiesResponse = await fetch(`https://analyticsadmin.googleapis.com/v1alpha/${account.name}/properties`, {
+                headers: { 'Authorization': `Bearer ${access_token}` }
+              });
+              
+              if (propertiesResponse.ok) {
+                const propertiesData = await propertiesResponse.json();
+                for (const property of propertiesData.properties || []) {
+                  properties.push({
+                    id: property.name.split('/').pop(),
+                    name: property.displayName || `Property ${property.name.split('/').pop()}`,
+                    account: account.displayName
+                  });
+                }
+              }
+            } catch (error) {
+              console.warn('Error fetching properties for account:', account.name, error);
+            }
+          }
         }
+        
+        console.log('Total properties found:', properties.length);
 
         // Create GA4 connection with tokens (no property selected yet)
         await storage.createGA4Connection({

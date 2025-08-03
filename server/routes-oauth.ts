@@ -258,6 +258,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connectedAt: new Date().toISOString()
       });
       
+      console.log('OAuth connection stored for campaignId:', campaignId);
+      console.log('Total connections after storage:', (global as any).oauthConnections.size);
+      console.log('All connection keys:', Array.from((global as any).oauthConnections.keys()));
+      
       res.json({
         success: true,
         user: userInfo,

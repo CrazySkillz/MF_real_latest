@@ -626,49 +626,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get GA4 properties using the access token
       try {
-        // First get accounts, then properties for each account
-        const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
+        // Try to fetch all properties directly (this may work better)
+        const propertiesResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/properties', {
           headers: { 'Authorization': `Bearer ${access_token}` }
         });
 
         let properties = [];
-        if (accountsResponse.ok) {
-          const accountsData = await accountsResponse.json();
-          console.log('Accounts fetched:', accountsData.accounts?.length || 0);
+        console.log('Direct properties response status:', propertiesResponse.status);
+        
+        if (propertiesResponse.ok) {
+          const propertiesData = await propertiesResponse.json();
+          console.log('Direct properties data:', {
+            propertiesCount: propertiesData.properties?.length || 0,
+            properties: propertiesData.properties?.map((p: any) => ({
+              name: p.name,
+              displayName: p.displayName
+            })) || []
+          });
           
-          // For each account, get its properties
-          for (const account of accountsData.accounts || []) {
-            try {
-              console.log(`Fetching properties for account: ${account.name} (${account.displayName})`);
-              const propertiesResponse = await fetch(`https://analyticsadmin.googleapis.com/v1alpha/${account.name}/properties`, {
-                headers: { 'Authorization': `Bearer ${access_token}` }
-              });
-              
-              console.log(`Properties response status for ${account.name}:`, propertiesResponse.status);
-              
-              if (propertiesResponse.ok) {
-                const propertiesData = await propertiesResponse.json();
-                console.log(`Properties data for ${account.name}:`, {
-                  propertiesCount: propertiesData.properties?.length || 0,
-                  properties: propertiesData.properties?.map((p: any) => ({
-                    name: p.name,
-                    displayName: p.displayName
-                  })) || []
+          for (const property of propertiesData.properties || []) {
+            properties.push({
+              id: property.name.split('/').pop(),
+              name: property.displayName || `Property ${property.name.split('/').pop()}`,
+              account: 'Google Analytics'
+            });
+          }
+        } else {
+          const errorText = await propertiesResponse.text();
+          console.error('Failed to fetch properties directly:', propertiesResponse.status, errorText);
+          
+          // Fallback: Try the account-based approach with correct endpoint format
+          console.log('Trying fallback approach with accounts...');
+          const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
+            headers: { 'Authorization': `Bearer ${access_token}` }
+          });
+
+          if (accountsResponse.ok) {
+            const accountsData = await accountsResponse.json();
+            console.log('Accounts fetched (fallback):', accountsData.accounts?.length || 0);
+            
+            // For each account, get its properties using correct endpoint format
+            for (const account of accountsData.accounts || []) {
+              try {
+                console.log(`Fetching properties for account: ${account.name} (${account.displayName})`);
+                // Use the correct endpoint format: properties?filter=parent:accounts/{account_id}
+                const accountId = account.name.split('/').pop();
+                const propertiesResponse = await fetch(`https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${accountId}`, {
+                  headers: { 'Authorization': `Bearer ${access_token}` }
                 });
                 
-                for (const property of propertiesData.properties || []) {
-                  properties.push({
-                    id: property.name.split('/').pop(),
-                    name: property.displayName || `Property ${property.name.split('/').pop()}`,
-                    account: account.displayName
+                console.log(`Properties response status for ${account.name}:`, propertiesResponse.status);
+                
+                if (propertiesResponse.ok) {
+                  const propertiesData = await propertiesResponse.json();
+                  console.log(`Properties data for ${account.name}:`, {
+                    propertiesCount: propertiesData.properties?.length || 0,
+                    properties: propertiesData.properties?.map((p: any) => ({
+                      name: p.name,
+                      displayName: p.displayName
+                    })) || []
                   });
+                  
+                  for (const property of propertiesData.properties || []) {
+                    properties.push({
+                      id: property.name.split('/').pop(),
+                      name: property.displayName || `Property ${property.name.split('/').pop()}`,
+                      account: account.displayName
+                    });
+                  }
+                } else {
+                  const errorText = await propertiesResponse.text();
+                  console.error(`Failed to fetch properties for ${account.name}:`, propertiesResponse.status, errorText);
                 }
-              } else {
-                const errorText = await propertiesResponse.text();
-                console.error(`Failed to fetch properties for ${account.name}:`, propertiesResponse.status, errorText);
+              } catch (error) {
+                console.warn('Error fetching properties for account:', account.name, error);
               }
-            } catch (error) {
-              console.warn('Error fetching properties for account:', account.name, error);
             }
           }
         }

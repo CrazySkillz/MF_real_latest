@@ -36,7 +36,30 @@ export class GoogleAnalytics4Service {
     return { success: false };
   }
 
-  // UI-based token refresh - no server-side OAuth needed
+  async refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number }> {
+    // Use public OAuth endpoint for token refresh
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token'
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to refresh token: ${errorData.error_description || errorData.error}`);
+    }
+
+    const tokenData = await response.json();
+    return {
+      access_token: tokenData.access_token,
+      expires_in: tokenData.expires_in || 3600
+    };
+  }
 
   async getMetricsWithAutoRefresh(campaignId: string, storage: any): Promise<GA4Metrics> {
     const connection = await storage.getGA4Connection(campaignId);
@@ -72,13 +95,40 @@ export class GoogleAnalytics4Service {
           error.message.includes('invalid authentication credentials') ||
           error.message.includes('Request had invalid authentication credentials')) {
         
-        console.log('Access token invalid/expired - triggering UI-based refresh');
+        console.log('Access token invalid/expired - attempting automatic background refresh');
         
-        // Signal frontend to automatically refresh tokens through UI
-        const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
-        (autoRefreshError as any).isAutoRefreshNeeded = true;
-        (autoRefreshError as any).hasRefreshToken = !!connection.refreshToken;
-        throw autoRefreshError;
+        // Attempt automatic token refresh if we have a refresh token
+        if (connection.refreshToken) {
+          try {
+            console.log('Refreshing access token automatically in background...');
+            const refreshResult = await this.refreshAccessToken(connection.refreshToken);
+            
+            // Update the connection with new access token
+            await storage.updateGA4ConnectionTokens(campaignId, {
+              accessToken: refreshResult.access_token,
+              refreshToken: connection.refreshToken, // Keep the same refresh token
+              expiresAt: new Date(Date.now() + (refreshResult.expires_in * 1000))
+            });
+            
+            console.log('Access token refreshed successfully - retrying metrics call');
+            
+            // Retry with new token
+            return await this.getMetricsWithToken(connection.propertyId, refreshResult.access_token, '30daysAgo');
+          } catch (refreshError: any) {
+            console.error('Failed to refresh access token automatically:', refreshError.message);
+            
+            // If automatic refresh fails, fall back to UI refresh
+            const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
+            (autoRefreshError as any).isAutoRefreshNeeded = true;
+            (autoRefreshError as any).hasRefreshToken = !!connection.refreshToken;
+            throw autoRefreshError;
+          }
+        } else {
+          console.log('No refresh token available - user needs to reconnect');
+          const tokenExpiredError = new Error('TOKEN_EXPIRED');
+          (tokenExpiredError as any).isTokenExpired = true;
+          throw tokenExpiredError;
+        }
       }
       throw error;
     }

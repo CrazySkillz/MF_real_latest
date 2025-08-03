@@ -31,6 +31,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [oauthProperties, setOauthProperties] = useState<GA4Property[]>([]);
   const [selectedProperty, setSelectedProperty] = useState('');
   const [showPropertySelection, setShowPropertySelection] = useState(false);
+  const [clientId, setClientId] = useState('');
+  const [showClientIdInput, setShowClientIdInput] = useState(false);
   const { toast } = useToast();
 
   const handleTokenConnect = async () => {
@@ -102,53 +104,134 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   };
 
   const handleGoogleOAuth = async () => {
+    if (!clientId) {
+      setShowClientIdInput(true);
+      toast({
+        title: "Client ID Required",
+        description: "Please enter your Google OAuth Client ID to continue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsOAuthLoading(true);
     
     try {
-      // Get OAuth URL from backend
-      const response = await fetch('/api/auth/google/url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId,
-          returnUrl: window.location.href
-        })
+      // Generate OAuth URL directly on client side
+      const redirectUri = `${window.location.origin}/oauth-callback.html`;
+      const scope = 'https://www.googleapis.com/auth/analytics.readonly';
+      const responseType = 'code';
+      const state = `campaign_${campaignId}`;
+      
+      const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `scope=${encodeURIComponent(scope)}&` +
+        `response_type=${responseType}&` +
+        `state=${encodeURIComponent(state)}&` +
+        `access_type=offline&` +
+        `prompt=consent`;
+      
+      // Create OAuth callback handler
+      const handleOAuthCallback = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        
+        if (event.data.type === 'OAUTH_SUCCESS') {
+          window.removeEventListener('message', handleOAuthCallback);
+          setIsOAuthLoading(false);
+          
+          const { code } = event.data;
+          exchangeCodeForTokens(code);
+        } else if (event.data.type === 'OAUTH_ERROR') {
+          window.removeEventListener('message', handleOAuthCallback);
+          setIsOAuthLoading(false);
+          
+          toast({
+            title: "OAuth Failed",
+            description: event.data.error || "Authentication failed",
+            variant: "destructive"
+          });
+        }
+      };
+      
+      window.addEventListener('message', handleOAuthCallback);
+      
+      // Open OAuth in popup window
+      const popup = window.open(
+        oauthUrl,
+        'google_oauth',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      );
+      
+      // Check if popup was blocked
+      if (!popup) {
+        window.removeEventListener('message', handleOAuthCallback);
+        setIsOAuthLoading(false);
+        toast({
+          title: "Popup Blocked",
+          description: "Please allow popups and try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Monitor popup closure
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', handleOAuthCallback);
+          setIsOAuthLoading(false);
+        }
+      }, 1000);
+      
+      toast({
+        title: "Authenticate with Google",
+        description: "Complete the authentication in the popup window.",
+        duration: 3000,
       });
       
-      const data = await response.json();
-      
-      if (data.oauth_url) {
-        // Open OAuth in popup window
-        const popup = window.open(
-          data.oauth_url,
-          'google_oauth',
-          'width=500,height=600,scrollbars=yes,resizable=yes'
-        );
-        
-        // Listen for popup completion
-        const checkClosed = setInterval(() => {
-          if (popup?.closed) {
-            clearInterval(checkClosed);
-            setIsOAuthLoading(false);
-            // Check if OAuth was successful
-            checkOAuthSuccess();
-          }
-        }, 1000);
-        
-        toast({
-          title: "Authenticate with Google",
-          description: "Complete the authentication in the popup window.",
-          duration: 3000,
-        });
-      } else {
-        throw new Error(data.error || 'Failed to get OAuth URL');
-      }
     } catch (error) {
       console.error('OAuth initiation error:', error);
       setIsOAuthLoading(false);
       toast({
         title: "OAuth Failed",
         description: error instanceof Error ? error.message : "Failed to start OAuth flow.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const exchangeCodeForTokens = async (authCode: string) => {
+    try {
+      // Exchange authorization code for tokens using backend
+      const response = await fetch('/api/ga4/oauth-exchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          authCode,
+          clientId,
+          redirectUri: `${window.location.origin}/oauth-callback.html`
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.properties) {
+        setOauthProperties(data.properties);
+        setShowPropertySelection(true);
+        toast({
+          title: "Authentication Successful!",
+          description: "Please select your GA4 property to complete the connection.",
+        });
+      } else {
+        throw new Error(data.error || 'Failed to exchange authorization code');
+      }
+    } catch (error) {
+      console.error('Token exchange error:', error);
+      toast({
+        title: "Authentication Failed",
+        description: error instanceof Error ? error.message : "Failed to complete authentication.",
         variant: "destructive"
       });
     }
@@ -355,6 +438,21 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                     </p>
                   </div>
                   
+                  {showClientIdInput && (
+                    <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border">
+                      <Label htmlFor="client-id">Your Google OAuth Client ID</Label>
+                      <Input
+                        id="client-id"
+                        placeholder="123456789-abc123.apps.googleusercontent.com"
+                        value={clientId}
+                        onChange={(e) => setClientId(e.target.value)}
+                      />
+                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                        Get this from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" className="text-blue-600 hover:underline">Google Cloud Console</a> → APIs & Services → Credentials
+                      </p>
+                    </div>
+                  )}
+                  
                   <Button 
                     onClick={handleGoogleOAuth}
                     disabled={isOAuthLoading}
@@ -369,10 +467,21 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                     ) : (
                       <>
                         <Zap className="w-4 h-4 mr-2" />
-                        Connect with Google
+                        Connect with Google OAuth
                       </>
                     )}
                   </Button>
+                  
+                  {!showClientIdInput && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => setShowClientIdInput(true)}
+                      className="w-full"
+                    >
+                      <Key className="w-4 h-4 mr-2" />
+                      Enter OAuth Client ID
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">

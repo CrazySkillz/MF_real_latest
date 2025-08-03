@@ -546,6 +546,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // OAuth code exchange endpoint for client-side OAuth
+  app.post("/api/ga4/oauth-exchange", async (req, res) => {
+    try {
+      const { campaignId, authCode, clientId, redirectUri } = req.body;
+      
+      if (!campaignId || !authCode || !clientId || !redirectUri) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required fields: campaignId, authCode, clientId, redirectUri"
+        });
+      }
+
+      // Exchange authorization code for tokens
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code: authCode,
+          client_id: clientId,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code'
+        })
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.text();
+        console.error('Token exchange failed:', errorData);
+        return res.status(400).json({
+          success: false,
+          error: 'Failed to exchange authorization code for tokens'
+        });
+      }
+
+      const tokens = await tokenResponse.json();
+      const { access_token, refresh_token } = tokens;
+
+      if (!access_token) {
+        return res.status(400).json({
+          success: false,
+          error: 'No access token received from Google'
+        });
+      }
+
+      // Get GA4 properties using the access token
+      try {
+        const propertiesResponse = await fetch('https://analyticsdata.googleapis.com/v1beta/properties', {
+          headers: { 'Authorization': `Bearer ${access_token}` }
+        });
+
+        let properties = [];
+        if (propertiesResponse.ok) {
+          const propertiesData = await propertiesResponse.json();
+          properties = propertiesData.properties?.map((prop: any) => ({
+            id: prop.name.split('/')[1],
+            name: prop.displayName || `Property ${prop.name.split('/')[1]}`
+          })) || [];
+        }
+
+        // Create GA4 connection with tokens (no property selected yet)
+        await storage.createGA4Connection({
+          campaignId,
+          accessToken: access_token,
+          refreshToken: refresh_token || null,
+          propertyId: '', // Will be set when user selects property
+          method: 'oauth',
+          propertyName: 'OAuth Connection'
+        });
+
+        res.json({
+          success: true,
+          properties,
+          message: 'OAuth authentication successful'
+        });
+
+      } catch (error) {
+        console.error('Failed to fetch GA4 properties:', error);
+        res.json({
+          success: true,
+          properties: [],
+          message: 'OAuth successful, but failed to fetch properties. You can enter Property ID manually.'
+        });
+      }
+
+    } catch (error) {
+      console.error('OAuth exchange error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error during OAuth exchange'
+      });
+    }
+  });
+
   const server = createServer(app);
   return server;
 }

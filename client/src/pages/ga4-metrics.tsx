@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRoute } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target } from "lucide-react";
 import { Link } from "wouter";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { SiGoogle } from "react-icons/si";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
+import { useToast } from "@/hooks/use-toast";
 
 interface Campaign {
   id: string;
@@ -35,6 +36,8 @@ export default function GA4Metrics() {
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
   const [dateRange, setDateRange] = useState("30days");
+  const [showAutoRefresh, setShowAutoRefresh] = useState(false);
+  const { toast } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -59,6 +62,11 @@ export default function GA4Metrics() {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Handle automatic refresh needed
+        if (errorData.error === 'AUTO_REFRESH_NEEDED' && errorData.autoRefresh) {
+          throw new Error('AUTO_REFRESH_NEEDED');
+        }
         
         // Handle token expiration specifically
         if (errorData.error === 'TOKEN_EXPIRED' && errorData.requiresReconnection) {
@@ -254,7 +262,46 @@ export default function GA4Metrics() {
               ))}
             </div>
           ) : ga4Error ? (
-            ga4Error.message === 'TOKEN_EXPIRED' ? (
+            ga4Error.message === 'AUTO_REFRESH_NEEDED' ? (
+              <Card className="mb-8">
+                <CardContent className="text-center py-12">
+                  <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+                    <SiGoogle className="w-8 h-8 text-blue-500" />
+                  </div>
+                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Refreshing Your Access</h3>
+                  <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-md mx-auto">
+                    Your access token has expired. Click below to get fresh tokens from OAuth 2.0 Playground and automatically update your connection.
+                  </p>
+                  <div className="space-y-3">
+                    <Button 
+                      onClick={() => {
+                        window.open('https://developers.google.com/oauthplayground', '_blank');
+                        toast({
+                          title: "OAuth Playground Opened",
+                          description: "Get fresh access and refresh tokens, then paste them below to continue.",
+                          duration: 5000,
+                        });
+                        setShowAutoRefresh(true);
+                      }}
+                      className="mr-3"
+                    >
+                      Open OAuth Playground
+                    </Button>
+                    {showAutoRefresh && (
+                      <div className="mt-6">
+                        <GA4ConnectionFlow 
+                          campaignId={campaign.id}
+                          onConnectionSuccess={() => {
+                            setShowAutoRefresh(false);
+                            window.location.reload();
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : ga4Error.message === 'TOKEN_EXPIRED' ? (
               <Card className="mb-8">
                 <CardContent className="text-center py-12">
                   <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-6">

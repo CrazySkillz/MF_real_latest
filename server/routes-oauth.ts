@@ -86,7 +86,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('GA4 metrics error:', error);
       
       // Handle token expiration gracefully
-      if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
+      if (error instanceof Error && (error.message === 'AUTO_REFRESH_NEEDED' || (error as any).isAutoRefreshNeeded)) {
+        console.log('Sending AUTO_REFRESH_NEEDED response to client');
+        res.status(401).json({ 
+          error: 'AUTO_REFRESH_NEEDED',
+          message: 'Access token expired - automatic refresh needed',
+          autoRefresh: true,
+          hasRefreshToken: (error as any).hasRefreshToken
+        });
+      } else if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
         console.log('Sending TOKEN_EXPIRED response to client');
         res.status(401).json({ 
           error: 'TOKEN_EXPIRED',

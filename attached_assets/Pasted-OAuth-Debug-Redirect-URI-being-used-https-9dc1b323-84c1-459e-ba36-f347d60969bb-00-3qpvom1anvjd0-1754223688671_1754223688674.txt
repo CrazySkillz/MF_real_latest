@@ -1,0 +1,22 @@
+OAuth Debug - Redirect URI being used: https://9dc1b323-84c1-459e-ba36-f347d60969bb-00-3qpvom1anvjd0.worf.replit.dev/oauth-callback.html
+GA4ConnectionFlow.tsx:129 OAuth Debug - Client ID: 417138133377-gonjr793vtt1lgaknrnv9p2dnl6urli9.apps.googleusercontent.com
+GA4ConnectionFlow.tsx:140 OAuth Debug - Full OAuth URL: https://accounts.google.com/o/oauth2/v2/auth?client_id=417138133377-gonjr793vtt1lgaknrnv9p2dnl6urli9.apps.googleusercontent.com&redirect_uri=https%3A%2F%2F9dc1b323-84c1-459e-ba36-f347d60969bb-00-3qpvom1anvjd0.worf.replit.dev%2Foauth-callback.html&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fanalytics.readonly&response_type=code&state=campaign_temp-campaign-setup&access_type=offline&prompt=consent
+GA4ConnectionFlow.tsx:187 Cross-Origin-Opener-Policy policy would block the window.closed call.
+(anonymous) @ GA4ConnectionFlow.tsx:187
+GA4ConnectionFlow.tsx:187 Cross-Origin-Opener-Policy policy would block the window.closed call.
+(anonymous) @ GA4ConnectionFlow.tsx:187
+GA4ConnectionFlow.tsx:187 Cross-Origin-Opener-Policy policy would block the window.closed call.
+(anonymous) @ GA4ConnectionFlow.tsx:187
+GA4ConnectionFlow.tsx:187 Cross-Origin-Opener-Policy policy would block the window.closed call.
+(anonymous) @ GA4ConnectionFlow.tsx:187
+GA4ConnectionFlow.tsx:187 Cross-Origin-Opener-Policy policy would block the window.closed call.
+(anonymous) @ GA4ConnectionFlow.tsx:187
+GA4ConnectionFlow.tsx:187 Cross-Origin-Opener-Policy policy would block the window.closed call.
+(anonymous) @ GA4ConnectionFlow.tsx:187
+GA4ConnectionFlow.tsx:214  POST https://9dc1b323-84c1-459e-ba36-f347d60969bb-00-3qpvom1anvjd0.worf.replit.dev/api/ga4/oauth-exchange 400 (Bad Request)
+exchangeCodeForTokens @ GA4ConnectionFlow.tsx:214
+handleOAuthCallback @ GA4ConnectionFlow.tsx:151
+postMessage
+(anonymous) @ oauth-callback.html?…alytics.readonly:22
+GA4ConnectionFlow.tsx:239 Token exchange error: Error: Failed to exchange authorization code for tokens
+    at exchangeCodeForTokens (GA4ConnectionFlow.tsx:236:15)

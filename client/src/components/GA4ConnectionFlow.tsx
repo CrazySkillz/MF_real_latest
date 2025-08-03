@@ -210,17 +210,29 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   
   const exchangeCodeForTokens = async (authCode: string) => {
     try {
+      // Debug: Log what we're sending to backend
+      const requestData = {
+        campaignId,
+        authCode,
+        clientId,
+        clientSecret,
+        redirectUri: `${window.location.origin}/oauth-callback.html`
+      };
+      
+      console.log('Frontend Debug - Sending to backend:', {
+        campaignId: !!requestData.campaignId,
+        authCode: !!requestData.authCode,
+        clientId: !!requestData.clientId,
+        clientSecret: !!requestData.clientSecret,
+        clientSecretLength: requestData.clientSecret?.length || 0,
+        redirectUri: !!requestData.redirectUri
+      });
+      
       // Exchange authorization code for tokens using backend
       const response = await fetch('/api/ga4/oauth-exchange', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId,
-          authCode,
-          clientId,
-          clientSecret,
-          redirectUri: `${window.location.origin}/oauth-callback.html`
-        })
+        body: JSON.stringify(requestData)
       });
       
       const data = await response.json();

@@ -37,28 +37,62 @@ export class GoogleAnalytics4Service {
   }
 
   async refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number }> {
-    // Use public OAuth endpoint for token refresh
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token'
-      })
-    });
+    // Check for Google OAuth credentials first
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    
+    if (clientId && clientSecret) {
+      // Production-grade automatic refresh with credentials
+      console.log('Using production OAuth credentials for automatic refresh');
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token'
+        })
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Failed to refresh token: ${errorData.error_description || errorData.error}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to refresh token: ${errorData.error_description || errorData.error}`);
+      }
+
+      const tokenData = await response.json();
+      return {
+        access_token: tokenData.access_token,
+        expires_in: tokenData.expires_in || 3600
+      };
+    } else {
+      // Fallback: Try refresh without credentials (will likely fail, but attempt it)
+      console.log('WARNING: No OAuth credentials - attempting refresh without client auth (may fail)');
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Token refresh failed without client credentials:', errorData);
+        throw new Error('Automatic refresh requires Google OAuth credentials for guaranteed operation');
+      }
+
+      const tokenData = await response.json();
+      return {
+        access_token: tokenData.access_token,
+        expires_in: tokenData.expires_in || 3600
+      };
     }
-
-    const tokenData = await response.json();
-    return {
-      access_token: tokenData.access_token,
-      expires_in: tokenData.expires_in || 3600
-    };
   }
 
   async getMetricsWithAutoRefresh(campaignId: string, storage: any): Promise<GA4Metrics> {

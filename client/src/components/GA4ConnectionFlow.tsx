@@ -124,6 +124,10 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const responseType = 'code';
       const state = `campaign_${campaignId}`;
       
+      // Debug: Log the redirect URI being used
+      console.log('OAuth Debug - Redirect URI being used:', redirectUri);
+      console.log('OAuth Debug - Client ID:', clientId);
+      
       const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(clientId)}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
@@ -132,6 +136,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         `state=${encodeURIComponent(state)}&` +
         `access_type=offline&` +
         `prompt=consent`;
+      
+      console.log('OAuth Debug - Full OAuth URL:', oauthUrl);
       
       // Create OAuth callback handler
       const handleOAuthCallback = (event: MessageEvent) => {

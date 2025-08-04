@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
-import { ArrowLeft, FileSpreadsheet, TrendingUp, Download, Calendar, BarChart3 } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, TrendingUp, Download, Calendar, BarChart3, RefreshCw } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SiGooglesheets } from "react-icons/si";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect, useRef, useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Campaign {
   id: string;
@@ -35,15 +38,22 @@ interface GoogleSheetsData {
 export default function GoogleSheetsData() {
   const [, params] = useRoute("/campaigns/:id/google-sheets-data");
   const campaignId = params?.id;
+  const { toast } = useToast();
+  const lastUpdateRef = useRef<string>('');
+  const [refreshInterval, setRefreshInterval] = useState(30000); // Default 30 seconds
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
   });
 
-  const { data: sheetsData, isLoading: sheetsLoading, error: sheetsError } = useQuery<GoogleSheetsData>({
+  const { data: sheetsData, isLoading: sheetsLoading, error: sheetsError, refetch } = useQuery<GoogleSheetsData>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
+    refetchInterval: refreshInterval, // Dynamic refresh interval
+    refetchIntervalInBackground: true, // Continue refreshing when tab is in background
+    refetchOnWindowFocus: true, // Refresh when user returns to tab
+    staleTime: 10000, // Consider data stale after 10 seconds
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
       if (!response.ok) {
@@ -53,6 +63,20 @@ export default function GoogleSheetsData() {
       return response.json();
     },
   });
+
+  // Show toast notification when data is automatically refreshed
+  useEffect(() => {
+    if (sheetsData?.lastUpdated && lastUpdateRef.current && lastUpdateRef.current !== sheetsData.lastUpdated) {
+      toast({
+        title: "Data Updated",
+        description: "Your Google Sheets data has been automatically refreshed.",
+        duration: 3000,
+      });
+    }
+    if (sheetsData?.lastUpdated) {
+      lastUpdateRef.current = sheetsData.lastUpdated;
+    }
+  }, [sheetsData?.lastUpdated, toast]);
 
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
@@ -145,6 +169,30 @@ export default function GoogleSheetsData() {
               </div>
               
               <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Auto-refresh:</span>
+                  <Select value={refreshInterval.toString()} onValueChange={(value) => setRefreshInterval(Number(value))}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10000">10 seconds</SelectItem>
+                      <SelectItem value="30000">30 seconds</SelectItem>
+                      <SelectItem value="60000">1 minute</SelectItem>
+                      <SelectItem value="300000">5 minutes</SelectItem>
+                      <SelectItem value="0">Disabled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => refetch()}
+                  disabled={sheetsLoading}
+                  size="sm"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${sheetsLoading ? 'animate-spin' : ''}`} />
+                  Refresh Now
+                </Button>
                 {sheetsData?.spreadsheetId && (
                   <Button
                     variant="outline"
@@ -171,10 +219,25 @@ export default function GoogleSheetsData() {
               <CardContent className="text-center py-12">
                 <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
                 <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load Data</h3>
-                <p className="text-slate-500 dark:text-slate-400 mb-4">{sheetsError.message}</p>
-                <Button onClick={() => window.location.reload()}>
-                  Try Again
-                </Button>
+                <p className="text-slate-500 dark:text-slate-400 mb-4">
+                  {sheetsError.message.includes('TOKEN_EXPIRED') || sheetsError.message.includes('401') 
+                    ? 'Your Google Sheets connection has expired. Please reconnect to continue accessing your data.'
+                    : sheetsError.message}
+                </p>
+                <div className="flex gap-3 justify-center">
+                  {sheetsError.message.includes('TOKEN_EXPIRED') || sheetsError.message.includes('401') ? (
+                    <Link href="/campaigns">
+                      <Button>
+                        Reconnect Google Sheets
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button onClick={() => refetch()}>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Try Again
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ) : sheetsData ? (
@@ -268,9 +331,9 @@ export default function GoogleSheetsData() {
                             {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                           </CardDescription>
                         </div>
-                        <Badge variant="secondary">
-                          <Calendar className="w-3 h-3 mr-1" />
-                          Live Data
+                        <Badge variant={sheetsLoading ? "default" : "secondary"}>
+                          <Calendar className={`w-3 h-3 mr-1 ${sheetsLoading ? 'animate-pulse' : ''}`} />
+                          {sheetsLoading ? "Updating..." : "Live Data"}
                         </Badge>
                       </div>
                     </CardHeader>

@@ -53,6 +53,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete a campaign by ID
+  app.delete("/api/campaigns/:id", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const success = await storage.deleteCampaign(campaignId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Also delete any associated GA4 connection
+      await storage.deleteGA4Connection(campaignId);
+      
+      res.json({ success: true, message: "Campaign deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete campaign" });
+    }
+  });
+
   // Get real GA4 metrics for a campaign
   app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {
     try {

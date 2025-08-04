@@ -9,6 +9,7 @@ export interface IStorage {
   getCampaign(id: string): Promise<Campaign | undefined>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
+  deleteCampaign(id: string): Promise<boolean>;
   
   // Metrics
   getMetrics(): Promise<Metric[]>;
@@ -93,6 +94,10 @@ export class MemStorage implements IStorage {
     const updatedCampaign = { ...campaign, ...updateData };
     this.campaigns.set(id, updatedCampaign);
     return updatedCampaign;
+  }
+
+  async deleteCampaign(id: string): Promise<boolean> {
+    return this.campaigns.delete(id);
   }
 
   // Metrics methods
@@ -249,6 +254,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(campaigns.id, id))
       .returning();
     return campaign || undefined;
+  }
+
+  async deleteCampaign(id: string): Promise<boolean> {
+    const result = await db
+      .delete(campaigns)
+      .where(eq(campaigns.id, id));
+    return (result.rowCount || 0) > 0;
   }
 
   // Metrics methods

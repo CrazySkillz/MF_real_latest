@@ -474,6 +474,27 @@ export default function Campaigns() {
     },
   });
 
+  const deleteCampaignMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/campaigns/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      toast({
+        title: "Campaign deleted",
+        description: "Campaign has been permanently deleted.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete campaign. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: CampaignFormData) => {
     setCampaignData(data);
     setShowConnectorsStep(true);
@@ -532,6 +553,12 @@ export default function Campaigns() {
       id: campaign.id,
       data: { status: newStatus }
     });
+  };
+
+  const deleteCampaign = (campaign: Campaign) => {
+    if (window.confirm(`Are you sure you want to delete "${campaign.name}"? This action cannot be undone.`)) {
+      deleteCampaignMutation.mutate(campaign.id);
+    }
   };
 
   const formatCurrency = (value: string | null) => {
@@ -801,14 +828,23 @@ export default function Campaigns() {
                             <Button 
                               variant="ghost" 
                               size="sm"
-                              onClick={(e) => e.preventDefault()}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                // Edit functionality can be implemented later if needed
+                              }}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm"
-                              onClick={(e) => e.preventDefault()}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteCampaign(campaign);
+                              }}
+                              disabled={deleteCampaignMutation.isPending}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>

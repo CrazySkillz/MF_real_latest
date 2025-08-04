@@ -893,11 +893,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (filesResponse.status === 403) {
             return res.status(400).json({
               success: false,
-              error: 'Google Drive API access denied. Please enable the Google Drive API in your Google Cloud Console project, or provide a specific spreadsheet ID manually.',
+              error: 'Google Drive API access denied. Please enable BOTH the Google Drive API and Google Sheets API in your Google Cloud Console project, or provide a specific spreadsheet ID manually.',
               errorCode: 'DRIVE_API_DISABLED',
               requiresManualEntry: true
             });
           }
+          
+          // For other errors, also return error response
+          return res.status(400).json({
+            success: false,
+            error: `Failed to fetch spreadsheets: ${filesResponse.status}`,
+            errorCode: 'API_ERROR'
+          });
         }
 
         // Store OAuth connection temporarily (no spreadsheet selected yet)

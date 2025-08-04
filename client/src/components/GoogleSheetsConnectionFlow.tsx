@@ -94,8 +94,8 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
               if (data.errorCode === 'DRIVE_API_DISABLED') {
                 setStep('manual-entry');
                 toast({
-                  title: "Drive API Access Required",
-                  description: "Please enable Google Drive API in your Cloud Console, or enter a spreadsheet ID manually.",
+                  title: "API Access Required",
+                  description: "Please enable BOTH Google Drive API and Google Sheets API in your Cloud Console, or enter a spreadsheet ID manually.",
                   variant: "destructive"
                 });
               } else {
@@ -285,7 +285,7 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
                   Back
                 </Button>
                 <Button 
-                  onClick={handleSpreadsheetSelection}
+                  onClick={() => handleSpreadsheetSelection()}
                   disabled={!selectedSpreadsheet}
                   className="flex-1"
                 >

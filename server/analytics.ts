@@ -36,22 +36,22 @@ export class GoogleAnalytics4Service {
     return { success: false };
   }
 
-  async refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number }> {
-    // Check for Google OAuth credentials first
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  async refreshAccessToken(refreshToken: string, clientId?: string, clientSecret?: string): Promise<{ access_token: string; expires_in: number }> {
+    // Use provided client credentials (from database) or fall back to environment variables
+    const authClientId = clientId || process.env.GOOGLE_CLIENT_ID;
+    const authClientSecret = clientSecret || process.env.GOOGLE_CLIENT_SECRET;
     
-    if (clientId && clientSecret) {
-      // Production-grade automatic refresh with credentials
-      console.log('Using production OAuth credentials for automatic refresh');
+    if (authClientId && authClientSecret) {
+      // Production-grade automatic refresh with stored or environment credentials
+      console.log('Using OAuth credentials for automatic refresh (source:', clientId ? 'database' : 'environment', ')');
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
+          client_id: authClientId,
+          client_secret: authClientSecret,
           refresh_token: refreshToken,
           grant_type: 'refresh_token'
         })
@@ -135,7 +135,18 @@ export class GoogleAnalytics4Service {
         if (connection.refreshToken) {
           try {
             console.log('Refreshing access token automatically in background...');
-            const refreshResult = await this.refreshAccessToken(connection.refreshToken);
+            console.log('Using stored OAuth credentials:', {
+              hasClientId: !!connection.clientId,
+              hasClientSecret: !!connection.clientSecret,
+              clientIdLength: connection.clientId?.length || 0
+            });
+            
+            // Use stored client credentials for automatic refresh
+            const refreshResult = await this.refreshAccessToken(
+              connection.refreshToken, 
+              connection.clientId || undefined,
+              connection.clientSecret || undefined
+            );
             
             // Update the connection with new access token
             await storage.updateGA4ConnectionTokens(campaignId, {

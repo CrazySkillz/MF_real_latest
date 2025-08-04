@@ -743,14 +743,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           account: p.account
         })));
 
-        // Create GA4 connection with tokens (no property selected yet)
+        // Create GA4 connection with tokens and OAuth credentials (no property selected yet)
+        const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
         await storage.createGA4Connection({
           campaignId,
           accessToken: access_token,
           refreshToken: refresh_token || null,
           propertyId: '', // Will be set when user selects property
           method: 'access_token',
-          propertyName: 'OAuth Connection'
+          propertyName: 'OAuth Connection',
+          clientId: clientId, // Store client credentials for automatic refresh
+          clientSecret: clientSecret,
+          expiresAt: expiresAt
         });
 
         // CRITICAL: Also store in global oauthConnections for property selection

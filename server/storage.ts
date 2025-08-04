@@ -179,6 +179,9 @@ export class MemStorage implements IStorage {
       serviceAccountKey: connection.serviceAccountKey || null,
       method: connection.method,
       propertyName: connection.propertyName || null,
+      clientId: connection.clientId || null,
+      clientSecret: connection.clientSecret || null,
+      expiresAt: connection.expiresAt || null,
       connectedAt: new Date(),
       createdAt: new Date(),
     };
@@ -208,6 +211,7 @@ export class MemStorage implements IStorage {
       ...existing,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken || existing.refreshToken,
+      expiresAt: tokens.expiresAt || existing.expiresAt,
     };
     
     this.ga4Connections.set(campaignId, updated);
@@ -329,7 +333,7 @@ export class DatabaseStorage implements IStorage {
       .set({
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
-        // Note: expiresAt field would need to be added to schema if tracking token expiry
+        expiresAt: tokens.expiresAt,
       })
       .where(eq(ga4Connections.campaignId, campaignId))
       .returning();

@@ -54,6 +54,9 @@ export const ga4Connections = pgTable("ga4_connections", {
   serviceAccountKey: text("service_account_key"), // JSON string
   method: text("method").notNull(), // 'access_token' or 'service_account'
   propertyName: text("property_name"),
+  clientId: text("client_id"), // OAuth client ID for automatic refresh
+  clientSecret: text("client_secret"), // OAuth client secret for automatic refresh  
+  expiresAt: timestamp("expires_at"), // Token expiration time
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -100,6 +103,9 @@ export const insertGA4ConnectionSchema = createInsertSchema(ga4Connections).pick
   serviceAccountKey: true,
   method: true,
   propertyName: true,
+  clientId: true,
+  clientSecret: true,
+  expiresAt: true,
 });
 
 export type Campaign = typeof campaigns.$inferSelect;

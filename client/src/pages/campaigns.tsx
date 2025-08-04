@@ -478,7 +478,11 @@ export default function Campaigns() {
   const deleteCampaignMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await apiRequest("DELETE", `/api/campaigns/${id}`);
-      return response.json();
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to delete campaign");
+      }
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
@@ -487,10 +491,11 @@ export default function Campaigns() {
         description: "Campaign has been permanently deleted.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Delete campaign error:", error);
       toast({
-        title: "Error",
-        description: "Failed to delete campaign. Please try again.",
+        title: "Error", 
+        description: error.message || "Failed to delete campaign. Please try again.",
         variant: "destructive",
       });
     },

@@ -87,6 +87,8 @@ export default function GoogleSheetsData() {
         dataLength: sheetsData.data?.length,
         firstRow: sheetsData.data?.[0],
         headers: sheetsData.headers,
+        summary: sheetsData.summary,
+        fullData: sheetsData
       });
     }
   }, [sheetsData]);

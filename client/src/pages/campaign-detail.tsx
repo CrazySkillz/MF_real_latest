@@ -114,10 +114,10 @@ export default function CampaignDetail() {
       }
       
       return {
-        metrics: data.data.metrics,
+        summary: data.summary,
         spreadsheetName: data.spreadsheetName,
-        totalRows: data.data.totalRows,
-        headers: data.data.headers,
+        totalRows: data.totalRows,
+        headers: data.headers,
         lastUpdated: data.lastUpdated
       };
     },
@@ -140,12 +140,12 @@ export default function CampaignDetail() {
     {
       platform: "Google Sheets",
       connected: !!sheetsConnection?.connected,
-      impressions: sheetsData?.metrics?.impressions || 0,
-      clicks: sheetsData?.metrics?.clicks || 0,
-      conversions: sheetsData?.metrics?.conversions || 0,
-      spend: sheetsData?.metrics?.budget?.toString() || "0.00",
-      ctr: sheetsData?.metrics?.impressions && sheetsData.metrics.impressions > 0 ? `${((sheetsData.metrics.clicks / sheetsData.metrics.impressions) * 100).toFixed(2)}%` : "0.00%",
-      cpc: sheetsData?.metrics?.clicks && sheetsData.metrics.clicks > 0 && sheetsData.metrics.budget ? `$${(sheetsData.metrics.budget / sheetsData.metrics.clicks).toFixed(2)}` : "$0.00"
+      impressions: sheetsData?.summary?.totalImpressions || 0,
+      clicks: sheetsData?.summary?.totalClicks || 0,
+      conversions: 0, // Conversions not in summary, would need to be calculated separately
+      spend: sheetsData?.summary?.totalSpend?.toString() || "0.00",
+      ctr: sheetsData?.summary?.averageCTR ? `${sheetsData.summary.averageCTR.toFixed(2)}%` : "0.00%",
+      cpc: sheetsData?.summary?.totalClicks && sheetsData.summary.totalClicks > 0 && sheetsData.summary.totalSpend ? `$${(sheetsData.summary.totalSpend / sheetsData.summary.totalClicks).toFixed(2)}` : "$0.00"
     },
     {
       platform: "Facebook Ads", 

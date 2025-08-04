@@ -50,7 +50,20 @@ export default function GoogleSheetsData() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to fetch Google Sheets data');
       }
-      return response.json();
+      const data = await response.json();
+      console.log('Frontend received Google Sheets data:', {
+        hasData: !!data,
+        totalRows: data.totalRows,
+        hasHeaders: data.headers && data.headers.length > 0,
+        headersCount: data.headers?.length || 0,
+        headers: data.headers,
+        hasDataRows: data.data && data.data.length > 0,
+        dataRowsCount: data.data?.length || 0,
+        firstDataRow: data.data?.[0],
+        dataStructure: typeof data.data,
+        rawData: data
+      });
+      return data;
     },
   });
 

@@ -55,6 +55,14 @@ const platforms = [
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth"
   },
   {
+    id: "google-sheets",
+    name: "Google Sheets",
+    icon: SiGoogle,
+    color: "text-green-500",
+    description: "Connect Google Sheets for data import/export",
+    type: "credentials"
+  },
+  {
     id: "facebook",
     name: "Facebook Ads",
     icon: SiFacebook,
@@ -798,6 +806,9 @@ export default function Campaigns() {
                             <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
                               {campaign.platform?.includes('Google Analytics') && (
                                 <SiGoogle className="w-4 h-4 text-orange-500" />
+                              )}
+                              {campaign.platform?.includes('Google Sheets') && (
+                                <SiGoogle className="w-4 h-4 text-green-500" />
                               )}
                               {campaign.platform?.includes('Facebook') && (
                                 <SiFacebook className="w-4 h-4 text-blue-600" />

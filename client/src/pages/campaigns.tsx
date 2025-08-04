@@ -576,6 +576,26 @@ export default function Campaigns() {
           console.error('❌ Failed to transfer GA4 connection:', error);
         }
       }
+
+      // Transfer Google Sheets connection if Google Sheets was connected
+      if (selectedPlatforms.includes('google-sheets')) {
+        try {
+          const response = await fetch('/api/google-sheets/transfer-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromCampaignId: 'temp-campaign-setup',
+              toCampaignId: (newCampaign as any).id
+            })
+          });
+          const result = await response.json();
+          if (result.success) {
+            console.log('✅ Google Sheets connection transferred successfully to campaign:', (newCampaign as any).id);
+          }
+        } catch (error) {
+          console.error('❌ Failed to transfer Google Sheets connection:', error);
+        }
+      }
     }
   };
 

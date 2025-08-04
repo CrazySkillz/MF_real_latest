@@ -1110,6 +1110,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Transfer Google Sheets connection from temporary campaign ID to real campaign ID
+  app.post("/api/google-sheets/transfer-connection", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+      
+      if (!fromCampaignId || !toCampaignId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Both fromCampaignId and toCampaignId are required" 
+        });
+      }
+
+      // Get the existing connection
+      const existingConnection = await storage.getGoogleSheetsConnection(fromCampaignId);
+      
+      console.log('Transfer Google Sheets connection - existing connection:', {
+        fromCampaignId,
+        toCampaignId,
+        found: !!existingConnection,
+        hasAccessToken: !!existingConnection?.accessToken,
+        spreadsheetId: existingConnection?.spreadsheetId
+      });
+      
+      if (!existingConnection) {
+        return res.status(404).json({
+          success: false,
+          error: "No Google Sheets connection found for the source campaign"
+        });
+      }
+
+      // Create new connection with the real campaign ID
+      const newConnection = await storage.createGoogleSheetsConnection({
+        campaignId: toCampaignId,
+        spreadsheetId: existingConnection.spreadsheetId,
+        spreadsheetName: existingConnection.spreadsheetName,
+        accessToken: existingConnection.accessToken,
+        refreshToken: existingConnection.refreshToken,
+        clientId: existingConnection.clientId,
+        clientSecret: existingConnection.clientSecret,
+        expiresAt: existingConnection.expiresAt
+      });
+      
+      console.log('Transfer Google Sheets connection - new connection created:', {
+        id: newConnection.id,
+        campaignId: newConnection.campaignId,
+        spreadsheetId: newConnection.spreadsheetId,
+        hasAccessToken: !!newConnection.accessToken
+      });
+
+      // Delete the temporary connection
+      await storage.deleteGoogleSheetsConnection(fromCampaignId);
+
+      res.json({
+        success: true,
+        message: 'Google Sheets connection transferred successfully'
+      });
+    } catch (error) {
+      console.error('Google Sheets connection transfer error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to transfer Google Sheets connection'
+      });
+    }
+  });
+
   const server = createServer(app);
   return server;
 }

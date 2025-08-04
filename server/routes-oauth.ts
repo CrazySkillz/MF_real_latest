@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -810,6 +810,284 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         error: 'Internal server error during OAuth exchange'
+      });
+    }
+  });
+
+  // Google Sheets OAuth endpoints
+  
+  // OAuth code exchange for Google Sheets
+  app.post("/api/google-sheets/oauth-exchange", async (req, res) => {
+    try {
+      const { campaignId, authCode, clientId, clientSecret, redirectUri } = req.body;
+      
+      if (!campaignId || !authCode || !clientId || !clientSecret || !redirectUri) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required fields: campaignId, authCode, clientId, clientSecret, redirectUri"
+        });
+      }
+
+      // Exchange authorization code for tokens
+      const tokenParams = {
+        code: authCode,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code'
+      };
+      
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(tokenParams)
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.text();
+        console.error('Google Sheets token exchange failed:', errorData);
+        return res.status(400).json({
+          success: false,
+          error: 'Failed to exchange authorization code for tokens'
+        });
+      }
+
+      const tokens = await tokenResponse.json();
+      const { access_token, refresh_token } = tokens;
+
+      if (!access_token) {
+        return res.status(400).json({
+          success: false,
+          error: 'No access token received from Google'
+        });
+      }
+
+      // Get available spreadsheets using the access token
+      try {
+        let spreadsheets = [];
+        
+        console.log('Fetching Google Sheets files...');
+        const filesResponse = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name,webViewLink)', {
+          headers: { 'Authorization': `Bearer ${access_token}` }
+        });
+
+        if (filesResponse.ok) {
+          const filesData = await filesResponse.json();
+          console.log('Google Sheets found:', {
+            count: filesData.files?.length || 0,
+            files: filesData.files?.map((f: any) => ({ id: f.id, name: f.name })) || []
+          });
+          
+          for (const file of filesData.files || []) {
+            spreadsheets.push({
+              id: file.id,
+              name: file.name || `Spreadsheet ${file.id}`,
+              url: file.webViewLink || ''
+            });
+          }
+        } else {
+          console.error('Failed to fetch spreadsheets:', filesResponse.status);
+        }
+
+        // Store OAuth connection temporarily (no spreadsheet selected yet)
+        const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
+        await storage.createGoogleSheetsConnection({
+          campaignId,
+          spreadsheetId: '', // Will be set when user selects spreadsheet
+          accessToken: access_token,
+          refreshToken: refresh_token || null,
+          clientId: clientId,
+          clientSecret: clientSecret,
+          expiresAt: expiresAt
+        });
+
+        // Store in global connections for spreadsheet selection
+        (global as any).googleSheetsConnections = (global as any).googleSheetsConnections || new Map();
+        (global as any).googleSheetsConnections.set(campaignId, {
+          accessToken: access_token,
+          refreshToken: refresh_token,
+          expiresAt: Date.now() + (tokens.expires_in * 1000),
+          spreadsheets,
+          connectedAt: new Date().toISOString()
+        });
+
+        console.log('Google Sheets OAuth connection stored for campaignId:', campaignId);
+
+        res.json({
+          success: true,
+          spreadsheets,
+          message: 'Google Sheets OAuth authentication successful'
+        });
+
+      } catch (error) {
+        console.error('Failed to fetch Google Sheets:', error);
+        res.json({
+          success: true,
+          spreadsheets: [],
+          message: 'OAuth successful, but failed to fetch spreadsheets. You can enter Spreadsheet ID manually.'
+        });
+      }
+
+    } catch (error) {
+      console.error('Google Sheets OAuth exchange error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error during OAuth exchange'
+      });
+    }
+  });
+
+  // Select specific spreadsheet
+  app.post("/api/google-sheets/select-spreadsheet", async (req, res) => {
+    try {
+      const { campaignId, spreadsheetId } = req.body;
+      
+      console.log('Spreadsheet selection request:', { campaignId, spreadsheetId });
+      
+      const connections = (global as any).googleSheetsConnections;
+      if (!connections || !connections.has(campaignId)) {
+        return res.status(404).json({ error: 'No Google Sheets connection found for this campaign' });
+      }
+
+      const connection = connections.get(campaignId);
+      
+      // Find the selected spreadsheet
+      const selectedSpreadsheet = connection.spreadsheets?.find((s: any) => s.id === spreadsheetId);
+      const spreadsheetName = selectedSpreadsheet?.name || `Spreadsheet ${spreadsheetId}`;
+      
+      // Update the database connection with the selected spreadsheet
+      await storage.updateGoogleSheetsConnection(campaignId, {
+        spreadsheetId,
+        spreadsheetName
+      });
+      
+      console.log('Updated database connection with spreadsheet:', {
+        campaignId,
+        spreadsheetId,
+        spreadsheetName
+      });
+      
+      res.json({
+        success: true,
+        selectedSpreadsheet: selectedSpreadsheet
+      });
+    } catch (error) {
+      console.error('Spreadsheet selection error:', error);
+      res.status(500).json({ error: 'Failed to select spreadsheet' });
+    }
+  });
+
+  // Check Google Sheets connection status
+  app.get("/api/google-sheets/check-connection/:campaignId", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const connection = await storage.getGoogleSheetsConnection(campaignId);
+      
+      if (!connection || !connection.spreadsheetId) {
+        return res.json({ connected: false });
+      }
+      
+      res.json({
+        connected: true,
+        spreadsheetId: connection.spreadsheetId,
+        spreadsheetName: connection.spreadsheetName
+      });
+    } catch (error) {
+      res.json({ connected: false });
+    }
+  });
+
+  // Get spreadsheet data for a campaign
+  app.get("/api/campaigns/:id/google-sheets-data", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const connection = await storage.getGoogleSheetsConnection(campaignId);
+      
+      if (!connection || !connection.spreadsheetId || !connection.accessToken) {
+        return res.status(404).json({ 
+          error: "No Google Sheets connection found for this campaign" 
+        });
+      }
+
+      // Fetch spreadsheet data
+      const sheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z1000`, {
+        headers: { 'Authorization': `Bearer ${connection.accessToken}` }
+      });
+
+      if (!sheetResponse.ok) {
+        const errorText = await sheetResponse.text();
+        console.error('Google Sheets API error:', errorText);
+        
+        // Handle token expiration
+        if (sheetResponse.status === 401) {
+          return res.status(401).json({ 
+            error: 'TOKEN_EXPIRED',
+            message: 'Access token expired - refresh needed',
+            requiresReconnection: true
+          });
+        }
+        
+        throw new Error(`Google Sheets API Error: ${errorText}`);
+      }
+
+      const sheetData = await sheetResponse.json();
+      const rows = sheetData.values || [];
+      
+      // Process spreadsheet data to extract campaign metrics
+      let campaignData = {
+        totalRows: rows.length,
+        headers: rows[0] || [],
+        sampleData: rows.slice(1, 6), // First 5 data rows
+        metrics: {
+          budget: 0,
+          impressions: 0,
+          clicks: 0,
+          conversions: 0
+        }
+      };
+
+      // Try to extract common marketing metrics from the data
+      if (rows.length > 1 && rows[0]) {
+        const headers = rows[0].map((h: string) => h.toLowerCase());
+        const budgetCol = headers.indexOf('budget') || headers.indexOf('spend') || headers.indexOf('cost');
+        const impressionsCol = headers.indexOf('impressions') || headers.indexOf('views');
+        const clicksCol = headers.indexOf('clicks');
+        const conversionsCol = headers.indexOf('conversions') || headers.indexOf('leads');
+
+        // Sum up numeric values from the spreadsheet
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i] || [];
+          if (budgetCol >= 0 && row[budgetCol]) {
+            const value = parseFloat(row[budgetCol]);
+            if (!isNaN(value)) campaignData.metrics.budget += value;
+          }
+          if (impressionsCol >= 0 && row[impressionsCol]) {
+            const value = parseInt(row[impressionsCol]);
+            if (!isNaN(value)) campaignData.metrics.impressions += value;
+          }
+          if (clicksCol >= 0 && row[clicksCol]) {
+            const value = parseInt(row[clicksCol]);
+            if (!isNaN(value)) campaignData.metrics.clicks += value;
+          }
+          if (conversionsCol >= 0 && row[conversionsCol]) {
+            const value = parseInt(row[conversionsCol]);
+            if (!isNaN(value)) campaignData.metrics.conversions += value;
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        data: campaignData,
+        spreadsheetName: connection.spreadsheetName,
+        lastUpdated: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Google Sheets data error:', error);
+      res.status(500).json({
+        error: 'Failed to fetch Google Sheets data',
+        message: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });

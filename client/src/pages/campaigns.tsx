@@ -21,6 +21,7 @@ import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
+import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
 
 const campaignFormSchema = insertCampaignSchema.extend({
   name: z.string().min(1, "Campaign name is required"),
@@ -121,6 +122,11 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
     // Start connection process
     if (platformId === 'google-analytics') {
       await handleGA4Connect();
+    } else if (platformId === 'google-sheets') {
+      // Google Sheets connection is handled by the component
+      // Mark as connected when the component succeeds
+      setConnectedPlatforms(prev => [...prev, platformId]);
+      setSelectedPlatforms(prev => [...prev, platformId]);
     } else {
       // For other platforms, show coming soon message
       toast({
@@ -332,6 +338,22 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                       toast({
                         title: "GA4 Connected!",
                         description: "Successfully connected with automatic token refresh for marketing professionals."
+                      });
+                    }}
+                  />
+                </div>
+              )}
+              
+              {platform.id === 'google-sheets' && !isConnected && (
+                <div className="ml-8 mt-3">
+                  <GoogleSheetsConnectionFlow
+                    campaignId="temp-campaign-setup"
+                    onConnectionSuccess={() => {
+                      setConnectedPlatforms(prev => [...prev, 'google-sheets']);
+                      setSelectedPlatforms(prev => [...prev, 'google-sheets']);
+                      toast({
+                        title: "Google Sheets Connected!",
+                        description: "Successfully connected to your spreadsheet data."
                       });
                     }}
                   />

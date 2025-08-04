@@ -61,6 +61,20 @@ export const ga4Connections = pgTable("ga4_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const googleSheetsConnections = pgTable("google_sheets_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  spreadsheetId: text("spreadsheet_id").notNull(),
+  spreadsheetName: text("spreadsheet_name"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  clientId: text("client_id"),
+  clientSecret: text("client_secret"),
+  expiresAt: timestamp("expires_at"),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   name: true,
   clientWebsite: true,
@@ -108,6 +122,17 @@ export const insertGA4ConnectionSchema = createInsertSchema(ga4Connections).pick
   expiresAt: true,
 });
 
+export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheetsConnections).pick({
+  campaignId: true,
+  spreadsheetId: true,
+  spreadsheetName: true,
+  accessToken: true,
+  refreshToken: true,
+  clientId: true,
+  clientSecret: true,
+  expiresAt: true,
+});
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Metric = typeof metrics.$inferSelect;
@@ -118,3 +143,5 @@ export type PerformanceData = typeof performanceData.$inferSelect;
 export type InsertPerformanceData = z.infer<typeof insertPerformanceDataSchema>;
 export type GA4Connection = typeof ga4Connections.$inferSelect;
 export type InsertGA4Connection = z.infer<typeof insertGA4ConnectionSchema>;
+export type GoogleSheetsConnection = typeof googleSheetsConnections.$inferSelect;
+export type InsertGoogleSheetsConnection = z.infer<typeof insertGoogleSheetsConnectionSchema>;

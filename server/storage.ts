@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, campaigns, metrics, integrations, performanceData, ga4Connections } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -31,6 +31,12 @@ export interface IStorage {
   updateGA4Connection(campaignId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined>;
   updateGA4ConnectionTokens(campaignId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined>;
   deleteGA4Connection(campaignId: string): Promise<boolean>;
+  
+  // Google Sheets Connections
+  getGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined>;
+  createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection>;
+  updateGoogleSheetsConnection(campaignId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined>;
+  deleteGoogleSheetsConnection(campaignId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -39,6 +45,7 @@ export class MemStorage implements IStorage {
   private integrations: Map<string, Integration>;
   private performanceData: Map<string, PerformanceData>;
   private ga4Connections: Map<string, GA4Connection>;
+  private googleSheetsConnections: Map<string, GoogleSheetsConnection>;
 
   constructor() {
     this.campaigns = new Map();
@@ -46,6 +53,7 @@ export class MemStorage implements IStorage {
     this.integrations = new Map();
     this.performanceData = new Map();
     this.ga4Connections = new Map();
+    this.googleSheetsConnections = new Map();
     
     // Initialize with empty data - no mock data
     this.initializeEmptyData();
@@ -226,6 +234,48 @@ export class MemStorage implements IStorage {
   async deleteGA4Connection(campaignId: string): Promise<boolean> {
     return this.ga4Connections.delete(campaignId);
   }
+
+  // Google Sheets Connection methods
+  async getGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {
+    return this.googleSheetsConnections.get(campaignId);
+  }
+
+  async createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection> {
+    const id = randomUUID();
+    const sheetsConnection: GoogleSheetsConnection = {
+      id,
+      campaignId: connection.campaignId,
+      spreadsheetId: connection.spreadsheetId,
+      spreadsheetName: connection.spreadsheetName || null,
+      accessToken: connection.accessToken || null,
+      refreshToken: connection.refreshToken || null,
+      clientId: connection.clientId || null,
+      clientSecret: connection.clientSecret || null,
+      expiresAt: connection.expiresAt || null,
+      connectedAt: new Date(),
+      createdAt: new Date(),
+    };
+    
+    this.googleSheetsConnections.set(connection.campaignId, sheetsConnection);
+    return sheetsConnection;
+  }
+
+  async updateGoogleSheetsConnection(campaignId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
+    const existing = this.googleSheetsConnections.get(campaignId);
+    if (!existing) return undefined;
+    
+    const updated: GoogleSheetsConnection = {
+      ...existing,
+      ...connection,
+    };
+    
+    this.googleSheetsConnections.set(campaignId, updated);
+    return updated;
+  }
+
+  async deleteGoogleSheetsConnection(campaignId: string): Promise<boolean> {
+    return this.googleSheetsConnections.delete(campaignId);
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -356,6 +406,36 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(ga4Connections)
       .where(eq(ga4Connections.campaignId, campaignId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Google Sheets Connection methods
+  async getGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {
+    const [connection] = await db.select().from(googleSheetsConnections).where(eq(googleSheetsConnections.campaignId, campaignId));
+    return connection || undefined;
+  }
+
+  async createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection> {
+    const [sheetsConnection] = await db
+      .insert(googleSheetsConnections)
+      .values(connection)
+      .returning();
+    return sheetsConnection;
+  }
+
+  async updateGoogleSheetsConnection(campaignId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
+    const [updated] = await db
+      .update(googleSheetsConnections)
+      .set(connection)
+      .where(eq(googleSheetsConnections.campaignId, campaignId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteGoogleSheetsConnection(campaignId: string): Promise<boolean> {
+    const result = await db
+      .delete(googleSheetsConnections)
+      .where(eq(googleSheetsConnections.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
   }
 }

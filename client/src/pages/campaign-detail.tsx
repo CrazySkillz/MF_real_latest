@@ -425,6 +425,12 @@ export default function CampaignDetail() {
                             <div className="text-xs text-slate-500 dark:text-slate-400">
                               Rows: {sheetsData?.totalRows || 0} | Last updated: {sheetsData?.lastUpdated ? new Date(sheetsData.lastUpdated).toLocaleString() : 'Recently'}
                             </div>
+                            <Link href={`/campaigns/${campaign.id}/google-sheets-data`}>
+                              <Button variant="outline" size="sm" className="w-full">
+                                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                                View Spreadsheet Data
+                              </Button>
+                            </Link>
                           </div>
                         )}
                       </div>

@@ -104,7 +104,7 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### August 2025 - Complete Multi-Platform Integration
+### August 2025 - Complete Multi-Platform Integration & Auto-Refresh
 - **Real-Time GA4 API**: Implemented authentic Google Analytics Data API v1 integration
 - **OAuth Flow**: Built complete OAuth 2.0 flow for Google Analytics access with popup authentication
 - **Live Metrics**: Users can connect real GA4 accounts and pull live data (sessions, pageviews, conversions, bounce rate)
@@ -116,6 +116,9 @@ Preferred communication style: Simple, everyday language.
 - **Professional Data Display**: Created comprehensive marketing SaaS interface for viewing Google Sheets data with summary metrics and tabular raw data
 - **Connection Transfer System**: Implemented seamless connection transfer from temporary to permanent campaigns
 - **Dynamic Platform Detection**: Built smart platform detection system that identifies connected services during campaign creation
+- **Auto-Refresh System**: Implemented comprehensive auto-refresh functionality with configurable intervals (10s, 30s, 1min, 5min)
+- **Data Display Fix**: Resolved critical column mapping bug that prevented summary metrics calculation from Google Sheets data
+- **Real-Time Sync**: Platform now correctly processes and displays millions of data points from authentic Google Sheets sources
 
 ### January 2025 - Python Backend Refactor  
 - **Backend Migration**: Converted Express.js/TypeScript backend to Python/FastAPI

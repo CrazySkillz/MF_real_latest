@@ -1055,7 +1055,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let campaignData = {
         totalRows: rows.length,
         headers: rows[0] || [],
-        sampleData: rows.slice(1, 6), // First 5 data rows
+        data: rows.slice(1), // All data rows (excluding header)
+        sampleData: rows.slice(1, 6), // First 5 data rows for backward compatibility
         metrics: {
           budget: 0,
           impressions: 0,
@@ -1096,8 +1097,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        data: campaignData,
-        spreadsheetName: connection.spreadsheetName,
+        spreadsheetName: connection.spreadsheetName || connection.spreadsheetId,
+        spreadsheetId: connection.spreadsheetId,
+        totalRows: campaignData.totalRows,
+        headers: campaignData.headers,
+        data: campaignData.data,
+        summary: {
+          totalImpressions: campaignData.metrics.impressions,
+          totalClicks: campaignData.metrics.clicks,
+          totalSpend: campaignData.metrics.budget,
+          averageCTR: campaignData.metrics.clicks > 0 && campaignData.metrics.impressions > 0 
+            ? (campaignData.metrics.clicks / campaignData.metrics.impressions) * 100 
+            : 0
+        },
         lastUpdated: new Date().toISOString()
       });
 

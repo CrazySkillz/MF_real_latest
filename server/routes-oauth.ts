@@ -1068,10 +1068,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Try to extract common marketing metrics from the data
       if (rows.length > 1 && rows[0]) {
         const headers = rows[0].map((h: string) => h.toLowerCase());
-        const budgetCol = headers.indexOf('budget') || headers.indexOf('spend') || headers.indexOf('cost');
-        const impressionsCol = headers.indexOf('impressions') || headers.indexOf('views');
-        const clicksCol = headers.indexOf('clicks');
-        const conversionsCol = headers.indexOf('conversions') || headers.indexOf('leads');
+        
+        // Find column indices - must use findIndex to handle column 0 properly
+        let budgetCol = headers.findIndex(h => h.includes('budget') || h.includes('spend') || h.includes('cost'));
+        let impressionsCol = headers.findIndex(h => h.includes('impressions') || h.includes('views'));
+        let clicksCol = headers.findIndex(h => h.includes('clicks'));
+        let conversionsCol = headers.findIndex(h => h.includes('conversions') || h.includes('leads'));
+        
+        // Fallback to exact matches if partial matches don't work
+        if (budgetCol === -1) budgetCol = headers.indexOf('spend (usd)');
+        if (impressionsCol === -1) impressionsCol = headers.indexOf('impressions');
+        if (clicksCol === -1) clicksCol = headers.indexOf('clicks');
+        if (conversionsCol === -1) conversionsCol = headers.indexOf('conversions');
+        
+        console.log('Column mapping:', {
+          headers: headers,
+          budgetCol,
+          impressionsCol, 
+          clicksCol,
+          conversionsCol
+        });
 
         // Sum up numeric values from the spreadsheet
         for (let i = 1; i < rows.length; i++) {

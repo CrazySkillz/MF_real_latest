@@ -886,7 +886,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         } else {
-          console.error('Failed to fetch spreadsheets:', filesResponse.status);
+          const errorText = await filesResponse.text();
+          console.error('Failed to fetch spreadsheets:', filesResponse.status, errorText);
+          
+          // If it's a 403 error, likely means Google Drive API is not enabled
+          if (filesResponse.status === 403) {
+            return res.status(400).json({
+              success: false,
+              error: 'Google Drive API access denied. Please enable the Google Drive API in your Google Cloud Console project, or provide a specific spreadsheet ID manually.',
+              errorCode: 'DRIVE_API_DISABLED',
+              requiresManualEntry: true
+            });
+          }
         }
 
         // Store OAuth connection temporarily (no spreadsheet selected yet)

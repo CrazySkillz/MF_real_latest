@@ -21,13 +21,14 @@ interface Spreadsheet {
 }
 
 export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: GoogleSheetsConnectionFlowProps) {
-  const [step, setStep] = useState<'credentials' | 'connecting' | 'select-sheet' | 'connected'>('credentials');
+  const [step, setStep] = useState<'credentials' | 'connecting' | 'select-sheet' | 'manual-entry' | 'connected'>('credentials');
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [showClientIdInput, setShowClientIdInput] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [spreadsheets, setSpreadsheets] = useState<Spreadsheet[]>([]);
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string>('');
+  const [manualSpreadsheetId, setManualSpreadsheetId] = useState<string>('');
   const { toast } = useToast();
 
   const handleGoogleOAuth = async () => {
@@ -89,7 +90,17 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
                 description: "Select a spreadsheet to import campaign data from."
               });
             } else {
-              throw new Error(data.error || 'OAuth exchange failed');
+              // Check if this is a Drive API issue that requires manual entry
+              if (data.errorCode === 'DRIVE_API_DISABLED') {
+                setStep('manual-entry');
+                toast({
+                  title: "Drive API Access Required",
+                  description: "Please enable Google Drive API in your Cloud Console, or enter a spreadsheet ID manually.",
+                  variant: "destructive"
+                });
+              } else {
+                throw new Error(data.error || 'OAuth exchange failed');
+              }
             }
           } catch (error: any) {
             console.error('Google Sheets OAuth error:', error);
@@ -138,11 +149,12 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
     }
   };
 
-  const handleSpreadsheetSelection = async () => {
-    if (!selectedSpreadsheet) {
+  const handleSpreadsheetSelection = async (manualId?: string) => {
+    const spreadsheetId = manualId || selectedSpreadsheet;
+    if (!spreadsheetId) {
       toast({
         title: "Selection Required",
-        description: "Please select a spreadsheet to continue.",
+        description: "Please select or enter a spreadsheet ID to continue.",
         variant: "destructive"
       });
       return;
@@ -154,7 +166,7 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId,
-          spreadsheetId: selectedSpreadsheet
+          spreadsheetId: spreadsheetId
         })
       });
 
@@ -178,6 +190,48 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
       });
     }
   };
+
+  if (step === 'manual-entry') {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="w-5 h-5 text-green-500" />
+            Enter Spreadsheet ID
+          </CardTitle>
+          <CardDescription>
+            Enter your Google Sheets ID manually. You can find this in your spreadsheet URL.
+            <br />
+            <span className="text-xs text-slate-400">Example: 1ABC...XYZ from docs.google.com/spreadsheets/d/1ABC...XYZ/edit</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Spreadsheet ID</Label>
+            <Input
+              value={manualSpreadsheetId}
+              onChange={(e) => setManualSpreadsheetId(e.target.value)}
+              placeholder="1ABC...XYZ"
+              className="font-mono text-sm"
+            />
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <Button variant="outline" onClick={() => setStep('credentials')} className="flex-1">
+              Back
+            </Button>
+            <Button 
+              onClick={() => handleSpreadsheetSelection(manualSpreadsheetId)}
+              disabled={!manualSpreadsheetId.trim()}
+              className="flex-1"
+            >
+              Connect Spreadsheet
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (step === 'connected') {
     return (

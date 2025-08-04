@@ -407,6 +407,7 @@ export default function Campaigns() {
   const [showConnectorsStep, setShowConnectorsStep] = useState(false);
   const [campaignData, setCampaignData] = useState<CampaignFormData | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const { toast } = useToast();
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
@@ -556,8 +557,13 @@ export default function Campaigns() {
   };
 
   const deleteCampaign = (campaign: Campaign) => {
-    if (window.confirm(`Are you sure you want to delete "${campaign.name}"? This action cannot be undone.`)) {
-      deleteCampaignMutation.mutate(campaign.id);
+    setCampaignToDelete(campaign);
+  };
+
+  const confirmDelete = () => {
+    if (campaignToDelete) {
+      deleteCampaignMutation.mutate(campaignToDelete.id);
+      setCampaignToDelete(null);
     }
   };
 
@@ -859,6 +865,38 @@ export default function Campaigns() {
           </div>
         </main>
       </div>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!campaignToDelete} onOpenChange={() => setCampaignToDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-500" />
+              Delete Campaign
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>"{campaignToDelete?.name}"</strong>? This action cannot be undone and will permanently remove all campaign data and analytics connections.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-end gap-3 mt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setCampaignToDelete(null)}
+              disabled={deleteCampaignMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              disabled={deleteCampaignMutation.isPending}
+            >
+              {deleteCampaignMutation.isPending ? "Deleting..." : "Delete Campaign"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

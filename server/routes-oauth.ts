@@ -1070,10 +1070,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const headers = rows[0].map((h: string) => h.toLowerCase());
         
         // Find column indices - must use findIndex to handle column 0 properly
-        let budgetCol = headers.findIndex(h => h.includes('budget') || h.includes('spend') || h.includes('cost'));
-        let impressionsCol = headers.findIndex(h => h.includes('impressions') || h.includes('views'));
-        let clicksCol = headers.findIndex(h => h.includes('clicks'));
-        let conversionsCol = headers.findIndex(h => h.includes('conversions') || h.includes('leads'));
+        let budgetCol = headers.findIndex((h: string) => h.includes('budget') || h.includes('spend') || h.includes('cost'));
+        let impressionsCol = headers.findIndex((h: string) => h.includes('impressions') || h.includes('views'));
+        let clicksCol = headers.findIndex((h: string) => h.includes('clicks'));
+        let conversionsCol = headers.findIndex((h: string) => h.includes('conversions') || h.includes('leads'));
         
         // Fallback to exact matches if partial matches don't work
         if (budgetCol === -1) budgetCol = headers.indexOf('spend (usd)');
@@ -1090,25 +1090,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Sum up numeric values from the spreadsheet
+        console.log('Processing data rows:', rows.length - 1);
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i] || [];
+          
           if (budgetCol >= 0 && row[budgetCol]) {
             const value = parseFloat(row[budgetCol]);
-            if (!isNaN(value)) campaignData.metrics.budget += value;
+            if (!isNaN(value)) {
+              campaignData.metrics.budget += value;
+              if (i <= 3) console.log(`Row ${i} budget:`, row[budgetCol], '-> parsed:', value);
+            }
           }
           if (impressionsCol >= 0 && row[impressionsCol]) {
             const value = parseInt(row[impressionsCol]);
-            if (!isNaN(value)) campaignData.metrics.impressions += value;
+            if (!isNaN(value)) {
+              campaignData.metrics.impressions += value;
+              if (i <= 3) console.log(`Row ${i} impressions:`, row[impressionsCol], '-> parsed:', value);
+            }
           }
           if (clicksCol >= 0 && row[clicksCol]) {
             const value = parseInt(row[clicksCol]);
-            if (!isNaN(value)) campaignData.metrics.clicks += value;
+            if (!isNaN(value)) {
+              campaignData.metrics.clicks += value;
+              if (i <= 3) console.log(`Row ${i} clicks:`, row[clicksCol], '-> parsed:', value);
+            }
           }
           if (conversionsCol >= 0 && row[conversionsCol]) {
             const value = parseInt(row[conversionsCol]);
-            if (!isNaN(value)) campaignData.metrics.conversions += value;
+            if (!isNaN(value)) {
+              campaignData.metrics.conversions += value;
+              if (i <= 3) console.log(`Row ${i} conversions:`, row[conversionsCol], '-> parsed:', value);
+            }
           }
         }
+        
+        console.log('Final metrics calculated:', campaignData.metrics);
       }
 
       res.json({

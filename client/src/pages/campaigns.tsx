@@ -798,10 +798,39 @@ export default function Campaigns() {
                         <Button 
                           type="button" 
                           className="flex-1"
-                          onClick={() => {
-                            // Get selected platforms from the form
-                            const selectedPlatforms = ['facebook', 'google-analytics']; // For now, just demo platforms
-                            handleConnectorsComplete(selectedPlatforms);
+                          onClick={async () => {
+                            // Dynamically detect connected platforms
+                            const connectedPlatforms = [];
+                            
+                            // Check for GA4 connection
+                            try {
+                              const ga4Response = await fetch('/api/ga4/check-connection/temp-campaign-setup');
+                              const ga4Data = await ga4Response.json();
+                              if (ga4Data.connected) {
+                                connectedPlatforms.push('google-analytics');
+                              }
+                            } catch (error) {
+                              console.log('No GA4 connection found');
+                            }
+                            
+                            // Check for Google Sheets connection
+                            try {
+                              const sheetsResponse = await fetch('/api/google-sheets/check-connection/temp-campaign-setup');
+                              const sheetsData = await sheetsResponse.json();
+                              if (sheetsData.connected) {
+                                connectedPlatforms.push('google-sheets');
+                              }
+                            } catch (error) {
+                              console.log('No Google Sheets connection found');
+                            }
+                            
+                            // Always include demo platforms for now
+                            if (!connectedPlatforms.includes('facebook')) {
+                              connectedPlatforms.push('facebook');
+                            }
+                            
+                            console.log('🔧 Detected connected platforms:', connectedPlatforms);
+                            handleConnectorsComplete(connectedPlatforms);
                           }}
                           disabled={createCampaignMutation.isPending}
                         >

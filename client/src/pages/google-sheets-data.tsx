@@ -78,6 +78,19 @@ export default function GoogleSheetsData() {
     }
   }, [sheetsData?.lastUpdated, toast]);
 
+  // Debug data structure
+  useEffect(() => {
+    if (sheetsData) {
+      console.log('Sheets data received:', {
+        totalRows: sheetsData.totalRows,
+        headersLength: sheetsData.headers?.length,
+        dataLength: sheetsData.data?.length,
+        firstRow: sheetsData.data?.[0],
+        headers: sheetsData.headers,
+      });
+    }
+  }, [sheetsData]);
+
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
   };
@@ -338,30 +351,49 @@ export default function GoogleSheetsData() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              {sheetsData.headers?.map((header, index) => (
-                                <TableHead key={index} className="font-semibold">
-                                  {header}
-                                </TableHead>
-                              ))}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {sheetsData.data?.map((row, rowIndex) => (
-                              <TableRow key={rowIndex}>
-                                {row.map((cell, cellIndex) => (
-                                  <TableCell key={cellIndex} className="font-mono text-sm">
-                                    {cell}
-                                  </TableCell>
+                      {sheetsLoading ? (
+                        <div className="space-y-3">
+                          {[...Array(5)].map((_, i) => (
+                            <div key={i} className="h-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                          ))}
+                        </div>
+                      ) : sheetsData.data && sheetsData.data.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                {sheetsData.headers?.map((header, index) => (
+                                  <TableHead key={index} className="font-semibold">
+                                    {header}
+                                  </TableHead>
                                 ))}
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
+                            </TableHeader>
+                            <TableBody>
+                              {sheetsData.data.map((row, rowIndex) => (
+                                <TableRow key={rowIndex}>
+                                  {row.map((cell, cellIndex) => (
+                                    <TableCell key={cellIndex} className="font-mono text-sm">
+                                      {cell || '-'}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                          <p className="text-slate-600 dark:text-slate-400">No data available</p>
+                          <p className="text-sm text-slate-500 mt-2">
+                            {sheetsData.totalRows > 0 
+                              ? `${sheetsData.totalRows} rows found but no data to display`
+                              : 'No rows found in the spreadsheet'
+                            }
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>

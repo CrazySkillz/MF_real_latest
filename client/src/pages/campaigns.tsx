@@ -557,6 +557,9 @@ export default function Campaigns() {
         });
       });
       
+      // Debug: Log selected platforms for troubleshooting
+      console.log('🔧 Debug - Selected platforms for transfer:', selectedPlatforms);
+      
       // Transfer GA4 connection if GA4 was connected
       if (selectedPlatforms.includes('google-analytics')) {
         try {
@@ -579,6 +582,7 @@ export default function Campaigns() {
 
       // Transfer Google Sheets connection if Google Sheets was connected
       if (selectedPlatforms.includes('google-sheets')) {
+        console.log('🔧 Attempting Google Sheets transfer...');
         try {
           const response = await fetch('/api/google-sheets/transfer-connection', {
             method: 'POST',
@@ -591,10 +595,14 @@ export default function Campaigns() {
           const result = await response.json();
           if (result.success) {
             console.log('✅ Google Sheets connection transferred successfully to campaign:', (newCampaign as any).id);
+          } else {
+            console.error('❌ Google Sheets transfer failed:', result.error);
           }
         } catch (error) {
           console.error('❌ Failed to transfer Google Sheets connection:', error);
         }
+      } else {
+        console.log('🔧 Google Sheets not in selected platforms, skipping transfer');
       }
     }
   };

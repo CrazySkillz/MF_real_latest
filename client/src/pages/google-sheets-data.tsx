@@ -50,20 +50,7 @@ export default function GoogleSheetsData() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to fetch Google Sheets data');
       }
-      const data = await response.json();
-      console.log('Frontend received Google Sheets data:', {
-        hasData: !!data,
-        totalRows: data.totalRows,
-        hasHeaders: data.headers && data.headers.length > 0,
-        headersCount: data.headers?.length || 0,
-        headers: data.headers,
-        hasDataRows: data.data && data.data.length > 0,
-        dataRowsCount: data.data?.length || 0,
-        firstDataRow: data.data?.[0],
-        dataStructure: typeof data.data,
-        rawData: data
-      });
-      return data;
+      return response.json();
     },
   });
 
@@ -300,24 +287,15 @@ export default function GoogleSheetsData() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {(() => {
-                              console.log('Rendering table body - sheetsData.data:', sheetsData.data);
-                              console.log('Data array length:', sheetsData.data?.length);
-                              console.log('Data is array:', Array.isArray(sheetsData.data));
-                              console.log('First 3 rows:', sheetsData.data?.slice(0, 3));
-                              return sheetsData.data?.map((row, rowIndex) => {
-                                console.log(`Rendering row ${rowIndex}:`, row);
-                                return (
-                                  <TableRow key={rowIndex}>
-                                    {row.map((cell, cellIndex) => (
-                                      <TableCell key={cellIndex} className="font-mono text-sm">
-                                        {cell}
-                                      </TableCell>
-                                    ))}
-                                  </TableRow>
-                                );
-                              });
-                            })()}
+                            {sheetsData.data?.map((row, rowIndex) => (
+                              <TableRow key={rowIndex}>
+                                {row.map((cell, cellIndex) => (
+                                  <TableCell key={cellIndex} className="font-mono text-sm">
+                                    {cell}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
                           </TableBody>
                         </Table>
                       </div>

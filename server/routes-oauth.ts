@@ -1051,14 +1051,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sheetData = await sheetResponse.json();
       const rows = sheetData.values || [];
       
-      console.log('Google Sheets API response data:', {
-        totalRows: rows.length,
-        hasHeaders: rows.length > 0,
-        headerRow: rows[0],
-        firstDataRows: rows.slice(1, 3),
-        sampleRow: rows[1]
-      });
-      
       // Process spreadsheet data to extract campaign metrics
       let campaignData = {
         totalRows: rows.length,
@@ -1103,7 +1095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const responseData = {
+      res.json({
         success: true,
         spreadsheetName: connection.spreadsheetName || connection.spreadsheetId,
         spreadsheetId: connection.spreadsheetId,
@@ -1119,19 +1111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : 0
         },
         lastUpdated: new Date().toISOString()
-      };
-      
-      console.log('Final API response:', {
-        hasHeaders: responseData.headers && responseData.headers.length > 0,
-        headersCount: responseData.headers?.length || 0,
-        headersContent: responseData.headers,
-        hasData: responseData.data && responseData.data.length > 0,
-        dataRowsCount: responseData.data?.length || 0,
-        firstDataRow: responseData.data?.[0],
-        totalRows: responseData.totalRows
       });
-      
-      res.json(responseData);
 
     } catch (error) {
       console.error('Google Sheets data error:', error);

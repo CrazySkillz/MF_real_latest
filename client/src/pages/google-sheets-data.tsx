@@ -300,15 +300,24 @@ export default function GoogleSheetsData() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {sheetsData.data?.map((row, rowIndex) => (
-                              <TableRow key={rowIndex}>
-                                {row.map((cell, cellIndex) => (
-                                  <TableCell key={cellIndex} className="font-mono text-sm">
-                                    {cell}
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            ))}
+                            {(() => {
+                              console.log('Rendering table body - sheetsData.data:', sheetsData.data);
+                              console.log('Data array length:', sheetsData.data?.length);
+                              console.log('Data is array:', Array.isArray(sheetsData.data));
+                              console.log('First 3 rows:', sheetsData.data?.slice(0, 3));
+                              return sheetsData.data?.map((row, rowIndex) => {
+                                console.log(`Rendering row ${rowIndex}:`, row);
+                                return (
+                                  <TableRow key={rowIndex}>
+                                    {row.map((cell, cellIndex) => (
+                                      <TableCell key={cellIndex} className="font-mono text-sm">
+                                        {cell}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                );
+                              });
+                            })()}
                           </TableBody>
                         </Table>
                       </div>

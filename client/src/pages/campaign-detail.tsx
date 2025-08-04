@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { SiGoogle, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
+import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
 
 interface Campaign {
   id: string;
@@ -57,6 +58,17 @@ export default function CampaignDetail() {
     },
   });
 
+  // Check Google Sheets connection status
+  const { data: sheetsConnection } = useQuery({
+    queryKey: ["/api/google-sheets/check-connection", campaignId],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/google-sheets/check-connection/${campaignId}`);
+      if (!response.ok) return { connected: false };
+      return response.json();
+    },
+  });
+
   const { data: ga4Metrics, isLoading: ga4Loading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId && !!ga4Connection?.connected,
@@ -85,6 +97,32 @@ export default function CampaignDetail() {
     },
   });
 
+  // Fetch Google Sheets data
+  const { data: sheetsData, isLoading: sheetsLoading } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
+    enabled: !!campaignId && !!sheetsConnection?.connected,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch Google Sheets data');
+      }
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Google Sheets data request failed');
+      }
+      
+      return {
+        metrics: data.data.metrics,
+        spreadsheetName: data.spreadsheetName,
+        totalRows: data.data.totalRows,
+        headers: data.data.headers,
+        lastUpdated: data.lastUpdated
+      };
+    },
+  });
+
   // Determine connected platforms based on actual connections
   const connectedPlatformNames = campaign?.platform?.split(', ') || [];
   
@@ -98,6 +136,16 @@ export default function CampaignDetail() {
       spend: "0.00", // GA4 doesn't track spend directly
       ctr: ga4Metrics?.impressions && ga4Metrics.impressions > 0 ? `${((ga4Metrics.clicks / ga4Metrics.impressions) * 100).toFixed(2)}%` : "0.00%",
       cpc: "$0.00" // GA4 doesn't track cost per click
+    },
+    {
+      platform: "Google Sheets",
+      connected: !!sheetsConnection?.connected,
+      impressions: sheetsData?.metrics?.impressions || 0,
+      clicks: sheetsData?.metrics?.clicks || 0,
+      conversions: sheetsData?.metrics?.conversions || 0,
+      spend: sheetsData?.metrics?.budget?.toString() || "0.00",
+      ctr: sheetsData?.metrics?.impressions && sheetsData.metrics.impressions > 0 ? `${((sheetsData.metrics.clicks / sheetsData.metrics.impressions) * 100).toFixed(2)}%` : "0.00%",
+      cpc: sheetsData?.metrics?.clicks && sheetsData.metrics.clicks > 0 && sheetsData.metrics.budget ? `$${(sheetsData.metrics.budget / sheetsData.metrics.clicks).toFixed(2)}` : "$0.00"
     },
     {
       platform: "Facebook Ads", 
@@ -135,6 +183,8 @@ export default function CampaignDetail() {
     switch (platform) {
       case "Google Analytics":
         return <SiGoogle className="w-5 h-5 text-orange-500" />;
+      case "Google Sheets":
+        return <SiGoogle className="w-5 h-5 text-green-500" />;
       case "Facebook Ads":
         return <SiFacebook className="w-5 h-5 text-blue-600" />;
       case "LinkedIn Ads":
@@ -367,12 +417,30 @@ export default function CampaignDetail() {
                             </Link>
                           </div>
                         )}
+                        {platform.platform === "Google Sheets" && (
+                          <div className="pt-2 border-t space-y-2">
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                              Spreadsheet: {sheetsData?.spreadsheetName || 'Connected'}
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                              Rows: {sheetsData?.totalRows || 0} | Last updated: {sheetsData?.lastUpdated ? new Date(sheetsData.lastUpdated).toLocaleString() : 'Recently'}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center py-4">
                         <p className="text-slate-500 dark:text-slate-400 mb-3">Connect this platform to view metrics</p>
                         {platform.platform === "Google Analytics" ? (
                           <GA4ConnectionFlow 
+                            campaignId={campaign.id} 
+                            onConnectionSuccess={() => {
+                              // Refresh data after connection
+                              window.location.reload();
+                            }}
+                          />
+                        ) : platform.platform === "Google Sheets" ? (
+                          <GoogleSheetsConnectionFlow 
                             campaignId={campaign.id} 
                             onConnectionSuccess={() => {
                               // Refresh data after connection

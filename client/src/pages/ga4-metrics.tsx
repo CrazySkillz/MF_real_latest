@@ -30,6 +30,13 @@ interface GA4Metrics {
   bounceRate: number;
   averageSessionDuration: number;
   conversions: number;
+  newUsers?: number;
+  userEngagementDuration?: number;
+  engagedSessions?: number;
+  engagementRate?: number;
+  eventCount?: number;
+  eventsPerSession?: number;
+  screenPageViewsPerSession?: number;
 }
 
 export default function GA4Metrics() {
@@ -89,6 +96,13 @@ export default function GA4Metrics() {
         bounceRate: data.metrics.bounceRate || 0,
         averageSessionDuration: data.metrics.averageSessionDuration || 0,
         conversions: data.metrics.conversions || 0,
+        newUsers: data.metrics.newUsers || 0,
+        userEngagementDuration: data.metrics.userEngagementDuration || 0,
+        engagedSessions: data.metrics.engagedSessions || 0,
+        engagementRate: data.metrics.engagementRate || 0,
+        eventCount: data.metrics.eventCount || 0,
+        eventsPerSession: data.metrics.eventsPerSession || 0,
+        screenPageViewsPerSession: data.metrics.screenPageViewsPerSession || 0,
         propertyId: data.propertyId,
         lastUpdated: data.lastUpdated
       };
@@ -334,7 +348,7 @@ export default function GA4Metrics() {
           ) : (
             <>
               {/* Key Metrics */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -415,6 +429,76 @@ export default function GA4Metrics() {
                         </p>
                       </div>
                       <Users className="w-8 h-8 text-blue-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">New Users</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {formatNumber(ga4Metrics?.newUsers || 0)}
+                        </p>
+                      </div>
+                      <Users className="w-8 h-8 text-emerald-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engaged Sessions</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {formatNumber(ga4Metrics?.engagedSessions || 0)}
+                        </p>
+                      </div>
+                      <Target className="w-8 h-8 text-violet-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {formatPercentage(ga4Metrics?.engagementRate || 0)}
+                        </p>
+                      </div>
+                      <TrendingUp className="w-8 h-8 text-rose-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Events</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {formatNumber(ga4Metrics?.eventCount || 0)}
+                        </p>
+                      </div>
+                      <MousePointer className="w-8 h-8 text-cyan-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Events per Session</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {(ga4Metrics?.eventsPerSession || 0).toFixed(1)}
+                        </p>
+                      </div>
+                      <BarChart3 className="w-8 h-8 text-amber-600" />
                     </div>
                   </CardContent>
                 </Card>
@@ -533,10 +617,16 @@ export default function GA4Metrics() {
                             <div className="flex justify-between">
                               <span className="text-slate-600 dark:text-slate-400">Pages per Session:</span>
                               <span className="font-medium">
-                                {ga4Metrics?.pageviews && ga4Metrics?.sessions
+                                {ga4Metrics?.screenPageViewsPerSession
+                                  ? ga4Metrics.screenPageViewsPerSession.toFixed(2)
+                                  : ga4Metrics?.pageviews && ga4Metrics?.sessions
                                   ? (ga4Metrics.pageviews / ga4Metrics.sessions).toFixed(2)
                                   : "0.00"}
                               </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-600 dark:text-slate-400">User Engagement Duration:</span>
+                              <span className="font-medium">{formatDuration(ga4Metrics?.userEngagementDuration || 0)}</span>
                             </div>
                           </div>
                         </div>

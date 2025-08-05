@@ -368,8 +368,14 @@ export default function CampaignDetail() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 items-start">
-              {platformMetrics.map((platform) => (
-                <Card key={platform.platform} className={platform.connected ? "border-green-200 dark:border-green-800" : "border-slate-200 dark:border-slate-700"}>
+              {platformMetrics.map((platform, index) => (
+                <Card 
+                  key={platform.platform} 
+                  className={`${platform.connected ? "border-green-200 dark:border-green-800" : "border-slate-200 dark:border-slate-700"} ${
+                    // Reduce spacing specifically between Google Analytics and Facebook Ads
+                    platform.platform === "Facebook Ads" ? "md:-mt-2" : ""
+                  }`}
+                >
                   {/* Platform Header - Always Visible */}
                   <div 
                     className={`flex items-center justify-between p-3 ${!platform.connected ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}

@@ -1015,11 +1015,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to refresh Google Sheets access token
+  async function refreshGoogleSheetsToken(connection: any) {
+    if (!connection.refreshToken || !connection.clientId || !connection.clientSecret) {
+      throw new Error('Missing refresh token or OAuth credentials');
+    }
+
+    const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: connection.refreshToken,
+        client_id: connection.clientId,
+        client_secret: connection.clientSecret
+      })
+    });
+
+    if (!refreshResponse.ok) {
+      const errorText = await refreshResponse.text();
+      console.error('Token refresh failed:', errorText);
+      throw new Error('Token refresh failed');
+    }
+
+    const tokens = await refreshResponse.json();
+    
+    // Update the stored connection with new access token
+    const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
+    await storage.updateGoogleSheetsConnection(connection.campaignId, {
+      accessToken: tokens.access_token,
+      expiresAt: expiresAt
+    });
+
+    console.log('✅ Google Sheets token refreshed successfully for campaign:', connection.campaignId);
+    return tokens.access_token;
+  }
+
   // Get spreadsheet data for a campaign
   app.get("/api/campaigns/:id/google-sheets-data", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const connection = await storage.getGoogleSheetsConnection(campaignId);
+      let connection = await storage.getGoogleSheetsConnection(campaignId);
       
       if (!connection || !connection.spreadsheetId || !connection.accessToken) {
         return res.status(404).json({ 
@@ -1027,20 +1063,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Fetch spreadsheet data
-      const sheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z1000`, {
-        headers: { 'Authorization': `Bearer ${connection.accessToken}` }
+      let accessToken = connection.accessToken;
+
+      // Try to fetch spreadsheet data
+      let sheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z1000`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
       });
+
+      // If token expired, try to refresh it automatically
+      if (sheetResponse.status === 401 && connection.refreshToken) {
+        console.log('🔄 Access token expired, attempting automatic refresh...');
+        try {
+          accessToken = await refreshGoogleSheetsToken(connection);
+          
+          // Retry the request with new token
+          sheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z1000`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+          });
+        } catch (refreshError) {
+          console.error('❌ Automatic token refresh failed:', refreshError);
+          return res.status(401).json({ 
+            error: 'TOKEN_EXPIRED',
+            message: 'Access token expired and refresh failed. Please reconnect to Google Sheets.',
+            requiresReconnection: true
+          });
+        }
+      }
 
       if (!sheetResponse.ok) {
         const errorText = await sheetResponse.text();
         console.error('Google Sheets API error:', errorText);
         
-        // Handle token expiration
+        // Handle token expiration (if refresh also failed)
         if (sheetResponse.status === 401) {
           return res.status(401).json({ 
             error: 'TOKEN_EXPIRED',
-            message: 'Access token expired - refresh needed',
+            message: 'Access token expired - reconnection required',
             requiresReconnection: true
           });
         }

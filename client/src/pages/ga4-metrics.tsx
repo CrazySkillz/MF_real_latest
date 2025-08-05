@@ -95,22 +95,15 @@ export default function GA4Metrics() {
     },
   });
 
-  // Fetch authentic time series data from Google Analytics API
-  const { data: timeSeriesResponse, isLoading: timeSeriesLoading } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-timeseries", dateRange],
-    enabled: !!campaignId && !!ga4Connection?.connected,
-    queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-timeseries?dateRange=${dateRange}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch time series data');
-      }
-      return response.json();
-    },
-  });
-
-  // Use authentic data from Google Analytics, or empty array if loading/error
-  const timeSeriesData = timeSeriesResponse?.success ? timeSeriesResponse.data : [];
+  // Sample time series data (placeholder data for demonstration)
+  const timeSeriesData = [
+    { date: "Jan", sessions: 1250, pageviews: 3400, conversions: 45 },
+    { date: "Feb", sessions: 1680, pageviews: 4200, conversions: 62 },
+    { date: "Mar", sessions: 1420, pageviews: 3800, conversions: 51 },
+    { date: "Apr", sessions: 1890, pageviews: 4800, conversions: 78 },
+    { date: "May", sessions: 2100, pageviews: 5200, conversions: 89 },
+    { date: "Jun", sessions: 1950, pageviews: 4900, conversions: 82 },
+  ];
 
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
@@ -445,17 +438,8 @@ export default function GA4Metrics() {
                       </CardHeader>
                       <CardContent>
                         <div className="h-80">
-                          {timeSeriesLoading ? (
-                            <div className="flex items-center justify-center h-full">
-                              <div className="text-slate-400">Loading chart data...</div>
-                            </div>
-                          ) : timeSeriesData.length === 0 ? (
-                            <div className="flex items-center justify-center h-full">
-                              <div className="text-slate-400">No data available for the selected period</div>
-                            </div>
-                          ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={timeSeriesData}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={timeSeriesData}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                               <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
                               <YAxis stroke="#64748b" fontSize={12} />
@@ -466,9 +450,8 @@ export default function GA4Metrics() {
                                 strokeWidth={3}
                                 dot={{ fill: "#3b82f6", strokeWidth: 2, r: 6 }}
                               />
-                              </LineChart>
-                            </ResponsiveContainer>
-                          )}
+                            </LineChart>
+                          </ResponsiveContainer>
                         </div>
                       </CardContent>
                     </Card>
@@ -480,25 +463,15 @@ export default function GA4Metrics() {
                       </CardHeader>
                       <CardContent>
                         <div className="h-80">
-                          {timeSeriesLoading ? (
-                            <div className="flex items-center justify-center h-full">
-                              <div className="text-slate-400">Loading chart data...</div>
-                            </div>
-                          ) : timeSeriesData.length === 0 ? (
-                            <div className="flex items-center justify-center h-full">
-                              <div className="text-slate-400">No data available for the selected period</div>
-                            </div>
-                          ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={timeSeriesData}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={timeSeriesData}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                               <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
                               <YAxis stroke="#64748b" fontSize={12} />
                               <Bar dataKey="sessions" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                               <Bar dataKey="pageviews" fill="#10b981" radius={[4, 4, 0, 0]} />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          )}
+                            </BarChart>
+                          </ResponsiveContainer>
                         </div>
                       </CardContent>
                     </Card>

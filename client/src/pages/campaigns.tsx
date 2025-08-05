@@ -721,8 +721,8 @@ export default function Campaigns() {
                     New Campaign
                   </Button>
                 </DialogTrigger>
-                <DialogContent className={`${showConnectorsStep ? "sm:max-w-4xl" : "sm:max-w-md"} max-h-[90vh] overflow-y-auto`}>
-                  <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
+                <DialogContent className={`${showConnectorsStep ? "sm:max-w-4xl" : "sm:max-w-md"} max-h-[90vh] overflow-y-auto pr-12`}>
+                  <DialogHeader className="sticky top-0 bg-background z-10 pb-4 pr-8">
                     <DialogTitle>
                       {showConnectorsStep ? "Connect Data Sources" : "Create New Campaign"}
                     </DialogTitle>

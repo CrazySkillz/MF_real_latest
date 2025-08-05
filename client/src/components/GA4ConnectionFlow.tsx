@@ -448,15 +448,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               
               {!showPropertySelection ? (
                 <div className="space-y-4">
-                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                    <div className="flex items-center gap-2 text-green-700 dark:text-green-300 text-sm">
-                      <BarChart3 className="w-4 h-4" />
-                      <span className="font-medium">Includes automatic token refresh</span>
-                    </div>
-                    <p className="text-green-600 dark:text-green-400 text-xs mt-1">
-                      Your connection will never expire - tokens refresh automatically in the background
-                    </p>
-                  </div>
+
                   
                   {showClientIdInput && (
                     <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border">

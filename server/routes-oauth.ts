@@ -144,6 +144,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get GA4 time series data for charts
+  app.get("/api/campaigns/:id/ga4-timeseries", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const dateRange = req.query.dateRange as string || '30days';
+      const connection = await storage.getGA4Connection(campaignId);
+      
+      if (!connection || connection.method !== 'access_token') {
+        return res.status(404).json({ 
+          success: false, 
+          error: "No GA4 connection found for this campaign. Please connect your Google Analytics first." 
+        });
+      }
+
+      if (connection.method === 'access_token') {
+        // Convert date range to GA4 format
+        let ga4DateRange = '30daysAgo';
+        switch (dateRange) {
+          case '7days':
+            ga4DateRange = '7daysAgo';
+            break;
+          case '30days':
+            ga4DateRange = '30daysAgo';
+            break;
+          case '90days':
+            ga4DateRange = '90daysAgo';
+            break;
+          default:
+            ga4DateRange = '30daysAgo';
+        }
+        
+        const timeSeriesData = await ga4Service.getTimeSeriesData(campaignId, storage, ga4DateRange);
+        
+        res.json({
+          success: true,
+          data: timeSeriesData,
+          propertyId: connection.propertyId,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching GA4 time series data:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Failed to fetch time series data' 
+      });
+    }
+  });
+
   // Google Analytics OAuth endpoints
   app.post("/api/auth/google/url", (req, res) => {
     try {

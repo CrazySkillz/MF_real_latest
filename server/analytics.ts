@@ -96,6 +96,158 @@ export class GoogleAnalytics4Service {
     }
   }
 
+  async getTimeSeriesData(campaignId: string, storage: any, dateRange = '30daysAgo'): Promise<any[]> {
+    const connection = await storage.getGA4Connection(campaignId);
+    if (!connection || connection.method !== 'access_token') {
+      throw new Error('No valid access token connection found');
+    }
+
+    if (!connection.accessToken) {
+      console.log('No access token found in database for campaign:', campaignId);
+      const tokenExpiredError = new Error('TOKEN_EXPIRED');
+      (tokenExpiredError as any).isTokenExpired = true;
+      throw tokenExpiredError;
+    }
+
+    try {
+      return await this.getTimeSeriesWithToken(connection.propertyId, connection.accessToken, dateRange);
+    } catch (error: any) {
+      console.log('GA4 time series API call failed:', error.message);
+      
+      // Check if error is due to expired token
+      if (error.message.includes('invalid_grant') || 
+          error.message.includes('401') || 
+          error.message.includes('403') ||
+          error.message.includes('invalid authentication credentials') ||
+          error.message.includes('Request had invalid authentication credentials')) {
+        
+        console.log('Access token invalid/expired for time series - attempting automatic refresh');
+        
+        if (connection.refreshToken) {
+          try {
+            const refreshResult = await this.refreshAccessToken(
+              connection.refreshToken, 
+              connection.clientId || undefined,
+              connection.clientSecret || undefined
+            );
+            
+            await storage.updateGA4ConnectionTokens(campaignId, {
+              accessToken: refreshResult.access_token,
+              refreshToken: connection.refreshToken,
+              expiresAt: new Date(Date.now() + (refreshResult.expires_in * 1000))
+            });
+            
+            console.log('Access token refreshed successfully - retrying time series call');
+            return await this.getTimeSeriesWithToken(connection.propertyId, refreshResult.access_token, dateRange);
+          } catch (refreshError: any) {
+            console.error('Failed to refresh access token for time series:', refreshError.message);
+            const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
+            (autoRefreshError as any).isAutoRefreshNeeded = true;
+            (autoRefreshError as any).hasRefreshToken = !!connection.refreshToken;
+            throw autoRefreshError;
+          }
+        } else {
+          const tokenExpiredError = new Error('TOKEN_EXPIRED');
+          (tokenExpiredError as any).isTokenExpired = true;
+          throw tokenExpiredError;
+        }
+      }
+      throw error;
+    }
+  }
+
+  async getTimeSeriesWithToken(propertyId: string, accessToken: string, dateRange = '30daysAgo'): Promise<any[]> {
+    try {
+      // Get daily data for the specified date range
+      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateRanges: [
+            {
+              startDate: dateRange,
+              endDate: 'today',
+            },
+          ],
+          dimensions: [
+            { name: 'date' }
+          ],
+          metrics: [
+            { name: 'sessions' },
+            { name: 'screenPageViews' },
+            { name: 'conversions' },
+            { name: 'totalUsers' }
+          ],
+          orderBys: [
+            {
+              dimension: {
+                dimensionName: 'date'
+              }
+            }
+          ]
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`GA4 Time Series API Error: ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      console.log('GA4 Time Series API Response for property', propertyId, ':', {
+        totalRows: data.rows?.length || 0,
+        dateRange: `${dateRange} to today`,
+        hasData: !!data.rows && data.rows.length > 0
+      });
+
+      // Process the response data into chart format
+      const timeSeriesData: any[] = [];
+      
+      if (data.rows) {
+        for (const row of data.rows) {
+          if (row.dimensionValues && row.metricValues) {
+            const date = row.dimensionValues[0]?.value || '';
+            const sessions = parseInt(row.metricValues[0]?.value || '0');
+            const pageviews = parseInt(row.metricValues[1]?.value || '0');
+            const conversions = parseInt(row.metricValues[2]?.value || '0');
+            const users = parseInt(row.metricValues[3]?.value || '0');
+            
+            // Format date for display (convert YYYYMMDD to readable format)
+            let formattedDate = date;
+            if (date.length === 8) {
+              const year = date.substring(0, 4);
+              const month = date.substring(4, 6);
+              const day = date.substring(6, 8);
+              formattedDate = `${month}/${day}`;
+            }
+            
+            timeSeriesData.push({
+              date: formattedDate,
+              sessions,
+              pageviews,
+              conversions,
+              users
+            });
+          }
+        }
+      }
+
+      console.log('Processed time series data:', {
+        totalPoints: timeSeriesData.length,
+        sampleData: timeSeriesData.slice(0, 3)
+      });
+
+      return timeSeriesData;
+    } catch (error) {
+      console.error('Error fetching GA4 time series data:', error);
+      throw error;
+    }
+  }
+
   async getMetricsWithAutoRefresh(campaignId: string, storage: any, dateRange = 'today'): Promise<GA4Metrics> {
     const connection = await storage.getGA4Connection(campaignId);
     if (!connection || connection.method !== 'access_token') {

@@ -35,7 +35,7 @@ interface GA4Metrics {
 export default function GA4Metrics() {
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
-  const [dateRange, setDateRange] = useState("30days");
+  const [dateRange, setDateRange] = useState("7days");
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const { toast } = useToast();
 
@@ -56,10 +56,10 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4Metrics, isLoading: ga4Loading, error: ga4Error } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
+    queryKey: ["/api/campaigns", campaignId, "ga4-metrics", dateRange],
     enabled: !!campaignId && !!ga4Connection?.connected,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics?dateRange=${dateRange}`);
       if (!response.ok) {
         const errorData = await response.json();
         

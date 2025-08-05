@@ -96,7 +96,7 @@ export class GoogleAnalytics4Service {
     }
   }
 
-  async getMetricsWithAutoRefresh(campaignId: string, storage: any): Promise<GA4Metrics> {
+  async getMetricsWithAutoRefresh(campaignId: string, storage: any, dateRange = 'today'): Promise<GA4Metrics> {
     const connection = await storage.getGA4Connection(campaignId);
     if (!connection || connection.method !== 'access_token') {
       throw new Error('No valid access token connection found');
@@ -119,7 +119,7 @@ export class GoogleAnalytics4Service {
     
     // Try with current token
     try {
-      return await this.getMetricsWithToken(connection.propertyId, connection.accessToken, 'today');
+      return await this.getMetricsWithToken(connection.propertyId, connection.accessToken, dateRange);
     } catch (error: any) {
       console.log('GA4 API call failed:', error.message);
       
@@ -158,8 +158,8 @@ export class GoogleAnalytics4Service {
             
             console.log('Access token refreshed successfully - retrying metrics call');
             
-            // Retry with new token - use today for most recent data
-            return await this.getMetricsWithToken(connection.propertyId, refreshResult.access_token, 'today');
+            // Retry with new token using specified date range
+            return await this.getMetricsWithToken(connection.propertyId, refreshResult.access_token, dateRange);
           } catch (refreshError: any) {
             console.error('Failed to refresh access token automatically:', refreshError.message);
             
@@ -244,7 +244,8 @@ export class GoogleAnalytics4Service {
       
       console.log('GA4 API Response for property', credentials.propertyId, ':', {
         totalRows: data.rows?.length || 0,
-        dateRange,
+        dateRange: dateRange,
+        requestedDateRange: dateRange,
         hasData: !!data.rows && data.rows.length > 0
       });
 

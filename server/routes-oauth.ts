@@ -76,6 +76,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const dateRange = req.query.dateRange as string || '30days';
       const connection = await storage.getGA4Connection(campaignId);
       
       if (!connection) {
@@ -85,8 +86,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (connection.method === 'access_token') {
-        // Try to get more recent data by requesting multiple date ranges
-        const metrics = await ga4Service.getMetricsWithAutoRefresh(campaignId, storage);
+        // Convert date range to GA4 format
+        let ga4DateRange = '30daysAgo';
+        switch (dateRange) {
+          case '7days':
+            ga4DateRange = '7daysAgo';
+            break;
+          case '30days':
+            ga4DateRange = '30daysAgo';
+            break;
+          case '90days':
+            ga4DateRange = '90daysAgo';
+            break;
+          default:
+            ga4DateRange = '30daysAgo';
+        }
+        
+        const metrics = await ga4Service.getMetricsWithAutoRefresh(campaignId, storage, ga4DateRange);
         
         res.json({
           success: true,

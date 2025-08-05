@@ -157,8 +157,8 @@ export class GoogleAnalytics4Service {
             
             console.log('Access token refreshed successfully - retrying metrics call');
             
-            // Retry with new token
-            return await this.getMetricsWithToken(connection.propertyId, refreshResult.access_token, '30daysAgo');
+            // Retry with new token - try 7 days first for more recent data
+            return await this.getMetricsWithToken(connection.propertyId, refreshResult.access_token, '7daysAgo');
           } catch (refreshError: any) {
             console.error('Failed to refresh access token automatically:', refreshError.message);
             
@@ -179,7 +179,7 @@ export class GoogleAnalytics4Service {
     }
   }
 
-  async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = '30daysAgo'): Promise<GA4Metrics> {
+  async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = '7daysAgo'): Promise<GA4Metrics> {
     try {
       // Use Google Analytics Data API REST endpoint with user's access token
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${credentials.propertyId}:runReport`, {
@@ -212,6 +212,12 @@ export class GoogleAnalytics4Service {
       }
 
       const data = await response.json();
+      
+      console.log('GA4 API Response for property', credentials.propertyId, ':', {
+        totalRows: data.rows?.length || 0,
+        dateRange,
+        hasData: !!data.rows && data.rows.length > 0
+      });
 
       // Process the response data
       let totalSessions = 0;
@@ -225,16 +231,38 @@ export class GoogleAnalytics4Service {
       if (data.rows) {
         for (const row of data.rows) {
           if (row.metricValues) {
-            totalSessions += parseInt(row.metricValues[0]?.value || '0');
-            totalPageviews += parseInt(row.metricValues[1]?.value || '0');
-            totalBounceRate += parseFloat(row.metricValues[2]?.value || '0');
-            totalSessionDuration += parseFloat(row.metricValues[3]?.value || '0');
-            totalConversions += parseInt(row.metricValues[4]?.value || '0');
-            totalUsers += parseInt(row.metricValues[5]?.value || '0');
+            const sessions = parseInt(row.metricValues[0]?.value || '0');
+            const pageviews = parseInt(row.metricValues[1]?.value || '0');
+            const bounceRate = parseFloat(row.metricValues[2]?.value || '0');
+            const sessionDuration = parseFloat(row.metricValues[3]?.value || '0');
+            const conversions = parseInt(row.metricValues[4]?.value || '0');
+            const users = parseInt(row.metricValues[5]?.value || '0');
+            
+            totalSessions += sessions;
+            totalPageviews += pageviews;
+            totalBounceRate += bounceRate;
+            totalSessionDuration += sessionDuration;
+            totalConversions += conversions;
+            totalUsers += users;
             rowCount++;
+            
+            if (rowCount <= 3) {
+              console.log(`GA4 Row ${rowCount}:`, {
+                sessions, pageviews, bounceRate, sessionDuration, conversions, users
+              });
+            }
           }
         }
       }
+      
+      console.log('GA4 Final totals:', {
+        totalSessions,
+        totalPageviews,
+        totalUsers,
+        totalConversions,
+        avgBounceRate: rowCount > 0 ? totalBounceRate / rowCount : 0,
+        avgSessionDuration: rowCount > 0 ? totalSessionDuration / rowCount : 0
+      });
 
       return {
         impressions: totalUsers, // Using total users as impressions equivalent

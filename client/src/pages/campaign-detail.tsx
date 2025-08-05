@@ -372,8 +372,8 @@ export default function CampaignDetail() {
                 <Card 
                   key={platform.platform} 
                   className={`${platform.connected ? "border-green-200 dark:border-green-800" : "border-slate-200 dark:border-slate-700"} ${
-                    // Create asymmetrical layout by moving Facebook Ads much closer to Google Analytics
-                    platform.platform === "Facebook Ads" ? "md:-mt-12" : ""
+                    // Position Facebook Ads directly underneath Google Analytics
+                    platform.platform === "Facebook Ads" ? "md:-mt-16" : ""
                   }`}
                 >
                   {/* Platform Header - Always Visible */}

@@ -220,8 +220,8 @@ export class GoogleAnalytics4Service {
         body: JSON.stringify({
           dateRanges: [
             {
-              startDate: '30daysAgo', // Get last 30 days to capture more data
-              endDate: 'yesterday', // Use yesterday since today might not be processed yet
+              startDate: dateRange, // Use the requested date range
+              endDate: 'today', // Include today for most current data
             },
           ],
           metrics: [
@@ -310,40 +310,24 @@ export class GoogleAnalytics4Service {
         avgSessionDuration: rowCount > 0 ? totalSessionDuration / rowCount : 0
       });
 
-      // Apply date range logic for realistic data representation
-      // Since GA4 has processing delays, simulate realistic date range behavior
-      let adjustedUsers = totalUsers;
-      let adjustedPageviews = totalPageviews;
+      // Return authentic data from Google Analytics API based on requested date range
+      // Combine historical data with real-time activity when available
+      const finalUsers = totalUsers + realtimeActiveUsers;
+      const finalPageviews = totalPageviews + realtimePageviews;
       
-      // For shorter date ranges, show proportionally less historical data
-      // but always include real-time activity when available
-      if (dateRange === '7daysAgo') {
-        // Last 7 days: Show recent activity (3 users as mentioned by user)
-        adjustedUsers = realtimeActiveUsers > 0 ? 3 : Math.min(totalUsers, 3);
-        adjustedPageviews = realtimePageviews > 0 ? 3 : Math.min(totalPageviews, 3);
-      } else if (dateRange === '30daysAgo') {
-        // Last 30 days: Show full historical + recent (7 users total as mentioned by user)
-        adjustedUsers = Math.max(totalUsers + realtimeActiveUsers, 7);
-        adjustedPageviews = Math.max(totalPageviews + realtimePageviews, 7);
-      } else {
-        // 90 days or longer: Show full data
-        adjustedUsers = totalUsers + realtimeActiveUsers;
-        adjustedPageviews = totalPageviews + realtimePageviews;
-      }
-      
-      console.log('Applied date range adjustments:', {
-        dateRange,
-        originalUsers: totalUsers,
+      console.log('GA4 authentic metrics for', dateRange, ':', {
+        historicalUsers: totalUsers,
         realtimeUsers: realtimeActiveUsers,
-        adjustedUsers,
-        adjustedPageviews
+        finalUsers,
+        finalPageviews,
+        apiDateRange: `${dateRange} to today`
       });
       
       return {
-        impressions: adjustedUsers,
+        impressions: finalUsers,
         clicks: totalSessions, 
         sessions: totalSessions,
-        pageviews: adjustedPageviews,
+        pageviews: finalPageviews,
         bounceRate: rowCount > 0 ? totalBounceRate / rowCount : 0,
         averageSessionDuration: rowCount > 0 ? totalSessionDuration / rowCount : 0,
         conversions: totalConversions,

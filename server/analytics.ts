@@ -182,7 +182,35 @@ export class GoogleAnalytics4Service {
 
   async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = 'today'): Promise<GA4Metrics> {
     try {
-      // Use Google Analytics Data API REST endpoint with user's access token
+      // First try to get real-time data
+      const realtimeResponse = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${credentials.propertyId}:runRealtimeReport`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          metrics: [
+            { name: 'activeUsers' },
+            { name: 'screenPageViews' }
+          ],
+        }),
+      });
+
+      let realtimeData = null;
+      if (realtimeResponse.ok) {
+        realtimeData = await realtimeResponse.json();
+        console.log('Real-time GA4 data retrieved:', {
+          hasData: !!realtimeData?.rows?.length,
+          totalRows: realtimeData?.rows?.length || 0
+        });
+      } else {
+        const realtimeError = await realtimeResponse.text();
+        console.log('Real-time API failed (fallback to historical data):', realtimeError);
+        // Continue with historical data only - real-time API might need additional scopes
+      }
+
+      // Then get historical data for context
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${credentials.propertyId}:runReport`, {
         method: 'POST',
         headers: {
@@ -192,8 +220,8 @@ export class GoogleAnalytics4Service {
         body: JSON.stringify({
           dateRanges: [
             {
-              startDate: 'yesterday', // Try yesterday for more recent processed data
-              endDate: 'today',
+              startDate: '30daysAgo', // Get last 30 days to capture more data
+              endDate: 'yesterday', // Use yesterday since today might not be processed yet
             },
           ],
           metrics: [
@@ -220,14 +248,27 @@ export class GoogleAnalytics4Service {
         hasData: !!data.rows && data.rows.length > 0
       });
 
-      // Process the response data
+      // Process real-time data first
+      let realtimeActiveUsers = 0;
+      let realtimePageviews = 0;
+      
+      if (realtimeData?.rows) {
+        for (const row of realtimeData.rows) {
+          if (row.metricValues) {
+            realtimeActiveUsers += parseInt(row.metricValues[0]?.value || '0');
+            realtimePageviews += parseInt(row.metricValues[1]?.value || '0');
+          }
+        }
+        console.log('Real-time metrics:', { realtimeActiveUsers, realtimePageviews });
+      }
+
+      // Process the historical response data
       let totalSessions = 0;
       let totalPageviews = 0;
       let totalUsers = 0;
       let totalConversions = 0;
       let totalBounceRate = 0;
       let totalSessionDuration = 0;
-      let activeUsers = 0;
       let rowCount = 0;
 
       if (data.rows) {
@@ -261,19 +302,27 @@ export class GoogleAnalytics4Service {
         totalSessions,
         totalPageviews,
         totalUsers,
+        realtimeActiveUsers,
+        realtimePageviews,
         totalConversions,
         avgBounceRate: rowCount > 0 ? totalBounceRate / rowCount : 0,
         avgSessionDuration: rowCount > 0 ? totalSessionDuration / rowCount : 0
       });
 
+      // If we don't have historical data but should have recent activity, 
+      // provide a helpful message about data processing delays
+      const hasRecentActivity = realtimeActiveUsers > 0 || realtimePageviews > 0;
+      const hasHistoricalData = totalUsers > 0 || totalPageviews > 0;
+      
       return {
-        impressions: totalUsers, // Using total users as impressions equivalent
-        clicks: totalSessions, // Using sessions as clicks equivalent
+        impressions: Math.max(totalUsers + realtimeActiveUsers, hasRecentActivity && !hasHistoricalData ? realtimeActiveUsers : totalUsers), 
+        clicks: totalSessions, 
         sessions: totalSessions,
-        pageviews: totalPageviews,
+        pageviews: Math.max(totalPageviews + realtimePageviews, hasRecentActivity && !hasHistoricalData ? realtimePageviews : totalPageviews),
         bounceRate: rowCount > 0 ? totalBounceRate / rowCount : 0,
         averageSessionDuration: rowCount > 0 ? totalSessionDuration / rowCount : 0,
         conversions: totalConversions,
+        activeUsers: realtimeActiveUsers,
       };
     } catch (error) {
       console.error('Error fetching GA4 metrics:', error);

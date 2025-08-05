@@ -121,6 +121,7 @@ Preferred communication style: Simple, everyday language.
 - **Real-Time Sync**: Platform now correctly processes and displays millions of data points from authentic Google Sheets sources
 - **Campaign Integration Cards**: Fixed platform cards to display real Google Sheets metrics instead of placeholder zeros
 - **Data Structure Alignment**: Corrected frontend data mapping to properly consume backend API responses with summary metrics
+- **UI/UX Improvements**: Redesigned Connected Platforms with collapsible credential inputs, compact spacing, and asymmetrical grid layout for better visual hierarchy
 
 ### January 2025 - Python Backend Refactor  
 - **Backend Migration**: Converted Express.js/TypeScript backend to Python/FastAPI

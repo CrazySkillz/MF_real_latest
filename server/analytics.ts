@@ -12,10 +12,11 @@ interface GA4Metrics {
   bounceRate: number;
   averageSessionDuration: number;
   conversions: number;
+  activeUsers?: number;
 }
 
 export class GoogleAnalytics4Service {
-  async getMetricsWithToken(propertyId: string, accessToken: string, dateRange = '30daysAgo'): Promise<GA4Metrics> {
+  async getMetricsWithToken(propertyId: string, accessToken: string, dateRange = 'today'): Promise<GA4Metrics> {
     const credentials = { propertyId, measurementId: '', accessToken };
     return this.getMetrics(credentials, accessToken, dateRange);
   }
@@ -118,7 +119,7 @@ export class GoogleAnalytics4Service {
     
     // Try with current token
     try {
-      return await this.getMetricsWithToken(connection.propertyId, connection.accessToken, '30daysAgo');
+      return await this.getMetricsWithToken(connection.propertyId, connection.accessToken, 'today');
     } catch (error: any) {
       console.log('GA4 API call failed:', error.message);
       
@@ -157,8 +158,8 @@ export class GoogleAnalytics4Service {
             
             console.log('Access token refreshed successfully - retrying metrics call');
             
-            // Retry with new token - try 7 days first for more recent data
-            return await this.getMetricsWithToken(connection.propertyId, refreshResult.access_token, '7daysAgo');
+            // Retry with new token - use today for most recent data
+            return await this.getMetricsWithToken(connection.propertyId, refreshResult.access_token, 'today');
           } catch (refreshError: any) {
             console.error('Failed to refresh access token automatically:', refreshError.message);
             
@@ -179,7 +180,7 @@ export class GoogleAnalytics4Service {
     }
   }
 
-  async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = '7daysAgo'): Promise<GA4Metrics> {
+  async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = 'today'): Promise<GA4Metrics> {
     try {
       // Use Google Analytics Data API REST endpoint with user's access token
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${credentials.propertyId}:runReport`, {
@@ -191,7 +192,7 @@ export class GoogleAnalytics4Service {
         body: JSON.stringify({
           dateRanges: [
             {
-              startDate: dateRange,
+              startDate: 'yesterday', // Try yesterday for more recent processed data
               endDate: 'today',
             },
           ],
@@ -226,6 +227,7 @@ export class GoogleAnalytics4Service {
       let totalConversions = 0;
       let totalBounceRate = 0;
       let totalSessionDuration = 0;
+      let activeUsers = 0;
       let rowCount = 0;
 
       if (data.rows) {

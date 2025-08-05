@@ -85,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (connection.method === 'access_token') {
-        // Use auto-refresh method that handles token expiration
+        // Try to get more recent data by requesting multiple date ranges
         const metrics = await ga4Service.getMetricsWithAutoRefresh(campaignId, storage);
         
         res.json({

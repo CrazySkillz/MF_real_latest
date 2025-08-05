@@ -372,8 +372,8 @@ export default function CampaignDetail() {
                 <Card 
                   key={platform.platform} 
                   className={`${platform.connected ? "border-green-200 dark:border-green-800" : "border-slate-200 dark:border-slate-700"} ${
-                    // Position Facebook Ads directly underneath Google Analytics
-                    platform.platform === "Facebook Ads" ? "md:-mt-16" : ""
+                    // Position Facebook Ads directly underneath Google Analytics with no gap
+                    platform.platform === "Facebook Ads" ? "md:-mt-20" : ""
                   }`}
                 >
                   {/* Platform Header - Always Visible */}

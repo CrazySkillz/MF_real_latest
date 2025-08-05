@@ -625,8 +625,10 @@ export default function GA4Metrics() {
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">User Engagement Duration:</span>
-                              <span className="font-medium">{formatDuration(ga4Metrics?.userEngagementDuration || 0)}</span>
+                              <span className="text-slate-600 dark:text-slate-400">Events per Session:</span>
+                              <span className="font-medium">
+                                {ga4Metrics?.eventsPerSession ? ga4Metrics.eventsPerSession.toFixed(1) : "0.0"}
+                              </span>
                             </div>
                           </div>
                         </div>

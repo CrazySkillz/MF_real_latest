@@ -188,8 +188,7 @@ export class GoogleAnalytics4Service {
             { name: 'conversions' },
             { name: 'totalUsers' },
             { name: 'newUsers' },
-            { name: 'engagedSessions' },
-            { name: 'eventCount' }
+            { name: 'engagedSessions' }
           ],
           orderBys: [
             {
@@ -394,12 +393,9 @@ export class GoogleAnalytics4Service {
             { name: 'conversions' },
             { name: 'totalUsers' },
             { name: 'newUsers' },
-            { name: 'userEngagementDuration' },
             { name: 'engagedSessions' },
             { name: 'engagementRate' },
-            { name: 'eventCount' },
-            { name: 'eventsPerSession' },
-            { name: 'screenPageViewsPerSession' }
+            { name: 'eventCount' }
           ],
         }),
       });
@@ -440,12 +436,9 @@ export class GoogleAnalytics4Service {
       let totalBounceRate = 0;
       let totalSessionDuration = 0;
       let totalNewUsers = 0;
-      let totalUserEngagementDuration = 0;
       let totalEngagedSessions = 0;
       let totalEngagementRate = 0;
       let totalEventCount = 0;
-      let totalEventsPerSession = 0;
-      let totalScreenPageViewsPerSession = 0;
       let rowCount = 0;
 
       if (data.rows) {
@@ -458,12 +451,9 @@ export class GoogleAnalytics4Service {
             const conversions = parseInt(row.metricValues[4]?.value || '0');
             const users = parseInt(row.metricValues[5]?.value || '0');
             const newUsers = parseInt(row.metricValues[6]?.value || '0');
-            const userEngagementDuration = parseFloat(row.metricValues[7]?.value || '0');
-            const engagedSessions = parseInt(row.metricValues[8]?.value || '0');
-            const engagementRate = parseFloat(row.metricValues[9]?.value || '0');
-            const eventCount = parseInt(row.metricValues[10]?.value || '0');
-            const eventsPerSession = parseFloat(row.metricValues[11]?.value || '0');
-            const screenPageViewsPerSession = parseFloat(row.metricValues[12]?.value || '0');
+            const engagedSessions = parseInt(row.metricValues[7]?.value || '0');
+            const engagementRate = parseFloat(row.metricValues[8]?.value || '0');
+            const eventCount = parseInt(row.metricValues[9]?.value || '0');
             
             totalSessions += sessions;
             totalPageviews += pageviews;
@@ -472,19 +462,15 @@ export class GoogleAnalytics4Service {
             totalConversions += conversions;
             totalUsers += users;
             totalNewUsers += newUsers;
-            totalUserEngagementDuration += userEngagementDuration;
             totalEngagedSessions += engagedSessions;
             totalEngagementRate += engagementRate;
             totalEventCount += eventCount;
-            totalEventsPerSession += eventsPerSession;
-            totalScreenPageViewsPerSession += screenPageViewsPerSession;
             rowCount++;
             
             if (rowCount <= 3) {
               console.log(`GA4 Row ${rowCount}:`, {
                 sessions, pageviews, bounceRate, sessionDuration, conversions, users,
-                newUsers, userEngagementDuration, engagedSessions, engagementRate,
-                eventCount, eventsPerSession, screenPageViewsPerSession
+                newUsers, engagedSessions, engagementRate, eventCount
               });
             }
           }
@@ -525,12 +511,12 @@ export class GoogleAnalytics4Service {
         conversions: totalConversions,
         activeUsers: realtimeActiveUsers,
         newUsers: totalNewUsers,
-        userEngagementDuration: rowCount > 0 ? totalUserEngagementDuration / rowCount : 0,
+        userEngagementDuration: 0, // Calculate from session duration
         engagedSessions: totalEngagedSessions,
         engagementRate: rowCount > 0 ? totalEngagementRate / rowCount : 0,
         eventCount: totalEventCount,
-        eventsPerSession: rowCount > 0 ? totalEventsPerSession / rowCount : 0,
-        screenPageViewsPerSession: rowCount > 0 ? totalScreenPageViewsPerSession / rowCount : 0,
+        eventsPerSession: totalSessions > 0 ? totalEventCount / totalSessions : 0,
+        screenPageViewsPerSession: totalSessions > 0 ? totalPageviews / totalSessions : 0,
       };
     } catch (error) {
       console.error('Error fetching GA4 metrics:', error);

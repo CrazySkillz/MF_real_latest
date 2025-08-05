@@ -367,12 +367,12 @@ export default function CampaignDetail() {
               <p className="text-slate-600 dark:text-slate-400">Platform performance and connection status</p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 items-start">
               {platformMetrics.map((platform) => (
                 <Card key={platform.platform} className={platform.connected ? "border-green-200 dark:border-green-800" : "border-slate-200 dark:border-slate-700"}>
                   {/* Platform Header - Always Visible */}
                   <div 
-                    className={`flex items-center justify-between p-4 ${!platform.connected ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
+                    className={`flex items-center justify-between p-3 ${!platform.connected ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
                     onClick={() => {
                       if (!platform.connected) {
                         setExpandedPlatform(expandedPlatform === platform.platform ? null : platform.platform);
@@ -405,7 +405,7 @@ export default function CampaignDetail() {
 
                   {/* Connected Platform Metrics */}
                   {platform.connected && (
-                    <div className="px-4 pb-4">
+                    <div className="px-3 pb-3">
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
@@ -457,7 +457,7 @@ export default function CampaignDetail() {
 
                   {/* Connection Setup Dropdown - Only show when expanded and not connected */}
                   {!platform.connected && expandedPlatform === platform.platform && (
-                    <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-4">
+                    <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-3">
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow 
                           campaignId={campaign.id} 

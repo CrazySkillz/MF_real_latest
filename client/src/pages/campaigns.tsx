@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle } from "lucide-react";
+import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown } from "lucide-react";
 import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -101,6 +101,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({});
+  const [expandedPlatforms, setExpandedPlatforms] = useState<Record<string, boolean>>({});
   const [ga4Properties, setGA4Properties] = useState<Array<{id: string, name: string}>>([]);
   const [selectedGA4Property, setSelectedGA4Property] = useState<string>('');
   const [showPropertySelector, setShowPropertySelector] = useState(false);
@@ -108,7 +109,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
   const [ga4RefreshToken, setGA4RefreshToken] = useState<string>('');
   const { toast } = useToast();
 
-  const handlePlatformConnect = async (platformId: string) => {
+  const handlePlatformClick = (platformId: string) => {
     if (connectedPlatforms.includes(platformId)) {
       // Already connected, just toggle selection
       setSelectedPlatforms(prev => 
@@ -116,9 +117,16 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
           ? prev.filter(id => id !== platformId)
           : [...prev, platformId]
       );
-      return;
+    } else {
+      // Toggle expansion to show credential inputs
+      setExpandedPlatforms(prev => ({
+        ...prev,
+        [platformId]: !prev[platformId]
+      }));
     }
+  };
 
+  const handlePlatformConnect = async (platformId: string) => {
     // Start connection process
     if (platformId === 'google-analytics') {
       await handleGA4Connect();
@@ -127,6 +135,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
       // Mark as connected when the component succeeds
       setConnectedPlatforms(prev => [...prev, platformId]);
       setSelectedPlatforms(prev => [...prev, platformId]);
+      setExpandedPlatforms(prev => ({ ...prev, [platformId]: false }));
     } else {
       // For other platforms, show coming soon message
       toast({
@@ -280,11 +289,16 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
           const Icon = platform.icon;
           const isSelected = selectedPlatforms.includes(platform.id);
           const isConnected = connectedPlatforms.includes(platform.id);
+          const isExpanded = expandedPlatforms[platform.id];
           const platformConnecting = isConnecting[platform.id] || false;
           
           return (
-            <div key={platform.id} className="space-y-3">
-              <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
+            <div key={platform.id} className="border rounded-lg overflow-hidden">
+              {/* Platform Header - Always Visible */}
+              <div 
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                onClick={() => handlePlatformClick(platform.id)}
+              >
                 <div className="flex items-center space-x-3">
                   <Icon className={`w-6 h-6 ${platform.color}`} />
                   <div className="flex-1">
@@ -300,63 +314,80 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                   {isConnected && (
                     <Checkbox
                       checked={isSelected}
-                      onCheckedChange={() => handlePlatformConnect(platform.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedPlatforms(prev => [...prev, platform.id]);
+                        } else {
+                          setSelectedPlatforms(prev => prev.filter(id => id !== platform.id));
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
                     />
                   )}
                   
-                  {!isConnected && platform.id === 'google-analytics' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleGA4Connect()}
-                      disabled={platformConnecting || !selectedGA4Property || !ga4AccessToken}
-                    >
-                      {platformConnecting ? 'Connecting...' : 'Connect'}
-                    </Button>
-                  )}
-                  
-                  {!isConnected && platform.id !== 'google-analytics' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePlatformConnect(platform.id)}
-                      disabled={platformConnecting}
-                    >
-                      {platformConnecting ? 'Connecting...' : 'Connect'}
-                    </Button>
+                  {!isConnected && (
+                    <div className="flex items-center gap-2">
+                      {isExpanded && platformConnecting && (
+                        <span className="text-sm text-slate-500">Connecting...</span>
+                      )}
+                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </div>
                   )}
                 </div>
               </div>
               
-              {platform.id === 'google-analytics' && !isConnected && (
-                <div className="ml-8 mt-3">
-                  <GA4ConnectionFlow
-                    campaignId="temp-campaign-setup"
-                    onConnectionSuccess={() => {
-                      setConnectedPlatforms(prev => [...prev, 'google-analytics']);
-                      setSelectedPlatforms(prev => [...prev, 'google-analytics']);
-                      toast({
-                        title: "GA4 Connected!",
-                        description: "Successfully connected with automatic token refresh for marketing professionals."
-                      });
-                    }}
-                  />
-                </div>
-              )}
-              
-              {platform.id === 'google-sheets' && !isConnected && (
-                <div className="ml-8 mt-3">
-                  <GoogleSheetsConnectionFlow
-                    campaignId="temp-campaign-setup"
-                    onConnectionSuccess={() => {
-                      setConnectedPlatforms(prev => [...prev, 'google-sheets']);
-                      setSelectedPlatforms(prev => [...prev, 'google-sheets']);
-                      toast({
-                        title: "Google Sheets Connected!",
-                        description: "Successfully connected to your spreadsheet data."
-                      });
-                    }}
-                  />
+              {/* Credential Input Section - Only show when expanded and not connected */}
+              {isExpanded && !isConnected && (
+                <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-4">
+                  {platform.id === 'google-analytics' && (
+                    <GA4ConnectionFlow
+                      campaignId="temp-campaign-setup"
+                      onConnectionSuccess={() => {
+                        setConnectedPlatforms(prev => [...prev, 'google-analytics']);
+                        setSelectedPlatforms(prev => [...prev, 'google-analytics']);
+                        setExpandedPlatforms(prev => ({ ...prev, 'google-analytics': false }));
+                        toast({
+                          title: "GA4 Connected!",
+                          description: "Successfully connected with automatic token refresh for marketing professionals."
+                        });
+                      }}
+                    />
+                  )}
+                  
+                  {platform.id === 'google-sheets' && (
+                    <GoogleSheetsConnectionFlow
+                      campaignId="temp-campaign-setup"
+                      onConnectionSuccess={() => {
+                        setConnectedPlatforms(prev => [...prev, 'google-sheets']);
+                        setSelectedPlatforms(prev => [...prev, 'google-sheets']);
+                        setExpandedPlatforms(prev => ({ ...prev, 'google-sheets': false }));
+                        toast({
+                          title: "Google Sheets Connected!",
+                          description: "Successfully connected to your spreadsheet data."
+                        });
+                      }}
+                    />
+                  )}
+                  
+                  {!['google-analytics', 'google-sheets'].includes(platform.id) && (
+                    <div className="text-center py-6">
+                      <div className="text-slate-600 dark:text-slate-400 mb-3">
+                        {platform.name} integration coming soon
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          toast({
+                            title: "Coming Soon",
+                            description: `${platform.name} integration will be available soon.`,
+                          });
+                        }}
+                      >
+                        Notify Me
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -220,8 +220,8 @@ export default function CampaignDetail() {
     return new Intl.NumberFormat('en-US').format(value);
   };
 
-  // Add state for managing GA4 connection dialog
-  const [showGA4Connection, setShowGA4Connection] = useState<string | null>(null);
+  // Add state for managing connection dropdowns
+  const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
 
   if (campaignLoading) {
     return (
@@ -369,25 +369,43 @@ export default function CampaignDetail() {
 
             <div className="grid gap-4 md:grid-cols-2">
               {platformMetrics.map((platform) => (
-                <Card key={platform.platform} className={platform.connected ? "border-green-200 dark:border-green-800" : ""}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        {getPlatformIcon(platform.platform)}
-                        <div>
-                          <CardTitle className="text-lg">{platform.platform}</CardTitle>
-                          <CardDescription>
-                            {platform.connected ? "Connected & syncing data" : "Not connected"}
-                          </CardDescription>
-                        </div>
+                <Card key={platform.platform} className={platform.connected ? "border-green-200 dark:border-green-800" : "border-slate-200 dark:border-slate-700"}>
+                  {/* Platform Header - Always Visible */}
+                  <div 
+                    className={`flex items-center justify-between p-4 ${!platform.connected ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
+                    onClick={() => {
+                      if (!platform.connected) {
+                        setExpandedPlatform(expandedPlatform === platform.platform ? null : platform.platform);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center space-x-3">
+                      {getPlatformIcon(platform.platform)}
+                      <div>
+                        <h3 className="font-semibold text-slate-900 dark:text-white">{platform.platform}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {platform.connected ? "Connected & syncing data" : "Not connected"}
+                        </p>
                       </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
                       <Badge variant={platform.connected ? "default" : "secondary"}>
                         {platform.connected ? "Connected" : "Not Connected"}
                       </Badge>
+                      {!platform.connected && (
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />
+                      )}
+                      {platform.connected && (
+                        <Button variant="ghost" size="sm">
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    {platform.connected ? (
+                  </div>
+
+                  {/* Connected Platform Metrics */}
+                  {platform.connected && (
+                    <div className="px-4 pb-4">
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
@@ -434,33 +452,40 @@ export default function CampaignDetail() {
                           </div>
                         )}
                       </div>
-                    ) : (
-                      <div className="text-center py-4">
-                        <p className="text-slate-500 dark:text-slate-400 mb-3">Connect this platform to view metrics</p>
-                        {platform.platform === "Google Analytics" ? (
-                          <GA4ConnectionFlow 
-                            campaignId={campaign.id} 
-                            onConnectionSuccess={() => {
-                              // Refresh data after connection
-                              window.location.reload();
-                            }}
-                          />
-                        ) : platform.platform === "Google Sheets" ? (
-                          <GoogleSheetsConnectionFlow 
-                            campaignId={campaign.id} 
-                            onConnectionSuccess={() => {
-                              // Refresh data after connection
-                              window.location.reload();
-                            }}
-                          />
-                        ) : (
-                          <Button variant="outline" size="sm">
+                    </div>
+                  )}
+
+                  {/* Connection Setup Dropdown - Only show when expanded and not connected */}
+                  {!platform.connected && expandedPlatform === platform.platform && (
+                    <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-4">
+                      {platform.platform === "Google Analytics" ? (
+                        <GA4ConnectionFlow 
+                          campaignId={campaign.id} 
+                          onConnectionSuccess={() => {
+                            setExpandedPlatform(null);
+                            window.location.reload();
+                          }}
+                        />
+                      ) : platform.platform === "Google Sheets" ? (
+                        <GoogleSheetsConnectionFlow 
+                          campaignId={campaign.id} 
+                          onConnectionSuccess={() => {
+                            setExpandedPlatform(null);
+                            window.location.reload();
+                          }}
+                        />
+                      ) : (
+                        <div className="text-center py-6">
+                          <div className="text-slate-600 dark:text-slate-400 mb-3">
+                            {platform.platform} integration coming soon
+                          </div>
+                          <Button variant="outline" size="sm" disabled>
                             Connect Platform
                           </Button>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>

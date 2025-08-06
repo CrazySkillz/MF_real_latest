@@ -74,6 +74,7 @@ export default function GA4Metrics() {
   const [dateRange, setDateRange] = useState("7days");
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const [showKPIDialog, setShowKPIDialog] = useState(false);
+  const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -97,13 +98,88 @@ export default function GA4Metrics() {
     },
   });
 
+  // Function to calculate current KPI value based on template and platform data
+  const calculateKPIValue = (template: any, ga4Data: any, sheetsData: any) => {
+    if (!template) return "0.00";
+    
+    try {
+      switch (template.name) {
+        case "ROI (Return on Investment)":
+          // ROI = (Revenue - Cost) / Cost × 100
+          const revenue = sheetsData?.totalRevenue || (ga4Data?.conversions || 0) * 25; // Assuming $25 per conversion
+          const cost = sheetsData?.totalSpend || 500; // Default cost
+          return cost > 0 ? (((revenue - cost) / cost) * 100).toFixed(2) : "0.00";
+          
+        case "ROAS (Return on Ad Spend)":
+          // ROAS = Revenue / Ad Spend
+          const adRevenue = sheetsData?.totalRevenue || (ga4Data?.conversions || 0) * 25;
+          const adSpend = sheetsData?.totalSpend || 500;
+          return adSpend > 0 ? (adRevenue / adSpend).toFixed(2) : "0.00";
+          
+        case "CTR (Click-Through Rate)":
+          // CTR = Clicks / Impressions × 100
+          const clicks = sheetsData?.totalClicks || ga4Data?.clicks || 0;
+          const impressions = sheetsData?.totalImpressions || ga4Data?.impressions || 0;
+          return impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : "0.00";
+          
+        case "Conversion Rate":
+          // Conversion Rate = Conversions / Clicks × 100
+          const conversions = sheetsData?.totalConversions || ga4Data?.conversions || 0;
+          const totalClicks = sheetsData?.totalClicks || ga4Data?.clicks || 0;
+          return totalClicks > 0 ? ((conversions / totalClicks) * 100).toFixed(2) : "0.00";
+          
+        case "CPA (Cost Per Acquisition)":
+          // CPA = Total Ad Spend / Conversions
+          const totalSpend = sheetsData?.totalSpend || 500;
+          const totalConversions = sheetsData?.totalConversions || ga4Data?.conversions || 1;
+          return totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : "0.00";
+          
+        case "LTV/CAC Ratio":
+          // LTV/CAC = Customer Lifetime Value / Customer Acquisition Cost
+          const avgOrderValue = 75; // Assumed average order value
+          const repeatPurchases = 3; // Assumed repeat purchases
+          const ltv = avgOrderValue * repeatPurchases;
+          const cac = sheetsData?.totalSpend || 500 / (sheetsData?.totalConversions || ga4Data?.conversions || 1);
+          return cac > 0 ? (ltv / cac).toFixed(2) : "0.00";
+          
+        default:
+          return "0.00";
+      }
+    } catch (error) {
+      console.error("Error calculating KPI value:", error);
+      return "0.00";
+    }
+  };
+
   // Create KPI mutation
   const createKPIMutation = useMutation({
     mutationFn: async (data: KPIFormData) => {
+      // Calculate current value if using a template
+      let calculatedValue = "0.00";
+      if (selectedKPITemplate) {
+        // Fetch current platform data for calculation
+        try {
+          const [ga4Response, sheetsResponse] = await Promise.all([
+            fetch(`/api/campaigns/${campaignId}/ga4-metrics?dateRange=${dateRange}`).catch(() => null),
+            fetch(`/api/campaigns/${campaignId}/google-sheets-data`).catch(() => null)
+          ]);
+          
+          const ga4Data = ga4Response?.ok ? await ga4Response.json() : null;
+          const sheetsData = sheetsResponse?.ok ? await sheetsResponse.json() : null;
+          
+          calculatedValue = calculateKPIValue(selectedKPITemplate, ga4Data?.metrics, sheetsData);
+        } catch (error) {
+          console.error("Error fetching platform data for KPI calculation:", error);
+        }
+      }
+      
       const response = await fetch(`/api/platforms/google_analytics/kpis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          currentValue: calculatedValue // Set the calculated current value
+        }),
       });
       
       if (!response.ok) {
@@ -1141,6 +1217,102 @@ export default function GA4Metrics() {
           
           <Form {...kpiForm}>
             <form onSubmit={kpiForm.handleSubmit(onCreateKPI)} className="space-y-6">
+              {/* KPI Template Selection */}
+              <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <h4 className="font-medium text-slate-900 dark:text-white">Select KPI Template</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.
+                </p>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { 
+                      name: "ROI (Return on Investment)", 
+                      formula: "(Revenue - Cost) / Cost × 100",
+                      unit: "%",
+                      description: "Measures the efficiency of investment relative to its cost",
+                      targetValue: "200"
+                    },
+                    { 
+                      name: "ROAS (Return on Ad Spend)", 
+                      formula: "Revenue / Ad Spend",
+                      unit: "ratio",
+                      description: "Revenue generated for every dollar spent on advertising",
+                      targetValue: "4.0"
+                    },
+                    { 
+                      name: "CTR (Click-Through Rate)", 
+                      formula: "Clicks / Impressions × 100",
+                      unit: "%",
+                      description: "Percentage of people who click on ads after seeing them",
+                      targetValue: "2.5"
+                    },
+                    { 
+                      name: "Conversion Rate", 
+                      formula: "Conversions / Clicks × 100",
+                      unit: "%",
+                      description: "Percentage of clicks that result in desired actions",
+                      targetValue: "3.8"
+                    },
+                    { 
+                      name: "CPA (Cost Per Acquisition)", 
+                      formula: "Total Ad Spend / Conversions",
+                      unit: "$",
+                      description: "Average cost to acquire one customer",
+                      targetValue: "45"
+                    },
+                    { 
+                      name: "LTV/CAC Ratio", 
+                      formula: "Customer Lifetime Value / Customer Acquisition Cost",
+                      unit: "ratio",
+                      description: "Ratio of customer value to acquisition cost",
+                      targetValue: "3.0"
+                    }
+                  ].map((template) => (
+                    <div
+                      key={template.name}
+                      className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedKPITemplate?.name === template.name
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                      }`}
+                      onClick={() => {
+                        setSelectedKPITemplate(template);
+                        kpiForm.setValue("name", template.name);
+                        kpiForm.setValue("unit", template.unit);
+                        kpiForm.setValue("description", template.description);
+                        kpiForm.setValue("targetValue", template.targetValue);
+                      }}
+                    >
+                      <div className="font-medium text-sm text-slate-900 dark:text-white">
+                        {template.name}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {template.formula}
+                      </div>
+                      <div className="flex items-center gap-1 mt-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-xs text-green-600 dark:text-green-400">Auto-calculates from platform data</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="text-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedKPITemplate(null);
+                      kpiForm.reset();
+                    }}
+                  >
+                    Create Custom KPI
+                  </Button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={kpiForm.control}

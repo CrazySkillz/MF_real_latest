@@ -7,8 +7,8 @@ import {
 } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
 
-// World map topology URL (TopoJSON format)
-const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+// Use a working world topology URL
+const geoUrl = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
 
 interface CountryData {
   country: string;
@@ -80,12 +80,31 @@ export default function InteractiveWorldMap({
     .range(["#f3f4f6", "#1d4ed8"]); // Light gray to blue
 
   const handleMouseEnter = (event: React.MouseEvent<SVGPathElement>, geo: any) => {
-    const countryName = geo.properties.NAME || geo.properties.NAME_EN || geo.properties.NAME_LONG;
-    const countryData = countryDataMap.get(countryName) || 
-                       countryDataMap.get(geo.properties.NAME_LONG) ||
-                       countryDataMap.get(geo.properties.NAME_EN);
+    // Try multiple property names for country identification
+    const possibleNames = [
+      geo.properties.NAME,
+      geo.properties.NAME_EN, 
+      geo.properties.NAME_LONG,
+      geo.properties.ADMIN,
+      geo.properties.name,
+      geo.properties.admin
+    ];
     
-    console.log('Country hover:', countryName, 'Properties:', geo.properties, 'Data found:', !!countryData);
+    let countryData = null;
+    let countryName = '';
+    
+    for (const name of possibleNames) {
+      if (name && countryDataMap.has(name)) {
+        countryData = countryDataMap.get(name);
+        countryName = name;
+        break;
+      }
+    }
+    
+    // Fallback to first available name
+    if (!countryName) {
+      countryName = possibleNames.find(name => name) || 'Unknown';
+    }
     
     setHoveredCountry(countryName);
     if (countryData) {
@@ -118,31 +137,45 @@ export default function InteractiveWorldMap({
           height={320}
         >
           <Geographies geography={geoUrl}>
-            {({ geographies }: { geographies: any[] }) =>
-              geographies.map((geo: any) => {
-                const countryName = geo.properties.NAME || geo.properties.NAME_EN || geo.properties.NAME_LONG;
-                const countryData = countryDataMap.get(countryName) || 
-                                   countryDataMap.get(geo.properties.NAME_LONG) ||
-                                   countryDataMap.get(geo.properties.NAME_EN);
+            {({ geographies }: { geographies: any[] }) => {
+              console.log('Total geographies loaded:', geographies.length);
+              return geographies.map((geo: any) => {
+                // Try multiple property names for country identification
+                const possibleNames = [
+                  geo.properties.NAME,
+                  geo.properties.NAME_EN,
+                  geo.properties.NAME_LONG,
+                  geo.properties.ADMIN,
+                  geo.properties.name,
+                  geo.properties.admin
+                ];
+                
+                let countryData = null;
+                let matchedName = '';
+                
+                // Try to find data for this country
+                for (const name of possibleNames) {
+                  if (name && countryDataMap.has(name)) {
+                    countryData = countryDataMap.get(name);
+                    matchedName = name;
+                    break;
+                  }
+                }
+                
                 const hasData = !!countryData;
                 
-                // Debug logging for first few countries
-                if (geo.rsmKey && parseInt(geo.rsmKey) < 5) {
-                  console.log(`Country ${geo.rsmKey}:`, {
-                    NAME: geo.properties.NAME,
-                    NAME_EN: geo.properties.NAME_EN,
-                    NAME_LONG: geo.properties.NAME_LONG,
-                    hasData,
-                    countryName
-                  });
+                // Debug logging for countries with our data
+                if (hasData && countryData) {
+                  console.log('✓ Found data for:', matchedName, 'Users:', countryData[metric]);
                 }
-                const fillColor = hasData 
+                
+                const fillColor = hasData && countryData
                   ? colorScale(countryData[metric]) 
-                  : "#d1d5db";
+                  : "#e5e7eb";
                 
                 return (
                   <Geography
-                    key={geo.rsmKey}
+                    key={geo.rsmKey || Math.random()}
                     geography={geo}
                     onMouseEnter={(event: any) => handleMouseEnter(event, geo)}
                     onMouseLeave={handleMouseLeave}
@@ -155,14 +188,14 @@ export default function InteractiveWorldMap({
                         outline: "none",
                       },
                       hover: {
-                        fill: hasData ? "#1d4ed8" : "#9ca3af",
+                        fill: hasData ? "#1e40af" : "#9ca3af",
                         stroke: "#ffffff",
                         strokeWidth: 1,
                         outline: "none",
                         cursor: hasData ? "pointer" : "default",
                       },
                       pressed: {
-                        fill: "#1d4ed8",
+                        fill: "#1e40af",
                         stroke: "#ffffff",
                         strokeWidth: 1,
                         outline: "none",
@@ -170,8 +203,8 @@ export default function InteractiveWorldMap({
                     }}
                   />
                 );
-              })
-            }
+              });
+            }}
           </Geographies>
         </ComposableMap>
       </div>

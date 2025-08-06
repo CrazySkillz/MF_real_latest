@@ -1149,6 +1149,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Platform-level KPI routes
+  app.get("/api/platforms/:platformType/kpis", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      const kpis = await storage.getPlatformKPIs(platformType);
+      res.json(kpis);
+    } catch (error) {
+      console.error('Platform KPI fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch platform KPIs" });
+    }
+  });
+
+  app.post("/api/platforms/:platformType/kpis", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      
+      const validatedKPI = insertKPISchema.parse({
+        ...req.body,
+        platformType: platformType,
+        campaignId: null
+      });
+      
+      const kpi = await storage.createKPI(validatedKPI);
+      res.json(kpi);
+    } catch (error) {
+      console.error('Platform KPI creation error:', error);
+      res.status(500).json({ message: "Failed to create platform KPI" });
+    }
+  });
+
   app.post("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;

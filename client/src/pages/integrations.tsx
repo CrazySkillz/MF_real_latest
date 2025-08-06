@@ -7,7 +7,8 @@ import IntegrationModal from "@/components/modals/integration-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Settings, Trash2, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Settings, Trash2, CheckCircle, AlertCircle, Target } from "lucide-react";
+import { Link } from "wouter";
 import { Integration } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -130,27 +131,54 @@ export default function Integrations() {
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <div className="flex items-center justify-between">
+                          <div className="space-y-4">
                             <div className="text-sm text-slate-500">
                               Last sync: {integration.lastSync 
                                 ? new Date(integration.lastSync).toLocaleDateString()
                                 : "Never"
                               }
                             </div>
-                            <div className="flex space-x-2">
-                              <Button variant="outline" size="sm">
-                                <Settings className="w-4 h-4 mr-1" />
-                                Settings
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleDeleteIntegration(integration.id)}
-                                disabled={deleteIntegrationMutation.isPending}
-                              >
-                                <Trash2 className="w-4 h-4 mr-1" />
-                                Disconnect
-                              </Button>
+                            
+                            {/* Navigation Tabs */}
+                            <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg">
+                              <div className="text-xs px-2 py-1 bg-white rounded shadow-sm">
+                                Overview
+                              </div>
+                              <Link href={`/platforms/${integration.platform}/kpis`}>
+                                <div className="text-xs px-2 py-1 hover:bg-white hover:shadow-sm rounded cursor-pointer text-slate-600 hover:text-slate-900">
+                                  KPIs
+                                </div>
+                              </Link>
+                              <div className="text-xs px-2 py-1 hover:bg-white hover:shadow-sm rounded cursor-pointer text-slate-600 hover:text-slate-900">
+                                Benchmarks
+                              </div>
+                              <div className="text-xs px-2 py-1 hover:bg-white hover:shadow-sm rounded cursor-pointer text-slate-600 hover:text-slate-900">
+                                ROIs
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <Link href={`/platforms/${integration.platform}/kpis`}>
+                                <Button variant="outline" size="sm">
+                                  <Target className="w-4 h-4 mr-1" />
+                                  Manage KPIs
+                                </Button>
+                              </Link>
+                              <div className="flex space-x-2">
+                                <Button variant="outline" size="sm">
+                                  <Settings className="w-4 h-4 mr-1" />
+                                  Settings
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleDeleteIntegration(integration.id)}
+                                  disabled={deleteIntegrationMutation.isPending}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-1" />
+                                  Disconnect
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </CardContent>

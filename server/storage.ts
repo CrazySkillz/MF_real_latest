@@ -1,7 +1,7 @@
 import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // Campaigns
@@ -40,6 +40,7 @@ export interface IStorage {
   
   // KPIs
   getCampaignKPIs(campaignId: string): Promise<KPI[]>;
+  getPlatformKPIs(platformType: string): Promise<KPI[]>;
   getKPI(id: string): Promise<KPI | undefined>;
   createKPI(kpi: InsertKPI): Promise<KPI>;
   updateKPI(id: string, kpi: Partial<InsertKPI>): Promise<KPI | undefined>;
@@ -297,6 +298,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.kpis.values()).filter(kpi => kpi.campaignId === campaignId);
   }
 
+  async getPlatformKPIs(platformType: string): Promise<KPI[]> {
+    return Array.from(this.kpis.values()).filter(kpi => kpi.platformType === platformType && !kpi.campaignId);
+  }
+
   async getKPI(id: string): Promise<KPI | undefined> {
     return this.kpis.get(id);
   }
@@ -305,7 +310,8 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const kpi: KPI = {
       id,
-      campaignId: kpiData.campaignId,
+      campaignId: kpiData.campaignId || null,
+      platformType: kpiData.platformType || null,
       name: kpiData.name,
       targetValue: kpiData.targetValue,
       currentValue: kpiData.currentValue || "0",
@@ -540,6 +546,10 @@ export class DatabaseStorage implements IStorage {
   // KPI methods
   async getCampaignKPIs(campaignId: string): Promise<KPI[]> {
     return db.select().from(kpis).where(eq(kpis.campaignId, campaignId));
+  }
+
+  async getPlatformKPIs(platformType: string): Promise<KPI[]> {
+    return db.select().from(kpis).where(and(eq(kpis.platformType, platformType), isNull(kpis.campaignId)));
   }
 
   async getKPI(id: string): Promise<KPI | undefined> {

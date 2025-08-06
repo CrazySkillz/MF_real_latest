@@ -77,7 +77,8 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
 
 export const kpis = pgTable("kpis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: text("campaign_id").notNull(),
+  campaignId: text("campaign_id"), // Optional - null for platform-level KPIs
+  platformType: text("platform_type"), // 'google_analytics', 'google_sheets', 'facebook', 'linkedin', etc.
   name: text("name").notNull(), // 'ROI', 'LTV', 'CAC', 'CTR', 'CPA', 'ROAS'
   targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
   currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"),
@@ -157,6 +158,7 @@ export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheet
 
 export const insertKPISchema = createInsertSchema(kpis).pick({
   campaignId: true,
+  platformType: true,
   name: true,
   targetValue: true,
   currentValue: true,

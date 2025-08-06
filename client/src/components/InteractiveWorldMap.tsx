@@ -218,10 +218,10 @@ export default function InteractiveWorldMap({
               }
               
               return geographies.map((geo: any, index: number) => {
-                // Try multiple property names for country identification
+                // Try multiple property names for country identification  
                 const possibleNames = [
+                  geo.properties.name,  // This topojson uses lowercase 'name'
                   geo.properties.NAME,
-                  geo.properties.name,
                   geo.properties.NAME_EN,
                   geo.properties.NAME_LONG,
                   geo.properties.ADMIN,

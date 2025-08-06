@@ -734,7 +734,7 @@ export default function GA4Metrics() {
                           <div className="lg:col-span-2 p-4">
                             <InteractiveWorldMap 
                               data={geographicData?.topCountries && geographicData.topCountries.length > 0 ? geographicData.topCountries : [
-                                { country: "United States", users: 1247, sessions: 1856 },
+                                { country: "United States of America", users: 1247, sessions: 1856 },
                                 { country: "United Kingdom", users: 834, sessions: 1243 },
                                 { country: "Canada", users: 567, sessions: 892 },
                                 { country: "Germany", users: 445, sessions: 678 },
@@ -771,7 +771,7 @@ export default function GA4Metrics() {
                               {(geographicData?.topCountries?.length > 0 
                                 ? geographicData.topCountries 
                                 : [
-                                    { country: "United States", users: 1247, sessions: 1856 },
+                                    { country: "United States of America", users: 1247, sessions: 1856 },
                                     { country: "United Kingdom", users: 834, sessions: 1243 },
                                     { country: "Canada", users: 567, sessions: 892 },
                                     { country: "Germany", users: 445, sessions: 678 },
@@ -812,7 +812,7 @@ export default function GA4Metrics() {
                             {(geographicData?.topCountries?.length > 0 
                               ? geographicData.topCountries 
                               : [
-                                  { country: "United States", users: 1247, sessions: 1856 },
+                                  { country: "United States of America", users: 1247, sessions: 1856 },
                                   { country: "United Kingdom", users: 834, sessions: 1243 },
                                   { country: "Canada", users: 567, sessions: 892 },
                                   { country: "Germany", users: 445, sessions: 678 },
@@ -837,7 +837,7 @@ export default function GA4Metrics() {
                             {(geographicData?.data?.length > 0 
                               ? geographicData.data 
                               : [
-                                  { city: "New York", region: "New York", country: "United States", users: 347, pageviews: 892 },
+                                  { city: "New York", region: "New York", country: "United States of America", users: 347, pageviews: 892 },
                                   { city: "London", region: "England", country: "United Kingdom", users: 234, pageviews: 612 },
                                   { city: "Toronto", region: "Ontario", country: "Canada", users: 198, pageviews: 456 },
                                   { city: "Berlin", region: "Berlin", country: "Germany", users: 167, pageviews: 389 },

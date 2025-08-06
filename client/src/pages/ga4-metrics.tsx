@@ -781,45 +781,20 @@ export default function GA4Metrics() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                            {formatNumber(ga4Metrics?.impressions || 0)}
-                          </div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400">Total Users</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                            {formatNumber(ga4Metrics?.sessions || 0)}
-                          </div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400">Sessions</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                            {ga4Metrics?.sessions && ga4Metrics?.impressions
-                              ? (ga4Metrics.sessions / ga4Metrics.impressions).toFixed(2)
-                              : "0.00"}
-                          </div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400">Sessions per User</div>
-                        </div>
+                      <div className="text-center text-slate-500 dark:text-slate-400 mb-6">
+                        Want to track custom KPIs? Create campaign-specific or platform-level KPIs to monitor your key metrics.
                       </div>
-                      
-                      <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                        <div className="text-center text-slate-500 dark:text-slate-400 mb-4">
-                          Want to track custom KPIs? Create campaign-specific or platform-level KPIs to monitor your key metrics.
-                        </div>
-                        <div className="flex justify-center space-x-4">
-                          <Link href={`/campaigns/${campaignId}/kpis`}>
-                            <Button variant="outline">
-                              View Campaign KPIs
-                            </Button>
-                          </Link>
-                          <Link href={`/platforms/google_analytics/kpis`}>
-                            <Button variant="outline">
-                              View Platform KPIs
-                            </Button>
-                          </Link>
-                        </div>
+                      <div className="flex justify-center space-x-4">
+                        <Link href={`/campaigns/${campaignId}/kpis`}>
+                          <Button variant="outline">
+                            View Campaign KPIs
+                          </Button>
+                        </Link>
+                        <Link href={`/platforms/google_analytics/kpis`}>
+                          <Button variant="outline">
+                            View Platform KPIs
+                          </Button>
+                        </Link>
                       </div>
                     </CardContent>
                   </Card>

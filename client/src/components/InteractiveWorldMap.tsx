@@ -6,7 +6,6 @@ import {
   Graticule,
 } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
-import { feature } from "topojson-client";
 
 // Use Natural Earth world data which has consistent country names
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
@@ -58,8 +57,8 @@ export default function InteractiveWorldMap({
     // Store all possible variations for each country
     const variations = [country.country];
     
-    // Add common variations based on the GeoJSON data format
-    if (country.country === "USA" || country.country.includes("United States")) {
+    // Add common variations based on the topojson data format
+    if (country.country.includes("United States") || country.country === "USA") {
       variations.push("United States of America", "United States", "USA", "US", "America");
     }
     if (country.country.includes("United Kingdom")) {
@@ -204,16 +203,16 @@ export default function InteractiveWorldMap({
               // Log first few countries to see their property names
               if (geographies.length > 0) {
                 console.log('Sample geography properties:', geographies[0].properties);
-                console.log('First 5 country names:', geographies.slice(0, 5).map(g => 
-                  g.properties.name || g.properties.NAME || g.properties.ADMIN
+                console.log('First 10 country names:', geographies.slice(0, 10).map(g => 
+                  g.properties.NAME || g.properties.name || g.properties.NAME_EN
                 ));
               }
               
               return geographies.map((geo: any, index: number) => {
                 // Try multiple property names for country identification
                 const possibleNames = [
-                  geo.properties.name,
                   geo.properties.NAME,
+                  geo.properties.name,
                   geo.properties.NAME_EN,
                   geo.properties.NAME_LONG,
                   geo.properties.ADMIN,
@@ -235,12 +234,13 @@ export default function InteractiveWorldMap({
                 const hasData = !!countryData;
                 
                 // Debug logging for first 10 countries and any matches
-                if (index < 10 || hasData) {
-                  console.log(`Country ${index}:`, {
-                    names: possibleNames,
+                if (index < 15 || hasData) {
+                  console.log(`🌍 Country ${index}:`, {
+                    allProperties: geo.properties,
+                    availableNames: possibleNames,
                     matched: matchedName,
                     hasData,
-                    users: countryData ? countryData[metric] : 0
+                    userCount: countryData ? countryData[metric] : 0
                   });
                 }
                 

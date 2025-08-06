@@ -1334,21 +1334,21 @@ export default function GA4Metrics() {
                             Create Benchmark
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl relative">
-                          <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto relative p-4">
+                          <DialogClose className="absolute right-3 top-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-50">
                             <X className="h-4 w-4" />
                             <span className="sr-only">Close</span>
                           </DialogClose>
-                          <DialogHeader className="pb-4">
-                            <DialogTitle className="pr-8">Create New Benchmark</DialogTitle>
-                            <DialogDescription>
+                          <DialogHeader className="pb-3">
+                            <DialogTitle className="pr-8 text-lg">Create New Benchmark</DialogTitle>
+                            <DialogDescription className="text-sm">
                               Set up a new performance benchmark to track against industry standards or custom targets
                             </DialogDescription>
                           </DialogHeader>
-                          <form onSubmit={handleCreateBenchmark} className="space-y-4">
+                          <form onSubmit={handleCreateBenchmark} className="space-y-3">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                   Benchmark Name *
                                 </label>
                                 <input

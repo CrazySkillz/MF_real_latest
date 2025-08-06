@@ -1179,6 +1179,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      
+      const deleted = await storage.deleteKPI(kpiId);
+      if (!deleted) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
+      
+      res.json({ message: "KPI deleted successfully" });
+    } catch (error) {
+      console.error('Platform KPI deletion error:', error);
+      res.status(500).json({ message: "Failed to delete KPI" });
+    }
+  });
+
   app.post("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;

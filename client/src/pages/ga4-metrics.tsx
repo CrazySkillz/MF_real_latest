@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -205,8 +205,42 @@ export default function GA4Metrics() {
     },
   });
 
+  // Delete KPI mutation
+  const deleteKPIMutation = useMutation({
+    mutationFn: async (kpiId: string) => {
+      const response = await fetch(`/api/platforms/google_analytics/kpis/${kpiId}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete KPI");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`] });
+      toast({ title: "KPI deleted successfully" });
+    },
+    onError: (error) => {
+      console.error("KPI deletion error:", error);
+      toast({ 
+        title: "Failed to delete KPI", 
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive" 
+      });
+    },
+  });
+
   const onCreateKPI = async (data: KPIFormData) => {
     createKPIMutation.mutate(data);
+  };
+
+  const onDeleteKPI = (kpiId: string) => {
+    if (confirm("Are you sure you want to delete this KPI? This action cannot be undone.")) {
+      deleteKPIMutation.mutate(kpiId);
+    }
   };
 
   // Helper functions for KPI display
@@ -1095,6 +1129,17 @@ export default function GA4Metrics() {
                                       </div>
                                     </div>
                                   </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => onDeleteKPI(kpi.id)}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                    disabled={deleteKPIMutation.isPending}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
                                 </div>
                               </div>
                             </div>

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -760,9 +760,25 @@ export default function GA4Metrics() {
 
                 <TabsContent value="kpis">
                   <Card>
-                    <CardHeader>
-                      <CardTitle>Key Performance Indicators</CardTitle>
-                      <CardDescription>Essential metrics tracking your campaign performance</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                      <div>
+                        <CardTitle>Key Performance Indicators</CardTitle>
+                        <CardDescription>Manage KPIs for this campaign</CardDescription>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Link href={`/campaigns/${campaignId}/kpis`}>
+                          <Button variant="outline" size="sm">
+                            <Target className="w-4 h-4 mr-2" />
+                            Manage Campaign KPIs
+                          </Button>
+                        </Link>
+                        <Link href={`/platforms/google_analytics/kpis`}>
+                          <Button size="sm">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Platform KPI
+                          </Button>
+                        </Link>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -785,6 +801,24 @@ export default function GA4Metrics() {
                               : "0.00"}
                           </div>
                           <div className="text-sm text-slate-600 dark:text-slate-400">Sessions per User</div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                        <div className="text-center text-slate-500 dark:text-slate-400 mb-4">
+                          Want to track custom KPIs? Create campaign-specific or platform-level KPIs to monitor your key metrics.
+                        </div>
+                        <div className="flex justify-center space-x-4">
+                          <Link href={`/campaigns/${campaignId}/kpis`}>
+                            <Button variant="outline">
+                              View Campaign KPIs
+                            </Button>
+                          </Link>
+                          <Link href={`/platforms/google_analytics/kpis`}>
+                            <Button variant="outline">
+                              View Platform KPIs
+                            </Button>
+                          </Link>
                         </div>
                       </div>
                     </CardContent>

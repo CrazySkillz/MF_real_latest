@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import InteractiveWorldMap from "@/components/InteractiveWorldMap";
 import { SiGoogle } from "react-icons/si";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { useToast } from "@/hooks/use-toast";
@@ -712,7 +713,23 @@ export default function GA4Metrics() {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                     </div>
                   ) : geographicData?.success ? (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
+                      {/* Interactive World Map */}
+                      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="font-medium text-slate-900 dark:text-white">Active users by Country</h4>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                              {geographicData.topCountries?.length > 0 ? geographicData.topCountries?.length : 0} countries
+                            </span>
+                          </div>
+                        </div>
+                        <InteractiveWorldMap 
+                          data={geographicData.topCountries || []} 
+                          metric="users"
+                        />
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Top Countries */}
                         <div>

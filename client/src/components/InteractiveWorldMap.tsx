@@ -6,9 +6,10 @@ import {
   Graticule,
 } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
+import { feature } from "topojson-client";
 
-// Use a working world topology URL
-const geoUrl = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
+// Use Natural Earth world data which has consistent country names
+const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 
 interface CountryData {
   country: string;
@@ -57,33 +58,66 @@ export default function InteractiveWorldMap({
     // Store all possible variations for each country
     const variations = [country.country];
     
-    // Add common variations based on the country name
-    switch(country.country) {
-      case "United States of America":
-      case "United States":
-        variations.push("United States of America", "United States", "USA", "US", "America");
-        break;
-      case "United Kingdom":
-        variations.push("United Kingdom", "UK", "Great Britain", "Britain");
-        break;
-      case "Germany":
-        variations.push("Germany", "Deutschland");
-        break;
-      case "France":
-        variations.push("France", "French Republic");
-        break;
-      case "Spain":
-        variations.push("Spain", "Kingdom of Spain");
-        break;
-      case "Italy":
-        variations.push("Italy", "Italian Republic");
-        break;
-      case "Netherlands":
-        variations.push("Netherlands", "Holland");
-        break;
-      case "Brazil":
-        variations.push("Brazil", "Federative Republic of Brazil");
-        break;
+    // Add common variations based on the GeoJSON data format
+    if (country.country === "USA" || country.country.includes("United States")) {
+      variations.push("United States of America", "United States", "USA", "US", "America");
+    }
+    if (country.country.includes("United Kingdom")) {
+      variations.push("United Kingdom", "UK", "Great Britain", "Britain");
+    }
+    if (country.country === "Germany") {
+      variations.push("Germany", "Deutschland");
+    }
+    if (country.country === "France") {
+      variations.push("France", "French Republic");
+    }
+    if (country.country === "Spain") {
+      variations.push("Spain", "Kingdom of Spain");
+    }
+    if (country.country === "Italy") {
+      variations.push("Italy", "Italian Republic");
+    }
+    if (country.country === "Netherlands") {
+      variations.push("Netherlands", "Holland");
+    }
+    if (country.country === "Brazil") {
+      variations.push("Brazil", "Federative Republic of Brazil");
+    }
+    if (country.country === "Canada") {
+      variations.push("Canada");
+    }
+    if (country.country === "Australia") {
+      variations.push("Australia");
+    }
+    if (country.country === "Japan") {
+      variations.push("Japan");
+    }
+    if (country.country === "India") {
+      variations.push("India");
+    }
+    if (country.country === "Sweden") {
+      variations.push("Sweden");
+    }
+    if (country.country === "Norway") {
+      variations.push("Norway");
+    }
+    if (country.country === "Denmark") {
+      variations.push("Denmark");
+    }
+    if (country.country === "Finland") {
+      variations.push("Finland");
+    }
+    if (country.country === "Belgium") {
+      variations.push("Belgium");
+    }
+    if (country.country === "Switzerland") {
+      variations.push("Switzerland");
+    }
+    if (country.country === "Austria") {
+      variations.push("Austria");
+    }
+    if (country.country === "Portugal") {
+      variations.push("Portugal");
     }
     
     // Store data under all variations
@@ -100,8 +134,11 @@ export default function InteractiveWorldMap({
   const values = data.map(d => d[metric]);
   const maxValue = Math.max(...values);
   const colorScale = scaleLinear<string>()
-    .domain([0, maxValue])
-    .range(["#f3f4f6", "#1d4ed8"]); // Light gray to blue
+    .domain([0, maxValue * 0.25, maxValue * 0.5, maxValue * 0.75, maxValue])
+    .range(["#dbeafe", "#93c5fd", "#60a5fa", "#3b82f6", "#1d4ed8"]);
+  
+  console.log('Color scale domain:', [0, maxValue * 0.25, maxValue * 0.5, maxValue * 0.75, maxValue]);
+  console.log('Max value:', maxValue);
 
   const handleMouseEnter = (event: React.MouseEvent<SVGPathElement>, geo: any) => {
     // Try multiple property names for country identification
@@ -210,6 +247,11 @@ export default function InteractiveWorldMap({
                 const fillColor = hasData && countryData
                   ? colorScale(countryData[metric]) 
                   : "#e5e7eb";
+                
+                // Additional debug for colored countries
+                if (hasData && countryData) {
+                  console.log(`🎨 Coloring ${matchedName}: ${countryData[metric]} ${metric} → ${fillColor}`);
+                }
                 
                 return (
                   <Geography

@@ -118,6 +118,51 @@ export default function GA4Metrics() {
     createKPIMutation.mutate(data);
   };
 
+  // Helper functions for KPI display
+  const formatValue = (value: string, unit: string) => {
+    const numValue = parseFloat(value);
+    switch (unit) {
+      case "%":
+        return `${numValue}%`;
+      case "$":
+        return `$${numValue.toLocaleString()}`;
+      case "ratio":
+        return `${numValue}:1`;
+      default:
+        return numValue.toLocaleString();
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "achieved":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "tracking":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "at_risk":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "critical":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "critical":
+        return "bg-red-500";
+      case "high":
+        return "bg-orange-500";
+      case "medium":
+        return "bg-yellow-500";
+      case "low":
+        return "bg-green-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
@@ -130,6 +175,16 @@ export default function GA4Metrics() {
     queryFn: async () => {
       const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
       if (!response.ok) return { connected: false };
+      return response.json();
+    },
+  });
+
+  // Fetch platform KPIs
+  const { data: platformKPIs = [], isLoading: kpisLoading } = useQuery({
+    queryKey: [`/api/platforms/google_analytics/kpis`],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/google_analytics/kpis`);
+      if (!response.ok) throw new Error("Failed to fetch KPIs");
       return response.json();
     },
   });
@@ -841,9 +896,60 @@ export default function GA4Metrics() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-center text-slate-500 dark:text-slate-400">
-                        Create and manage platform-level KPIs to track your Google Analytics performance metrics.
-                      </div>
+                      {kpisLoading ? (
+                        <div className="space-y-4">
+                          {[...Array(3)].map((_, i) => (
+                            <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                          ))}
+                        </div>
+                      ) : platformKPIs.length === 0 ? (
+                        <div className="text-center text-slate-500 dark:text-slate-400 py-8">
+                          <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No KPIs yet</h3>
+                          <p className="text-slate-600 dark:text-slate-400 mb-4">
+                            Create your first platform-level KPI to track Google Analytics performance metrics.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {platformKPIs.map((kpi: any) => (
+                            <div key={kpi.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center space-x-3 flex-1">
+                                  <div
+                                    className={`w-2 h-2 rounded-full ${getPriorityColor(kpi.priority)}`}
+                                  ></div>
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-slate-900 dark:text-white">{kpi.name}</h4>
+                                    {kpi.description && (
+                                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{kpi.description}</p>
+                                    )}
+                                    <div className="flex items-center space-x-4 mt-2">
+                                      <div>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">Current: </span>
+                                        <span className="font-medium text-slate-900 dark:text-white">
+                                          {formatValue(kpi.currentValue || "0", kpi.unit)}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">Target: </span>
+                                        <span className="font-medium text-slate-900 dark:text-white">
+                                          {formatValue(kpi.targetValue, kpi.unit)}
+                                        </span>
+                                      </div>
+                                      <div className="ml-auto">
+                                        <Badge className={`${getStatusColor(kpi.status)} text-xs`}>
+                                          {kpi.status.replace('_', ' ')}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>

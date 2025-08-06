@@ -819,7 +819,6 @@ export default function GA4Metrics() {
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
                       <div>
                         <CardTitle>Key Performance Indicators</CardTitle>
-                        <CardDescription>Manage KPIs for this campaign</CardDescription>
                       </div>
                       <div>
                         <Button size="sm" onClick={() => setShowKPIDialog(true)}>

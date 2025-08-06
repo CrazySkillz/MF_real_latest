@@ -235,8 +235,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log('Refreshing access token for geographic data...');
             const tokenData = await ga4Service.refreshAccessToken(
               connection.refreshToken,
-              connection.clientId,
-              connection.clientSecret
+              connection.clientId || undefined,
+              connection.clientSecret || undefined
             );
             
             // Update the connection with new token

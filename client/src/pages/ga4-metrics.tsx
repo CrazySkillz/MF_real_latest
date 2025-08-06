@@ -361,7 +361,7 @@ export default function GA4Metrics() {
                 </CardContent>
               </Card>
             )
-          ) : (
+          ) : ga4Metrics ? (
             <>
               {/* Key Metrics */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
@@ -880,15 +880,14 @@ export default function GA4Metrics() {
                   </Card>
                 </TabsContent>
               </Tabs>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-slate-500 dark:text-slate-400 mb-4">
+                No GA4 connection found for this campaign
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="text-slate-500 dark:text-slate-400 mb-4">
-              No GA4 connection found for this campaign
-            </div>
-          </div>
-        )}
+          )}
         </main>
       </div>
     </div>

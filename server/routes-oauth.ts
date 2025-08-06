@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertKPISchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -1424,6 +1424,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: 'Failed to transfer Google Sheets connection'
       });
+    }
+  });
+
+  // KPI routes
+  app.get("/api/campaigns/:id/kpis", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const kpis = await storage.getCampaignKPIs(id);
+      res.json(kpis);
+    } catch (error) {
+      console.error('KPI fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch KPIs" });
+    }
+  });
+
+  // Platform-level KPI routes
+  app.get("/api/platforms/:platformType/kpis", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      const kpis = await storage.getPlatformKPIs(platformType);
+      res.json(kpis);
+    } catch (error) {
+      console.error('Platform KPI fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch platform KPIs" });
+    }
+  });
+
+  app.post("/api/platforms/:platformType/kpis", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      
+      const validatedKPI = insertKPISchema.parse({
+        ...req.body,
+        platformType: platformType,
+        campaignId: null
+      });
+      
+      const kpi = await storage.createKPI(validatedKPI);
+      res.json(kpi);
+    } catch (error) {
+      console.error('Platform KPI creation error:', error);
+      res.status(500).json({ message: "Failed to create platform KPI" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/kpis", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const validatedKPI = insertKPISchema.parse({
+        ...req.body,
+        campaignId: id
+      });
+      
+      const kpi = await storage.createKPI(validatedKPI);
+      res.json(kpi);
+    } catch (error) {
+      console.error('KPI create error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create KPI" });
+      }
     }
   });
 

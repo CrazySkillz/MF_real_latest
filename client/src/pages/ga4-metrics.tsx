@@ -55,6 +55,10 @@ const kpiFormSchema = z.object({
   unit: z.string().min(1, "Unit is required"),
   targetValue: z.string().min(1, "Target value is required"),
   priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  timeframe: z.enum(["daily", "weekly", "monthly", "quarterly"]).default("monthly"),
+  trackingPeriod: z.number().min(1).max(365).default(30),
+  rollingAverage: z.enum(["1day", "7day", "30day", "none"]).default("7day"),
+  targetDate: z.string().optional(),
 });
 
 type KPIFormData = z.infer<typeof kpiFormSchema>;
@@ -76,6 +80,10 @@ export default function GA4Metrics() {
       unit: "%",
       targetValue: "",
       priority: "medium",
+      timeframe: "monthly",
+      trackingPeriod: 30,
+      rollingAverage: "7day",
+      targetDate: "",
     },
   });
 
@@ -904,7 +912,7 @@ export default function GA4Metrics() {
                           <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No KPIs yet</h3>
                           <p className="text-slate-600 dark:text-slate-400 mb-4">
-                            Create your first platform-level KPI to track Google Analytics performance metrics.
+                            Create your first platform-level KPI to track Google Analytics performance metrics with time-based analytics and rolling averages.
                           </p>
                         </div>
                       ) : (
@@ -939,6 +947,16 @@ export default function GA4Metrics() {
                                           {kpi.status.replace('_', ' ')}
                                         </Badge>
                                       </div>
+                                    </div>
+                                    <div className="flex items-center justify-between mt-3 text-xs text-slate-500 dark:text-slate-400">
+                                      <div className="flex items-center space-x-4">
+                                        <span>📊 {kpi.timeframe || 'monthly'} tracking</span>
+                                        <span>📈 {kpi.rollingAverage || '7day'} average</span>
+                                        <span>📅 {kpi.trackingPeriod || 30}-day period</span>
+                                      </div>
+                                      {kpi.targetDate && (
+                                        <span>🎯 Due: {new Date(kpi.targetDate).toLocaleDateString()}</span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -1165,6 +1183,102 @@ export default function GA4Metrics() {
                     </FormItem>
                   )}
                 />
+              </div>
+              
+              <div className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                <h4 className="font-medium text-slate-900 dark:text-white">Time-Based Tracking</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={kpiForm.control}
+                    name="timeframe"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tracking Timeframe</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="quarterly">Quarterly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={kpiForm.control}
+                    name="trackingPeriod"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tracking Period (days)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="365"
+                            placeholder="30"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={kpiForm.control}
+                    name="rollingAverage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Rolling Average</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="1day">1-day (raw values)</SelectItem>
+                            <SelectItem value="7day">7-day rolling average</SelectItem>
+                            <SelectItem value="30day">30-day rolling average</SelectItem>
+                            <SelectItem value="none">No smoothing</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={kpiForm.control}
+                    name="targetDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Target Date (optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
               
               <div className="flex justify-end space-x-3 pt-4">

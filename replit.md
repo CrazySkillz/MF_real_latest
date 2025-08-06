@@ -104,6 +104,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### August 2025 - Time-Based KPI Management with Rolling Averages
+- **Advanced Timeframe Tracking**: Extended KPI system with comprehensive time-based analytics including daily, weekly, monthly, and quarterly tracking timeframes
+- **Rolling Average Analytics**: Implemented sophisticated rolling average calculations (1-day, 7-day, 30-day) to smooth out performance spikes and reveal true trends
+- **Dynamic Tracking Periods**: Added configurable tracking periods (1-365 days) allowing marketing professionals to customize monitoring windows
+- **Trend Analysis System**: Built intelligent trend detection with automatic calculation of performance direction (up/down/neutral) and percentage changes
+- **Target Date Management**: Integrated optional target date functionality for goal-oriented KPI tracking with deadline awareness
+- **Professional Analytics API**: Created comprehensive analytics endpoints providing rolling averages, trend analysis, and time-series data for each KPI
+- **Enhanced UI Interface**: Redesigned KPI creation dialog with professional time-based controls and enhanced KPI cards displaying timeframe information
+- **Database Schema Evolution**: Updated database schema to support new time-based fields with backward compatibility for existing KPIs
+
 ### August 2025 - Platform-Level KPI Management System
 - **Platform KPI Tracking**: Extended KPI system to support platform-level performance indicators in addition to campaign-level KPIs
 - **Multi-Level KPI Architecture**: Database schema updated to handle both campaign-specific and platform-wide KPI tracking with optional campaign association

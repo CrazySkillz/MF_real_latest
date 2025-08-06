@@ -49,6 +49,16 @@ export interface IStorage {
   // KPI Progress
   getKPIProgress(kpiId: string): Promise<KPIProgress[]>;
   recordKPIProgress(progress: InsertKPIProgress): Promise<KPIProgress>;
+  getKPIAnalytics(kpiId: string, timeframe?: string): Promise<{
+    progress: KPIProgress[];
+    rollingAverage7d: number;
+    rollingAverage30d: number;
+    trendAnalysis: {
+      direction: string;
+      percentage: number;
+      period: string;
+    };
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -319,6 +329,10 @@ export class MemStorage implements IStorage {
       description: kpiData.description || null,
       priority: kpiData.priority || "medium",
       status: kpiData.status || "tracking",
+      timeframe: kpiData.timeframe || "monthly",
+      trackingPeriod: kpiData.trackingPeriod || 30,
+      rollingAverage: kpiData.rollingAverage || "7day",
+      targetDate: kpiData.targetDate || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -357,10 +371,22 @@ export class MemStorage implements IStorage {
 
   async recordKPIProgress(progressData: InsertKPIProgress): Promise<KPIProgress> {
     const id = randomUUID();
+    
+    // Calculate rolling averages
+    const existingProgress = await this.getKPIProgress(progressData.kpiId);
+    const rollingAverage7d = this.calculateRollingAverage(existingProgress, 7, progressData.value);
+    const rollingAverage30d = this.calculateRollingAverage(existingProgress, 30, progressData.value);
+    
+    // Determine trend direction
+    const trendDirection = this.calculateTrendDirection(existingProgress, progressData.value);
+    
     const progress: KPIProgress = {
       id,
       kpiId: progressData.kpiId,
       value: progressData.value,
+      rollingAverage7d: rollingAverage7d,
+      rollingAverage30d: rollingAverage30d,
+      trendDirection: trendDirection,
       recordedAt: new Date(),
       notes: progressData.notes || null,
     };
@@ -379,6 +405,85 @@ export class MemStorage implements IStorage {
     }
     
     return progress;
+  }
+
+  private calculateRollingAverage(existingProgress: KPIProgress[], days: number, newValue: string): string {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    // Get progress records within the rolling window
+    const recentProgress = existingProgress.filter(p => new Date(p.recordedAt) >= cutoffDate);
+    
+    // Add the new value
+    const allValues = [...recentProgress.map(p => parseFloat(p.value)), parseFloat(newValue)];
+    
+    if (allValues.length === 0) return newValue;
+    
+    const average = allValues.reduce((sum, val) => sum + val, 0) / allValues.length;
+    return average.toFixed(2);
+  }
+
+  private calculateTrendDirection(existingProgress: KPIProgress[], newValue: string): string {
+    if (existingProgress.length === 0) return "neutral";
+    
+    const lastValue = parseFloat(existingProgress[0].value); // Most recent is first
+    const currentValue = parseFloat(newValue);
+    
+    if (currentValue > lastValue) return "up";
+    if (currentValue < lastValue) return "down";
+    return "neutral";
+  }
+
+  // Add method to get KPI analytics with rolling averages
+  async getKPIAnalytics(kpiId: string, timeframe: string = "30d"): Promise<{
+    progress: KPIProgress[];
+    rollingAverage7d: number;
+    rollingAverage30d: number;
+    trendAnalysis: {
+      direction: string;
+      percentage: number;
+      period: string;
+    };
+  }> {
+    const progress = await this.getKPIProgress(kpiId);
+    const latest = progress[0];
+    
+    if (!latest) {
+      return {
+        progress: [],
+        rollingAverage7d: 0,
+        rollingAverage30d: 0,
+        trendAnalysis: { direction: "neutral", percentage: 0, period: timeframe }
+      };
+    }
+    
+    return {
+      progress,
+      rollingAverage7d: parseFloat(latest.rollingAverage7d || "0"),
+      rollingAverage30d: parseFloat(latest.rollingAverage30d || "0"),
+      trendAnalysis: {
+        direction: latest.trendDirection || "neutral",
+        percentage: this.calculateTrendPercentage(progress, timeframe),
+        period: timeframe
+      }
+    };
+  }
+
+  private calculateTrendPercentage(progress: KPIProgress[], timeframe: string): number {
+    if (progress.length < 2) return 0;
+    
+    const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 7;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    const recentProgress = progress.filter(p => new Date(p.recordedAt) >= cutoffDate);
+    if (recentProgress.length < 2) return 0;
+    
+    const latest = parseFloat(recentProgress[0].value);
+    const earliest = parseFloat(recentProgress[recentProgress.length - 1].value);
+    
+    if (earliest === 0) return 0;
+    return ((latest - earliest) / earliest) * 100;
   }
 }
 
@@ -601,6 +706,57 @@ export class DatabaseStorage implements IStorage {
       .where(eq(kpis.id, progressData.kpiId));
     
     return progress;
+  }
+
+  async getKPIAnalytics(kpiId: string, timeframe: string = "30d"): Promise<{
+    progress: KPIProgress[];
+    rollingAverage7d: number;
+    rollingAverage30d: number;
+    trendAnalysis: {
+      direction: string;
+      percentage: number;
+      period: string;
+    };
+  }> {
+    const progress = await this.getKPIProgress(kpiId);
+    const latest = progress[0];
+    
+    if (!latest) {
+      return {
+        progress: [],
+        rollingAverage7d: 0,
+        rollingAverage30d: 0,
+        trendAnalysis: { direction: "neutral", percentage: 0, period: timeframe }
+      };
+    }
+    
+    return {
+      progress,
+      rollingAverage7d: parseFloat(latest.rollingAverage7d || "0"),
+      rollingAverage30d: parseFloat(latest.rollingAverage30d || "0"),
+      trendAnalysis: {
+        direction: latest.trendDirection || "neutral",
+        percentage: this.calculateTrendPercentage(progress, timeframe),
+        period: timeframe
+      }
+    };
+  }
+
+  private calculateTrendPercentage(progress: KPIProgress[], timeframe: string): number {
+    if (progress.length < 2) return 0;
+    
+    const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 7;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    const recentProgress = progress.filter(p => new Date(p.recordedAt) >= cutoffDate);
+    if (recentProgress.length < 2) return 0;
+    
+    const latest = parseFloat(recentProgress[0].value);
+    const earliest = parseFloat(recentProgress[recentProgress.length - 1].value);
+    
+    if (earliest === 0) return 0;
+    return ((latest - earliest) / earliest) * 100;
   }
 }
 

@@ -1461,7 +1461,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformType: platformType,
         campaignId: null,
         targetValue: req.body.targetValue?.toString() || "0",
-        currentValue: req.body.currentValue?.toString() || "0"
+        currentValue: req.body.currentValue?.toString() || "0",
+        timeframe: req.body.timeframe || "monthly",
+        trackingPeriod: req.body.trackingPeriod || 30,
+        rollingAverage: req.body.rollingAverage || "7day",
+        targetDate: req.body.targetDate ? new Date(req.body.targetDate) : null
       };
       
       const validatedKPI = insertKPISchema.parse(requestData);
@@ -1487,7 +1491,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         campaignId: id,
         targetValue: req.body.targetValue?.toString() || "0",
-        currentValue: req.body.currentValue?.toString() || "0"
+        currentValue: req.body.currentValue?.toString() || "0",
+        timeframe: req.body.timeframe || "monthly",
+        trackingPeriod: req.body.trackingPeriod || 30,
+        rollingAverage: req.body.rollingAverage || "7day",
+        targetDate: req.body.targetDate ? new Date(req.body.targetDate) : null
       };
       
       const validatedKPI = insertKPISchema.parse(requestData);
@@ -1501,6 +1509,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ message: "Failed to create KPI" });
       }
+    }
+  });
+
+  // Get KPI analytics
+  app.get("/api/kpis/:id/analytics", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const timeframe = req.query.timeframe as string || "30d";
+      
+      const analytics = await storage.getKPIAnalytics(id, timeframe);
+      res.json(analytics);
+    } catch (error) {
+      console.error('KPI analytics error:', error);
+      res.status(500).json({ message: "Failed to fetch KPI analytics" });
+    }
+  });
+
+  // Record KPI progress
+  app.post("/api/kpis/:id/progress", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const progressData = {
+        kpiId: id,
+        value: req.body.value?.toString() || "0",
+        rollingAverage7d: req.body.rollingAverage7d?.toString(),
+        rollingAverage30d: req.body.rollingAverage30d?.toString(),
+        trendDirection: req.body.trendDirection || "neutral",
+        notes: req.body.notes
+      };
+      
+      const progress = await storage.recordKPIProgress(progressData);
+      res.json(progress);
+    } catch (error) {
+      console.error('KPI progress recording error:', error);
+      res.status(500).json({ message: "Failed to record KPI progress" });
     }
   });
 

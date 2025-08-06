@@ -86,6 +86,10 @@ export const kpis = pgTable("kpis", {
   description: text("description"),
   priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'critical'
   status: text("status").notNull().default("tracking"), // 'tracking', 'achieved', 'at_risk', 'critical'
+  timeframe: text("timeframe").notNull().default("monthly"), // 'daily', 'weekly', 'monthly', 'quarterly'
+  trackingPeriod: integer("tracking_period").notNull().default(30), // Number of days to track
+  rollingAverage: text("rolling_average").notNull().default("7day"), // '1day', '7day', '30day', 'none'
+  targetDate: timestamp("target_date"), // Optional target completion date
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -94,6 +98,9 @@ export const kpiProgress = pgTable("kpi_progress", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   kpiId: text("kpi_id").notNull(),
   value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  rollingAverage7d: decimal("rolling_average_7d", { precision: 10, scale: 2 }), // 7-day rolling average
+  rollingAverage30d: decimal("rolling_average_30d", { precision: 10, scale: 2 }), // 30-day rolling average
+  trendDirection: text("trend_direction").default("neutral"), // 'up', 'down', 'neutral'
   recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   notes: text("notes"),
 });
@@ -166,11 +173,18 @@ export const insertKPISchema = createInsertSchema(kpis).pick({
   description: true,
   priority: true,
   status: true,
+  timeframe: true,
+  trackingPeriod: true,
+  rollingAverage: true,
+  targetDate: true,
 });
 
 export const insertKPIProgressSchema = createInsertSchema(kpiProgress).pick({
   kpiId: true,
   value: true,
+  rollingAverage7d: true,
+  rollingAverage30d: true,
+  trendDirection: true,
   notes: true,
 });
 

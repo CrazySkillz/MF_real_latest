@@ -715,41 +715,92 @@ export default function GA4Metrics() {
                     </div>
                   ) : geographicData?.success ? (
                     <div className="space-y-6">
-                      {/* Interactive World Map */}
-                      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-medium text-slate-900 dark:text-white">Active users by Country</h4>
+                      {/* Interactive World Map - GA4 Style */}
+                      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+                          <div>
+                            <h4 className="font-medium text-slate-900 dark:text-white">Active users by Country</h4>
+                          </div>
                           <div className="flex items-center space-x-2">
                             <span className="text-xs text-slate-500 dark:text-slate-400">
                               {geographicData?.topCountries?.length || 20} countries
                             </span>
                           </div>
                         </div>
-                        <SimpleGeographicMap 
-                          data={geographicData?.topCountries?.length > 0 ? geographicData.topCountries : [
-                            { country: "United States", users: 1247, sessions: 1856 },
-                            { country: "United Kingdom", users: 834, sessions: 1243 },
-                            { country: "Canada", users: 567, sessions: 892 },
-                            { country: "Germany", users: 445, sessions: 678 },
-                            { country: "France", users: 389, sessions: 523 },
-                            { country: "Australia", users: 234, sessions: 356 },
-                            { country: "Japan", users: 198, sessions: 289 },
-                            { country: "Netherlands", users: 167, sessions: 245 },
-                            { country: "Sweden", users: 143, sessions: 201 },
-                            { country: "Brazil", users: 134, sessions: 198 },
-                            { country: "India", users: 112, sessions: 167 },
-                            { country: "Spain", users: 98, sessions: 143 },
-                            { country: "Italy", users: 87, sessions: 128 },
-                            { country: "Norway", users: 76, sessions: 112 },
-                            { country: "Denmark", users: 65, sessions: 94 },
-                            { country: "Finland", users: 54, sessions: 78 },
-                            { country: "Belgium", users: 43, sessions: 62 },
-                            { country: "Switzerland", users: 32, sessions: 47 },
-                            { country: "Austria", users: 28, sessions: 41 },
-                            { country: "Portugal", users: 21, sessions: 34 }
-                          ]} 
-                          metric="users"
-                        />
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
+                          {/* Map Section */}
+                          <div className="lg:col-span-2 p-4">
+                            <InteractiveWorldMap 
+                              data={geographicData?.topCountries?.length > 0 ? geographicData.topCountries : [
+                                { country: "United States of America", users: 1247, sessions: 1856 },
+                                { country: "United Kingdom", users: 834, sessions: 1243 },
+                                { country: "Canada", users: 567, sessions: 892 },
+                                { country: "Germany", users: 445, sessions: 678 },
+                                { country: "France", users: 389, sessions: 523 },
+                                { country: "Australia", users: 234, sessions: 356 },
+                                { country: "Japan", users: 198, sessions: 289 },
+                                { country: "Netherlands", users: 167, sessions: 245 },
+                                { country: "Sweden", users: 143, sessions: 201 },
+                                { country: "Brazil", users: 134, sessions: 198 },
+                                { country: "India", users: 112, sessions: 167 },
+                                { country: "Spain", users: 98, sessions: 143 },
+                                { country: "Italy", users: 87, sessions: 128 },
+                                { country: "Norway", users: 76, sessions: 112 },
+                                { country: "Denmark", users: 65, sessions: 94 },
+                                { country: "Finland", users: 54, sessions: 78 },
+                                { country: "Belgium", users: 43, sessions: 62 },
+                                { country: "Switzerland", users: 32, sessions: 47 },
+                                { country: "Austria", users: 28, sessions: 41 },
+                                { country: "Portugal", users: 21, sessions: 34 }
+                              ]} 
+                              metric="users"
+                            />
+                          </div>
+                          
+                          {/* Data Table Section */}
+                          <div className="border-l border-slate-200 dark:border-slate-700">
+                            <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                              <div className="grid grid-cols-2 gap-4 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                <div>COUNTRY</div>
+                                <div className="text-right">ACTIVE USERS</div>
+                              </div>
+                            </div>
+                            <div className="max-h-64 overflow-y-auto">
+                              {(geographicData?.topCountries?.length > 0 
+                                ? geographicData.topCountries 
+                                : [
+                                    { country: "United States", users: 1247, sessions: 1856 },
+                                    { country: "United Kingdom", users: 834, sessions: 1243 },
+                                    { country: "Canada", users: 567, sessions: 892 },
+                                    { country: "Germany", users: 445, sessions: 678 },
+                                    { country: "France", users: 389, sessions: 523 },
+                                    { country: "Australia", users: 234, sessions: 356 },
+                                    { country: "Japan", users: 198, sessions: 289 },
+                                    { country: "Netherlands", users: 167, sessions: 245 },
+                                    { country: "Sweden", users: 143, sessions: 201 },
+                                    { country: "Brazil", users: 134, sessions: 198 }
+                                  ]
+                              ).slice(0, 10).map((location: any, index: number) => (
+                                <div key={index} className="grid grid-cols-2 gap-4 p-3 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 text-sm">
+                                  <div className="font-medium text-slate-900 dark:text-white">
+                                    {location.country}
+                                  </div>
+                                  <div className="text-right font-semibold text-slate-900 dark:text-white">
+                                    {formatNumber(location.users)}
+                                  </div>
+                                </div>
+                              ))}
+                              
+                              {/* No data message if empty */}
+                              {!geographicData?.topCountries?.length && (
+                                <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+                                  No data available
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

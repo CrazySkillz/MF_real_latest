@@ -7,8 +7,8 @@ import {
 } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
 
-// World map topology URL (Natural Earth data)
-const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@3/countries-110m.json";
+// World map topology URL (TopoJSON format)
+const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 interface CountryData {
   country: string;
@@ -90,26 +90,25 @@ export default function InteractiveWorldMap({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="w-full" style={{ height: "400px" }}>
+      <div className="w-full bg-gray-50 dark:bg-gray-900 rounded-lg" style={{ height: "320px" }}>
         <ComposableMap
-          projection="geoNaturalEarth1"
+          projection="geoMercator"
           projectionConfig={{
-            scale: 130,
+            scale: 100,
             center: [0, 20]
           }}
           width={800}
-          height={400}
+          height={320}
         >
-          <Graticule stroke="#e5e7eb" strokeWidth={0.5} />
           <Geographies geography={geoUrl}>
             {({ geographies }: { geographies: any[] }) =>
               geographies.map((geo: any) => {
-                const countryName = geo.properties.NAME;
+                const countryName = geo.properties.NAME || geo.properties.NAME_EN;
                 const countryData = countryDataMap.get(countryName);
                 const hasData = !!countryData;
                 const fillColor = hasData 
                   ? colorScale(countryData[metric]) 
-                  : "#f9fafb";
+                  : "#d1d5db";
                 
                 return (
                   <Geography
@@ -121,20 +120,20 @@ export default function InteractiveWorldMap({
                     style={{
                       default: {
                         fill: fillColor,
-                        stroke: "#d1d5db",
+                        stroke: "#ffffff",
                         strokeWidth: 0.5,
                         outline: "none",
                       },
                       hover: {
-                        fill: hasData ? "#1e40af" : "#e5e7eb",
-                        stroke: "#374151",
+                        fill: hasData ? "#1d4ed8" : "#9ca3af",
+                        stroke: "#ffffff",
                         strokeWidth: 1,
                         outline: "none",
                         cursor: hasData ? "pointer" : "default",
                       },
                       pressed: {
-                        fill: "#1e40af",
-                        stroke: "#374151",
+                        fill: "#1d4ed8",
+                        stroke: "#ffffff",
                         strokeWidth: 1,
                         outline: "none",
                       },

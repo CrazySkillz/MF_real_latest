@@ -1170,57 +1170,7 @@ export default function GA4Metrics() {
                 </TabsContent>
 
                 <TabsContent value="benchmarks">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Performance Benchmarks</CardTitle>
-                      <CardDescription>Compare your performance against industry standards</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <div className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Engagement Metrics</div>
-                          <div className="space-y-3">
-                            <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Bounce Rate:</span>
-                              <span className="font-medium">{formatPercentage(ga4Metrics?.bounceRate || 0)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Avg. Session Duration:</span>
-                              <span className="font-medium">{formatDuration(ga4Metrics?.averageSessionDuration || 0)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Pages per Session:</span>
-                              <span className="font-medium">
-                                {ga4Metrics?.screenPageViewsPerSession
-                                  ? ga4Metrics.screenPageViewsPerSession.toFixed(2)
-                                  : ga4Metrics?.pageviews && ga4Metrics?.sessions
-                                  ? (ga4Metrics.pageviews / ga4Metrics.sessions).toFixed(2)
-                                  : "0.00"}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Events per Session:</span>
-                              <span className="font-medium">
-                                {ga4Metrics?.eventsPerSession ? ga4Metrics.eventsPerSession.toFixed(1) : "0.0"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Traffic Quality</div>
-                          <div className="text-center p-6 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600 mb-2">
-                              {ga4Metrics?.bounceRate && ga4Metrics.bounceRate < 40 ? "Excellent" : 
-                               ga4Metrics?.bounceRate && ga4Metrics.bounceRate < 60 ? "Good" : "Needs Improvement"}
-                            </div>
-                            <div className="text-sm text-green-800 dark:text-green-200">
-                              Traffic Quality Score
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  
                 </TabsContent>
 
                 <TabsContent value="rois">

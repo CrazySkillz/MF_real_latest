@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import InteractiveWorldMap from "@/components/InteractiveWorldMap";
+import SimpleGeographicMap from "@/components/SimpleGeographicMap";
 import { SiGoogle } from "react-icons/si";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { useToast } from "@/hooks/use-toast";
@@ -724,7 +725,7 @@ export default function GA4Metrics() {
                             </span>
                           </div>
                         </div>
-                        <InteractiveWorldMap 
+                        <SimpleGeographicMap 
                           data={geographicData?.topCountries?.length > 0 ? geographicData.topCountries : [
                             { country: "United States", users: 1247, sessions: 1856 },
                             { country: "United Kingdom", users: 834, sessions: 1243 },

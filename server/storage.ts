@@ -834,13 +834,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteKPI(id: string): Promise<boolean> {
-    // Delete related progress records first
-    await db.delete(kpiProgress).where(eq(kpiProgress.kpiId, id));
+    console.log(`=== DatabaseStorage.deleteKPI called with ID: ${id} ===`);
     
-    const result = await db
-      .delete(kpis)
-      .where(eq(kpis.id, id));
-    return (result.rowCount || 0) > 0;
+    try {
+      // Delete related progress records first
+      console.log(`Deleting KPI progress records for KPI: ${id}`);
+      const progressResult = await db.delete(kpiProgress).where(eq(kpiProgress.kpiId, id));
+      console.log(`Deleted ${progressResult.rowCount || 0} progress records`);
+      
+      // Delete the KPI itself
+      console.log(`Deleting KPI with ID: ${id}`);
+      const result = await db
+        .delete(kpis)
+        .where(eq(kpis.id, id));
+      
+      const deleted = (result.rowCount || 0) > 0;
+      console.log(`KPI deletion result - rowCount: ${result.rowCount}, deleted: ${deleted}`);
+      
+      return deleted;
+    } catch (error) {
+      console.error(`Error in DatabaseStorage.deleteKPI:`, error);
+      throw error;
+    }
   }
 
   async getKPIProgress(kpiId: string): Promise<KPIProgress[]> {

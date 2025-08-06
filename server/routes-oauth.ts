@@ -1482,6 +1482,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
+    console.log(`=== DELETE KPI ENDPOINT CALLED ===`);
+    console.log(`Request params:`, req.params);
+    console.log(`Platform Type: ${req.params.platformType}`);
+    console.log(`KPI ID: ${req.params.kpiId}`);
+    
+    try {
+      const { kpiId } = req.params;
+      
+      console.log(`About to call storage.deleteKPI with ID: ${kpiId}`);
+      const deleted = await storage.deleteKPI(kpiId);
+      console.log(`storage.deleteKPI returned: ${deleted}`);
+      
+      if (!deleted) {
+        console.log(`KPI ${kpiId} not found or not deleted`);
+        return res.status(404).json({ message: "KPI not found" });
+      }
+      
+      console.log(`KPI ${kpiId} successfully deleted from storage`);
+      res.setHeader('Content-Type', 'application/json');
+      const response = { message: "KPI deleted successfully", success: true };
+      console.log(`Sending response:`, response);
+      res.json(response);
+    } catch (error) {
+      console.error('=== Platform KPI deletion error ===:', error);
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ message: "Failed to delete KPI", error: error.message });
+    }
+  });
+
   app.post("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;

@@ -85,9 +85,17 @@ export default function GA4Metrics() {
       const response = await fetch(`/api/platforms/google_analytics/kpis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          targetValue: parseFloat(data.targetValue), // Convert string to number
+        }),
       });
-      if (!response.ok) throw new Error("Failed to create KPI");
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create KPI");
+      }
+      
       return response.json();
     },
     onSuccess: () => {
@@ -96,8 +104,13 @@ export default function GA4Metrics() {
       kpiForm.reset();
       toast({ title: "KPI created successfully" });
     },
-    onError: () => {
-      toast({ title: "Failed to create KPI", variant: "destructive" });
+    onError: (error) => {
+      console.error("KPI creation error:", error);
+      toast({ 
+        title: "Failed to create KPI", 
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive" 
+      });
     },
   });
 

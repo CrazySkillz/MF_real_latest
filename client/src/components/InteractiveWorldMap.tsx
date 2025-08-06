@@ -57,7 +57,20 @@ export default function InteractiveWorldMap({
     const normalizedName = countryNameMap[country.country] || country.country;
     countryDataMap.set(normalizedName, country);
     countryDataMap.set(country.country, country); // Also store original name
+    
+    // Add additional mappings for common variations
+    if (country.country === "United States of America") {
+      countryDataMap.set("United States", country);
+      countryDataMap.set("USA", country);
+    }
+    if (country.country === "United Kingdom") {
+      countryDataMap.set("UK", country);
+    }
   });
+  
+  // Debug the data mapping
+  console.log('Country data map keys:', Array.from(countryDataMap.keys()));
+  console.log('Sample data:', data.slice(0, 3));
 
   // Calculate color scale based on data
   const values = data.map(d => d[metric]);
@@ -67,11 +80,15 @@ export default function InteractiveWorldMap({
     .range(["#f3f4f6", "#1d4ed8"]); // Light gray to blue
 
   const handleMouseEnter = (event: React.MouseEvent<SVGPathElement>, geo: any) => {
-    const countryName = geo.properties.NAME;
-    const countryData = countryDataMap.get(countryName);
+    const countryName = geo.properties.NAME || geo.properties.NAME_EN || geo.properties.NAME_LONG;
+    const countryData = countryDataMap.get(countryName) || 
+                       countryDataMap.get(geo.properties.NAME_LONG) ||
+                       countryDataMap.get(geo.properties.NAME_EN);
     
+    console.log('Country hover:', countryName, 'Properties:', geo.properties, 'Data found:', !!countryData);
+    
+    setHoveredCountry(countryName);
     if (countryData) {
-      setHoveredCountry(countryName);
       setTooltipContent(countryData);
       setTooltipPosition({ x: event.clientX, y: event.clientY });
     }
@@ -90,7 +107,7 @@ export default function InteractiveWorldMap({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="w-full bg-gray-50 dark:bg-gray-900 rounded-lg" style={{ height: "320px" }}>
+      <div className="w-full bg-gray-50 dark:bg-gray-900 rounded-lg flex items-center justify-center" style={{ height: "320px" }}>
         <ComposableMap
           projection="geoMercator"
           projectionConfig={{
@@ -103,9 +120,22 @@ export default function InteractiveWorldMap({
           <Geographies geography={geoUrl}>
             {({ geographies }: { geographies: any[] }) =>
               geographies.map((geo: any) => {
-                const countryName = geo.properties.NAME || geo.properties.NAME_EN;
-                const countryData = countryDataMap.get(countryName);
+                const countryName = geo.properties.NAME || geo.properties.NAME_EN || geo.properties.NAME_LONG;
+                const countryData = countryDataMap.get(countryName) || 
+                                   countryDataMap.get(geo.properties.NAME_LONG) ||
+                                   countryDataMap.get(geo.properties.NAME_EN);
                 const hasData = !!countryData;
+                
+                // Debug logging for first few countries
+                if (geo.rsmKey && parseInt(geo.rsmKey) < 5) {
+                  console.log(`Country ${geo.rsmKey}:`, {
+                    NAME: geo.properties.NAME,
+                    NAME_EN: geo.properties.NAME_EN,
+                    NAME_LONG: geo.properties.NAME_LONG,
+                    hasData,
+                    countryName
+                  });
+                }
                 const fillColor = hasData 
                   ? colorScale(countryData[metric]) 
                   : "#d1d5db";

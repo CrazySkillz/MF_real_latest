@@ -28,6 +28,94 @@ export class GoogleAnalytics4Service {
     return this.getMetrics(credentials, accessToken, dateRange);
   }
 
+  // Get geographic breakdown of users
+  async getGeographicMetrics(propertyId: string, accessToken: string, dateRange = 'today'): Promise<any> {
+    try {
+      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          dateRanges: [
+            {
+              startDate: dateRange === 'today' ? 'today' : dateRange === '7days' ? '7daysAgo' : dateRange === '30days' ? '30daysAgo' : dateRange,
+              endDate: 'today'
+            }
+          ],
+          dimensions: [
+            { name: 'country' },
+            { name: 'region' },
+            { name: 'city' }
+          ],
+          metrics: [
+            { name: 'totalUsers' },
+            { name: 'sessions' },
+            { name: 'screenPageViews' },
+            { name: 'averageSessionDuration' }
+          ],
+          orderBys: [
+            {
+              metric: { metricName: 'totalUsers' },
+              desc: true
+            }
+          ],
+          limit: 50
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`GA4 API Error: ${errorData}`);
+      }
+
+      const data = await response.json();
+      
+      console.log('GA4 Geographic API Response:', {
+        totalRows: data.rows?.length || 0,
+        hasData: !!data.rows && data.rows.length > 0
+      });
+
+      // Process geographic data
+      const geographicData = [];
+      if (data.rows) {
+        for (const row of data.rows) {
+          if (row.dimensionValues && row.metricValues) {
+            const country = row.dimensionValues[0]?.value || 'Unknown';
+            const region = row.dimensionValues[1]?.value || 'Unknown';
+            const city = row.dimensionValues[2]?.value || 'Unknown';
+            const users = parseInt(row.metricValues[0]?.value || '0');
+            const sessions = parseInt(row.metricValues[1]?.value || '0');
+            const pageviews = parseInt(row.metricValues[2]?.value || '0');
+            const avgSessionDuration = parseFloat(row.metricValues[3]?.value || '0');
+            
+            geographicData.push({
+              country,
+              region,
+              city,
+              users,
+              sessions,
+              pageviews,
+              avgSessionDuration
+            });
+          }
+        }
+      }
+
+      return {
+        success: true,
+        data: geographicData,
+        totalLocations: geographicData.length,
+        topCountries: geographicData.slice(0, 10)
+      };
+
+    } catch (error) {
+      console.error('Error fetching GA4 geographic metrics:', error);
+      throw new Error(`Failed to fetch GA4 geographic metrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   // Automatic token refresh for SaaS production use
 
   async simulateGA4Connection(propertyId: string): Promise<{ success: boolean; user?: any; properties?: any[] }> {

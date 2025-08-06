@@ -193,6 +193,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Geographic breakdown endpoint
+  app.get('/api/campaigns/:id/ga4-geographic', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { dateRange = '7days' } = req.query;
+
+      const connection = await storage.getGA4Connection(id);
+      if (!connection) {
+        return res.status(404).json({ success: false, error: 'GA4 connection not found' });
+      }
+
+      if (!connection.accessToken) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'GA4 access token missing',
+          requiresConnection: true
+        });
+      }
+
+      console.log('Fetching GA4 geographic data:', {
+        campaignId: id,
+        propertyId: connection.propertyId,
+        dateRange
+      });
+
+      const geographicData = await ga4Service.getGeographicMetrics(
+        connection.propertyId,
+        connection.accessToken,
+        dateRange as string
+      );
+
+      res.json({
+        success: true,
+        ...geographicData,
+        propertyId: connection.propertyId,
+        lastUpdated: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('GA4 geographic data error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error fetching GA4 geographic data' 
+      });
+    }
+  });
+
   // Google Analytics OAuth endpoints
   app.post("/api/auth/google/url", (req, res) => {
     try {

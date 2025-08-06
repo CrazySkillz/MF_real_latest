@@ -109,6 +109,19 @@ export default function GA4Metrics() {
     },
   });
 
+  // Geographic data query
+  const { data: geographicData, isLoading: geoLoading } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "ga4-geographic", dateRange],
+    enabled: !!campaignId && !!ga4Connection?.connected,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-geographic?dateRange=${dateRange}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch geographic data');
+      }
+      return response.json();
+    },
+  });
+
   // Sample time series data (placeholder data for demonstration)
   const timeSeriesData = [
     { date: "Jan", sessions: 1250, pageviews: 3400, conversions: 45 },
@@ -684,6 +697,70 @@ export default function GA4Metrics() {
                   </Card>
                 </TabsContent>
               </Tabs>
+
+              {/* Geographic Data */}
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
+                    Geographic Breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {geoLoading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : geographicData?.success ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Top Countries */}
+                        <div>
+                          <h4 className="font-medium text-slate-900 dark:text-white mb-3">Top Countries</h4>
+                          <div className="space-y-2">
+                            {geographicData.topCountries?.slice(0, 5).map((location: any, index: number) => (
+                              <div key={index} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                                <span className="font-medium">{location.country}</span>
+                                <div className="text-right">
+                                  <div className="text-sm font-semibold">{formatNumber(location.users)} users</div>
+                                  <div className="text-xs text-slate-600 dark:text-slate-400">{formatNumber(location.sessions)} sessions</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Location Details */}
+                        <div>
+                          <h4 className="font-medium text-slate-900 dark:text-white mb-3">Location Details</h4>
+                          <div className="max-h-64 overflow-y-auto space-y-1">
+                            {geographicData.data?.slice(0, 10).map((location: any, index: number) => (
+                              <div key={index} className="text-sm p-2 border-b border-slate-200 dark:border-slate-700">
+                                <div className="font-medium">{location.city}, {location.region}</div>
+                                <div className="text-slate-600 dark:text-slate-400">{location.country}</div>
+                                <div className="flex justify-between mt-1">
+                                  <span>{formatNumber(location.users)} users</span>
+                                  <span>{formatNumber(location.pageviews)} views</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          Total locations tracked: {geographicData.totalLocations}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-600 dark:text-slate-400">
+                      No geographic data available
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Data freshness indicator */}
               {ga4Metrics?.lastUpdated && (

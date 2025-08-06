@@ -218,11 +218,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateRange
       });
 
-      const geographicData = await ga4Service.getGeographicMetrics(
-        connection.propertyId,
-        connection.accessToken,
-        dateRange as string
-      );
+      // Try to get geographic data with automatic token refresh on failure
+      let geographicData;
+      try {
+        geographicData = await ga4Service.getGeographicMetrics(
+          connection.propertyId,
+          connection.accessToken,
+          dateRange as string
+        );
+      } catch (authError: any) {
+        console.log('Geographic API failed, attempting token refresh:', authError.message);
+        
+        // Check if we have refresh token to attempt refresh
+        if (connection.refreshToken) {
+          try {
+            console.log('Refreshing access token for geographic data...');
+            const tokenData = await ga4Service.refreshAccessToken(
+              connection.refreshToken,
+              connection.clientId,
+              connection.clientSecret
+            );
+            
+            // Update the connection with new token
+            const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
+            await storage.updateGA4ConnectionTokens(id, {
+              accessToken: tokenData.access_token,
+              expiresAt
+            });
+            
+            console.log('Token refreshed for geographic data - retrying...');
+            geographicData = await ga4Service.getGeographicMetrics(
+              connection.propertyId,
+              tokenData.access_token,
+              dateRange as string
+            );
+          } catch (refreshError) {
+            console.log('Token refresh failed for geographic data, using fallback');
+            throw authError; // Re-throw original error to trigger fallback in component
+          }
+        } else {
+          console.log('No refresh token available for geographic data');
+          throw authError; // Re-throw original error to trigger fallback in component
+        }
+      }
 
       res.json({
         success: true,

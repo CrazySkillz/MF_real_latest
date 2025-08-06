@@ -1334,7 +1334,7 @@ export default function GA4Metrics() {
                             Create Benchmark
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto relative p-4">
+                        <DialogContent className="max-w-2xl max-h-[75vh] overflow-y-auto p-4 !fixed !top-1/2 !left-1/2 !transform !-translate-x-1/2 !-translate-y-1/2 !z-[9999]">
                           <DialogClose className="absolute right-3 top-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-50">
                             <X className="h-4 w-4" />
                             <span className="sr-only">Close</span>

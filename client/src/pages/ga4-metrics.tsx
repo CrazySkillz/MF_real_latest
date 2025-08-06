@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import InteractiveWorldMap from "@/components/InteractiveWorldMap";
 import SimpleGeographicMap from "@/components/SimpleGeographicMap";
+import WorldMapSVG from "@/components/WorldMapSVG";
 import { SiGoogle } from "react-icons/si";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { useToast } from "@/hooks/use-toast";
@@ -731,9 +732,9 @@ export default function GA4Metrics() {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
                           {/* Map Section */}
                           <div className="lg:col-span-2 p-4">
-                            <InteractiveWorldMap 
+                            <WorldMapSVG 
                               data={geographicData?.topCountries?.length > 0 ? geographicData.topCountries : [
-                                { country: "United States of America", users: 1247, sessions: 1856 },
+                                { country: "United States", users: 1247, sessions: 1856 },
                                 { country: "United Kingdom", users: 834, sessions: 1243 },
                                 { country: "Canada", users: 567, sessions: 892 },
                                 { country: "Germany", users: 445, sessions: 678 },

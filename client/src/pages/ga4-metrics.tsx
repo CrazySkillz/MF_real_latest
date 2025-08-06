@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -10,12 +10,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import InteractiveWorldMap from "@/components/InteractiveWorldMap";
 import SimpleGeographicMap from "@/components/SimpleGeographicMap";
 import WorldMapSVG from "@/components/WorldMapSVG";
 import { SiGoogle } from "react-icons/si";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 
 interface Campaign {
@@ -42,12 +49,61 @@ interface GA4Metrics {
   screenPageViewsPerSession?: number;
 }
 
+const kpiFormSchema = z.object({
+  name: z.string().min(1, "KPI name is required"),
+  description: z.string().optional(),
+  unit: z.string().min(1, "Unit is required"),
+  targetValue: z.string().min(1, "Target value is required"),
+  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+});
+
+type KPIFormData = z.infer<typeof kpiFormSchema>;
+
 export default function GA4Metrics() {
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
   const [dateRange, setDateRange] = useState("7days");
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
+  const [showKPIDialog, setShowKPIDialog] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const kpiForm = useForm<KPIFormData>({
+    resolver: zodResolver(kpiFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      unit: "%",
+      targetValue: "",
+      priority: "medium",
+    },
+  });
+
+  // Create KPI mutation
+  const createKPIMutation = useMutation({
+    mutationFn: async (data: KPIFormData) => {
+      const response = await fetch(`/api/platforms/google_analytics/kpis`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Failed to create KPI");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`] });
+      setShowKPIDialog(false);
+      kpiForm.reset();
+      toast({ title: "KPI created successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to create KPI", variant: "destructive" });
+    },
+  });
+
+  const onCreateKPI = async (data: KPIFormData) => {
+    createKPIMutation.mutate(data);
+  };
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -766,12 +822,10 @@ export default function GA4Metrics() {
                         <CardDescription>Manage KPIs for this campaign</CardDescription>
                       </div>
                       <div>
-                        <Link href={`/platforms/google_analytics/kpis`}>
-                          <Button size="sm">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Platform KPI
-                          </Button>
-                        </Link>
+                        <Button size="sm" onClick={() => setShowKPIDialog(true)}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Platform KPI
+                        </Button>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -888,6 +942,135 @@ export default function GA4Metrics() {
           )}
         </main>
       </div>
+
+      {/* Create KPI Dialog */}
+      <Dialog open={showKPIDialog} onOpenChange={setShowKPIDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New KPI</DialogTitle>
+            <DialogDescription>
+              Set up a key performance indicator for Google Analytics.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...kpiForm}>
+            <form onSubmit={kpiForm.handleSubmit(onCreateKPI)} className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={kpiForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>KPI Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., ROI, ROAS, CTR" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={kpiForm.control}
+                  name="unit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Percentage (%)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="%">Percentage (%)</SelectItem>
+                          <SelectItem value="$">Dollar ($)</SelectItem>
+                          <SelectItem value="ratio">Ratio (X:1)</SelectItem>
+                          <SelectItem value="count">Count</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={kpiForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Describe what this KPI measures and why it's important"
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={kpiForm.control}
+                  name="targetValue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Target Value</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Target goal"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={kpiForm.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Medium" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="critical">Critical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button variant="outline" onClick={() => setShowKPIDialog(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createKPIMutation.isPending}>
+                  {createKPIMutation.isPending ? "Creating..." : "Create KPI"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

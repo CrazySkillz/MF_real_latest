@@ -8,6 +8,7 @@ import Campaigns from "@/pages/campaigns";
 import CampaignDetail from "@/pages/campaign-detail";
 import GA4Metrics from "@/pages/ga4-metrics";
 import GoogleSheetsData from "@/pages/google-sheets-data";
+import KPIs from "@/pages/kpis";
 import Audiences from "@/pages/audiences";
 import Analytics from "@/pages/analytics";
 import Integrations from "@/pages/integrations";
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/campaigns/:id" component={CampaignDetail} />
       <Route path="/campaigns/:id/ga4-metrics" component={GA4Metrics} />
       <Route path="/campaigns/:id/google-sheets-data" component={GoogleSheetsData} />
+      <Route path="/campaigns/:id/kpis" component={KPIs} />
       <Route path="/audiences" component={Audiences} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/integrations" component={Integrations} />

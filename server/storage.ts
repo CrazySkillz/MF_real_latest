@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -37,6 +37,17 @@ export interface IStorage {
   createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection>;
   updateGoogleSheetsConnection(campaignId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined>;
   deleteGoogleSheetsConnection(campaignId: string): Promise<boolean>;
+  
+  // KPIs
+  getCampaignKPIs(campaignId: string): Promise<KPI[]>;
+  getKPI(id: string): Promise<KPI | undefined>;
+  createKPI(kpi: InsertKPI): Promise<KPI>;
+  updateKPI(id: string, kpi: Partial<InsertKPI>): Promise<KPI | undefined>;
+  deleteKPI(id: string): Promise<boolean>;
+  
+  // KPI Progress
+  getKPIProgress(kpiId: string): Promise<KPIProgress[]>;
+  recordKPIProgress(progress: InsertKPIProgress): Promise<KPIProgress>;
 }
 
 export class MemStorage implements IStorage {
@@ -46,6 +57,8 @@ export class MemStorage implements IStorage {
   private performanceData: Map<string, PerformanceData>;
   private ga4Connections: Map<string, GA4Connection>;
   private googleSheetsConnections: Map<string, GoogleSheetsConnection>;
+  private kpis: Map<string, KPI>;
+  private kpiProgress: Map<string, KPIProgress>;
 
   constructor() {
     this.campaigns = new Map();
@@ -54,6 +67,8 @@ export class MemStorage implements IStorage {
     this.performanceData = new Map();
     this.ga4Connections = new Map();
     this.googleSheetsConnections = new Map();
+    this.kpis = new Map();
+    this.kpiProgress = new Map();
     
     // Initialize with empty data - no mock data
     this.initializeEmptyData();
@@ -276,6 +291,89 @@ export class MemStorage implements IStorage {
   async deleteGoogleSheetsConnection(campaignId: string): Promise<boolean> {
     return this.googleSheetsConnections.delete(campaignId);
   }
+
+  // KPI methods
+  async getCampaignKPIs(campaignId: string): Promise<KPI[]> {
+    return Array.from(this.kpis.values()).filter(kpi => kpi.campaignId === campaignId);
+  }
+
+  async getKPI(id: string): Promise<KPI | undefined> {
+    return this.kpis.get(id);
+  }
+
+  async createKPI(kpiData: InsertKPI): Promise<KPI> {
+    const id = randomUUID();
+    const kpi: KPI = {
+      id,
+      campaignId: kpiData.campaignId,
+      name: kpiData.name,
+      targetValue: kpiData.targetValue,
+      currentValue: kpiData.currentValue || "0",
+      unit: kpiData.unit,
+      description: kpiData.description || null,
+      priority: kpiData.priority || "medium",
+      status: kpiData.status || "tracking",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.kpis.set(id, kpi);
+    return kpi;
+  }
+
+  async updateKPI(id: string, kpiData: Partial<InsertKPI>): Promise<KPI | undefined> {
+    const existing = this.kpis.get(id);
+    if (!existing) return undefined;
+    
+    const updated: KPI = {
+      ...existing,
+      ...kpiData,
+      updatedAt: new Date(),
+    };
+    
+    this.kpis.set(id, updated);
+    return updated;
+  }
+
+  async deleteKPI(id: string): Promise<boolean> {
+    // Also delete related progress records
+    const progressRecords = Array.from(this.kpiProgress.values()).filter(p => p.kpiId === id);
+    progressRecords.forEach(p => this.kpiProgress.delete(p.id));
+    
+    return this.kpis.delete(id);
+  }
+
+  async getKPIProgress(kpiId: string): Promise<KPIProgress[]> {
+    return Array.from(this.kpiProgress.values())
+      .filter(progress => progress.kpiId === kpiId)
+      .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime());
+  }
+
+  async recordKPIProgress(progressData: InsertKPIProgress): Promise<KPIProgress> {
+    const id = randomUUID();
+    const progress: KPIProgress = {
+      id,
+      kpiId: progressData.kpiId,
+      value: progressData.value,
+      recordedAt: new Date(),
+      notes: progressData.notes || null,
+    };
+    
+    this.kpiProgress.set(id, progress);
+    
+    // Update the KPI's current value
+    const kpi = this.kpis.get(progressData.kpiId);
+    if (kpi) {
+      const updated: KPI = {
+        ...kpi,
+        currentValue: progressData.value,
+        updatedAt: new Date(),
+      };
+      this.kpis.set(kpi.id, updated);
+    }
+    
+    return progress;
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -437,6 +535,62 @@ export class DatabaseStorage implements IStorage {
       .delete(googleSheetsConnections)
       .where(eq(googleSheetsConnections.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
+  }
+
+  // KPI methods
+  async getCampaignKPIs(campaignId: string): Promise<KPI[]> {
+    return db.select().from(kpis).where(eq(kpis.campaignId, campaignId));
+  }
+
+  async getKPI(id: string): Promise<KPI | undefined> {
+    const [kpi] = await db.select().from(kpis).where(eq(kpis.id, id));
+    return kpi || undefined;
+  }
+
+  async createKPI(kpiData: InsertKPI): Promise<KPI> {
+    const [kpi] = await db
+      .insert(kpis)
+      .values(kpiData)
+      .returning();
+    return kpi;
+  }
+
+  async updateKPI(id: string, kpiData: Partial<InsertKPI>): Promise<KPI | undefined> {
+    const [kpi] = await db
+      .update(kpis)
+      .set({ ...kpiData, updatedAt: new Date() })
+      .where(eq(kpis.id, id))
+      .returning();
+    return kpi || undefined;
+  }
+
+  async deleteKPI(id: string): Promise<boolean> {
+    // Delete related progress records first
+    await db.delete(kpiProgress).where(eq(kpiProgress.kpiId, id));
+    
+    const result = await db
+      .delete(kpis)
+      .where(eq(kpis.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getKPIProgress(kpiId: string): Promise<KPIProgress[]> {
+    return db.select().from(kpiProgress).where(eq(kpiProgress.kpiId, kpiId));
+  }
+
+  async recordKPIProgress(progressData: InsertKPIProgress): Promise<KPIProgress> {
+    const [progress] = await db
+      .insert(kpiProgress)
+      .values(progressData)
+      .returning();
+    
+    // Update the KPI's current value
+    await db
+      .update(kpis)
+      .set({ currentValue: progressData.value, updatedAt: new Date() })
+      .where(eq(kpis.id, progressData.kpiId));
+    
+    return progress;
   }
 }
 

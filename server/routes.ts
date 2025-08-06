@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertKPISchema, insertKPIProgressSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -1134,6 +1134,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Simple GA4 connection error:', error);
       res.status(500).json({ message: "Connection failed. Please try again." });
+    }
+  });
+
+  // KPI routes
+  app.get("/api/campaigns/:id/kpis", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const kpis = await storage.getCampaignKPIs(id);
+      res.json(kpis);
+    } catch (error) {
+      console.error('KPI fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch KPIs" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/kpis", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const validatedKPI = insertKPISchema.parse({
+        ...req.body,
+        campaignId: id
+      });
+      
+      const kpi = await storage.createKPI(validatedKPI);
+      res.json(kpi);
+    } catch (error) {
+      console.error('KPI create error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create KPI" });
+      }
+    }
+  });
+
+  app.put("/api/kpis/:kpiId", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      
+      const validatedKPI = insertKPISchema.partial().parse(req.body);
+      
+      const kpi = await storage.updateKPI(kpiId, validatedKPI);
+      if (!kpi) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
+      
+      res.json(kpi);
+    } catch (error) {
+      console.error('KPI update error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update KPI" });
+      }
+    }
+  });
+
+  app.delete("/api/kpis/:kpiId", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      
+      const deleted = await storage.deleteKPI(kpiId);
+      if (!deleted) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
+      
+      res.json({ message: "KPI deleted successfully" });
+    } catch (error) {
+      console.error('KPI delete error:', error);
+      res.status(500).json({ message: "Failed to delete KPI" });
+    }
+  });
+
+  app.get("/api/kpis/:kpiId/progress", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      const progress = await storage.getKPIProgress(kpiId);
+      res.json(progress);
+    } catch (error) {
+      console.error('KPI progress fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch KPI progress" });
+    }
+  });
+
+  app.post("/api/kpis/:kpiId/progress", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      
+      const validatedProgress = insertKPIProgressSchema.parse({
+        ...req.body,
+        kpiId
+      });
+      
+      const progress = await storage.recordKPIProgress(validatedProgress);
+      res.json(progress);
+    } catch (error) {
+      console.error('KPI progress record error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid progress data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to record KPI progress" });
+      }
     }
   });
 

@@ -75,6 +75,28 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const kpis = pgTable("kpis", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  name: text("name").notNull(), // 'ROI', 'LTV', 'CAC', 'CTR', 'CPA', 'ROAS'
+  targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
+  currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"),
+  unit: text("unit").notNull(), // '%', '$', 'ratio', etc.
+  description: text("description"),
+  priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'critical'
+  status: text("status").notNull().default("tracking"), // 'tracking', 'achieved', 'at_risk', 'critical'
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const kpiProgress = pgTable("kpi_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  kpiId: text("kpi_id").notNull(),
+  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  notes: text("notes"),
+});
+
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   name: true,
   clientWebsite: true,
@@ -133,6 +155,23 @@ export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheet
   expiresAt: true,
 });
 
+export const insertKPISchema = createInsertSchema(kpis).pick({
+  campaignId: true,
+  name: true,
+  targetValue: true,
+  currentValue: true,
+  unit: true,
+  description: true,
+  priority: true,
+  status: true,
+});
+
+export const insertKPIProgressSchema = createInsertSchema(kpiProgress).pick({
+  kpiId: true,
+  value: true,
+  notes: true,
+});
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Metric = typeof metrics.$inferSelect;
@@ -145,3 +184,7 @@ export type GA4Connection = typeof ga4Connections.$inferSelect;
 export type InsertGA4Connection = z.infer<typeof insertGA4ConnectionSchema>;
 export type GoogleSheetsConnection = typeof googleSheetsConnections.$inferSelect;
 export type InsertGoogleSheetsConnection = z.infer<typeof insertGoogleSheetsConnectionSchema>;
+export type KPI = typeof kpis.$inferSelect;
+export type InsertKPI = z.infer<typeof insertKPISchema>;
+export type KPIProgress = typeof kpiProgress.$inferSelect;
+export type InsertKPIProgress = z.infer<typeof insertKPIProgressSchema>;

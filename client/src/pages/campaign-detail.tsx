@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -305,6 +305,15 @@ export default function CampaignDetail() {
                     )}
                   </div>
                 </div>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <Link href={`/campaigns/${campaign.id}/kpis`}>
+                  <Button variant="outline" size="sm">
+                    <Target className="w-4 h-4 mr-2" />
+                    Manage KPIs
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>

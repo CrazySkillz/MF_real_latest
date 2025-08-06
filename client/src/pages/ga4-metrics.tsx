@@ -212,14 +212,30 @@ export default function GA4Metrics() {
     mutationFn: async (kpiId: string) => {
       const response = await fetch(`/api/platforms/google_analytics/kpis/${kpiId}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to delete KPI");
+        let errorMessage = "Failed to delete KPI";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // If JSON parsing fails, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
-      return response.json();
+      // Handle successful response
+      try {
+        return await response.json();
+      } catch {
+        // If response is not JSON (e.g., empty body), return success
+        return { message: "KPI deleted successfully" };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`] });

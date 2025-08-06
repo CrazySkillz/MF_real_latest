@@ -1181,13 +1181,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
     try {
+      console.log(`Deleting KPI: ${req.params.kpiId}`);
       const { kpiId } = req.params;
       
       const deleted = await storage.deleteKPI(kpiId);
+      console.log(`KPI deletion result: ${deleted}`);
+      
       if (!deleted) {
+        console.log(`KPI ${kpiId} not found`);
         return res.status(404).json({ message: "KPI not found" });
       }
       
+      console.log(`KPI ${kpiId} deleted successfully`);
+      res.setHeader('Content-Type', 'application/json');
       res.json({ message: "KPI deleted successfully" });
     } catch (error) {
       console.error('Platform KPI deletion error:', error);

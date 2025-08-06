@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,6 +76,7 @@ export default function GA4Metrics() {
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const [showKPIDialog, setShowKPIDialog] = useState(false);
   const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
+  const [deleteKPIId, setDeleteKPIId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -238,8 +240,13 @@ export default function GA4Metrics() {
   };
 
   const onDeleteKPI = (kpiId: string) => {
-    if (confirm("Are you sure you want to delete this KPI? This action cannot be undone.")) {
-      deleteKPIMutation.mutate(kpiId);
+    setDeleteKPIId(kpiId);
+  };
+
+  const confirmDeleteKPI = () => {
+    if (deleteKPIId) {
+      deleteKPIMutation.mutate(deleteKPIId);
+      setDeleteKPIId(null);
     }
   };
 
@@ -1681,6 +1688,33 @@ export default function GA4Metrics() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete KPI Confirmation Dialog */}
+      <AlertDialog open={deleteKPIId !== null} onOpenChange={() => setDeleteKPIId(null)}>
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-900 dark:text-white">Delete KPI</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+              Are you sure you want to delete this KPI? This action cannot be undone and will remove all associated progress tracking and alerts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setDeleteKPIId(null)}
+              className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteKPI}
+              disabled={deleteKPIMutation.isPending}
+              className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+            >
+              {deleteKPIMutation.isPending ? "Deleting..." : "Delete KPI"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

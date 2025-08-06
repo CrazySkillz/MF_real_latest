@@ -524,9 +524,9 @@ export default function GA4Metrics() {
               <Tabs defaultValue="overview" className="space-y-6">
                 <TabsList>
                   <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="audience">Audience</TabsTrigger>
-                  <TabsTrigger value="behavior">Behavior</TabsTrigger>
-                  <TabsTrigger value="conversions">Conversions</TabsTrigger>
+                  <TabsTrigger value="kpis">KPIs</TabsTrigger>
+                  <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
+                  <TabsTrigger value="rois">ROIs</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview">
@@ -578,11 +578,11 @@ export default function GA4Metrics() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="audience">
+                <TabsContent value="kpis">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Audience Insights</CardTitle>
-                      <CardDescription>Real-time audience data from your Google Analytics</CardDescription>
+                      <CardTitle>Key Performance Indicators</CardTitle>
+                      <CardDescription>Essential metrics tracking your campaign performance</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -611,11 +611,11 @@ export default function GA4Metrics() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="behavior">
+                <TabsContent value="benchmarks">
                   <Card>
                     <CardHeader>
-                      <CardTitle>User Behavior</CardTitle>
-                      <CardDescription>How users interact with your website</CardDescription>
+                      <CardTitle>Performance Benchmarks</CardTitle>
+                      <CardDescription>Compare your performance against industry standards</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -665,35 +665,35 @@ export default function GA4Metrics() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="conversions">
+                <TabsContent value="rois">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Conversion Tracking</CardTitle>
-                      <CardDescription>Goals and conversion metrics from Google Analytics</CardDescription>
+                      <CardTitle>Return on Investment</CardTitle>
+                      <CardDescription>ROI analysis and revenue attribution from your campaigns</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="text-center p-6 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                           <div className="text-3xl font-bold text-purple-600 mb-2">
-                            {formatNumber(ga4Metrics?.conversions || 0)}
+                            ${formatNumber((ga4Metrics?.conversions || 0) * 25)}
                           </div>
-                          <div className="text-sm text-purple-800 dark:text-purple-200">Total Conversions</div>
+                          <div className="text-sm text-purple-800 dark:text-purple-200">Total Revenue</div>
                         </div>
                         <div className="text-center p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                           <div className="text-3xl font-bold text-blue-600 mb-2">
-                            {ga4Metrics?.conversions && ga4Metrics?.sessions
-                              ? formatPercentage((ga4Metrics.conversions / ga4Metrics.sessions) * 100)
-                              : "0.0%"}
+                            {((ga4Metrics?.conversions || 0) * 25 - 500) > 0 
+                              ? `+${formatPercentage(((((ga4Metrics?.conversions || 0) * 25 - 500) / 500) * 100))}`
+                              : formatPercentage(((((ga4Metrics?.conversions || 0) * 25 - 500) / 500) * 100))}
                           </div>
-                          <div className="text-sm text-blue-800 dark:text-blue-200">Conversion Rate</div>
+                          <div className="text-sm text-blue-800 dark:text-blue-200">ROI Percentage</div>
                         </div>
                         <div className="text-center p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
                           <div className="text-3xl font-bold text-emerald-600 mb-2">
-                            {ga4Metrics?.conversions && ga4Metrics?.impressions
-                              ? formatPercentage((ga4Metrics.conversions / ga4Metrics.impressions) * 100)
-                              : "0.0%"}
+                            ${ga4Metrics?.conversions && ga4Metrics?.sessions
+                              ? ((ga4Metrics.conversions * 25) / ga4Metrics.sessions).toFixed(2)
+                              : "0.00"}
                           </div>
-                          <div className="text-sm text-emerald-800 dark:text-emerald-200">User Conversion Rate</div>
+                          <div className="text-sm text-emerald-800 dark:text-emerald-200">Revenue per Session</div>
                         </div>
                       </div>
                     </CardContent>

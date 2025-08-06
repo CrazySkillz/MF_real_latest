@@ -1287,13 +1287,6 @@ export default function GA4Metrics() {
                       <div className="font-medium text-sm text-slate-900 dark:text-white">
                         {template.name}
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {template.formula}
-                      </div>
-                      <div className="flex items-center gap-1 mt-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-xs text-green-600 dark:text-green-400">Auto-calculates from platform data</span>
-                      </div>
                     </div>
                   ))}
                 </div>

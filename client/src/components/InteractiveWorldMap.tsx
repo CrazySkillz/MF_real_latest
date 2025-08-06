@@ -51,26 +51,50 @@ export default function InteractiveWorldMap({
   const [tooltipContent, setTooltipContent] = useState<CountryData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  // Create a map for quick country data lookup
+  // Create a map for quick country data lookup with extensive name variations
   const countryDataMap = new Map<string, CountryData>();
   data.forEach(country => {
-    const normalizedName = countryNameMap[country.country] || country.country;
-    countryDataMap.set(normalizedName, country);
-    countryDataMap.set(country.country, country); // Also store original name
+    // Store all possible variations for each country
+    const variations = [country.country];
     
-    // Add additional mappings for common variations
-    if (country.country === "United States of America") {
-      countryDataMap.set("United States", country);
-      countryDataMap.set("USA", country);
+    // Add common variations based on the country name
+    switch(country.country) {
+      case "United States of America":
+      case "United States":
+        variations.push("United States of America", "United States", "USA", "US", "America");
+        break;
+      case "United Kingdom":
+        variations.push("United Kingdom", "UK", "Great Britain", "Britain");
+        break;
+      case "Germany":
+        variations.push("Germany", "Deutschland");
+        break;
+      case "France":
+        variations.push("France", "French Republic");
+        break;
+      case "Spain":
+        variations.push("Spain", "Kingdom of Spain");
+        break;
+      case "Italy":
+        variations.push("Italy", "Italian Republic");
+        break;
+      case "Netherlands":
+        variations.push("Netherlands", "Holland");
+        break;
+      case "Brazil":
+        variations.push("Brazil", "Federative Republic of Brazil");
+        break;
     }
-    if (country.country === "United Kingdom") {
-      countryDataMap.set("UK", country);
-    }
+    
+    // Store data under all variations
+    variations.forEach(variation => {
+      countryDataMap.set(variation, country);
+    });
   });
   
-  // Debug the data mapping
-  console.log('Country data map keys:', Array.from(countryDataMap.keys()));
-  console.log('Sample data:', data.slice(0, 3));
+  console.log('Country data loaded:', data.length, 'countries');
+  console.log('Data map has', countryDataMap.size, 'entries');
+  console.log('Sample countries:', Array.from(countryDataMap.keys()).slice(0, 10));
 
   // Calculate color scale based on data
   const values = data.map(d => d[metric]);
@@ -139,16 +163,25 @@ export default function InteractiveWorldMap({
           <Geographies geography={geoUrl}>
             {({ geographies }: { geographies: any[] }) => {
               console.log('Total geographies loaded:', geographies.length);
-              return geographies.map((geo: any) => {
+              
+              // Log first few countries to see their property names
+              if (geographies.length > 0) {
+                console.log('Sample geography properties:', geographies[0].properties);
+                console.log('First 5 country names:', geographies.slice(0, 5).map(g => 
+                  g.properties.name || g.properties.NAME || g.properties.ADMIN
+                ));
+              }
+              
+              return geographies.map((geo: any, index: number) => {
                 // Try multiple property names for country identification
                 const possibleNames = [
+                  geo.properties.name,
                   geo.properties.NAME,
                   geo.properties.NAME_EN,
                   geo.properties.NAME_LONG,
                   geo.properties.ADMIN,
-                  geo.properties.name,
                   geo.properties.admin
-                ];
+                ].filter(Boolean);
                 
                 let countryData = null;
                 let matchedName = '';
@@ -164,9 +197,14 @@ export default function InteractiveWorldMap({
                 
                 const hasData = !!countryData;
                 
-                // Debug logging for countries with our data
-                if (hasData && countryData) {
-                  console.log('✓ Found data for:', matchedName, 'Users:', countryData[metric]);
+                // Debug logging for first 10 countries and any matches
+                if (index < 10 || hasData) {
+                  console.log(`Country ${index}:`, {
+                    names: possibleNames,
+                    matched: matchedName,
+                    hasData,
+                    users: countryData ? countryData[metric] : 0
+                  });
                 }
                 
                 const fillColor = hasData && countryData

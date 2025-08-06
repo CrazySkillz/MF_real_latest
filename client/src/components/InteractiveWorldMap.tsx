@@ -7,8 +7,8 @@ import {
 } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
 
-// Use Natural Earth world data which has consistent country names
-const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
+// Use a proven working GeoJSON file for react-simple-maps
+const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 interface CountryData {
   country: string;
@@ -125,9 +125,10 @@ export default function InteractiveWorldMap({
     });
   });
   
-  console.log('Country data loaded:', data.length, 'countries');
-  console.log('Data map has', countryDataMap.size, 'entries');
-  console.log('Sample countries:', Array.from(countryDataMap.keys()).slice(0, 10));
+  console.log('🔍 Country data loaded:', data.length, 'countries');
+  console.log('🗺️ Data map has', countryDataMap.size, 'entries');
+  console.log('📝 Sample countries in our data:', Array.from(countryDataMap.keys()).slice(0, 15));
+  console.log('📊 Sample user counts:', data.slice(0, 5).map(d => `${d.country}: ${d.users} users`));
 
   // Calculate color scale based on data
   const values = data.map(d => d[metric]);
@@ -200,12 +201,20 @@ export default function InteractiveWorldMap({
             {({ geographies }: { geographies: any[] }) => {
               console.log('Total geographies loaded:', geographies.length);
               
-              // Log first few countries to see their property names
+              // Log geography data structure
               if (geographies.length > 0) {
-                console.log('Sample geography properties:', geographies[0].properties);
-                console.log('First 10 country names:', geographies.slice(0, 10).map(g => 
-                  g.properties.NAME || g.properties.name || g.properties.NAME_EN
+                console.log('🌍 Total geographies loaded:', geographies.length);
+                console.log('🏷️ Sample geography properties:', geographies[0].properties);
+                console.log('🌎 First 15 country names from topojson:', geographies.slice(0, 15).map(g => 
+                  g.properties.NAME || g.properties.name || g.properties.NAME_EN || 'No name found'
                 ));
+                
+                // Check if USA exists in the data
+                const usaGeo = geographies.find(g => {
+                  const name = g.properties.NAME || g.properties.name || '';
+                  return name.includes('United States') || name.includes('USA') || name === 'United States';
+                });
+                console.log('🇺🇸 USA geography found:', usaGeo ? usaGeo.properties : 'NOT FOUND');
               }
               
               return geographies.map((geo: any, index: number) => {
@@ -233,24 +242,23 @@ export default function InteractiveWorldMap({
                 
                 const hasData = !!countryData;
                 
-                // Debug logging for first 10 countries and any matches
-                if (index < 15 || hasData) {
-                  console.log(`🌍 Country ${index}:`, {
-                    allProperties: geo.properties,
-                    availableNames: possibleNames,
-                    matched: matchedName,
-                    hasData,
-                    userCount: countryData ? countryData[metric] : 0
-                  });
-                }
-                
                 const fillColor = hasData && countryData
                   ? colorScale(countryData[metric]) 
                   : "#e5e7eb";
                 
-                // Additional debug for colored countries
+                // Debug logging for matches and first 20 countries
                 if (hasData && countryData) {
-                  console.log(`🎨 Coloring ${matchedName}: ${countryData[metric]} ${metric} → ${fillColor}`);
+                  console.log(`✅ MATCH FOUND for country ${index}:`, {
+                    geoNames: possibleNames,
+                    matchedName,
+                    userCount: countryData[metric],
+                    fillColor
+                  });
+                } else if (index < 20) {
+                  console.log(`❌ No match for country ${index}:`, {
+                    geoNames: possibleNames,
+                    ourDataKeys: Array.from(countryDataMap.keys()).slice(0, 5)
+                  });
                 }
                 
                 return (

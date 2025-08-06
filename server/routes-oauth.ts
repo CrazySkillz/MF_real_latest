@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertKPISchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertKPISchema, insertBenchmarkSchema, insertBenchmarkHistorySchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -1575,6 +1575,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('KPI progress recording error:', error);
       res.status(500).json({ message: "Failed to record KPI progress" });
+    }
+  });
+
+  // Benchmark routes
+  // Get campaign benchmarks
+  app.get("/api/campaigns/:campaignId/benchmarks", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const benchmarks = await storage.getCampaignBenchmarks(campaignId);
+      res.json(benchmarks);
+    } catch (error) {
+      console.error('Campaign benchmarks fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch campaign benchmarks" });
+    }
+  });
+
+  // Get platform benchmarks
+  app.get("/api/platforms/:platformType/benchmarks", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      const benchmarks = await storage.getPlatformBenchmarks(platformType);
+      res.json(benchmarks);
+    } catch (error) {
+      console.error('Platform benchmarks fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch platform benchmarks" });
+    }
+  });
+
+  // Get single benchmark
+  app.get("/api/benchmarks/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const benchmark = await storage.getBenchmark(id);
+      
+      if (!benchmark) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      
+      res.json(benchmark);
+    } catch (error) {
+      console.error('Benchmark fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch benchmark" });
+    }
+  });
+
+  // Create benchmark
+  app.post("/api/benchmarks", async (req, res) => {
+    try {
+      const validatedData = insertBenchmarkSchema.parse(req.body);
+      
+      // Calculate initial variance if current value exists
+      if (validatedData.currentValue && validatedData.benchmarkValue) {
+        const currentVal = parseFloat(validatedData.currentValue.toString());
+        const benchmarkVal = parseFloat(validatedData.benchmarkValue.toString());
+        const variance = ((currentVal - benchmarkVal) / benchmarkVal) * 100;
+        validatedData.variance = variance.toString();
+      }
+      
+      const benchmark = await storage.createBenchmark(validatedData);
+      res.status(201).json(benchmark);
+    } catch (error) {
+      console.error('Benchmark creation error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid benchmark data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create benchmark" });
+    }
+  });
+
+  // Update benchmark
+  app.put("/api/benchmarks/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      
+      // Recalculate variance if values are updated
+      if (updateData.currentValue && updateData.benchmarkValue) {
+        const currentVal = parseFloat(updateData.currentValue.toString());
+        const benchmarkVal = parseFloat(updateData.benchmarkValue.toString());
+        const variance = ((currentVal - benchmarkVal) / benchmarkVal) * 100;
+        updateData.variance = variance.toString();
+      }
+      
+      const benchmark = await storage.updateBenchmark(id, updateData);
+      
+      if (!benchmark) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      
+      res.json(benchmark);
+    } catch (error) {
+      console.error('Benchmark update error:', error);
+      res.status(500).json({ message: "Failed to update benchmark" });
+    }
+  });
+
+  // Delete benchmark
+  app.delete("/api/benchmarks/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteBenchmark(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      
+      res.json({ success: true, message: "Benchmark deleted successfully" });
+    } catch (error) {
+      console.error('Benchmark deletion error:', error);
+      res.status(500).json({ message: "Failed to delete benchmark" });
+    }
+  });
+
+  // Get benchmark history
+  app.get("/api/benchmarks/:id/history", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const history = await storage.getBenchmarkHistory(id);
+      res.json(history);
+    } catch (error) {
+      console.error('Benchmark history fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch benchmark history" });
+    }
+  });
+
+  // Record benchmark history
+  app.post("/api/benchmarks/:id/history", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const historyData = {
+        benchmarkId: id,
+        currentValue: req.body.currentValue?.toString(),
+        benchmarkValue: req.body.benchmarkValue?.toString(),
+        variance: req.body.variance?.toString(),
+        performanceRating: req.body.performanceRating || "average",
+        notes: req.body.notes
+      };
+      
+      const history = await storage.recordBenchmarkHistory(historyData);
+      res.json(history);
+    } catch (error) {
+      console.error('Benchmark history recording error:', error);
+      res.status(500).json({ message: "Failed to record benchmark history" });
+    }
+  });
+
+  // Get benchmark analytics
+  app.get("/api/benchmarks/:id/analytics", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const analytics = await storage.getBenchmarkAnalytics(id);
+      res.json(analytics);
+    } catch (error) {
+      console.error('Benchmark analytics fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch benchmark analytics" });
     }
   });
 

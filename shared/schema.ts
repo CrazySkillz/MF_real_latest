@@ -130,6 +130,40 @@ export const kpiAlerts = pgTable("kpi_alerts", {
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const benchmarks = pgTable("benchmarks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id"), // Optional - null for platform-level benchmarks
+  platformType: text("platform_type").notNull(), // 'google_analytics', 'google_sheets', 'facebook', 'linkedin', etc.
+  category: text("category").notNull(), // 'engagement', 'conversion', 'traffic', 'revenue', 'performance'
+  name: text("name").notNull(), // 'Industry Average CTR', 'Competitor Conversion Rate', etc.
+  description: text("description"),
+  benchmarkValue: decimal("benchmark_value", { precision: 10, scale: 2 }).notNull(),
+  currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"),
+  unit: text("unit").notNull(), // '%', '$', 'ratio', 'count', etc.
+  benchmarkType: text("benchmark_type").notNull().default("industry"), // 'industry', 'competitor', 'historical', 'goal'
+  source: text("source"), // 'Google Analytics Benchmarks', 'Facebook Industry Reports', 'Internal Historical Data'
+  industry: text("industry"), // 'E-commerce', 'SaaS', 'Healthcare', etc.
+  geoLocation: text("geo_location"), // 'Global', 'US', 'Europe', etc.
+  period: text("period").notNull().default("monthly"), // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
+  status: text("status").notNull().default("active"), // 'active', 'archived', 'draft'
+  variance: decimal("variance", { precision: 10, scale: 2 }), // % difference from benchmark (positive = above benchmark)
+  confidenceLevel: text("confidence_level").default("medium"), // 'low', 'medium', 'high'
+  lastUpdated: timestamp("last_updated").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const benchmarkHistory = pgTable("benchmark_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  benchmarkId: text("benchmark_id").notNull(),
+  currentValue: decimal("current_value", { precision: 10, scale: 2 }).notNull(),
+  benchmarkValue: decimal("benchmark_value", { precision: 10, scale: 2 }).notNull(),
+  variance: decimal("variance", { precision: 10, scale: 2 }).notNull(),
+  performanceRating: text("performance_rating").notNull().default("average"), // 'excellent', 'good', 'average', 'below_average', 'poor'
+  recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  notes: text("notes"),
+});
+
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   name: true,
   clientWebsite: true,
@@ -229,6 +263,34 @@ export const insertKPIAlertSchema = createInsertSchema(kpiAlerts).pick({
   isActive: true,
 });
 
+export const insertBenchmarkSchema = createInsertSchema(benchmarks).pick({
+  campaignId: true,
+  platformType: true,
+  category: true,
+  name: true,
+  description: true,
+  benchmarkValue: true,
+  currentValue: true,
+  unit: true,
+  benchmarkType: true,
+  source: true,
+  industry: true,
+  geoLocation: true,
+  period: true,
+  status: true,
+  variance: true,
+  confidenceLevel: true,
+});
+
+export const insertBenchmarkHistorySchema = createInsertSchema(benchmarkHistory).pick({
+  benchmarkId: true,
+  currentValue: true,
+  benchmarkValue: true,
+  variance: true,
+  performanceRating: true,
+  notes: true,
+});
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Metric = typeof metrics.$inferSelect;
@@ -247,3 +309,7 @@ export type KPIProgress = typeof kpiProgress.$inferSelect;
 export type InsertKPIProgress = z.infer<typeof insertKPIProgressSchema>;
 export type KPIAlert = typeof kpiAlerts.$inferSelect;
 export type InsertKPIAlert = z.infer<typeof insertKPIAlertSchema>;
+export type Benchmark = typeof benchmarks.$inferSelect;
+export type InsertBenchmark = z.infer<typeof insertBenchmarkSchema>;
+export type BenchmarkHistory = typeof benchmarkHistory.$inferSelect;
+export type InsertBenchmarkHistory = z.infer<typeof insertBenchmarkHistorySchema>;

@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress, kpiAlerts } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull } from "drizzle-orm";
@@ -66,6 +66,24 @@ export interface IStorage {
       period: string;
     };
   }>;
+
+  // Benchmarks
+  getCampaignBenchmarks(campaignId: string): Promise<Benchmark[]>;
+  getPlatformBenchmarks(platformType: string): Promise<Benchmark[]>;
+  getBenchmark(id: string): Promise<Benchmark | undefined>;
+  createBenchmark(benchmark: InsertBenchmark): Promise<Benchmark>;
+  updateBenchmark(id: string, benchmark: Partial<InsertBenchmark>): Promise<Benchmark | undefined>;
+  deleteBenchmark(id: string): Promise<boolean>;
+  
+  // Benchmark History
+  getBenchmarkHistory(benchmarkId: string): Promise<BenchmarkHistory[]>;
+  recordBenchmarkHistory(history: InsertBenchmarkHistory): Promise<BenchmarkHistory>;
+  getBenchmarkAnalytics(benchmarkId: string): Promise<{
+    history: BenchmarkHistory[];
+    averageVariance: number;
+    performanceTrend: string;
+    lastPerformanceRating: string;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -78,6 +96,8 @@ export class MemStorage implements IStorage {
   private kpis: Map<string, KPI>;
   private kpiProgress: Map<string, KPIProgress>;
   private kpiAlerts: Map<string, KPIAlert>;
+  private benchmarks: Map<string, Benchmark>;
+  private benchmarkHistory: Map<string, BenchmarkHistory>;
 
   constructor() {
     this.campaigns = new Map();
@@ -89,6 +109,8 @@ export class MemStorage implements IStorage {
     this.kpis = new Map();
     this.kpiProgress = new Map();
     this.kpiAlerts = new Map();
+    this.benchmarks = new Map();
+    this.benchmarkHistory = new Map();
     
     // Initialize with empty data - no mock data
     this.initializeEmptyData();
@@ -971,6 +993,105 @@ export class DatabaseStorage implements IStorage {
     // For DatabaseStorage, we'll implement a simplified version
     // In a production environment, this would include more sophisticated alert logic
     return [];
+  }
+
+  // Benchmark methods for DatabaseStorage
+  async getCampaignBenchmarks(campaignId: string): Promise<Benchmark[]> {
+    return db.select().from(benchmarks)
+      .where(eq(benchmarks.campaignId, campaignId))
+      .orderBy(benchmarks.category, benchmarks.name);
+  }
+
+  async getPlatformBenchmarks(platformType: string): Promise<Benchmark[]> {
+    return db.select().from(benchmarks)
+      .where(and(eq(benchmarks.platformType, platformType), isNull(benchmarks.campaignId)))
+      .orderBy(benchmarks.category, benchmarks.name);
+  }
+
+  async getBenchmark(id: string): Promise<Benchmark | undefined> {
+    const [benchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, id));
+    return benchmark || undefined;
+  }
+
+  async createBenchmark(benchmarkData: InsertBenchmark): Promise<Benchmark> {
+    const [benchmark] = await db
+      .insert(benchmarks)
+      .values(benchmarkData)
+      .returning();
+    return benchmark;
+  }
+
+  async updateBenchmark(id: string, updateData: Partial<InsertBenchmark>): Promise<Benchmark | undefined> {
+    const [benchmark] = await db
+      .update(benchmarks)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(benchmarks.id, id))
+      .returning();
+    return benchmark || undefined;
+  }
+
+  async deleteBenchmark(id: string): Promise<boolean> {
+    const result = await db
+      .delete(benchmarks)
+      .where(eq(benchmarks.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getBenchmarkHistory(benchmarkId: string): Promise<BenchmarkHistory[]> {
+    return db.select().from(benchmarkHistory)
+      .where(eq(benchmarkHistory.benchmarkId, benchmarkId))
+      .orderBy(benchmarkHistory.recordedAt);
+  }
+
+  async recordBenchmarkHistory(historyData: InsertBenchmarkHistory): Promise<BenchmarkHistory> {
+    const [history] = await db
+      .insert(benchmarkHistory)
+      .values(historyData)
+      .returning();
+    return history;
+  }
+
+  async getBenchmarkAnalytics(benchmarkId: string): Promise<{
+    history: BenchmarkHistory[];
+    averageVariance: number;
+    performanceTrend: string;
+    lastPerformanceRating: string;
+  }> {
+    const history = await this.getBenchmarkHistory(benchmarkId);
+    
+    if (history.length === 0) {
+      return {
+        history: [],
+        averageVariance: 0,
+        performanceTrend: "neutral",
+        lastPerformanceRating: "average"
+      };
+    }
+
+    const totalVariance = history.reduce((sum, h) => sum + parseFloat(h.variance), 0);
+    const averageVariance = totalVariance / history.length;
+    
+    const latest = history[history.length - 1];
+    const lastPerformanceRating = latest.performanceRating;
+    
+    // Calculate trend based on recent history
+    let performanceTrend = "neutral";
+    if (history.length >= 2) {
+      const recent = history.slice(-3); // Last 3 records
+      const recentVariances = recent.map(h => parseFloat(h.variance));
+      const isImproving = recentVariances.every((v, i) => i === 0 || v >= recentVariances[i - 1]);
+      const isDeclining = recentVariances.every((v, i) => i === 0 || v <= recentVariances[i - 1]);
+      
+      if (isImproving) performanceTrend = "improving";
+      else if (isDeclining) performanceTrend = "declining";
+    }
+
+    return {
+      history,
+      averageVariance,
+      performanceTrend,
+      lastPerformanceRating
+    };
   }
 }
 

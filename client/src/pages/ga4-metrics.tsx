@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -69,6 +70,29 @@ const kpiFormSchema = z.object({
 
 type KPIFormData = z.infer<typeof kpiFormSchema>;
 
+interface Benchmark {
+  id: string;
+  campaignId?: string;
+  platformType: string;
+  category: string;
+  name: string;
+  description?: string;
+  benchmarkValue: string;
+  currentValue?: string;
+  unit: string;
+  benchmarkType: string;
+  source?: string;
+  industry?: string;
+  geoLocation?: string;
+  period: string;
+  status: string;
+  variance?: string;
+  confidenceLevel?: string;
+  lastUpdated: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function GA4Metrics() {
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
@@ -77,6 +101,22 @@ export default function GA4Metrics() {
   const [showKPIDialog, setShowKPIDialog] = useState(false);
   const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
   const [deleteKPIId, setDeleteKPIId] = useState<string | null>(null);
+  
+  // Benchmark-related state
+  const [showCreateBenchmark, setShowCreateBenchmark] = useState(false);
+  const [newBenchmark, setNewBenchmark] = useState({
+    name: "",
+    category: "",
+    benchmarkType: "",
+    unit: "",
+    benchmarkValue: "",
+    currentValue: "",
+    industry: "",
+    geoLocation: "",
+    description: "",
+    source: ""
+  });
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -266,6 +306,82 @@ export default function GA4Metrics() {
     }
   };
 
+  // Benchmark mutations
+  const createBenchmarkMutation = useMutation({
+    mutationFn: async (benchmarkData: any) => {
+      const response = await fetch("/api/benchmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...benchmarkData,
+          platformType: "google_analytics",
+          period: "monthly",
+          status: "active"
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to create benchmark");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`] });
+      setShowCreateBenchmark(false);
+      setNewBenchmark({
+        name: "",
+        category: "",
+        benchmarkType: "",
+        unit: "",
+        benchmarkValue: "",
+        currentValue: "",
+        industry: "",
+        geoLocation: "",
+        description: "",
+        source: ""
+      });
+      toast({ title: "Benchmark created successfully" });
+    },
+    onError: (error) => {
+      toast({ title: "Failed to create benchmark", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteBenchmarkMutation = useMutation({
+    mutationFn: async (benchmarkId: string) => {
+      const response = await fetch(`/api/benchmarks/${benchmarkId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete benchmark");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`] });
+      toast({ title: "Benchmark deleted successfully" });
+    },
+    onError: (error) => {
+      toast({ title: "Failed to delete benchmark", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Benchmark handlers
+  const handleCreateBenchmark = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBenchmark.name || !newBenchmark.category || !newBenchmark.benchmarkValue || !newBenchmark.unit) {
+      toast({ title: "Please fill in all required fields", variant: "destructive" });
+      return;
+    }
+    createBenchmarkMutation.mutate(newBenchmark);
+  };
+
+  const handleEditBenchmark = (benchmark: Benchmark) => {
+    // For now, just show a toast - full edit functionality can be added later
+    toast({ title: "Edit functionality coming soon" });
+  };
+
+  const handleDeleteBenchmark = (benchmarkId: string) => {
+    if (confirm("Are you sure you want to delete this benchmark?")) {
+      deleteBenchmarkMutation.mutate(benchmarkId);
+    }
+  };
+
   // Helper functions for KPI display
   const formatValue = (value: string, unit: string) => {
     const numValue = parseFloat(value);
@@ -311,6 +427,28 @@ export default function GA4Metrics() {
     }
   };
 
+  // Helper function for benchmark values
+  const formatBenchmarkValue = (value: string | undefined, unit: string) => {
+    if (!value) return "N/A";
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return "N/A";
+    
+    switch (unit) {
+      case "%":
+        return `${numValue.toFixed(1)}%`;
+      case "$":
+        return `$${numValue.toLocaleString()}`;
+      case "ratio":
+        return `${numValue.toFixed(2)}:1`;
+      case "seconds":
+        return `${numValue.toFixed(1)}s`;
+      case "count":
+        return numValue.toLocaleString();
+      default:
+        return numValue.toLocaleString();
+    }
+  };
+
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
@@ -333,6 +471,16 @@ export default function GA4Metrics() {
     queryFn: async () => {
       const response = await fetch(`/api/platforms/google_analytics/kpis`);
       if (!response.ok) throw new Error("Failed to fetch KPIs");
+      return response.json();
+    },
+  });
+
+  // Fetch platform benchmarks
+  const { data: benchmarks = [], isLoading: benchmarksLoading } = useQuery<Benchmark[]>({
+    queryKey: [`/api/platforms/google_analytics/benchmarks`],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/google_analytics/benchmarks`);
+      if (!response.ok) throw new Error("Failed to fetch benchmarks");
       return response.json();
     },
   });
@@ -1170,7 +1318,323 @@ export default function GA4Metrics() {
                 </TabsContent>
 
                 <TabsContent value="benchmarks">
-                  
+                  <div className="space-y-6">
+                    {/* Header with Create Button */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Performance Benchmarks</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Track and measure performance against industry standards and custom targets
+                        </p>
+                      </div>
+                      <Dialog open={showCreateBenchmark} onOpenChange={setShowCreateBenchmark}>
+                        <DialogTrigger asChild>
+                          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Benchmark
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Create New Benchmark</DialogTitle>
+                            <DialogDescription>
+                              Set up a new performance benchmark to track against industry standards or custom targets
+                            </DialogDescription>
+                          </DialogHeader>
+                          <form onSubmit={handleCreateBenchmark} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  Benchmark Name *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newBenchmark.name}
+                                  onChange={(e) => setNewBenchmark({...newBenchmark, name: e.target.value})}
+                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  placeholder="e.g., Industry Average CTR"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  Category *
+                                </label>
+                                <select
+                                  value={newBenchmark.category}
+                                  onChange={(e) => setNewBenchmark({...newBenchmark, category: e.target.value})}
+                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  required
+                                >
+                                  <option value="">Select Category</option>
+                                  <option value="engagement">Engagement</option>
+                                  <option value="conversion">Conversion</option>
+                                  <option value="traffic">Traffic</option>
+                                  <option value="revenue">Revenue</option>
+                                  <option value="performance">Performance</option>
+                                </select>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  Benchmark Type *
+                                </label>
+                                <select
+                                  value={newBenchmark.benchmarkType}
+                                  onChange={(e) => setNewBenchmark({...newBenchmark, benchmarkType: e.target.value})}
+                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  required
+                                >
+                                  <option value="">Select Type</option>
+                                  <option value="industry">Industry Standard</option>
+                                  <option value="competitor">Competitor</option>
+                                  <option value="historical">Historical Performance</option>
+                                  <option value="goal">Custom Goal</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  Unit *
+                                </label>
+                                <select
+                                  value={newBenchmark.unit}
+                                  onChange={(e) => setNewBenchmark({...newBenchmark, unit: e.target.value})}
+                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  required
+                                >
+                                  <option value="">Select Unit</option>
+                                  <option value="%">Percentage (%)</option>
+                                  <option value="$">Currency ($)</option>
+                                  <option value="ratio">Ratio</option>
+                                  <option value="count">Count</option>
+                                  <option value="seconds">Seconds</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  Benchmark Value *
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={newBenchmark.benchmarkValue}
+                                  onChange={(e) => setNewBenchmark({...newBenchmark, benchmarkValue: e.target.value})}
+                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  placeholder="e.g., 2.5"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  Current Value
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={newBenchmark.currentValue}
+                                  onChange={(e) => setNewBenchmark({...newBenchmark, currentValue: e.target.value})}
+                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  placeholder="e.g., 3.2"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  Industry
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newBenchmark.industry}
+                                  onChange={(e) => setNewBenchmark({...newBenchmark, industry: e.target.value})}
+                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  placeholder="e.g., E-commerce, SaaS"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  Geography
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newBenchmark.geoLocation}
+                                  onChange={(e) => setNewBenchmark({...newBenchmark, geoLocation: e.target.value})}
+                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  placeholder="e.g., Global, US, Europe"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                Description
+                              </label>
+                              <textarea
+                                value={newBenchmark.description}
+                                onChange={(e) => setNewBenchmark({...newBenchmark, description: e.target.value})}
+                                className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                rows={3}
+                                placeholder="Describe the benchmark and its source..."
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                Source
+                              </label>
+                              <input
+                                type="text"
+                                value={newBenchmark.source}
+                                onChange={(e) => setNewBenchmark({...newBenchmark, source: e.target.value})}
+                                className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                placeholder="e.g., Google Analytics Benchmarks, Industry Report 2024"
+                              />
+                            </div>
+
+                            <div className="flex justify-end space-x-3 pt-4">
+                              <Button type="button" variant="outline" onClick={() => setShowCreateBenchmark(false)}>
+                                Cancel
+                              </Button>
+                              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                                Create Benchmark
+                              </Button>
+                            </div>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+
+                    {/* Benchmarks List */}
+                    <div className="space-y-4">
+                      {benchmarksLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {[1, 2, 3].map((i) => (
+                            <Card key={i} className="animate-pulse">
+                              <CardContent className="p-6">
+                                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
+                                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mb-4"></div>
+                                <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : benchmarks && benchmarks.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {benchmarks.map((benchmark) => (
+                            <Card key={benchmark.id} className="hover:shadow-lg transition-shadow">
+                              <CardContent className="p-6">
+                                <div className="flex items-start justify-between mb-4">
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</h4>
+                                    <div className="flex items-center space-x-2 mt-1">
+                                      <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                                        {benchmark.category}
+                                      </span>
+                                      <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded">
+                                        {benchmark.benchmarkType}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => handleEditBenchmark(benchmark)}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleDeleteBenchmark(benchmark.id)}
+                                        className="text-red-600 dark:text-red-400"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-slate-600 dark:text-slate-400">Benchmark</span>
+                                    <span className="font-medium text-slate-900 dark:text-white">
+                                      {formatBenchmarkValue(benchmark.benchmarkValue, benchmark.unit)}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-slate-600 dark:text-slate-400">Current</span>
+                                    <span className="font-medium text-slate-900 dark:text-white">
+                                      {formatBenchmarkValue(benchmark.currentValue || "0", benchmark.unit)}
+                                    </span>
+                                  </div>
+
+                                  {benchmark.variance !== undefined && benchmark.variance !== null && (
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm text-slate-600 dark:text-slate-400">Performance</span>
+                                      <div className="flex items-center space-x-2">
+                                        <span className={`font-medium ${
+                                          parseFloat(benchmark.variance.toString()) >= 0 
+                                            ? 'text-green-600 dark:text-green-400' 
+                                            : 'text-red-600 dark:text-red-400'
+                                        }`}>
+                                          {parseFloat(benchmark.variance.toString()) >= 0 ? '+' : ''}
+                                          {parseFloat(benchmark.variance.toString()).toFixed(1)}%
+                                        </span>
+                                        {parseFloat(benchmark.variance.toString()) >= 0 ? (
+                                          <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                        ) : (
+                                          <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {benchmark.industry && (
+                                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                                      Industry: {benchmark.industry}
+                                    </div>
+                                  )}
+                                  
+                                  {benchmark.source && (
+                                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                                      Source: {benchmark.source}
+                                    </div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <Card>
+                          <CardContent className="p-8 text-center">
+                            <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Benchmarks Yet</h3>
+                            <p className="text-slate-600 dark:text-slate-400 mb-4">
+                              Create your first benchmark to start tracking performance against industry standards
+                            </p>
+                            <Button 
+                              onClick={() => setShowCreateBenchmark(true)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Create First Benchmark
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="rois">

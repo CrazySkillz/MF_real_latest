@@ -129,6 +129,7 @@ export default function InteractiveWorldMap({
   console.log('🗺️ Data map has', countryDataMap.size, 'entries');
   console.log('📝 Sample countries in our data:', Array.from(countryDataMap.keys()).slice(0, 15));
   console.log('📊 Sample user counts:', data.slice(0, 5).map(d => `${d.country}: ${d.users} users`));
+  console.log('🎯 Actual data received:', data);
 
   // Calculate color scale based on data
   const values = data.map(d => d[metric]);

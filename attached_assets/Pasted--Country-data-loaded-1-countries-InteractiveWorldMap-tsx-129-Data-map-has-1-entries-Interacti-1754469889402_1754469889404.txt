@@ -1,0 +1,403 @@
+🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object
+InteractiveWorldMap.tsx:128 🔍 Country data loaded: 1 countries
+InteractiveWorldMap.tsx:129 🗺️ Data map has 1 entries
+InteractiveWorldMap.tsx:130 📝 Sample countries in our data: Array(1)
+InteractiveWorldMap.tsx:131 📊 Sample user counts: Array(1)
+InteractiveWorldMap.tsx:140 Color scale domain: Array(5)
+InteractiveWorldMap.tsx:141 Max value: 1
+InteractiveWorldMap.tsx:202 Total geographies loaded: 177
+InteractiveWorldMap.tsx:206 🌍 Total geographies loaded: 177
+InteractiveWorldMap.tsx:207 🏷️ Sample geography properties: Object
+InteractiveWorldMap.tsx:208 🌎 First 15 country names from topojson: Array(15)
+InteractiveWorldMap.tsx:217 🇺🇸 USA geography found: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 0: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 1: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 2: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 3: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 4: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 5: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 6: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 7: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 8: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 9: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 10: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 11: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 12: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 13: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 14: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 15: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 16: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 17: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 18: Object
+InteractiveWorldMap.tsx:258 ❌ No match for country 19: Object

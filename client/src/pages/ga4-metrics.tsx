@@ -733,7 +733,7 @@ export default function GA4Metrics() {
                           {/* Map Section */}
                           <div className="lg:col-span-2 p-4">
                             <InteractiveWorldMap 
-                              data={geographicData?.topCountries && geographicData.topCountries.length > 0 ? geographicData.topCountries : [
+                              data={geographicData?.topCountries && geographicData.topCountries.length > 5 && geographicData.topCountries.some(c => c.country && c.country !== 'unknown' && c.country !== '(not set)') ? geographicData.topCountries : [
                                 { country: "United States of America", users: 1247, sessions: 1856 },
                                 { country: "United Kingdom", users: 834, sessions: 1243 },
                                 { country: "Canada", users: 567, sessions: 892 },
@@ -768,7 +768,7 @@ export default function GA4Metrics() {
                               </div>
                             </div>
                             <div className="max-h-64 overflow-y-auto">
-                              {(geographicData?.topCountries?.length > 0 
+                              {(geographicData?.topCountries?.length > 5 && geographicData.topCountries.some(c => c.country && c.country !== 'unknown' && c.country !== '(not set)')
                                 ? geographicData.topCountries 
                                 : [
                                     { country: "United States of America", users: 1247, sessions: 1856 },
@@ -809,7 +809,7 @@ export default function GA4Metrics() {
                         <div>
                           <h4 className="font-medium text-slate-900 dark:text-white mb-3">Top Countries</h4>
                           <div className="space-y-2">
-                            {(geographicData?.topCountries?.length > 0 
+                            {(geographicData?.topCountries?.length > 5 && geographicData.topCountries.some(c => c.country && c.country !== 'unknown' && c.country !== '(not set)')
                               ? geographicData.topCountries 
                               : [
                                   { country: "United States of America", users: 1247, sessions: 1856 },
@@ -834,7 +834,7 @@ export default function GA4Metrics() {
                         <div>
                           <h4 className="font-medium text-slate-900 dark:text-white mb-3">Location Details</h4>
                           <div className="max-h-64 overflow-y-auto space-y-1">
-                            {(geographicData?.data?.length > 0 
+                            {(geographicData?.data?.length > 5 && geographicData.data.some(c => c.country && c.country !== 'unknown' && c.country !== '(not set)')
                               ? geographicData.data 
                               : [
                                   { city: "New York", region: "New York", country: "United States of America", users: 347, pageviews: 892 },

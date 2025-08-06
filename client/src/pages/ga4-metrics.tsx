@@ -829,15 +829,8 @@ export default function GA4Metrics() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-center text-slate-500 dark:text-slate-400 mb-6">
+                      <div className="text-center text-slate-500 dark:text-slate-400">
                         Create and manage platform-level KPIs to track your Google Analytics performance metrics.
-                      </div>
-                      <div className="flex justify-center">
-                        <Link href={`/platforms/google_analytics/kpis`}>
-                          <Button>
-                            Manage Platform KPIs
-                          </Button>
-                        </Link>
                       </div>
                     </CardContent>
                   </Card>

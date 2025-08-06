@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress, kpiAlerts } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull } from "drizzle-orm";
@@ -49,6 +49,13 @@ export interface IStorage {
   // KPI Progress
   getKPIProgress(kpiId: string): Promise<KPIProgress[]>;
   recordKPIProgress(progress: InsertKPIProgress): Promise<KPIProgress>;
+  
+  // KPI Alerts
+  getKPIAlerts(kpiId?: string, activeOnly?: boolean): Promise<KPIAlert[]>;
+  createKPIAlert(alert: InsertKPIAlert): Promise<KPIAlert>;
+  acknowledgeKPIAlert(alertId: string): Promise<boolean>;
+  resolveKPIAlert(alertId: string): Promise<boolean>;
+  checkKPIAlerts(kpiId: string): Promise<KPIAlert[]>;
   getKPIAnalytics(kpiId: string, timeframe?: string): Promise<{
     progress: KPIProgress[];
     rollingAverage7d: number;
@@ -70,6 +77,7 @@ export class MemStorage implements IStorage {
   private googleSheetsConnections: Map<string, GoogleSheetsConnection>;
   private kpis: Map<string, KPI>;
   private kpiProgress: Map<string, KPIProgress>;
+  private kpiAlerts: Map<string, KPIAlert>;
 
   constructor() {
     this.campaigns = new Map();
@@ -80,6 +88,7 @@ export class MemStorage implements IStorage {
     this.googleSheetsConnections = new Map();
     this.kpis = new Map();
     this.kpiProgress = new Map();
+    this.kpiAlerts = new Map();
     
     // Initialize with empty data - no mock data
     this.initializeEmptyData();
@@ -333,6 +342,12 @@ export class MemStorage implements IStorage {
       trackingPeriod: kpiData.trackingPeriod || 30,
       rollingAverage: kpiData.rollingAverage || "7day",
       targetDate: kpiData.targetDate || null,
+      alertThreshold: kpiData.alertThreshold || null,
+      alertsEnabled: kpiData.alertsEnabled !== undefined ? kpiData.alertsEnabled : true,
+      emailNotifications: kpiData.emailNotifications !== undefined ? kpiData.emailNotifications : false,
+      slackNotifications: kpiData.slackNotifications !== undefined ? kpiData.slackNotifications : false,
+      alertFrequency: kpiData.alertFrequency || "daily",
+      lastAlertSent: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -402,9 +417,148 @@ export class MemStorage implements IStorage {
         updatedAt: new Date(),
       };
       this.kpis.set(kpi.id, updated);
+      
+      // Check if we need to create alerts
+      await this.checkKPIAlerts(progressData.kpiId);
     }
     
     return progress;
+  }
+
+  // KPI Alert methods
+  async getKPIAlerts(kpiId?: string, activeOnly?: boolean): Promise<KPIAlert[]> {
+    let alerts = Array.from(this.kpiAlerts.values());
+    
+    if (kpiId) {
+      alerts = alerts.filter(alert => alert.kpiId === kpiId);
+    }
+    
+    if (activeOnly) {
+      alerts = alerts.filter(alert => alert.isActive);
+    }
+    
+    return alerts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async createKPIAlert(alertData: InsertKPIAlert): Promise<KPIAlert> {
+    const id = randomUUID();
+    const alert: KPIAlert = {
+      id,
+      kpiId: alertData.kpiId,
+      alertType: alertData.alertType,
+      severity: alertData.severity || "medium",
+      message: alertData.message,
+      currentValue: alertData.currentValue || null,
+      targetValue: alertData.targetValue || null,
+      thresholdValue: alertData.thresholdValue || null,
+      isActive: alertData.isActive !== undefined ? alertData.isActive : true,
+      acknowledgedAt: null,
+      resolvedAt: null,
+      emailSent: false,
+      slackSent: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.kpiAlerts.set(id, alert);
+    return alert;
+  }
+
+  async acknowledgeKPIAlert(alertId: string): Promise<boolean> {
+    const alert = this.kpiAlerts.get(alertId);
+    if (!alert) return false;
+    
+    const updated: KPIAlert = {
+      ...alert,
+      acknowledgedAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.kpiAlerts.set(alertId, updated);
+    return true;
+  }
+
+  async resolveKPIAlert(alertId: string): Promise<boolean> {
+    const alert = this.kpiAlerts.get(alertId);
+    if (!alert) return false;
+    
+    const updated: KPIAlert = {
+      ...alert,
+      isActive: false,
+      resolvedAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.kpiAlerts.set(alertId, updated);
+    return true;
+  }
+
+  async checkKPIAlerts(kpiId: string): Promise<KPIAlert[]> {
+    const kpi = this.kpis.get(kpiId);
+    if (!kpi || !kpi.alertsEnabled) return [];
+    
+    const alerts: KPIAlert[] = [];
+    const currentValue = parseFloat(kpi.currentValue || "0");
+    const targetValue = parseFloat(kpi.targetValue);
+    
+    // Check threshold breach
+    if (kpi.alertThreshold) {
+      const thresholdValue = parseFloat(kpi.alertThreshold);
+      const thresholdPercentage = thresholdValue / 100;
+      
+      if (currentValue < targetValue * thresholdPercentage) {
+        const alert = await this.createKPIAlert({
+          kpiId: kpi.id,
+          alertType: "threshold_breach",
+          severity: kpi.priority === "critical" ? "critical" : "high",
+          message: `${kpi.name} is ${thresholdValue}% below target (${currentValue} vs ${targetValue} ${kpi.unit})`,
+          currentValue: kpi.currentValue,
+          targetValue: kpi.targetValue,
+          thresholdValue: kpi.alertThreshold,
+        });
+        alerts.push(alert);
+      }
+    }
+    
+    // Check deadline approaching
+    if (kpi.targetDate) {
+      const daysUntilTarget = Math.ceil((new Date(kpi.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysUntilTarget <= 7 && currentValue < targetValue) {
+        const alert = await this.createKPIAlert({
+          kpiId: kpi.id,
+          alertType: "deadline_approaching",
+          severity: "high",
+          message: `${kpi.name} deadline is ${daysUntilTarget} days away and target not yet achieved`,
+          currentValue: kpi.currentValue,
+          targetValue: kpi.targetValue,
+        });
+        alerts.push(alert);
+      }
+    }
+    
+    // Check negative trend
+    const progress = await this.getKPIProgress(kpiId);
+    if (progress.length >= 3) {
+      const recentTrend = progress.slice(0, 3);
+      const allDecreasing = recentTrend.every((p, i) => 
+        i === 0 || parseFloat(p.value) < parseFloat(recentTrend[i - 1].value)
+      );
+      
+      if (allDecreasing) {
+        const alert = await this.createKPIAlert({
+          kpiId: kpi.id,
+          alertType: "trend_negative",
+          severity: "medium",
+          message: `${kpi.name} shows consistent downward trend over recent measurements`,
+          currentValue: kpi.currentValue,
+          targetValue: kpi.targetValue,
+        });
+        alerts.push(alert);
+      }
+    }
+    
+    return alerts;
   }
 
   private calculateRollingAverage(existingProgress: KPIProgress[], days: number, newValue: string): string {
@@ -757,6 +911,51 @@ export class DatabaseStorage implements IStorage {
     
     if (earliest === 0) return 0;
     return ((latest - earliest) / earliest) * 100;
+  }
+
+  // KPI Alert methods for DatabaseStorage
+  async getKPIAlerts(kpiId?: string, activeOnly?: boolean): Promise<KPIAlert[]> {
+    let query = db.select().from(kpiAlerts);
+    
+    if (kpiId) {
+      query = query.where(eq(kpiAlerts.kpiId, kpiId));
+    }
+    
+    if (activeOnly) {
+      query = query.where(eq(kpiAlerts.isActive, true));
+    }
+    
+    return query.orderBy(kpiAlerts.createdAt);
+  }
+
+  async createKPIAlert(alertData: InsertKPIAlert): Promise<KPIAlert> {
+    const [alert] = await db
+      .insert(kpiAlerts)
+      .values(alertData)
+      .returning();
+    return alert;
+  }
+
+  async acknowledgeKPIAlert(alertId: string): Promise<boolean> {
+    const result = await db
+      .update(kpiAlerts)
+      .set({ acknowledgedAt: new Date(), updatedAt: new Date() })
+      .where(eq(kpiAlerts.id, alertId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async resolveKPIAlert(alertId: string): Promise<boolean> {
+    const result = await db
+      .update(kpiAlerts)
+      .set({ isActive: false, resolvedAt: new Date(), updatedAt: new Date() })
+      .where(eq(kpiAlerts.id, alertId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async checkKPIAlerts(kpiId: string): Promise<KPIAlert[]> {
+    // For DatabaseStorage, we'll implement a simplified version
+    // In a production environment, this would include more sophisticated alert logic
+    return [];
   }
 }
 

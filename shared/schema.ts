@@ -90,6 +90,13 @@ export const kpis = pgTable("kpis", {
   trackingPeriod: integer("tracking_period").notNull().default(30), // Number of days to track
   rollingAverage: text("rolling_average").notNull().default("7day"), // '1day', '7day', '30day', 'none'
   targetDate: timestamp("target_date"), // Optional target completion date
+  // Alert and notification settings
+  alertThreshold: decimal("alert_threshold", { precision: 10, scale: 2 }), // Percentage below target to trigger alert (e.g., 80 = alert when 80% below target)
+  alertsEnabled: boolean("alerts_enabled").notNull().default(true),
+  emailNotifications: boolean("email_notifications").notNull().default(false),
+  slackNotifications: boolean("slack_notifications").notNull().default(false),
+  alertFrequency: text("alert_frequency").notNull().default("daily"), // 'immediate', 'daily', 'weekly'
+  lastAlertSent: timestamp("last_alert_sent"),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -103,6 +110,24 @@ export const kpiProgress = pgTable("kpi_progress", {
   trendDirection: text("trend_direction").default("neutral"), // 'up', 'down', 'neutral'
   recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   notes: text("notes"),
+});
+
+export const kpiAlerts = pgTable("kpi_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  kpiId: text("kpi_id").notNull(),
+  alertType: text("alert_type").notNull(), // 'threshold_breach', 'target_missed', 'trend_negative', 'deadline_approaching'
+  severity: text("severity").notNull().default("medium"), // 'low', 'medium', 'high', 'critical'
+  message: text("message").notNull(),
+  currentValue: decimal("current_value", { precision: 10, scale: 2 }),
+  targetValue: decimal("target_value", { precision: 10, scale: 2 }),
+  thresholdValue: decimal("threshold_value", { precision: 10, scale: 2 }),
+  isActive: boolean("is_active").notNull().default(true),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedAt: timestamp("resolved_at"),
+  emailSent: boolean("email_sent").notNull().default(false),
+  slackSent: boolean("slack_sent").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
@@ -177,6 +202,11 @@ export const insertKPISchema = createInsertSchema(kpis).pick({
   trackingPeriod: true,
   rollingAverage: true,
   targetDate: true,
+  alertThreshold: true,
+  alertsEnabled: true,
+  emailNotifications: true,
+  slackNotifications: true,
+  alertFrequency: true,
 });
 
 export const insertKPIProgressSchema = createInsertSchema(kpiProgress).pick({
@@ -186,6 +216,17 @@ export const insertKPIProgressSchema = createInsertSchema(kpiProgress).pick({
   rollingAverage30d: true,
   trendDirection: true,
   notes: true,
+});
+
+export const insertKPIAlertSchema = createInsertSchema(kpiAlerts).pick({
+  kpiId: true,
+  alertType: true,
+  severity: true,
+  message: true,
+  currentValue: true,
+  targetValue: true,
+  thresholdValue: true,
+  isActive: true,
 });
 
 export type Campaign = typeof campaigns.$inferSelect;
@@ -204,3 +245,5 @@ export type KPI = typeof kpis.$inferSelect;
 export type InsertKPI = z.infer<typeof insertKPISchema>;
 export type KPIProgress = typeof kpiProgress.$inferSelect;
 export type InsertKPIProgress = z.infer<typeof insertKPIProgressSchema>;
+export type KPIAlert = typeof kpiAlerts.$inferSelect;
+export type InsertKPIAlert = z.infer<typeof insertKPIAlertSchema>;

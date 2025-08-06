@@ -1270,6 +1270,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // KPI Alert routes
+  app.get("/api/kpis/:kpiId/alerts", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      const { active = false } = req.query;
+      
+      const alerts = await storage.getKPIAlerts(kpiId, active === 'true');
+      res.json(alerts);
+    } catch (error) {
+      console.error('KPI alerts fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch KPI alerts" });
+    }
+  });
+
+  app.get("/api/alerts", async (req, res) => {
+    try {
+      const { active = false } = req.query;
+      
+      const alerts = await storage.getKPIAlerts(undefined, active === 'true');
+      res.json(alerts);
+    } catch (error) {
+      console.error('All alerts fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch alerts" });
+    }
+  });
+
+  app.post("/api/alerts/:alertId/acknowledge", async (req, res) => {
+    try {
+      const { alertId } = req.params;
+      
+      const acknowledged = await storage.acknowledgeKPIAlert(alertId);
+      if (!acknowledged) {
+        return res.status(404).json({ message: "Alert not found" });
+      }
+      
+      res.json({ success: true, message: "Alert acknowledged" });
+    } catch (error) {
+      console.error('Alert acknowledge error:', error);
+      res.status(500).json({ message: "Failed to acknowledge alert" });
+    }
+  });
+
+  app.post("/api/alerts/:alertId/resolve", async (req, res) => {
+    try {
+      const { alertId } = req.params;
+      
+      const resolved = await storage.resolveKPIAlert(alertId);
+      if (!resolved) {
+        return res.status(404).json({ message: "Alert not found" });
+      }
+      
+      res.json({ success: true, message: "Alert resolved" });
+    } catch (error) {
+      console.error('Alert resolve error:', error);
+      res.status(500).json({ message: "Failed to resolve alert" });
+    }
+  });
+
   // Service account setup endpoint (for admin use)
   app.post("/api/admin/setup-service-account", async (req, res) => {
     try {

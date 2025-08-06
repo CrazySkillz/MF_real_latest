@@ -59,6 +59,11 @@ const kpiFormSchema = z.object({
   trackingPeriod: z.number().min(1).max(365).default(30),
   rollingAverage: z.enum(["1day", "7day", "30day", "none"]).default("7day"),
   targetDate: z.string().optional(),
+  alertThreshold: z.number().min(1).max(100).optional(),
+  alertsEnabled: z.boolean().default(true),
+  emailNotifications: z.boolean().default(false),
+  slackNotifications: z.boolean().default(false),
+  alertFrequency: z.enum(["immediate", "daily", "weekly"]).default("daily"),
 });
 
 type KPIFormData = z.infer<typeof kpiFormSchema>;
@@ -84,6 +89,11 @@ export default function GA4Metrics() {
       trackingPeriod: 30,
       rollingAverage: "7day",
       targetDate: "",
+      alertThreshold: 80,
+      alertsEnabled: true,
+      emailNotifications: false,
+      slackNotifications: false,
+      alertFrequency: "daily",
     },
   });
 
@@ -953,10 +963,60 @@ export default function GA4Metrics() {
                                         <span>📊 {kpi.timeframe || 'monthly'} tracking</span>
                                         <span>📈 {kpi.rollingAverage || '7day'} average</span>
                                         <span>📅 {kpi.trackingPeriod || 30}-day period</span>
+                                        {kpi.alertsEnabled && (
+                                          <span className="flex items-center space-x-1">
+                                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                            <span>🔔 Alerts on</span>
+                                          </span>
+                                        )}
                                       </div>
                                       {kpi.targetDate && (
                                         <span>🎯 Due: {new Date(kpi.targetDate).toLocaleDateString()}</span>
                                       )}
+                                    </div>
+                                    
+                                    {/* KPI Progress and Alignment Status */}
+                                    <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Progress to Target</span>
+                                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                                          {((parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) * 100).toFixed(1)}%
+                                        </span>
+                                      </div>
+                                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                        <div 
+                                          className={`h-2 rounded-full transition-all duration-300 ${
+                                            (parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.8 
+                                              ? "bg-green-500" 
+                                              : (parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.6 
+                                              ? "bg-yellow-500" 
+                                              : "bg-red-500"
+                                          }`}
+                                          style={{ 
+                                            width: `${Math.min((parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) * 100, 100)}%` 
+                                          }}
+                                        ></div>
+                                      </div>
+                                      <div className="flex items-center justify-between mt-2 text-xs">
+                                        <span className={`font-medium ${
+                                          (parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.8 
+                                            ? "text-green-600 dark:text-green-400" 
+                                            : (parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.6 
+                                            ? "text-yellow-600 dark:text-yellow-400" 
+                                            : "text-red-600 dark:text-red-400"
+                                        }`}>
+                                          {(parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.8 
+                                            ? "✓ On Track" 
+                                            : (parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.6 
+                                            ? "⚠ Needs Attention" 
+                                            : "⚠ Behind Target"}
+                                        </span>
+                                        {kpi.alertThreshold && (
+                                          <span className="text-slate-500 dark:text-slate-400">
+                                            Alert at {kpi.alertThreshold}% of target
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -1278,6 +1338,124 @@ export default function GA4Metrics() {
                       </FormItem>
                     )}
                   />
+                </div>
+              </div>
+              
+              <div className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                <h4 className="font-medium text-slate-900 dark:text-white">Alert Settings</h4>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex items-center space-x-3">
+                    <FormField
+                      control={kpiForm.control}
+                      name="alertsEnabled"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={field.onChange}
+                              className="rounded border-slate-300"
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-medium">
+                            Enable alerts for this KPI
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={kpiForm.control}
+                      name="alertThreshold"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Alert Threshold (%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="100"
+                              placeholder="80"
+                              {...field}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              value={field.value || ''}
+                            />
+                          </FormControl>
+                          <p className="text-xs text-slate-500">Alert when performance falls below this % of target</p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={kpiForm.control}
+                      name="alertFrequency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Alert Frequency</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="immediate">Immediate</SelectItem>
+                              <SelectItem value="daily">Daily summary</SelectItem>
+                              <SelectItem value="weekly">Weekly summary</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                    <FormField
+                      control={kpiForm.control}
+                      name="emailNotifications"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={field.onChange}
+                              className="rounded border-slate-300"
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-medium">
+                            Email notifications
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={kpiForm.control}
+                      name="slackNotifications"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={field.onChange}
+                              className="rounded border-slate-300"
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-medium">
+                            Slack notifications
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
               

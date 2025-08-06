@@ -1455,17 +1455,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       
-      const validatedKPI = insertKPISchema.parse({
+      // Convert numeric values to strings for decimal fields
+      const requestData = {
         ...req.body,
         platformType: platformType,
-        campaignId: null
-      });
+        campaignId: null,
+        targetValue: req.body.targetValue?.toString() || "0",
+        currentValue: req.body.currentValue?.toString() || "0"
+      };
+      
+      const validatedKPI = insertKPISchema.parse(requestData);
       
       const kpi = await storage.createKPI(validatedKPI);
       res.json(kpi);
     } catch (error) {
       console.error('Platform KPI creation error:', error);
-      res.status(500).json({ message: "Failed to create platform KPI" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create platform KPI" });
+      }
     }
   });
 
@@ -1473,10 +1482,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       
-      const validatedKPI = insertKPISchema.parse({
+      // Convert numeric values to strings for decimal fields
+      const requestData = {
         ...req.body,
-        campaignId: id
-      });
+        campaignId: id,
+        targetValue: req.body.targetValue?.toString() || "0",
+        currentValue: req.body.currentValue?.toString() || "0"
+      };
+      
+      const validatedKPI = insertKPISchema.parse(requestData);
       
       const kpi = await storage.createKPI(validatedKPI);
       res.json(kpi);

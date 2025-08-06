@@ -85,10 +85,7 @@ export default function GA4Metrics() {
       const response = await fetch(`/api/platforms/google_analytics/kpis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data,
-          targetValue: parseFloat(data.targetValue), // Convert string to number
-        }),
+        body: JSON.stringify(data),
       });
       
       if (!response.ok) {

@@ -1335,7 +1335,11 @@ export default function GA4Metrics() {
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl">
-                          <DialogHeader>
+                          <DialogHeader className="relative">
+                            <DialogClose className="absolute right-0 top-0 p-2 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                              <X className="h-4 w-4" />
+                              <span className="sr-only">Close</span>
+                            </DialogClose>
                             <DialogTitle>Create New Benchmark</DialogTitle>
                             <DialogDescription>
                               Set up a new performance benchmark to track against industry standards or custom targets

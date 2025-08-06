@@ -534,11 +534,7 @@ export default function GA4Metrics() {
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Google Analytics</h1>
                   </div>
                   <p className="text-slate-600 dark:text-slate-400">Detailed metrics for {campaign.name}</p>
-                  {ga4Connection?.propertyId && (
-                    <Badge variant="outline" className="mt-2">
-                      Property ID: {ga4Connection.propertyId}
-                    </Badge>
-                  )}
+
                 </div>
               </div>
               

@@ -765,13 +765,7 @@ export default function GA4Metrics() {
                         <CardTitle>Key Performance Indicators</CardTitle>
                         <CardDescription>Manage KPIs for this campaign</CardDescription>
                       </div>
-                      <div className="flex space-x-2">
-                        <Link href={`/campaigns/${campaignId}/kpis`}>
-                          <Button variant="outline" size="sm">
-                            <Target className="w-4 h-4 mr-2" />
-                            Manage Campaign KPIs
-                          </Button>
-                        </Link>
+                      <div>
                         <Link href={`/platforms/google_analytics/kpis`}>
                           <Button size="sm">
                             <Plus className="w-4 h-4 mr-2" />
@@ -782,17 +776,12 @@ export default function GA4Metrics() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-center text-slate-500 dark:text-slate-400 mb-6">
-                        Want to track custom KPIs? Create campaign-specific or platform-level KPIs to monitor your key metrics.
+                        Create and manage platform-level KPIs to track your Google Analytics performance metrics.
                       </div>
-                      <div className="flex justify-center space-x-4">
-                        <Link href={`/campaigns/${campaignId}/kpis`}>
-                          <Button variant="outline">
-                            View Campaign KPIs
-                          </Button>
-                        </Link>
+                      <div className="flex justify-center">
                         <Link href={`/platforms/google_analytics/kpis`}>
-                          <Button variant="outline">
-                            View Platform KPIs
+                          <Button>
+                            Manage Platform KPIs
                           </Button>
                         </Link>
                       </div>

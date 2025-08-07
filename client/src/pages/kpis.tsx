@@ -1,27 +1,43 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Plus, Target, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Edit, Trash2, BarChart3, LineChart, Zap } from "lucide-react";
+import { ArrowLeft, Plus, Target, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Edit, Trash2, BarChart3, LineChart, Zap, CalendarIcon, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertKPISchema, insertKPIProgressSchema } from "@shared/schema";
 import { z } from "zod";
+import { format } from "date-fns";
 import type { KPI, Campaign, KPIProgress } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
-const kpiFormSchema = insertKPISchema.extend({
-  targetValue: z.coerce.number().positive("Target value must be positive"),
-  currentValue: z.coerce.number().min(0, "Current value cannot be negative").optional(),
+const kpiFormSchema = z.object({
+  name: z.string().min(1, "KPI name is required"),
+  description: z.string().optional(),
+  unit: z.string().min(1, "Unit is required"),
+  targetValue: z.string().min(1, "Target value is required"),
+  currentValue: z.string().optional(),
+  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  status: z.enum(["tracking", "achieved", "at_risk", "critical"]).default("tracking"),
+  timeframe: z.enum(["daily", "weekly", "monthly", "quarterly"]).default("monthly"),
+  trackingPeriod: z.number().min(1).max(365).default(30),
+  rollingAverage: z.enum(["1day", "7day", "30day", "none"]).default("7day"),
+  targetDate: z.string().optional(),
+  alertThreshold: z.number().min(1).max(100).optional(),
+  alertsEnabled: z.boolean().default(true),
+  emailNotifications: z.boolean().default(false),
+  slackNotifications: z.boolean().default(false),
+  alertFrequency: z.enum(["immediate", "daily", "weekly"]).default("daily"),
 });
 
 const progressFormSchema = insertKPIProgressSchema.extend({
@@ -237,11 +253,20 @@ export default function KPIsPage() {
     defaultValues: {
       name: "",
       description: "",
-      targetValue: 0,
-      currentValue: 0,
       unit: "%",
+      targetValue: "",
+      currentValue: "",
       priority: "medium",
       status: "tracking",
+      timeframe: "monthly",
+      trackingPeriod: 30,
+      rollingAverage: "7day",
+      targetDate: "",
+      alertThreshold: 80,
+      alertsEnabled: true,
+      emailNotifications: false,
+      slackNotifications: false,
+      alertFrequency: "daily",
     },
   });
 
@@ -269,7 +294,7 @@ export default function KPIsPage() {
     kpiForm.setValue("name", preset.name);
     kpiForm.setValue("description", preset.description);
     kpiForm.setValue("unit", preset.unit);
-    kpiForm.setValue("targetValue", preset.defaultTarget);
+    kpiForm.setValue("targetValue", preset.defaultTarget.toString());
     kpiForm.setValue("priority", preset.priority);
   };
 
@@ -349,7 +374,11 @@ export default function KPIsPage() {
                     Add KPI
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl max-h-[75vh] overflow-y-auto p-4 !fixed !top-1/2 !left-1/2 !transform !-translate-x-1/2 !-translate-y-1/2 !z-[9999]">
+                  <DialogClose className="absolute right-4 top-4 rounded-full p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors z-[60]">
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Close</span>
+                  </DialogClose>
                   <DialogHeader>
                     <DialogTitle>Create New KPI</DialogTitle>
                     <DialogDescription>
@@ -379,128 +408,372 @@ export default function KPIsPage() {
                     </div>
 
                     <Form {...kpiForm}>
-                      <form onSubmit={kpiForm.handleSubmit(onCreateKPI)} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={kpiForm.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>KPI Name</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="e.g., ROI, ROAS, CTR" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                      <form onSubmit={kpiForm.handleSubmit(onCreateKPI)} className="space-y-6">
+                        {/* Basic Information */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Basic Information</h3>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={kpiForm.control}
+                              name="name"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>KPI Name *</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="e.g., ROI, ROAS, CTR" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={kpiForm.control}
+                              name="unit"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Unit *</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select unit" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="%">Percentage (%)</SelectItem>
+                                      <SelectItem value="$">Dollar ($)</SelectItem>
+                                      <SelectItem value="ratio">Ratio (X:1)</SelectItem>
+                                      <SelectItem value="count">Count</SelectItem>
+                                      <SelectItem value="seconds">Seconds</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                           
                           <FormField
                             control={kpiForm.control}
-                            name="unit"
+                            name="description"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Unit</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select unit" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="%">Percentage (%)</SelectItem>
-                                    <SelectItem value="$">Dollar ($)</SelectItem>
-                                    <SelectItem value="ratio">Ratio (X:1)</SelectItem>
-                                    <SelectItem value="count">Count</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Describe what this KPI measures and why it's important"
+                                    value={field.value || ""}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                  />
+                                </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
                         </div>
-                        
-                        <FormField
-                          control={kpiForm.control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Description</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Describe what this KPI measures and why it's important"
-                                  value={field.value || ""}
-                                  onChange={field.onChange}
-                                  onBlur={field.onBlur}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <div className="grid grid-cols-3 gap-4">
-                          <FormField
-                            control={kpiForm.control}
-                            name="targetValue"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Target Value</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    placeholder="Target goal"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+
+                        {/* Target and Priority */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Target & Priority</h3>
                           
-                          <FormField
-                            control={kpiForm.control}
-                            name="currentValue"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Current Value</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    placeholder="Current value"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={kpiForm.control}
-                            name="priority"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Priority</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                          <div className="grid grid-cols-3 gap-4">
+                            <FormField
+                              control={kpiForm.control}
+                              name="targetValue"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Target Value *</FormLabel>
                                   <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
+                                    <Input
+                                      placeholder="Target goal"
+                                      {...field}
+                                    />
                                   </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="low">Low</SelectItem>
-                                    <SelectItem value="medium">Medium</SelectItem>
-                                    <SelectItem value="high">High</SelectItem>
-                                    <SelectItem value="critical">Critical</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={kpiForm.control}
+                              name="currentValue"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Current Value</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Current value"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={kpiForm.control}
+                              name="priority"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Priority</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="low">Low</SelectItem>
+                                      <SelectItem value="medium">Medium</SelectItem>
+                                      <SelectItem value="high">High</SelectItem>
+                                      <SelectItem value="critical">Critical</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Time-Based Tracking */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Time-Based Tracking</h3>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={kpiForm.control}
+                              name="timeframe"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Timeframe</FormLabel>
+                                  <FormDescription>
+                                    How often should this KPI be reviewed?
+                                  </FormDescription>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="daily">Daily</SelectItem>
+                                      <SelectItem value="weekly">Weekly</SelectItem>
+                                      <SelectItem value="monthly">Monthly</SelectItem>
+                                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={kpiForm.control}
+                              name="trackingPeriod"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Tracking Period (days)</FormLabel>
+                                  <FormDescription>
+                                    How many days of data to track (1-365)
+                                  </FormDescription>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      max="365"
+                                      placeholder="30"
+                                      {...field}
+                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 30)}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={kpiForm.control}
+                              name="rollingAverage"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Rolling Average</FormLabel>
+                                  <FormDescription>
+                                    Calculate rolling averages to smooth trends
+                                  </FormDescription>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="1day">1-Day Average</SelectItem>
+                                      <SelectItem value="7day">7-Day Average</SelectItem>
+                                      <SelectItem value="30day">30-Day Average</SelectItem>
+                                      <SelectItem value="none">No Rolling Average</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={kpiForm.control}
+                              name="targetDate"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Target Date (optional)</FormLabel>
+                                  <FormDescription>
+                                    When should this target be achieved?
+                                  </FormDescription>
+                                  <FormControl>
+                                    <Input
+                                      type="date"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Alert Settings */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Alert Settings</h3>
+                          
+                          <FormField
+                            control={kpiForm.control}
+                            name="alertsEnabled"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">
+                                    Enable Alerts
+                                  </FormLabel>
+                                  <FormDescription>
+                                    Get notified when KPI performance changes significantly
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
                               </FormItem>
                             )}
                           />
+                          
+                          {kpiForm.watch("alertsEnabled") && (
+                            <div className="space-y-4 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                              <FormField
+                                control={kpiForm.control}
+                                name="alertThreshold"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Alert Threshold (%)</FormLabel>
+                                    <FormDescription>
+                                      Trigger alert when performance drops below this % of target
+                                    </FormDescription>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        placeholder="80"
+                                        {...field}
+                                        onChange={(e) => field.onChange(parseInt(e.target.value) || 80)}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <div className="grid grid-cols-1 gap-4">
+                                <FormField
+                                  control={kpiForm.control}
+                                  name="emailNotifications"
+                                  render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                                      <div className="space-y-0.5">
+                                        <FormLabel className="text-sm font-medium">
+                                          Email Notifications
+                                        </FormLabel>
+                                        <FormDescription className="text-xs">
+                                          Send alerts via email
+                                        </FormDescription>
+                                      </div>
+                                      <FormControl>
+                                        <Switch
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                                
+                                <FormField
+                                  control={kpiForm.control}
+                                  name="slackNotifications"
+                                  render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                                      <div className="space-y-0.5">
+                                        <FormLabel className="text-sm font-medium">
+                                          Slack Notifications
+                                        </FormLabel>
+                                        <FormDescription className="text-xs">
+                                          Send alerts to Slack
+                                        </FormDescription>
+                                      </div>
+                                      <FormControl>
+                                        <Switch
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              
+                              <FormField
+                                control={kpiForm.control}
+                                name="alertFrequency"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Alert Frequency</FormLabel>
+                                    <FormDescription>
+                                      How often should alerts be sent?
+                                    </FormDescription>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="immediate">Immediate</SelectItem>
+                                        <SelectItem value="daily">Daily Digest</SelectItem>
+                                        <SelectItem value="weekly">Weekly Summary</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          )}
                         </div>
                         
                         <div className="flex justify-end space-x-3 pt-4">

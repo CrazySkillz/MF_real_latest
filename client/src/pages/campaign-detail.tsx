@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -798,7 +798,7 @@ export default function CampaignDetail() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <Button 
                       variant="outline" 
                       className="flex items-center justify-start space-x-3 h-auto p-4"
@@ -828,6 +828,54 @@ export default function CampaignDetail() {
                       <div className="text-left">
                         <div className="font-medium">ROI Analysis</div>
                         <div className="text-xs text-muted-foreground">Revenue & costs breakdown</div>
+                      </div>
+                    </Button>
+
+                    <Button 
+                      variant="outline" 
+                      className="flex items-center justify-start space-x-3 h-auto p-4"
+                      onClick={() => {
+                        setReportType("standard");
+                        setSelectedTemplate("platform_comparison");
+                        setShowReportDialog(true);
+                      }}
+                    >
+                      <GitCompare className="w-5 h-5" />
+                      <div className="text-left">
+                        <div className="font-medium">Platform Comparison</div>
+                        <div className="text-xs text-muted-foreground">Compare platform performance</div>
+                      </div>
+                    </Button>
+
+                    <Button 
+                      variant="outline" 
+                      className="flex items-center justify-start space-x-3 h-auto p-4"
+                      onClick={() => {
+                        setReportType("standard");
+                        setSelectedTemplate("trend_analysis");
+                        setShowReportDialog(true);
+                      }}
+                    >
+                      <TrendingUp className="w-5 h-5" />
+                      <div className="text-left">
+                        <div className="font-medium">Trend Analysis Report</div>
+                        <div className="text-xs text-muted-foreground">Performance trends & insights</div>
+                      </div>
+                    </Button>
+
+                    <Button 
+                      variant="outline" 
+                      className="flex items-center justify-start space-x-3 h-auto p-4"
+                      onClick={() => {
+                        setReportType("standard");
+                        setSelectedTemplate("executive_summary");
+                        setShowReportDialog(true);
+                      }}
+                    >
+                      <Briefcase className="w-5 h-5" />
+                      <div className="text-left">
+                        <div className="font-medium">Executive Summary</div>
+                        <div className="text-xs text-muted-foreground">High-level strategic overview</div>
                       </div>
                     </Button>
                     

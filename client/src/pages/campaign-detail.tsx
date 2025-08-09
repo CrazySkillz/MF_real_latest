@@ -815,21 +815,18 @@ export default function CampaignDetail() {
                       </div>
                     </Button>
                     
-                    <Button 
-                      variant="outline" 
-                      className="flex items-center justify-start space-x-3 h-auto p-4"
-                      onClick={() => {
-                        setReportType("standard");
-                        setSelectedTemplate("roi_analysis");
-                        setShowReportDialog(true);
-                      }}
-                    >
-                      <DollarSign className="w-5 h-5" />
-                      <div className="text-left">
-                        <div className="font-medium">Budget & Financial Analysis</div>
-                        <div className="text-xs text-muted-foreground">ROI, ROAS, budget allocation & costs</div>
-                      </div>
-                    </Button>
+                    <Link href={`/campaigns/${campaign.id}/financial`}>
+                      <Button 
+                        variant="outline" 
+                        className="flex items-center justify-start space-x-3 h-auto p-4 w-full"
+                      >
+                        <DollarSign className="w-5 h-5" />
+                        <div className="text-left">
+                          <div className="font-medium">Budget & Financial Analysis</div>
+                          <div className="text-xs text-muted-foreground">ROI, ROAS, budget allocation & costs</div>
+                        </div>
+                      </Button>
+                    </Link>
 
                     <Button 
                       variant="outline" 

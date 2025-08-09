@@ -301,11 +301,11 @@ export default function CampaignDetail() {
     },
     {
       id: "roi_analysis",
-      name: "ROI Analysis Report",
-      description: "Detailed return on investment and revenue analysis",
+      name: "Budget & Financial Analysis",
+      description: "Comprehensive financial analysis including ROI, ROAS, cost analysis, revenue breakdown, and intelligent budget allocation insights",
       icon: <DollarSign className="w-4 h-4" />,
-      metrics: ["spend", "conversions", "revenue", "roas", "cpa", "roi"],
-      sections: ["financial_overview", "cost_analysis", "revenue_breakdown", "recommendations"]
+      metrics: ["spend", "conversions", "revenue", "roas", "cpa", "roi", "budget_allocation", "cost_efficiency"],
+      sections: ["financial_overview", "roi_roas_analysis", "cost_analysis", "revenue_breakdown", "budget_allocation", "recommendations"]
     },
     {
       id: "platform_comparison",
@@ -826,8 +826,8 @@ export default function CampaignDetail() {
                     >
                       <DollarSign className="w-5 h-5" />
                       <div className="text-left">
-                        <div className="font-medium">ROI Analysis</div>
-                        <div className="text-xs text-muted-foreground">Revenue & costs breakdown</div>
+                        <div className="font-medium">Budget & Financial Analysis</div>
+                        <div className="text-xs text-muted-foreground">ROI, ROAS, budget allocation & costs</div>
                       </div>
                     </Button>
 

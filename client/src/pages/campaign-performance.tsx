@@ -58,11 +58,19 @@ const topKeywords = [
 ];
 
 export default function CampaignPerformance() {
-  const { campaignId } = useParams();
+  const { id: campaignId } = useParams();
 
-  const { data: campaign, isLoading: campaignLoading } = useQuery({
+  const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
+  });
+
+  // Debug logging
+  console.log("Campaign Performance Debug:", { 
+    campaignId, 
+    campaign, 
+    isLoading: campaignLoading, 
+    error: campaignError 
   });
 
   const { data: ga4Data } = useQuery({
@@ -75,7 +83,7 @@ export default function CampaignPerformance() {
     enabled: !!campaignId,
   });
 
-  if (campaignLoading || !campaign) {
+  if (campaignLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
         <Navigation />
@@ -89,6 +97,42 @@ export default function CampaignPerformance() {
                   <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
                 ))}
               </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (campaignError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Navigation />
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1 p-8">
+            <div className="text-center py-8">
+              <h1 className="text-xl font-semibold text-red-600 mb-2">Error Loading Campaign</h1>
+              <p className="text-slate-600 dark:text-slate-400">{(campaignError as Error).message}</p>
+              <p className="text-sm text-slate-500 mt-2">Campaign ID: {campaignId}</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!campaign) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Navigation />
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1 p-8">
+            <div className="text-center py-8">
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Campaign Not Found</h1>
+              <p className="text-slate-600 dark:text-slate-400">The requested campaign could not be found.</p>
+              <p className="text-sm text-slate-500 mt-2">Campaign ID: {campaignId}</p>
             </div>
           </main>
         </div>

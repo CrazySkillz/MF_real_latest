@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -45,6 +45,432 @@ interface PlatformMetrics {
   spend: string;
   ctr: string;
   cpc: string;
+}
+
+// Benchmark Interface
+interface Benchmark {
+  id: string;
+  name: string;
+  description: string;
+  targetValue: number;
+  currentValue: number;
+  unit: string;
+  category: string;
+  industry: string;
+  period: string;
+  status: 'above' | 'below' | 'meeting';
+  improvement: number;
+  createdAt: Date;
+}
+
+// Campaign Benchmarks Component
+function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
+  const [benchmarks, setBenchmarks] = useState<Benchmark[]>([
+    {
+      id: '1',
+      name: 'Industry CTR Benchmark',
+      description: 'Click-through rate compared to industry average',
+      targetValue: 2.35,
+      currentValue: 2.84,
+      unit: '%',
+      category: 'Performance',
+      industry: 'Marketing & Advertising',
+      period: 'Monthly',
+      status: 'above',
+      improvement: 20.9,
+      createdAt: new Date('2025-01-01')
+    },
+    {
+      id: '2',
+      name: 'Conversion Rate Standard',
+      description: 'Conversion rate vs. industry benchmark',
+      targetValue: 3.2,
+      currentValue: 4.68,
+      unit: '%',
+      category: 'Conversion',
+      industry: 'E-commerce',
+      period: 'Quarterly',
+      status: 'above',
+      improvement: 46.3,
+      createdAt: new Date('2025-01-05')
+    },
+    {
+      id: '3',
+      name: 'Cost Per Acquisition',
+      description: 'CPA compared to industry standards',
+      targetValue: 25.00,
+      currentValue: 18.50,
+      unit: '$',
+      category: 'Cost',
+      industry: 'SaaS',
+      period: 'Monthly',
+      status: 'above',
+      improvement: 26.0,
+      createdAt: new Date('2025-01-10')
+    },
+    {
+      id: '4',
+      name: 'Return on Ad Spend',
+      description: 'ROAS vs. recommended benchmark',
+      targetValue: 4.0,
+      currentValue: 5.8,
+      unit: 'x',
+      category: 'Revenue',
+      industry: 'Multi-platform',
+      period: 'Weekly',
+      status: 'above',
+      improvement: 45.0,
+      createdAt: new Date('2025-01-15')
+    }
+  ]);
+
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newBenchmark, setNewBenchmark] = useState({
+    name: '',
+    description: '',
+    targetValue: '',
+    unit: '%',
+    category: 'Performance',
+    industry: 'Marketing & Advertising',
+    period: 'Monthly'
+  });
+
+  const handleCreateBenchmark = () => {
+    if (!newBenchmark.name || !newBenchmark.targetValue) return;
+
+    const benchmark: Benchmark = {
+      id: Date.now().toString(),
+      name: newBenchmark.name,
+      description: newBenchmark.description,
+      targetValue: parseFloat(newBenchmark.targetValue),
+      currentValue: 0, // Will be updated with actual data
+      unit: newBenchmark.unit,
+      category: newBenchmark.category,
+      industry: newBenchmark.industry,
+      period: newBenchmark.period,
+      status: 'below',
+      improvement: 0,
+      createdAt: new Date()
+    };
+
+    setBenchmarks(prev => [...prev, benchmark]);
+    setShowCreateDialog(false);
+    setNewBenchmark({
+      name: '',
+      description: '',
+      targetValue: '',
+      unit: '%',
+      category: 'Performance',
+      industry: 'Marketing & Advertising',
+      period: 'Monthly'
+    });
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'above':
+        return <CheckCircle2 className="w-5 h-5 text-green-600" />;
+      case 'below':
+        return <AlertCircle className="w-5 h-5 text-red-600" />;
+      case 'meeting':
+        return <Target className="w-5 h-5 text-blue-600" />;
+      default:
+        return <Clock className="w-5 h-5 text-slate-600" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'above':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'below':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      case 'meeting':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      default:
+        return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'Performance':
+        return <BarChart3 className="w-4 h-4" />;
+      case 'Conversion':
+        return <Target className="w-4 h-4" />;
+      case 'Cost':
+        return <DollarSign className="w-4 h-4" />;
+      case 'Revenue':
+        return <TrendingUp className="w-4 h-4" />;
+      default:
+        return <Award className="w-4 h-4" />;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Campaign Benchmarks</h2>
+          <p className="text-slate-600 dark:text-slate-400">
+            Track and compare your campaign performance against industry standards
+          </p>
+        </div>
+        <Button onClick={() => setShowCreateDialog(true)} className="flex items-center space-x-2">
+          <Plus className="w-4 h-4" />
+          <span>Add Benchmark</span>
+        </Button>
+      </div>
+
+      {/* Benchmark Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarks.length}</p>
+              </div>
+              <Award className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {benchmarks.filter(b => b.status === 'above').length}
+                </p>
+              </div>
+              <CheckCircle2 className="w-8 h-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {benchmarks.filter(b => b.status === 'below').length}
+                </p>
+              </div>
+              <AlertCircle className="w-8 h-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Improvement</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {(benchmarks.reduce((sum, b) => sum + b.improvement, 0) / benchmarks.length).toFixed(1)}%
+                </p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Benchmarks List */}
+      <div className="space-y-4">
+        {benchmarks.map((benchmark) => (
+          <Card key={benchmark.id}>
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3">
+                  <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    {getCategoryIcon(benchmark.category)}
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{benchmark.description}</p>
+                    <div className="flex items-center space-x-4 text-xs text-slate-500">
+                      <span>{benchmark.industry}</span>
+                      <span>•</span>
+                      <span>{benchmark.period}</span>
+                      <span>•</span>
+                      <span>Created {format(benchmark.createdAt, 'MMM dd, yyyy')}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <Badge className={getStatusColor(benchmark.status)}>
+                    {benchmark.status === 'above' ? 'Above Target' : 
+                     benchmark.status === 'below' ? 'Below Target' : 'Meeting Target'}
+                  </Badge>
+                  <Button variant="ghost" size="sm">
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-red-600">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-4">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current Value</div>
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">
+                    {benchmark.currentValue}{benchmark.unit}
+                  </div>
+                </div>
+                
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Target Value</div>
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">
+                    {benchmark.targetValue}{benchmark.unit}
+                  </div>
+                </div>
+                
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Improvement</div>
+                  <div className={`text-lg font-bold ${benchmark.improvement > 0 ? 'text-green-600' : benchmark.improvement < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}`}>
+                    {benchmark.improvement > 0 ? '+' : ''}{benchmark.improvement}%
+                  </div>
+                </div>
+                
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Status</div>
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(benchmark.status)}
+                    <span className="text-sm font-medium text-slate-900 dark:text-white capitalize">
+                      {benchmark.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Create Benchmark Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Benchmark</DialogTitle>
+            <DialogDescription>
+              Add a new benchmark to track your campaign performance
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="benchmark-name">Benchmark Name</Label>
+              <Input
+                id="benchmark-name"
+                placeholder="e.g., Industry CTR Benchmark"
+                value={newBenchmark.name}
+                onChange={(e) => setNewBenchmark(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="benchmark-description">Description</Label>
+              <Textarea
+                id="benchmark-description"
+                placeholder="Brief description of this benchmark"
+                value={newBenchmark.description}
+                onChange={(e) => setNewBenchmark(prev => ({ ...prev, description: e.target.value }))}
+                rows={2}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="target-value">Target Value</Label>
+                <Input
+                  id="target-value"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={newBenchmark.targetValue}
+                  onChange={(e) => setNewBenchmark(prev => ({ ...prev, targetValue: e.target.value }))}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="unit">Unit</Label>
+                <Select value={newBenchmark.unit} onValueChange={(value) => setNewBenchmark(prev => ({ ...prev, unit: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="%">Percentage (%)</SelectItem>
+                    <SelectItem value="$">Currency ($)</SelectItem>
+                    <SelectItem value="x">Multiplier (x)</SelectItem>
+                    <SelectItem value="count">Count</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Select value={newBenchmark.category} onValueChange={(value) => setNewBenchmark(prev => ({ ...prev, category: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Performance">Performance</SelectItem>
+                    <SelectItem value="Conversion">Conversion</SelectItem>
+                    <SelectItem value="Cost">Cost</SelectItem>
+                    <SelectItem value="Revenue">Revenue</SelectItem>
+                    <SelectItem value="Engagement">Engagement</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="period">Period</Label>
+                <Select value={newBenchmark.period} onValueChange={(value) => setNewBenchmark(prev => ({ ...prev, period: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Daily">Daily</SelectItem>
+                    <SelectItem value="Weekly">Weekly</SelectItem>
+                    <SelectItem value="Monthly">Monthly</SelectItem>
+                    <SelectItem value="Quarterly">Quarterly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="industry">Industry</Label>
+              <Input
+                id="industry"
+                placeholder="e.g., Marketing & Advertising"
+                value={newBenchmark.industry}
+                onChange={(e) => setNewBenchmark(prev => ({ ...prev, industry: e.target.value }))}
+              />
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateBenchmark}>
+              Create Benchmark
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
 
 // Campaign Chat Messages Interface
@@ -1030,9 +1456,10 @@ export default function CampaignDetail() {
 
           {/* Tabs Navigation */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
+              <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
             </TabsList>
 
@@ -1340,6 +1767,10 @@ export default function CampaignDetail() {
               </div>
 
 
+            </TabsContent>
+
+            <TabsContent value="benchmarks" className="space-y-6">
+              <CampaignBenchmarks campaign={campaign} />
             </TabsContent>
 
             <TabsContent value="insights" className="space-y-6">

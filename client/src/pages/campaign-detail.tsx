@@ -900,21 +900,18 @@ export default function CampaignDetail() {
                       </Button>
                     </Link>
 
-                    <Button 
-                      variant="outline" 
-                      className="flex items-center justify-start space-x-3 h-auto p-4"
-                      onClick={() => {
-                        setReportType("standard");
-                        setSelectedTemplate("platform_comparison");
-                        setShowReportDialog(true);
-                      }}
-                    >
-                      <GitCompare className="w-5 h-5" />
-                      <div className="text-left">
-                        <div className="font-medium">Platform Comparison</div>
-                        <div className="text-xs text-muted-foreground">Compare platform performance</div>
-                      </div>
-                    </Button>
+                    <Link href={`/campaigns/${campaign.id}/platform-comparison`}>
+                      <Button 
+                        variant="outline" 
+                        className="flex items-center justify-start space-x-3 h-auto p-4 w-full"
+                      >
+                        <GitCompare className="w-5 h-5" />
+                        <div className="text-left">
+                          <div className="font-medium">Platform Comparison</div>
+                          <div className="text-xs text-muted-foreground">Compare platform performance & insights</div>
+                        </div>
+                      </Button>
+                    </Link>
 
                     <Button 
                       variant="outline" 

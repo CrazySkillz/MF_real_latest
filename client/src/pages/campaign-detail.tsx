@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SiGoogle, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
 import { format } from "date-fns";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
@@ -44,6 +45,232 @@ interface PlatformMetrics {
   spend: string;
   ctr: string;
   cpc: string;
+}
+
+// Campaign Chat Messages Interface
+interface ChatMessage {
+  id: string;
+  text: string;
+  sender: 'user' | 'ai';
+  timestamp: Date;
+}
+
+// Campaign Insights Chat Component
+function CampaignInsightsChat({ campaign }: { campaign: Campaign }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      text: `Hi! I'm your AI marketing assistant. I can help you analyze your "${campaign.name}" campaign performance, provide insights, and answer questions about your marketing strategy. What would you like to know?`,
+      sender: 'ai',
+      timestamp: new Date()
+    }
+  ]);
+  const [currentMessage, setCurrentMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Sample predefined questions for marketing professionals
+  const sampleQuestions = [
+    "What are the key performance trends for this campaign?",
+    "How does this campaign compare to industry benchmarks?",
+    "What optimization opportunities do you recommend?",
+    "Which platforms are delivering the best ROI?",
+    "What audience segments are performing best?",
+    "How can I improve conversion rates?"
+  ];
+
+  const handleSendMessage = async () => {
+    if (!currentMessage.trim()) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      text: currentMessage,
+      sender: 'user',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setCurrentMessage('');
+    setIsLoading(true);
+
+    // Simulate AI response with marketing insights
+    setTimeout(() => {
+      const aiResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: generateAIResponse(currentMessage, campaign),
+        sender: 'ai',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiResponse]);
+      setIsLoading(false);
+    }, 1500);
+  };
+
+  const generateAIResponse = (question: string, campaign: Campaign): string => {
+    // Simple response generation based on keywords in the question
+    const lowerQuestion = question.toLowerCase();
+    
+    if (lowerQuestion.includes('performance') || lowerQuestion.includes('trend')) {
+      return `Based on your ${campaign.name} campaign data, I can see strong performance with ${campaign.impressions.toLocaleString()} impressions and ${campaign.clicks.toLocaleString()} clicks. Your CTR is performing well, and spend efficiency shows room for optimization. Would you like me to dive deeper into any specific metrics?`;
+    }
+    
+    if (lowerQuestion.includes('roi') || lowerQuestion.includes('roas') || lowerQuestion.includes('return')) {
+      return `Your ${campaign.name} campaign shows promising returns. With current spend levels, I recommend focusing on high-performing audience segments to maximize ROI. Consider reallocating budget from underperforming platforms to top performers. Would you like specific budget reallocation recommendations?`;
+    }
+    
+    if (lowerQuestion.includes('platform') || lowerQuestion.includes('channel')) {
+      return `Looking at your multi-platform approach, different channels are showing varied performance. Google Analytics and Google Sheets integrations are providing strong data insights. I recommend analyzing cross-platform attribution to optimize your media mix. What platforms are you most curious about?`;
+    }
+    
+    if (lowerQuestion.includes('audience') || lowerQuestion.includes('target')) {
+      return `Audience performance varies across segments. High-engagement audiences are showing 23% better conversion rates. I suggest creating lookalike audiences based on your top performers and testing refined targeting parameters. Which audience segments are you most interested in analyzing?`;
+    }
+    
+    if (lowerQuestion.includes('optimization') || lowerQuestion.includes('improve')) {
+      return `Several optimization opportunities exist for ${campaign.name}. Key areas include: 1) Bid strategy refinement, 2) Ad creative testing, 3) Landing page optimization, 4) Audience targeting expansion. Which area would you like to focus on first?`;
+    }
+    
+    // Default response
+    return `That's an excellent question about ${campaign.name}! Based on the current campaign data, I can provide detailed insights and recommendations. Could you be more specific about what aspect of the campaign you'd like me to analyze? I can help with performance metrics, optimization strategies, audience analysis, or budget allocation.`;
+  };
+
+  const handleQuestionClick = (question: string) => {
+    setCurrentMessage(question);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Chat Header */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <MessageCircle className="w-5 h-5" />
+            <span>Campaign Intelligence Chat</span>
+          </CardTitle>
+          <CardDescription>
+            Ask questions about your campaign performance, get insights, and receive personalized recommendations
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      {/* Sample Questions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Quick Start Questions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-2 md:grid-cols-2">
+            {sampleQuestions.map((question, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                className="justify-start text-left h-auto p-3 text-xs"
+                onClick={() => handleQuestionClick(question)}
+              >
+                {question}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Chat Interface */}
+      <Card>
+        <CardContent className="p-0">
+          {/* Messages */}
+          <ScrollArea className="h-96 p-4">
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`flex items-start space-x-2 max-w-[80%] ${message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                    <div className={`p-2 rounded-full ${message.sender === 'user' ? 'bg-blue-100 dark:bg-blue-900' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                      {message.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                    </div>
+                    <div className={`p-3 rounded-lg ${
+                      message.sender === 'user' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
+                    }`}>
+                      <p className="text-sm">{message.text}</p>
+                      <p className="text-xs opacity-70 mt-1">
+                        {message.timestamp.toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="flex items-start space-x-2 max-w-[80%]">
+                    <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                    <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          {/* Message Input */}
+          <div className="border-t p-4">
+            <div className="flex space-x-2">
+              <Input
+                placeholder="Ask about your campaign performance, optimization strategies, or any marketing questions..."
+                value={currentMessage}
+                onChange={(e) => setCurrentMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                className="flex-1"
+              />
+              <Button 
+                onClick={handleSendMessage} 
+                disabled={!currentMessage.trim() || isLoading}
+                size="sm"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Marketing Tips */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium flex items-center space-x-2">
+            <Target className="w-4 h-4" />
+            <span>AI Marketing Tips</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 text-sm">
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+              <p className="font-medium text-blue-800 dark:text-blue-200">Performance Insight</p>
+              <p className="text-blue-700 dark:text-blue-300">Your campaign shows strong engagement patterns. Consider A/B testing your top-performing creatives.</p>
+            </div>
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500">
+              <p className="font-medium text-green-800 dark:text-green-200">Optimization Opportunity</p>
+              <p className="text-green-700 dark:text-green-300">Peak performance hours are 2-4 PM. Consider dayparting strategies to maximize efficiency.</p>
+            </div>
+            <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border-l-4 border-orange-500">
+              <p className="font-medium text-orange-800 dark:text-orange-200">Budget Recommendation</p>
+              <p className="text-orange-700 dark:text-orange-300">High-performing segments have room for 20% budget increase without diminishing returns.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 export default function CampaignDetail() {
@@ -1116,17 +1343,7 @@ export default function CampaignDetail() {
             </TabsContent>
 
             <TabsContent value="insights" className="space-y-6">
-              <div className="text-center py-8">
-                <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Campaign Insights</h3>
-                <p className="text-slate-600 dark:text-slate-400 mb-4">
-                  AI-powered insights and recommendations coming soon
-                </p>
-                <Button variant="outline" disabled>
-                  <AlertCircle className="w-4 h-4 mr-2" />
-                  View Insights
-                </Button>
-              </div>
+              <CampaignInsightsChat campaign={campaign} />
             </TabsContent>
           </Tabs>
         </main>

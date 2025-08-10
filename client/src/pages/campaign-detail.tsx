@@ -913,21 +913,18 @@ export default function CampaignDetail() {
                       </Button>
                     </Link>
 
-                    <Button 
-                      variant="outline" 
-                      className="flex items-center justify-start space-x-3 h-auto p-4"
-                      onClick={() => {
-                        setReportType("standard");
-                        setSelectedTemplate("trend_analysis");
-                        setShowReportDialog(true);
-                      }}
-                    >
-                      <TrendingUp className="w-5 h-5" />
-                      <div className="text-left">
-                        <div className="font-medium">Trend Analysis Report</div>
-                        <div className="text-xs text-muted-foreground">Performance trends & insights</div>
-                      </div>
-                    </Button>
+                    <Link href={`/campaigns/${campaign.id}/trend-analysis`}>
+                      <Button 
+                        variant="outline" 
+                        className="flex items-center justify-start space-x-3 h-auto p-4 w-full"
+                      >
+                        <TrendingUp className="w-5 h-5" />
+                        <div className="text-left">
+                          <div className="font-medium">Trend Analysis Report</div>
+                          <div className="text-xs text-muted-foreground">Industry trend comparison & insights</div>
+                        </div>
+                      </Button>
+                    </Link>
 
                     <Button 
                       variant="outline" 

@@ -1243,6 +1243,7 @@ export default function CampaignDetail() {
   const [customReportName, setCustomReportName] = useState("");
   const [reportDescription, setReportDescription] = useState("");
   const [includeKPIs, setIncludeKPIs] = useState(false);
+  const [includeBenchmarks, setIncludeBenchmarks] = useState(false);
 
 
 
@@ -1361,6 +1362,42 @@ export default function CampaignDetail() {
   // Report generation functions
   const generateReport = async () => {
     try {
+      // Mock benchmark data (would be fetched from API in production)
+      const mockBenchmarks = [
+        {
+          name: 'Industry CTR Benchmark',
+          currentValue: '2.84%',
+          targetValue: '2.35%',
+          status: 'Above Target',
+          category: 'Performance',
+          industry: 'Marketing & Advertising'
+        },
+        {
+          name: 'Conversion Rate Standard',
+          currentValue: '4.68%',
+          targetValue: '3.20%',
+          status: 'Above Target',
+          category: 'Conversion',
+          industry: 'E-commerce'
+        },
+        {
+          name: 'Cost Per Acquisition',
+          currentValue: '$18.50',
+          targetValue: '$25.00',
+          status: 'Above Target',
+          category: 'Cost',
+          industry: 'SaaS'
+        },
+        {
+          name: 'Return on Ad Spend',
+          currentValue: '5.8x',
+          targetValue: '4.0x',
+          status: 'Above Target',
+          category: 'Revenue',
+          industry: 'Multi-platform'
+        }
+      ];
+
       const reportData = {
         campaignId: campaign?.id,
         campaignName: campaign?.name,
@@ -1374,6 +1411,8 @@ export default function CampaignDetail() {
         platforms: connectedPlatforms.map(p => p.platform),
         includeKPIs,
         kpis: includeKPIs ? campaignKPIs : [],
+        includeBenchmarks,
+        benchmarks: includeBenchmarks ? mockBenchmarks : [],
         generatedAt: new Date().toISOString(),
         summary: {
           totalImpressions,
@@ -1426,6 +1465,15 @@ export default function CampaignDetail() {
           csvContent += `${kpi.name || ''},${kpi.currentValue || ''},${kpi.targetValue || ''},${progress},${kpi.status || 'Active'},${kpi.priority || 'Medium'}\n`;
         });
       }
+
+      // Add benchmark data if included
+      if (includeBenchmarks && data.benchmarks && data.benchmarks.length > 0) {
+        csvContent += "\n\nBenchmark Data\n";
+        csvContent += "Benchmark Name,Current Value,Target Value,Status,Category,Industry\n";
+        data.benchmarks.forEach((benchmark: any) => {
+          csvContent += `${benchmark.name},${benchmark.currentValue},${benchmark.targetValue},${benchmark.status},${benchmark.category},${benchmark.industry}\n`;
+        });
+      }
       
       content = csvContent;
       mimeType = "text/csv";
@@ -1442,6 +1490,14 @@ export default function CampaignDetail() {
             ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) + '%' : 'N/A',
           status: kpi.status || 'Active',
           priority: kpi.priority || 'Medium'
+        })) : [],
+        benchmarkData: includeBenchmarks && data.benchmarks ? data.benchmarks.map((benchmark: any) => ({
+          name: benchmark.name,
+          currentValue: benchmark.currentValue,
+          targetValue: benchmark.targetValue,
+          status: benchmark.status,
+          category: benchmark.category,
+          industry: benchmark.industry
         })) : []
       };
       content = "Campaign Report\n\n" + JSON.stringify(reportData, null, 2);
@@ -1474,6 +1530,16 @@ export default function CampaignDetail() {
         });
       }
 
+      // Add benchmark data if included
+      if (includeBenchmarks && data.benchmarks && data.benchmarks.length > 0) {
+        content += `\n\nCampaign Benchmarks:\n`;
+        data.benchmarks.forEach((benchmark: any) => {
+          content += `${benchmark.name}: ${benchmark.currentValue} vs ${benchmark.targetValue} target\n`;
+          content += `  Status: ${benchmark.status} | Category: ${benchmark.category} | Industry: ${benchmark.industry}\n`;
+          content += `\n`;
+        });
+      }
+
       mimeType = "text/plain";
       fileName += ".txt";
     }
@@ -1499,6 +1565,7 @@ export default function CampaignDetail() {
     setReportDateRange("30d");
     setReportFormat("pdf");
     setIncludeKPIs(false);
+    setIncludeBenchmarks(false);
   };
 
   const handleMetricToggle = (metricId: string) => {
@@ -1729,21 +1796,39 @@ export default function CampaignDetail() {
                       {/* Additional Options */}
                       <div className="pt-4 border-t">
                         <Label className="text-base font-medium mb-3 block">Include Additional Data</Label>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="include-kpis" 
-                            checked={includeKPIs}
-                            onCheckedChange={(checked) => setIncludeKPIs(checked as boolean)}
-                          />
-                          <Label htmlFor="include-kpis" className="text-sm">
-                            Include Campaign KPIs{campaignKPIs && campaignKPIs.length > 0 ? ` (${campaignKPIs.length} available)` : ''}
-                          </Label>
-                        </div>
-                        {includeKPIs && campaignKPIs && campaignKPIs.length > 0 && (
-                          <div className="mt-2 ml-6 text-xs text-muted-foreground">
-                            KPI data will be included showing targets, progress, and performance trends
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox 
+                              id="include-kpis" 
+                              checked={includeKPIs}
+                              onCheckedChange={(checked) => setIncludeKPIs(checked as boolean)}
+                            />
+                            <Label htmlFor="include-kpis" className="text-sm">
+                              Include Campaign KPIs{campaignKPIs && campaignKPIs.length > 0 ? ` (${campaignKPIs.length} available)` : ''}
+                            </Label>
                           </div>
-                        )}
+                          {includeKPIs && campaignKPIs && campaignKPIs.length > 0 && (
+                            <div className="ml-6 text-xs text-muted-foreground">
+                              KPI data will be included showing targets, progress, and performance trends
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center space-x-2">
+                            <Checkbox 
+                              id="include-benchmarks" 
+                              checked={includeBenchmarks}
+                              onCheckedChange={(checked) => setIncludeBenchmarks(checked as boolean)}
+                            />
+                            <Label htmlFor="include-benchmarks" className="text-sm">
+                              Include Campaign Benchmarks (4 available)
+                            </Label>
+                          </div>
+                          {includeBenchmarks && (
+                            <div className="ml-6 text-xs text-muted-foreground">
+                              Benchmark data will be included showing industry comparisons and performance standards
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Preview Section */}

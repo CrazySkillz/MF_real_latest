@@ -254,6 +254,7 @@ export default function CampaignDetail() {
   const [kpiReportFormat, setKPIReportFormat] = useState<"pdf" | "csv" | "xlsx">("pdf");
   const [kpiReportDateRange, setKPIReportDateRange] = useState("30d");
 
+
   if (campaignLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -1209,21 +1210,20 @@ export default function CampaignDetail() {
                 <p className="text-slate-600 dark:text-slate-400 mb-6">
                   Track and manage key performance indicators for this campaign
                 </p>
-                <div className="flex items-center justify-center space-x-4">
+                <div className="flex flex-col items-center space-y-4">
                   <Link href={`/campaigns/${campaign.id}/kpis`}>
                     <Button>
                       <Target className="w-4 h-4 mr-2" />
                       Manage Campaign KPIs
                     </Button>
                   </Link>
-                  <Button 
-                    variant="outline"
+                  <button 
+                    className="text-blue-600 hover:text-blue-800 underline text-sm"
                     onClick={() => setShowKPIReportDialog(true)}
                     disabled={!campaignKPIs || campaignKPIs.length === 0}
                   >
-                    <FileText className="w-4 h-4 mr-2" />
                     Generate Campaign KPIs Report
-                  </Button>
+                  </button>
                 </div>
                 {(!campaignKPIs || campaignKPIs.length === 0) && (
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">

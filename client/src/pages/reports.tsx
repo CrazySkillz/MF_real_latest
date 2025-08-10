@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
   Edit
 } from "lucide-react";
 import { format } from "date-fns";
+import { reportStorage, type StoredReport } from "@/lib/reportStorage";
 
 export default function Reports() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -36,6 +37,34 @@ export default function Reports() {
   const [scheduleDay, setScheduleDay] = useState("monday");
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [recipients, setRecipients] = useState("");
+  const [storedReports, setStoredReports] = useState<StoredReport[]>([]);
+  const [reportHistory, setReportHistory] = useState<StoredReport[]>([]);
+
+  // Load reports from storage
+  useEffect(() => {
+    const loadReports = () => {
+      const allReports = reportStorage.getReports();
+      const scheduled = allReports.filter(r => r.status === 'Scheduled');
+      const history = allReports.filter(r => r.status === 'Generated');
+      
+      setStoredReports(scheduled);
+      setReportHistory(history);
+    };
+    
+    loadReports();
+    
+    // Listen for storage changes (when reports are added from other components)
+    const handleStorageChange = () => loadReports();
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom events from same page
+    window.addEventListener('reportAdded', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('reportAdded', handleStorageChange);
+    };
+  }, []);
 
   // Mock data for existing reports
   const scheduledReports = [
@@ -102,23 +131,34 @@ export default function Reports() {
   };
 
   const createReport = () => {
-    // In production, this would create the scheduled report
-    console.log("Creating report:", {
+    // Save the created report to storage
+    const newReport = reportStorage.addReport({
       name: reportName,
       type: reportType,
-      description: reportDescription,
-      campaigns: selectedCampaigns,
+      status: scheduleEnabled ? 'Scheduled' : 'Generated',
+      generatedAt: new Date(),
+      format: 'PDF', // Default format
+      includeKPIs: false,
+      includeBenchmarks: false,
       schedule: scheduleEnabled ? {
         frequency: scheduleFrequency,
         day: scheduleDay,
-        time: scheduleTime
-      } : null,
-      recipients: recipients.split(',').map(email => email.trim()).filter(email => email)
+        time: scheduleTime,
+        recipients: recipients.split(',').map(email => email.trim()).filter(email => email)
+      } : null
     });
+    
+    // Refresh the reports list
+    const allReports = reportStorage.getReports();
+    const scheduled = allReports.filter(r => r.status === 'Scheduled');
+    const history = allReports.filter(r => r.status === 'Generated');
+    
+    setStoredReports(scheduled);
+    setReportHistory(history);
     
     setShowCreateDialog(false);
     resetForm();
-    alert("Scheduled report created successfully!");
+    alert(`${scheduleEnabled ? 'Scheduled' : 'Generated'} report created successfully!`);
   };
 
   return (
@@ -294,6 +334,7 @@ export default function Reports() {
 
               <TabsContent value="scheduled" className="space-y-6">
                 <div className="grid gap-6">
+                  {/* Mock scheduled reports (for demo) */}
                   {scheduledReports.map((report) => (
                     <Card key={report.id}>
                       <CardHeader>
@@ -385,21 +426,174 @@ export default function Reports() {
                       </CardContent>
                     </Card>
                   ))}
+                  
+                  {/* Dynamically created scheduled reports */}
+                  {storedReports.filter(r => r.status === 'Scheduled').map((report) => (
+                    <Card key={report.id}>
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <CardTitle className="text-lg">{report.name}</CardTitle>
+                            <div className="flex items-center space-x-4 text-sm text-slate-600 dark:text-slate-400">
+                              <div className="flex items-center space-x-1">
+                                <FileText className="w-4 h-4" />
+                                <span>{report.type}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Calendar className="w-4 h-4" />
+                                <span>{report.schedule?.frequency || 'Unknown'}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Mail className="w-4 h-4" />
+                                <span>{report.schedule?.recipients.length || 0} recipient(s)</span>
+                              </div>
+                              {report.campaignName && (
+                                <div className="flex items-center space-x-1">
+                                  <span>Campaign: {report.campaignName}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                              {report.status}
+                            </Badge>
+                            <Button variant="ghost" size="sm">
+                              <Settings className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <span className="font-medium text-slate-900 dark:text-white">Created:</span>
+                              <div className="text-slate-600 dark:text-slate-400">
+                                {format(report.generatedAt, "MMM d, yyyy 'at' h:mm a")}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-medium text-slate-900 dark:text-white">Schedule:</span>
+                              <div className="text-slate-600 dark:text-slate-400">
+                                {report.schedule ? `${report.schedule.frequency} at ${report.schedule.time}` : 'Not scheduled'}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-medium text-slate-900 dark:text-white">Format:</span>
+                              <div className="text-slate-600 dark:text-slate-400">{report.format}</div>
+                            </div>
+                            <div>
+                              <span className="font-medium text-slate-900 dark:text-white">Data Included:</span>
+                              <div className="text-slate-600 dark:text-slate-400">
+                                {report.includeKPIs || report.includeBenchmarks 
+                                  ? `${report.includeKPIs ? 'KPIs' : ''}${report.includeKPIs && report.includeBenchmarks ? ', ' : ''}${report.includeBenchmarks ? 'Benchmarks' : ''}`
+                                  : 'Standard metrics'}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between pt-4 border-t">
+                            <div className="flex items-center space-x-2">
+                              <Button variant="outline" size="sm">
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </Button>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button variant="outline" size="sm">
+                                <Pause className="w-4 h-4 mr-2" />
+                                Pause
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => {
+                                  reportStorage.deleteReport(report.id);
+                                  const allReports = reportStorage.getReports();
+                                  setStoredReports(allReports.filter(r => r.status === 'Scheduled'));
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               </TabsContent>
 
               <TabsContent value="history">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Report History</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-                      <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Historical reports will appear here once generated</p>
+                <div className="space-y-6">
+                  {reportHistory.length === 0 ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Report History</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                          <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>Generated reports will appear here. Create reports from campaign pages or schedule them above.</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-4">
+                      {reportHistory.map((report) => (
+                        <Card key={report.id}>
+                          <CardContent className="pt-6">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <h3 className="font-semibold">{report.name}</h3>
+                                <div className="flex items-center space-x-4 text-sm text-slate-600 dark:text-slate-400">
+                                  <span>{report.type}</span>
+                                  <span>{report.format}</span>
+                                  {report.size && <span>{report.size}</span>}
+                                  {report.campaignName && <span>Campaign: {report.campaignName}</span>}
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                  Generated on {format(report.generatedAt, "MMM d, yyyy 'at' h:mm a")}
+                                </div>
+                                {(report.includeKPIs || report.includeBenchmarks) && (
+                                  <div className="text-xs text-primary">
+                                    Includes: {report.includeKPIs ? 'KPIs' : ''}
+                                    {report.includeKPIs && report.includeBenchmarks ? ', ' : ''}
+                                    {report.includeBenchmarks ? 'Benchmarks' : ''}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                  {report.status}
+                                </Badge>
+                                <Button variant="outline" size="sm">
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Download
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => {
+                                    reportStorage.deleteReport(report.id);
+                                    const allReports = reportStorage.getReports();
+                                    setReportHistory(allReports.filter(r => r.status === 'Generated'));
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                  </CardContent>
-                </Card>
+                  )}
+                </div>
               </TabsContent>
 
               <TabsContent value="templates">

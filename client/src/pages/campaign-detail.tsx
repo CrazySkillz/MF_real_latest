@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SiGoogle, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
 import { format } from "date-fns";
+import { reportStorage } from "@/lib/reportStorage";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
 
@@ -1437,17 +1438,61 @@ export default function CampaignDetail() {
       };
 
       if (enableScheduling) {
-        // For scheduled reports, we would save the schedule configuration to the backend
-        // For now, we'll simulate this and still generate the report
-        console.log('Scheduled report configuration:', reportData.schedule);
-        // In a real app, this would be a POST request to save the schedule
-        // await apiRequest('/api/scheduled-reports', { method: 'POST', body: reportData });
+        // Save scheduled report to storage
+        const savedReport = reportStorage.addReport({
+          name: reportType === "standard" ? 
+            STANDARD_TEMPLATES.find(t => t.id === selectedTemplate)?.name || "Scheduled Report" : 
+            customReportName,
+          type: reportType === "standard" ? 
+            STANDARD_TEMPLATES.find(t => t.id === selectedTemplate)?.name || "Custom" : 
+            "Custom",
+          status: 'Scheduled',
+          campaignId: campaign?.id,
+          campaignName: campaign?.name,
+          generatedAt: new Date(),
+          format: reportFormat.toUpperCase(),
+          includeKPIs,
+          includeBenchmarks,
+          schedule: {
+            frequency: scheduleFrequency,
+            day: scheduleDay,
+            time: scheduleTime,
+            recipients: reportData.schedule?.recipients || []
+          }
+        });
         
-        // Show success message for scheduling
-        alert(`Report scheduled successfully! Reports will be generated ${scheduleFrequency} and sent to ${reportData.schedule?.recipients.length} recipient(s).`);
+        console.log('Scheduled report saved:', savedReport);
+        
+        // Trigger custom event to refresh Reports page if it's open
+        window.dispatchEvent(new CustomEvent('reportAdded'));
+        
+        alert(`Report scheduled successfully! Reports will be generated ${scheduleFrequency} and sent to ${reportData.schedule?.recipients.length} recipient(s). View all reports in the Reports section.`);
       } else {
+        // Save generated report to storage
+        const savedReport = reportStorage.addReport({
+          name: reportType === "standard" ? 
+            STANDARD_TEMPLATES.find(t => t.id === selectedTemplate)?.name || "Campaign Report" : 
+            customReportName,
+          type: reportType === "standard" ? 
+            STANDARD_TEMPLATES.find(t => t.id === selectedTemplate)?.name || "Custom" : 
+            "Custom",
+          status: 'Generated',
+          campaignId: campaign?.id,
+          campaignName: campaign?.name,
+          generatedAt: new Date(),
+          format: reportFormat.toUpperCase(),
+          size: reportFormat === "csv" ? "~15KB" : reportFormat === "xlsx" ? "~25KB" : "~45KB",
+          includeKPIs,
+          includeBenchmarks
+        });
+        
         // Download the report immediately
         downloadReport(reportData, reportFormat);
+        
+        console.log('Generated report saved:', savedReport);
+        
+        // Trigger custom event to refresh Reports page if it's open
+        window.dispatchEvent(new CustomEvent('reportAdded'));
       }
       setShowReportDialog(false);
       

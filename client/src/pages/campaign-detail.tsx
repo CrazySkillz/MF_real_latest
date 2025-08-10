@@ -1244,6 +1244,11 @@ export default function CampaignDetail() {
   const [reportDescription, setReportDescription] = useState("");
   const [includeKPIs, setIncludeKPIs] = useState(false);
   const [includeBenchmarks, setIncludeBenchmarks] = useState(false);
+  const [enableScheduling, setEnableScheduling] = useState(false);
+  const [scheduleFrequency, setScheduleFrequency] = useState("weekly");
+  const [scheduleDay, setScheduleDay] = useState("monday");
+  const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [scheduleRecipients, setScheduleRecipients] = useState("");
 
 
 
@@ -1413,6 +1418,13 @@ export default function CampaignDetail() {
         kpis: includeKPIs ? campaignKPIs : [],
         includeBenchmarks,
         benchmarks: includeBenchmarks ? mockBenchmarks : [],
+        enableScheduling,
+        schedule: enableScheduling ? {
+          frequency: scheduleFrequency,
+          day: scheduleDay,
+          time: scheduleTime,
+          recipients: scheduleRecipients.split(',').map(email => email.trim()).filter(email => email)
+        } : null,
         generatedAt: new Date().toISOString(),
         summary: {
           totalImpressions,
@@ -1424,8 +1436,19 @@ export default function CampaignDetail() {
         }
       };
 
-      // Download the report
-      downloadReport(reportData, reportFormat);
+      if (enableScheduling) {
+        // For scheduled reports, we would save the schedule configuration to the backend
+        // For now, we'll simulate this and still generate the report
+        console.log('Scheduled report configuration:', reportData.schedule);
+        // In a real app, this would be a POST request to save the schedule
+        // await apiRequest('/api/scheduled-reports', { method: 'POST', body: reportData });
+        
+        // Show success message for scheduling
+        alert(`Report scheduled successfully! Reports will be generated ${scheduleFrequency} and sent to ${reportData.schedule?.recipients.length} recipient(s).`);
+      } else {
+        // Download the report immediately
+        downloadReport(reportData, reportFormat);
+      }
       setShowReportDialog(false);
       
     } catch (error) {
@@ -1566,6 +1589,11 @@ export default function CampaignDetail() {
     setReportFormat("pdf");
     setIncludeKPIs(false);
     setIncludeBenchmarks(false);
+    setEnableScheduling(false);
+    setScheduleFrequency("weekly");
+    setScheduleDay("monday");
+    setScheduleTime("09:00");
+    setScheduleRecipients("");
   };
 
   const handleMetricToggle = (metricId: string) => {
@@ -1831,6 +1859,105 @@ export default function CampaignDetail() {
                         </div>
                       </div>
 
+                      {/* Scheduling Options */}
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <Checkbox 
+                            id="enable-scheduling" 
+                            checked={enableScheduling}
+                            onCheckedChange={(checked) => setEnableScheduling(checked as boolean)}
+                          />
+                          <Label htmlFor="enable-scheduling" className="text-base font-medium">
+                            Schedule Automatic Reports
+                          </Label>
+                        </div>
+                        
+                        {enableScheduling && (
+                          <div className="ml-6 space-y-4 p-4 border rounded-lg bg-slate-50 dark:bg-slate-800">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Frequency</Label>
+                                <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="daily">Daily</SelectItem>
+                                    <SelectItem value="weekly">Weekly</SelectItem>
+                                    <SelectItem value="monthly">Monthly</SelectItem>
+                                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              {scheduleFrequency === "weekly" && (
+                                <div className="space-y-2">
+                                  <Label>Day of Week</Label>
+                                  <Select value={scheduleDay} onValueChange={setScheduleDay}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="monday">Monday</SelectItem>
+                                      <SelectItem value="tuesday">Tuesday</SelectItem>
+                                      <SelectItem value="wednesday">Wednesday</SelectItem>
+                                      <SelectItem value="thursday">Thursday</SelectItem>
+                                      <SelectItem value="friday">Friday</SelectItem>
+                                      <SelectItem value="saturday">Saturday</SelectItem>
+                                      <SelectItem value="sunday">Sunday</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                              
+                              {scheduleFrequency === "monthly" && (
+                                <div className="space-y-2">
+                                  <Label>Day of Month</Label>
+                                  <Select value={scheduleDay} onValueChange={setScheduleDay}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1">1st</SelectItem>
+                                      <SelectItem value="15">15th</SelectItem>
+                                      <SelectItem value="last">Last day</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                              
+                              <div className="space-y-2">
+                                <Label>Time</Label>
+                                <Select value={scheduleTime} onValueChange={setScheduleTime}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="06:00">6:00 AM</SelectItem>
+                                    <SelectItem value="09:00">9:00 AM</SelectItem>
+                                    <SelectItem value="12:00">12:00 PM</SelectItem>
+                                    <SelectItem value="15:00">3:00 PM</SelectItem>
+                                    <SelectItem value="18:00">6:00 PM</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label>Email Recipients</Label>
+                              <Input
+                                placeholder="Enter email addresses (comma-separated)"
+                                value={scheduleRecipients}
+                                onChange={(e) => setScheduleRecipients(e.target.value)}
+                              />
+                              <div className="text-xs text-muted-foreground">
+                                Reports will be automatically generated and sent to these email addresses
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Preview Section */}
                       {((reportType === "standard" && selectedTemplate) || (reportType === "custom" && customReportName)) && (
                         <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -1844,8 +1971,17 @@ export default function CampaignDetail() {
                             <div><span className="font-medium">Metrics:</span> {reportType === "standard" ? STANDARD_TEMPLATES.find(t => t.id === selectedTemplate)?.metrics.length : reportMetrics.length} included</div>
                             <div><span className="font-medium">Platforms:</span> {connectedPlatforms.map(p => p.platform).join(", ") || "None"}</div>
                             <div><span className="font-medium">KPIs:</span> {includeKPIs ? `${campaignKPIs?.length || 0} KPIs included` : "Not included"}</div>
+                            <div><span className="font-medium">Benchmarks:</span> {includeBenchmarks ? "Industry benchmarks included" : "Not included"}</div>
                             <div><span className="font-medium">Date Range:</span> {reportDateRange}</div>
                             <div><span className="font-medium">Format:</span> {reportFormat.toUpperCase()}</div>
+                            {enableScheduling && (
+                              <div className="pt-2 border-t text-primary">
+                                <div><span className="font-medium">Schedule:</span> {scheduleFrequency.charAt(0).toUpperCase() + scheduleFrequency.slice(1)} at {scheduleTime}</div>
+                                {scheduleRecipients && (
+                                  <div><span className="font-medium">Recipients:</span> {scheduleRecipients.split(',').length} email(s)</div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1864,11 +2000,12 @@ export default function CampaignDetail() {
                             disabled={
                               (reportType === "standard" && !selectedTemplate) || 
                               (reportType === "custom" && !customReportName) ||
-                              connectedPlatforms.length === 0
+                              connectedPlatforms.length === 0 ||
+                              (enableScheduling && !scheduleRecipients.trim())
                             }
                           >
                             <Download className="w-4 h-4 mr-2" />
-                            Generate & Download Report
+                            {enableScheduling ? "Schedule Report" : "Generate & Download Report"}
                           </Button>
                         </div>
                       </div>

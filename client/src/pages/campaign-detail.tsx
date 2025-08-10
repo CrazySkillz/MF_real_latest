@@ -874,21 +874,18 @@ export default function CampaignDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <Button 
-                      variant="outline" 
-                      className="flex items-center justify-start space-x-3 h-auto p-4"
-                      onClick={() => {
-                        setReportType("standard");
-                        setSelectedTemplate("performance_summary");
-                        setShowReportDialog(true);
-                      }}
-                    >
-                      <BarChart3 className="w-5 h-5" />
-                      <div className="text-left">
-                        <div className="font-medium">Performance Summary</div>
-                        <div className="text-xs text-muted-foreground">Comprehensive overview</div>
-                      </div>
-                    </Button>
+                    <Link href={`/campaigns/${campaign.id}/performance`}>
+                      <Button 
+                        variant="outline" 
+                        className="flex items-center justify-start space-x-3 h-auto p-4 w-full"
+                      >
+                        <BarChart3 className="w-5 h-5" />
+                        <div className="text-left">
+                          <div className="font-medium">Performance Summary</div>
+                          <div className="text-xs text-muted-foreground">Comprehensive overview & insights</div>
+                        </div>
+                      </Button>
+                    </Link>
                     
                     <Link href={`/campaigns/${campaign.id}/financial`}>
                       <Button 

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import Campaigns from "@/pages/campaigns";
 import CampaignDetail from "@/pages/campaign-detail";
+import CampaignPerformance from "@/pages/campaign-performance";
 import FinancialAnalysis from "@/pages/financial-analysis";
 import GA4Metrics from "@/pages/ga4-metrics";
 import GoogleSheetsData from "@/pages/google-sheets-data";
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/campaigns" component={Campaigns} />
       <Route path="/campaigns/:id" component={CampaignDetail} />
+      <Route path="/campaigns/:id/performance" component={CampaignPerformance} />
       <Route path="/campaigns/:id/financial" component={FinancialAnalysis} />
       <Route path="/campaigns/:id/ga4-metrics" component={GA4Metrics} />
       <Route path="/campaigns/:id/google-sheets-data" component={GoogleSheetsData} />

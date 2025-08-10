@@ -739,7 +739,7 @@ export default function CampaignDetail() {
                             onCheckedChange={(checked) => setIncludeKPIs(checked as boolean)}
                           />
                           <Label htmlFor="include-kpis" className="text-sm">
-                            Include Campaign KPIs ({campaignKPIs?.length || 0} KPIs available)
+                            Include Campaign KPIs{campaignKPIs && campaignKPIs.length > 0 ? ` (${campaignKPIs.length} available)` : ''}
                           </Label>
                         </div>
                         {includeKPIs && campaignKPIs && campaignKPIs.length > 0 && (

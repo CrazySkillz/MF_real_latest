@@ -1027,15 +1027,17 @@ export default function CampaignDetail() {
 
             <TabsContent value="kpis" className="space-y-6">
               <div className="text-center py-8">
-                <BarChart3 className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Performance Metrics</h3>
+                <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">KPI Management</h3>
                 <p className="text-slate-600 dark:text-slate-400 mb-4">
-                  Key performance indicators and metrics tracking for this campaign
+                  Track and manage key performance indicators for this campaign
                 </p>
-                <Button variant="outline" disabled>
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Coming Soon
-                </Button>
+                <Link href={`/campaigns/${campaign.id}/kpis`}>
+                  <Button>
+                    <Target className="w-4 h-4 mr-2" />
+                    Manage Campaign KPIs
+                  </Button>
+                </Link>
               </div>
             </TabsContent>
 

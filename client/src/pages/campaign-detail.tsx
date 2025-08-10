@@ -869,7 +869,7 @@ export default function CampaignDetail() {
                     <span>Campaign Snapshots</span>
                   </CardTitle>
                   <CardDescription>
-                    Generate professional reports for stakeholders and analysis
+                    Unlock in-depth marketing analyses for key insights and tailored recommendations
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

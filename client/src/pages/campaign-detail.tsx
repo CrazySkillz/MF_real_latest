@@ -250,6 +250,9 @@ export default function CampaignDetail() {
   const [customReportName, setCustomReportName] = useState("");
   const [reportDescription, setReportDescription] = useState("");
   const [includeKPIs, setIncludeKPIs] = useState(false);
+  const [showKPIReportDialog, setShowKPIReportDialog] = useState(false);
+  const [kpiReportFormat, setKPIReportFormat] = useState<"pdf" | "csv" | "xlsx">("pdf");
+  const [kpiReportDateRange, setKPIReportDateRange] = useState("30d");
 
   if (campaignLoading) {
     return (
@@ -512,6 +515,102 @@ export default function CampaignDetail() {
         ? prev.filter(id => id !== metricId)
         : [...prev, metricId]
     );
+  };
+
+  // KPI Report generation
+  const generateKPIReport = async () => {
+    try {
+      const reportData = {
+        campaignId: campaign?.id,
+        campaignName: campaign?.name,
+        reportType: "kpi_report",
+        kpis: campaignKPIs || [],
+        dateRange: kpiReportDateRange,
+        format: kpiReportFormat,
+        generatedAt: new Date().toISOString(),
+      };
+
+      downloadKPIReport(reportData, kpiReportFormat);
+      setShowKPIReportDialog(false);
+      
+    } catch (error) {
+      console.error("Failed to generate KPI report:", error);
+    }
+  };
+
+  const downloadKPIReport = (data: any, formatType: string) => {
+    let content = "";
+    let mimeType = "";
+    let fileName = `${campaign?.name || 'Campaign'}_KPI_Report_${format(new Date(), 'yyyy-MM-dd')}`;
+
+    if (formatType === "csv") {
+      content = "KPI Name,Current Value,Target Value,Progress %,Status,Priority,Description\n";
+      campaignKPIs?.forEach((kpi: any) => {
+        const progress = kpi.currentValue && kpi.targetValue ? 
+          ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) : 'N/A';
+        content += `"${kpi.name || ''}","${kpi.currentValue || ''}","${kpi.targetValue || ''}","${progress}","${kpi.status || 'Active'}","${kpi.priority || 'Medium'}","${kpi.description || ''}"\n`;
+      });
+      mimeType = "text/csv";
+      fileName += ".csv";
+    } else if (formatType === "xlsx") {
+      const reportData = {
+        campaign: campaign?.name,
+        generatedAt: data.generatedAt,
+        kpis: campaignKPIs?.map((kpi: any) => ({
+          name: kpi.name,
+          currentValue: kpi.currentValue,
+          targetValue: kpi.targetValue,
+          progress: kpi.currentValue && kpi.targetValue ? 
+            ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) + '%' : 'N/A',
+          status: kpi.status || 'Active',
+          priority: kpi.priority || 'Medium',
+          description: kpi.description || ''
+        })) || []
+      };
+      content = JSON.stringify(reportData, null, 2);
+      mimeType = "application/json";
+      fileName += ".json";
+    } else {
+      // PDF/Text format
+      content = `Campaign KPI Report: ${campaign?.name}\n\n`;
+      content += `Generated: ${format(new Date(), 'PPP')}\n`;
+      content += `Date Range: ${kpiReportDateRange}\n\n`;
+      
+      if (campaignKPIs && campaignKPIs.length > 0) {
+        content += `Total KPIs: ${campaignKPIs.length}\n\n`;
+        content += `KPI Details:\n`;
+        content += "=".repeat(50) + "\n\n";
+        
+        campaignKPIs.forEach((kpi: any, index: number) => {
+          const progress = kpi.currentValue && kpi.targetValue ? 
+            ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) : 'N/A';
+          
+          content += `${index + 1}. ${kpi.name}\n`;
+          content += `   Current Value: ${kpi.currentValue || 'N/A'}\n`;
+          content += `   Target Value: ${kpi.targetValue || 'N/A'}\n`;
+          content += `   Progress: ${progress}${progress !== 'N/A' ? '%' : ''}\n`;
+          content += `   Status: ${kpi.status || 'Active'}\n`;
+          content += `   Priority: ${kpi.priority || 'Medium'}\n`;
+          if (kpi.description) content += `   Description: ${kpi.description}\n`;
+          content += `\n`;
+        });
+      } else {
+        content += `No KPIs found for this campaign.\n`;
+      }
+      
+      mimeType = "text/plain";
+      fileName += ".txt";
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -1107,16 +1206,102 @@ export default function CampaignDetail() {
               <div className="text-center py-8">
                 <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">KPI Management</h3>
-                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                <p className="text-slate-600 dark:text-slate-400 mb-6">
                   Track and manage key performance indicators for this campaign
                 </p>
-                <Link href={`/campaigns/${campaign.id}/kpis`}>
-                  <Button>
-                    <Target className="w-4 h-4 mr-2" />
-                    Manage Campaign KPIs
+                <div className="flex items-center justify-center space-x-4">
+                  <Link href={`/campaigns/${campaign.id}/kpis`}>
+                    <Button>
+                      <Target className="w-4 h-4 mr-2" />
+                      Manage Campaign KPIs
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowKPIReportDialog(true)}
+                    disabled={!campaignKPIs || campaignKPIs.length === 0}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Generate Campaign KPIs Report
                   </Button>
-                </Link>
+                </div>
+                {(!campaignKPIs || campaignKPIs.length === 0) && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
+                    Create KPIs first to generate reports
+                  </p>
+                )}
               </div>
+
+              {/* KPI Report Dialog */}
+              <Dialog open={showKPIReportDialog} onOpenChange={setShowKPIReportDialog}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center space-x-2">
+                      <Target className="w-5 h-5 text-primary" />
+                      <span>Generate KPI Report</span>
+                    </DialogTitle>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Date Range</Label>
+                      <Select value={kpiReportDateRange} onValueChange={setKPIReportDateRange}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="7d">Last 7 days</SelectItem>
+                          <SelectItem value="30d">Last 30 days</SelectItem>
+                          <SelectItem value="90d">Last 90 days</SelectItem>
+                          <SelectItem value="6m">Last 6 months</SelectItem>
+                          <SelectItem value="1y">Last year</SelectItem>
+                          <SelectItem value="all">All time</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Export Format</Label>
+                      <Select value={kpiReportFormat} onValueChange={(value: "pdf" | "csv" | "xlsx") => setKPIReportFormat(value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pdf">PDF Report</SelectItem>
+                          <SelectItem value="csv">CSV Data</SelectItem>
+                          <SelectItem value="xlsx">Excel Spreadsheet</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Target className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium">Report Preview</span>
+                      </div>
+                      <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
+                        <div><span className="font-medium">Campaign:</span> {campaign?.name}</div>
+                        <div><span className="font-medium">KPIs:</span> {campaignKPIs?.length || 0} included</div>
+                        <div><span className="font-medium">Date Range:</span> {kpiReportDateRange}</div>
+                        <div><span className="font-medium">Format:</span> {kpiReportFormat.toUpperCase()}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <Button variant="outline" onClick={() => setShowKPIReportDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={generateKPIReport}
+                      disabled={!campaignKPIs || campaignKPIs.length === 0}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Generate & Download
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
 
             <TabsContent value="insights" className="space-y-6">

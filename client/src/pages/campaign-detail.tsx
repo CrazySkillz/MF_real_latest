@@ -861,12 +861,12 @@ export default function CampaignDetail() {
             </Card>
               </div>
 
-              {/* Quick Report Actions */}
+              {/* Campaign Snapshots */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <FileText className="w-5 h-5" />
-                    <span>Quick Report Actions</span>
+                    <span>Campaign Snapshots</span>
                   </CardTitle>
                   <CardDescription>
                     Generate professional reports for stakeholders and analysis

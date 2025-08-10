@@ -715,13 +715,6 @@ export default function CampaignDetail() {
                     </div>
                   </DialogContent>
                 </Dialog>
-                
-                <Link href={`/campaigns/${campaign.id}/kpis`}>
-                  <Button variant="outline" size="sm">
-                    <Target className="w-4 h-4 mr-2" />
-                    Manage KPIs
-                  </Button>
-                </Link>
               </div>
             </div>
           </div>

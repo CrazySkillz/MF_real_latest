@@ -9,6 +9,7 @@ import CampaignDetail from "@/pages/campaign-detail";
 import CampaignPerformance from "@/pages/campaign-performance";
 import PlatformComparison from "@/pages/platform-comparison";
 import TrendAnalysis from "@/pages/trend-analysis";
+import ExecutiveSummary from "@/pages/executive-summary";
 import FinancialAnalysis from "@/pages/financial-analysis";
 import GA4Metrics from "@/pages/ga4-metrics";
 import GoogleSheetsData from "@/pages/google-sheets-data";
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/campaigns/:id/performance" component={CampaignPerformance} />
       <Route path="/campaigns/:id/platform-comparison" component={PlatformComparison} />
       <Route path="/campaigns/:id/trend-analysis" component={TrendAnalysis} />
+      <Route path="/campaigns/:id/executive-summary" component={ExecutiveSummary} />
       <Route path="/campaigns/:id/financial" component={FinancialAnalysis} />
       <Route path="/campaigns/:id/ga4-metrics" component={GA4Metrics} />
       <Route path="/campaigns/:id/google-sheets-data" component={GoogleSheetsData} />

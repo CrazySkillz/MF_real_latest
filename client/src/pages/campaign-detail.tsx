@@ -926,21 +926,18 @@ export default function CampaignDetail() {
                       </Button>
                     </Link>
 
-                    <Button 
-                      variant="outline" 
-                      className="flex items-center justify-start space-x-3 h-auto p-4"
-                      onClick={() => {
-                        setReportType("standard");
-                        setSelectedTemplate("executive_summary");
-                        setShowReportDialog(true);
-                      }}
-                    >
-                      <Briefcase className="w-5 h-5" />
-                      <div className="text-left">
-                        <div className="font-medium">Executive Summary</div>
-                        <div className="text-xs text-muted-foreground">High-level strategic overview</div>
-                      </div>
-                    </Button>
+                    <Link href={`/campaigns/${campaign.id}/executive-summary`}>
+                      <Button 
+                        variant="outline" 
+                        className="flex items-center justify-start space-x-3 h-auto p-4 w-full"
+                      >
+                        <Briefcase className="w-5 h-5" />
+                        <div className="text-left">
+                          <div className="font-medium">Executive Summary</div>
+                          <div className="text-xs text-muted-foreground">Strategic overview for leadership</div>
+                        </div>
+                      </Button>
+                    </Link>
                     
                     <Button 
                       variant="outline" 

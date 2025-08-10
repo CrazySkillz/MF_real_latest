@@ -1820,7 +1820,7 @@ export default function CampaignDetail() {
                               onCheckedChange={(checked) => setIncludeBenchmarks(checked as boolean)}
                             />
                             <Label htmlFor="include-benchmarks" className="text-sm">
-                              Include Campaign Benchmarks (4 available)
+                              Include Campaign Benchmarks
                             </Label>
                           </div>
                           {includeBenchmarks && (

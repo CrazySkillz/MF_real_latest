@@ -63,6 +63,346 @@ interface Benchmark {
   createdAt: Date;
 }
 
+// Campaign KPIs Component
+function CampaignKPIs({ campaign }: { campaign: Campaign }) {
+  const [kpis, setKpis] = useState([
+    {
+      id: '1',
+      name: 'Cost Per Acquisition (CPA)',
+      description: 'Average cost to acquire a new customer',
+      currentValue: '$18.50',
+      targetValue: '$25.00',
+      unit: '$',
+      category: 'Cost Efficiency',
+      status: 'On Track',
+      priority: 'High',
+      progress: 74,
+      trend: 'improving',
+      trendValue: '+12.3%',
+      lastUpdated: '2 hours ago',
+      timeframe: 'Monthly'
+    },
+    {
+      id: '2', 
+      name: 'Return on Ad Spend (ROAS)',
+      description: 'Revenue generated per dollar spent on advertising',
+      currentValue: '5.8x',
+      targetValue: '4.0x',
+      unit: 'x',
+      category: 'Revenue',
+      status: 'Exceeding',
+      priority: 'High',
+      progress: 145,
+      trend: 'improving',
+      trendValue: '+45.0%',
+      lastUpdated: '1 hour ago',
+      timeframe: 'Weekly'
+    },
+    {
+      id: '3',
+      name: 'Click-Through Rate (CTR)',
+      description: 'Percentage of users who click on ad after viewing',
+      currentValue: '2.84%',
+      targetValue: '2.35%',
+      unit: '%',
+      category: 'Engagement',
+      status: 'Exceeding',
+      priority: 'Medium',
+      progress: 121,
+      trend: 'stable',
+      trendValue: '+0.2%',
+      lastUpdated: '30 minutes ago',
+      timeframe: 'Daily'
+    },
+    {
+      id: '4',
+      name: 'Conversion Rate',
+      description: 'Percentage of clicks that result in conversions',
+      currentValue: '4.68%',
+      targetValue: '3.20%',
+      unit: '%',
+      category: 'Performance',
+      status: 'Exceeding',
+      priority: 'High',
+      progress: 146,
+      trend: 'improving',
+      trendValue: '+46.3%',
+      lastUpdated: '45 minutes ago',
+      timeframe: 'Weekly'
+    },
+    {
+      id: '5',
+      name: 'Customer Lifetime Value (CLV)',
+      description: 'Predicted revenue from customer relationship',
+      currentValue: '$485',
+      targetValue: '$400',
+      unit: '$',
+      category: 'Revenue',
+      status: 'Exceeding',
+      priority: 'Medium',
+      progress: 121,
+      trend: 'improving',
+      trendValue: '+21.3%',
+      lastUpdated: '1 day ago',
+      timeframe: 'Monthly'
+    },
+    {
+      id: '6',
+      name: 'Brand Awareness Lift',
+      description: 'Increase in brand recognition due to campaign',
+      currentValue: '18%',
+      targetValue: '15%',
+      unit: '%',
+      category: 'Brand',
+      status: 'Exceeding',
+      priority: 'Low',
+      progress: 120,
+      trend: 'stable',
+      trendValue: '+3.0%',
+      lastUpdated: '2 days ago',
+      timeframe: 'Quarterly'
+    }
+  ]);
+
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Exceeding':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'On Track':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'At Risk':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'Behind':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      default:
+        return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'High':
+        return 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-300';
+      case 'Medium':
+        return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'Low':
+        return 'text-green-600 bg-green-100 dark:bg-green-900 dark:text-green-300';
+      default:
+        return 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300';
+    }
+  };
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'improving':
+        return <TrendingUp className="w-4 h-4 text-green-600" />;
+      case 'declining':
+        return <ArrowLeft className="w-4 h-4 text-red-600 transform rotate-45" />;
+      case 'stable':
+        return <Target className="w-4 h-4 text-blue-600" />;
+      default:
+        return <Clock className="w-4 h-4 text-slate-600" />;
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'Cost Efficiency':
+        return <DollarSign className="w-5 h-5 text-red-500" />;
+      case 'Revenue':
+        return <TrendingUp className="w-5 h-5 text-green-500" />;
+      case 'Engagement':
+        return <MousePointer className="w-5 h-5 text-blue-500" />;
+      case 'Performance':
+        return <BarChart3 className="w-5 h-5 text-purple-500" />;
+      case 'Brand':
+        return <Award className="w-5 h-5 text-orange-500" />;
+      default:
+        return <Target className="w-5 h-5 text-slate-500" />;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Campaign KPIs</h2>
+          <p className="text-slate-600 dark:text-slate-400">
+            Track key performance indicators and monitor campaign success metrics
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Link href={`/campaigns/${campaign.id}/kpis`}>
+            <Button variant="outline">
+              <Settings className="w-4 h-4 mr-2" />
+              Manage KPIs
+            </Button>
+          </Link>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add KPI
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpis.length}</p>
+              </div>
+              <Target className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Exceeding Target</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {kpis.filter(k => k.status === 'Exceeding').length}
+                </p>
+              </div>
+              <CheckCircle2 className="w-8 h-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {kpis.filter(k => k.status === 'On Track').length}
+                </p>
+              </div>
+              <Clock className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {Math.round(kpis.reduce((sum, k) => sum + k.progress, 0) / kpis.length)}%
+                </p>
+              </div>
+              <BarChart3 className="w-8 h-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* KPIs Grid */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {kpis.map((kpi) => (
+          <Card key={kpi.id}>
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    {getCategoryIcon(kpi.category)}
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                    <CardDescription className="text-sm">
+                      {kpi.description}
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Badge className={getStatusColor(kpi.status)}>
+                    {kpi.status}
+                  </Badge>
+                  <Badge variant="outline" className={getPriorityColor(kpi.priority)}>
+                    {kpi.priority}
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Current vs Target Values */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current</div>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white">
+                    {kpi.currentValue}
+                  </div>
+                </div>
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Target</div>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white">
+                    {kpi.targetValue}
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-400">Progress</span>
+                  <span className="font-medium">{kpi.progress}%</span>
+                </div>
+                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all ${
+                      kpi.progress >= 100 ? 'bg-green-600' : 
+                      kpi.progress >= 80 ? 'bg-blue-600' :
+                      kpi.progress >= 60 ? 'bg-yellow-600' : 'bg-red-600'
+                    }`}
+                    style={{ width: `${Math.min(kpi.progress, 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Trend and Metadata */}
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center space-x-2">
+                  {getTrendIcon(kpi.trend)}
+                  <span className="text-slate-600 dark:text-slate-400">
+                    {kpi.trendValue} trend
+                  </span>
+                </div>
+                <div className="flex items-center space-x-4 text-xs text-slate-500">
+                  <span>{kpi.timeframe}</span>
+                  <span>•</span>
+                  <span>Updated {kpi.lastUpdated}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex items-center justify-center space-x-4 pt-6">
+        <Link href={`/campaigns/${campaign.id}/kpis`}>
+          <Button variant="outline" size="lg">
+            <Settings className="w-5 h-5 mr-2" />
+            Advanced KPI Management
+          </Button>
+        </Link>
+        <Button variant="outline" size="lg">
+          <FileText className="w-5 h-5 mr-2" />
+          Export KPI Report
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // Campaign Benchmarks Component
 function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>([
@@ -1750,23 +2090,7 @@ export default function CampaignDetail() {
             </TabsContent>
 
             <TabsContent value="kpis" className="space-y-6">
-              <div className="text-center py-8">
-                <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">KPI Management</h3>
-                <p className="text-slate-600 dark:text-slate-400 mb-6">
-                  Track and manage key performance indicators for this campaign
-                </p>
-                <div className="flex flex-col items-center space-y-4">
-                  <Link href={`/campaigns/${campaign.id}/kpis`}>
-                    <Button>
-                      <Target className="w-4 h-4 mr-2" />
-                      Manage Campaign KPIs
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-
+              <CampaignKPIs campaign={campaign} />
             </TabsContent>
 
             <TabsContent value="benchmarks" className="space-y-6">

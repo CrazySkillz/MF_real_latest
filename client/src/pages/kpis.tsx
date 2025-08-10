@@ -152,7 +152,10 @@ export default function KPIsPage() {
   const queryClient = useQueryClient();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showProgressDialog, setShowProgressDialog] = useState(false);
+  const [showKPIReportDialog, setShowKPIReportDialog] = useState(false);
   const [selectedKPI, setSelectedKPI] = useState<KPI | null>(null);
+  const [kpiReportFormat, setKPIReportFormat] = useState<"pdf" | "csv" | "xlsx">("pdf");
+  const [kpiReportDateRange, setKPIReportDateRange] = useState("30d");
 
   // Fetch campaign data
   const { data: campaign } = useQuery<Campaign>({
@@ -304,6 +307,100 @@ export default function KPIsPage() {
     setShowProgressDialog(true);
   };
 
+  // KPI Report generation
+  const generateKPIReport = async () => {
+    try {
+      downloadKPIReport();
+      setShowKPIReportDialog(false);
+      toast({
+        title: "Report Generated",
+        description: "Your KPI report has been downloaded successfully.",
+      });
+    } catch (error) {
+      console.error("Failed to generate KPI report:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate KPI report. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadKPIReport = () => {
+    let content = "";
+    let mimeType = "";
+    let fileName = `${campaign?.name || 'Campaign'}_KPI_Report_${format(new Date(), 'yyyy-MM-dd')}`;
+
+    if (kpiReportFormat === "csv") {
+      content = "KPI Name,Current Value,Target Value,Progress %,Status,Priority,Description\n";
+      kpis?.forEach((kpi: KPI) => {
+        const progress = kpi.currentValue && kpi.targetValue ? 
+          ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) : 'N/A';
+        content += `"${kpi.name || ''}","${kpi.currentValue || ''}","${kpi.targetValue || ''}","${progress}","${kpi.status || 'Active'}","${kpi.priority || 'Medium'}","${kpi.description || ''}"\n`;
+      });
+      mimeType = "text/csv";
+      fileName += ".csv";
+    } else if (kpiReportFormat === "xlsx") {
+      const reportData = {
+        campaign: campaign?.name,
+        generatedAt: new Date().toISOString(),
+        kpis: kpis?.map((kpi: KPI) => ({
+          name: kpi.name,
+          currentValue: kpi.currentValue,
+          targetValue: kpi.targetValue,
+          progress: kpi.currentValue && kpi.targetValue ? 
+            ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) + '%' : 'N/A',
+          status: kpi.status || 'Active',
+          priority: kpi.priority || 'Medium',
+          description: kpi.description || ''
+        })) || []
+      };
+      content = JSON.stringify(reportData, null, 2);
+      mimeType = "application/json";
+      fileName += ".json";
+    } else {
+      // PDF/Text format
+      content = `Campaign KPI Report: ${campaign?.name}\n\n`;
+      content += `Generated: ${format(new Date(), 'PPP')}\n`;
+      content += `Date Range: ${kpiReportDateRange}\n\n`;
+      
+      if (kpis && kpis.length > 0) {
+        content += `Total KPIs: ${kpis.length}\n\n`;
+        content += `KPI Details:\n`;
+        content += "=".repeat(50) + "\n\n";
+        
+        kpis.forEach((kpi: KPI, index: number) => {
+          const progress = kpi.currentValue && kpi.targetValue ? 
+            ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) : 'N/A';
+          
+          content += `${index + 1}. ${kpi.name}\n`;
+          content += `   Current Value: ${kpi.currentValue || 'N/A'}\n`;
+          content += `   Target Value: ${kpi.targetValue || 'N/A'}\n`;
+          content += `   Progress: ${progress}${progress !== 'N/A' ? '%' : ''}\n`;
+          content += `   Status: ${kpi.status || 'Active'}\n`;
+          content += `   Priority: ${kpi.priority || 'Medium'}\n`;
+          if (kpi.description) content += `   Description: ${kpi.description}\n`;
+          content += `\n`;
+        });
+      } else {
+        content += `No KPIs found for this campaign.\n`;
+      }
+      
+      mimeType = "text/plain";
+      fileName += ".txt";
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -367,13 +464,23 @@ export default function KPIsPage() {
                 </div>
               </div>
               
-              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add KPI
-                  </Button>
-                </DialogTrigger>
+              <div className="flex items-center space-x-3">
+                <Button 
+                  variant="outline"
+                  disabled={!kpis || kpis.length === 0}
+                  onClick={() => setShowKPIReportDialog(true)}
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Generate Campaign KPI Report
+                </Button>
+                
+                <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add KPI
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[75vh] overflow-y-auto p-4 !fixed !top-1/2 !left-1/2 !transform !-translate-x-1/2 !-translate-y-1/2 !z-[9999]">
                   <DialogClose className="absolute right-4 top-4 rounded-full p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors z-[60]">
                     <X className="h-4 w-4" />
@@ -789,6 +896,7 @@ export default function KPIsPage() {
                   </div>
                 </DialogContent>
               </Dialog>
+              </div>
             </div>
           </div>
         </div>
@@ -969,6 +1077,71 @@ export default function KPIsPage() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* KPI Report Generation Dialog */}
+      <Dialog open={showKPIReportDialog} onOpenChange={setShowKPIReportDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generate KPI Report</DialogTitle>
+            <DialogDescription>
+              Export campaign KPI data in your preferred format
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Report Format</label>
+              <Select value={kpiReportFormat} onValueChange={(value: "pdf" | "csv" | "xlsx") => setKPIReportFormat(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pdf">PDF/Text Report</SelectItem>
+                  <SelectItem value="csv">CSV (Spreadsheet)</SelectItem>
+                  <SelectItem value="xlsx">Excel/JSON Data</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-2 block">Date Range</label>
+              <Select value={kpiReportDateRange} onValueChange={setKPIReportDateRange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 Days</SelectItem>
+                  <SelectItem value="30d">Last 30 Days</SelectItem>
+                  <SelectItem value="90d">Last 90 Days</SelectItem>
+                  <SelectItem value="all">All Time</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                <p><strong>Report will include:</strong></p>
+                <ul className="mt-1 space-y-1">
+                  <li>• All KPI progress data</li>
+                  <li>• Status and priority levels</li>
+                  <li>• Target vs actual values</li>
+                  <li>• Performance calculations</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button variant="outline" onClick={() => setShowKPIReportDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={generateKPIReport}>
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Generate Report
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

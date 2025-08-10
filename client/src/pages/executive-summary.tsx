@@ -259,7 +259,7 @@ export default function ExecutiveSummary() {
               <TabsTrigger value="overview">Executive Overview</TabsTrigger>
               <TabsTrigger value="performance">Performance Analysis</TabsTrigger>
               <TabsTrigger value="recommendations">Strategic Recommendations</TabsTrigger>
-              <TabsTrigger value="insights">Key Insights</TabsTrigger>
+              <TabsTrigger value="insights">Insights</TabsTrigger>
             </TabsList>
 
             {/* Executive Overview Tab */}
@@ -620,7 +620,7 @@ export default function ExecutiveSummary() {
               </div>
             </TabsContent>
 
-            {/* Key Insights Tab */}
+            {/* Insights Tab */}
             <TabsContent value="insights" className="space-y-6">
               <div className="space-y-4">
                 {keyInsights.map((insight, index) => (

@@ -17,6 +17,7 @@ import KPIs from "@/pages/kpis";
 import PlatformKPIs from "@/pages/platform-kpis";
 import Audiences from "@/pages/audiences";
 import Analytics from "@/pages/analytics";
+import Reports from "@/pages/reports";
 import Integrations from "@/pages/integrations";
 import GoogleAuthCallback from "@/pages/auth/google-callback";
 import NotFound from "@/pages/not-found";
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/platforms/:platformType/kpis" component={PlatformKPIs} />
       <Route path="/audiences" component={Audiences} />
       <Route path="/analytics" component={Analytics} />
+      <Route path="/reports" component={Reports} />
       <Route path="/integrations" component={Integrations} />
       <Route path="/auth/google/callback" component={GoogleAuthCallback} />
       <Route component={NotFound} />

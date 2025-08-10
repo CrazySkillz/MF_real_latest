@@ -5,7 +5,8 @@ import {
   Users, 
   TrendingUp, 
   Plug,
-  Plus
+  Plus,
+  FileText
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Integration } from "@shared/schema";
@@ -24,6 +25,7 @@ export default function Sidebar() {
     { path: "/campaigns", label: "Campaigns", icon: Target },
     { path: "/audiences", label: "Audiences", icon: Users },
     { path: "/analytics", label: "Analytics", icon: TrendingUp },
+    { path: "/reports", label: "Reports", icon: FileText },
     { path: "/integrations", label: "Integrations", icon: Plug },
   ];
 

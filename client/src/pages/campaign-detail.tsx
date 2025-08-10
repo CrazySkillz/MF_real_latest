@@ -55,6 +55,17 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
   });
 
+  // Get campaign KPIs for report inclusion
+  const { data: campaignKPIs } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "kpis"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/kpis`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
   // Check GA4 connection status
   const { data: ga4Connection } = useQuery({
     queryKey: ["/api/ga4/check-connection", campaignId],
@@ -238,6 +249,7 @@ export default function CampaignDetail() {
   const [reportFormat, setReportFormat] = useState<"pdf" | "csv" | "xlsx">("pdf");
   const [customReportName, setCustomReportName] = useState("");
   const [reportDescription, setReportDescription] = useState("");
+  const [includeKPIs, setIncludeKPIs] = useState(false);
 
   if (campaignLoading) {
     return (
@@ -365,6 +377,8 @@ export default function CampaignDetail() {
         dateRange: reportDateRange,
         format: reportFormat,
         platforms: connectedPlatforms.map(p => p.platform),
+        includeKPIs,
+        kpis: includeKPIs ? campaignKPIs : [],
         generatedAt: new Date().toISOString(),
         summary: {
           totalImpressions,
@@ -392,6 +406,9 @@ export default function CampaignDetail() {
 
     if (formatType === "csv") {
       // Generate CSV content
+      let csvContent = "";
+      
+      // Platform data
       const csvHeaders = ["Platform", "Impressions", "Clicks", "Conversions", "Spend", "CTR", "CPC"];
       const csvRows = connectedPlatforms.map(p => [
         p.platform,
@@ -402,12 +419,37 @@ export default function CampaignDetail() {
         p.ctr,
         p.cpc
       ]);
-      content = [csvHeaders, ...csvRows].map(row => row.join(",")).join("\n");
+      csvContent = [csvHeaders, ...csvRows].map(row => row.join(",")).join("\n");
+      
+      // Add KPI data if included
+      if (includeKPIs && campaignKPIs && campaignKPIs.length > 0) {
+        csvContent += "\n\nKPI Data\n";
+        csvContent += "KPI Name,Current Value,Target Value,Progress %,Status,Priority\n";
+        campaignKPIs.forEach((kpi: any) => {
+          const progress = kpi.currentValue && kpi.targetValue ? 
+            ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) : 'N/A';
+          csvContent += `${kpi.name || ''},${kpi.currentValue || ''},${kpi.targetValue || ''},${progress},${kpi.status || 'Active'},${kpi.priority || 'Medium'}\n`;
+        });
+      }
+      
+      content = csvContent;
       mimeType = "text/csv";
       fileName += ".csv";
     } else if (formatType === "xlsx") {
       // For XLSX, we'll generate JSON for now (in real app, use a proper XLSX library)
-      content = "Campaign Report\n\n" + JSON.stringify(data, null, 2);
+      const reportData = {
+        ...data,
+        kpiData: includeKPIs && campaignKPIs ? campaignKPIs.map((kpi: any) => ({
+          name: kpi.name,
+          currentValue: kpi.currentValue,
+          targetValue: kpi.targetValue,
+          progress: kpi.currentValue && kpi.targetValue ? 
+            ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) + '%' : 'N/A',
+          status: kpi.status || 'Active',
+          priority: kpi.priority || 'Medium'
+        })) : []
+      };
+      content = "Campaign Report\n\n" + JSON.stringify(reportData, null, 2);
       mimeType = "application/json";
       fileName += ".json";
     } else {
@@ -423,6 +465,20 @@ export default function CampaignDetail() {
       connectedPlatforms.forEach(p => {
         content += `${p.platform}: ${formatNumber(p.impressions)} impressions, ${formatNumber(p.clicks)} clicks, ${formatCurrency(p.spend)} spend\n`;
       });
+
+      // Add KPI data if included
+      if (includeKPIs && campaignKPIs && campaignKPIs.length > 0) {
+        content += `\n\nCampaign KPIs:\n`;
+        campaignKPIs.forEach((kpi: any) => {
+          const progress = kpi.currentValue && kpi.targetValue ? 
+            ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) : 'N/A';
+          content += `${kpi.name}: ${kpi.currentValue || 'N/A'} / ${kpi.targetValue} (${progress}% complete)\n`;
+          content += `  Status: ${kpi.status || 'Active'} | Priority: ${kpi.priority || 'Medium'}\n`;
+          if (kpi.description) content += `  Description: ${kpi.description}\n`;
+          content += `\n`;
+        });
+      }
+
       mimeType = "text/plain";
       fileName += ".txt";
     }
@@ -447,6 +503,7 @@ export default function CampaignDetail() {
     setReportMetrics(["impressions", "clicks", "conversions", "spend"]);
     setReportDateRange("30d");
     setReportFormat("pdf");
+    setIncludeKPIs(false);
   };
 
   const handleMetricToggle = (metricId: string) => {
@@ -672,6 +729,26 @@ export default function CampaignDetail() {
                         </div>
                       </div>
 
+                      {/* Additional Options */}
+                      <div className="pt-4 border-t">
+                        <Label className="text-base font-medium mb-3 block">Include Additional Data</Label>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="include-kpis" 
+                            checked={includeKPIs}
+                            onCheckedChange={(checked) => setIncludeKPIs(checked as boolean)}
+                          />
+                          <Label htmlFor="include-kpis" className="text-sm">
+                            Include Campaign KPIs ({campaignKPIs?.length || 0} KPIs available)
+                          </Label>
+                        </div>
+                        {includeKPIs && campaignKPIs && campaignKPIs.length > 0 && (
+                          <div className="mt-2 ml-6 text-xs text-muted-foreground">
+                            KPI data will be included showing targets, progress, and performance trends
+                          </div>
+                        )}
+                      </div>
+
                       {/* Preview Section */}
                       {((reportType === "standard" && selectedTemplate) || (reportType === "custom" && customReportName)) && (
                         <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -684,6 +761,7 @@ export default function CampaignDetail() {
                             <div><span className="font-medium">Type:</span> {reportType === "standard" ? "Standard Template" : "Custom Report"}</div>
                             <div><span className="font-medium">Metrics:</span> {reportType === "standard" ? STANDARD_TEMPLATES.find(t => t.id === selectedTemplate)?.metrics.length : reportMetrics.length} included</div>
                             <div><span className="font-medium">Platforms:</span> {connectedPlatforms.map(p => p.platform).join(", ") || "None"}</div>
+                            <div><span className="font-medium">KPIs:</span> {includeKPIs ? `${campaignKPIs?.length || 0} KPIs included` : "Not included"}</div>
                             <div><span className="font-medium">Date Range:</span> {reportDateRange}</div>
                             <div><span className="font-medium">Format:</span> {reportFormat.toUpperCase()}</div>
                           </div>

@@ -21,7 +21,9 @@ import {
   Trash2,
   Play,
   Pause,
-  Edit
+  Edit,
+  Search,
+  Filter
 } from "lucide-react";
 import { format } from "date-fns";
 import { reportStorage, type StoredReport } from "@/lib/reportStorage";
@@ -38,6 +40,13 @@ export default function Reports() {
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [recipients, setRecipients] = useState("");
   const [allStoredReports, setAllStoredReports] = useState<StoredReport[]>([]);
+  
+  // Filter states for All Reports tab
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [campaignFilter, setCampaignFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
 
   // Load reports from storage
   useEffect(() => {
@@ -102,19 +111,6 @@ export default function Reports() {
     }
   ];
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Active":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "Paused":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "Error":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
-  };
-
   const resetForm = () => {
     setReportName("");
     setReportDescription("");
@@ -151,6 +147,78 @@ export default function Reports() {
     setShowCreateDialog(false);
     resetForm();
     alert(`${scheduleEnabled ? 'Scheduled' : 'Generated'} report created successfully!`);
+  };
+
+  // Filter reports for All Reports tab
+  const filteredReports = allStoredReports.filter(report => {
+    // Search query filter
+    if (searchQuery && !report.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
+        !report.campaignName?.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
+    // Status filter
+    if (statusFilter !== "all" && report.status !== statusFilter) {
+      return false;
+    }
+
+    // Campaign filter
+    if (campaignFilter !== "all" && report.campaignName !== campaignFilter) {
+      return false;
+    }
+
+    // Type filter
+    if (typeFilter !== "all" && report.type !== typeFilter) {
+      return false;
+    }
+
+    // Date filter
+    if (dateFilter !== "all") {
+      const now = new Date();
+      const reportDate = new Date(report.generatedAt);
+      const daysDiff = Math.floor((now.getTime() - reportDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      switch (dateFilter) {
+        case "today":
+          if (daysDiff !== 0) return false;
+          break;
+        case "week":
+          if (daysDiff > 7) return false;
+          break;
+        case "month":
+          if (daysDiff > 30) return false;
+          break;
+        case "quarter":
+          if (daysDiff > 90) return false;
+          break;
+      }
+    }
+
+    return true;
+  });
+
+  // Get unique campaign names for filter dropdown
+  const uniqueCampaigns = Array.from(new Set(
+    allStoredReports.map(r => r.campaignName).filter(Boolean)
+  ));
+
+  // Get unique report types for filter dropdown
+  const uniqueTypes = Array.from(new Set(
+    allStoredReports.map(r => r.type).filter(Boolean)
+  ));
+
+  // Helper function for status badge colors
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Active":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "Paused":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "Error":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      default:
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+    }
   };
 
   return (
@@ -320,7 +388,7 @@ export default function Reports() {
             <Tabs defaultValue="scheduled" className="space-y-6">
               <TabsList>
                 <TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>
-                <TabsTrigger value="history">Report History</TabsTrigger>
+                <TabsTrigger value="all">All Reports</TabsTrigger>
                 <TabsTrigger value="templates">Templates</TabsTrigger>
               </TabsList>
 
@@ -519,72 +587,243 @@ export default function Reports() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="history">
+              <TabsContent value="all">
                 <div className="space-y-6">
-                  {allStoredReports.filter(r => r.status === 'Generated').length === 0 ? (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Report History</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-                          <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                          <p>Generated reports will appear here. Create reports from campaign pages or schedule them above.</p>
+                  {/* Filters */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Filter className="w-5 h-5" />
+                        Filter Reports
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        {/* Search */}
+                        <div className="space-y-2">
+                          <Label>Search</Label>
+                          <div className="relative">
+                            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                            <Input
+                              placeholder="Search reports or campaigns..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="pl-10"
+                            />
+                          </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="grid gap-4">
-                      {allStoredReports.filter(r => r.status === 'Generated').map((report) => (
-                        <Card key={report.id}>
-                          <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                              <div className="space-y-1">
-                                <h3 className="font-semibold">{report.name}</h3>
-                                <div className="flex items-center space-x-4 text-sm text-slate-600 dark:text-slate-400">
-                                  <span>{report.type}</span>
-                                  <span>{report.format}</span>
-                                  {report.size && <span>{report.size}</span>}
-                                  {report.campaignName && <span>Campaign: {report.campaignName}</span>}
-                                </div>
-                                <div className="text-xs text-slate-500">
-                                  Generated on {format(report.generatedAt, "MMM d, yyyy 'at' h:mm a")}
-                                </div>
-                                {(report.includeKPIs || report.includeBenchmarks) && (
-                                  <div className="text-xs text-primary">
-                                    Includes: {report.includeKPIs ? 'KPIs' : ''}
-                                    {report.includeKPIs && report.includeBenchmarks ? ', ' : ''}
-                                    {report.includeBenchmarks ? 'Benchmarks' : ''}
+
+                        {/* Status Filter */}
+                        <div className="space-y-2">
+                          <Label>Status</Label>
+                          <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Statuses</SelectItem>
+                              <SelectItem value="Generated">Generated</SelectItem>
+                              <SelectItem value="Scheduled">Scheduled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Campaign Filter */}
+                        <div className="space-y-2">
+                          <Label>Campaign</Label>
+                          <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Campaigns</SelectItem>
+                              {uniqueCampaigns.map((campaign) => (
+                                <SelectItem key={campaign} value={campaign!}>{campaign}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Type Filter */}
+                        <div className="space-y-2">
+                          <Label>Report Type</Label>
+                          <Select value={typeFilter} onValueChange={setTypeFilter}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Types</SelectItem>
+                              {uniqueTypes.map((type) => (
+                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Date Filter */}
+                        <div className="space-y-2">
+                          <Label>Date Range</Label>
+                          <Select value={dateFilter} onValueChange={setDateFilter}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Dates</SelectItem>
+                              <SelectItem value="today">Today</SelectItem>
+                              <SelectItem value="week">Last 7 days</SelectItem>
+                              <SelectItem value="month">Last 30 days</SelectItem>
+                              <SelectItem value="quarter">Last 90 days</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Results */}
+                  <div className="space-y-4">
+                    {filteredReports.length === 0 ? (
+                      <Card>
+                        <CardContent className="py-12">
+                          <div className="text-center text-slate-500 dark:text-slate-400">
+                            <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                            <p className="text-lg font-medium mb-2">No reports found</p>
+                            <p>Try adjusting your filters or create a new report from a campaign page.</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            Showing {filteredReports.length} of {allStoredReports.length} reports
+                          </p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => {
+                              setSearchQuery("");
+                              setStatusFilter("all");
+                              setCampaignFilter("all");
+                              setTypeFilter("all");
+                              setDateFilter("all");
+                            }}
+                          >
+                            Clear Filters
+                          </Button>
+                        </div>
+
+                        <div className="grid gap-4">
+                          {filteredReports.map((report) => (
+                            <Card key={report.id} className="hover:shadow-md transition-shadow">
+                              <CardContent className="pt-6">
+                                <div className="flex items-start justify-between">
+                                  <div className="space-y-2 flex-1">
+                                    <div className="flex items-center gap-3">
+                                      <h3 className="font-semibold text-lg">{report.name}</h3>
+                                      <Badge className={
+                                        report.status === 'Generated' 
+                                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                          : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                                      }>
+                                        {report.status}
+                                      </Badge>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                      <div>
+                                        <span className="font-medium text-slate-900 dark:text-white">Type:</span>
+                                        <div className="text-slate-600 dark:text-slate-400">{report.type}</div>
+                                      </div>
+                                      
+                                      <div>
+                                        <span className="font-medium text-slate-900 dark:text-white">Format:</span>
+                                        <div className="text-slate-600 dark:text-slate-400">
+                                          {report.format}
+                                          {report.size && ` (${report.size})`}
+                                        </div>
+                                      </div>
+                                      
+                                      {report.campaignName && (
+                                        <div>
+                                          <span className="font-medium text-slate-900 dark:text-white">Campaign:</span>
+                                          <div className="text-slate-600 dark:text-slate-400">{report.campaignName}</div>
+                                        </div>
+                                      )}
+                                      
+                                      <div>
+                                        <span className="font-medium text-slate-900 dark:text-white">
+                                          {report.status === 'Scheduled' ? 'Created:' : 'Generated:'}
+                                        </span>
+                                        <div className="text-slate-600 dark:text-slate-400">
+                                          {format(report.generatedAt, "MMM d, yyyy 'at' h:mm a")}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {report.schedule && (
+                                      <div className="text-sm">
+                                        <span className="font-medium text-slate-900 dark:text-white">Schedule:</span>
+                                        <span className="text-slate-600 dark:text-slate-400 ml-2">
+                                          {report.schedule.frequency} at {report.schedule.time}
+                                          {report.schedule.recipients.length > 0 && 
+                                            ` • ${report.schedule.recipients.length} recipient(s)`
+                                          }
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {(report.includeKPIs || report.includeBenchmarks) && (
+                                      <div className="text-sm">
+                                        <span className="font-medium text-primary">
+                                          Includes: {report.includeKPIs ? 'KPIs' : ''}
+                                          {report.includeKPIs && report.includeBenchmarks ? ', ' : ''}
+                                          {report.includeBenchmarks ? 'Benchmarks' : ''}
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                  {report.status}
-                                </Badge>
-                                <Button variant="outline" size="sm">
-                                  <Download className="w-4 h-4 mr-2" />
-                                  Download
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="text-red-600 hover:text-red-700"
-                                  onClick={() => {
-                                    reportStorage.deleteReport(report.id);
-                                    const allReports = reportStorage.getReports();
-                                    setAllStoredReports(allReports);
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
+                                  
+                                  <div className="flex items-center space-x-2 ml-4">
+                                    {report.status === 'Generated' ? (
+                                      <Button variant="outline" size="sm">
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Download
+                                      </Button>
+                                    ) : (
+                                      <div className="flex items-center space-x-2">
+                                        <Button variant="outline" size="sm">
+                                          <Edit className="w-4 h-4 mr-2" />
+                                          Edit
+                                        </Button>
+                                        <Button variant="outline" size="sm">
+                                          <Pause className="w-4 h-4 mr-2" />
+                                          Pause
+                                        </Button>
+                                      </div>
+                                    )}
+                                    
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      className="text-red-600 hover:text-red-700"
+                                      onClick={() => {
+                                        reportStorage.deleteReport(report.id);
+                                        const allReports = reportStorage.getReports();
+                                        setAllStoredReports(allReports);
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </TabsContent>
 

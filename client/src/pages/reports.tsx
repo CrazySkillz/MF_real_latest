@@ -37,18 +37,14 @@ export default function Reports() {
   const [scheduleDay, setScheduleDay] = useState("monday");
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [recipients, setRecipients] = useState("");
-  const [storedReports, setStoredReports] = useState<StoredReport[]>([]);
-  const [reportHistory, setReportHistory] = useState<StoredReport[]>([]);
+  const [allStoredReports, setAllStoredReports] = useState<StoredReport[]>([]);
 
   // Load reports from storage
   useEffect(() => {
     const loadReports = () => {
       const allReports = reportStorage.getReports();
-      const scheduled = allReports.filter(r => r.status === 'Scheduled');
-      const history = allReports.filter(r => r.status === 'Generated');
-      
-      setStoredReports(scheduled);
-      setReportHistory(history);
+      console.log('Loading reports:', allReports);
+      setAllStoredReports(allReports);
     };
     
     loadReports();
@@ -150,11 +146,7 @@ export default function Reports() {
     
     // Refresh the reports list
     const allReports = reportStorage.getReports();
-    const scheduled = allReports.filter(r => r.status === 'Scheduled');
-    const history = allReports.filter(r => r.status === 'Generated');
-    
-    setStoredReports(scheduled);
-    setReportHistory(history);
+    setAllStoredReports(allReports);
     
     setShowCreateDialog(false);
     resetForm();
@@ -428,7 +420,7 @@ export default function Reports() {
                   ))}
                   
                   {/* Dynamically created scheduled reports */}
-                  {storedReports.filter(r => r.status === 'Scheduled').map((report) => (
+                  {allStoredReports.filter(r => r.status === 'Scheduled').map((report) => (
                     <Card key={report.id}>
                       <CardHeader>
                         <div className="flex items-start justify-between">
@@ -512,7 +504,7 @@ export default function Reports() {
                                 onClick={() => {
                                   reportStorage.deleteReport(report.id);
                                   const allReports = reportStorage.getReports();
-                                  setStoredReports(allReports.filter(r => r.status === 'Scheduled'));
+                                  setAllStoredReports(allReports);
                                 }}
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
@@ -529,7 +521,7 @@ export default function Reports() {
 
               <TabsContent value="history">
                 <div className="space-y-6">
-                  {reportHistory.length === 0 ? (
+                  {allStoredReports.filter(r => r.status === 'Generated').length === 0 ? (
                     <Card>
                       <CardHeader>
                         <CardTitle>Report History</CardTitle>
@@ -543,7 +535,7 @@ export default function Reports() {
                     </Card>
                   ) : (
                     <div className="grid gap-4">
-                      {reportHistory.map((report) => (
+                      {allStoredReports.filter(r => r.status === 'Generated').map((report) => (
                         <Card key={report.id}>
                           <CardContent className="pt-6">
                             <div className="flex items-center justify-between">
@@ -581,7 +573,7 @@ export default function Reports() {
                                   onClick={() => {
                                     reportStorage.deleteReport(report.id);
                                     const allReports = reportStorage.getReports();
-                                    setReportHistory(allReports.filter(r => r.status === 'Generated'));
+                                    setAllStoredReports(allReports);
                                   }}
                                 >
                                   <Trash2 className="w-4 h-4" />

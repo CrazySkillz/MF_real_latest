@@ -126,6 +126,7 @@ export default function Reports() {
             includeBenchmarks: false,
             schedule: {
               frequency: "Daily",
+              day: "monday",
               time: "08:00",
               recipients: ["team@company.com", "manager@company.com"]
             }
@@ -141,6 +142,7 @@ export default function Reports() {
             includeBenchmarks: true,
             schedule: {
               frequency: "Weekly",
+              day: "monday",
               time: "09:00",
               recipients: ["sarah.johnson@company.com", "marketing@company.com"]
             }
@@ -156,6 +158,7 @@ export default function Reports() {
             includeBenchmarks: true,
             schedule: {
               frequency: "Monthly",
+              day: "1",
               time: "15:00",
               recipients: ["ceo@company.com", "cfo@company.com", "marketing-lead@company.com"]
             }
@@ -171,6 +174,7 @@ export default function Reports() {
             includeBenchmarks: false,
             schedule: {
               frequency: "Bi-weekly",
+              day: "monday",
               time: "14:00",
               recipients: ["finance@company.com", "marketing-budget@company.com"]
             }
@@ -186,6 +190,7 @@ export default function Reports() {
             includeBenchmarks: true,
             schedule: {
               frequency: "Weekly",
+              day: "friday",
               time: "11:00",
               recipients: ["platform-team@company.com"]
             }

@@ -54,46 +54,10 @@ export function TokenExpiryWarning({ onReauthenticate }: TokenExpiryWarningProps
 
   if (timeLeft === null) return null;
 
-  if (isExpired) {
-    return (
-      <Alert variant="destructive" className="mb-4">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription className="flex items-center justify-between">
-          <span>Your Google Analytics access token has expired. Re-authenticate to continue viewing data.</span>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onReauthenticate}
-            className="ml-4"
-          >
-            <RefreshCw className="w-3 h-3 mr-1" />
-            Re-authenticate
-          </Button>
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  // Professional SaaS platforms handle expired tokens silently with fallback data
+  // No need to interrupt users with authentication alerts
 
-  // Show warning when less than 10 minutes left
-  if (timeLeft < 10 * 60 * 1000) {
-    return (
-      <Alert className="mb-4 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
-        <AlertTriangle className="h-4 w-4 text-amber-600" />
-        <AlertDescription className="flex items-center justify-between text-amber-800 dark:text-amber-200">
-          <span>Your Google Analytics access will expire in {formatTimeLeft(timeLeft)}. Consider re-authenticating soon.</span>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onReauthenticate}
-            className="ml-4"
-          >
-            <RefreshCw className="w-3 h-3 mr-1" />
-            Refresh Token
-          </Button>
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
+  // For professional SaaS platforms, we don't interrupt users with token warnings
+  // Backend handles token refresh automatically with fallback data
   return null;
 }

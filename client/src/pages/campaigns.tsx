@@ -486,6 +486,16 @@ export default function Campaigns() {
     },
   });
 
+  const editForm = useForm<CampaignFormData>({
+    resolver: zodResolver(campaignFormSchema),
+    defaultValues: {
+      name: "",
+      clientWebsite: "",
+      label: "",
+      budget: "",
+    },
+  });
+
   const createCampaignMutation = useMutation({
     mutationFn: async (data: CampaignFormData & { platform?: string; status?: string; type?: string; impressions?: number; clicks?: number; spend?: string }) => {
       const response = await apiRequest("POST", "/api/campaigns", {
@@ -523,6 +533,33 @@ export default function Campaigns() {
   });
 
   const updateCampaignMutation = useMutation({
+    mutationFn: async (data: { id: string } & Partial<CampaignFormData>) => {
+      const response = await apiRequest("PATCH", `/api/campaigns/${data.id}`, {
+        name: data.name,
+        clientWebsite: data.clientWebsite || null,
+        label: data.label || null,
+        budget: data.budget ? parseFloat(data.budget) : null,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      toast({
+        title: "Campaign updated",
+        description: "Campaign has been updated successfully.",
+      });
+      setEditingCampaign(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update campaign. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleCampaignStatusMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { status?: string } }) => {
       const response = await apiRequest("PATCH", `/api/campaigns/${id}`, data);
       return response.json();
@@ -644,11 +681,32 @@ export default function Campaigns() {
 
   const toggleCampaignStatus = (campaign: Campaign) => {
     const newStatus = campaign.status === "active" ? "paused" : "active";
-    updateCampaignMutation.mutate({
+    toggleCampaignStatusMutation.mutate({
       id: campaign.id,
       data: { status: newStatus }
     });
   };
+
+  const handleEditSubmit = (data: CampaignFormData) => {
+    if (editingCampaign) {
+      updateCampaignMutation.mutate({
+        id: editingCampaign.id,
+        ...data,
+      });
+    }
+  };
+
+  // Update edit form when editing campaign changes
+  useEffect(() => {
+    if (editingCampaign) {
+      editForm.reset({
+        name: editingCampaign.name,
+        clientWebsite: editingCampaign.clientWebsite || "",
+        label: editingCampaign.label || "",
+        budget: editingCampaign.budget?.toString() || "",
+      });
+    }
+  }, [editingCampaign, editForm]);
 
   const deleteCampaign = (campaign: Campaign) => {
     setCampaignToDelete(campaign);
@@ -949,7 +1007,7 @@ export default function Campaigns() {
                                 e.preventDefault();
                                 toggleCampaignStatus(campaign);
                               }}
-                              disabled={updateCampaignMutation.isPending}
+                              disabled={toggleCampaignStatusMutation.isPending}
                             >
                               {campaign.status === "active" ? (
                                 <Pause className="w-4 h-4" />
@@ -963,7 +1021,7 @@ export default function Campaigns() {
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                // Edit functionality can be implemented later if needed
+                                setEditingCampaign(campaign);
                               }}
                             >
                               <Edit className="w-4 h-4" />
@@ -1021,6 +1079,87 @@ export default function Campaigns() {
               {deleteCampaignMutation.isPending ? "Deleting..." : "Delete Campaign"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Campaign Dialog */}
+      <Dialog open={!!editingCampaign} onOpenChange={() => setEditingCampaign(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5 text-blue-500" />
+              Edit Campaign
+            </DialogTitle>
+            <DialogDescription>
+              Update the campaign details below.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Campaign Name</Label>
+              <Input
+                id="edit-name"
+                {...editForm.register("name")}
+                placeholder="Enter campaign name"
+                data-testid="input-edit-campaign-name"
+              />
+              {editForm.formState.errors.name && (
+                <p className="text-sm text-red-500">{editForm.formState.errors.name.message}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-website">Client Website</Label>
+              <Input
+                id="edit-website"
+                {...editForm.register("clientWebsite")}
+                placeholder="https://example.com"
+                data-testid="input-edit-client-website"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-label">Label/Tag</Label>
+              <Input
+                id="edit-label"
+                {...editForm.register("label")}
+                placeholder="e.g., Q1 2024, Brand Awareness"
+                data-testid="input-edit-label"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-budget">Budget</Label>
+              <Input
+                id="edit-budget"
+                {...editForm.register("budget")}
+                placeholder="Enter budget amount"
+                type="number"
+                step="0.01"
+                data-testid="input-edit-budget"
+              />
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-6">
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={() => setEditingCampaign(null)}
+                disabled={updateCampaignMutation.isPending}
+                data-testid="button-cancel-edit"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                disabled={updateCampaignMutation.isPending}
+                data-testid="button-save-edit"
+              >
+                {updateCampaignMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

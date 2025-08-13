@@ -53,6 +53,156 @@ export default function Reports() {
     const loadReports = () => {
       const allReports = reportStorage.getReports();
       console.log('Loading reports:', allReports);
+      
+      // Add mock data if no reports exist
+      if (allReports.length === 0) {
+        const mockReports = [
+          // Generated Reports
+          {
+            name: "Q3 Performance Analysis",
+            type: "Performance",
+            status: 'Generated' as const,
+            generatedAt: new Date(2025, 7, 10, 14, 30),
+            format: 'PDF',
+            size: '2.4 MB',
+            campaignName: "Digital Marketing Q3",
+            includeKPIs: true,
+            includeBenchmarks: false
+          },
+          {
+            name: "Weekly Social Media Report",
+            type: "Social Media",
+            status: 'Generated' as const,
+            generatedAt: new Date(2025, 7, 8, 9, 15),
+            format: 'PDF',
+            size: '1.8 MB',
+            campaignName: "Social Media Campaign",
+            includeKPIs: false,
+            includeBenchmarks: true
+          },
+          {
+            name: "August ROI Dashboard",
+            type: "Financial",
+            status: 'Generated' as const,
+            generatedAt: new Date(2025, 7, 5, 16, 45),
+            format: 'Excel',
+            size: '856 KB',
+            campaignName: "Brand Awareness",
+            includeKPIs: true,
+            includeBenchmarks: true
+          },
+          {
+            name: "Lead Generation Summary",
+            type: "Lead Generation",
+            status: 'Generated' as const,
+            generatedAt: new Date(2025, 7, 2, 11, 20),
+            format: 'PDF',
+            size: '3.1 MB',
+            campaignName: "Q3 Lead Generation",
+            includeKPIs: true,
+            includeBenchmarks: false
+          },
+          {
+            name: "Campaign Comparison Analysis",
+            type: "Comparative",
+            status: 'Generated' as const,
+            generatedAt: new Date(2025, 6, 28, 13, 10),
+            format: 'PDF',
+            size: '4.2 MB',
+            campaignName: "All Campaigns",
+            includeKPIs: true,
+            includeBenchmarks: true
+          },
+          
+          // Scheduled Reports
+          {
+            name: "Daily KPI Monitor",
+            type: "KPI Tracking",
+            status: 'Scheduled' as const,
+            generatedAt: new Date(2025, 7, 11, 10, 0),
+            format: 'PDF',
+            campaignName: "Digital Marketing Q3",
+            includeKPIs: true,
+            includeBenchmarks: false,
+            schedule: {
+              frequency: "Daily",
+              time: "08:00",
+              recipients: ["team@company.com", "manager@company.com"]
+            }
+          },
+          {
+            name: "Weekly Performance Digest",
+            type: "Performance",
+            status: 'Scheduled' as const,
+            generatedAt: new Date(2025, 7, 9, 15, 30),
+            format: 'PDF',
+            campaignName: "Social Media Campaign",
+            includeKPIs: false,
+            includeBenchmarks: true,
+            schedule: {
+              frequency: "Weekly",
+              time: "09:00",
+              recipients: ["sarah.johnson@company.com", "marketing@company.com"]
+            }
+          },
+          {
+            name: "Monthly Executive Summary",
+            type: "Executive",
+            status: 'Scheduled' as const,
+            generatedAt: new Date(2025, 7, 7, 12, 0),
+            format: 'PDF',
+            campaignName: "All Campaigns",
+            includeKPIs: true,
+            includeBenchmarks: true,
+            schedule: {
+              frequency: "Monthly",
+              time: "15:00",
+              recipients: ["ceo@company.com", "cfo@company.com", "marketing-lead@company.com"]
+            }
+          },
+          {
+            name: "Bi-weekly ROI Tracker",
+            type: "Financial",
+            status: 'Scheduled' as const,
+            generatedAt: new Date(2025, 7, 6, 14, 15),
+            format: 'Excel',
+            campaignName: "Brand Awareness",
+            includeKPIs: true,
+            includeBenchmarks: false,
+            schedule: {
+              frequency: "Bi-weekly",
+              time: "14:00",
+              recipients: ["finance@company.com", "marketing-budget@company.com"]
+            }
+          },
+          {
+            name: "Platform Performance Review",
+            type: "Platform Analysis",
+            status: 'Scheduled' as const,
+            generatedAt: new Date(2025, 7, 4, 11, 45),
+            format: 'PDF',
+            campaignName: "Q3 Lead Generation",
+            includeKPIs: false,
+            includeBenchmarks: true,
+            schedule: {
+              frequency: "Weekly",
+              time: "11:00",
+              recipients: ["platform-team@company.com"]
+            }
+          }
+        ];
+
+        // Add each mock report to storage
+        mockReports.forEach(report => {
+          reportStorage.addReport(report);
+        });
+        
+        // Reload after adding mock data
+        const updatedReports = reportStorage.getReports();
+        setAllStoredReports(updatedReports);
+        return;
+      }
+      
       setAllStoredReports(allReports);
     };
     

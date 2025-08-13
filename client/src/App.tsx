@@ -19,6 +19,7 @@ import Audiences from "@/pages/audiences";
 import Analytics from "@/pages/analytics";
 import Reports from "@/pages/reports";
 import Integrations from "@/pages/integrations";
+import Notifications from "@/pages/notifications";
 import GoogleAuthCallback from "@/pages/auth/google-callback";
 import NotFound from "@/pages/not-found";
 
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/reports" component={Reports} />
       <Route path="/integrations" component={Integrations} />
+      <Route path="/notifications" component={Notifications} />
       <Route path="/auth/google/callback" component={GoogleAuthCallback} />
       <Route component={NotFound} />
     </Switch>

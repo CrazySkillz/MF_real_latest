@@ -1,5 +1,6 @@
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 
 export default function Navigation() {
   return (
@@ -15,10 +16,12 @@ export default function Navigation() {
         </div>
         
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" className="relative">
-            <Bell className="w-4 h-4" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-          </Button>
+          <Link href="/notifications">
+            <Button variant="ghost" size="sm" className="relative" data-testid="button-notifications">
+              <Bell className="w-4 h-4" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+            </Button>
+          </Link>
           
           <div className="flex items-center space-x-3">
             <div className="text-right">

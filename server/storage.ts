@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull } from "drizzle-orm";
@@ -78,6 +78,14 @@ export interface IStorage {
   // Benchmark History
   getBenchmarkHistory(benchmarkId: string): Promise<BenchmarkHistory[]>;
   recordBenchmarkHistory(history: InsertBenchmarkHistory): Promise<BenchmarkHistory>;
+
+  // Notifications
+  getNotifications(): Promise<Notification[]>;
+  getNotification(id: string): Promise<Notification | undefined>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  updateNotification(id: string, notification: Partial<InsertNotification>): Promise<Notification | undefined>;
+  deleteNotification(id: string): Promise<boolean>;
+  markAllNotificationsAsRead(): Promise<boolean>;
   getBenchmarkAnalytics(benchmarkId: string): Promise<{
     history: BenchmarkHistory[];
     averageVariance: number;
@@ -98,6 +106,7 @@ export class MemStorage implements IStorage {
   private kpiAlerts: Map<string, KPIAlert>;
   private benchmarks: Map<string, Benchmark>;
   private benchmarkHistory: Map<string, BenchmarkHistory>;
+  private notifications_: Map<string, Notification>;
 
   constructor() {
     this.campaigns = new Map();
@@ -111,14 +120,41 @@ export class MemStorage implements IStorage {
     this.kpiAlerts = new Map();
     this.benchmarks = new Map();
     this.benchmarkHistory = new Map();
+    this.notifications_ = new Map();
     
     // Initialize with empty data - no mock data
     this.initializeEmptyData();
   }
 
   private initializeEmptyData() {
-    // Create empty state indicators if needed
-    // No mock data as per guidelines
+    // Create sample notifications for development purposes
+    const now = new Date();
+    
+    // Sample notifications to demonstrate the feature
+    this.createNotification({
+      title: "Campaign Performance Alert",
+      message: "Summer Sale campaign has exceeded its daily budget by 15%",
+      type: "warning",
+      campaignName: "Summer Sale",
+      priority: "high",
+      read: false,
+    });
+    
+    this.createNotification({
+      title: "New Integration Connected",
+      message: "Google Analytics has been successfully connected to your account",
+      type: "success",
+      priority: "normal",
+      read: false,
+    });
+    
+    this.createNotification({
+      title: "Weekly Report Available",
+      message: "Your weekly performance report is ready for review",
+      type: "info",
+      priority: "normal",
+      read: true,
+    });
   }
 
   // Campaign methods
@@ -660,6 +696,62 @@ export class MemStorage implements IStorage {
     
     if (earliest === 0) return 0;
     return ((latest - earliest) / earliest) * 100;
+  }
+
+  // Notification methods
+  async getNotifications(): Promise<Notification[]> {
+    return Array.from(this.notifications_.values()).sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async getNotification(id: string): Promise<Notification | undefined> {
+    return this.notifications_.get(id);
+  }
+
+  async createNotification(notificationData: InsertNotification): Promise<Notification> {
+    const id = randomUUID();
+    const notification: Notification = {
+      id,
+      title: notificationData.title,
+      message: notificationData.message,
+      type: notificationData.type,
+      campaignId: notificationData.campaignId || null,
+      campaignName: notificationData.campaignName || null,
+      read: notificationData.read || false,
+      priority: notificationData.priority || "normal",
+      createdAt: new Date(),
+    };
+
+    this.notifications_.set(id, notification);
+    return notification;
+  }
+
+  async updateNotification(id: string, updateData: Partial<InsertNotification>): Promise<Notification | undefined> {
+    const notification = this.notifications_.get(id);
+    if (!notification) return undefined;
+
+    const updated: Notification = {
+      ...notification,
+      ...updateData,
+    };
+
+    this.notifications_.set(id, updated);
+    return updated;
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    return this.notifications_.delete(id);
+  }
+
+  async markAllNotificationsAsRead(): Promise<boolean> {
+    const notifications = Array.from(this.notifications_.values());
+    notifications.forEach(notification => {
+      if (!notification.read) {
+        this.notifications_.set(notification.id, { ...notification, read: true });
+      }
+    });
+    return true;
   }
 }
 

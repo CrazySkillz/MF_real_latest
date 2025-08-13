@@ -61,6 +61,18 @@ export const ga4Connections = pgTable("ga4_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull(), // 'info', 'warning', 'error', 'success'
+  campaignId: text("campaign_id"), // Optional - for campaign-specific notifications
+  campaignName: text("campaign_name"), // Denormalized for faster filtering
+  read: boolean("read").notNull().default(false),
+  priority: text("priority").notNull().default("normal"), // 'low', 'normal', 'high', 'urgent'
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const googleSheetsConnections = pgTable("google_sheets_connections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
@@ -291,6 +303,16 @@ export const insertBenchmarkHistorySchema = createInsertSchema(benchmarkHistory)
   notes: true,
 });
 
+export const insertNotificationSchema = createInsertSchema(notifications).pick({
+  title: true,
+  message: true,
+  type: true,
+  campaignId: true,
+  campaignName: true,
+  read: true,
+  priority: true,
+});
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Metric = typeof metrics.$inferSelect;
@@ -311,5 +333,7 @@ export type KPIAlert = typeof kpiAlerts.$inferSelect;
 export type InsertKPIAlert = z.infer<typeof insertKPIAlertSchema>;
 export type Benchmark = typeof benchmarks.$inferSelect;
 export type InsertBenchmark = z.infer<typeof insertBenchmarkSchema>;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type BenchmarkHistory = typeof benchmarkHistory.$inferSelect;
 export type InsertBenchmarkHistory = z.infer<typeof insertBenchmarkHistorySchema>;

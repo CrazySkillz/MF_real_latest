@@ -37,6 +37,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update a campaign by ID
+  app.patch("/api/campaigns/:id", async (req, res) => {
+    try {
+      const validatedData = insertCampaignSchema.partial().parse(req.body);
+      const campaign = await storage.updateCampaign(req.params.id, validatedData);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      res.json(campaign);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update campaign" });
+    }
+  });
+
   // Get a single campaign by ID
   app.get("/api/campaigns/:id", async (req, res) => {
     try {

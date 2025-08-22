@@ -534,25 +534,15 @@ export default function Campaigns() {
 
   const updateCampaignMutation = useMutation({
     mutationFn: async (data: { id: string } & Partial<CampaignFormData>) => {
-      console.log('Updating campaign with data:', data);
-      try {
-        const response = await apiRequest("PATCH", `/api/campaigns/${data.id}`, {
-          name: data.name,
-          clientWebsite: data.clientWebsite || null,
-          label: data.label || null,
-          budget: data.budget ? parseFloat(data.budget) : null,
-        });
-        console.log('Update response status:', response.status);
-        const result = await response.json();
-        console.log('Update response data:', result);
-        return result;
-      } catch (error) {
-        console.error('Campaign update error:', error);
-        throw error;
-      }
+      const response = await apiRequest("PATCH", `/api/campaigns/${data.id}`, {
+        name: data.name,
+        clientWebsite: data.clientWebsite || null,
+        label: data.label || null,
+        budget: data.budget ? parseFloat(data.budget) : null,
+      });
+      return response.json();
     },
-    onSuccess: (data) => {
-      console.log('Campaign update successful:', data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       toast({
         title: "Campaign updated",
@@ -561,7 +551,6 @@ export default function Campaigns() {
       setEditingCampaign(null);
     },
     onError: (error) => {
-      console.error('Campaign update mutation error:', error);
       toast({
         title: "Error",
         description: "Failed to update campaign. Please try again.",

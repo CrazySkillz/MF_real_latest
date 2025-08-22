@@ -1185,6 +1185,47 @@ export class DatabaseStorage implements IStorage {
       lastPerformanceRating
     };
   }
+
+  // Notification methods
+  async getNotifications(): Promise<Notification[]> {
+    return db.select().from(notifications).orderBy(notifications.createdAt);
+  }
+
+  async getNotification(id: string): Promise<Notification | undefined> {
+    const [notification] = await db.select().from(notifications).where(eq(notifications.id, id));
+    return notification || undefined;
+  }
+
+  async createNotification(notificationData: InsertNotification): Promise<Notification> {
+    const [notification] = await db
+      .insert(notifications)
+      .values(notificationData)
+      .returning();
+    return notification;
+  }
+
+  async updateNotification(id: string, updateData: Partial<InsertNotification>): Promise<Notification | undefined> {
+    const [notification] = await db
+      .update(notifications)
+      .set(updateData)
+      .where(eq(notifications.id, id))
+      .returning();
+    return notification || undefined;
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    const result = await db
+      .delete(notifications)
+      .where(eq(notifications.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async markAllNotificationsAsRead(): Promise<boolean> {
+    await db
+      .update(notifications)
+      .set({ read: true });
+    return true;
+  }
 }
 
 export const storage = new DatabaseStorage();

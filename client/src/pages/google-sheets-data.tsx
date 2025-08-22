@@ -53,7 +53,8 @@ export default function GoogleSheetsData() {
     refetchInterval: refreshInterval, // Dynamic refresh interval
     refetchIntervalInBackground: true, // Continue refreshing when tab is in background
     refetchOnWindowFocus: true, // Refresh when user returns to tab
-    staleTime: 10000, // Consider data stale after 10 seconds
+    staleTime: 0, // Always consider data stale - force fresh fetch
+    gcTime: 0, // Don't cache the data (TanStack Query v5)
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
       if (!response.ok) {

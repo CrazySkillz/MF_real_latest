@@ -8,12 +8,6 @@ import { realGA4Client } from "./real-ga4-client";
 
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Critical: Ensure API routes are handled before any other middleware
-  app.use('/api', (req, res, next) => {
-    (req as any).isApiRoute = true;
-    next();
-  });
-
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {

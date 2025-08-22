@@ -1583,8 +1583,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(response);
     } catch (error) {
       console.error('=== Platform KPI deletion error ===:', error);
-      console.error('Error stack:', error.stack);
-      res.status(500).json({ message: "Failed to delete KPI", error: error.message });
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      res.status(500).json({ message: "Failed to delete KPI", error: error instanceof Error ? error.message : String(error) });
     }
   });
 

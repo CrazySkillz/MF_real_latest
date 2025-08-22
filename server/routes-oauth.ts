@@ -6,38 +6,6 @@ import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 
-// Generate realistic fallback marketing data for professional continuity
-function generateFallbackMarketingData() {
-  const data = [];
-  const campaigns = ['Summer Campaign', 'Brand Awareness', 'Product Launch', 'Holiday Promo', 'Retargeting'];
-  const baseDate = new Date();
-  
-  for (let i = 0; i < 30; i++) {
-    const date = new Date(baseDate);
-    date.setDate(date.getDate() - i);
-    
-    const campaign = campaigns[i % campaigns.length];
-    const impressions = Math.floor(Math.random() * 5000) + 1000;
-    const clicks = Math.floor(impressions * (Math.random() * 0.05 + 0.02)); // 2-7% CTR
-    const spend = (clicks * (Math.random() * 2 + 0.5)).toFixed(2); // $0.50-$2.50 CPC
-    const conversions = Math.floor(clicks * (Math.random() * 0.1 + 0.02)); // 2-12% conversion rate
-    const ctr = ((clicks / impressions) * 100).toFixed(2);
-    const cpc = (parseFloat(spend) / clicks).toFixed(2);
-    
-    data.push([
-      date.toISOString().split('T')[0], // Date
-      campaign,
-      impressions,
-      clicks,
-      spend,
-      conversions,
-      ctr + '%',
-      '$' + cpc
-    ]);
-  }
-  
-  return data;
-}
 
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1266,11 +1234,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper function to refresh Google Sheets access token
+  // Helper function to refresh Google Sheets access token with robust error handling
   async function refreshGoogleSheetsToken(connection: any) {
     if (!connection.refreshToken || !connection.clientId || !connection.clientSecret) {
-      throw new Error('Missing refresh token or OAuth credentials');
+      throw new Error('Missing refresh token or OAuth credentials for token refresh');
     }
+
+    console.log('🔄 Attempting to refresh Google Sheets access token for campaign:', connection.campaignId);
 
     const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -1285,21 +1255,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     if (!refreshResponse.ok) {
       const errorText = await refreshResponse.text();
-      console.error('Token refresh failed:', errorText);
-      throw new Error('Token refresh failed');
+      console.error('Token refresh failed with status:', refreshResponse.status, errorText);
+      
+      // If refresh token is invalid/expired, throw specific error
+      if (refreshResponse.status === 400 && errorText.includes('invalid_grant')) {
+        throw new Error('REFRESH_TOKEN_EXPIRED');
+      }
+      
+      throw new Error(`Token refresh failed: ${errorText}`);
     }
 
     const tokens = await refreshResponse.json();
     
-    // Update the stored connection with new access token
-    const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
-    await storage.updateGoogleSheetsConnection(connection.campaignId, {
+    // Update the stored connection with new access token and potentially new refresh token
+    const expiresAt = new Date(Date.now() + ((tokens.expires_in || 3600) * 1000));
+    const updateData: any = {
       accessToken: tokens.access_token,
       expiresAt: expiresAt
-    });
+    };
+    
+    // Some OAuth providers issue new refresh tokens on refresh
+    if (tokens.refresh_token) {
+      updateData.refreshToken = tokens.refresh_token;
+    }
+    
+    await storage.updateGoogleSheetsConnection(connection.campaignId, updateData);
 
     console.log('✅ Google Sheets token refreshed successfully for campaign:', connection.campaignId);
     return tokens.access_token;
+  }
+
+  // Helper function to check if token needs proactive refresh (within 5 minutes of expiry)
+  function shouldRefreshToken(connection: any): boolean {
+    if (!connection.expiresAt) return false;
+    
+    const expiresAt = new Date(connection.expiresAt);
+    const now = new Date();
+    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+    
+    return expiresAt <= fiveMinutesFromNow;
   }
 
   // Get spreadsheet data for a campaign
@@ -1316,12 +1310,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let accessToken = connection.accessToken;
 
+      // Proactively refresh token if it's close to expiring
+      if (shouldRefreshToken(connection) && connection.refreshToken) {
+        console.log('🔄 Token expires soon, proactively refreshing...');
+        try {
+          accessToken = await refreshGoogleSheetsToken(connection);
+          connection.accessToken = accessToken; // Update local reference
+        } catch (proactiveRefreshError) {
+          console.error('⚠️ Proactive refresh failed, will try reactive refresh if needed:', proactiveRefreshError);
+        }
+      }
+
       // Try to fetch spreadsheet data
       let sheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z1000`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 
-      // If token expired, try to refresh it automatically
+      // If token expired despite proactive refresh, try reactive refresh
       if (sheetResponse.status === 401 && connection.refreshToken) {
         console.log('🔄 Access token expired, attempting automatic refresh...');
         try {
@@ -1333,24 +1338,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         } catch (refreshError) {
           console.error('❌ Automatic token refresh failed:', refreshError);
-          console.log('🔄 Providing fallback Google Sheets data while token refresh is needed');
           
-          // Instead of returning an error, provide fallback data for professional continuity
-          return res.json({
-            success: true,
-            spreadsheetName: connection.spreadsheetName || 'Marketing Data Sheet',
-            spreadsheetId: connection.spreadsheetId,
-            totalRows: 150,
-            headers: ['Date', 'Campaign', 'Impressions', 'Clicks', 'Spend (USD)', 'Conversions', 'CTR', 'CPC'],
-            data: generateFallbackMarketingData(),
-            summary: {
-              totalImpressions: 125780,
-              totalClicks: 3849,
-              totalSpend: 15670.50,
-              averageCTR: 3.06
-            },
-            lastUpdated: new Date().toISOString(),
-            fallbackData: true
+          // For persistent connections, we need to handle refresh token expiration
+          // by requesting fresh OAuth authorization
+          console.log('🔄 Refresh token may have expired, connection needs re-authorization');
+          
+          // Clear the invalid connection so user can re-authorize
+          await storage.deleteGoogleSheetsConnection(campaignId);
+          
+          return res.status(401).json({ 
+            error: 'REFRESH_TOKEN_EXPIRED',
+            message: 'Connection expired. Please reconnect your Google Sheets account.',
+            requiresReauthorization: true,
+            campaignId: campaignId
           });
         }
       }
@@ -1359,24 +1359,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const errorText = await sheetResponse.text();
         console.error('Google Sheets API error:', errorText);
         
-        // Handle token expiration (if refresh also failed) - provide fallback data
+        // Handle token expiration - clear invalid connection and require re-authorization
         if (sheetResponse.status === 401) {
-          console.log('🔄 Token expired without refresh capability, providing fallback Google Sheets data');
-          return res.json({
-            success: true,
-            spreadsheetName: connection.spreadsheetName || 'Marketing Data Sheet',
-            spreadsheetId: connection.spreadsheetId,
-            totalRows: 150,
-            headers: ['Date', 'Campaign', 'Impressions', 'Clicks', 'Spend (USD)', 'Conversions', 'CTR', 'CPC'],
-            data: generateFallbackMarketingData(),
-            summary: {
-              totalImpressions: 125780,
-              totalClicks: 3849,
-              totalSpend: 15670.50,
-              averageCTR: 3.06
-            },
-            lastUpdated: new Date().toISOString(),
-            fallbackData: true
+          console.log('🔄 Token expired without refresh capability, clearing connection');
+          
+          // Clear the invalid connection so user can re-authorize  
+          await storage.deleteGoogleSheetsConnection(campaignId);
+          
+          return res.status(401).json({ 
+            error: 'ACCESS_TOKEN_EXPIRED',
+            message: 'Connection expired. Please reconnect your Google Sheets account.',
+            requiresReauthorization: true,
+            campaignId: campaignId
           });
         }
         
@@ -1482,24 +1476,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('Google Sheets data error:', error);
-      console.log('🔄 Providing fallback Google Sheets data due to connection error');
-      
-      // Provide fallback data instead of error for professional continuity
-      res.json({
-        success: true,
-        spreadsheetName: 'Marketing Data Sheet',
-        spreadsheetId: 'fallback-sheet',
-        totalRows: 150,
-        headers: ['Date', 'Campaign', 'Impressions', 'Clicks', 'Spend (USD)', 'Conversions', 'CTR', 'CPC'],
-        data: generateFallbackMarketingData(),
-        summary: {
-          totalImpressions: 125780,
-          totalClicks: 3849,
-          totalSpend: 15670.50,
-          averageCTR: 3.06
-        },
-        lastUpdated: new Date().toISOString(),
-        fallbackData: true
+      res.status(500).json({
+        error: 'Failed to fetch Google Sheets data',
+        message: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });

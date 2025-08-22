@@ -33,22 +33,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Update a campaign by ID
   app.patch("/api/campaigns/:id", async (req, res) => {
-    console.log('🔧 PATCH /api/campaigns/:id route hit!');
-    console.log('Campaign ID:', req.params.id);
-    console.log('Request body:', req.body);
     try {
       const validatedData = insertCampaignSchema.partial().parse(req.body);
-      console.log('Validated data:', validatedData);
       const campaign = await storage.updateCampaign(req.params.id, validatedData);
-      console.log('Updated campaign result:', campaign);
       if (!campaign) {
-        console.log('Campaign not found, returning 404');
         return res.status(404).json({ message: "Campaign not found" });
       }
-      console.log('Sending successful response:', campaign);
       res.json(campaign);
     } catch (error) {
-      console.error('PATCH route error:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
       }

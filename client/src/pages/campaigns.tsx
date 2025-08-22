@@ -534,13 +534,22 @@ export default function Campaigns() {
 
   const updateCampaignMutation = useMutation({
     mutationFn: async (data: { id: string } & Partial<CampaignFormData>) => {
-      const response = await apiRequest("PATCH", `/api/campaigns/${data.id}`, {
-        name: data.name,
-        clientWebsite: data.clientWebsite || null,
-        label: data.label || null,
-        budget: data.budget ? parseFloat(data.budget) : null,
-      });
-      return response.json();
+      try {
+        const response = await apiRequest("PATCH", `/api/campaigns/${data.id}`, {
+          name: data.name,
+          clientWebsite: data.clientWebsite || null,
+          label: data.label || null,
+          budget: data.budget ? parseFloat(data.budget) : null,
+        });
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers.get('content-type'));
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+        return JSON.parse(responseText);
+      } catch (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });

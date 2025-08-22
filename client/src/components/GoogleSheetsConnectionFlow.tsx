@@ -46,8 +46,11 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
     setStep('connecting');
 
     try {
+      // Use current domain for redirect - works for both localhost and Replit domains
       const redirectUri = `${window.location.origin}/oauth-callback.html`;
       const scope = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly';
+      
+      console.log('OAuth redirect URI:', redirectUri);
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(clientId)}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
@@ -59,9 +62,29 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
       // Open popup for OAuth
       const popup = window.open(authUrl, 'google-oauth', 'width=500,height=600');
       
+      if (!popup) {
+        toast({
+          title: "Popup Blocked",
+          description: "Please allow popups for this site and try again.",
+          variant: "destructive"
+        });
+        setStep('credentials');
+        setIsConnecting(false);
+        return;
+      }
+      
+      console.log('OAuth popup opened successfully');
+      
       // Listen for OAuth callback
       const handleMessage = async (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
+        console.log('Received message:', event.data, 'from origin:', event.origin);
+        
+        // Accept messages from same origin (more flexible for Replit domains)
+        const currentOrigin = window.location.origin;
+        if (event.origin !== currentOrigin) {
+          console.log(`Rejecting message from ${event.origin}, expected ${currentOrigin}`);
+          return;
+        }
         
         if (event.data.type === 'OAUTH_SUCCESS') {
           const authCode = event.data.code;
@@ -120,9 +143,17 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
           setStep('credentials');
         }
         
+        cleanup();
+      };
+
+      const cleanup = () => {
         window.removeEventListener('message', handleMessage);
-        popup?.close();
+        if (popup && !popup.closed) {
+          popup.close();
+        }
         setIsConnecting(false);
+        clearInterval(checkClosed);
+        clearTimeout(timeoutId);
       };
 
       window.addEventListener('message', handleMessage);
@@ -134,8 +165,21 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
           window.removeEventListener('message', handleMessage);
           setIsConnecting(false);
           setStep('credentials');
+          clearTimeout(timeoutId);
         }
       }, 1000);
+      
+      // Set timeout for OAuth flow (5 minutes)
+      const timeoutId = setTimeout(() => {
+        console.log('OAuth flow timed out');
+        toast({
+          title: "Connection Timeout",
+          description: "The connection process timed out. Please try again.",
+          variant: "destructive"
+        });
+        setStep('credentials');
+        cleanup();
+      }, 5 * 60 * 1000);
 
     } catch (error: any) {
       console.error('Google Sheets connection error:', error);

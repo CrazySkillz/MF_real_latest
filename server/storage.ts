@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull } from "drizzle-orm";
@@ -92,6 +92,38 @@ export interface IStorage {
     performanceTrend: string;
     lastPerformanceRating: string;
   }>;
+
+  // A/B Tests
+  getCampaignABTests(campaignId: string): Promise<ABTest[]>;
+  getABTest(testId: string): Promise<ABTest | undefined>;
+  createABTest(test: InsertABTest): Promise<ABTest>;
+  updateABTest(testId: string, test: Partial<InsertABTest>): Promise<ABTest | undefined>;
+  deleteABTest(testId: string): Promise<boolean>;
+  
+  // A/B Test Variants
+  getABTestVariants(testId: string): Promise<ABTestVariant[]>;
+  createABTestVariant(variant: InsertABTestVariant): Promise<ABTestVariant>;
+  updateABTestVariant(variantId: string, variant: Partial<InsertABTestVariant>): Promise<ABTestVariant | undefined>;
+  deleteABTestVariant(variantId: string): Promise<boolean>;
+  
+  // A/B Test Results
+  getABTestResults(testId: string): Promise<ABTestResult[]>;
+  getABTestResult(testId: string, variantId: string): Promise<ABTestResult | undefined>;
+  updateABTestResult(testId: string, variantId: string, result: Partial<InsertABTestResult>): Promise<ABTestResult>;
+  
+  // A/B Test Events
+  recordABTestEvent(event: InsertABTestEvent): Promise<ABTestEvent>;
+  getABTestEvents(testId: string, variantId?: string): Promise<ABTestEvent[]>;
+  
+  // A/B Test Analytics
+  getABTestAnalytics(testId: string): Promise<{
+    test: ABTest;
+    variants: ABTestVariant[];
+    results: ABTestResult[];
+    statisticalSignificance: boolean;
+    confidenceLevel: number;
+    winnerVariant?: string;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -107,6 +139,10 @@ export class MemStorage implements IStorage {
   private benchmarks: Map<string, Benchmark>;
   private benchmarkHistory: Map<string, BenchmarkHistory>;
   private notifications_: Map<string, Notification>;
+  private abTests: Map<string, ABTest>;
+  private abTestVariants: Map<string, ABTestVariant>;
+  private abTestResults: Map<string, ABTestResult>;
+  private abTestEvents: Map<string, ABTestEvent>;
 
   constructor() {
     this.campaigns = new Map();
@@ -121,6 +157,10 @@ export class MemStorage implements IStorage {
     this.benchmarks = new Map();
     this.benchmarkHistory = new Map();
     this.notifications_ = new Map();
+    this.abTests = new Map();
+    this.abTestVariants = new Map();
+    this.abTestResults = new Map();
+    this.abTestEvents = new Map();
     
     // Initialize with empty data - no mock data
     this.initializeEmptyData();
@@ -1225,6 +1265,253 @@ export class DatabaseStorage implements IStorage {
       .update(notifications)
       .set({ read: true });
     return true;
+  }
+
+  // A/B Test methods
+  async getCampaignABTests(campaignId: string): Promise<ABTest[]> {
+    return await db.select().from(abTests).where(eq(abTests.campaignId, campaignId)).orderBy(abTests.createdAt);
+  }
+
+  async getABTest(testId: string): Promise<ABTest | undefined> {
+    const [test] = await db.select().from(abTests).where(eq(abTests.id, testId));
+    return test || undefined;
+  }
+
+  async createABTest(testData: InsertABTest): Promise<ABTest> {
+    const [test] = await db
+      .insert(abTests)
+      .values(testData)
+      .returning();
+    return test;
+  }
+
+  async updateABTest(testId: string, updateData: Partial<InsertABTest>): Promise<ABTest | undefined> {
+    const [test] = await db
+      .update(abTests)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(abTests.id, testId))
+      .returning();
+    return test || undefined;
+  }
+
+  async deleteABTest(testId: string): Promise<boolean> {
+    // Also delete related variants, results, and events
+    await db.delete(abTestEvents).where(eq(abTestEvents.testId, testId));
+    await db.delete(abTestResults).where(eq(abTestResults.testId, testId));
+    await db.delete(abTestVariants).where(eq(abTestVariants.testId, testId));
+    
+    const result = await db.delete(abTests).where(eq(abTests.id, testId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // A/B Test Variant methods
+  async getABTestVariants(testId: string): Promise<ABTestVariant[]> {
+    return await db.select().from(abTestVariants).where(eq(abTestVariants.testId, testId)).orderBy(abTestVariants.name);
+  }
+
+  async createABTestVariant(variantData: InsertABTestVariant): Promise<ABTestVariant> {
+    const [variant] = await db
+      .insert(abTestVariants)
+      .values(variantData)
+      .returning();
+    return variant;
+  }
+
+  async updateABTestVariant(variantId: string, updateData: Partial<InsertABTestVariant>): Promise<ABTestVariant | undefined> {
+    const [variant] = await db
+      .update(abTestVariants)
+      .set(updateData)
+      .where(eq(abTestVariants.id, variantId))
+      .returning();
+    return variant || undefined;
+  }
+
+  async deleteABTestVariant(variantId: string): Promise<boolean> {
+    // Also delete related results and events
+    await db.delete(abTestEvents).where(eq(abTestEvents.variantId, variantId));
+    await db.delete(abTestResults).where(eq(abTestResults.variantId, variantId));
+    
+    const result = await db.delete(abTestVariants).where(eq(abTestVariants.id, variantId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // A/B Test Result methods
+  async getABTestResults(testId: string): Promise<ABTestResult[]> {
+    return await db.select().from(abTestResults).where(eq(abTestResults.testId, testId)).orderBy(abTestResults.updatedAt);
+  }
+
+  async getABTestResult(testId: string, variantId: string): Promise<ABTestResult | undefined> {
+    const [result] = await db.select()
+      .from(abTestResults)
+      .where(and(eq(abTestResults.testId, testId), eq(abTestResults.variantId, variantId)));
+    return result || undefined;
+  }
+
+  async updateABTestResult(testId: string, variantId: string, resultData: Partial<InsertABTestResult>): Promise<ABTestResult> {
+    // Try to update existing result first
+    const [existing] = await db
+      .update(abTestResults)
+      .set({ ...resultData, updatedAt: new Date() })
+      .where(and(eq(abTestResults.testId, testId), eq(abTestResults.variantId, variantId)))
+      .returning();
+
+    if (existing) {
+      return existing;
+    }
+
+    // If no existing result, create new one
+    const [newResult] = await db
+      .insert(abTestResults)
+      .values({
+        testId,
+        variantId,
+        ...resultData,
+      } as InsertABTestResult)
+      .returning();
+    
+    return newResult;
+  }
+
+  // A/B Test Event methods
+  async recordABTestEvent(eventData: InsertABTestEvent): Promise<ABTestEvent> {
+    const [event] = await db
+      .insert(abTestEvents)
+      .values(eventData)
+      .returning();
+    
+    // Update aggregate results
+    await this.updateAggregateResults(eventData.testId, eventData.variantId, eventData.eventType, parseFloat(eventData.eventValue?.toString() || "0"));
+    
+    return event;
+  }
+
+  async getABTestEvents(testId: string, variantId?: string): Promise<ABTestEvent[]> {
+    if (variantId) {
+      return await db.select()
+        .from(abTestEvents)
+        .where(and(eq(abTestEvents.testId, testId), eq(abTestEvents.variantId, variantId)))
+        .orderBy(abTestEvents.occurredAt);
+    }
+    
+    return await db.select()
+      .from(abTestEvents)
+      .where(eq(abTestEvents.testId, testId))
+      .orderBy(abTestEvents.occurredAt);
+  }
+
+  // Helper method to update aggregate results
+  private async updateAggregateResults(testId: string, variantId: string, eventType: string, eventValue: number): Promise<void> {
+    const existingResult = await this.getABTestResult(testId, variantId);
+    
+    const updateData: Partial<InsertABTestResult> = {};
+    
+    switch (eventType) {
+      case 'impression':
+        updateData.impressions = (existingResult?.impressions || 0) + 1;
+        break;
+      case 'click':
+        updateData.clicks = (existingResult?.clicks || 0) + 1;
+        break;
+      case 'conversion':
+        updateData.conversions = (existingResult?.conversions || 0) + 1;
+        updateData.revenue = ((parseFloat(existingResult?.revenue?.toString() || "0") + eventValue).toFixed(2));
+        break;
+    }
+    
+    // Calculate derived metrics
+    if (updateData.impressions || updateData.clicks || updateData.conversions) {
+      const impressions = updateData.impressions || existingResult?.impressions || 0;
+      const clicks = updateData.clicks || existingResult?.clicks || 0;
+      const conversions = updateData.conversions || existingResult?.conversions || 0;
+      
+      if (impressions > 0) {
+        updateData.clickThroughRate = (((clicks / impressions) * 100).toFixed(2));
+        updateData.conversionRate = (((conversions / impressions) * 100).toFixed(2));
+      }
+      
+      if (clicks > 0) {
+        const revenue = parseFloat(updateData.revenue?.toString() || existingResult?.revenue?.toString() || "0");
+        updateData.revenuePerVisitor = (revenue / clicks).toFixed(2);
+      }
+    }
+    
+    await this.updateABTestResult(testId, variantId, updateData);
+  }
+
+  // A/B Test Analytics methods
+  async getABTestAnalytics(testId: string): Promise<{
+    test: ABTest;
+    variants: ABTestVariant[];
+    results: ABTestResult[];
+    statisticalSignificance: boolean;
+    confidenceLevel: number;
+    winnerVariant?: string;
+  }> {
+    const test = await this.getABTest(testId);
+    if (!test) {
+      throw new Error(`A/B Test with ID ${testId} not found`);
+    }
+
+    const variants = await this.getABTestVariants(testId);
+    const results = await this.getABTestResults(testId);
+
+    // Calculate statistical significance
+    const { significance, winner } = this.calculateStatisticalSignificance(results, parseFloat(test.confidenceLevel || "95"));
+
+    return {
+      test,
+      variants,
+      results,
+      statisticalSignificance: significance,
+      confidenceLevel: parseFloat(test.confidenceLevel || "95"),
+      winnerVariant: winner
+    };
+  }
+
+  // Helper method for statistical significance calculation
+  private calculateStatisticalSignificance(results: ABTestResult[], confidenceLevel: number): { significance: boolean; winner?: string } {
+    if (results.length < 2) {
+      return { significance: false };
+    }
+
+    // Simple statistical significance calculation
+    // In a production system, you would use proper statistical tests (z-test, t-test, etc.)
+    const controlResult = results.find(r => r.variantId === 'A') || results[0];
+    const testResults = results.filter(r => r.variantId !== controlResult.variantId);
+
+    let bestResult = controlResult;
+    let significantDifference = false;
+
+    for (const testResult of testResults) {
+      // Calculate conversion rates
+      const controlRate = controlResult.impressions > 0 ? (controlResult.conversions / controlResult.impressions) : 0;
+      const testRate = testResult.impressions > 0 ? (testResult.conversions / testResult.impressions) : 0;
+      
+      // Simple significance check: 
+      // - Minimum sample size of 100 per variant
+      // - At least 20% difference in conversion rates
+      // - Both variants have reasonable sample sizes
+      const minSampleSize = 100;
+      const minDifference = 0.2; // 20%
+      
+      if (controlResult.impressions >= minSampleSize && 
+          testResult.impressions >= minSampleSize) {
+        const difference = Math.abs(testRate - controlRate);
+        const relativeDifference = controlRate > 0 ? difference / controlRate : 0;
+        
+        if (relativeDifference >= minDifference) {
+          significantDifference = true;
+          if (testRate > controlRate && testResult.conversions > bestResult.conversions) {
+            bestResult = testResult;
+          }
+        }
+      }
+    }
+
+    return {
+      significance: significantDifference,
+      winner: significantDifference ? bestResult.variantId : undefined
+    };
   }
 }
 

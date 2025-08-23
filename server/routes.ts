@@ -1440,6 +1440,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // A/B Testing Routes
+  
+  // Get A/B tests for a campaign
+  app.get("/api/campaigns/:campaignId/ab-tests", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const tests = await storage.getCampaignABTests(campaignId);
+      res.json(tests);
+    } catch (error) {
+      console.error('A/B tests fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch A/B tests" });
+    }
+  });
+
+  // Get specific A/B test with full analytics
+  app.get("/api/ab-tests/:testId", async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const analytics = await storage.getABTestAnalytics(testId);
+      res.json(analytics);
+    } catch (error) {
+      console.error('A/B test fetch error:', error);
+      if (error.message.includes('not found')) {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to fetch A/B test" });
+      }
+    }
+  });
+
+  // Create A/B test
+  app.post("/api/ab-tests", async (req, res) => {
+    try {
+      const testData = req.body;
+      const test = await storage.createABTest(testData);
+      
+      // Create default variants (A and B)
+      const variantA = await storage.createABTestVariant({
+        testId: test.id,
+        name: "A",
+        description: "Control (Original)",
+        content: JSON.stringify({ type: "control" }),
+        trafficPercentage: parseFloat(testData.trafficSplit || "50"),
+        isControl: true
+      });
+      
+      const variantB = await storage.createABTestVariant({
+        testId: test.id,
+        name: "B", 
+        description: "Variant B",
+        content: JSON.stringify({ type: "variant" }),
+        trafficPercentage: 100 - parseFloat(testData.trafficSplit || "50"),
+        isControl: false
+      });
+
+      res.status(201).json({ test, variants: [variantA, variantB] });
+    } catch (error) {
+      console.error('A/B test creation error:', error);
+      res.status(500).json({ message: "Failed to create A/B test" });
+    }
+  });
+
+  // Update A/B test
+  app.patch("/api/ab-tests/:testId", async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const updateData = req.body;
+      
+      const test = await storage.updateABTest(testId, updateData);
+      if (!test) {
+        return res.status(404).json({ message: "A/B test not found" });
+      }
+      
+      res.json(test);
+    } catch (error) {
+      console.error('A/B test update error:', error);
+      res.status(500).json({ message: "Failed to update A/B test" });
+    }
+  });
+
+  // Delete A/B test
+  app.delete("/api/ab-tests/:testId", async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const deleted = await storage.deleteABTest(testId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "A/B test not found" });
+      }
+      
+      res.json({ success: true, message: "A/B test deleted successfully" });
+    } catch (error) {
+      console.error('A/B test deletion error:', error);
+      res.status(500).json({ message: "Failed to delete A/B test" });
+    }
+  });
+
+  // Get A/B test variants
+  app.get("/api/ab-tests/:testId/variants", async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const variants = await storage.getABTestVariants(testId);
+      res.json(variants);
+    } catch (error) {
+      console.error('A/B test variants fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch A/B test variants" });
+    }
+  });
+
+  // Update A/B test variant
+  app.patch("/api/ab-tests/:testId/variants/:variantId", async (req, res) => {
+    try {
+      const { variantId } = req.params;
+      const updateData = req.body;
+      
+      const variant = await storage.updateABTestVariant(variantId, updateData);
+      if (!variant) {
+        return res.status(404).json({ message: "Variant not found" });
+      }
+      
+      res.json(variant);
+    } catch (error) {
+      console.error('A/B test variant update error:', error);
+      res.status(500).json({ message: "Failed to update A/B test variant" });
+    }
+  });
+
+  // Record A/B test event
+  app.post("/api/ab-tests/:testId/events", async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const eventData = { ...req.body, testId };
+      
+      const event = await storage.recordABTestEvent(eventData);
+      res.status(201).json(event);
+    } catch (error) {
+      console.error('A/B test event recording error:', error);
+      res.status(500).json({ message: "Failed to record A/B test event" });
+    }
+  });
+
+  // Get A/B test results
+  app.get("/api/ab-tests/:testId/results", async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const results = await storage.getABTestResults(testId);
+      res.json(results);
+    } catch (error) {
+      console.error('A/B test results fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch A/B test results" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

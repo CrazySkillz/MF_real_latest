@@ -176,6 +176,64 @@ export const benchmarkHistory = pgTable("benchmark_history", {
   notes: text("notes"),
 });
 
+export const abTests = pgTable("ab_tests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  hypothesis: text("hypothesis"), // What we're testing and expected outcome
+  objective: text("objective").notNull(), // 'conversions', 'clicks', 'engagement', 'revenue'
+  trafficSplit: decimal("traffic_split", { precision: 5, scale: 2 }).notNull().default("50.00"), // Percentage for variant A (rest goes to B)
+  status: text("status").notNull().default("draft"), // 'draft', 'active', 'paused', 'completed', 'archived'
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  minSampleSize: integer("min_sample_size").default(100), // Minimum samples needed for significance
+  confidenceLevel: decimal("confidence_level", { precision: 3, scale: 2 }).default("95.00"), // Statistical confidence level
+  significance: boolean("significance").default(false), // Whether results are statistically significant
+  winnerVariant: text("winner_variant"), // 'A', 'B', or null if no clear winner
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const abTestVariants = pgTable("ab_test_variants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  testId: text("test_id").notNull(),
+  name: text("name").notNull(), // 'A', 'B', 'C', etc.
+  description: text("description"),
+  content: text("content"), // JSON string containing variant configuration
+  trafficPercentage: decimal("traffic_percentage", { precision: 5, scale: 2 }).notNull(), // Actual percentage of traffic
+  isControl: boolean("is_control").notNull().default(false), // Whether this is the control variant
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const abTestResults = pgTable("ab_test_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  testId: text("test_id").notNull(),
+  variantId: text("variant_id").notNull(),
+  impressions: integer("impressions").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  conversions: integer("conversions").notNull().default(0),
+  revenue: decimal("revenue", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }).default("0.00"), // Calculated percentage
+  clickThroughRate: decimal("click_through_rate", { precision: 5, scale: 2 }).default("0.00"), // CTR percentage
+  revenuePerVisitor: decimal("revenue_per_visitor", { precision: 10, scale: 2 }).default("0.00"),
+  costPerConversion: decimal("cost_per_conversion", { precision: 10, scale: 2 }).default("0.00"),
+  recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const abTestEvents = pgTable("ab_test_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  testId: text("test_id").notNull(),
+  variantId: text("variant_id").notNull(),
+  eventType: text("event_type").notNull(), // 'impression', 'click', 'conversion', 'custom'
+  eventValue: decimal("event_value", { precision: 10, scale: 2 }), // Revenue or custom metric value
+  userId: text("user_id"), // Optional user identifier for tracking
+  sessionId: text("session_id"), // Session identifier
+  metadata: text("metadata"), // JSON string for additional event data
+  occurredAt: timestamp("occurred_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   name: true,
   clientWebsite: true,
@@ -313,6 +371,52 @@ export const insertNotificationSchema = createInsertSchema(notifications).pick({
   priority: true,
 });
 
+export const insertABTestSchema = createInsertSchema(abTests).pick({
+  campaignId: true,
+  name: true,
+  description: true,
+  hypothesis: true,
+  objective: true,
+  trafficSplit: true,
+  status: true,
+  startDate: true,
+  endDate: true,
+  minSampleSize: true,
+  confidenceLevel: true,
+});
+
+export const insertABTestVariantSchema = createInsertSchema(abTestVariants).pick({
+  testId: true,
+  name: true,
+  description: true,
+  content: true,
+  trafficPercentage: true,
+  isControl: true,
+});
+
+export const insertABTestResultSchema = createInsertSchema(abTestResults).pick({
+  testId: true,
+  variantId: true,
+  impressions: true,
+  clicks: true,
+  conversions: true,
+  revenue: true,
+  conversionRate: true,
+  clickThroughRate: true,
+  revenuePerVisitor: true,
+  costPerConversion: true,
+});
+
+export const insertABTestEventSchema = createInsertSchema(abTestEvents).pick({
+  testId: true,
+  variantId: true,
+  eventType: true,
+  eventValue: true,
+  userId: true,
+  sessionId: true,
+  metadata: true,
+});
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Metric = typeof metrics.$inferSelect;
@@ -337,3 +441,11 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type BenchmarkHistory = typeof benchmarkHistory.$inferSelect;
 export type InsertBenchmarkHistory = z.infer<typeof insertBenchmarkHistorySchema>;
+export type ABTest = typeof abTests.$inferSelect;
+export type InsertABTest = z.infer<typeof insertABTestSchema>;
+export type ABTestVariant = typeof abTestVariants.$inferSelect;
+export type InsertABTestVariant = z.infer<typeof insertABTestVariantSchema>;
+export type ABTestResult = typeof abTestResults.$inferSelect;
+export type InsertABTestResult = z.infer<typeof insertABTestResultSchema>;
+export type ABTestEvent = typeof abTestEvents.$inferSelect;
+export type InsertABTestEvent = z.infer<typeof insertABTestEventSchema>;

@@ -13,7 +13,7 @@ from models import Campaign, Metric, Integration, PerformanceData
 from storage import get_storage, IStorage
 from google_analytics import ga_service
 
-app = FastAPI(title="MarketPulse API", version="1.0.0")
+app = FastAPI(title="MarketIQ API", version="1.0.0")
 
 # Configure CORS
 app.add_middleware(

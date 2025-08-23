@@ -1,8 +1,8 @@
-# MarketPulse - Marketing Dashboard
+# MarketIQ - Marketing Analytics Platform
 
 ## Overview
 
-MarketPulse is a modern web application for tracking marketing campaign performance and metrics. It provides a comprehensive dashboard for managing advertising campaigns across multiple platforms, monitoring key performance indicators, and integrating with various marketing services.
+MarketIQ is a comprehensive marketing analytics platform that delivers intelligent insights for campaign performance and metrics. It provides a sophisticated dashboard for managing advertising campaigns across multiple platforms, monitoring key performance indicators, and integrating with various marketing services through smart data analysis.
 
 The application is built as a full-stack solution with a React frontend and Express.js backend, utilizing modern web technologies and a clean architectural pattern.
 

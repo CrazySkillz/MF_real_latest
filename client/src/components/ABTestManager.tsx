@@ -207,7 +207,7 @@ export function ABTestManager({ campaignId }: ABTestManagerProps) {
               New A/B Test
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create A/B Test</DialogTitle>
               <DialogDescription>
@@ -215,7 +215,7 @@ export function ABTestManager({ campaignId }: ABTestManagerProps) {
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
                   name="name"
@@ -243,6 +243,7 @@ export function ABTestManager({ campaignId }: ABTestManagerProps) {
                       <FormControl>
                         <Textarea 
                           placeholder="e.g., Changing the CTA button color from blue to red will increase conversion rates by 15%"
+                          className="min-h-[80px] resize-none"
                           data-testid="input-test-hypothesis"
                           {...field} 
                         />
@@ -255,7 +256,7 @@ export function ABTestManager({ campaignId }: ABTestManagerProps) {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="objective"
@@ -305,7 +306,7 @@ export function ABTestManager({ campaignId }: ABTestManagerProps) {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="minSampleSize"
@@ -321,6 +322,9 @@ export function ABTestManager({ campaignId }: ABTestManagerProps) {
                             {...field} 
                           />
                         </FormControl>
+                        <FormDescription>
+                          50-10,000 participants
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -344,6 +348,9 @@ export function ABTestManager({ campaignId }: ABTestManagerProps) {
                             <SelectItem value="99.00">99%</SelectItem>
                           </SelectContent>
                         </Select>
+                        <FormDescription>
+                          Statistical significance threshold
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -359,6 +366,7 @@ export function ABTestManager({ campaignId }: ABTestManagerProps) {
                       <FormControl>
                         <Textarea 
                           placeholder="Additional details about the test setup..."
+                          className="min-h-[60px] resize-none"
                           data-testid="input-test-description"
                           {...field} 
                         />
@@ -368,7 +376,7 @@ export function ABTestManager({ campaignId }: ABTestManagerProps) {
                   )}
                 />
 
-                <div className="flex justify-end space-x-2">
+                <div className="flex justify-end space-x-3 pt-4 border-t">
                   <Button
                     type="button"
                     variant="outline"

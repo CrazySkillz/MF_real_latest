@@ -904,11 +904,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <div class="consent-box">
               <div class="logo">
                 <h2>🔗 Connect Google Analytics</h2>
-                <p>MarketIQ wants to access your Google Analytics account</p>
+                <p>PerformanceCore wants to access your Google Analytics account</p>
               </div>
               
               <div class="permissions">
-                <p><strong>This will allow MarketIQ to:</strong></p>
+                <p><strong>This will allow PerformanceCore to:</strong></p>
                 <ul>
                   <li>✓ Read your Google Analytics data</li>
                   <li>✓ Access real-time metrics and reports</li>

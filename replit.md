@@ -1,8 +1,8 @@
-# MarketIQ - Marketing Analytics Platform
+# PerformanceCore - Marketing Analytics Platform
 
 ## Overview
 
-MarketIQ is a comprehensive marketing analytics platform that delivers intelligent insights for campaign performance and metrics. It provides a sophisticated dashboard for managing advertising campaigns across multiple platforms, monitoring key performance indicators, and integrating with various marketing services through smart data analysis.
+PerformanceCore is a comprehensive marketing analytics platform that serves as the essential core for campaign performance tracking and optimization. It provides a sophisticated dashboard for managing advertising campaigns across multiple platforms, monitoring key performance indicators, and integrating with various marketing services to drive superior results.
 
 The application is built as a full-stack solution with a React frontend and Express.js backend, utilizing modern web technologies and a clean architectural pattern.
 

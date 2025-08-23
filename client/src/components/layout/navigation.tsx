@@ -11,7 +11,7 @@ export default function Navigation() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <i className="fas fa-chart-line text-white text-sm"></i>
             </div>
-            <span className="text-xl font-semibold text-slate-900">MarketIQ</span>
+            <span className="text-xl font-semibold text-slate-900">PerformanceCore</span>
           </div>
         </div>
         

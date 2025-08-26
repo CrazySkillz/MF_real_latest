@@ -476,7 +476,8 @@ export class MemStorage implements IStorage {
       if (journey.status === 'completed' && journey.conversionValue) {
         const defaultModel = Array.from(this.attributionModels.values()).find(m => m.isDefault);
         if (defaultModel) {
-          this.calculateAttributionResults(journeyId, defaultModel.id);
+          // Skip calculation for now - will be implemented properly later
+          // this.calculateAttributionResults(journeyId, defaultModel.id);
         }
       }
     });

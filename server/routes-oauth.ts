@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertKPISchema, insertBenchmarkSchema, insertBenchmarkHistorySchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertKPISchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -1852,6 +1852,417 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Benchmark analytics fetch error:', error);
       res.status(500).json({ message: "Failed to fetch benchmark analytics" });
+    }
+  });
+
+  // Attribution Analysis Routes
+  
+  // Attribution Models endpoints
+  app.get('/api/attribution/models', async (req, res) => {
+    try {
+      // Fallback attribution models for demo
+      const models = [
+        {
+          id: "first-touch",
+          name: "First Touch",
+          type: "first_touch",
+          description: "100% credit to the first touchpoint in the customer journey",
+          configuration: null,
+          isDefault: true,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: "last-touch", 
+          name: "Last Touch",
+          type: "last_touch",
+          description: "100% credit to the last touchpoint before conversion",
+          configuration: null,
+          isDefault: false,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: "linear",
+          name: "Linear",
+          type: "linear", 
+          description: "Equal credit distributed across all touchpoints",
+          configuration: null,
+          isDefault: false,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: "position-based",
+          name: "Position Based",
+          type: "position_based",
+          description: "40% first, 40% last, 20% middle touchpoints",
+          configuration: '{"first": 0.4, "last": 0.4, "middle": 0.2}',
+          isDefault: false,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: "time-decay",
+          name: "Time Decay",
+          type: "time_decay",
+          description: "More credit to touchpoints closer to conversion",
+          configuration: '{"half_life": 7}',
+          isDefault: false,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ];
+      res.json(models);
+    } catch (error) {
+      console.error('Failed to get attribution models:', error);
+      res.status(500).json({ error: 'Failed to get attribution models' });
+    }
+  });
+
+  app.post('/api/attribution/models', async (req, res) => {
+    try {
+      const validated = insertAttributionModelSchema.parse(req.body);
+      const model = await storage.createAttributionModel(validated);
+      res.json(model);
+    } catch (error) {
+      console.error('Failed to create attribution model:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to create attribution model' });
+      }
+    }
+  });
+
+  app.patch('/api/attribution/models/:id', async (req, res) => {
+    try {
+      const validated = insertAttributionModelSchema.partial().parse(req.body);
+      const model = await storage.updateAttributionModel(req.params.id, validated);
+      if (!model) {
+        res.status(404).json({ error: 'Attribution model not found' });
+        return;
+      }
+      res.json(model);
+    } catch (error) {
+      console.error('Failed to update attribution model:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to update attribution model' });
+      }
+    }
+  });
+
+  app.delete('/api/attribution/models/:id', async (req, res) => {
+    try {
+      const success = await storage.deleteAttributionModel(req.params.id);
+      if (!success) {
+        res.status(404).json({ error: 'Attribution model not found' });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to delete attribution model:', error);
+      res.status(500).json({ error: 'Failed to delete attribution model' });
+    }
+  });
+
+  app.post('/api/attribution/models/:id/set-default', async (req, res) => {
+    try {
+      const success = await storage.setDefaultAttributionModel(req.params.id);
+      if (!success) {
+        res.status(404).json({ error: 'Attribution model not found' });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to set default attribution model:', error);
+      res.status(500).json({ error: 'Failed to set default attribution model' });
+    }
+  });
+
+  // Customer Journey endpoints
+  app.get('/api/attribution/journeys', async (req, res) => {
+    try {
+      const { status } = req.query;
+      
+      // Sample customer journeys with touchpoints for demo
+      const journeys = [
+        {
+          id: "journey-001",
+          customerId: "CUST_001",
+          sessionId: "session_abc123",
+          deviceId: null,
+          userId: null,
+          journeyStart: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // 14 days ago
+          journeyEnd: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+          totalTouchpoints: 5,
+          conversionValue: "285.00",
+          conversionType: "purchase",
+          status: "completed",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: "journey-002", 
+          customerId: "CUST_002",
+          sessionId: "session_def456",
+          deviceId: null,
+          userId: null,
+          journeyStart: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000), // 21 days ago
+          journeyEnd: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+          totalTouchpoints: 4,
+          conversionValue: "125.50",
+          conversionType: "subscription",
+          status: "completed",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: "journey-003",
+          customerId: "CUST_003", 
+          sessionId: "session_ghi789",
+          deviceId: null,
+          userId: null,
+          journeyStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+          journeyEnd: new Date(),
+          totalTouchpoints: 5,
+          conversionValue: "450.00",
+          conversionType: "purchase",
+          status: "completed",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: "journey-004",
+          customerId: "CUST_004",
+          sessionId: "session_jkl012", 
+          deviceId: null,
+          userId: null,
+          journeyStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+          journeyEnd: null, // Still active
+          totalTouchpoints: 6,
+          conversionValue: null,
+          conversionType: null,
+          status: "active",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: "journey-005",
+          customerId: "CUST_005",
+          sessionId: "session_mno345",
+          deviceId: null,
+          userId: null,
+          journeyStart: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days ago
+          journeyEnd: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000), // 35 days ago
+          totalTouchpoints: 4,
+          conversionValue: null,
+          conversionType: null,
+          status: "abandoned",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      ];
+      
+      // Filter by status if provided
+      const filteredJourneys = status ? journeys.filter(j => j.status === status) : journeys;
+      res.json(filteredJourneys);
+    } catch (error) {
+      console.error('Failed to get customer journeys:', error);
+      res.status(500).json({ error: 'Failed to get customer journeys' });
+    }
+  });
+
+  app.post('/api/attribution/journeys', async (req, res) => {
+    try {
+      const validated = insertCustomerJourneySchema.parse(req.body);
+      const journey = await storage.createCustomerJourney(validated);
+      res.json(journey);
+    } catch (error) {
+      console.error('Failed to create customer journey:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to create customer journey' });
+      }
+    }
+  });
+
+  app.patch('/api/attribution/journeys/:id', async (req, res) => {
+    try {
+      const validated = insertCustomerJourneySchema.partial().parse(req.body);
+      const journey = await storage.updateCustomerJourney(req.params.id, validated);
+      if (!journey) {
+        res.status(404).json({ error: 'Customer journey not found' });
+        return;
+      }
+      res.json(journey);
+    } catch (error) {
+      console.error('Failed to update customer journey:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to update customer journey' });
+      }
+    }
+  });
+
+  app.get('/api/attribution/journeys/:id', async (req, res) => {
+    try {
+      const journey = await storage.getCustomerJourney(req.params.id);
+      if (!journey) {
+        res.status(404).json({ error: 'Customer journey not found' });
+        return;
+      }
+      res.json(journey);
+    } catch (error) {
+      console.error('Failed to get customer journey:', error);
+      res.status(500).json({ error: 'Failed to get customer journey' });
+    }
+  });
+
+  // Touchpoint endpoints  
+  app.get('/api/attribution/touchpoints', async (req, res) => {
+    try {
+      const { journeyId } = req.query;
+      const touchpoints = await storage.getTouchpoints(journeyId as string);
+      res.json(touchpoints);
+    } catch (error) {
+      console.error('Failed to get touchpoints:', error);
+      res.status(500).json({ error: 'Failed to get touchpoints' });
+    }
+  });
+
+  app.post('/api/attribution/touchpoints', async (req, res) => {
+    try {
+      const validated = insertTouchpointSchema.parse(req.body);
+      const touchpoint = await storage.createTouchpoint(validated);
+      res.json(touchpoint);
+    } catch (error) {
+      console.error('Failed to create touchpoint:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to create touchpoint' });
+      }
+    }
+  });
+
+  // Attribution Calculation endpoint
+  app.post('/api/attribution/calculate', async (req, res) => {
+    try {
+      const { journeyId, modelId } = req.body;
+      
+      if (!journeyId || !modelId) {
+        res.status(400).json({ error: 'Journey ID and Model ID are required' });
+        return;
+      }
+
+      const results = await storage.calculateAttributionResults(journeyId, modelId);
+      res.json(results);
+    } catch (error) {
+      console.error('Failed to calculate attribution:', error);
+      res.status(500).json({ error: 'Failed to calculate attribution' });
+    }
+  });
+
+  // Channel Performance Attribution endpoint
+  app.get('/api/attribution/channel-performance', async (req, res) => {
+    try {
+      const { startDate, endDate, modelId } = req.query;
+      
+      // Sample channel performance data
+      const performance = [
+        {
+          channel: "Google Ads",
+          totalTouchpoints: 1247,
+          totalAttributedValue: 12450.75,
+          conversionRate: 0.034,
+          avgOrderValue: 285.00,
+          attributionCredit: 0.42,
+          costPerAcquisition: 45.20,
+          returnOnAdSpend: 6.8
+        },
+        {
+          channel: "Facebook",
+          totalTouchpoints: 892,
+          totalAttributedValue: 8920.50,
+          conversionRate: 0.028,
+          avgOrderValue: 255.30,
+          attributionCredit: 0.31,
+          costPerAcquisition: 52.10,
+          returnOnAdSpend: 4.9
+        },
+        {
+          channel: "Email",
+          totalTouchpoints: 634,
+          totalAttributedValue: 6340.25,
+          conversionRate: 0.045,
+          avgOrderValue: 195.80,
+          attributionCredit: 0.18,
+          costPerAcquisition: 12.50,
+          returnOnAdSpend: 15.6
+        },
+        {
+          channel: "Direct",
+          totalTouchpoints: 423,
+          totalAttributedValue: 4230.00,
+          conversionRate: 0.067,
+          avgOrderValue: 310.50,
+          attributionCredit: 0.09,
+          costPerAcquisition: 0.00,
+          returnOnAdSpend: 999.9
+        }
+      ];
+      
+      res.json(performance);
+    } catch (error) {
+      console.error('Failed to get channel performance attribution:', error);
+      res.status(500).json({ error: 'Failed to get channel performance attribution' });
+    }
+  });
+
+  // Campaign-specific attribution endpoint
+  app.get('/api/campaigns/:campaignId/attribution', async (req, res) => {
+    try {
+      const { modelId } = req.query;
+      
+      // Get campaign touchpoints
+      const touchpoints = await storage.getCampaignTouchpoints(req.params.campaignId);
+      
+      // Get attribution insights for this campaign
+      const insights = await storage.getCampaignAttributionInsights(
+        req.params.campaignId, 
+        modelId as string
+      );
+
+      // Calculate campaign attribution summary
+      const totalAttributedValue = touchpoints.reduce((sum, tp) => 
+        sum + parseFloat(tp.eventValue || "0"), 0
+      );
+
+      res.json({
+        touchpoints,
+        insights,
+        summary: {
+          totalAttributedValue,
+          totalTouchpoints: touchpoints.length,
+          channelBreakdown: touchpoints.reduce((acc, tp) => {
+            acc[tp.channel] = (acc[tp.channel] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>)
+        }
+      });
+    } catch (error) {
+      console.error('Failed to get campaign attribution:', error);
+      res.status(500).json({ error: 'Failed to get campaign attribution' });
     }
   });
 

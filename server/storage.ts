@@ -257,6 +257,9 @@ export class MemStorage implements IStorage {
 
     // Initialize default attribution models
     this.initializeDefaultAttributionModels();
+    
+    // Initialize sample attribution data for demonstration
+    this.initializeSampleAttributionData();
   }
 
   private initializeDefaultAttributionModels() {
@@ -328,6 +331,154 @@ export class MemStorage implements IStorage {
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
+    });
+  }
+
+  private initializeSampleAttributionData() {
+    // Create sample customer journeys with realistic touchpoints
+    const sampleJourneys = [
+      {
+        customerId: "CUST_001",
+        sessionId: "session_abc123",
+        journeyStart: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // 14 days ago
+        journeyEnd: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+        conversionValue: "285.00",
+        conversionType: "purchase",
+        status: "completed",
+        touchpoints: [
+          { channel: "Google Ads", platform: "google", medium: "cpc", source: "google", campaign: "summer_sale_search", position: 1, hours: 14 * 24 },
+          { channel: "Facebook", platform: "facebook", medium: "social", source: "facebook", campaign: "brand_awareness", position: 2, hours: 12 * 24 + 8 },
+          { channel: "Email", platform: "mailchimp", medium: "email", source: "newsletter", campaign: "weekly_deals", position: 3, hours: 8 * 24 + 16 },
+          { channel: "Direct", platform: null, medium: "direct", source: "direct", campaign: null, position: 4, hours: 3 * 24 + 2 },
+          { channel: "Google Ads", platform: "google", medium: "cpc", source: "google", campaign: "retargeting", position: 5, hours: 24 }
+        ]
+      },
+      {
+        customerId: "CUST_002", 
+        sessionId: "session_def456",
+        journeyStart: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000), // 21 days ago
+        journeyEnd: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+        conversionValue: "125.50",
+        conversionType: "subscription",
+        status: "completed",
+        touchpoints: [
+          { channel: "LinkedIn Ads", platform: "linkedin", medium: "social", source: "linkedin", campaign: "b2b_targeting", position: 1, hours: 21 * 24 },
+          { channel: "Content Marketing", platform: "website", medium: "organic", source: "blog", campaign: "seo_content", position: 2, hours: 18 * 24 + 4 },
+          { channel: "Email", platform: "mailchimp", medium: "email", source: "drip_campaign", campaign: "nurture_sequence", position: 3, hours: 10 * 24 + 12 },
+          { channel: "LinkedIn Ads", platform: "linkedin", medium: "social", source: "linkedin", campaign: "retargeting", position: 4, hours: 3 * 24 + 6 }
+        ]
+      },
+      {
+        customerId: "CUST_003",
+        sessionId: "session_ghi789", 
+        journeyStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+        journeyEnd: new Date(),
+        conversionValue: "450.00",
+        conversionType: "purchase", 
+        status: "completed",
+        touchpoints: [
+          { channel: "Instagram Ads", platform: "facebook", medium: "social", source: "instagram", campaign: "visual_showcase", position: 1, hours: 7 * 24 },
+          { channel: "Google Ads", platform: "google", medium: "cpc", source: "google", campaign: "competitor_keywords", position: 2, hours: 5 * 24 + 8 },
+          { channel: "YouTube", platform: "google", medium: "video", source: "youtube", campaign: "product_demo", position: 3, hours: 3 * 24 + 14 },
+          { channel: "Email", platform: "mailchimp", medium: "email", source: "abandoned_cart", campaign: "cart_recovery", position: 4, hours: 2 * 24 },
+          { channel: "Google Ads", platform: "google", medium: "cpc", source: "google", campaign: "brand_keywords", position: 5, hours: 6 }
+        ]
+      },
+      {
+        customerId: "CUST_004",
+        sessionId: "session_jkl012",
+        journeyStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+        journeyEnd: null, // Still active
+        conversionValue: null,
+        conversionType: null,
+        status: "active",
+        touchpoints: [
+          { channel: "Facebook", platform: "facebook", medium: "social", source: "facebook", campaign: "lookalike_audience", position: 1, hours: 30 * 24 },
+          { channel: "Content Marketing", platform: "website", medium: "organic", source: "blog", campaign: "seo_content", position: 2, hours: 25 * 24 + 6 },
+          { channel: "Email", platform: "mailchimp", medium: "email", source: "newsletter", campaign: "weekly_deals", position: 3, hours: 20 * 24 + 10 },
+          { channel: "Google Ads", platform: "google", medium: "cpc", source: "google", campaign: "display_network", position: 4, hours: 15 * 24 + 18 },
+          { channel: "Direct", platform: null, medium: "direct", source: "direct", campaign: null, position: 5, hours: 10 * 24 + 4 },
+          { channel: "Instagram Ads", platform: "facebook", medium: "social", source: "instagram", campaign: "stories_campaign", position: 6, hours: 5 * 24 + 12 }
+        ]
+      },
+      {
+        customerId: "CUST_005",
+        sessionId: "session_mno345",
+        journeyStart: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days ago
+        journeyEnd: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000), // 35 days ago
+        conversionValue: null,
+        conversionType: null,
+        status: "abandoned",
+        touchpoints: [
+          { channel: "Google Ads", platform: "google", medium: "cpc", source: "google", campaign: "awareness_keywords", position: 1, hours: 45 * 24 },
+          { channel: "Facebook", platform: "facebook", medium: "social", source: "facebook", campaign: "interest_targeting", position: 2, hours: 42 * 24 + 8 },
+          { channel: "Email", platform: "mailchimp", medium: "email", source: "welcome_series", campaign: "onboarding", position: 3, hours: 38 * 24 + 16 },
+          { channel: "Content Marketing", platform: "website", medium: "organic", source: "blog", campaign: "seo_content", position: 4, hours: 35 * 24 + 4 }
+        ]
+      }
+    ];
+
+    // Create the journey and touchpoint records
+    sampleJourneys.forEach(journeyData => {
+      // Create customer journey
+      const journeyId = randomUUID();
+      const journey: CustomerJourney = {
+        id: journeyId,
+        customerId: journeyData.customerId,
+        sessionId: journeyData.sessionId,
+        deviceId: null,
+        userId: null,
+        journeyStart: journeyData.journeyStart,
+        journeyEnd: journeyData.journeyEnd,
+        totalTouchpoints: journeyData.touchpoints.length,
+        conversionValue: journeyData.conversionValue,
+        conversionType: journeyData.conversionType,
+        status: journeyData.status,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      this.customerJourneys.set(journeyId, journey);
+
+      // Create touchpoints for this journey
+      journeyData.touchpoints.forEach(touchpointData => {
+        const touchpointId = randomUUID();
+        const timestamp = new Date(journeyData.journeyStart.getTime() + (journeyData.touchpoints.length * 24 * 60 * 60 * 1000 - touchpointData.hours * 60 * 60 * 1000));
+        
+        const touchpoint: Touchpoint = {
+          id: touchpointId,
+          journeyId,
+          campaignId: null, // Could link to actual campaign IDs
+          channel: touchpointData.channel,
+          platform: touchpointData.platform,
+          medium: touchpointData.medium,
+          source: touchpointData.source,
+          campaign: touchpointData.campaign,
+          content: null,
+          term: null,
+          touchpointType: "interaction",
+          position: touchpointData.position,
+          timestamp,
+          deviceType: "desktop",
+          userAgent: "Mozilla/5.0 (compatible sample)",
+          ipAddress: null,
+          referrer: null,
+          landingPage: "/",
+          eventValue: journeyData.conversionValue && touchpointData.position === journeyData.touchpoints.length ? journeyData.conversionValue : null,
+          metadata: JSON.stringify({ sample: true }),
+          createdAt: new Date(),
+        };
+        
+        this.touchpoints.set(touchpointId, touchpoint);
+      });
+
+      // Calculate attribution results for completed journeys using default model
+      if (journey.status === 'completed' && journey.conversionValue) {
+        const defaultModel = Array.from(this.attributionModels.values()).find(m => m.isDefault);
+        if (defaultModel) {
+          this.calculateAttributionResults(journeyId, defaultModel.id);
+        }
+      }
     });
   }
 

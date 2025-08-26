@@ -377,8 +377,174 @@ export function AttributionDashboard() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Individual Customer Journeys with Touchpoints */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Individual Customer Journeys & Touchpoints</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {journeys.map((journey) => (
+                  <JourneyDetailCard key={journey.id} journey={journey} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// Component to show detailed journey with touchpoints
+interface Touchpoint {
+  id: string;
+  channel: string;
+  touchpointType: string;
+  timestamp: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  attribution_credit: number;
+  sequence: number;
+  device_type: string;
+  referrer: string;
+  page_url: string;
+  conversion_value: string;
+}
+
+function JourneyDetailCard({ journey }: { journey: CustomerJourney }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const { data: touchpoints = [] } = useQuery<Touchpoint[]>({
+    queryKey: ['/api/attribution/touchpoints', journey.id],
+    queryFn: () => 
+      fetch(`/api/attribution/touchpoints?journeyId=${journey.id}`)
+        .then(res => res.json()),
+    enabled: isExpanded
+  });
+
+  const getChannelColor = (channel: string) => {
+    const colors: Record<string, string> = {
+      'Google Ads': 'bg-blue-100 text-blue-800',
+      'Facebook': 'bg-blue-100 text-blue-800',
+      'LinkedIn Ads': 'bg-blue-100 text-blue-800', 
+      'Instagram': 'bg-pink-100 text-pink-800',
+      'YouTube': 'bg-red-100 text-red-800',
+      'Email': 'bg-green-100 text-green-800',
+      'Direct': 'bg-gray-100 text-gray-800',
+      'Content Marketing': 'bg-purple-100 text-purple-800'
+    };
+    return colors[channel] || 'bg-gray-100 text-gray-800';
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  return (
+    <div className="border rounded-lg" data-testid={`journey-detail-${journey.id}`}>
+      <div 
+        className="p-4 cursor-pointer hover:bg-gray-50"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">Customer {journey.customerId}</span>
+            </div>
+            <Badge variant={journey.status === 'completed' ? 'default' : journey.status === 'active' ? 'secondary' : 'outline'}>
+              {journey.status}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-muted-foreground">
+              {journey.totalTouchpoints} touchpoints
+            </div>
+            {journey.conversionValue && (
+              <div className="text-sm font-medium">
+                ${parseFloat(journey.conversionValue).toLocaleString()}
+              </div>
+            )}
+            <Button variant="ghost" size="sm" data-testid={`expand-journey-${journey.id}`}>
+              {isExpanded ? 'Hide Details' : 'Show Touchpoints'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="border-t px-4 pb-4">
+          <div className="pt-4">
+            <h4 className="font-medium mb-3">Customer Journey Timeline</h4>
+            {touchpoints.length > 0 ? (
+              <div className="space-y-3">
+                {touchpoints.sort((a, b) => a.sequence - b.sequence).map((touchpoint, index) => (
+                  <div key={touchpoint.id} className="relative flex items-start gap-4 pb-3" data-testid={`touchpoint-${touchpoint.id}`}>
+                    {/* Timeline connector */}
+                    {index < touchpoints.length - 1 && (
+                      <div className="absolute left-5 top-8 h-8 w-0.5 bg-gray-200" />
+                    )}
+                    
+                    {/* Sequence number */}
+                    <div className="flex-shrink-0 w-10 h-10 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-medium">
+                      {touchpoint.sequence}
+                    </div>
+
+                    {/* Touchpoint details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge className={getChannelColor(touchpoint.channel)}>
+                            {touchpoint.channel}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {formatDate(touchpoint.timestamp)}
+                          </span>
+                        </div>
+                        <div className="text-sm font-medium">
+                          ${parseFloat(touchpoint.conversion_value).toFixed(2)} credited
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1 text-sm">
+                        <div className="flex items-center gap-2">
+                          <MousePointer className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">Campaign:</span>
+                          <span>{touchpoint.utm_campaign}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Target className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">Page:</span>
+                          <span className="truncate">{touchpoint.page_url}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">Device:</span>
+                          <span className="capitalize">{touchpoint.device_type}</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-muted-foreground">Attribution:</span>
+                          <span>{(touchpoint.attribution_credit * 100).toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Loading touchpoint details...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

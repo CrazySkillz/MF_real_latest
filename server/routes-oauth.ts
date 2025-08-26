@@ -2132,7 +2132,242 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/attribution/touchpoints', async (req, res) => {
     try {
       const { journeyId } = req.query;
-      const touchpoints = await storage.getTouchpoints(journeyId as string);
+      
+      // Sample touchpoints data based on journey ID
+      const touchpointsData: Record<string, any[]> = {
+        "journey-001": [
+          {
+            id: "tp-001-1",
+            journeyId: "journey-001",
+            channel: "Google Ads",
+            touchpointType: "paid_search",
+            timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+            utm_source: "google",
+            utm_medium: "cpc",
+            utm_campaign: "summer_sale",
+            attribution_credit: 0.20,
+            sequence: 1,
+            device_type: "desktop",
+            referrer: "https://google.com/search?q=summer+sale",
+            page_url: "/landing/summer-sale",
+            conversion_value: "57.00"
+          },
+          {
+            id: "tp-001-2", 
+            journeyId: "journey-001",
+            channel: "Facebook",
+            touchpointType: "paid_social",
+            timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+            utm_source: "facebook",
+            utm_medium: "social",
+            utm_campaign: "retargeting",
+            attribution_credit: 0.20,
+            sequence: 2,
+            device_type: "mobile",
+            referrer: "https://facebook.com",
+            page_url: "/products/category/shoes",
+            conversion_value: "57.00"
+          },
+          {
+            id: "tp-001-3",
+            journeyId: "journey-001", 
+            channel: "Email",
+            touchpointType: "email",
+            timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+            utm_source: "newsletter",
+            utm_medium: "email",
+            utm_campaign: "weekly_newsletter",
+            attribution_credit: 0.20,
+            sequence: 3,
+            device_type: "mobile",
+            referrer: "email_client",
+            page_url: "/products/featured",
+            conversion_value: "57.00"
+          },
+          {
+            id: "tp-001-4",
+            journeyId: "journey-001",
+            channel: "Direct",
+            touchpointType: "direct",
+            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+            utm_source: "direct",
+            utm_medium: "none",
+            utm_campaign: "none",
+            attribution_credit: 0.20,
+            sequence: 4,
+            device_type: "desktop",
+            referrer: "",
+            page_url: "/",
+            conversion_value: "57.00"
+          },
+          {
+            id: "tp-001-5",
+            journeyId: "journey-001",
+            channel: "Google Ads",
+            touchpointType: "paid_search_retargeting",
+            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+            utm_source: "google",
+            utm_medium: "cpc",
+            utm_campaign: "retargeting",
+            attribution_credit: 0.20,
+            sequence: 5,
+            device_type: "desktop",
+            referrer: "https://google.com/search?q=brand+shoes",
+            page_url: "/checkout",
+            conversion_value: "57.00"
+          }
+        ],
+        "journey-002": [
+          {
+            id: "tp-002-1",
+            journeyId: "journey-002",
+            channel: "LinkedIn Ads",
+            touchpointType: "paid_social",
+            timestamp: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+            utm_source: "linkedin",
+            utm_medium: "social",
+            utm_campaign: "b2b_software",
+            attribution_credit: 0.25,
+            sequence: 1,
+            device_type: "desktop",
+            referrer: "https://linkedin.com",
+            page_url: "/landing/b2b-solution",
+            conversion_value: "31.38"
+          },
+          {
+            id: "tp-002-2",
+            journeyId: "journey-002",
+            channel: "Content Marketing",
+            touchpointType: "organic",
+            timestamp: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+            utm_source: "google",
+            utm_medium: "organic",
+            utm_campaign: "none",
+            attribution_credit: 0.25,
+            sequence: 2,
+            device_type: "desktop",
+            referrer: "https://google.com/search?q=marketing+automation",
+            page_url: "/blog/marketing-automation-guide",
+            conversion_value: "31.38"
+          },
+          {
+            id: "tp-002-3",
+            journeyId: "journey-002",
+            channel: "Email",
+            touchpointType: "email",
+            timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+            utm_source: "drip_campaign",
+            utm_medium: "email",
+            utm_campaign: "nurture_sequence",
+            attribution_credit: 0.25,
+            sequence: 3,
+            device_type: "desktop",
+            referrer: "email_client",
+            page_url: "/pricing",
+            conversion_value: "31.38"
+          },
+          {
+            id: "tp-002-4",
+            journeyId: "journey-002",
+            channel: "LinkedIn Ads",
+            touchpointType: "paid_social_retargeting",
+            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+            utm_source: "linkedin",
+            utm_medium: "social",
+            utm_campaign: "retargeting",
+            attribution_credit: 0.25,
+            sequence: 4,
+            device_type: "desktop",
+            referrer: "https://linkedin.com",
+            page_url: "/signup",
+            conversion_value: "31.38"
+          }
+        ],
+        "journey-003": [
+          {
+            id: "tp-003-1",
+            journeyId: "journey-003",
+            channel: "Instagram",
+            touchpointType: "paid_social",
+            timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+            utm_source: "instagram",
+            utm_medium: "social",
+            utm_campaign: "brand_awareness",
+            attribution_credit: 0.20,
+            sequence: 1,
+            device_type: "mobile",
+            referrer: "https://instagram.com",
+            page_url: "/products/new-arrivals",
+            conversion_value: "90.00"
+          },
+          {
+            id: "tp-003-2",
+            journeyId: "journey-003",
+            channel: "Google Ads",
+            touchpointType: "paid_search",
+            timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+            utm_source: "google",
+            utm_medium: "cpc",
+            utm_campaign: "shopping_ads",
+            attribution_credit: 0.20,
+            sequence: 2,
+            device_type: "desktop",
+            referrer: "https://google.com/search?q=trendy+shoes",
+            page_url: "/products/id/12345",
+            conversion_value: "90.00"
+          },
+          {
+            id: "tp-003-3",
+            journeyId: "journey-003",
+            channel: "YouTube",
+            touchpointType: "video_ad",
+            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+            utm_source: "youtube",
+            utm_medium: "video",
+            utm_campaign: "product_demo",
+            attribution_credit: 0.20,
+            sequence: 3,
+            device_type: "mobile",
+            referrer: "https://youtube.com",
+            page_url: "/video/product-demo",
+            conversion_value: "90.00"
+          },
+          {
+            id: "tp-003-4",
+            journeyId: "journey-003",
+            channel: "Email",
+            touchpointType: "email",
+            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+            utm_source: "abandoned_cart",
+            utm_medium: "email",
+            utm_campaign: "cart_recovery",
+            attribution_credit: 0.20,
+            sequence: 4,
+            device_type: "desktop",
+            referrer: "email_client",
+            page_url: "/cart",
+            conversion_value: "90.00"
+          },
+          {
+            id: "tp-003-5",
+            journeyId: "journey-003",
+            channel: "Google Ads",
+            touchpointType: "paid_search_retargeting",
+            timestamp: new Date(),
+            utm_source: "google",
+            utm_medium: "cpc",
+            utm_campaign: "retargeting",
+            attribution_credit: 0.20,
+            sequence: 5,
+            device_type: "desktop",
+            referrer: "https://google.com/search?q=buy+shoes+now",
+            page_url: "/checkout/complete",
+            conversion_value: "90.00"
+          }
+        ]
+      };
+      
+      const touchpoints = touchpointsData[journeyId as string] || [];
       res.json(touchpoints);
     } catch (error) {
       console.error('Failed to get touchpoints:', error);

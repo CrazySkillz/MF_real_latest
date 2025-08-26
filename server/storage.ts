@@ -261,53 +261,73 @@ export class MemStorage implements IStorage {
 
   private initializeDefaultAttributionModels() {
     // First Touch Attribution
-    this.createAttributionModel({
+    const firstTouchId = randomUUID();
+    this.attributionModels.set(firstTouchId, {
+      id: firstTouchId,
       name: "First Touch",
       type: "first_touch",
       description: "100% credit to the first marketing touchpoint in the customer journey",
       configuration: JSON.stringify({ weight: 1.0 }),
       isDefault: false,
       isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     // Last Touch Attribution
-    this.createAttributionModel({
+    const lastTouchId = randomUUID();
+    this.attributionModels.set(lastTouchId, {
+      id: lastTouchId,
       name: "Last Touch",
       type: "last_touch", 
       description: "100% credit to the final touchpoint before conversion",
       configuration: JSON.stringify({ weight: 1.0 }),
       isDefault: true,
       isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     // Linear Attribution
-    this.createAttributionModel({
+    const linearId = randomUUID();
+    this.attributionModels.set(linearId, {
+      id: linearId,
       name: "Linear",
       type: "linear",
       description: "Equal credit distributed across all touchpoints in the journey",
       configuration: JSON.stringify({ evenDistribution: true }),
       isDefault: false,
       isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     // Time Decay Attribution
-    this.createAttributionModel({
+    const timeDecayId = randomUUID();
+    this.attributionModels.set(timeDecayId, {
+      id: timeDecayId,
       name: "Time Decay",
       type: "time_decay",
       description: "More credit to touchpoints closer to conversion",
       configuration: JSON.stringify({ decayRate: 0.5, halfLife: 7 }),
       isDefault: false,
       isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     // Position Based Attribution (40/20/40)
-    this.createAttributionModel({
+    const positionBasedId = randomUUID();
+    this.attributionModels.set(positionBasedId, {
+      id: positionBasedId,
       name: "Position Based",
       type: "position_based",
       description: "40% first touch, 40% last touch, 20% distributed among middle touchpoints",
       configuration: JSON.stringify({ firstWeight: 0.4, lastWeight: 0.4, middleWeight: 0.2 }),
       isDefault: false,
       isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
   }
 

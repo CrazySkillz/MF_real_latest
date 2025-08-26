@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertKPISchema, insertKPIProgressSchema, insertNotificationSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertKPISchema, insertKPIProgressSchema, insertNotificationSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -1437,6 +1437,251 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Service account setup error:', error);
       res.status(500).json({ message: "Service account setup failed" });
+    }
+  });
+
+  // Attribution Analysis Routes
+  
+  // Attribution Models endpoints
+  app.get('/api/attribution/models', async (req, res) => {
+    try {
+      const models = await storage.getAttributionModels();
+      res.json(models);
+    } catch (error) {
+      console.error('Failed to get attribution models:', error);
+      res.status(500).json({ error: 'Failed to get attribution models' });
+    }
+  });
+
+  app.post('/api/attribution/models', async (req, res) => {
+    try {
+      const validated = insertAttributionModelSchema.parse(req.body);
+      const model = await storage.createAttributionModel(validated);
+      res.json(model);
+    } catch (error) {
+      console.error('Failed to create attribution model:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to create attribution model' });
+      }
+    }
+  });
+
+  app.patch('/api/attribution/models/:id', async (req, res) => {
+    try {
+      const validated = insertAttributionModelSchema.partial().parse(req.body);
+      const model = await storage.updateAttributionModel(req.params.id, validated);
+      if (!model) {
+        res.status(404).json({ error: 'Attribution model not found' });
+        return;
+      }
+      res.json(model);
+    } catch (error) {
+      console.error('Failed to update attribution model:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to update attribution model' });
+      }
+    }
+  });
+
+  app.delete('/api/attribution/models/:id', async (req, res) => {
+    try {
+      const success = await storage.deleteAttributionModel(req.params.id);
+      if (!success) {
+        res.status(404).json({ error: 'Attribution model not found' });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to delete attribution model:', error);
+      res.status(500).json({ error: 'Failed to delete attribution model' });
+    }
+  });
+
+  app.post('/api/attribution/models/:id/set-default', async (req, res) => {
+    try {
+      const success = await storage.setDefaultAttributionModel(req.params.id);
+      if (!success) {
+        res.status(404).json({ error: 'Attribution model not found' });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to set default attribution model:', error);
+      res.status(500).json({ error: 'Failed to set default attribution model' });
+    }
+  });
+
+  // Customer Journey endpoints
+  app.get('/api/attribution/journeys', async (req, res) => {
+    try {
+      const { status } = req.query;
+      const journeys = await storage.getCustomerJourneys(status as string);
+      res.json(journeys);
+    } catch (error) {
+      console.error('Failed to get customer journeys:', error);
+      res.status(500).json({ error: 'Failed to get customer journeys' });
+    }
+  });
+
+  app.post('/api/attribution/journeys', async (req, res) => {
+    try {
+      const validated = insertCustomerJourneySchema.parse(req.body);
+      const journey = await storage.createCustomerJourney(validated);
+      res.json(journey);
+    } catch (error) {
+      console.error('Failed to create customer journey:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to create customer journey' });
+      }
+    }
+  });
+
+  app.get('/api/attribution/journeys/:id', async (req, res) => {
+    try {
+      const journey = await storage.getCustomerJourney(req.params.id);
+      if (!journey) {
+        res.status(404).json({ error: 'Customer journey not found' });
+        return;
+      }
+      res.json(journey);
+    } catch (error) {
+      console.error('Failed to get customer journey:', error);
+      res.status(500).json({ error: 'Failed to get customer journey' });
+    }
+  });
+
+  // Touchpoint endpoints  
+  app.get('/api/attribution/journeys/:journeyId/touchpoints', async (req, res) => {
+    try {
+      const touchpoints = await storage.getJourneyTouchpoints(req.params.journeyId);
+      res.json(touchpoints);
+    } catch (error) {
+      console.error('Failed to get journey touchpoints:', error);
+      res.status(500).json({ error: 'Failed to get journey touchpoints' });
+    }
+  });
+
+  app.get('/api/campaigns/:campaignId/touchpoints', async (req, res) => {
+    try {
+      const touchpoints = await storage.getCampaignTouchpoints(req.params.campaignId);
+      res.json(touchpoints);
+    } catch (error) {
+      console.error('Failed to get campaign touchpoints:', error);
+      res.status(500).json({ error: 'Failed to get campaign touchpoints' });
+    }
+  });
+
+  app.post('/api/attribution/touchpoints', async (req, res) => {
+    try {
+      const validated = insertTouchpointSchema.parse(req.body);
+      const touchpoint = await storage.createTouchpoint(validated);
+      res.json(touchpoint);
+    } catch (error) {
+      console.error('Failed to create touchpoint:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to create touchpoint' });
+      }
+    }
+  });
+
+  // Attribution Results endpoints
+  app.get('/api/attribution/results', async (req, res) => {
+    try {
+      const { journeyId, modelId } = req.query;
+      const results = await storage.getAttributionResults(
+        journeyId as string, 
+        modelId as string
+      );
+      res.json(results);
+    } catch (error) {
+      console.error('Failed to get attribution results:', error);
+      res.status(500).json({ error: 'Failed to get attribution results' });
+    }
+  });
+
+  app.post('/api/attribution/calculate/:journeyId/:modelId', async (req, res) => {
+    try {
+      const { journeyId, modelId } = req.params;
+      const results = await storage.calculateAttributionResults(journeyId, modelId);
+      res.json(results);
+    } catch (error) {
+      console.error('Failed to calculate attribution results:', error);
+      res.status(500).json({ error: 'Failed to calculate attribution results' });
+    }
+  });
+
+  // Attribution Analytics endpoints
+  app.get('/api/attribution/comparison/:journeyId', async (req, res) => {
+    try {
+      const comparison = await storage.getAttributionComparison(req.params.journeyId);
+      res.json(comparison);
+    } catch (error) {
+      console.error('Failed to get attribution comparison:', error);
+      res.status(500).json({ error: 'Failed to get attribution comparison' });
+    }
+  });
+
+  app.get('/api/attribution/channel-performance', async (req, res) => {
+    try {
+      const { startDate, endDate, modelId } = req.query;
+      
+      if (!startDate || !endDate) {
+        res.status(400).json({ error: 'Start date and end date are required' });
+        return;
+      }
+
+      const performance = await storage.getChannelPerformanceAttribution(
+        new Date(startDate as string),
+        new Date(endDate as string),
+        modelId as string
+      );
+      res.json(performance);
+    } catch (error) {
+      console.error('Failed to get channel performance attribution:', error);
+      res.status(500).json({ error: 'Failed to get channel performance attribution' });
+    }
+  });
+
+  // Campaign-specific attribution endpoint
+  app.get('/api/campaigns/:campaignId/attribution', async (req, res) => {
+    try {
+      const { modelId } = req.query;
+      
+      // Get campaign touchpoints
+      const touchpoints = await storage.getCampaignTouchpoints(req.params.campaignId);
+      
+      // Get attribution insights for this campaign
+      const insights = await storage.getCampaignAttributionInsights(
+        req.params.campaignId, 
+        modelId as string
+      );
+
+      // Calculate campaign attribution summary
+      const totalAttributedValue = touchpoints.reduce((sum, tp) => 
+        sum + parseFloat(tp.eventValue || "0"), 0
+      );
+
+      res.json({
+        campaignId: req.params.campaignId,
+        touchpoints: touchpoints.length,
+        totalAttributedValue,
+        insights,
+        touchpointsByChannel: touchpoints.reduce((acc, tp) => {
+          acc[tp.channel] = (acc[tp.channel] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      });
+    } catch (error) {
+      console.error('Failed to get campaign attribution:', error);
+      res.status(500).json({ error: 'Failed to get campaign attribution' });
     }
   });
 

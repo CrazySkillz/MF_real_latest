@@ -22,6 +22,7 @@ import { reportStorage } from "@/lib/reportStorage";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
 import { ABTestManager } from "@/components/ABTestManager";
+import { AttributionDashboard } from "@/components/AttributionDashboard";
 
 interface Campaign {
   id: string;
@@ -2064,10 +2065,11 @@ export default function CampaignDetail() {
 
           {/* Tabs Navigation */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
               <TabsTrigger value="ab-testing">A/B Testing</TabsTrigger>
+              <TabsTrigger value="attribution">Attribution</TabsTrigger>
               <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
             </TabsList>
@@ -2364,6 +2366,10 @@ export default function CampaignDetail() {
 
             <TabsContent value="ab-testing" className="space-y-6">
               <ABTestManager campaignId={campaign.id} />
+            </TabsContent>
+
+            <TabsContent value="attribution" className="space-y-6">
+              <AttributionDashboard />
             </TabsContent>
 
             <TabsContent value="benchmarks" className="space-y-6">

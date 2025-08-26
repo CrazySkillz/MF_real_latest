@@ -234,6 +234,94 @@ export const abTestEvents = pgTable("ab_test_events", {
   occurredAt: timestamp("occurred_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Attribution Models and Touchpoint Tracking
+export const attributionModels = pgTable("attribution_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // 'First Touch', 'Last Touch', 'Linear', 'Time Decay', 'Position Based', 'Data Driven'
+  type: text("type").notNull(), // 'first_touch', 'last_touch', 'linear', 'time_decay', 'position_based', 'data_driven'
+  description: text("description"),
+  configuration: text("configuration"), // JSON string for model-specific settings
+  isDefault: boolean("is_default").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const customerJourneys = pgTable("customer_journeys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: text("customer_id").notNull(), // External customer identifier
+  sessionId: text("session_id"), // Browser session ID
+  deviceId: text("device_id"), // Device fingerprint
+  userId: text("user_id"), // Authenticated user ID (optional)
+  journeyStart: timestamp("journey_start").notNull(),
+  journeyEnd: timestamp("journey_end"),
+  totalTouchpoints: integer("total_touchpoints").notNull().default(0),
+  conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }),
+  conversionType: text("conversion_type"), // 'purchase', 'lead', 'signup', 'custom'
+  status: text("status").notNull().default("active"), // 'active', 'converted', 'abandoned'
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const touchpoints = pgTable("touchpoints", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  journeyId: text("journey_id").notNull(),
+  campaignId: text("campaign_id"), // Optional campaign association
+  channel: text("channel").notNull(), // 'google_ads', 'facebook', 'linkedin', 'email', 'organic', 'direct'
+  platform: text("platform"), // 'google', 'facebook', 'linkedin', 'twitter', etc.
+  medium: text("medium"), // 'cpc', 'email', 'social', 'organic', 'referral'
+  source: text("source"), // 'google', 'newsletter', 'facebook.com'
+  campaign: text("campaign"), // Campaign name/id from source platform
+  content: text("content"), // Ad content identifier
+  term: text("term"), // Search keywords
+  touchpointType: text("touchpoint_type").notNull(), // 'impression', 'click', 'view', 'engagement'
+  position: integer("position").notNull(), // Order in the customer journey (1, 2, 3...)
+  timestamp: timestamp("timestamp").notNull(),
+  deviceType: text("device_type"), // 'desktop', 'mobile', 'tablet'
+  userAgent: text("user_agent"), 
+  ipAddress: text("ip_address"),
+  referrer: text("referrer"),
+  landingPage: text("landing_page"),
+  eventValue: decimal("event_value", { precision: 10, scale: 2 }), // Revenue or custom value
+  metadata: text("metadata"), // JSON string for additional tracking data
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const attributionResults = pgTable("attribution_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  journeyId: text("journey_id").notNull(),
+  attributionModelId: text("attribution_model_id").notNull(),
+  touchpointId: text("touchpoint_id").notNull(),
+  campaignId: text("campaign_id"), // Campaign that gets attribution credit
+  channel: text("channel").notNull(),
+  attributionCredit: decimal("attribution_credit", { precision: 10, scale: 4 }).notNull(), // Percentage (0.0 to 1.0)
+  attributedValue: decimal("attributed_value", { precision: 10, scale: 2 }), // Revenue attributed to this touchpoint
+  calculatedAt: timestamp("calculated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const attributionInsights = pgTable("attribution_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  attributionModelId: text("attribution_model_id").notNull(),
+  campaignId: text("campaign_id"), // Optional - null for cross-campaign insights
+  channel: text("channel").notNull(),
+  period: text("period").notNull(), // 'daily', 'weekly', 'monthly'
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  totalAttributedValue: decimal("total_attributed_value", { precision: 10, scale: 2 }).notNull(),
+  totalTouchpoints: integer("total_touchpoints").notNull(),
+  totalConversions: integer("total_conversions").notNull(),
+  averageAttributionCredit: decimal("average_attribution_credit", { precision: 10, scale: 4 }),
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }),
+  costPerAttribution: decimal("cost_per_attribution", { precision: 10, scale: 2 }),
+  returnOnAdSpend: decimal("return_on_ad_spend", { precision: 10, scale: 2 }),
+  assistedConversions: integer("assisted_conversions"), // How many conversions this channel assisted
+  lastClickConversions: integer("last_click_conversions"), // Last-click attribution for comparison
+  firstClickConversions: integer("first_click_conversions"), // First-click attribution for comparison
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   name: true,
   clientWebsite: true,
@@ -417,6 +505,79 @@ export const insertABTestEventSchema = createInsertSchema(abTestEvents).pick({
   metadata: true,
 });
 
+export const insertAttributionModelSchema = createInsertSchema(attributionModels).pick({
+  name: true,
+  type: true,
+  description: true,
+  configuration: true,
+  isDefault: true,
+  isActive: true,
+});
+
+export const insertCustomerJourneySchema = createInsertSchema(customerJourneys).pick({
+  customerId: true,
+  sessionId: true,
+  deviceId: true,
+  userId: true,
+  journeyStart: true,
+  journeyEnd: true,
+  totalTouchpoints: true,
+  conversionValue: true,
+  conversionType: true,
+  status: true,
+});
+
+export const insertTouchpointSchema = createInsertSchema(touchpoints).pick({
+  journeyId: true,
+  campaignId: true,
+  channel: true,
+  platform: true,
+  medium: true,
+  source: true,
+  campaign: true,
+  content: true,
+  term: true,
+  touchpointType: true,
+  position: true,
+  timestamp: true,
+  deviceType: true,
+  userAgent: true,
+  ipAddress: true,
+  referrer: true,
+  landingPage: true,
+  eventValue: true,
+  metadata: true,
+});
+
+export const insertAttributionResultSchema = createInsertSchema(attributionResults).pick({
+  journeyId: true,
+  attributionModelId: true,
+  touchpointId: true,
+  campaignId: true,
+  channel: true,
+  attributionCredit: true,
+  attributedValue: true,
+});
+
+export const insertAttributionInsightSchema = createInsertSchema(attributionInsights).pick({
+  attributionModelId: true,
+  campaignId: true,
+  channel: true,
+  period: true,
+  startDate: true,
+  endDate: true,
+  totalAttributedValue: true,
+  totalTouchpoints: true,
+  totalConversions: true,
+  averageAttributionCredit: true,
+  conversionRate: true,
+  costPerAttribution: true,
+  returnOnAdSpend: true,
+  assistedConversions: true,
+  lastClickConversions: true,
+  firstClickConversions: true,
+});
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Metric = typeof metrics.$inferSelect;
@@ -449,3 +610,13 @@ export type ABTestResult = typeof abTestResults.$inferSelect;
 export type InsertABTestResult = z.infer<typeof insertABTestResultSchema>;
 export type ABTestEvent = typeof abTestEvents.$inferSelect;
 export type InsertABTestEvent = z.infer<typeof insertABTestEventSchema>;
+export type AttributionModel = typeof attributionModels.$inferSelect;
+export type InsertAttributionModel = z.infer<typeof insertAttributionModelSchema>;
+export type CustomerJourney = typeof customerJourneys.$inferSelect;
+export type InsertCustomerJourney = z.infer<typeof insertCustomerJourneySchema>;
+export type Touchpoint = typeof touchpoints.$inferSelect;
+export type InsertTouchpoint = z.infer<typeof insertTouchpointSchema>;
+export type AttributionResult = typeof attributionResults.$inferSelect;
+export type InsertAttributionResult = z.infer<typeof insertAttributionResultSchema>;
+export type AttributionInsight = typeof attributionInsights.$inferSelect;
+export type InsertAttributionInsight = z.infer<typeof insertAttributionInsightSchema>;

@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull } from "drizzle-orm";
@@ -124,6 +124,55 @@ export interface IStorage {
     confidenceLevel: number;
     winnerVariant?: string;
   }>;
+
+  // Attribution Models
+  getAttributionModels(): Promise<AttributionModel[]>;
+  getAttributionModel(id: string): Promise<AttributionModel | undefined>;
+  createAttributionModel(model: InsertAttributionModel): Promise<AttributionModel>;
+  updateAttributionModel(id: string, model: Partial<InsertAttributionModel>): Promise<AttributionModel | undefined>;
+  deleteAttributionModel(id: string): Promise<boolean>;
+  setDefaultAttributionModel(id: string): Promise<boolean>;
+
+  // Customer Journeys
+  getCustomerJourneys(status?: string): Promise<CustomerJourney[]>;
+  getCustomerJourney(id: string): Promise<CustomerJourney | undefined>;
+  createCustomerJourney(journey: InsertCustomerJourney): Promise<CustomerJourney>;
+  updateCustomerJourney(id: string, journey: Partial<InsertCustomerJourney>): Promise<CustomerJourney | undefined>;
+  deleteCustomerJourney(id: string): Promise<boolean>;
+
+  // Touchpoints
+  getJourneyTouchpoints(journeyId: string): Promise<Touchpoint[]>;
+  getCampaignTouchpoints(campaignId: string): Promise<Touchpoint[]>;
+  createTouchpoint(touchpoint: InsertTouchpoint): Promise<Touchpoint>;
+  updateTouchpoint(id: string, touchpoint: Partial<InsertTouchpoint>): Promise<Touchpoint | undefined>;
+  deleteTouchpoint(id: string): Promise<boolean>;
+
+  // Attribution Results
+  getAttributionResults(journeyId?: string, modelId?: string): Promise<AttributionResult[]>;
+  calculateAttributionResults(journeyId: string, modelId: string): Promise<AttributionResult[]>;
+  getChannelAttributionResults(channel: string, modelId?: string): Promise<AttributionResult[]>;
+
+  // Attribution Insights
+  getAttributionInsights(modelId?: string, period?: string): Promise<AttributionInsight[]>;
+  getCampaignAttributionInsights(campaignId: string, modelId?: string): Promise<AttributionInsight[]>;
+  generateAttributionInsights(modelId: string, startDate: Date, endDate: Date): Promise<AttributionInsight[]>;
+  
+  // Attribution Analytics
+  getAttributionComparison(journeyId: string): Promise<{
+    journey: CustomerJourney;
+    touchpoints: Touchpoint[];
+    modelResults: { model: AttributionModel; results: AttributionResult[] }[];
+  }>;
+  
+  getChannelPerformanceAttribution(startDate: Date, endDate: Date, modelId?: string): Promise<{
+    channel: string;
+    totalAttributedValue: number;
+    totalTouchpoints: number;
+    averageCredit: number;
+    assistedConversions: number;
+    lastClickConversions: number;
+    firstClickConversions: number;
+  }[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -143,6 +192,11 @@ export class MemStorage implements IStorage {
   private abTestVariants: Map<string, ABTestVariant>;
   private abTestResults: Map<string, ABTestResult>;
   private abTestEvents: Map<string, ABTestEvent>;
+  private attributionModels: Map<string, AttributionModel>;
+  private customerJourneys: Map<string, CustomerJourney>;
+  private touchpoints: Map<string, Touchpoint>;
+  private attributionResults: Map<string, AttributionResult>;
+  private attributionInsights: Map<string, AttributionInsight>;
 
   constructor() {
     this.campaigns = new Map();
@@ -161,6 +215,11 @@ export class MemStorage implements IStorage {
     this.abTestVariants = new Map();
     this.abTestResults = new Map();
     this.abTestEvents = new Map();
+    this.attributionModels = new Map();
+    this.customerJourneys = new Map();
+    this.touchpoints = new Map();
+    this.attributionResults = new Map();
+    this.attributionInsights = new Map();
     
     // Initialize with empty data - no mock data
     this.initializeEmptyData();
@@ -194,6 +253,61 @@ export class MemStorage implements IStorage {
       type: "info",
       priority: "normal",
       read: true,
+    });
+
+    // Initialize default attribution models
+    this.initializeDefaultAttributionModels();
+  }
+
+  private initializeDefaultAttributionModels() {
+    // First Touch Attribution
+    this.createAttributionModel({
+      name: "First Touch",
+      type: "first_touch",
+      description: "100% credit to the first marketing touchpoint in the customer journey",
+      configuration: JSON.stringify({ weight: 1.0 }),
+      isDefault: false,
+      isActive: true,
+    });
+
+    // Last Touch Attribution
+    this.createAttributionModel({
+      name: "Last Touch",
+      type: "last_touch", 
+      description: "100% credit to the final touchpoint before conversion",
+      configuration: JSON.stringify({ weight: 1.0 }),
+      isDefault: true,
+      isActive: true,
+    });
+
+    // Linear Attribution
+    this.createAttributionModel({
+      name: "Linear",
+      type: "linear",
+      description: "Equal credit distributed across all touchpoints in the journey",
+      configuration: JSON.stringify({ evenDistribution: true }),
+      isDefault: false,
+      isActive: true,
+    });
+
+    // Time Decay Attribution
+    this.createAttributionModel({
+      name: "Time Decay",
+      type: "time_decay",
+      description: "More credit to touchpoints closer to conversion",
+      configuration: JSON.stringify({ decayRate: 0.5, halfLife: 7 }),
+      isDefault: false,
+      isActive: true,
+    });
+
+    // Position Based Attribution (40/20/40)
+    this.createAttributionModel({
+      name: "Position Based",
+      type: "position_based",
+      description: "40% first touch, 40% last touch, 20% distributed among middle touchpoints",
+      configuration: JSON.stringify({ firstWeight: 0.4, lastWeight: 0.4, middleWeight: 0.2 }),
+      isDefault: false,
+      isActive: true,
     });
   }
 
@@ -1512,6 +1626,567 @@ export class DatabaseStorage implements IStorage {
       significance: significantDifference,
       winner: significantDifference ? bestResult.variantId : undefined
     };
+  }
+
+  // Attribution Model methods
+  async getAttributionModels(): Promise<AttributionModel[]> {
+    return Array.from(this.attributionModels.values()).sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async getAttributionModel(id: string): Promise<AttributionModel | undefined> {
+    return this.attributionModels.get(id);
+  }
+
+  async createAttributionModel(modelData: InsertAttributionModel): Promise<AttributionModel> {
+    const id = randomUUID();
+    const model: AttributionModel = {
+      id,
+      name: modelData.name,
+      type: modelData.type,
+      description: modelData.description || null,
+      configuration: modelData.configuration || null,
+      isDefault: modelData.isDefault || false,
+      isActive: modelData.isActive !== undefined ? modelData.isActive : true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.attributionModels.set(id, model);
+    return model;
+  }
+
+  async updateAttributionModel(id: string, modelData: Partial<InsertAttributionModel>): Promise<AttributionModel | undefined> {
+    const existing = this.attributionModels.get(id);
+    if (!existing) return undefined;
+    
+    const updated: AttributionModel = {
+      ...existing,
+      ...modelData,
+      updatedAt: new Date(),
+    };
+    
+    this.attributionModels.set(id, updated);
+    return updated;
+  }
+
+  async deleteAttributionModel(id: string): Promise<boolean> {
+    return this.attributionModels.delete(id);
+  }
+
+  async setDefaultAttributionModel(id: string): Promise<boolean> {
+    // Remove default from all models
+    for (const [key, model] of this.attributionModels.entries()) {
+      if (model.isDefault) {
+        const updated = { ...model, isDefault: false, updatedAt: new Date() };
+        this.attributionModels.set(key, updated);
+      }
+    }
+    
+    // Set new default
+    const model = this.attributionModels.get(id);
+    if (!model) return false;
+    
+    const updated = { ...model, isDefault: true, updatedAt: new Date() };
+    this.attributionModels.set(id, updated);
+    return true;
+  }
+
+  // Customer Journey methods
+  async getCustomerJourneys(status?: string): Promise<CustomerJourney[]> {
+    let journeys = Array.from(this.customerJourneys.values());
+    
+    if (status) {
+      journeys = journeys.filter(journey => journey.status === status);
+    }
+    
+    return journeys.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async getCustomerJourney(id: string): Promise<CustomerJourney | undefined> {
+    return this.customerJourneys.get(id);
+  }
+
+  async createCustomerJourney(journeyData: InsertCustomerJourney): Promise<CustomerJourney> {
+    const id = randomUUID();
+    const journey: CustomerJourney = {
+      id,
+      customerId: journeyData.customerId,
+      sessionId: journeyData.sessionId || null,
+      deviceId: journeyData.deviceId || null,
+      userId: journeyData.userId || null,
+      journeyStart: journeyData.journeyStart,
+      journeyEnd: journeyData.journeyEnd || null,
+      totalTouchpoints: journeyData.totalTouchpoints || 0,
+      conversionValue: journeyData.conversionValue || null,
+      conversionType: journeyData.conversionType || null,
+      status: journeyData.status || "active",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.customerJourneys.set(id, journey);
+    return journey;
+  }
+
+  async updateCustomerJourney(id: string, journeyData: Partial<InsertCustomerJourney>): Promise<CustomerJourney | undefined> {
+    const existing = this.customerJourneys.get(id);
+    if (!existing) return undefined;
+    
+    const updated: CustomerJourney = {
+      ...existing,
+      ...journeyData,
+      updatedAt: new Date(),
+    };
+    
+    this.customerJourneys.set(id, updated);
+    return updated;
+  }
+
+  async deleteCustomerJourney(id: string): Promise<boolean> {
+    // Also delete related touchpoints and attribution results
+    const touchpoints = Array.from(this.touchpoints.values()).filter(t => t.journeyId === id);
+    touchpoints.forEach(t => this.touchpoints.delete(t.id));
+    
+    const results = Array.from(this.attributionResults.values()).filter(r => r.journeyId === id);
+    results.forEach(r => this.attributionResults.delete(r.id));
+    
+    return this.customerJourneys.delete(id);
+  }
+
+  // Touchpoint methods
+  async getJourneyTouchpoints(journeyId: string): Promise<Touchpoint[]> {
+    return Array.from(this.touchpoints.values())
+      .filter(touchpoint => touchpoint.journeyId === journeyId)
+      .sort((a, b) => a.position - b.position);
+  }
+
+  async getCampaignTouchpoints(campaignId: string): Promise<Touchpoint[]> {
+    return Array.from(this.touchpoints.values())
+      .filter(touchpoint => touchpoint.campaignId === campaignId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async createTouchpoint(touchpointData: InsertTouchpoint): Promise<Touchpoint> {
+    const id = randomUUID();
+    const touchpoint: Touchpoint = {
+      id,
+      journeyId: touchpointData.journeyId,
+      campaignId: touchpointData.campaignId || null,
+      channel: touchpointData.channel,
+      platform: touchpointData.platform || null,
+      medium: touchpointData.medium || null,
+      source: touchpointData.source || null,
+      campaign: touchpointData.campaign || null,
+      content: touchpointData.content || null,
+      term: touchpointData.term || null,
+      touchpointType: touchpointData.touchpointType,
+      position: touchpointData.position,
+      timestamp: touchpointData.timestamp,
+      deviceType: touchpointData.deviceType || null,
+      userAgent: touchpointData.userAgent || null,
+      ipAddress: touchpointData.ipAddress || null,
+      referrer: touchpointData.referrer || null,
+      landingPage: touchpointData.landingPage || null,
+      eventValue: touchpointData.eventValue || null,
+      metadata: touchpointData.metadata || null,
+      createdAt: new Date(),
+    };
+    
+    this.touchpoints.set(id, touchpoint);
+    
+    // Update journey touchpoint count
+    const journey = this.customerJourneys.get(touchpointData.journeyId);
+    if (journey) {
+      const updated = { 
+        ...journey, 
+        totalTouchpoints: journey.totalTouchpoints + 1,
+        updatedAt: new Date()
+      };
+      this.customerJourneys.set(journey.id, updated);
+    }
+    
+    return touchpoint;
+  }
+
+  async updateTouchpoint(id: string, touchpointData: Partial<InsertTouchpoint>): Promise<Touchpoint | undefined> {
+    const existing = this.touchpoints.get(id);
+    if (!existing) return undefined;
+    
+    const updated: Touchpoint = {
+      ...existing,
+      ...touchpointData,
+    };
+    
+    this.touchpoints.set(id, updated);
+    return updated;
+  }
+
+  async deleteTouchpoint(id: string): Promise<boolean> {
+    const touchpoint = this.touchpoints.get(id);
+    if (!touchpoint) return false;
+    
+    // Update journey touchpoint count
+    const journey = this.customerJourneys.get(touchpoint.journeyId);
+    if (journey) {
+      const updated = { 
+        ...journey, 
+        totalTouchpoints: Math.max(0, journey.totalTouchpoints - 1),
+        updatedAt: new Date()
+      };
+      this.customerJourneys.set(journey.id, updated);
+    }
+    
+    return this.touchpoints.delete(id);
+  }
+
+  // Attribution Result methods
+  async getAttributionResults(journeyId?: string, modelId?: string): Promise<AttributionResult[]> {
+    let results = Array.from(this.attributionResults.values());
+    
+    if (journeyId) {
+      results = results.filter(result => result.journeyId === journeyId);
+    }
+    
+    if (modelId) {
+      results = results.filter(result => result.attributionModelId === modelId);
+    }
+    
+    return results.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async calculateAttributionResults(journeyId: string, modelId: string): Promise<AttributionResult[]> {
+    const journey = await this.getCustomerJourney(journeyId);
+    const model = await this.getAttributionModel(modelId);
+    const touchpoints = await this.getJourneyTouchpoints(journeyId);
+    
+    if (!journey || !model || touchpoints.length === 0) {
+      return [];
+    }
+
+    // Delete existing results for this journey/model combination
+    const existingResults = Array.from(this.attributionResults.values())
+      .filter(r => r.journeyId === journeyId && r.attributionModelId === modelId);
+    existingResults.forEach(r => this.attributionResults.delete(r.id));
+
+    const results: AttributionResult[] = [];
+    const conversionValue = parseFloat(journey.conversionValue?.toString() || "0");
+
+    // Calculate attribution based on model type
+    for (let i = 0; i < touchpoints.length; i++) {
+      const touchpoint = touchpoints[i];
+      let credit = 0;
+
+      switch (model.type) {
+        case 'first_touch':
+          credit = i === 0 ? 1.0 : 0.0;
+          break;
+        
+        case 'last_touch':
+          credit = i === touchpoints.length - 1 ? 1.0 : 0.0;
+          break;
+        
+        case 'linear':
+          credit = 1.0 / touchpoints.length;
+          break;
+        
+        case 'time_decay':
+          const config = JSON.parse(model.configuration || '{"decayRate": 0.5, "halfLife": 7}');
+          const daysSinceTouch = Math.max(0, 
+            (new Date(journey.journeyEnd || new Date()).getTime() - new Date(touchpoint.timestamp).getTime()) 
+            / (1000 * 60 * 60 * 24)
+          );
+          credit = Math.pow(config.decayRate, daysSinceTouch / config.halfLife);
+          break;
+        
+        case 'position_based':
+          const posConfig = JSON.parse(model.configuration || '{"firstWeight": 0.4, "lastWeight": 0.4, "middleWeight": 0.2}');
+          if (touchpoints.length === 1) {
+            credit = 1.0;
+          } else if (touchpoints.length === 2) {
+            credit = i === 0 ? posConfig.firstWeight + posConfig.middleWeight/2 : posConfig.lastWeight + posConfig.middleWeight/2;
+          } else {
+            if (i === 0) credit = posConfig.firstWeight;
+            else if (i === touchpoints.length - 1) credit = posConfig.lastWeight;
+            else credit = posConfig.middleWeight / (touchpoints.length - 2);
+          }
+          break;
+      }
+
+      // Normalize time decay credits
+      if (model.type === 'time_decay' && touchpoints.length > 1) {
+        const totalCredits = touchpoints.reduce((sum, tp, idx) => {
+          const config = JSON.parse(model.configuration || '{"decayRate": 0.5, "halfLife": 7}');
+          const daysSinceTouch = Math.max(0, 
+            (new Date(journey.journeyEnd || new Date()).getTime() - new Date(tp.timestamp).getTime()) 
+            / (1000 * 60 * 60 * 24)
+          );
+          return sum + Math.pow(config.decayRate, daysSinceTouch / config.halfLife);
+        }, 0);
+        
+        if (totalCredits > 0) {
+          const config = JSON.parse(model.configuration || '{"decayRate": 0.5, "halfLife": 7}');
+          const daysSinceTouch = Math.max(0, 
+            (new Date(journey.journeyEnd || new Date()).getTime() - new Date(touchpoint.timestamp).getTime()) 
+            / (1000 * 60 * 60 * 24)
+          );
+          credit = Math.pow(config.decayRate, daysSinceTouch / config.halfLife) / totalCredits;
+        }
+      }
+
+      const resultId = randomUUID();
+      const result: AttributionResult = {
+        id: resultId,
+        journeyId,
+        attributionModelId: modelId,
+        touchpointId: touchpoint.id,
+        campaignId: touchpoint.campaignId,
+        channel: touchpoint.channel,
+        attributionCredit: credit.toString(),
+        attributedValue: (conversionValue * credit).toString(),
+        calculatedAt: new Date(),
+        createdAt: new Date(),
+      };
+
+      this.attributionResults.set(resultId, result);
+      results.push(result);
+    }
+
+    return results;
+  }
+
+  async getChannelAttributionResults(channel: string, modelId?: string): Promise<AttributionResult[]> {
+    let results = Array.from(this.attributionResults.values())
+      .filter(result => result.channel === channel);
+    
+    if (modelId) {
+      results = results.filter(result => result.attributionModelId === modelId);
+    }
+    
+    return results.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  // Attribution Insight methods
+  async getAttributionInsights(modelId?: string, period?: string): Promise<AttributionInsight[]> {
+    let insights = Array.from(this.attributionInsights.values());
+    
+    if (modelId) {
+      insights = insights.filter(insight => insight.attributionModelId === modelId);
+    }
+    
+    if (period) {
+      insights = insights.filter(insight => insight.period === period);
+    }
+    
+    return insights.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async getCampaignAttributionInsights(campaignId: string, modelId?: string): Promise<AttributionInsight[]> {
+    let insights = Array.from(this.attributionInsights.values())
+      .filter(insight => insight.campaignId === campaignId);
+    
+    if (modelId) {
+      insights = insights.filter(insight => insight.attributionModelId === modelId);
+    }
+    
+    return insights.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async generateAttributionInsights(modelId: string, startDate: Date, endDate: Date): Promise<AttributionInsight[]> {
+    const model = await this.getAttributionModel(modelId);
+    if (!model) return [];
+
+    // Get all attribution results for the model within the date range
+    const results = Array.from(this.attributionResults.values())
+      .filter(result => {
+        if (result.attributionModelId !== modelId) return false;
+        const resultDate = new Date(result.calculatedAt);
+        return resultDate >= startDate && resultDate <= endDate;
+      });
+
+    // Group by channel
+    const channelGroups = new Map<string, AttributionResult[]>();
+    for (const result of results) {
+      const channel = result.channel;
+      if (!channelGroups.has(channel)) {
+        channelGroups.set(channel, []);
+      }
+      channelGroups.get(channel)!.push(result);
+    }
+
+    const insights: AttributionInsight[] = [];
+
+    for (const [channel, channelResults] of channelGroups) {
+      const totalAttributedValue = channelResults.reduce((sum, result) => 
+        sum + parseFloat(result.attributedValue), 0);
+      const totalTouchpoints = channelResults.length;
+      const totalConversions = new Set(channelResults.map(r => r.journeyId)).size;
+      const averageCredit = channelResults.reduce((sum, result) => 
+        sum + parseFloat(result.attributionCredit), 0) / channelResults.length;
+
+      const insightId = randomUUID();
+      const insight: AttributionInsight = {
+        id: insightId,
+        attributionModelId: modelId,
+        campaignId: null,
+        channel,
+        period: "custom",
+        startDate,
+        endDate,
+        totalAttributedValue: totalAttributedValue.toString(),
+        totalTouchpoints,
+        totalConversions,
+        averageAttributionCredit: averageCredit.toString(),
+        conversionRate: null,
+        costPerAttribution: null,
+        returnOnAdSpend: null,
+        assistedConversions: null,
+        lastClickConversions: null,
+        firstClickConversions: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      this.attributionInsights.set(insightId, insight);
+      insights.push(insight);
+    }
+
+    return insights;
+  }
+
+  // Attribution Analytics methods
+  async getAttributionComparison(journeyId: string): Promise<{
+    journey: CustomerJourney;
+    touchpoints: Touchpoint[];
+    modelResults: { model: AttributionModel; results: AttributionResult[] }[];
+  }> {
+    const journey = await this.getCustomerJourney(journeyId);
+    if (!journey) {
+      throw new Error(`Customer journey with ID ${journeyId} not found`);
+    }
+
+    const touchpoints = await this.getJourneyTouchpoints(journeyId);
+    const models = await this.getAttributionModels();
+    
+    const modelResults: { model: AttributionModel; results: AttributionResult[] }[] = [];
+    
+    for (const model of models.filter(m => m.isActive)) {
+      let results = await this.getAttributionResults(journeyId, model.id);
+      
+      // If no results exist, calculate them
+      if (results.length === 0) {
+        results = await this.calculateAttributionResults(journeyId, model.id);
+      }
+      
+      modelResults.push({ model, results });
+    }
+
+    return {
+      journey,
+      touchpoints,
+      modelResults
+    };
+  }
+
+  async getChannelPerformanceAttribution(startDate: Date, endDate: Date, modelId?: string): Promise<{
+    channel: string;
+    totalAttributedValue: number;
+    totalTouchpoints: number;
+    averageCredit: number;
+    assistedConversions: number;
+    lastClickConversions: number;
+    firstClickConversions: number;
+  }[]> {
+    let results = Array.from(this.attributionResults.values())
+      .filter(result => {
+        const resultDate = new Date(result.calculatedAt);
+        return resultDate >= startDate && resultDate <= endDate;
+      });
+
+    if (modelId) {
+      results = results.filter(result => result.attributionModelId === modelId);
+    }
+
+    // Group by channel
+    const channelGroups = new Map<string, AttributionResult[]>();
+    for (const result of results) {
+      const channel = result.channel;
+      if (!channelGroups.has(channel)) {
+        channelGroups.set(channel, []);
+      }
+      channelGroups.get(channel)!.push(result);
+    }
+
+    const performance: {
+      channel: string;
+      totalAttributedValue: number;
+      totalTouchpoints: number;
+      averageCredit: number;
+      assistedConversions: number;
+      lastClickConversions: number;
+      firstClickConversions: number;
+    }[] = [];
+
+    for (const [channel, channelResults] of channelGroups) {
+      const totalAttributedValue = channelResults.reduce((sum, result) => 
+        sum + parseFloat(result.attributedValue), 0);
+      const totalTouchpoints = channelResults.length;
+      const averageCredit = channelResults.reduce((sum, result) => 
+        sum + parseFloat(result.attributionCredit), 0) / channelResults.length;
+
+      // Calculate assisted conversions (any non-last-touch attribution)
+      const assistedConversions = new Set(
+        channelResults
+          .filter(result => parseFloat(result.attributionCredit) > 0 && parseFloat(result.attributionCredit) < 1)
+          .map(result => result.journeyId)
+      ).size;
+
+      // For last-click and first-click, we need to get touchpoint positions
+      const journeyIds = [...new Set(channelResults.map(r => r.journeyId))];
+      let lastClickConversions = 0;
+      let firstClickConversions = 0;
+
+      for (const journeyId of journeyIds) {
+        const journeyTouchpoints = await this.getJourneyTouchpoints(journeyId);
+        const channelTouchpoints = journeyTouchpoints.filter(tp => tp.channel === channel);
+        
+        if (channelTouchpoints.length > 0) {
+          // Check if this channel was the first touchpoint
+          if (journeyTouchpoints[0]?.channel === channel) {
+            firstClickConversions++;
+          }
+          
+          // Check if this channel was the last touchpoint
+          const lastTouchpoint = journeyTouchpoints[journeyTouchpoints.length - 1];
+          if (lastTouchpoint?.channel === channel) {
+            lastClickConversions++;
+          }
+        }
+      }
+
+      performance.push({
+        channel,
+        totalAttributedValue,
+        totalTouchpoints,
+        averageCredit,
+        assistedConversions,
+        lastClickConversions,
+        firstClickConversions,
+      });
+    }
+
+    return performance.sort((a, b) => b.totalAttributedValue - a.totalAttributedValue);
   }
 }
 

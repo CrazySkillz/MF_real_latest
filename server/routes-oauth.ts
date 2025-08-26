@@ -2413,12 +2413,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { startDate, endDate, modelId } = req.query;
       
-      // Sample channel performance data
+      // Sample channel performance data with correct structure for frontend
       const performance = [
         {
           channel: "Google Ads",
           totalTouchpoints: 1247,
           totalAttributedValue: 12450.75,
+          averageCredit: 0.42,
+          assistedConversions: 89,
+          lastClickConversions: 67,
+          firstClickConversions: 78,
           conversionRate: 0.034,
           avgOrderValue: 285.00,
           attributionCredit: 0.42,
@@ -2429,6 +2433,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           channel: "Facebook",
           totalTouchpoints: 892,
           totalAttributedValue: 8920.50,
+          averageCredit: 0.31,
+          assistedConversions: 45,
+          lastClickConversions: 23,
+          firstClickConversions: 67,
           conversionRate: 0.028,
           avgOrderValue: 255.30,
           attributionCredit: 0.31,
@@ -2439,6 +2447,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           channel: "Email",
           totalTouchpoints: 634,
           totalAttributedValue: 6340.25,
+          averageCredit: 0.18,
+          assistedConversions: 78,
+          lastClickConversions: 34,
+          firstClickConversions: 12,
           conversionRate: 0.045,
           avgOrderValue: 195.80,
           attributionCredit: 0.18,
@@ -2449,6 +2461,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           channel: "Direct",
           totalTouchpoints: 423,
           totalAttributedValue: 4230.00,
+          averageCredit: 0.09,
+          assistedConversions: 12,
+          lastClickConversions: 78,
+          firstClickConversions: 34,
           conversionRate: 0.067,
           avgOrderValue: 310.50,
           attributionCredit: 0.09,

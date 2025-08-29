@@ -212,6 +212,12 @@ export default function CampaignPerformance() {
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
+              {/* Campaign Performance Overview */}
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Campaign Performance Overview</h2>
+                <p className="text-slate-600 dark:text-slate-400">Synthesized insights from all connected data sources</p>
+              </div>
+              
               {/* Key Performance Indicators */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
@@ -220,7 +226,7 @@ export default function CampaignPerformance() {
                       <div>
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Impressions</p>
                         <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(totalImpressions)}</p>
-                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">↗ +12.5% vs last period</p>
+                        <p className="text-xs text-slate-500 mt-1">{sheetsMetrics ? 'From Google Sheets' : 'No data connected'}</p>
                       </div>
                       <Eye className="w-8 h-8 text-blue-500" />
                     </div>
@@ -233,7 +239,7 @@ export default function CampaignPerformance() {
                       <div>
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Clicks</p>
                         <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(totalClicks)}</p>
-                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">↗ +8.3% vs last period</p>
+                        <p className="text-xs text-slate-500 mt-1">{sheetsMetrics?.clicks ? 'From Google Sheets' : ga4Metrics?.clicks ? 'From Google Analytics' : 'No data connected'}</p>
                       </div>
                       <MousePointer className="w-8 h-8 text-green-500" />
                     </div>
@@ -246,7 +252,7 @@ export default function CampaignPerformance() {
                       <div>
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions</p>
                         <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(totalConversions)}</p>
-                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">↗ +15.7% vs last period</p>
+                        <p className="text-xs text-slate-500 mt-1">{sheetsMetrics?.conversions ? 'From Google Sheets' : ga4Metrics?.conversions ? 'From Google Analytics' : 'No data connected'}</p>
                       </div>
                       <Target className="w-8 h-8 text-purple-500" />
                     </div>
@@ -259,7 +265,7 @@ export default function CampaignPerformance() {
                       <div>
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
                         <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalSpend)}</p>
-                        <p className="text-xs text-red-600 dark:text-red-400 mt-1">↗ +5.2% vs last period</p>
+                        <p className="text-xs text-slate-500 mt-1">{sheetsMetrics?.budget ? 'From Google Sheets' : 'No data connected'}</p>
                       </div>
                       <DollarSign className="w-8 h-8 text-orange-500" />
                     </div>

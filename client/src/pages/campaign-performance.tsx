@@ -140,15 +140,27 @@ export default function CampaignPerformance() {
     );
   }
 
-  // Calculate key metrics from real data - handle possible undefined sheetsData
-  const totalImpressions = (sheetsData as any)?.summary?.impressions || 0;
-  const totalClicks = (sheetsData as any)?.summary?.clicks || 0;
-  const totalConversions = (sheetsData as any)?.summary?.conversions || 0;
-  const totalSpend = (sheetsData as any)?.summary?.budget || 0;
+  // Calculate key metrics from connected data sources
+  // Prioritize Google Sheets data for advertising metrics, GA4 for web analytics
+  const sheetsMetrics = (sheetsData as any)?.summary;
+  const ga4Metrics = (ga4Data as any)?.metrics;
+  
+  // Use Google Sheets for advertising metrics (impressions, clicks, spend)
+  const totalImpressions = sheetsMetrics?.impressions || 0;
+  const totalClicks = sheetsMetrics?.clicks || ga4Metrics?.clicks || 0;
+  const totalConversions = sheetsMetrics?.conversions || ga4Metrics?.conversions || 0;
+  const totalSpend = sheetsMetrics?.budget || 0;
+  
+  // Calculate derived metrics
   const ctr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0.00";
   const cpc = totalClicks > 0 ? (totalSpend / totalClicks).toFixed(2) : "0.00";
   const conversionRate = totalClicks > 0 ? ((totalConversions / totalClicks) * 100).toFixed(2) : "0.00";
   const costPerConversion = totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : "0.00";
+  
+  // Additional GA4 metrics for web analytics
+  const sessions = ga4Metrics?.sessions || 0;
+  const pageviews = ga4Metrics?.pageviews || 0;
+  const bounceRate = ga4Metrics?.bounceRate || 0;
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -254,6 +266,53 @@ export default function CampaignPerformance() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Web Analytics Metrics from GA4 (when available) */}
+              {ga4Metrics && (sessions > 0 || pageviews > 0) && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Web Analytics</h3>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Sessions</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(sessions)}</p>
+                            <p className="text-xs text-slate-500 mt-1">From Google Analytics</p>
+                          </div>
+                          <Users className="w-8 h-8 text-blue-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Page Views</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(pageviews)}</p>
+                            <p className="text-xs text-slate-500 mt-1">From Google Analytics</p>
+                          </div>
+                          <Eye className="w-8 h-8 text-green-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Bounce Rate</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bounceRate}%</p>
+                            <p className="text-xs text-slate-500 mt-1">From Google Analytics</p>
+                          </div>
+                          <Activity className="w-8 h-8 text-orange-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
 
               {/* Performance Trends Chart */}
               <Card>

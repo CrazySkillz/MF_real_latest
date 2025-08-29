@@ -162,6 +162,95 @@ export default function CampaignPerformance() {
   const pageviews = ga4Metrics?.pageviews || 0;
   const bounceRate = ga4Metrics?.bounceRate || 0;
 
+  // Analytical insights from combined data
+  const getPerformanceInsights = () => {
+    const insights = [];
+    
+    // Traffic Quality Analysis
+    if (sessions > 0 && totalClicks > 0) {
+      const sessionToClickRatio = (sessions / totalClicks * 100);
+      if (sessionToClickRatio > 80) {
+        insights.push({
+          type: 'positive',
+          title: 'High Traffic Quality',
+          description: `${sessionToClickRatio.toFixed(1)}% of ad clicks convert to website sessions`,
+          metric: 'Traffic Efficiency'
+        });
+      } else if (sessionToClickRatio < 50) {
+        insights.push({
+          type: 'warning',
+          title: 'Traffic Drop-off',
+          description: `Only ${sessionToClickRatio.toFixed(1)}% of clicks reach your website`,
+          metric: 'Traffic Efficiency'
+        });
+      }
+    }
+    
+    // Conversion Performance
+    if (totalConversions > 0 && totalClicks > 0) {
+      const convRate = (totalConversions / totalClicks * 100);
+      if (convRate > 3) {
+        insights.push({
+          type: 'positive',
+          title: 'Strong Conversion Rate',
+          description: `${convRate.toFixed(2)}% conversion rate exceeds industry average`,
+          metric: 'Conversion Performance'
+        });
+      } else if (convRate < 1) {
+        insights.push({
+          type: 'warning',
+          title: 'Low Conversion Rate',
+          description: `${convRate.toFixed(2)}% conversion rate needs optimization`,
+          metric: 'Conversion Performance'
+        });
+      }
+    }
+    
+    // Cost Efficiency
+    if (totalSpend > 0 && totalConversions > 0) {
+      const cpa = totalSpend / totalConversions;
+      if (cpa < 50) {
+        insights.push({
+          type: 'positive',
+          title: 'Efficient Spending',
+          description: `${formatCurrency(cpa)} cost per conversion is highly efficient`,
+          metric: 'Cost Efficiency'
+        });
+      } else if (cpa > 100) {
+        insights.push({
+          type: 'warning',
+          title: 'High Acquisition Cost',
+          description: `${formatCurrency(cpa)} per conversion may need budget reallocation`,
+          metric: 'Cost Efficiency'
+        });
+      }
+    }
+    
+    // Engagement Quality (GA4 + Sheets combined)
+    if (bounceRate > 0 && pageviews > 0 && sessions > 0) {
+      const pagesPerSession = pageviews / sessions;
+      if (bounceRate < 40 && pagesPerSession > 2) {
+        insights.push({
+          type: 'positive',
+          title: 'High Engagement',
+          description: `${pagesPerSession.toFixed(1)} pages/session with ${bounceRate}% bounce rate`,
+          metric: 'User Engagement'
+        });
+      } else if (bounceRate > 70) {
+        insights.push({
+          type: 'warning',
+          title: 'Low Engagement',
+          description: `${bounceRate}% bounce rate suggests landing page optimization needed`,
+          metric: 'User Engagement'
+        });
+      }
+    }
+    
+    return insights;
+  };
+
+  const performanceInsights = getPerformanceInsights();
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
@@ -318,6 +407,99 @@ export default function CampaignPerformance() {
                     </Card>
                   </div>
                 </div>
+              )}
+
+              {/* Performance Insights */}
+              {performanceInsights.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Performance Analysis</h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {performanceInsights.map((insight, index) => (
+                      <Card key={index} className={`border-l-4 ${
+                        insight.type === 'positive' ? 'border-l-green-500 bg-green-50 dark:bg-green-900/20' : 
+                        'border-l-orange-500 bg-orange-50 dark:bg-orange-900/20'
+                      }`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                {insight.type === 'positive' ? (
+                                  <TrendingUp className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <AlertCircle className="w-4 h-4 text-orange-600" />
+                                )}
+                                <h4 className="font-semibold text-slate-900 dark:text-white">{insight.title}</h4>
+                              </div>
+                              <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">{insight.description}</p>
+                              <Badge variant="secondary" className="text-xs">
+                                {insight.metric}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Cross-Platform Performance Summary */}
+              {(sheetsMetrics || ga4Metrics) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Brain className="w-5 h-5" />
+                      <span>Campaign Analysis Summary</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-slate-900 dark:text-white">Advertising Performance</h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Click-Through Rate</span>
+                            <span className="font-medium">{ctr}%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Cost Per Click</span>
+                            <span className="font-medium">${cpc}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Conversion Rate</span>
+                            <span className="font-medium">{conversionRate}%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Cost Per Conversion</span>
+                            <span className="font-medium">${costPerConversion}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {ga4Metrics && sessions > 0 && (
+                        <div className="space-y-4">
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Website Performance</h4>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-slate-600 dark:text-slate-400">Pages per Session</span>
+                              <span className="font-medium">{(pageviews / sessions).toFixed(1)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-slate-600 dark:text-slate-400">Bounce Rate</span>
+                              <span className="font-medium">{bounceRate}%</span>
+                            </div>
+                            {totalClicks > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">Click-to-Session Rate</span>
+                                <span className="font-medium">{(sessions / totalClicks * 100).toFixed(1)}%</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
               {/* Performance Trends Chart */}

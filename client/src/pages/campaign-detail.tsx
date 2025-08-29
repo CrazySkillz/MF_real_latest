@@ -2236,17 +2236,11 @@ export default function CampaignDetail() {
                           </div>
                         )}
                         {platform.platform === "Google Sheets" && (
-                          <div className="pt-2 border-t space-y-2">
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              Spreadsheet: {sheetsData?.spreadsheetName || 'Connected'}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              Rows: {sheetsData?.totalRows || 0} | Last updated: {sheetsData?.lastUpdated ? new Date(sheetsData.lastUpdated).toLocaleString() : 'Recently'}
-                            </div>
+                          <div className="pt-2 border-t">
                             <Link href={`/campaigns/${campaign.id}/google-sheets-data`}>
                               <Button variant="outline" size="sm" className="w-full">
                                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                                View Spreadsheet Data
+                                View Detailed Analytics
                               </Button>
                             </Link>
                           </div>

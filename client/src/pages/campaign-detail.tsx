@@ -2282,6 +2282,27 @@ export default function CampaignDetail() {
                   )}
                 </Card>
                 ))}
+                
+                {/* Custom Connection Card */}
+                <Card className="border-dashed border-slate-300 dark:border-slate-600">
+                  <div className="flex items-center justify-between p-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                        <Plus className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-slate-900 dark:text-white">Custom Integration</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Connect your custom data source
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Configure
+                    </Button>
+                  </div>
+                </Card>
                 </div>
               </div>
             </TabsContent>

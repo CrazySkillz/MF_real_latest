@@ -301,66 +301,59 @@ export default function CampaignPerformance() {
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
-              {/* Campaign Performance Overview */}
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Campaign Performance Overview</h2>
-                <p className="text-slate-600 dark:text-slate-400">Synthesized insights from all connected data sources</p>
-              </div>
-              
-              {/* Key Performance Indicators */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Impressions</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(totalImpressions)}</p>
-                        <p className="text-xs text-slate-500 mt-1">{sheetsMetrics ? 'From Google Sheets' : 'No data connected'}</p>
-                      </div>
-                      <Eye className="w-8 h-8 text-blue-500" />
+              {/* Campaign Health Status */}
+              <Card className="mb-6">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Campaign Health</h2>
+                      <p className="text-slate-600 dark:text-slate-400">Real-time assessment from connected platforms</p>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Clicks</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(totalClicks)}</p>
-                        <p className="text-xs text-slate-500 mt-1">{sheetsMetrics?.clicks ? 'From Google Sheets' : ga4Metrics?.clicks ? 'From Google Analytics' : 'No data connected'}</p>
-                      </div>
-                      <MousePointer className="w-8 h-8 text-green-500" />
+                    <div className="flex items-center space-x-2">
+                      {sheetsMetrics && <Badge variant="outline">Google Sheets</Badge>}
+                      {ga4Metrics && <Badge variant="outline">Google Analytics</Badge>}
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(totalConversions)}</p>
-                        <p className="text-xs text-slate-500 mt-1">{sheetsMetrics?.conversions ? 'From Google Sheets' : ga4Metrics?.conversions ? 'From Google Analytics' : 'No data connected'}</p>
+                  </div>
+                  
+                  <div className="grid gap-6 md:grid-cols-3">
+                    {/* ROI Performance */}
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <DollarSign className="w-4 h-4 text-green-600" />
+                        <span className="font-medium text-slate-900 dark:text-white">Return Efficiency</span>
                       </div>
-                      <Target className="w-8 h-8 text-purple-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalSpend)}</p>
-                        <p className="text-xs text-slate-500 mt-1">{sheetsMetrics?.budget ? 'From Google Sheets' : 'No data connected'}</p>
+                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {totalSpend > 0 && totalConversions > 0 ? `$${(totalSpend / totalConversions).toFixed(2)}` : 'N/A'}
                       </div>
-                      <DollarSign className="w-8 h-8 text-orange-500" />
+                      <p className="text-xs text-slate-500">Cost per conversion</p>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                    
+                    {/* Traffic Quality */}
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Users className="w-4 h-4 text-blue-600" />
+                        <span className="font-medium text-slate-900 dark:text-white">Traffic Quality</span>
+                      </div>
+                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {ctr}%
+                      </div>
+                      <p className="text-xs text-slate-500">Click-through rate</p>
+                    </div>
+                    
+                    {/* Conversion Success */}
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Target className="w-4 h-4 text-purple-600" />
+                        <span className="font-medium text-slate-900 dark:text-white">Conversion Success</span>
+                      </div>
+                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {conversionRate}%
+                      </div>
+                      <p className="text-xs text-slate-500">Conversion rate</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Web Analytics Metrics from GA4 (when available) */}
               {ga4Metrics && (sessions > 0 || pageviews > 0) && (

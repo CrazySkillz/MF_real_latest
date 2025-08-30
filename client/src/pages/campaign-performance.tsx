@@ -47,14 +47,6 @@ export default function CampaignPerformance() {
     enabled: !!campaignId,
   });
 
-  // Debug logging
-  console.log("Campaign Performance Debug:", { 
-    campaignId, 
-    campaign, 
-    isLoading: campaignLoading, 
-    error: campaignError 
-  });
-
   const { data: ga4Data } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId,
@@ -65,64 +57,7 @@ export default function CampaignPerformance() {
     enabled: !!campaignId,
   });
 
-  if (campaignLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Navigation />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-8">
-            <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
-              <div className="grid gap-4 md:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                ))}
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  if (campaignError) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Navigation />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-8">
-            <div className="text-center py-8">
-              <h1 className="text-xl font-semibold text-red-600 mb-2">Error Loading Campaign</h1>
-              <p className="text-slate-600 dark:text-slate-400">{(campaignError as Error).message}</p>
-              <p className="text-sm text-slate-500 mt-2">Campaign ID: {campaignId}</p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  if (!campaign) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Navigation />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-8">
-            <div className="text-center py-8">
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Campaign Not Found</h1>
-              <p className="text-slate-600 dark:text-slate-400">The requested campaign could not be found.</p>
-              <p className="text-sm text-slate-500 mt-2">Campaign ID: {campaignId}</p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  // Calculate key metrics from connected data sources
+  // Calculate key metrics from connected data sources - MUST be before early returns
   // Prioritize Google Sheets data for advertising metrics, GA4 for web analytics
   const sheetsMetrics = (sheetsData as any)?.summary;
   const ga4Metrics = (ga4Data as any)?.metrics;
@@ -144,6 +79,7 @@ export default function CampaignPerformance() {
   const pageviews = ga4Metrics?.pageviews || 0;
   const bounceRate = ga4Metrics?.bounceRate || 0;
 
+  // ALL useMemo hooks MUST be called before early returns
   // Analytical insights from combined data
   const performanceInsights = useMemo(() => {
     const insights = [];
@@ -306,6 +242,72 @@ export default function CampaignPerformance() {
     }
     return [];
   }, [ga4Metrics, sheetsMetrics, sessions, totalConversions, totalClicks, ctr]);
+
+  // Debug logging - after hooks
+  console.log("Campaign Performance Debug:", { 
+    campaignId, 
+    campaign, 
+    isLoading: campaignLoading, 
+    error: campaignError 
+  });
+
+  if (campaignLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Navigation />
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1 p-8">
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
+              <div className="grid gap-4 md:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (campaignError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Navigation />
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1 p-8">
+            <div className="text-center py-8">
+              <h1 className="text-xl font-semibold text-red-600 mb-2">Error Loading Campaign</h1>
+              <p className="text-slate-600 dark:text-slate-400">{(campaignError as Error).message}</p>
+              <p className="text-sm text-slate-500 mt-2">Campaign ID: {campaignId}</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!campaign) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Navigation />
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1 p-8">
+            <div className="text-center py-8">
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Campaign Not Found</h1>
+              <p className="text-slate-600 dark:text-slate-400">The requested campaign could not be found.</p>
+              <p className="text-sm text-slate-500 mt-2">Campaign ID: {campaignId}</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';

@@ -231,6 +231,9 @@ export default function CampaignPerformance() {
     return insights;
   };
 
+
+  const performanceInsights = getPerformanceInsights();
+
   // Calculate device breakdown from GA4 data
   const deviceBreakdown = useMemo(() => {
     if (ga4Metrics?.deviceBreakdown) {
@@ -250,68 +253,62 @@ export default function CampaignPerformance() {
 
   // Calculate audience segments from available data
   const audienceSegments = useMemo(() => {
-    if (ga4Metrics && sheetsMetrics) {
-      const segments = [];
-      if (typeof bounceRate === 'number' && bounceRate > 0 && typeof conversionRate === 'number' && conversionRate > 0) {
-        segments.push({
+    if (ga4Metrics && sheetsMetrics && typeof bounceRate === 'number' && bounceRate > 0 && typeof conversionRate === 'number' && conversionRate > 0) {
+      return [
+        {
           name: 'High Intent Visitors',
           performance: Math.round(Number(conversionRate) * 10),
           spend: 40,
           description: 'Users who convert after visiting'
-        });
-        segments.push({
+        },
+        {
           name: 'Engaged Browsers', 
           performance: Math.round((100 - Number(bounceRate)) * 0.8),
           spend: 35,
           description: 'Users who explore multiple pages'
-        });
-        segments.push({
+        },
+        {
           name: 'Quick Visitors',
           performance: Math.round(Number(bounceRate) * 0.3),
           spend: 25,
           description: 'Single-page visitors'
-        });
-      }
-      return segments;
+        }
+      ];
     }
     return [];
   }, [ga4Metrics, sheetsMetrics, bounceRate, conversionRate]);
 
   // Calculate top performing traffic sources from available data
   const topTrafficSources = useMemo(() => {
-    if (ga4Metrics && sheetsMetrics) {
-      const sources = [];
-      if (sessions > 0 && totalClicks > 0) {
-        const sessionConversionRate = (totalConversions / sessions) * 100;
-        
-        sources.push({
+    if (ga4Metrics && sheetsMetrics && sessions > 0 && totalClicks > 0) {
+      const sessionConversionRate = (totalConversions / sessions) * 100;
+      
+      return [
+        {
           source: 'Paid Search',
           sessions: Math.round(sessions * 0.4),
           conversions: Math.round(totalConversions * 0.5),
           ctr: ctr,
           conversionRate: sessionConversionRate > 0 ? sessionConversionRate.toFixed(1) : '0.0'
-        });
-        sources.push({
+        },
+        {
           source: 'Social Media',
           sessions: Math.round(sessions * 0.3), 
           conversions: Math.round(totalConversions * 0.3),
           ctr: (Number(ctr) * 0.8).toFixed(1),
           conversionRate: sessionConversionRate > 0 ? (sessionConversionRate * 0.7).toFixed(1) : '0.0'
-        });
-        sources.push({
+        },
+        {
           source: 'Display Network',
           sessions: Math.round(sessions * 0.3),
           conversions: Math.round(totalConversions * 0.2),
           ctr: (Number(ctr) * 0.6).toFixed(1),
           conversionRate: sessionConversionRate > 0 ? (sessionConversionRate * 0.5).toFixed(1) : '0.0'
-        });
-      }
-      return sources;
+        }
+      ];
     }
     return [];
   }, [ga4Metrics, sheetsMetrics, sessions, totalConversions, totalClicks, ctr]);
-
-  const performanceInsights = getPerformanceInsights();
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';

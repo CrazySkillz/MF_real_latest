@@ -145,7 +145,7 @@ export default function CampaignPerformance() {
   const bounceRate = ga4Metrics?.bounceRate || 0;
 
   // Analytical insights from combined data
-  const getPerformanceInsights = () => {
+  const performanceInsights = useMemo(() => {
     const insights = [];
     
     // Traffic Quality Analysis
@@ -229,10 +229,7 @@ export default function CampaignPerformance() {
     }
     
     return insights;
-  };
-
-
-  const performanceInsights = getPerformanceInsights();
+  }, [sessions, totalClicks, totalConversions, totalSpend, bounceRate, pageviews]);
 
   // Calculate device breakdown from GA4 data
   const deviceBreakdown = useMemo(() => {

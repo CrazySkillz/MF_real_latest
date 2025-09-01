@@ -71,6 +71,20 @@ export default function Integrations() {
       icon: "fab fa-twitter",
       color: "text-blue-400",
     },
+    {
+      id: "tiktok",
+      name: "TikTok Ads",
+      description: "Short-form video advertising and engagement",
+      icon: "fab fa-tiktok",
+      color: "text-black",
+    },
+    {
+      id: "pinterest",
+      name: "Pinterest Ads",
+      description: "Visual discovery and shopping advertising",
+      icon: "fab fa-pinterest",
+      color: "text-red-600",
+    },
   ];
 
   const handleAddIntegration = (platform: string) => {

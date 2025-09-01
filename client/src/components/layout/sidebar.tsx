@@ -74,6 +74,12 @@ export default function Sidebar() {
               } else if (integration.platform === "twitter") {
                 icon = "fab fa-twitter";
                 iconColor = "text-blue-400";
+              } else if (integration.platform === "tiktok") {
+                icon = "fab fa-tiktok";
+                iconColor = "text-black";
+              } else if (integration.platform === "pinterest") {
+                icon = "fab fa-pinterest";
+                iconColor = "text-red-600";
               }
               
               return (

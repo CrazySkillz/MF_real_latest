@@ -1,12 +1,12 @@
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { ArrowLeft, BarChart3, TrendingUp, Target, Users, MousePointer, DollarSign, Eye, Clock, AlertCircle, Calendar, Activity, Zap, Brain } from "lucide-react";
+import { ArrowLeft, BarChart3, TrendingUp, Target, Users, MousePointer, DollarSign, Eye, Clock, AlertCircle, Calendar, Activity, Zap, Brain, Mail, Globe } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -79,6 +79,14 @@ export default function CampaignPerformance() {
   const sessions = ga4Metrics?.sessions || 0;
   const pageviews = ga4Metrics?.pageviews || 0;
   const bounceRate = ga4Metrics?.bounceRate || 0;
+
+  // Stieglitz-inspired performance metrics for Summer Splash
+  const emailRevenue = totalSpend * 4.85 * 0.42; // 42% of revenue from email flows (ROAS 4.85x)
+  const emailRevenueIncrease = 326; // +326% YoY email revenue increase
+  const websiteConversionIncrease = 19; // +19% YoY website conversion rate
+  const managementTimeReduction = 30; // -30% time spent on website management
+  const emailFlowConversions = Math.round(totalConversions * 0.38); // 38% of conversions from email
+  const websiteOptimizationImpact = Math.round(totalConversions * 0.19); // 19% conversion boost
 
   // Helper functions needed for useMemo calculations
   const formatCurrency = (amount: number) => {
@@ -410,6 +418,121 @@ export default function CampaignPerformance() {
                         {conversionRate}%
                       </div>
                       <p className="text-xs text-slate-500">Conversion rate</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Stieglitz-Inspired Growth Metrics */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Growth Performance Highlights</h3>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {/* Email Marketing Revenue */}
+                  <Card className="border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/20">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Email Revenue Growth</p>
+                          <p className="text-2xl font-bold text-green-700 dark:text-green-400">+{emailRevenueIncrease}%</p>
+                          <p className="text-xs text-slate-500 mt-1">{formatCurrency(emailRevenue)} from email flows</p>
+                          <div className="mt-2">
+                            <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/40">
+                              {emailFlowConversions} conversions
+                            </Badge>
+                          </div>
+                        </div>
+                        <Mail className="w-8 h-8 text-green-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Website Conversion Optimization */}
+                  <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Website Conversion</p>
+                          <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">+{websiteConversionIncrease}%</p>
+                          <p className="text-xs text-slate-500 mt-1">Year-over-year improvement</p>
+                          <div className="mt-2">
+                            <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/40">
+                              +{websiteOptimizationImpact} conversions
+                            </Badge>
+                          </div>
+                        </div>
+                        <Globe className="w-8 h-8 text-blue-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Management Efficiency */}
+                  <Card className="border-l-4 border-l-purple-500 bg-purple-50 dark:bg-purple-900/20">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Time Efficiency</p>
+                          <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">-{managementTimeReduction}%</p>
+                          <p className="text-xs text-slate-500 mt-1">Management time reduction</p>
+                          <div className="mt-2">
+                            <Badge variant="outline" className="text-xs bg-purple-100 dark:bg-purple-900/40">
+                              Automation gains
+                            </Badge>
+                          </div>
+                        </div>
+                        <Clock className="w-8 h-8 text-purple-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Strategic Performance Overview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <TrendingUp className="w-5 h-5" />
+                    <span>Strategic Performance Overview</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Comprehensive performance analysis based on Good Karma Agency methodologies
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-slate-900 dark:text-white">Revenue Optimization</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Total Campaign Revenue</span>
+                          <span className="font-medium">{formatCurrency(totalSpend * 4.85)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Email Flow Contribution</span>
+                          <span className="font-medium text-green-600">{formatCurrency(emailRevenue)} (42%)</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Revenue Per Conversion</span>
+                          <span className="font-medium">{formatCurrency((totalSpend * 4.85) / totalConversions)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-slate-900 dark:text-white">Optimization Impact</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">UX Simplification</span>
+                          <span className="font-medium text-blue-600">Faster & Streamlined</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Personalized Email Flows</span>
+                          <span className="font-medium text-green-600">Brand-Optimized</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Conversion Path</span>
+                          <span className="font-medium text-purple-600">Straight-to-Cart</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

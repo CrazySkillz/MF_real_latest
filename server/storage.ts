@@ -255,11 +255,100 @@ export class MemStorage implements IStorage {
       read: true,
     });
 
+    // Initialize performance metrics based on Summer Splash campaign data
+    this.initializePerformanceMetrics();
+
     // Initialize default attribution models
     this.initializeDefaultAttributionModels();
     
     // Initialize sample attribution data for demonstration
     this.initializeSampleAttributionData();
+  }
+
+  private initializePerformanceMetrics() {
+    // Create realistic metrics based on Summer Splash fashion e-commerce campaign
+    // Campaign data: 847,520 impressions, 21,840 clicks, $12,847.65 spend
+    // CTR: 2.58%, CPC: $0.59, Conversion Rate: 3.47%, ROAS: 4.85x
+    
+    const metricsData = [
+      {
+        id: randomUUID(),
+        name: "Total Impressions",
+        value: "847,520",
+        change: "+18.7%",
+        period: "30d",
+        icon: "eye",
+        date: new Date()
+      },
+      {
+        id: randomUUID(),
+        name: "Total Clicks",
+        value: "21,840",
+        change: "+15.3%",
+        period: "30d",
+        icon: "click",
+        date: new Date()
+      },
+      {
+        id: randomUUID(),
+        name: "Click-Through Rate",
+        value: "2.58%",
+        change: "-2.8%",
+        period: "30d",
+        icon: "percentage",
+        date: new Date()
+      },
+      {
+        id: randomUUID(),
+        name: "Cost Per Click",
+        value: "$0.59",
+        change: "-8.4%",
+        period: "30d",
+        icon: "dollar",
+        date: new Date()
+      },
+      {
+        id: randomUUID(),
+        name: "Conversion Rate",
+        value: "3.47%",
+        change: "+6.2%",
+        period: "30d",
+        icon: "percentage",
+        date: new Date()
+      },
+      {
+        id: randomUUID(),
+        name: "Return on Ad Spend",
+        value: "4.85x",
+        change: "+12.1%",
+        period: "30d",
+        icon: "dollar",
+        date: new Date()
+      },
+      {
+        id: randomUUID(),
+        name: "Cost Per Acquisition",
+        value: "$16.95",
+        change: "-11.3%",
+        period: "30d",
+        icon: "dollar",
+        date: new Date()
+      },
+      {
+        id: randomUUID(),
+        name: "Revenue",
+        value: "$62,290",
+        change: "+24.6%",
+        period: "30d",
+        icon: "dollar",
+        date: new Date()
+      }
+    ];
+
+    // Add metrics to storage
+    metricsData.forEach(metric => {
+      this.metrics.set(metric.id, metric);
+    });
   }
 
   private initializeDefaultAttributionModels() {

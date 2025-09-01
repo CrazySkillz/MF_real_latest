@@ -37,6 +37,27 @@ export default function IntegrationPanel({ onIntegrationClick }: IntegrationPane
       icon: "fab fa-linkedin",
       color: "text-blue-700",
     },
+    {
+      id: "twitter",
+      name: "X (Twitter) Ads",
+      description: "Social media advertising and engagement",
+      icon: "fab fa-twitter",
+      color: "text-blue-400",
+    },
+    {
+      id: "tiktok",
+      name: "TikTok Ads",
+      description: "Short-form video advertising and engagement",
+      icon: "fab fa-tiktok",
+      color: "text-black",
+    },
+    {
+      id: "pinterest",
+      name: "Pinterest Ads",
+      description: "Visual discovery and shopping advertising",
+      icon: "fab fa-pinterest",
+      color: "text-red-600",
+    },
   ];
 
   const connectedPlatformIds = connectedIntegrations.map(integration => integration.platform);

@@ -1183,16 +1183,6 @@ export default function CampaignDetail() {
       cpc: "$0.00"
     },
     {
-      platform: "X (Twitter) Ads",
-      connected: connectedPlatformNames.includes("X (Twitter) Ads"),
-      impressions: 0,
-      clicks: 0,
-      conversions: 0,
-      spend: "0.00", 
-      ctr: "0.00%",
-      cpc: "$0.00"
-    },
-    {
       platform: "TikTok Ads",
       connected: connectedPlatformNames.includes("TikTok Ads"),
       impressions: 0,
@@ -1205,6 +1195,16 @@ export default function CampaignDetail() {
     {
       platform: "Pinterest Ads",
       connected: connectedPlatformNames.includes("Pinterest Ads"),
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      spend: "0.00",
+      ctr: "0.00%",
+      cpc: "$0.00"
+    },
+    {
+      platform: "Shopify",
+      connected: connectedPlatformNames.includes("Shopify"),
       impressions: 0,
       clicks: 0,
       conversions: 0,
@@ -1224,12 +1224,12 @@ export default function CampaignDetail() {
         return <SiFacebook className="w-5 h-5 text-blue-600" />;
       case "LinkedIn Ads":
         return <SiLinkedin className="w-5 h-5 text-blue-700" />;
-      case "X (Twitter) Ads":
-        return <SiX className="w-5 h-5 text-slate-900 dark:text-white" />;
       case "TikTok Ads":
         return <i className="fab fa-tiktok w-5 h-5 text-black" />;
       case "Pinterest Ads":
         return <i className="fab fa-pinterest w-5 h-5 text-red-600" />;
+      case "Shopify":
+        return <i className="fab fa-shopify w-5 h-5 text-green-600" />;
       default:
         return <BarChart3 className="w-5 h-5 text-slate-500" />;
     }

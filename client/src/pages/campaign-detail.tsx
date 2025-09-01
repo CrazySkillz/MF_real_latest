@@ -1338,10 +1338,12 @@ export default function CampaignDetail() {
   }
 
   const connectedPlatforms = platformMetrics.filter(p => p.connected);
-  const totalImpressions = connectedPlatforms.reduce((sum, p) => sum + p.impressions, 0);
-  const totalClicks = connectedPlatforms.reduce((sum, p) => sum + p.clicks, 0);
-  const totalConversions = connectedPlatforms.reduce((sum, p) => sum + p.conversions, 0);
-  const totalSpend = connectedPlatforms.reduce((sum, p) => sum + parseFloat(p.spend), 0);
+  
+  // Use campaign data directly for Performance Summary calculations
+  const totalImpressions = campaignImpressions;
+  const totalClicks = campaignClicks;
+  const totalConversions = estimatedConversions;
+  const totalSpend = campaignSpend;
 
   // Standard report templates
   const STANDARD_TEMPLATES = [

@@ -84,7 +84,7 @@ export default function CampaignPerformance() {
   const emailRevenue = totalSpend * 4.85 * 0.35; // 35% of revenue from email flows (ROAS 4.85x)
   const emailRevenueIncrease = 248; // +248% YoY email revenue increase
   const websiteConversionIncrease = 31; // +31% YoY website conversion rate
-  const managementTimeReduction = 42; // -42% time spent on campaign management
+  const profitMarginGrowth = 67; // +67% profit margin improvement
   const emailFlowConversions = Math.round(totalConversions * 0.32); // 32% of conversions from email
   const websiteOptimizationImpact = Math.round(totalConversions * 0.31); // 31% conversion boost
 
@@ -465,21 +465,21 @@ export default function CampaignPerformance() {
                     </CardContent>
                   </Card>
 
-                  {/* Management Efficiency */}
+                  {/* Profit Margin Growth */}
                   <Card className="border-l-4 border-l-purple-500 bg-purple-50 dark:bg-purple-900/20">
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Time Efficiency</p>
-                          <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">-{managementTimeReduction}%</p>
-                          <p className="text-xs text-slate-500 mt-1">Management time reduction</p>
+                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Profit Margin Growth</p>
+                          <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">+{profitMarginGrowth}%</p>
+                          <p className="text-xs text-slate-500 mt-1">Year-over-year improvement</p>
                           <div className="mt-2">
                             <Badge variant="outline" className="text-xs bg-purple-100 dark:bg-purple-900/40">
-                              Automation gains
+                              Profitability gains
                             </Badge>
                           </div>
                         </div>
-                        <Clock className="w-8 h-8 text-purple-600" />
+                        <DollarSign className="w-8 h-8 text-purple-600" />
                       </div>
                     </CardContent>
                   </Card>

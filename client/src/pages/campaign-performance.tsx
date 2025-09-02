@@ -588,7 +588,7 @@ export default function CampaignPerformance() {
               {/* Performance Insights */}
               {performanceInsights.length > 0 && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Performance Analysis</h3>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Performance Summary</h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     {performanceInsights.map((insight, index) => (
                       <Card key={index} className={`border-l-4 ${

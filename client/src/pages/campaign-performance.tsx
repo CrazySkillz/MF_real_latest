@@ -394,9 +394,8 @@ export default function CampaignPerformance() {
 
           {/* Performance Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="metrics">Detailed Metrics</TabsTrigger>
               <TabsTrigger value="audience">Audience Analysis</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
             </TabsList>
@@ -800,10 +799,8 @@ export default function CampaignPerformance() {
                   </CardContent>
                 </Card>
               </div>
-            </TabsContent>
-
-            {/* Detailed Metrics Tab */}
-            <TabsContent value="metrics" className="space-y-6">
+              
+              {/* Detailed Metrics Section */}
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Device Breakdown */}
                 <Card>

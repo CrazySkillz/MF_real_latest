@@ -911,19 +911,19 @@ export default function CampaignPerformance() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <span className="font-medium text-slate-900 dark:text-white">Impressions</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{formatNumber(totalImpressions)}</span>
+                    <div className="flex items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <span className="font-medium text-slate-900 dark:text-white w-28">Impressions</span>
+                      <span className="font-bold text-slate-900 dark:text-white flex-1 text-center">{formatNumber(totalImpressions)}</span>
                       <Progress value={100} className="w-32" />
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <span className="font-medium text-slate-900 dark:text-white">Clicks</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{formatNumber(totalClicks)}</span>
+                    <div className="flex items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <span className="font-medium text-slate-900 dark:text-white w-28">Clicks</span>
+                      <span className="font-bold text-slate-900 dark:text-white flex-1 text-center">{formatNumber(totalClicks)}</span>
                       <Progress value={totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0} className="w-32" />
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                      <span className="font-medium text-slate-900 dark:text-white">Conversions</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{formatNumber(totalConversions)}</span>
+                    <div className="flex items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                      <span className="font-medium text-slate-900 dark:text-white w-28">Conversions</span>
+                      <span className="font-bold text-slate-900 dark:text-white flex-1 text-center">{formatNumber(totalConversions)}</span>
                       <Progress value={totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0} className="w-32" />
                     </div>
                   </div>

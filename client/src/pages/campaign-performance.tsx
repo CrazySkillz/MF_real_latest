@@ -494,7 +494,7 @@ export default function CampaignPerformance() {
                     <span>Strategic Performance Overview</span>
                   </CardTitle>
                   <CardDescription>
-                    Comprehensive performance analysis based on Good Karma Agency methodologies
+                    Comprehensive performance analysis
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

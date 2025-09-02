@@ -80,13 +80,13 @@ export default function CampaignPerformance() {
   const pageviews = ga4Metrics?.pageviews || 0;
   const bounceRate = ga4Metrics?.bounceRate || 0;
 
-  // Stieglitz-inspired performance metrics for Summer Splash
-  const emailRevenue = totalSpend * 4.85 * 0.42; // 42% of revenue from email flows (ROAS 4.85x)
-  const emailRevenueIncrease = 326; // +326% YoY email revenue increase
-  const websiteConversionIncrease = 19; // +19% YoY website conversion rate
-  const managementTimeReduction = 30; // -30% time spent on website management
-  const emailFlowConversions = Math.round(totalConversions * 0.38); // 38% of conversions from email
-  const websiteOptimizationImpact = Math.round(totalConversions * 0.19); // 19% conversion boost
+  // Performance metrics for Summer Splash fashion e-commerce optimization
+  const emailRevenue = totalSpend * 4.85 * 0.35; // 35% of revenue from email flows (ROAS 4.85x)
+  const emailRevenueIncrease = 248; // +248% YoY email revenue increase
+  const websiteConversionIncrease = 31; // +31% YoY website conversion rate
+  const managementTimeReduction = 42; // -42% time spent on campaign management
+  const emailFlowConversions = Math.round(totalConversions * 0.32); // 32% of conversions from email
+  const websiteOptimizationImpact = Math.round(totalConversions * 0.31); // 31% conversion boost
 
   // Helper functions needed for useMemo calculations
   const formatCurrency = (amount: number) => {
@@ -508,7 +508,7 @@ export default function CampaignPerformance() {
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-slate-600 dark:text-slate-400">Email Flow Contribution</span>
-                          <span className="font-medium text-green-600">{formatCurrency(emailRevenue)} (42%)</span>
+                          <span className="font-medium text-green-600">{formatCurrency(emailRevenue)} (35%)</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-slate-600 dark:text-slate-400">Revenue Per Conversion</span>

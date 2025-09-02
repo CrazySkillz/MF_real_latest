@@ -261,34 +261,34 @@ export default function CampaignPerformance() {
       ];
     }
     // Fallback mock data for Summer Splash fashion campaign traffic sources  
-    // Total conversions should equal totalConversions (758)
+    // Sessions should align with total clicks (21,840) and conversions should equal totalConversions (758)
     return [
       {
         source: 'TikTok Ads',
-        sessions: 12840,
+        sessions: 7644, // 35% of 21,840 total clicks
         conversions: 265, // 35% of 758 total conversions
-        conversionRate: '2.06',
+        conversionRate: '3.47',
         ctr: '4.8'
       },
       {
         source: 'Instagram Shopping',
-        sessions: 9630,
+        sessions: 5460, // 25% of 21,840 total clicks
         conversions: 189, // 25% of 758 total conversions  
-        conversionRate: '1.96',
+        conversionRate: '3.46',
         ctr: '3.7'
       },
       {
         source: 'Google Shopping',
-        sessions: 8520,
+        sessions: 4368, // 20% of 21,840 total clicks
         conversions: 152, // 20% of 758 total conversions
-        conversionRate: '1.78',
+        conversionRate: '3.48',
         ctr: '4.1'
       },
       {
         source: 'Pinterest Ads',
-        sessions: 5940,
+        sessions: 4368, // 20% of 21,840 total clicks
         conversions: 152, // 20% of 758 total conversions
-        conversionRate: '2.56',
+        conversionRate: '3.48',
         ctr: '2.9'
       }
     ];

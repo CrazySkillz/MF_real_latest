@@ -25,11 +25,11 @@ export default function Navigation() {
           
           <div className="flex items-center space-x-3">
             <div className="text-right">
-              <div className="text-sm font-medium text-foreground">Sarah Johnson</div>
+              <div className="text-sm font-medium text-foreground">Park Ranger</div>
               <div className="text-xs text-muted-foreground">Marketing Director</div>
             </div>
             <div className="w-10 h-10 gradient-card rounded-full flex items-center justify-center border border-border">
-              <span className="text-sm font-medium text-foreground">SJ</span>
+              <span className="text-sm font-medium text-foreground">PR</span>
             </div>
           </div>
         </div>

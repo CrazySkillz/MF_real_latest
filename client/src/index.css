@@ -3,73 +3,69 @@
 @tailwind utilities;
 
 :root {
-  /* Minimalist Clean Theme - Light Mode */
-  --background: hsl(0, 0%, 100%);
-  --foreground: hsl(220, 15%, 10%);
-  --muted: hsl(210, 20%, 96%);
-  --muted-foreground: hsl(215, 10%, 45%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(220, 15%, 10%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(220, 15%, 10%);
-  --border: hsl(220, 20%, 88%);
-  --input: hsl(0, 0%, 100%);
-  --primary: hsl(220, 95%, 50%);
-  --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(210, 20%, 96%);
-  --secondary-foreground: hsl(220, 15%, 10%);
-  --accent: hsl(145, 85%, 45%);
-  --accent-foreground: hsl(0, 0%, 100%);
-  --destructive: hsl(0, 75%, 55%);
-  --destructive-foreground: hsl(0, 0%, 100%);
-  --warning: hsl(35, 85%, 55%);
-  --warning-foreground: hsl(0, 0%, 100%);
-  --ring: hsl(220, 95%, 50%);
-  --radius: 0.75rem;
+  /* Dark Analytics Theme - Default (Dark Mode) */
+  --background: hsl(222, 20%, 6%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(222, 15%, 12%);
+  --muted-foreground: hsl(215, 20%, 65%);
+  --popover: hsl(222, 20%, 8%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(222, 18%, 9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(217, 20%, 15%);
+  --input: hsl(222, 18%, 11%);
+  --primary: hsl(195, 100%, 55%);
+  --primary-foreground: hsl(222, 20%, 6%);
+  --secondary: hsl(222, 15%, 12%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(155, 95%, 55%);
+  --accent-foreground: hsl(222, 20%, 6%);
+  --destructive: hsl(0, 85%, 60%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --warning: hsl(35, 100%, 60%);
+  --warning-foreground: hsl(222, 20%, 6%);
+  --ring: hsl(195, 100%, 55%);
+  --radius: 0.5rem;
   
-  /* Minimalist specific variables */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
-  --clean-bg: hsl(0, 0%, 100%);
-  --clean-border: hsl(220, 20%, 88%);
-  --clean-hover: hsl(210, 20%, 98%);
+  /* Dark Analytics specific variables */
+  --dark-bg: hsl(222, 20%, 6%);
+  --dark-card: hsl(222, 18%, 9%);
+  --dark-border: hsl(217, 20%, 15%);
+  --dark-hover: hsl(222, 15%, 12%);
+  --neon-blue: hsl(195, 100%, 55%);
+  --neon-green: hsl(155, 95%, 55%);
+  --neon-purple: hsl(270, 95%, 65%);
+  --neon-orange: hsl(25, 100%, 60%);
+  --shadow-dark: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-neon: 0 0 20px rgba(0, 200, 255, 0.3);
+  --gradient-primary: linear-gradient(135deg, hsl(195, 100%, 55%) 0%, hsl(270, 95%, 65%) 100%);
+  --gradient-accent: linear-gradient(135deg, hsl(155, 95%, 55%) 0%, hsl(195, 100%, 55%) 100%);
 }
 
-.dark {
-  /* Minimalist Clean Theme - Dark Mode */
-  --background: hsl(220, 15%, 5%);
-  --foreground: hsl(0, 0%, 95%);
-  --muted: hsl(220, 15%, 12%);
-  --muted-foreground: hsl(215, 10%, 55%);
-  --popover: hsl(220, 15%, 8%);
-  --popover-foreground: hsl(0, 0%, 95%);
-  --card: hsl(220, 15%, 8%);
-  --card-foreground: hsl(0, 0%, 95%);
-  --border: hsl(220, 15%, 18%);
-  --input: hsl(220, 15%, 12%);
-  --primary: hsl(220, 95%, 60%);
+.light {
+  /* Light Analytics Theme (alternative) */
+  --background: hsl(0, 0%, 98%);
+  --foreground: hsl(222, 20%, 15%);
+  --muted: hsl(210, 20%, 94%);
+  --muted-foreground: hsl(215, 15%, 45%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(222, 20%, 15%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(222, 20%, 15%);
+  --border: hsl(220, 20%, 88%);
+  --input: hsl(0, 0%, 100%);
+  --primary: hsl(195, 100%, 45%);
   --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(220, 15%, 12%);
-  --secondary-foreground: hsl(0, 0%, 95%);
-  --accent: hsl(145, 85%, 55%);
-  --accent-foreground: hsl(220, 15%, 5%);
-  --destructive: hsl(0, 75%, 65%);
+  --secondary: hsl(210, 20%, 94%);
+  --secondary-foreground: hsl(222, 20%, 15%);
+  --accent: hsl(155, 95%, 45%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 85%, 55%);
   --destructive-foreground: hsl(0, 0%, 100%);
-  --warning: hsl(35, 85%, 65%);
-  --warning-foreground: hsl(220, 15%, 5%);
-  --ring: hsl(220, 95%, 60%);
-  --radius: 0.75rem;
-  
-  /* Minimalist dark mode variables */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
-  --clean-bg: hsl(220, 15%, 8%);
-  --clean-border: hsl(220, 15%, 18%);
-  --clean-hover: hsl(220, 15%, 12%);
+  --warning: hsl(35, 100%, 55%);
+  --warning-foreground: hsl(0, 0%, 100%);
+  --ring: hsl(195, 100%, 45%);
+  --radius: 0.5rem;
 }
 
 @layer base {
@@ -86,31 +82,33 @@
 }
 
 @layer components {
-  /* Minimalist Clean utility classes */
-  .clean-card {
-    background: var(--clean-bg);
-    border: 1px solid var(--clean-border);
-    box-shadow: var(--shadow-sm);
-    @apply rounded-xl p-8 transition-all duration-200 hover:shadow-md;
+  /* Dark Analytics utility classes */
+  .dark-card {
+    background: var(--dark-card);
+    border: 1px solid var(--dark-border);
+    box-shadow: var(--shadow-dark);
+    @apply rounded-lg p-6 transition-all duration-300 hover:shadow-xl;
   }
   
-  .clean-card-elevated {
-    background: var(--clean-bg);
-    border: 1px solid var(--clean-border);
-    box-shadow: var(--shadow-md);
-    @apply rounded-xl p-8 transition-all duration-200 hover:shadow-lg;
+  .dark-card-neon {
+    background: var(--dark-card);
+    border: 1px solid var(--neon-blue);
+    box-shadow: var(--shadow-neon);
+    @apply rounded-lg p-6 transition-all duration-300 hover:shadow-xl;
   }
   
   .metric-card {
-    @apply clean-card;
+    @apply dark-card hover:border-primary;
   }
   
   .nav-link {
-    @apply flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 font-medium;
+    @apply flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium;
   }
   
   .nav-link-active {
-    @apply bg-primary text-primary-foreground shadow-sm;
+    background: var(--gradient-primary);
+    @apply text-black shadow-lg;
+    box-shadow: var(--shadow-neon);
   }
   
   .nav-link-inactive {
@@ -118,7 +116,7 @@
   }
   
   .integration-card {
-    @apply w-full flex items-center justify-between p-6 clean-card hover:shadow-md transition-all duration-200;
+    @apply w-full flex items-center justify-between p-6 dark-card hover:border-accent transition-all duration-300;
   }
   
   .status-indicator {
@@ -126,27 +124,36 @@
   }
   
   .status-connected {
-    @apply bg-accent;
+    background: var(--neon-green);
+    box-shadow: 0 0 10px var(--neon-green);
   }
   
   .status-disconnected {
     @apply bg-muted-foreground;
   }
   
-  /* Button clean styles */
-  .btn-clean {
-    @apply bg-background border border-border rounded-lg px-6 py-3 font-medium transition-all duration-200 hover:bg-muted hover:shadow-sm;
+  /* Button dark analytics styles */
+  .btn-dark {
+    @apply bg-card border border-border rounded-lg px-6 py-3 font-medium transition-all duration-300 hover:bg-muted hover:border-primary;
   }
   
   .btn-primary {
-    @apply bg-primary text-primary-foreground shadow-sm hover:shadow-md;
+    background: var(--gradient-primary);
+    @apply text-black shadow-lg hover:shadow-xl;
+    box-shadow: var(--shadow-neon);
   }
   
   .btn-secondary {
-    @apply bg-secondary text-secondary-foreground hover:bg-muted;
+    @apply bg-secondary text-secondary-foreground hover:bg-muted border border-border;
   }
   
-  /* Typography hierarchy */
+  .btn-accent {
+    background: var(--gradient-accent);
+    @apply text-black font-semibold shadow-lg hover:shadow-xl;
+    box-shadow: 0 0 20px rgba(0, 255, 150, 0.3);
+  }
+  
+  /* Typography hierarchy with better contrast */
   .heading-xl {
     @apply text-3xl font-bold tracking-tight text-foreground;
   }
@@ -173,5 +180,26 @@
   
   .body-sm {
     @apply text-xs text-muted-foreground;
+  }
+  
+  /* Neon accent utilities */
+  .text-neon-blue {
+    color: var(--neon-blue);
+    text-shadow: 0 0 10px var(--neon-blue);
+  }
+  
+  .text-neon-green {
+    color: var(--neon-green);
+    text-shadow: 0 0 10px var(--neon-green);
+  }
+  
+  .text-neon-purple {
+    color: var(--neon-purple);
+    text-shadow: 0 0 10px var(--neon-purple);
+  }
+  
+  .text-neon-orange {
+    color: var(--neon-orange);
+    text-shadow: 0 0 10px var(--neon-orange);
   }
 }

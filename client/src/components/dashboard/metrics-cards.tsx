@@ -60,30 +60,30 @@ export default function MetricsCards() {
   const getIconColor = (iconName: string) => {
     switch (iconName) {
       case "eye":
-        return "text-primary";
+        return "text-neon-blue";
       case "click":
-        return "text-accent";
+        return "text-neon-green";
       case "percentage":
-        return "text-warning";
+        return "text-neon-purple";
       case "dollar":
-        return "text-emerald-600";
+        return "text-neon-orange";
       default:
-        return "text-primary";
+        return "text-neon-blue";
     }
   };
 
   const getIconBg = (iconName: string) => {
     switch (iconName) {
       case "eye":
-        return "bg-primary/10";
+        return "bg-blue-500/20 border border-blue-500/30";
       case "click":
-        return "bg-accent/10";
+        return "bg-green-500/20 border border-green-500/30";
       case "percentage":
-        return "bg-warning/10";
+        return "bg-purple-500/20 border border-purple-500/30";
       case "dollar":
-        return "bg-emerald-100";
+        return "bg-orange-500/20 border border-orange-500/30";
       default:
-        return "bg-primary/10";
+        return "bg-blue-500/20 border border-blue-500/30";
     }
   };
 
@@ -112,7 +112,7 @@ export default function MetricsCards() {
         const IconComponent = getIcon(metric.icon);
         const isPositive = metric.change?.startsWith('+') || metric.change === "0%";
         const TrendIcon = isPositive ? TrendingUp : TrendingDown;
-        const trendColor = isPositive ? "text-accent" : "text-destructive";
+        const trendColor = isPositive ? "text-neon-green" : "text-destructive";
         
         return (
           <Card key={index} className="metric-card">

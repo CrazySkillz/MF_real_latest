@@ -60,30 +60,30 @@ export default function MetricsCards() {
   const getIconColor = (iconName: string) => {
     switch (iconName) {
       case "eye":
-        return "text-neon-blue";
+        return "text-gradient-primary";
       case "click":
-        return "text-neon-green";
+        return "text-gradient-success";
       case "percentage":
-        return "text-neon-purple";
+        return "text-gradient-accent";
       case "dollar":
-        return "text-neon-orange";
+        return "text-gradient-accent";
       default:
-        return "text-neon-blue";
+        return "text-gradient-primary";
     }
   };
 
   const getIconBg = (iconName: string) => {
     switch (iconName) {
       case "eye":
-        return "bg-blue-500/20 border border-blue-500/30";
+        return "gradient-card-primary";
       case "click":
-        return "bg-green-500/20 border border-green-500/30";
+        return "btn-success";
       case "percentage":
-        return "bg-purple-500/20 border border-purple-500/30";
+        return "btn-accent";
       case "dollar":
-        return "bg-orange-500/20 border border-orange-500/30";
+        return "btn-secondary";
       default:
-        return "bg-blue-500/20 border border-blue-500/30";
+        return "gradient-card-primary";
     }
   };
 
@@ -112,14 +112,14 @@ export default function MetricsCards() {
         const IconComponent = getIcon(metric.icon);
         const isPositive = metric.change?.startsWith('+') || metric.change === "0%";
         const TrendIcon = isPositive ? TrendingUp : TrendingDown;
-        const trendColor = isPositive ? "text-neon-green" : "text-destructive";
+        const trendColor = isPositive ? "text-gradient-success" : "text-destructive";
         
         return (
           <Card key={index} className="metric-card">
             <CardContent className="p-8">
               <div className="flex items-center justify-between mb-6">
-                <div className={`w-14 h-14 ${getIconBg(metric.icon)} rounded-xl flex items-center justify-center`}>
-                  <IconComponent className={`w-7 h-7 ${getIconColor(metric.icon)}`} />
+                <div className={`w-16 h-16 ${getIconBg(metric.icon)} rounded-2xl flex items-center justify-center`}>
+                  <IconComponent className={`w-8 h-8 text-white`} />
                 </div>
                 <div className="flex items-center space-x-2 text-sm">
                   <TrendIcon className={`w-4 h-4 ${trendColor}`} />

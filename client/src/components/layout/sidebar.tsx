@@ -52,7 +52,7 @@ export default function Sidebar() {
       </div>
 
       {/* Integration Status */}
-      <div className="p-6 mt-auto bg-card border-t border-border">
+      <div className="p-6 mt-auto gradient-card border-t border-border m-4 rounded-3xl">
         <h3 className="text-sm font-semibold text-foreground mb-3">Connected Platforms</h3>
         <div className="space-y-3">
           {connectedIntegrations.length === 0 ? (
@@ -95,7 +95,7 @@ export default function Sidebar() {
           )}
           
           <Link href="/integrations">
-            <div className="btn-dark text-sm flex items-center cursor-pointer">
+            <div className="btn-gradient btn-accent text-sm flex items-center cursor-pointer">
               <Plus className="w-4 h-4 mr-2" />
               Add Integration
             </div>

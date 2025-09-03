@@ -4,14 +4,14 @@ import { Link } from "wouter";
 
 export default function Navigation() {
   return (
-    <nav className="bg-background border-b border-border px-6 py-4">
+    <nav className="gradient-card border-b border-border px-6 py-4 backdrop-blur-md">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{background: 'var(--gradient-primary)'}}>
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{background: 'var(--gradient-primary)'}}>
               <i className="fas fa-chart-line text-white text-sm"></i>
             </div>
-            <span className="text-xl font-semibold text-foreground">PerformanceCore</span>
+            <span className="text-2xl font-bold text-gradient-primary">PerformanceCore</span>
           </div>
         </div>
         
@@ -28,7 +28,7 @@ export default function Navigation() {
               <div className="text-sm font-medium text-foreground">Sarah Johnson</div>
               <div className="text-xs text-muted-foreground">Marketing Director</div>
             </div>
-            <div className="w-8 h-8 bg-card rounded-full flex items-center justify-center border border-border">
+            <div className="w-10 h-10 gradient-card rounded-full flex items-center justify-center border border-border">
               <span className="text-sm font-medium text-foreground">SJ</span>
             </div>
           </div>

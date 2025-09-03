@@ -975,12 +975,6 @@ export default function Campaigns() {
                               {campaign.platform?.includes('Google Analytics') && (
                                 <SiGoogle className="w-4 h-4 text-orange-500" />
                               )}
-                              {campaign.platform?.includes('Google Sheets') && (
-                                <SiGoogle className="w-4 h-4 text-green-500" />
-                              )}
-                              {campaign.platform?.includes('Facebook') && (
-                                <SiFacebook className="w-4 h-4 text-blue-600" />
-                              )}
                               {campaign.platform?.includes('LinkedIn') && (
                                 <SiLinkedin className="w-4 h-4 text-blue-700" />
                               )}

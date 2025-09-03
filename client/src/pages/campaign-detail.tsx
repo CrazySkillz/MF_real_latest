@@ -2261,6 +2261,20 @@ export default function CampaignDetail() {
                     </div>
                   </div>
 
+                  {/* Google Sheets Analytics Link - Always show for Summer Splash campaign */}
+                  {platform.platform === "Google Sheets" && (
+                    <div className="px-3 pb-3">
+                      <div className="pt-2 border-t">
+                        <Link href={`/campaigns/${campaign.id}/google-sheets-data`}>
+                          <Button variant="outline" size="sm" className="w-full">
+                            <FileSpreadsheet className="w-4 h-4 mr-2" />
+                            View Detailed Analytics
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Connected Platform Metrics */}
                   {platform.connected && (
                     <div className="px-3 pb-3">
@@ -2270,16 +2284,6 @@ export default function CampaignDetail() {
                             <Link href={`/campaigns/${campaign.id}/ga4-metrics`}>
                               <Button variant="outline" size="sm" className="w-full">
                                 <BarChart3 className="w-4 h-4 mr-2" />
-                                View Detailed Analytics
-                              </Button>
-                            </Link>
-                          </div>
-                        )}
-                        {platform.platform === "Google Sheets" && (
-                          <div className="pt-2 border-t">
-                            <Link href={`/campaigns/${campaign.id}/google-sheets-data`}>
-                              <Button variant="outline" size="sm" className="w-full">
-                                <FileSpreadsheet className="w-4 h-4 mr-2" />
                                 View Detailed Analytics
                               </Button>
                             </Link>

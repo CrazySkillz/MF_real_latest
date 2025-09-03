@@ -986,7 +986,7 @@ export default function Campaigns() {
                                   ? campaign.platform
                                       .split(',')
                                       .map(p => p.trim())
-                                      .filter(p => !['google-sheets', 'facebook', 'facebook ads', 'google sheets'].includes(p.toLowerCase()))
+                                      .filter(p => !['google-sheets', 'facebook', 'facebook ads', 'google sheets', 'google ads'].includes(p.toLowerCase()))
                                       .join(', ') || "Manual"
                                   : "Manual"
                               }</span>

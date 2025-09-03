@@ -861,7 +861,6 @@ export default function GA4Metrics() {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
-                  <TabsTrigger value="rois">ROIs</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview">
@@ -1560,40 +1559,6 @@ export default function GA4Metrics() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="rois">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Return on Investment</CardTitle>
-                      <CardDescription>ROI analysis and revenue attribution from your campaigns</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="text-center p-6 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                          <div className="text-3xl font-bold text-purple-600 mb-2">
-                            ${formatNumber((ga4Metrics?.conversions || 0) * 25)}
-                          </div>
-                          <div className="text-sm text-purple-800 dark:text-purple-200">Total Revenue</div>
-                        </div>
-                        <div className="text-center p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <div className="text-3xl font-bold text-blue-600 mb-2">
-                            {((ga4Metrics?.conversions || 0) * 25 - 500) > 0 
-                              ? `+${formatPercentage(((((ga4Metrics?.conversions || 0) * 25 - 500) / 500) * 100))}`
-                              : formatPercentage(((((ga4Metrics?.conversions || 0) * 25 - 500) / 500) * 100))}
-                          </div>
-                          <div className="text-sm text-blue-800 dark:text-blue-200">ROI Percentage</div>
-                        </div>
-                        <div className="text-center p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                          <div className="text-3xl font-bold text-emerald-600 mb-2">
-                            ${ga4Metrics?.conversions && ga4Metrics?.sessions
-                              ? ((ga4Metrics.conversions * 25) / ga4Metrics.sessions).toFixed(2)
-                              : "0.00"}
-                          </div>
-                          <div className="text-sm text-emerald-800 dark:text-emerald-200">Revenue per Session</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
               </Tabs>
             </>
           ) : (

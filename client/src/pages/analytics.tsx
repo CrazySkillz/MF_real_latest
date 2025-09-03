@@ -313,7 +313,7 @@ export default function Analytics() {
             </TabsContent>
 
             <TabsContent value="attribution">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Attribution Models</CardTitle>
@@ -365,6 +365,79 @@ export default function Analytics() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Customer Journey Analysis */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Customer Journey Paths</CardTitle>
+                  <CardDescription>Multi-touch conversion paths and channel contribution analysis</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-slate-900 dark:text-white">Top Conversion Paths</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold text-purple-600 dark:text-purple-400">1</span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-slate-900 dark:text-white">TikTok → Product Page → Cart → Purchase</span>
+                              <div className="text-xs text-slate-600 dark:text-slate-400">Mobile-first journey, impulse buying</div>
+                            </div>
+                          </div>
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">42%</span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold text-blue-600 dark:text-blue-400">2</span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-slate-900 dark:text-white">Instagram → Browse → Email → Purchase</span>
+                              <div className="text-xs text-slate-600 dark:text-slate-400">Discovery through social, nurtured via email</div>
+                            </div>
+                          </div>
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">31%</span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold text-green-600 dark:text-green-400">3</span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-slate-900 dark:text-white">Google → Compare → Return → Purchase</span>
+                              <div className="text-xs text-slate-600 dark:text-slate-400">Research-driven, multiple touchpoints</div>
+                            </div>
+                          </div>
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">27%</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-slate-900 dark:text-white">Attribution Insights</h4>
+                      <div className="grid gap-4">
+                        <div className="text-center p-4 border rounded-lg dark:border-slate-700">
+                          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">2.3</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400">Avg. Sessions to Convert</div>
+                        </div>
+                        <div className="text-center p-4 border rounded-lg dark:border-slate-700">
+                          <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">4.2 days</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400">Avg. Time to Convert</div>
+                        </div>
+                        <div className="text-center p-4 border rounded-lg dark:border-slate-700">
+                          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-2">68%</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400">First-Touch Attribution</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="funnel">

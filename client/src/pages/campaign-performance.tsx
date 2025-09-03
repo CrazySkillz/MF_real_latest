@@ -1057,35 +1057,35 @@ export default function CampaignPerformance() {
                 </Card>
               </div>
 
-              {/* User Journey Analysis */}
+              {/* Behavioral Insights */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Clock className="w-5 h-5" />
-                    <span>User Journey Analysis</span>
+                    <span>Behavioral Insights</span>
                   </CardTitle>
                   <CardDescription>
-                    Customer behavior patterns and conversion paths for Summer Splash
+                    Engagement patterns and user behavior analysis
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-3 mb-6">
                     <div className="text-center p-4 border rounded-lg dark:border-slate-700">
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">2.3</div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400">Avg. Sessions to Convert</div>
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">4.8 min</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Avg. Session Duration</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg dark:border-slate-700">
-                      <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">4.2 days</div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400">Avg. Time to Convert</div>
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">5.4 pages</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Avg. Pages per Session</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg dark:border-slate-700">
-                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-2">68%</div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400">First-Touch Attribution</div>
+                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-2">72%</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Engagement Rate</div>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
-                    <h4 className="font-semibold text-slate-900 dark:text-white">Top Customer Journey Paths</h4>
+                    <h4 className="font-semibold text-slate-900 dark:text-white">Top Engagement Activities</h4>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                         <div className="flex items-center space-x-3">
@@ -1093,11 +1093,11 @@ export default function CampaignPerformance() {
                             <span className="text-xs font-bold text-purple-600 dark:text-purple-400">1</span>
                           </div>
                           <div>
-                            <span className="text-sm font-medium text-slate-900 dark:text-white">TikTok → Product Page → Cart → Purchase</span>
-                            <div className="text-xs text-slate-600 dark:text-slate-400">Mobile-first journey, impulse buying</div>
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">Product Gallery Browsing</span>
+                            <div className="text-xs text-slate-600 dark:text-slate-400">Visual discovery and comparison shopping</div>
                           </div>
                         </div>
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">42%</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">68%</span>
                       </div>
                       
                       <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -1106,11 +1106,11 @@ export default function CampaignPerformance() {
                             <span className="text-xs font-bold text-blue-600 dark:text-blue-400">2</span>
                           </div>
                           <div>
-                            <span className="text-sm font-medium text-slate-900 dark:text-white">Instagram → Browse → Email → Purchase</span>
-                            <div className="text-xs text-slate-600 dark:text-slate-400">Discovery through social, nurtured via email</div>
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">Size Guide & Reviews</span>
+                            <div className="text-xs text-slate-600 dark:text-slate-400">Research before purchase decision</div>
                           </div>
                         </div>
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">31%</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">54%</span>
                       </div>
                       
                       <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -1119,11 +1119,11 @@ export default function CampaignPerformance() {
                             <span className="text-xs font-bold text-green-600 dark:text-green-400">3</span>
                           </div>
                           <div>
-                            <span className="text-sm font-medium text-slate-900 dark:text-white">Google → Compare → Return → Purchase</span>
-                            <div className="text-xs text-slate-600 dark:text-slate-400">Research-driven, multiple touchpoints</div>
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">Style Inspiration Pages</span>
+                            <div className="text-xs text-slate-600 dark:text-slate-400">Outfit ideas and styling content</div>
                           </div>
                         </div>
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">27%</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">41%</span>
                       </div>
                     </div>
                   </div>

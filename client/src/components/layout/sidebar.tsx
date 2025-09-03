@@ -32,7 +32,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 glass-strong border-r border-white/20 dark:border-white/10 flex flex-col min-h-screen">
+    <aside className="w-64 bg-background border-r border-border flex flex-col min-h-screen">
       <div className="p-6">
         <nav className="space-y-2">
           {navItems.map((item) => {
@@ -52,7 +52,7 @@ export default function Sidebar() {
       </div>
 
       {/* Integration Status */}
-      <div className="p-6 mt-auto glass border-t border-white/20 dark:border-white/10 rounded-t-2xl">
+      <div className="p-6 mt-auto bg-muted border-t border-border">
         <h3 className="text-sm font-semibold text-foreground mb-3">Connected Platforms</h3>
         <div className="space-y-3">
           {connectedIntegrations.length === 0 ? (
@@ -95,7 +95,7 @@ export default function Sidebar() {
           )}
           
           <Link href="/integrations">
-            <div className="btn-glass btn-secondary text-sm flex items-center cursor-pointer">
+            <div className="btn-clean text-sm flex items-center cursor-pointer">
               <Plus className="w-4 h-4 mr-2" />
               Add Integration
             </div>

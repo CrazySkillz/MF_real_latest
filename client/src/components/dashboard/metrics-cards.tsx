@@ -93,12 +93,12 @@ export default function MetricsCards() {
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-slate-200 rounded-lg"></div>
-                <div className="w-16 h-4 bg-slate-200 rounded"></div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-12 h-12 bg-muted rounded-lg"></div>
+                <div className="w-16 h-4 bg-muted rounded"></div>
               </div>
-              <div className="w-20 h-8 bg-slate-200 rounded mb-2"></div>
-              <div className="w-24 h-4 bg-slate-200 rounded"></div>
+              <div className="w-20 h-8 bg-muted rounded mb-3"></div>
+              <div className="w-24 h-4 bg-muted rounded"></div>
             </CardContent>
           </Card>
         ))}
@@ -116,18 +116,18 @@ export default function MetricsCards() {
         
         return (
           <Card key={index} className="metric-card">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`w-12 h-12 ${getIconBg(metric.icon)} rounded-lg flex items-center justify-center`}>
-                  <IconComponent className={`w-6 h-6 ${getIconColor(metric.icon)}`} />
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between mb-6">
+                <div className={`w-14 h-14 ${getIconBg(metric.icon)} rounded-xl flex items-center justify-center`}>
+                  <IconComponent className={`w-7 h-7 ${getIconColor(metric.icon)}`} />
                 </div>
-                <div className="flex items-center space-x-1 text-xs">
-                  <TrendIcon className={`w-3 h-3 ${trendColor}`} />
-                  <span className={`font-medium ${trendColor}`}>{metric.change}</span>
+                <div className="flex items-center space-x-2 text-sm">
+                  <TrendIcon className={`w-4 h-4 ${trendColor}`} />
+                  <span className={`font-semibold ${trendColor}`}>{metric.change}</span>
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-slate-900">{metric.value}</h3>
-              <p className="text-sm text-slate-600">{metric.name}</p>
+              <h3 className="heading-lg mb-2">{metric.value}</h3>
+              <p className="body-md text-muted-foreground">{metric.name}</p>
             </CardContent>
           </Card>
         );

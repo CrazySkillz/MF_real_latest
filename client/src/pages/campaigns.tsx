@@ -981,7 +981,15 @@ export default function Campaigns() {
                               {campaign.platform?.includes('Twitter') && (
                                 <SiX className="w-4 h-4 text-slate-900 dark:text-white" />
                               )}
-                              <span>{campaign.platform || "Manual"}</span>
+                              <span>{
+                                campaign.platform 
+                                  ? campaign.platform
+                                      .split(',')
+                                      .map(p => p.trim())
+                                      .filter(p => !['google-sheets', 'facebook'].includes(p.toLowerCase()))
+                                      .join(', ') || "Manual"
+                                  : "Manual"
+                              }</span>
                             </div>
                           </div>
                           <div className="flex items-center space-x-1">

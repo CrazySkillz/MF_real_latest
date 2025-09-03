@@ -1,7 +1,7 @@
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { ArrowLeft, BarChart3, TrendingUp, Target, Users, MousePointer, DollarSign, Eye, Clock, AlertCircle, Calendar, Activity, Zap, Brain, Mail, Globe } from "lucide-react";
+import { ArrowLeft, BarChart3, TrendingUp, Target, Users, MousePointer, DollarSign, Eye, Clock, AlertCircle, Calendar, Activity, Zap, Brain, Mail, Globe, Calculator } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -73,7 +73,7 @@ export default function CampaignPerformance() {
   const ctr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0.00";
   const cpc = totalClicks > 0 ? (totalSpend / totalClicks).toFixed(2) : "0.00";
   const conversionRate = totalClicks > 0 ? ((totalConversions / totalClicks) * 100).toFixed(2) : "0.00";
-  const costPerConversion = totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : "0.00";
+  const costPerConversionValue = totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : "0.00";
   
   // Additional GA4 metrics for web analytics
   const sessions = ga4Metrics?.sessions || 0;
@@ -83,6 +83,23 @@ export default function CampaignPerformance() {
   // Performance metrics for Summer Splash fashion e-commerce optimization
   const emailRevenue = totalSpend * 4.85 * 0.35; // 35% of revenue from email flows (ROAS 4.85x)
   const emailRevenueIncrease = 248; // +248% YoY email revenue increase
+
+  // Budget & Financial Analysis Mock Data
+  const campaignBudget = parseFloat(campaign?.budget || "15000");
+  const averageOrderValue = 89.50;
+  const estimatedRevenue = totalConversions * averageOrderValue;
+  const grossProfit = estimatedRevenue * 0.65; // 65% profit margin
+  const netProfit = grossProfit - totalSpend;
+  const roas = totalSpend > 0 ? estimatedRevenue / totalSpend : 0;
+  const roi = totalSpend > 0 ? ((netProfit / totalSpend) * 100) : 0;
+  const budgetUtilization = (totalSpend / campaignBudget) * 100;
+  const remainingBudget = campaignBudget - totalSpend;
+  const dailySpendRate = totalSpend / 30; // Assuming 30-day campaign
+  const projectedSpend = dailySpendRate * 30;
+  const costPerConversionNum = totalConversions > 0 ? totalSpend / totalConversions : 0;
+  const lifetimeValue = averageOrderValue * 2.3; // Average customer LTV multiplier
+  const customerAcquisitionCost = costPerConversionNum;
+  const ltvCacRatio = customerAcquisitionCost > 0 ? lifetimeValue / customerAcquisitionCost : 0;
   const websiteConversionIncrease = 31; // +31% YoY website conversion rate
   const profitMarginGrowth = 67; // +67% profit margin improvement
   const emailFlowConversions = Math.round(totalConversions * 0.32); // 32% of conversions from email
@@ -691,7 +708,7 @@ export default function CampaignPerformance() {
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-slate-600 dark:text-slate-400">Cost Per Conversion</span>
-                            <span className="font-medium">${costPerConversion}</span>
+                            <span className="font-medium">${costPerConversionValue}</span>
                           </div>
                         </div>
                       </div>
@@ -801,7 +818,7 @@ export default function CampaignPerformance() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-slate-600 dark:text-slate-400">Cost/Conv.</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">${costPerConversion}</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">${costPerConversionValue}</p>
                       </div>
                       <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
                         Good
@@ -908,6 +925,178 @@ export default function CampaignPerformance() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Budget & Financial Analysis */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <DollarSign className="w-5 h-5" />
+                    <span>Budget & Financial Analysis</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Campaign financial performance and budget utilization metrics
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Budget Utilization */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Budget Utilization</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                        {formatCurrency(totalSpend)} of {formatCurrency(campaignBudget)}
+                      </span>
+                    </div>
+                    <Progress value={Math.min(budgetUtilization, 100)} className="h-3 mb-2" />
+                    <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                      <span>{budgetUtilization.toFixed(1)}% utilized</span>
+                      <span className={budgetUtilization > 90 ? 'text-red-600 font-medium' : budgetUtilization > 75 ? 'text-orange-600 font-medium' : 'text-green-600 font-medium'}>
+                        {formatCurrency(remainingBudget)} remaining
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Financial Metrics Grid */}
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                    <Card className="border-l-4 border-l-green-500">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue Generated</p>
+                            <p className="text-xl font-bold text-green-600">{formatCurrency(estimatedRevenue)}</p>
+                          </div>
+                          <TrendingUp className="w-6 h-6 text-green-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-l-4 border-l-blue-500">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
+                            <p className="text-xl font-bold text-blue-600">{roas.toFixed(2)}x</p>
+                          </div>
+                          <BarChart3 className="w-6 h-6 text-blue-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-l-4 border-l-purple-500">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
+                            <p className={`text-xl font-bold ${roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
+                            </p>
+                          </div>
+                          <Calculator className="w-6 h-6 text-purple-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-l-4 border-l-orange-500">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Net Profit</p>
+                            <p className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {formatCurrency(netProfit)}
+                            </p>
+                          </div>
+                          <Target className="w-6 h-6 text-orange-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Detailed Financial Breakdown */}
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-slate-900 dark:text-white">Cost Analysis</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Total Ad Spend</span>
+                          <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(totalSpend)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Cost Per Conversion</span>
+                          <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(costPerConversionNum)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Daily Spend Rate</span>
+                          <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(dailySpendRate)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Projected Total Spend</span>
+                          <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(projectedSpend)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-slate-900 dark:text-white">Revenue & Profitability</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Average Order Value</span>
+                          <span className="font-medium text-green-700 dark:text-green-300">{formatCurrency(averageOrderValue)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Gross Profit</span>
+                          <span className="font-medium text-green-700 dark:text-green-300">{formatCurrency(grossProfit)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Customer LTV</span>
+                          <span className="font-medium text-green-700 dark:text-green-300">{formatCurrency(lifetimeValue)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">LTV:CAC Ratio</span>
+                          <span className={`font-medium ${ltvCacRatio >= 3 ? 'text-green-700 dark:text-green-300' : ltvCacRatio >= 2 ? 'text-orange-700 dark:text-orange-300' : 'text-red-700 dark:text-red-300'}`}>
+                            {ltvCacRatio.toFixed(1)}:1
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Financial Performance Insights */}
+                  <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-bold text-blue-600 dark:text-blue-300">💡</span>
+                      </div>
+                      <div className="space-y-2">
+                        <h5 className="font-medium text-blue-900 dark:text-blue-300">Financial Performance Summary</h5>
+                        <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                          {roi >= 150 ? (
+                            <p>• <strong>Excellent ROI ({roi.toFixed(1)}%)</strong> - Campaign is highly profitable with strong return on investment</p>
+                          ) : roi >= 100 ? (
+                            <p>• <strong>Good ROI ({roi.toFixed(1)}%)</strong> - Campaign is profitable with solid return on investment</p>
+                          ) : roi >= 50 ? (
+                            <p>• <strong>Moderate ROI ({roi.toFixed(1)}%)</strong> - Campaign shows positive returns but has room for optimization</p>
+                          ) : (
+                            <p>• <strong>Low ROI ({roi.toFixed(1)}%)</strong> - Consider optimizing targeting and creative to improve returns</p>
+                          )}
+                          {roas >= 4 ? (
+                            <p>• <strong>Strong ROAS ({roas.toFixed(1)}x)</strong> - Every $1 spent generates ${roas.toFixed(2)} in revenue</p>
+                          ) : roas >= 2.5 ? (
+                            <p>• <strong>Healthy ROAS ({roas.toFixed(1)}x)</strong> - Solid revenue generation per advertising dollar</p>
+                          ) : (
+                            <p>• <strong>Below Target ROAS ({roas.toFixed(1)}x)</strong> - Focus on improving conversion rates and AOV</p>
+                          )}
+                          {ltvCacRatio >= 3 ? (
+                            <p>• <strong>Excellent LTV:CAC ratio ({ltvCacRatio.toFixed(1)}:1)</strong> - Sustainable customer acquisition with strong lifetime value</p>
+                          ) : ltvCacRatio >= 2 ? (
+                            <p>• <strong>Good LTV:CAC ratio ({ltvCacRatio.toFixed(1)}:1)</strong> - Healthy balance between acquisition cost and customer value</p>
+                          ) : (
+                            <p>• <strong>Low LTV:CAC ratio ({ltvCacRatio.toFixed(1)}:1)</strong> - Focus on improving customer retention and reducing acquisition costs</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Conversion Funnel */}
               <Card>

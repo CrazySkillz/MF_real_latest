@@ -968,33 +968,8 @@ export default function Campaigns() {
                   <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
                     <Card className="hover:shadow-md transition-shadow cursor-pointer">
                       <CardContent className="p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{campaign.name}</h3>
-                            <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
-                              {campaign.platform?.includes('Google Analytics') && (
-                                <SiGoogle className="w-4 h-4 text-orange-500" />
-                              )}
-                              {campaign.platform?.includes('LinkedIn') && (
-                                <SiLinkedin className="w-4 h-4 text-blue-700" />
-                              )}
-                              {campaign.platform?.includes('Twitter') && (
-                                <SiX className="w-4 h-4 text-slate-900 dark:text-white" />
-                              )}
-                              <span>{
-                                campaign.platform 
-                                  ? campaign.platform
-                                      .split(',')
-                                      .map(p => p.trim())
-                                      .filter(p => !['google-sheets', 'facebook', 'facebook ads', 'google sheets', 'google ads'].includes(p.toLowerCase()))
-                                      .join(', ') || "Manual"
-                                  : "Manual"
-                              }</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            {getStatusBadge(campaign.status)}
-                          </div>
+                        <div className="mb-4">
+                          <h3 className="font-semibold text-slate-900 dark:text-white">{campaign.name}</h3>
                         </div>
                         
                         <div className="flex items-center justify-between">

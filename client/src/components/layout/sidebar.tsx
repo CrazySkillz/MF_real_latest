@@ -32,7 +32,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 flex flex-col">
+    <aside className="w-64 glass-strong border-r border-white/20 dark:border-white/10 flex flex-col min-h-screen">
       <div className="p-6">
         <nav className="space-y-2">
           {navItems.map((item) => {
@@ -52,11 +52,11 @@ export default function Sidebar() {
       </div>
 
       {/* Integration Status */}
-      <div className="p-6 mt-auto border-t border-slate-200">
-        <h3 className="text-sm font-semibold text-slate-900 mb-3">Connected Platforms</h3>
+      <div className="p-6 mt-auto glass border-t border-white/20 dark:border-white/10 rounded-t-2xl">
+        <h3 className="text-sm font-semibold text-foreground mb-3">Connected Platforms</h3>
         <div className="space-y-3">
           {connectedIntegrations.length === 0 ? (
-            <p className="text-sm text-slate-500">No platforms connected</p>
+            <p className="text-sm text-muted-foreground">No platforms connected</p>
           ) : (
             connectedIntegrations.map((integration) => {
               let icon = "fas fa-plug";
@@ -86,7 +86,7 @@ export default function Sidebar() {
                 <div key={integration.id} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <i className={`${icon} ${iconColor}`}></i>
-                    <span className="text-sm text-slate-700">{integration.name}</span>
+                    <span className="text-sm text-foreground">{integration.name}</span>
                   </div>
                   <div className={`status-indicator ${integration.connected ? 'status-connected' : 'status-disconnected'}`}></div>
                 </div>
@@ -95,7 +95,7 @@ export default function Sidebar() {
           )}
           
           <Link href="/integrations">
-            <div className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary hover:bg-opacity-5 rounded-lg transition-colors flex items-center cursor-pointer">
+            <div className="btn-glass btn-secondary text-sm flex items-center cursor-pointer">
               <Plus className="w-4 h-4 mr-2" />
               Add Integration
             </div>

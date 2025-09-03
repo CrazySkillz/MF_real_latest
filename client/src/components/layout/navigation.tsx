@@ -4,14 +4,14 @@ import { Link } from "wouter";
 
 export default function Navigation() {
   return (
-    <nav className="bg-white border-b border-slate-200 px-6 py-4">
+    <nav className="glass-strong border-b border-white/20 dark:border-white/10 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{background: 'var(--gradient-primary)'}}>
               <i className="fas fa-chart-line text-white text-sm"></i>
             </div>
-            <span className="text-xl font-semibold text-slate-900">PerformanceCore</span>
+            <span className="text-xl font-semibold text-foreground">PerformanceCore</span>
           </div>
         </div>
         
@@ -25,11 +25,11 @@ export default function Navigation() {
           
           <div className="flex items-center space-x-3">
             <div className="text-right">
-              <div className="text-sm font-medium text-slate-900">Sarah Johnson</div>
-              <div className="text-xs text-slate-500">Marketing Director</div>
+              <div className="text-sm font-medium text-foreground">Sarah Johnson</div>
+              <div className="text-xs text-muted-foreground">Marketing Director</div>
             </div>
-            <div className="w-8 h-8 bg-slate-300 rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-slate-700">SJ</span>
+            <div className="w-8 h-8 glass-strong rounded-full flex items-center justify-center">
+              <span className="text-sm font-medium text-foreground">SJ</span>
             </div>
           </div>
         </div>

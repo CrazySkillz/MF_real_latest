@@ -531,33 +531,33 @@ export default function FinancialAnalysis() {
                         <tbody>
                           <tr className="border-b">
                             <td className="p-2 font-medium">TikTok Ads</td>
-                            <td className="text-right p-2">{formatCurrency(parseFloat(cpc) * 0.7)}</td>
-                            <td className="text-right p-2">{formatCurrency(parseFloat(cpa) * 0.6)}</td>
-                            <td className="text-right p-2">{formatCurrency((totalSpend * 0.35 / totalImpressions) * 1000 * 0.8)}</td>
+                            <td className="text-right p-2">${(parseFloat(cpc) * 0.7).toFixed(2)}</td>
+                            <td className="text-right p-2">${(parseFloat(cpa) * 0.6).toFixed(2)}</td>
+                            <td className="text-right p-2">${((totalSpend * 0.35 / totalImpressions) * 1000 * 0.8).toFixed(2)}</td>
                             <td className="text-right p-2">{(parseFloat(ctr) * 1.4).toFixed(2)}%</td>
                             <td className="text-right p-2">{(parseFloat(conversionRate) * 1.2).toFixed(2)}%</td>
                           </tr>
                           <tr className="border-b">
                             <td className="p-2 font-medium">Instagram Ads</td>
-                            <td className="text-right p-2">{formatCurrency(parseFloat(cpc) * 0.8)}</td>
-                            <td className="text-right p-2">{formatCurrency(parseFloat(cpa) * 0.7)}</td>
-                            <td className="text-right p-2">{formatCurrency((totalSpend * 0.25 / totalImpressions) * 1000 * 0.9)}</td>
+                            <td className="text-right p-2">${(parseFloat(cpc) * 0.8).toFixed(2)}</td>
+                            <td className="text-right p-2">${(parseFloat(cpa) * 0.7).toFixed(2)}</td>
+                            <td className="text-right p-2">${((totalSpend * 0.25 / totalImpressions) * 1000 * 0.9).toFixed(2)}</td>
                             <td className="text-right p-2">{(parseFloat(ctr) * 1.2).toFixed(2)}%</td>
                             <td className="text-right p-2">{(parseFloat(conversionRate) * 1.1).toFixed(2)}%</td>
                           </tr>
                           <tr className="border-b">
                             <td className="p-2 font-medium">Google Ads</td>
-                            <td className="text-right p-2">{formatCurrency(parseFloat(cpc) * 1.1)}</td>
-                            <td className="text-right p-2">{formatCurrency(parseFloat(cpa) * 0.9)}</td>
-                            <td className="text-right p-2">{formatCurrency((totalSpend * 0.3 / totalImpressions) * 1000 * 1.2)}</td>
+                            <td className="text-right p-2">${(parseFloat(cpc) * 1.1).toFixed(2)}</td>
+                            <td className="text-right p-2">${(parseFloat(cpa) * 0.9).toFixed(2)}</td>
+                            <td className="text-right p-2">${((totalSpend * 0.3 / totalImpressions) * 1000 * 1.2).toFixed(2)}</td>
                             <td className="text-right p-2">{(parseFloat(ctr) * 0.9).toFixed(2)}%</td>
                             <td className="text-right p-2">{(parseFloat(conversionRate) * 0.95).toFixed(2)}%</td>
                           </tr>
                           <tr>
                             <td className="p-2 font-medium">Pinterest Ads</td>
-                            <td className="text-right p-2">{formatCurrency(parseFloat(cpc) * 1.3)}</td>
-                            <td className="text-right p-2">{formatCurrency(parseFloat(cpa) * 1.4)}</td>
-                            <td className="text-right p-2">{formatCurrency((totalSpend * 0.1 / totalImpressions) * 1000 * 1.5)}</td>
+                            <td className="text-right p-2">${(parseFloat(cpc) * 1.3).toFixed(2)}</td>
+                            <td className="text-right p-2">${(parseFloat(cpa) * 1.4).toFixed(2)}</td>
+                            <td className="text-right p-2">${((totalSpend * 0.1 / totalImpressions) * 1000 * 1.5).toFixed(2)}</td>
                             <td className="text-right p-2">{(parseFloat(ctr) * 0.7).toFixed(2)}%</td>
                             <td className="text-right p-2">{(parseFloat(conversionRate) * 0.8).toFixed(2)}%</td>
                           </tr>

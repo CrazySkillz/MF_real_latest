@@ -2116,12 +2116,12 @@ export default function CampaignDetail() {
 
             <TabsContent value="overview" className="space-y-6">
 
-              {/* Campaign Snapshots */}
+              {/* Campaign DeepDive */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <FileText className="w-5 h-5" />
-                    <span>Campaign Snapshots</span>
+                    <span>Campaign DeepDive</span>
                   </CardTitle>
                   <CardDescription>
                     Unlock in-depth marketing analyses for key insights and tailored recommendations

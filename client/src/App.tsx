@@ -13,6 +13,7 @@ import ExecutiveSummary from "@/pages/executive-summary";
 import FinancialAnalysis from "@/pages/financial-analysis";
 import GA4Metrics from "@/pages/ga4-metrics";
 import GoogleSheetsData from "@/pages/google-sheets-data";
+import LinkedInAnalytics from "@/pages/linkedin-analytics";
 import KPIs from "@/pages/kpis";
 import PlatformKPIs from "@/pages/platform-kpis";
 import Audiences from "@/pages/audiences";
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/campaigns/:id/financial" component={FinancialAnalysis} />
       <Route path="/campaigns/:id/ga4-metrics" component={GA4Metrics} />
       <Route path="/campaigns/:id/google-sheets-data" component={GoogleSheetsData} />
+      <Route path="/campaigns/:id/linkedin-analytics" component={LinkedInAnalytics} />
       <Route path="/campaigns/:id/kpis" component={KPIs} />
       <Route path="/platforms/:platformType/kpis" component={PlatformKPIs} />
       <Route path="/audiences" component={Audiences} />

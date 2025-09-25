@@ -2287,6 +2287,17 @@ export default function CampaignDetail() {
                             </Link>
                           </div>
                         )}
+                        
+                        {platform.platform === "LinkedIn Ads" && (
+                          <div className="pt-2 border-t">
+                            <Link href={`/campaigns/${campaign.id}/linkedin-analytics`}>
+                              <Button variant="outline" size="sm" className="w-full">
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                View Detailed Analytics
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

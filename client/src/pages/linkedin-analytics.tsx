@@ -105,21 +105,14 @@ const mockLinkedInAds = [
 ];
 
 export default function LinkedInAnalytics() {
-  const { campaignId } = useParams();
+  const { id: campaignId } = useParams();
   const [sortField, setSortField] = useState<string>("revenue");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-  // Mock campaign data query
+  // Fetch real campaign data
   const { data: campaign } = useQuery({
     queryKey: ["campaign", campaignId],
-    queryFn: async () => {
-      // Mock campaign data
-      return {
-        id: campaignId,
-        name: "Summer Splash",
-        status: "active"
-      };
-    },
+    enabled: !!campaignId,
   });
 
   const formatCurrency = (value: number) => {

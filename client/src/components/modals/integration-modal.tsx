@@ -80,8 +80,8 @@ export default function IntegrationModal({ isOpen, onClose, platform }: Integrat
         return "Twitter Ads";
       case "tiktok":
         return "TikTok Ads";
-      case "pinterest":
-        return "Pinterest Ads";
+      case "linkedin":
+        return "LinkedIn Ads";
       default:
         return "Platform";
     }
@@ -99,8 +99,8 @@ export default function IntegrationModal({ isOpen, onClose, platform }: Integrat
         return "fab fa-twitter text-blue-400";
       case "tiktok":
         return "fab fa-tiktok text-black";
-      case "pinterest":
-        return "fab fa-pinterest text-red-600";
+      case "linkedin":
+        return "fab fa-linkedin text-blue-700";
       default:
         return "fas fa-plug text-slate-500";
     }
@@ -118,8 +118,8 @@ export default function IntegrationModal({ isOpen, onClose, platform }: Integrat
         return "Find this in your Twitter Developer Account";
       case "tiktok":
         return "Get this from your TikTok for Business Developer Portal";
-      case "pinterest":
-        return "Generate this in your Pinterest Developer Account";
+      case "linkedin":
+        return "Get this from your LinkedIn Developer Portal";
       default:
         return "Find this in your platform's developer console";
     }

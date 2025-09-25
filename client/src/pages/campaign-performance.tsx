@@ -314,7 +314,7 @@ export default function CampaignPerformance() {
         ctr: '4.1'
       },
       {
-        source: 'Pinterest Ads',
+        source: 'LinkedIn Ads',
         sessions: 4368, // 20% of 21,840 total clicks
         conversions: 152, // 20% of 758 total conversions
         conversionRate: '3.48',

@@ -1152,7 +1152,7 @@ export default function CampaignDetail() {
     "Facebook Ads": { impressions: 0.35, clicks: 0.32, spend: 0.38, conversions: 0.28 },
     "Google Ads": { impressions: 0.28, clicks: 0.35, spend: 0.32, conversions: 0.42 },
     "TikTok Ads": { impressions: 0.22, clicks: 0.18, spend: 0.18, conversions: 0.15 },
-    "Pinterest Ads": { impressions: 0.15, clicks: 0.15, spend: 0.12, conversions: 0.15 }
+    "LinkedIn Ads": { impressions: 0.15, clicks: 0.15, spend: 0.12, conversions: 0.15 }
   };
   
   const platformMetrics: PlatformMetrics[] = [
@@ -1207,14 +1207,14 @@ export default function CampaignDetail() {
       cpc: connectedPlatformNames.includes("TikTok Ads") ? "$0.59" : "$0.00"
     },
     {
-      platform: "Pinterest Ads",
-      connected: connectedPlatformNames.includes("Pinterest Ads"),
-      impressions: connectedPlatformNames.includes("Pinterest Ads") ? Math.round(campaignImpressions * platformDistribution["Pinterest Ads"].impressions) : 0,
-      clicks: connectedPlatformNames.includes("Pinterest Ads") ? Math.round(campaignClicks * platformDistribution["Pinterest Ads"].clicks) : 0,
-      conversions: connectedPlatformNames.includes("Pinterest Ads") ? Math.round(estimatedConversions * platformDistribution["Pinterest Ads"].conversions) : 0,
-      spend: connectedPlatformNames.includes("Pinterest Ads") ? (campaignSpend * platformDistribution["Pinterest Ads"].spend).toFixed(2) : "0.00",
-      ctr: connectedPlatformNames.includes("Pinterest Ads") ? "2.78%" : "0.00%",
-      cpc: connectedPlatformNames.includes("Pinterest Ads") ? "$0.48" : "$0.00"
+      platform: "LinkedIn Ads",
+      connected: connectedPlatformNames.includes("LinkedIn Ads"),
+      impressions: connectedPlatformNames.includes("LinkedIn Ads") ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0,
+      clicks: connectedPlatformNames.includes("LinkedIn Ads") ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0,
+      conversions: connectedPlatformNames.includes("LinkedIn Ads") ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0,
+      spend: connectedPlatformNames.includes("LinkedIn Ads") ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00",
+      ctr: connectedPlatformNames.includes("LinkedIn Ads") ? "2.78%" : "0.00%",
+      cpc: connectedPlatformNames.includes("LinkedIn Ads") ? "$0.48" : "$0.00"
     },
     {
       platform: "Shopify",
@@ -1240,8 +1240,6 @@ export default function CampaignDetail() {
         return <SiLinkedin className="w-5 h-5 text-blue-700" />;
       case "TikTok Ads":
         return <i className="fab fa-tiktok w-5 h-5 text-black" />;
-      case "Pinterest Ads":
-        return <i className="fab fa-pinterest w-5 h-5 text-red-600" />;
       case "Shopify":
         return <i className="fab fa-shopify w-5 h-5 text-green-600" />;
       default:

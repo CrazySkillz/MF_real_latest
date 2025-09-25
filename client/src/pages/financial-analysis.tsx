@@ -412,7 +412,7 @@ export default function FinancialAnalysis() {
                       <div className="space-y-3">
                         <div className="p-3 border rounded-lg">
                           <div className="flex justify-between items-center mb-2">
-                            <span className="font-medium">Pinterest Ads</span>
+                            <span className="font-medium">LinkedIn Ads</span>
                             <Badge className="bg-orange-100 text-orange-700">2.8x ROAS</Badge>
                           </div>
                           <div className="text-sm text-muted-foreground">
@@ -570,7 +570,7 @@ export default function FinancialAnalysis() {
                             <td className="text-right p-2">{(parseFloat(conversionRate) * 0.95).toFixed(2)}%</td>
                           </tr>
                           <tr>
-                            <td className="p-2 font-medium">Pinterest Ads</td>
+                            <td className="p-2 font-medium">LinkedIn Ads</td>
                             <td className="text-right p-2">${(parseFloat(cpc) * 1.3).toFixed(2)}</td>
                             <td className="text-right p-2">${(parseFloat(cpa) * 1.4).toFixed(2)}</td>
                             <td className="text-right p-2">${((effectiveSpend * 0.1 / effectiveImpressions) * 1000 * 1.5).toFixed(2)}</td>
@@ -619,7 +619,7 @@ export default function FinancialAnalysis() {
                     <ul className="space-y-2 text-sm">
                       <li className="flex items-start space-x-2">
                         <span className="text-yellow-600">•</span>
-                        <span>Pinterest CPA is 40% higher than average - consider audience refinement</span>
+                        <span>LinkedIn CPA is 40% higher than average - consider audience refinement</span>
                       </li>
                       <li className="flex items-start space-x-2">
                         <span className="text-yellow-600">•</span>
@@ -750,7 +750,7 @@ export default function FinancialAnalysis() {
                         
                         <div className="p-4 border rounded-lg">
                           <div className="flex justify-between items-center mb-3">
-                            <span className="font-medium">Pinterest Ads</span>
+                            <span className="font-medium">LinkedIn Ads</span>
                             <div className="flex space-x-4 text-sm">
                               <span>Current: {formatCurrency(totalSpend * 0.1)}</span>
                               <span className="text-red-600 font-medium">Recommended: {formatCurrency(totalSpend * 0.05)}</span>
@@ -1025,10 +1025,10 @@ export default function FinancialAnalysis() {
                             <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
                               <span className="text-xs font-bold text-red-600">6</span>
                             </div>
-                            <span className="font-medium text-red-800 dark:text-red-300">Pinterest Optimization</span>
+                            <span className="font-medium text-red-800 dark:text-red-300">LinkedIn Optimization</span>
                           </div>
                           <p className="text-sm text-red-700 dark:text-red-200">
-                            Refine Pinterest targeting or reduce budget by 50% to improve overall efficiency
+                            Refine LinkedIn targeting or reduce budget by 50% to improve overall efficiency
                           </p>
                         </div>
                       </div>

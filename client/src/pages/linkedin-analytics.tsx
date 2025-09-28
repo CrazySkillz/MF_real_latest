@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { Campaign } from "@shared/schema";
 import { ArrowLeft, BarChart3, TrendingUp, DollarSign, Eye, MousePointer, Users, Award, Play, Square } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -111,7 +112,7 @@ export default function LinkedInAnalytics() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // Fetch real campaign data
-  const { data: campaign } = useQuery({
+  const { data: campaign } = useQuery<Campaign>({
     queryKey: ["campaign", campaignId],
     enabled: !!campaignId,
   });

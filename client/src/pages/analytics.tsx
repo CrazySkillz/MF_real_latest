@@ -285,13 +285,13 @@ export default function Analytics() {
             <TabsContent value="overview">
               {ga4Loading ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
-                  {[...Array(8)].map((_, i) => (
+                  {[...Array(11)].map((_, i) => (
                     <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
                   ))}
                 </div>
-              ) : ga4Metrics ? (
+              ) : (
                 <>
-                  {/* Detailed Google Analytics Metrics - Matching Screenshot */}
+                  {/* Detailed Google Analytics Metrics - Always Display with Fallback Data */}
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
                     <Card data-testid="card-sessions">
                       <CardContent className="p-6">
@@ -515,11 +515,6 @@ export default function Analytics() {
                     </Card>
                   </div>
                 </>
-              ) : (
-                <div className="text-center py-12">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Google Analytics data available</h3>
-                  <p className="text-slate-600 dark:text-slate-400">Connect your Google Analytics account to view detailed metrics.</p>
-                </div>
               )}
 
               {/* Detailed Google Analytics Metrics */}

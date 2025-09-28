@@ -146,33 +146,76 @@ export default function Analytics() {
 
   const firstCampaignId = campaigns?.[0]?.id;
 
-  // Fetch GA4 metrics data
+  // Fetch GA4 metrics data - Always provide fallback data for detailed metrics display
   const { data: ga4Metrics, isLoading: ga4Loading } = useQuery({
     queryKey: ["/api/campaigns", firstCampaignId, "ga4-metrics", dateRange],
-    enabled: !!firstCampaignId,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${firstCampaignId}/ga4-metrics?dateRange=${dateRange}`);
-      const data = await response.json();
-      
-      // Return processed data with fallback values
-      return {
-        sessions: data.sessions || 2847,
-        pageviews: data.pageviews || 8521,
-        users: data.users || 2847,
-        bounceRate: data.bounceRate || 42.8,
-        conversions: data.conversions || 67,
-        revenue: data.revenue || 0,
-        avgSessionDuration: data.avgSessionDuration || 195, // 3m 15s = 195 seconds
-        averageSessionDuration: data.avgSessionDuration || 195,
-        newUsers: data.newUsers || 2156,
-        engagedSessions: data.engagedSessions || 2847,
-        engagementRate: data.engagementRate || 57.2,
-        eventCount: data.eventCount || 22776,
-        eventsPerSession: data.eventsPerSession || 8.2,
-        impressions: data.sessions || 2847,
-        _isFallbackData: data._isFallbackData,
-        _message: data._message
-      };
+      // If no campaign ID, return fallback data directly
+      if (!firstCampaignId) {
+        return {
+          sessions: 2847,
+          pageviews: 8521,
+          users: 2847,
+          bounceRate: 42.8,
+          conversions: 67,
+          revenue: 0,
+          avgSessionDuration: 195, // 3m 15s = 195 seconds
+          averageSessionDuration: 195,
+          newUsers: 2156,
+          engagedSessions: 2847,
+          engagementRate: 57.2,
+          eventCount: 22776,
+          eventsPerSession: 8.2,
+          impressions: 2847,
+          _isFallbackData: true,
+          _message: "Showing sample data - connect campaigns for real metrics"
+        };
+      }
+
+      try {
+        const response = await fetch(`/api/campaigns/${firstCampaignId}/ga4-metrics?dateRange=${dateRange}`);
+        const data = await response.json();
+        
+        // Return processed data with fallback values
+        return {
+          sessions: data.sessions || 2847,
+          pageviews: data.pageviews || 8521,
+          users: data.users || 2847,
+          bounceRate: data.bounceRate || 42.8,
+          conversions: data.conversions || 67,
+          revenue: data.revenue || 0,
+          avgSessionDuration: data.avgSessionDuration || 195, // 3m 15s = 195 seconds
+          averageSessionDuration: data.avgSessionDuration || 195,
+          newUsers: data.newUsers || 2156,
+          engagedSessions: data.engagedSessions || 2847,
+          engagementRate: data.engagementRate || 57.2,
+          eventCount: data.eventCount || 22776,
+          eventsPerSession: data.eventsPerSession || 8.2,
+          impressions: data.sessions || 2847,
+          _isFallbackData: data._isFallbackData,
+          _message: data._message
+        };
+      } catch (error) {
+        // On error, return fallback data
+        return {
+          sessions: 2847,
+          pageviews: 8521,
+          users: 2847,
+          bounceRate: 42.8,
+          conversions: 67,
+          revenue: 0,
+          avgSessionDuration: 195, // 3m 15s = 195 seconds
+          averageSessionDuration: 195,
+          newUsers: 2156,
+          engagedSessions: 2847,
+          engagementRate: 57.2,
+          eventCount: 22776,
+          eventsPerSession: 8.2,
+          impressions: 2847,
+          _isFallbackData: true,
+          _message: "Showing sample data - connection error"
+        };
+      }
     },
   });
 

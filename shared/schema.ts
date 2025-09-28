@@ -54,6 +54,10 @@ export const ga4Connections = pgTable("ga4_connections", {
   serviceAccountKey: text("service_account_key"), // JSON string
   method: text("method").notNull(), // 'access_token' or 'service_account'
   propertyName: text("property_name"),
+  websiteUrl: text("website_url"), // Display URL for this property
+  displayName: text("display_name"), // Custom name for this property
+  isPrimary: boolean("is_primary").notNull().default(false), // Primary property for this campaign
+  isActive: boolean("is_active").notNull().default(true), // Whether this connection is active
   clientId: text("client_id"), // OAuth client ID for automatic refresh
   clientSecret: text("client_secret"), // OAuth client secret for automatic refresh  
   expiresAt: timestamp("expires_at"), // Token expiration time
@@ -364,6 +368,10 @@ export const insertGA4ConnectionSchema = createInsertSchema(ga4Connections).pick
   serviceAccountKey: true,
   method: true,
   propertyName: true,
+  websiteUrl: true,
+  displayName: true,
+  isPrimary: true,
+  isActive: true,
   clientId: true,
   clientSecret: true,
   expiresAt: true,

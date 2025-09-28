@@ -26,11 +26,14 @@ export interface IStorage {
   createPerformanceData(data: InsertPerformanceData): Promise<PerformanceData>;
   
   // GA4 Connections
-  getGA4Connection(campaignId: string): Promise<GA4Connection | undefined>;
+  getGA4Connections(campaignId: string): Promise<GA4Connection[]>;
+  getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined>;
+  getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined>;
   createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection>;
-  updateGA4Connection(campaignId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined>;
-  updateGA4ConnectionTokens(campaignId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined>;
-  deleteGA4Connection(campaignId: string): Promise<boolean>;
+  updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined>;
+  updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined>;
+  setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean>;
+  deleteGA4Connection(connectionId: string): Promise<boolean>;
   
   // Google Sheets Connections
   getGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined>;
@@ -685,12 +688,29 @@ export class MemStorage implements IStorage {
   }
 
   // GA4 Connection methods
-  async getGA4Connection(campaignId: string): Promise<GA4Connection | undefined> {
-    return this.ga4Connections.get(campaignId);
+  async getGA4Connections(campaignId: string): Promise<GA4Connection[]> {
+    return Array.from(this.ga4Connections.values()).filter(conn => conn.campaignId === campaignId && conn.isActive);
+  }
+
+  async getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined> {
+    const connections = await this.getGA4Connections(campaignId);
+    if (propertyId) {
+      return connections.find(conn => conn.propertyId === propertyId);
+    }
+    // Return the primary connection if no propertyId specified
+    return connections.find(conn => conn.isPrimary) || connections[0];
+  }
+
+  async getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined> {
+    const connections = await this.getGA4Connections(campaignId);
+    return connections.find(conn => conn.isPrimary) || connections[0];
   }
 
   async createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection> {
     const id = randomUUID();
+    const existingConnections = await this.getGA4Connections(connection.campaignId);
+    const isFirstConnection = existingConnections.length === 0;
+    
     const ga4Connection: GA4Connection = {
       id,
       campaignId: connection.campaignId,
@@ -700,6 +720,10 @@ export class MemStorage implements IStorage {
       serviceAccountKey: connection.serviceAccountKey || null,
       method: connection.method,
       propertyName: connection.propertyName || null,
+      websiteUrl: connection.websiteUrl || null,
+      displayName: connection.displayName || connection.propertyName || null,
+      isPrimary: connection.isPrimary !== undefined ? connection.isPrimary : isFirstConnection,
+      isActive: connection.isActive !== undefined ? connection.isActive : true,
       clientId: connection.clientId || null,
       clientSecret: connection.clientSecret || null,
       expiresAt: connection.expiresAt || null,
@@ -707,12 +731,12 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     };
     
-    this.ga4Connections.set(connection.campaignId, ga4Connection);
+    this.ga4Connections.set(id, ga4Connection);
     return ga4Connection;
   }
 
-  async updateGA4Connection(campaignId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined> {
-    const existing = this.ga4Connections.get(campaignId);
+  async updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined> {
+    const existing = this.ga4Connections.get(connectionId);
     if (!existing) return undefined;
     
     const updated: GA4Connection = {
@@ -720,12 +744,12 @@ export class MemStorage implements IStorage {
       ...connection,
     };
     
-    this.ga4Connections.set(campaignId, updated);
+    this.ga4Connections.set(connectionId, updated);
     return updated;
   }
 
-  async updateGA4ConnectionTokens(campaignId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined> {
-    const existing = this.ga4Connections.get(campaignId);
+  async updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined> {
+    const existing = this.ga4Connections.get(connectionId);
     if (!existing) return undefined;
     
     const updated: GA4Connection = {
@@ -735,12 +759,26 @@ export class MemStorage implements IStorage {
       expiresAt: tokens.expiresAt || existing.expiresAt,
     };
     
-    this.ga4Connections.set(campaignId, updated);
+    this.ga4Connections.set(connectionId, updated);
     return updated;
   }
 
-  async deleteGA4Connection(campaignId: string): Promise<boolean> {
-    return this.ga4Connections.delete(campaignId);
+  async setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean> {
+    const connections = await this.getGA4Connections(campaignId);
+    let found = false;
+    
+    // Set all connections for this campaign to non-primary, then set the specified one as primary
+    for (const conn of connections) {
+      const updated = { ...conn, isPrimary: conn.id === connectionId };
+      this.ga4Connections.set(conn.id, updated);
+      if (conn.id === connectionId) found = true;
+    }
+    
+    return found;
+  }
+
+  async deleteGA4Connection(connectionId: string): Promise<boolean> {
+    return this.ga4Connections.delete(connectionId);
   }
 
   // Google Sheets Connection methods
@@ -1259,29 +1297,94 @@ export class DatabaseStorage implements IStorage {
   }
 
   // GA4 Connection methods
-  async getGA4Connection(campaignId: string): Promise<GA4Connection | undefined> {
-    const [connection] = await db.select().from(ga4Connections).where(eq(ga4Connections.campaignId, campaignId));
-    return connection || undefined;
+  async getGA4Connections(campaignId: string): Promise<GA4Connection[]> {
+    return db.select().from(ga4Connections)
+      .where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)))
+      .orderBy(ga4Connections.connectedAt);
+  }
+
+  async getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined> {
+    if (propertyId) {
+      const [connection] = await db.select().from(ga4Connections)
+        .where(and(
+          eq(ga4Connections.campaignId, campaignId),
+          eq(ga4Connections.propertyId, propertyId),
+          eq(ga4Connections.isActive, true)
+        ));
+      return connection || undefined;
+    }
+    
+    // Return the primary connection if no propertyId specified
+    const [primary] = await db.select().from(ga4Connections)
+      .where(and(
+        eq(ga4Connections.campaignId, campaignId),
+        eq(ga4Connections.isPrimary, true),
+        eq(ga4Connections.isActive, true)
+      ));
+    
+    if (primary) return primary;
+    
+    // If no primary, return the first active connection
+    const [first] = await db.select().from(ga4Connections)
+      .where(and(
+        eq(ga4Connections.campaignId, campaignId),
+        eq(ga4Connections.isActive, true)
+      ))
+      .orderBy(ga4Connections.connectedAt)
+      .limit(1);
+    return first || undefined;
+  }
+
+  async getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined> {
+    const [primary] = await db.select().from(ga4Connections)
+      .where(and(
+        eq(ga4Connections.campaignId, campaignId),
+        eq(ga4Connections.isPrimary, true),
+        eq(ga4Connections.isActive, true)
+      ));
+    
+    if (primary) return primary;
+    
+    // If no primary, return the first active connection
+    const [first] = await db.select().from(ga4Connections)
+      .where(and(
+        eq(ga4Connections.campaignId, campaignId),
+        eq(ga4Connections.isActive, true)
+      ))
+      .orderBy(ga4Connections.connectedAt)
+      .limit(1);
+    return first || undefined;
   }
 
   async createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection> {
+    // Check if this is the first connection for this campaign
+    const existingConnections = await this.getGA4Connections(connection.campaignId);
+    const isFirstConnection = existingConnections.length === 0;
+    
+    const connectionData = {
+      ...connection,
+      isPrimary: connection.isPrimary !== undefined ? connection.isPrimary : isFirstConnection,
+      isActive: connection.isActive !== undefined ? connection.isActive : true,
+      displayName: connection.displayName || connection.propertyName || null,
+    };
+    
     const [ga4Connection] = await db
       .insert(ga4Connections)
-      .values(connection)
+      .values(connectionData)
       .returning();
     return ga4Connection;
   }
 
-  async updateGA4Connection(campaignId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined> {
+  async updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined> {
     const [updated] = await db
       .update(ga4Connections)
       .set(connection)
-      .where(eq(ga4Connections.campaignId, campaignId))
+      .where(eq(ga4Connections.id, connectionId))
       .returning();
     return updated || undefined;
   }
 
-  async updateGA4ConnectionTokens(campaignId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined> {
+  async updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined> {
     const [updated] = await db
       .update(ga4Connections)
       .set({
@@ -1289,15 +1392,32 @@ export class DatabaseStorage implements IStorage {
         refreshToken: tokens.refreshToken,
         expiresAt: tokens.expiresAt,
       })
-      .where(eq(ga4Connections.campaignId, campaignId))
+      .where(eq(ga4Connections.id, connectionId))
       .returning();
     return updated || undefined;
   }
 
-  async deleteGA4Connection(campaignId: string): Promise<boolean> {
+  async setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean> {
+    // First, set all connections for this campaign to non-primary
+    await db
+      .update(ga4Connections)
+      .set({ isPrimary: false })
+      .where(eq(ga4Connections.campaignId, campaignId));
+    
+    // Then set the specified connection as primary
+    const [updated] = await db
+      .update(ga4Connections)
+      .set({ isPrimary: true })
+      .where(eq(ga4Connections.id, connectionId))
+      .returning();
+    
+    return !!updated;
+  }
+
+  async deleteGA4Connection(connectionId: string): Promise<boolean> {
     const result = await db
       .delete(ga4Connections)
-      .where(eq(ga4Connections.campaignId, campaignId));
+      .where(eq(ga4Connections.id, connectionId));
     return (result.rowCount || 0) > 0;
   }
 

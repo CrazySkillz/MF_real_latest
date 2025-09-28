@@ -839,6 +839,7 @@ export default function GA4Metrics() {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
+                  <TabsTrigger value="property-comparison">Property Comparison</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview">
@@ -1690,6 +1691,276 @@ export default function GA4Metrics() {
                           </CardContent>
                         </Card>
                       )}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="property-comparison">
+                  <div className="space-y-6">
+                    {/* Property Comparison Header */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Multi-Property Performance</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        Compare performance across all connected Google Analytics properties for {campaign?.name}
+                      </p>
+                    </div>
+
+                    {/* Mock data for multiple properties */}
+                    <Card>
+                      <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-slate-50 dark:bg-slate-800">
+                              <tr className="border-b border-slate-200 dark:border-slate-700">
+                                <th className="text-left p-4 text-sm font-medium text-slate-900 dark:text-white">Property Name</th>
+                                <th className="text-left p-4 text-sm font-medium text-slate-900 dark:text-white">Website URL</th>
+                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Sessions</th>
+                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Page Views</th>
+                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Bounce Rate</th>
+                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Avg Duration</th>
+                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Conversions</th>
+                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Engagement Rate</th>
+                                <th className="text-center p-4 text-sm font-medium text-slate-900 dark:text-white">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {[
+                                {
+                                  id: "1",
+                                  name: "Summer Splash - Main Landing",
+                                  websiteUrl: "summersplash.brandco.com",
+                                  sessions: 4872,
+                                  pageViews: 12450,
+                                  bounceRate: 34.2,
+                                  avgDuration: 245,
+                                  conversions: 89,
+                                  engagementRate: 68.7,
+                                  status: "primary",
+                                  isPrimary: true
+                                },
+                                {
+                                  id: "2", 
+                                  name: "Summer Splash - US Market",
+                                  websiteUrl: "us.brandco.com/summer",
+                                  sessions: 3421,
+                                  pageViews: 8965,
+                                  bounceRate: 41.5,
+                                  avgDuration: 198,
+                                  conversions: 67,
+                                  engagementRate: 61.3,
+                                  status: "active",
+                                  isPrimary: false
+                                },
+                                {
+                                  id: "3",
+                                  name: "Summer Splash - European Hub", 
+                                  websiteUrl: "eu.brandco.com/summer",
+                                  sessions: 2847,
+                                  pageViews: 7234,
+                                  bounceRate: 38.9,
+                                  avgDuration: 267,
+                                  conversions: 52,
+                                  engagementRate: 64.8,
+                                  status: "active",
+                                  isPrimary: false
+                                },
+                                {
+                                  id: "4",
+                                  name: "Summer Products Showcase",
+                                  websiteUrl: "products.brandco.com/summer-collection",
+                                  sessions: 1963,
+                                  pageViews: 6798,
+                                  bounceRate: 29.4,
+                                  avgDuration: 312,
+                                  conversions: 78,
+                                  engagementRate: 72.1,
+                                  status: "active",
+                                  isPrimary: false
+                                },
+                                {
+                                  id: "5",
+                                  name: "Summer Mobile Experience",
+                                  websiteUrl: "m.summersplash.brandco.com",
+                                  sessions: 5234,
+                                  pageViews: 9876,
+                                  bounceRate: 52.3,
+                                  avgDuration: 156,
+                                  conversions: 43,
+                                  engagementRate: 48.9,
+                                  status: "active",
+                                  isPrimary: false
+                                }
+                              ].map((property, index) => (
+                                <tr key={property.id} className={`border-b border-slate-100 dark:border-slate-800 ${index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-950'}`}>
+                                  <td className="p-4">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="flex-shrink-0">
+                                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                      </div>
+                                      <div>
+                                        <div className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                                          {property.name}
+                                          {property.isPrimary && (
+                                            <Badge className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5">Primary</Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="text-sm text-slate-600 dark:text-slate-400">{property.websiteUrl}</div>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                                      {formatNumber(property.sessions)}
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                                      {formatNumber(property.pageViews)}
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                                      {formatPercentage(property.bounceRate)}
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                                      {formatDuration(property.avgDuration)}
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                                      {formatNumber(property.conversions)}
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                                      {formatPercentage(property.engagementRate)}
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-center">
+                                    {property.status === "primary" ? (
+                                      <Badge className="bg-blue-100 text-blue-800">Primary</Badge>
+                                    ) : (
+                                      <Badge className="bg-green-100 text-green-800">Active</Badge>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Summary Insights */}
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                              {formatNumber(18337)}
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              Total Combined Sessions
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                              {formatNumber(45323)}
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              Total Combined Page Views
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                              329
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              Total Campaign Conversions
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                              63.2%
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              Avg. Engagement Rate
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Top Performing Property */}
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Top Converting Property</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-slate-900 dark:text-white">Summer Products Showcase</h4>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-slate-600 dark:text-slate-400">Conversion Rate:</span>
+                                <div className="font-medium text-green-600">3.98%</div>
+                              </div>
+                              <div>
+                                <span className="text-slate-600 dark:text-slate-400">Engagement:</span>
+                                <div className="font-medium text-blue-600">72.1%</div>
+                              </div>
+                            </div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                              Product-focused landing pages are generating the highest conversion rates with extended session durations.
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Property Performance Insights</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between py-2">
+                              <span className="text-sm text-slate-600 dark:text-slate-400">Best Engagement Rate</span>
+                              <span className="text-sm font-medium text-slate-900 dark:text-white">Summer Products (72.1%)</span>
+                            </div>
+                            <div className="flex items-center justify-between py-2">
+                              <span className="text-sm text-slate-600 dark:text-slate-400">Highest Traffic Volume</span>
+                              <span className="text-sm font-medium text-slate-900 dark:text-white">Mobile Experience (5.2K)</span>
+                            </div>
+                            <div className="flex items-center justify-between py-2">
+                              <span className="text-sm text-slate-600 dark:text-slate-400">Lowest Bounce Rate</span>
+                              <span className="text-sm font-medium text-slate-900 dark:text-white">Summer Products (29.4%)</span>
+                            </div>
+                            <div className="flex items-center justify-between py-2">
+                              <span className="text-sm text-slate-600 dark:text-slate-400">Longest Session Time</span>
+                              <span className="text-sm font-medium text-slate-900 dark:text-white">Summer Products (5m 12s)</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
                   </div>
                 </TabsContent>

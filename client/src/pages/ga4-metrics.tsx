@@ -698,163 +698,6 @@ export default function GA4Metrics() {
             </div>
           ) : ga4Metrics || !ga4Loading ? (
             <>
-              {/* Key Metrics */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Sessions</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatNumber(ga4Metrics?.sessions || 0)}
-                        </p>
-                      </div>
-                      <Users className="w-8 h-8 text-blue-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Page Views</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatNumber(ga4Metrics?.pageviews || 0)}
-                        </p>
-                      </div>
-                      <Globe className="w-8 h-8 text-green-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Bounce Rate</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatPercentage(ga4Metrics?.bounceRate || 0)}
-                        </p>
-                      </div>
-                      <TrendingUp className="w-8 h-8 text-orange-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Session Duration</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatDuration(ga4Metrics?.averageSessionDuration || 0)}
-                        </p>
-                      </div>
-                      <Clock className="w-8 h-8 text-purple-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatNumber(ga4Metrics?.conversions || 0)}
-                        </p>
-                      </div>
-                      <Target className="w-8 h-8 text-emerald-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Users</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatNumber(ga4Metrics?.impressions || 0)}
-                        </p>
-                      </div>
-                      <Users className="w-8 h-8 text-blue-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">New Users</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatNumber(ga4Metrics?.newUsers || 0)}
-                        </p>
-                      </div>
-                      <Users className="w-8 h-8 text-emerald-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engaged Sessions</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatNumber(ga4Metrics?.engagedSessions || 0)}
-                        </p>
-                      </div>
-                      <Target className="w-8 h-8 text-violet-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatPercentage(ga4Metrics?.engagementRate || 0)}
-                        </p>
-                      </div>
-                      <TrendingUp className="w-8 h-8 text-rose-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Events</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatNumber(ga4Metrics?.eventCount || 0)}
-                        </p>
-                      </div>
-                      <MousePointer className="w-8 h-8 text-cyan-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Events per Session</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {(ga4Metrics?.eventsPerSession || 0).toFixed(1)}
-                        </p>
-                      </div>
-                      <BarChart3 className="w-8 h-8 text-amber-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
               {/* Charts and Detailed Analytics */}
               <Tabs defaultValue="overview" className="space-y-6">
                 <TabsList>
@@ -864,6 +707,163 @@ export default function GA4Metrics() {
                 </TabsList>
 
                 <TabsContent value="overview">
+                  {/* Key Metrics - Moved from above tabs */}
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Sessions</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatNumber(ga4Metrics?.sessions || 0)}
+                            </p>
+                          </div>
+                          <Users className="w-8 h-8 text-blue-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Page Views</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatNumber(ga4Metrics?.pageviews || 0)}
+                            </p>
+                          </div>
+                          <Globe className="w-8 h-8 text-green-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Bounce Rate</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatPercentage(ga4Metrics?.bounceRate || 0)}
+                            </p>
+                          </div>
+                          <TrendingUp className="w-8 h-8 text-orange-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Session Duration</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatDuration(ga4Metrics?.averageSessionDuration || 0)}
+                            </p>
+                          </div>
+                          <Clock className="w-8 h-8 text-purple-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatNumber(ga4Metrics?.conversions || 0)}
+                            </p>
+                          </div>
+                          <Target className="w-8 h-8 text-emerald-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Users</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatNumber(ga4Metrics?.impressions || 0)}
+                            </p>
+                          </div>
+                          <Users className="w-8 h-8 text-blue-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">New Users</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatNumber(ga4Metrics?.newUsers || 0)}
+                            </p>
+                          </div>
+                          <Users className="w-8 h-8 text-emerald-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engaged Sessions</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatNumber(ga4Metrics?.engagedSessions || 0)}
+                            </p>
+                          </div>
+                          <Target className="w-8 h-8 text-violet-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatPercentage(ga4Metrics?.engagementRate || 0)}
+                            </p>
+                          </div>
+                          <TrendingUp className="w-8 h-8 text-rose-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Events</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatNumber(ga4Metrics?.eventCount || 0)}
+                            </p>
+                          </div>
+                          <MousePointer className="w-8 h-8 text-cyan-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Events per Session</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {(ga4Metrics?.eventsPerSession || 0).toFixed(1)}
+                            </p>
+                          </div>
+                          <BarChart3 className="w-8 h-8 text-amber-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card>
                       <CardHeader>

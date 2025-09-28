@@ -25,7 +25,6 @@ export default function Sidebar() {
     { path: "/", label: "Dashboard", icon: BarChart3 },
     { path: "/campaigns", label: "Campaigns", icon: Target },
     { path: "/audiences", label: "Audiences", icon: Users },
-    { path: "/analytics", label: "Analytics", icon: TrendingUp },
     { path: "/reports", label: "Reports", icon: FileText },
     { path: "/integrations", label: "Integrations", icon: Plug },
     { path: "/notifications", label: "Notifications", icon: Bell },

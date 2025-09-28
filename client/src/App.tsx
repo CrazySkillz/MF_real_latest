@@ -17,7 +17,6 @@ import LinkedInAnalytics from "@/pages/linkedin-analytics";
 import KPIs from "@/pages/kpis";
 import PlatformKPIs from "@/pages/platform-kpis";
 import Audiences from "@/pages/audiences";
-import Analytics from "@/pages/analytics";
 import Reports from "@/pages/reports";
 import Integrations from "@/pages/integrations";
 import Notifications from "@/pages/notifications";
@@ -41,7 +40,6 @@ function Router() {
       <Route path="/campaigns/:id/kpis" component={KPIs} />
       <Route path="/platforms/:platformType/kpis" component={PlatformKPIs} />
       <Route path="/audiences" component={Audiences} />
-      <Route path="/analytics" component={Analytics} />
       <Route path="/reports" component={Reports} />
       <Route path="/integrations" component={Integrations} />
       <Route path="/notifications" component={Notifications} />

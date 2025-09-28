@@ -454,13 +454,24 @@ export default function GA4Metrics() {
     enabled: !!campaignId,
   });
 
-  // Check GA4 connection status
+  // Check GA4 connection status - Updated for multiple connections
   const { data: ga4Connection } = useQuery({
     queryKey: ["/api/ga4/check-connection", campaignId],
     enabled: !!campaignId,
     queryFn: async () => {
       const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
-      if (!response.ok) return { connected: false };
+      if (!response.ok) return { connected: false, totalConnections: 0, connections: [] };
+      return response.json();
+    },
+  });
+
+  // Get all GA4 connections for this campaign
+  const { data: allGA4Connections } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "ga4-connections"],
+    enabled: !!campaignId && !!ga4Connection?.connected,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-connections`);
+      if (!response.ok) return { success: false, connections: [] };
       return response.json();
     },
   });
@@ -601,8 +612,8 @@ export default function GA4Metrics() {
     );
   }
 
-  // If GA4 is not connected, show connection flow
-  if (!ga4Connection?.connected) {
+  // If GA4 is not connected or has no connections, show connection flow
+  if (!ga4Connection?.connected || ga4Connection?.totalConnections === 0) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
         <Navigation />
@@ -689,6 +700,130 @@ export default function GA4Metrics() {
               </div>
             </div>
           </div>
+
+          {/* Connected Properties Management */}
+          {ga4Connection?.connected && ga4Connection?.totalConnections > 1 && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Globe className="w-5 h-5" />
+                    <span>Connected GA4 Properties ({ga4Connection?.totalConnections})</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Open connection flow to add another property
+                      window.location.href = `/campaigns/${campaignId}/ga4-metrics?add-property=true`;
+                    }}
+                    data-testid="button-add-property"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Property
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {ga4Connection?.connections?.map((connection: any, index: number) => (
+                    <div
+                      key={connection.id}
+                      className={`p-4 rounded-lg border ${
+                        connection.isPrimary
+                          ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950'
+                          : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800'
+                      }`}
+                      data-testid={`property-card-${connection.id}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h4 className="font-medium text-slate-900 dark:text-white">
+                              {connection.displayName || connection.propertyName}
+                            </h4>
+                            {connection.isPrimary && (
+                              <Badge variant="secondary" className="text-xs">
+                                Primary
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+                            Property ID: {connection.propertyId}
+                          </p>
+                          {connection.websiteUrl && (
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              {connection.websiteUrl}
+                            </p>
+                          )}
+                          <p className="text-xs text-slate-500 dark:text-slate-500">
+                            Connected {new Date(connection.connectedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" data-testid={`menu-${connection.id}`}>
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {!connection.isPrimary && (
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(
+                                      `/api/campaigns/${campaignId}/ga4-connections/${connection.id}/primary`,
+                                      { method: 'PUT' }
+                                    );
+                                    if (response.ok) {
+                                      queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-connections"] });
+                                      toast({ title: "Primary property updated" });
+                                    }
+                                  } catch (error) {
+                                    toast({ title: "Failed to set primary property", variant: "destructive" });
+                                  }
+                                }}
+                                data-testid={`action-set-primary-${connection.id}`}
+                              >
+                                Set as Primary
+                              </DropdownMenuItem>
+                            )}
+                            {ga4Connection?.totalConnections > 1 && (
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={async () => {
+                                  if (confirm('Are you sure you want to remove this GA4 property?')) {
+                                    try {
+                                      const response = await fetch(`/api/ga4-connections/${connection.id}`, {
+                                        method: 'DELETE'
+                                      });
+                                      if (response.ok) {
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-connections"] });
+                                        toast({ title: "GA4 property removed" });
+                                      }
+                                    } catch (error) {
+                                      toast({ title: "Failed to remove property", variant: "destructive" });
+                                    }
+                                  }
+                                }}
+                                data-testid={`action-remove-${connection.id}`}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Remove
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {ga4Loading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">

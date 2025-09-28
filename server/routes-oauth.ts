@@ -517,21 +517,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check GA4 connection status (checks actual database storage)
+  // Check GA4 connection status (checks actual database storage) - Updated for multiple connections
   app.get("/api/ga4/check-connection/:campaignId", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
       
-      // Check if there's a GA4 connection in the database
-      const ga4Connection = await storage.getGA4Connection(campaignId);
+      // Get all GA4 connections for this campaign
+      const ga4Connections = await storage.getGA4Connections(campaignId);
       
-      if (ga4Connection) {
+      if (ga4Connections && ga4Connections.length > 0) {
+        const primaryConnection = ga4Connections.find(conn => conn.isPrimary) || ga4Connections[0];
         return res.json({
           connected: true,
-          propertyId: ga4Connection.propertyId,
-          propertyName: ga4Connection.propertyName,
-          method: ga4Connection.method,
-          connectedAt: ga4Connection.connectedAt
+          primaryPropertyId: primaryConnection.propertyId,
+          totalConnections: ga4Connections.length,
+          connections: ga4Connections.map(conn => ({
+            id: conn.id,
+            propertyId: conn.propertyId,
+            propertyName: conn.propertyName,
+            displayName: conn.displayName,
+            websiteUrl: conn.websiteUrl,
+            isPrimary: conn.isPrimary,
+            isActive: conn.isActive,
+            connectedAt: conn.connectedAt
+          })),
+          primaryPropertyName: primaryConnection.propertyName,
+          primaryDisplayName: primaryConnection.displayName || primaryConnection.propertyName,
+          primaryConnectedAt: primaryConnection.connectedAt,
+          hasValidToken: ga4Connections.some(conn => !!conn.accessToken),
+          method: primaryConnection.method
         });
       }
 
@@ -546,10 +560,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      res.json({ connected: false });
+      res.json({ connected: false, totalConnections: 0, connections: [] });
     } catch (error) {
       console.error('Connection check error:', error);
       res.status(500).json({ error: 'Failed to check connection status' });
+    }
+  });
+
+  // New route: Get all GA4 connections for a campaign
+  app.get("/api/campaigns/:id/ga4-connections", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const connections = await storage.getGA4Connections(campaignId);
+      
+      res.json({
+        success: true,
+        connections: connections.map(conn => ({
+          id: conn.id,
+          propertyId: conn.propertyId,
+          propertyName: conn.propertyName,
+          displayName: conn.displayName,
+          websiteUrl: conn.websiteUrl,
+          isPrimary: conn.isPrimary,
+          isActive: conn.isActive,
+          connectedAt: conn.connectedAt,
+          method: conn.method
+        }))
+      });
+    } catch (error) {
+      console.error('Error fetching GA4 connections:', error);
+      res.status(500).json({ error: 'Failed to fetch GA4 connections' });
+    }
+  });
+
+  // New route: Set primary GA4 connection
+  app.put("/api/campaigns/:id/ga4-connections/:connectionId/primary", async (req, res) => {
+    try {
+      const { id: campaignId, connectionId } = req.params;
+      const success = await storage.setPrimaryGA4Connection(campaignId, connectionId);
+      
+      if (success) {
+        res.json({ success: true, message: 'Primary connection updated' });
+      } else {
+        res.status(404).json({ error: 'Connection not found' });
+      }
+    } catch (error) {
+      console.error('Error setting primary connection:', error);
+      res.status(500).json({ error: 'Failed to set primary connection' });
+    }
+  });
+
+  // New route: Delete GA4 connection
+  app.delete("/api/ga4-connections/:connectionId", async (req, res) => {
+    try {
+      const { connectionId } = req.params;
+      const success = await storage.deleteGA4Connection(connectionId);
+      
+      if (success) {
+        res.json({ success: true, message: 'Connection deleted successfully' });
+      } else {
+        res.status(404).json({ error: 'Connection not found' });
+      }
+    } catch (error) {
+      console.error('Error deleting connection:', error);
+      res.status(500).json({ error: 'Failed to delete connection' });
     }
   });
 

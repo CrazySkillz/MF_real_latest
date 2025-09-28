@@ -157,81 +157,338 @@ export default function Analytics() {
               </div>
             </div>
 
-            {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(calculateTotalRevenue())}</p>
-                      <div className="flex items-center space-x-1 mt-1">
-                        <ArrowUpRight className="w-4 h-4 text-accent" />
-                        <span className="text-sm text-accent">+12.5%</span>
-                      </div>
-                    </div>
-                    <DollarSign className="w-8 h-8 text-emerald-600" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{calculateROAS()}x</p>
-                      <div className="flex items-center space-x-1 mt-1">
-                        <ArrowUpRight className="w-4 h-4 text-accent" />
-                        <span className="text-sm text-accent">+8.2%</span>
-                      </div>
-                    </div>
-                    <TrendingUp className="w-8 h-8 text-primary" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Rate</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{calculateConversionRate()}%</p>
-                      <div className="flex items-center space-x-1 mt-1">
-                        <ArrowDownRight className="w-4 h-4 text-destructive" />
-                        <span className="text-sm text-destructive">-2.1%</span>
-                      </div>
-                    </div>
-                    <Target className="w-8 h-8 text-accent" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(calculateTotalSpend())}</p>
-                      <div className="flex items-center space-x-1 mt-1">
-                        <ArrowUpRight className="w-4 h-4 text-warning" />
-                        <span className="text-sm text-warning">+15.3%</span>
-                      </div>
-                    </div>
-                    <Eye className="w-8 h-8 text-warning" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
 
-          <Tabs defaultValue="performance" className="space-y-6">
+          <Tabs defaultValue="overview" className="space-y-6">
             <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="performance">Performance</TabsTrigger>
               <TabsTrigger value="attribution">Attribution</TabsTrigger>
               <TabsTrigger value="funnel">Conversion Funnel</TabsTrigger>
               <TabsTrigger value="cohort">Cohort Analysis</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="overview">
+              {/* Key Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-total-revenue">{formatCurrency(calculateTotalRevenue())}</p>
+                        <div className="flex items-center space-x-1 mt-1">
+                          <ArrowUpRight className="w-4 h-4 text-accent" />
+                          <span className="text-sm text-accent">+12.5%</span>
+                        </div>
+                      </div>
+                      <DollarSign className="w-8 h-8 text-emerald-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-roas">{calculateROAS()}x</p>
+                        <div className="flex items-center space-x-1 mt-1">
+                          <ArrowUpRight className="w-4 h-4 text-accent" />
+                          <span className="text-sm text-accent">+8.2%</span>
+                        </div>
+                      </div>
+                      <TrendingUp className="w-8 h-8 text-primary" />
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Rate</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-conversion-rate">{calculateConversionRate()}%</p>
+                        <div className="flex items-center space-x-1 mt-1">
+                          <ArrowDownRight className="w-4 h-4 text-destructive" />
+                          <span className="text-sm text-destructive">-2.1%</span>
+                        </div>
+                      </div>
+                      <Target className="w-8 h-8 text-accent" />
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-total-spend">{formatCurrency(calculateTotalSpend())}</p>
+                        <div className="flex items-center space-x-1 mt-1">
+                          <ArrowUpRight className="w-4 h-4 text-warning" />
+                          <span className="text-sm text-warning">+15.3%</span>
+                        </div>
+                      </div>
+                      <Eye className="w-8 h-8 text-warning" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Detailed Google Analytics Metrics */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Performance Overview Chart */}
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Google Analytics Performance Overview</CardTitle>
+                      <Select value={selectedMetric} onValueChange={setSelectedMetric}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="revenue">Revenue</SelectItem>
+                          <SelectItem value="spend">Spend</SelectItem>
+                          <SelectItem value="impressions">Impressions</SelectItem>
+                          <SelectItem value="conversions">Conversions</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={performanceData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                          <XAxis 
+                            dataKey="date" 
+                            stroke="#64748b"
+                            fontSize={12}
+                          />
+                          <YAxis 
+                            stroke="#64748b"
+                            fontSize={12}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey={selectedMetric}
+                            stroke={getMetricColor()}
+                            strokeWidth={3}
+                            dot={{ fill: getMetricColor(), strokeWidth: 2, r: 6 }}
+                            activeDot={{ r: 8, stroke: getMetricColor(), strokeWidth: 2 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* GA4 Real-time Metrics */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Real-time Analytics</CardTitle>
+                    <CardDescription>Live Google Analytics data</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div>
+                          <span className="font-medium text-slate-900 dark:text-white">Active Users</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Currently on site</p>
+                        </div>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          247
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div>
+                          <span className="font-medium text-slate-900 dark:text-white">Page Views (24h)</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Total page views today</p>
+                        </div>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          12,456
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div>
+                          <span className="font-medium text-slate-900 dark:text-white">Sessions (24h)</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Total sessions today</p>
+                        </div>
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                          8,923
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div>
+                          <span className="font-medium text-slate-900 dark:text-white">Bounce Rate</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Percentage of single-page sessions</p>
+                        </div>
+                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                          42.3%
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Top Pages */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Top Pages</CardTitle>
+                    <CardDescription>Most viewed pages today</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <div>
+                          <span className="font-medium text-slate-900 dark:text-white">/products</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Product catalog</p>
+                        </div>
+                        <Badge variant="outline">
+                          3,245 views
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <div>
+                          <span className="font-medium text-slate-900 dark:text-white">/blog</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Blog posts</p>
+                        </div>
+                        <Badge variant="outline">
+                          2,156 views
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <div>
+                          <span className="font-medium text-slate-900 dark:text-white">/</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Homepage</p>
+                        </div>
+                        <Badge variant="outline">
+                          1,987 views
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <div>
+                          <span className="font-medium text-slate-900 dark:text-white">/pricing</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Pricing page</p>
+                        </div>
+                        <Badge variant="outline">
+                          1,534 views
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Traffic Sources & Geographic Data */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Traffic Sources */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Traffic Sources</CardTitle>
+                    <CardDescription>Where your visitors come from</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Organic Search', value: 45, fill: '#2563EB' },
+                              { name: 'Direct', value: 25, fill: '#10B981' },
+                              { name: 'Social Media', value: 15, fill: '#F59E0B' },
+                              { name: 'Referral', value: 10, fill: '#EF4444' },
+                              { name: 'Email', value: 5, fill: '#8B5CF6' }
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={100}
+                            dataKey="value"
+                          >
+                            {[
+                              { name: 'Organic Search', value: 45, fill: '#2563EB' },
+                              { name: 'Direct', value: 25, fill: '#10B981' },
+                              { name: 'Social Media', value: 15, fill: '#F59E0B' },
+                              { name: 'Referral', value: 10, fill: '#EF4444' },
+                              { name: 'Email', value: 5, fill: '#8B5CF6' }
+                            ].map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      {[
+                        { name: 'Organic Search', value: '45%', color: '#2563EB' },
+                        { name: 'Direct', value: '25%', color: '#10B981' },
+                        { name: 'Social Media', value: '15%', color: '#F59E0B' },
+                        { name: 'Referral', value: '10%', color: '#EF4444' },
+                        { name: 'Email', value: '5%', color: '#8B5CF6' }
+                      ].map((source, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: source.color }}
+                            ></div>
+                            <span className="text-sm text-slate-600 dark:text-slate-400">{source.name}</span>
+                          </div>
+                          <span className="text-sm font-medium">{source.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Geographic Data */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Top Countries</CardTitle>
+                    <CardDescription>Visitor distribution by country</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {[
+                        { country: 'United States', users: 12456, percentage: 45, flag: '🇺🇸' },
+                        { country: 'United Kingdom', users: 3421, percentage: 18, flag: '🇬🇧' },
+                        { country: 'Canada', users: 2145, percentage: 12, flag: '🇨🇦' },
+                        { country: 'Germany', users: 1876, percentage: 10, flag: '🇩🇪' },
+                        { country: 'Australia', users: 1234, percentage: 8, flag: '🇦🇺' },
+                        { country: 'France', users: 987, percentage: 7, flag: '🇫🇷' }
+                      ].map((country, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-lg">{country.flag}</span>
+                            <div>
+                              <span className="font-medium text-slate-900 dark:text-white">{country.country}</span>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">{formatNumber(country.users)} users</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="outline">{country.percentage}%</Badge>
+                            <div className="w-16 bg-slate-200 dark:bg-slate-700 rounded-full h-2 mt-1">
+                              <div 
+                                className="bg-primary h-2 rounded-full transition-all duration-300" 
+                                style={{ width: `${country.percentage}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
 
             <TabsContent value="performance">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

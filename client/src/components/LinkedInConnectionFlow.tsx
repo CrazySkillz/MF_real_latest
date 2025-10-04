@@ -654,32 +654,20 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
               Connect with LinkedIn OAuth
             </Button>
           </div>
-        ) : (hasEnvCredentials || isTestMode) && !showClientIdInput ? (
+        ) : isTestMode ? (
           <div className="space-y-4">
             <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
               <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="text-center">
-              {isTestMode ? (
-                <>
-                  <Badge variant="outline" className="mb-3">
-                    <FlaskConical className="w-3 h-3 mr-1" />
-                    Test Mode Active
-                  </Badge>
-                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Test with Sample Data</h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
-                    Connect using simulated OAuth flow with realistic sample campaign data. Perfect for testing and development.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Badge variant="outline" className="mb-3">Platform Configured</Badge>
-                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Ready to Connect</h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
-                    OAuth credentials are already configured. Click below to connect your LinkedIn ad account securely.
-                  </p>
-                </>
-              )}
+              <Badge variant="outline" className="mb-3">
+                <FlaskConical className="w-3 h-3 mr-1" />
+                Test Mode Active
+              </Badge>
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Test with Sample Data</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+                Connect using simulated OAuth flow with realistic sample campaign data. Perfect for testing and development.
+              </p>
             </div>
             
             <Button 
@@ -689,7 +677,30 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
               data-testid="button-start-oauth"
             >
               <SiLinkedin className="w-4 h-4 mr-2" />
-              {isConnecting ? "Connecting..." : isTestMode ? "Start Test Connection" : "Connect with LinkedIn"}
+              {isConnecting ? "Connecting..." : "Start Test Connection"}
+            </Button>
+          </div>
+        ) : hasEnvCredentials && !showClientIdInput ? (
+          <div className="space-y-4">
+            <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+              <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="text-center">
+              <Badge variant="outline" className="mb-3">Platform Configured</Badge>
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Ready to Connect</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+                OAuth credentials are already configured. Click below to connect your LinkedIn ad account securely.
+              </p>
+            </div>
+            
+            <Button 
+              onClick={handleLinkedInOAuth}
+              disabled={isConnecting}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              data-testid="button-start-oauth"
+            >
+              <SiLinkedin className="w-4 h-4 mr-2" />
+              {isConnecting ? "Connecting..." : "Connect with LinkedIn"}
             </Button>
           </div>
         ) : (

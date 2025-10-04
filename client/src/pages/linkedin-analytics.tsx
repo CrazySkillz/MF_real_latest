@@ -371,8 +371,8 @@ export default function LinkedInAnalytics() {
                           </CardContent>
                         </Card>
 
-                        {/* Comparison Table */}
-                        <Card data-testid="comparison-table">
+                        {/* Visual Performance Comparison */}
+                        <Card data-testid="comparison-chart">
                           <CardHeader>
                             <CardTitle>Ad Performance Comparison</CardTitle>
                             <CardDescription>
@@ -380,7 +380,44 @@ export default function LinkedInAnalytics() {
                             </CardDescription>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-6">
+                            <ResponsiveContainer width="100%" height={Math.max(400, sortedAds.length * 120)}>
+                              <BarChart 
+                                data={sortedAds.map(ad => {
+                                  const data: any = { 
+                                    name: ad.adName,
+                                    revenue: parseFloat(ad.revenue || '0')
+                                  };
+                                  displayMetrics.forEach(metric => {
+                                    if (metric.key === 'spend' || metric.key === 'ctr' || metric.key === 'cpc') {
+                                      data[metric.key] = parseFloat((ad as any)[metric.key]);
+                                    } else {
+                                      data[metric.key] = (ad as any)[metric.key];
+                                    }
+                                  });
+                                  return data;
+                                })}
+                                layout="vertical"
+                                margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis type="number" tick={{ fontSize: 12 }} />
+                                <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} width={90} />
+                                <Tooltip />
+                                <Legend />
+                                {displayMetrics.map(metric => (
+                                  <Bar 
+                                    key={metric.key}
+                                    dataKey={metric.key} 
+                                    fill={metric.color.replace('bg-', '#').replace('blue-500', '3b82f6').replace('green-500', '10b981').replace('red-500', 'ef4444').replace('purple-500', 'a855f7').replace('orange-500', 'f97316').replace('indigo-500', '6366f1')} 
+                                    name={metric.label}
+                                  />
+                                ))}
+                                <Bar dataKey="revenue" fill="#22c55e" name="Revenue ($)" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                            
+                            {/* Ad Details Cards */}
+                            <div className="mt-6 space-y-3">
                               {sortedAds.map((ad, index) => {
                                 const revenue = parseFloat(ad.revenue || '0');
                                 const isTop = index === 0;
@@ -389,53 +426,32 @@ export default function LinkedInAnalytics() {
                                 return (
                                   <div 
                                     key={ad.id}
-                                    className={`border-l-4 ${isTop ? 'border-green-500' : isBottom ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'} pl-4 py-3`}
-                                    data-testid={`ad-comparison-${index}`}
+                                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                                      isTop ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 
+                                      isBottom ? 'border-red-500 bg-red-50 dark:bg-red-950/20' : 
+                                      'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'
+                                    }`}
+                                    data-testid={`ad-detail-${index}`}
                                   >
-                                    {/* Ad Header */}
-                                    <div className="flex items-start justify-between mb-4">
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <h4 className="text-lg font-semibold text-slate-900 dark:text-white">{ad.adName}</h4>
-                                          {isTop && <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded">TOP PERFORMER</span>}
-                                          {isBottom && <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-2 py-1 rounded">NEEDS OPTIMIZATION</span>}
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                                        isTop ? 'bg-green-500 text-white' : 
+                                        isBottom ? 'bg-red-500 text-white' : 
+                                        'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-300'
+                                      }`}>
+                                        {index + 1}
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <h4 className="font-semibold text-slate-900 dark:text-white">{ad.adName}</h4>
+                                          {isTop && <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded">TOP</span>}
                                         </div>
                                         <p className="text-sm text-slate-500">{ad.campaignName}</p>
                                       </div>
-                                      <div className="text-right">
-                                        <p className="text-sm text-slate-500">Revenue</p>
-                                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(revenue)}</p>
-                                      </div>
                                     </div>
-
-                                    {/* Metrics Comparison Bars */}
-                                    <div className="space-y-3">
-                                      {displayMetrics.map(metric => {
-                                        let value: number;
-                                        if (metric.key === 'spend' || metric.key === 'ctr' || metric.key === 'cpc') {
-                                          value = parseFloat((ad as any)[metric.key]);
-                                        } else {
-                                          value = (ad as any)[metric.key];
-                                        }
-                                        const percentage = maxValues[metric.key as keyof typeof maxValues] > 0 
-                                          ? (value / maxValues[metric.key as keyof typeof maxValues]) * 100 
-                                          : 0;
-
-                                        return (
-                                          <div key={metric.key} data-testid={`metric-${metric.key}-${index}`}>
-                                            <div className="flex items-center justify-between mb-1">
-                                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{metric.label}</span>
-                                              <span className="text-sm font-semibold text-slate-900 dark:text-white">{metric.format(value)}</span>
-                                            </div>
-                                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                              <div 
-                                                className={`${metric.color} h-2 rounded-full transition-all duration-300`}
-                                                style={{ width: `${percentage}%` }}
-                                              ></div>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
+                                    <div className="text-right">
+                                      <p className="text-sm text-slate-500">Revenue</p>
+                                      <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(revenue)}</p>
                                     </div>
                                   </div>
                                 );

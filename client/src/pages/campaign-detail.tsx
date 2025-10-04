@@ -21,6 +21,7 @@ import { format } from "date-fns";
 import { reportStorage } from "@/lib/reportStorage";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
+import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { ABTestManager } from "@/components/ABTestManager";
 import { AttributionDashboard } from "@/components/AttributionDashboard";
 
@@ -2312,6 +2313,14 @@ export default function CampaignDetail() {
                         />
                       ) : platform.platform === "Google Sheets" ? (
                         <GoogleSheetsConnectionFlow 
+                          campaignId={campaign.id} 
+                          onConnectionSuccess={() => {
+                            setExpandedPlatform(null);
+                            window.location.reload();
+                          }}
+                        />
+                      ) : platform.platform === "LinkedIn Ads" ? (
+                        <LinkedInConnectionFlow 
                           campaignId={campaign.id} 
                           onConnectionSuccess={() => {
                             setExpandedPlatform(null);

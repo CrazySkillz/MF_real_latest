@@ -5,10 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { SiLinkedin } from "react-icons/si";
-import { Briefcase, CheckCircle, AlertCircle, Key } from "lucide-react";
+import { Briefcase, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
 
 interface LinkedInConnectionFlowProps {
   campaignId: string;
@@ -21,16 +20,13 @@ interface AdAccount {
 }
 
 export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: LinkedInConnectionFlowProps) {
-  const [step, setStep] = useState<'credentials' | 'connecting' | 'select-account' | 'manual-entry' | 'connected'>('credentials');
+  const [step, setStep] = useState<'credentials' | 'connecting' | 'select-account' | 'connected'>('credentials');
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [showClientIdInput, setShowClientIdInput] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [adAccounts, setAdAccounts] = useState<AdAccount[]>([]);
   const [selectedAdAccount, setSelectedAdAccount] = useState<string>('');
-  const [manualAdAccountId, setManualAdAccountId] = useState<string>('');
-  const [manualAdAccountName, setManualAdAccountName] = useState<string>('');
-  const [manualAccessToken, setManualAccessToken] = useState<string>('');
   const { toast } = useToast();
 
   const handleLinkedInOAuth = async () => {
@@ -225,66 +221,32 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
     }
   };
 
-  const handleManualTokenConnection = async () => {
-    if (!manualAccessToken || !manualAdAccountId || !manualAdAccountName) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide access token, ad account ID, and ad account name.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsConnecting(true);
-
-    try {
-      const response = await fetch('/api/linkedin/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId,
-          accessToken: manualAccessToken,
-          adAccountId: manualAdAccountId,
-          adAccountName: manualAdAccountName,
-          method: 'manual'
-        })
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        setStep('connected');
-        toast({
-          title: "Ad Account Connected!",
-          description: "Your LinkedIn ad account is now connected to this campaign."
-        });
-        onConnectionSuccess();
-      } else {
-        throw new Error(data.error || 'Failed to connect ad account');
-      }
-    } catch (error: any) {
-      console.error('Manual token connection error:', error);
-      toast({
-        title: "Connection Failed",
-        description: error.message || "Failed to connect with provided credentials",
-        variant: "destructive"
-      });
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
   if (step === 'connected') {
     return (
       <Card className="w-full max-w-md">
-        <CardContent className="text-center py-8">
-          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <CheckCircle className="w-8 h-8 text-blue-600" />
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Successfully Connected!</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">
+                Your LinkedIn ad account is now connected to this campaign. You can now access detailed analytics and campaign data.
+              </p>
+            </div>
+            <Button 
+              onClick={() => {
+                setStep('credentials');
+                onConnectionSuccess();
+              }}
+              variant="outline"
+              className="w-full"
+              data-testid="button-done"
+            >
+              Done
+            </Button>
           </div>
-          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2" data-testid="text-connection-success">Connected!</h3>
-          <p className="text-slate-500 dark:text-slate-400" data-testid="text-connection-message">
-            Your LinkedIn ad account is now connected and will sync automatically.
-          </p>
         </CardContent>
       </Card>
     );
@@ -295,25 +257,25 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Briefcase className="w-5 h-5 text-blue-600" />
-            Select LinkedIn Ad Account
+            <SiLinkedin className="w-5 h-5 text-blue-600" />
+            Select Ad Account
           </CardTitle>
           <CardDescription>
-            Choose which LinkedIn ad account to connect for campaign data
+            Choose which LinkedIn ad account to connect to this campaign
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {adAccounts.length > 0 ? (
             <>
               <div className="space-y-2">
-                <Label htmlFor="ad-account-select">Available Ad Accounts</Label>
+                <Label htmlFor="ad-account">Ad Account</Label>
                 <Select value={selectedAdAccount} onValueChange={setSelectedAdAccount}>
-                  <SelectTrigger id="ad-account-select" data-testid="select-ad-account">
-                    <SelectValue placeholder="Select an ad account..." />
+                  <SelectTrigger id="ad-account" data-testid="select-ad-account">
+                    <SelectValue placeholder="Select an ad account" />
                   </SelectTrigger>
                   <SelectContent>
                     {adAccounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id} data-testid={`option-ad-account-${account.id}`}>
+                      <SelectItem key={account.id} value={account.id}>
                         {account.name}
                       </SelectItem>
                     ))}
@@ -321,39 +283,50 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
                 </Select>
               </div>
               
-              <div className="flex gap-3 pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setStep('credentials')} 
-                  className="flex-1"
-                  data-testid="button-back"
-                >
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleAdAccountSelection}
-                  disabled={!selectedAdAccount}
-                  className="flex-1"
-                  data-testid="button-connect-account"
-                >
-                  Connect Ad Account
-                </Button>
-              </div>
+              <Button 
+                onClick={handleAdAccountSelection}
+                disabled={!selectedAdAccount}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                data-testid="button-confirm-account"
+              >
+                Connect Selected Account
+              </Button>
             </>
           ) : (
-            <div className="text-center py-4">
-              <AlertCircle className="w-8 h-8 mx-auto text-orange-500 mb-2" />
-              <p className="text-slate-600 dark:text-slate-400" data-testid="text-no-accounts">No ad accounts found</p>
+            <div className="text-center py-6">
+              <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                No ad accounts found. Make sure you have admin access to at least one LinkedIn ad account.
+              </p>
               <Button 
-                variant="outline" 
                 onClick={() => setStep('credentials')} 
-                className="mt-4"
-                data-testid="button-try-again"
+                variant="outline"
+                data-testid="button-back-to-credentials"
               >
                 Try Again
               </Button>
             </div>
           )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (step === 'connecting') {
+    return (
+      <Card className="w-full max-w-md">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center animate-pulse">
+              <SiLinkedin className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Connecting to LinkedIn...</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">
+                Please complete the authentication in the popup window
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -367,159 +340,104 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
           Connect LinkedIn Ads
         </CardTitle>
         <CardDescription>
-          Import campaign data and metrics from your LinkedIn ad account
+          Securely connect your LinkedIn ad account using OAuth 2.0
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Tabs defaultValue="oauth" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="oauth" data-testid="tab-oauth">
-              <SiLinkedin className="w-4 h-4 mr-2" />
-              LinkedIn OAuth
-            </TabsTrigger>
-            <TabsTrigger value="manual" data-testid="tab-manual">
-              <Key className="w-4 h-4 mr-2" />
-              Manual Token
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="oauth" className="space-y-4 mt-4">
-            {!showClientIdInput ? (
-              <div className="text-center space-y-4">
-                <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Briefcase className="w-8 h-8 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Connect Your Ad Account</h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm">
-                    Access your LinkedIn Ads data to automatically import campaign metrics, budgets, and performance data.
-                  </p>
-                </div>
-                <Button 
-                  onClick={() => setShowClientIdInput(true)} 
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                  data-testid="button-connect-oauth"
-                >
-                  <SiLinkedin className="w-4 h-4 mr-2" />
-                  Connect with LinkedIn OAuth
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <Badge variant="outline" className="mb-3">OAuth Setup Required</Badge>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                    To connect LinkedIn Ads, provide your OAuth credentials from LinkedIn Developer Portal.
-                  </p>
-                </div>
-                
+        {!showClientIdInput ? (
+          <div className="space-y-4">
+            <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+              <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Connect Your Ad Account</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+                Access your LinkedIn Ads data to automatically import campaign metrics, budgets, and performance data using secure OAuth authentication.
+              </p>
+            </div>
+            
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <ExternalLink className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                 <div className="space-y-2">
-                  <Label htmlFor="linkedin-client-id">LinkedIn OAuth Client ID</Label>
-                  <Input
-                    id="linkedin-client-id"
-                    type="text"
-                    placeholder="Your LinkedIn OAuth Client ID"
-                    value={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                    data-testid="input-client-id"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="linkedin-client-secret">LinkedIn OAuth Client Secret</Label>
-                  <Input
-                    id="linkedin-client-secret"
-                    type="password"
-                    placeholder="Your LinkedIn OAuth Client Secret"
-                    value={clientSecret}
-                    onChange={(e) => setClientSecret(e.target.value)}
-                    data-testid="input-client-secret"
-                  />
-                </div>
-                
-                <div className="flex gap-3 pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowClientIdInput(false)}
-                    className="flex-1"
-                    data-testid="button-cancel-oauth"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleLinkedInOAuth}
-                    disabled={isConnecting || !clientId || !clientSecret}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700"
-                    data-testid="button-continue-oauth"
-                  >
-                    {isConnecting ? "Connecting..." : "Continue"}
-                  </Button>
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100 text-sm">Need OAuth Credentials?</h4>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Get your Client ID and Client Secret from the LinkedIn Developer Portal:
+                  </p>
+                  <ol className="text-xs text-blue-700 dark:text-blue-300 space-y-1 list-decimal list-inside">
+                    <li>Go to <a href="https://developer.linkedin.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">developer.linkedin.com</a></li>
+                    <li>Create a new app or select an existing one</li>
+                    <li>Go to the "Auth" tab to find your credentials</li>
+                    <li>Add your redirect URL in OAuth 2.0 settings</li>
+                  </ol>
                 </div>
               </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="manual" className="space-y-4 mt-4">
-            <div>
-              <Badge variant="outline" className="mb-3">Manual Connection</Badge>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                If you have a LinkedIn access token and ad account ID, you can connect manually.
-              </p>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="manual-access-token">LinkedIn Access Token</Label>
-              <Input
-                id="manual-access-token"
-                type="password"
-                placeholder="Your LinkedIn Access Token"
-                value={manualAccessToken}
-                onChange={(e) => setManualAccessToken(e.target.value)}
-                data-testid="input-access-token"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="manual-ad-account-id">Ad Account ID</Label>
-              <Input
-                id="manual-ad-account-id"
-                type="text"
-                placeholder="Your LinkedIn Ad Account ID"
-                value={manualAdAccountId}
-                onChange={(e) => setManualAdAccountId(e.target.value)}
-                className="font-mono text-sm"
-                data-testid="input-ad-account-id"
-              />
-              <p className="text-xs text-slate-500">
-                Find your ad account ID in LinkedIn Campaign Manager URL
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="manual-ad-account-name">Ad Account Name</Label>
-              <Input
-                id="manual-ad-account-name"
-                type="text"
-                placeholder="e.g., Marketing Campaign Account"
-                value={manualAdAccountName}
-                onChange={(e) => setManualAdAccountName(e.target.value)}
-                data-testid="input-ad-account-name"
-              />
-              <p className="text-xs text-slate-500">
-                A friendly name to identify this ad account
-              </p>
-            </div>
-
+            
             <Button 
-              onClick={handleManualTokenConnection}
-              disabled={isConnecting || !manualAccessToken || !manualAdAccountId || !manualAdAccountName}
+              onClick={() => setShowClientIdInput(true)} 
               className="w-full bg-blue-600 hover:bg-blue-700"
-              data-testid="button-connect-manual"
+              data-testid="button-connect-oauth"
             >
-              {isConnecting ? "Connecting..." : "Connect Ad Account"}
+              <SiLinkedin className="w-4 h-4 mr-2" />
+              Connect with LinkedIn OAuth
             </Button>
-          </TabsContent>
-        </Tabs>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <Badge variant="outline" className="mb-3">OAuth Setup</Badge>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                Enter your LinkedIn OAuth credentials from the Developer Portal
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="linkedin-client-id">Client ID</Label>
+              <Input
+                id="linkedin-client-id"
+                type="text"
+                placeholder="Your LinkedIn OAuth Client ID"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                className="font-mono text-sm"
+                data-testid="input-client-id"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="linkedin-client-secret">Client Secret</Label>
+              <Input
+                id="linkedin-client-secret"
+                type="password"
+                placeholder="Your LinkedIn OAuth Client Secret"
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+                className="font-mono text-sm"
+                data-testid="input-client-secret"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowClientIdInput(false)}
+                className="flex-1"
+                data-testid="button-cancel-oauth"
+              >
+                Back
+              </Button>
+              <Button 
+                onClick={handleLinkedInOAuth}
+                disabled={isConnecting || !clientId || !clientSecret}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                data-testid="button-continue-oauth"
+              >
+                {isConnecting ? "Connecting..." : "Continue"}
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

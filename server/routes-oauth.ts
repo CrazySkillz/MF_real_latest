@@ -376,7 +376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const primaryConnection = connections.find(conn => conn.isPrimary && conn.accessToken) || 
                                connections.find(conn => conn.accessToken);
 
-      if (!primaryConnection) {
+      if (!primaryConnection || !primaryConnection.accessToken) {
         throw new Error('No valid connection available');
       }
 

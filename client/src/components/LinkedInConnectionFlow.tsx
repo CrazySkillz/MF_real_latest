@@ -95,6 +95,45 @@ const MOCK_CAMPAIGNS: LinkedInCampaign[] = [
   }
 ];
 
+const AVAILABLE_METRICS: MetricOption[] = [
+  {
+    key: 'impressions',
+    label: 'Impressions',
+    icon: Eye,
+    getValue: (campaign) => campaign.impressions.toLocaleString()
+  },
+  {
+    key: 'clicks',
+    label: 'Clicks',
+    icon: MousePointerClick,
+    getValue: (campaign) => campaign.clicks.toLocaleString()
+  },
+  {
+    key: 'spend',
+    label: 'Spend',
+    icon: DollarSign,
+    getValue: (campaign) => `$${campaign.spend.toFixed(2)}`
+  },
+  {
+    key: 'ctr',
+    label: 'CTR',
+    icon: TrendingUp,
+    getValue: (campaign) => `${campaign.ctr}%`
+  },
+  {
+    key: 'conversions',
+    label: 'Conversions',
+    icon: Target,
+    getValue: (campaign) => campaign.conversions.toLocaleString()
+  },
+  {
+    key: 'cpc',
+    label: 'CPC',
+    icon: Percent,
+    getValue: (campaign) => `$${campaign.cpc.toFixed(2)}`
+  }
+];
+
 export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: LinkedInConnectionFlowProps) {
   const hasEnvCredentials = import.meta.env.VITE_LINKEDIN_CLIENT_ID && import.meta.env.VITE_LINKEDIN_CLIENT_SECRET;
   
@@ -285,12 +324,16 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
     }
 
     if (isTestMode) {
-      // Show campaign selection in test mode
-      setCampaigns(MOCK_CAMPAIGNS.map(c => ({ ...c, selected: false })));
+      // Show campaign selection in test mode with all metrics selected by default
+      setCampaigns(MOCK_CAMPAIGNS.map(c => ({ 
+        ...c, 
+        selected: false,
+        selectedMetrics: AVAILABLE_METRICS.map(m => m.key)
+      })));
       setStep('select-campaigns');
       toast({
         title: "Ad Account Selected",
-        description: "Choose which campaigns to import metrics from."
+        description: "Choose which campaigns and metrics to import."
       });
       return;
     }
@@ -332,6 +375,27 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
     ));
   };
 
+  const toggleMetricSelection = (campaignId: string, metricKey: string) => {
+    setCampaigns(campaigns.map(c => {
+      if (c.id === campaignId) {
+        const currentMetrics = c.selectedMetrics || [];
+        const newMetrics = currentMetrics.includes(metricKey)
+          ? currentMetrics.filter(m => m !== metricKey)
+          : [...currentMetrics, metricKey];
+        return { ...c, selectedMetrics: newMetrics };
+      }
+      return c;
+    }));
+  };
+
+  const toggleAllMetricsForCampaign = (campaignId: string, selectAll: boolean) => {
+    setCampaigns(campaigns.map(c => 
+      c.id === campaignId 
+        ? { ...c, selectedMetrics: selectAll ? AVAILABLE_METRICS.map(m => m.key) : [] }
+        : c
+    ));
+  };
+
   const handleImportSelectedCampaigns = async () => {
     const selectedCampaigns = campaigns.filter(c => c.selected);
     
@@ -344,16 +408,29 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
       return;
     }
 
+    // Validate that each selected campaign has at least one metric selected
+    const campaignsWithoutMetrics = selectedCampaigns.filter(c => !c.selectedMetrics || c.selectedMetrics.length === 0);
+    if (campaignsWithoutMetrics.length > 0) {
+      toast({
+        title: "No Metrics Selected",
+        description: `Please select at least one metric for: ${campaignsWithoutMetrics[0].name}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsConnecting(true);
 
     try {
       // In test mode, simulate import
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      const totalMetrics = selectedCampaigns.reduce((sum, c) => sum + (c.selectedMetrics?.length || 0), 0);
+      
       setStep('connected');
       toast({
         title: "Campaigns Imported!",
-        description: `Successfully imported ${selectedCampaigns.length} campaign${selectedCampaigns.length > 1 ? 's' : ''} with metrics.`
+        description: `Successfully imported ${selectedCampaigns.length} campaign${selectedCampaigns.length > 1 ? 's' : ''} with ${totalMetrics} total metrics.`
       });
       onConnectionSuccess();
     } catch (error: any) {
@@ -408,79 +485,116 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
     const selectedCount = campaigns.filter(c => c.selected).length;
     
     return (
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-3xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <SiLinkedin className="w-5 h-5 text-blue-600" />
-            Select Campaigns to Import
+            Select Campaigns and Metrics
           </CardTitle>
           <CardDescription>
-            Choose which campaigns you want to import metrics from
+            Choose which campaigns and metrics you want to import
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {campaigns.map((campaign) => (
-              <div 
-                key={campaign.id}
-                className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                  campaign.selected 
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' 
-                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                }`}
-                onClick={() => toggleCampaignSelection(campaign.id)}
-                data-testid={`campaign-option-${campaign.id}`}
-              >
-                <div className="flex items-start gap-3">
-                  <Checkbox 
-                    checked={campaign.selected}
-                    onCheckedChange={() => toggleCampaignSelection(campaign.id)}
-                    className="mt-1"
-                    data-testid={`checkbox-campaign-${campaign.id}`}
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="font-medium text-slate-900 dark:text-white">{campaign.name}</h4>
-                        <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'} className="mt-1">
-                          {campaign.status}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
-                      <div className="flex items-center gap-2">
-                        <Eye className="w-4 h-4 text-slate-500" />
-                        <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Impressions</p>
-                          <p className="font-medium text-sm">{campaign.impressions.toLocaleString()}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MousePointerClick className="w-4 h-4 text-slate-500" />
-                        <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Clicks</p>
-                          <p className="font-medium text-sm">{campaign.clicks.toLocaleString()}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-slate-500" />
-                        <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Spend</p>
-                          <p className="font-medium text-sm">${campaign.spend.toFixed(2)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-slate-500" />
-                        <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">CTR</p>
-                          <p className="font-medium text-sm">{campaign.ctr}%</p>
+          <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+            {campaigns.map((campaign) => {
+              const selectedMetricsCount = campaign.selectedMetrics?.length || 0;
+              const allMetricsSelected = selectedMetricsCount === AVAILABLE_METRICS.length;
+              
+              return (
+                <div 
+                  key={campaign.id}
+                  className={`border rounded-lg p-4 transition-all ${
+                    campaign.selected 
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' 
+                      : 'border-slate-200 dark:border-slate-700'
+                  }`}
+                  data-testid={`campaign-option-${campaign.id}`}
+                >
+                  <div className="space-y-3">
+                    {/* Campaign Header */}
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        checked={campaign.selected}
+                        onCheckedChange={() => toggleCampaignSelection(campaign.id)}
+                        className="mt-1"
+                        data-testid={`checkbox-campaign-${campaign.id}`}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-medium text-slate-900 dark:text-white">{campaign.name}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
+                                {campaign.status}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {selectedMetricsCount} of {AVAILABLE_METRICS.length} metrics
+                              </Badge>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
+
+                    {/* Metrics Selection */}
+                    {campaign.selected && (
+                      <div className="ml-9 space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-sm font-medium">Select Metrics to Import</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleAllMetricsForCampaign(campaign.id, !allMetricsSelected);
+                            }}
+                            className="h-7 text-xs"
+                            data-testid={`button-toggle-all-metrics-${campaign.id}`}
+                          >
+                            {allMetricsSelected ? 'Deselect All' : 'Select All'}
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {AVAILABLE_METRICS.map((metric) => {
+                            const Icon = metric.icon;
+                            const isSelected = campaign.selectedMetrics?.includes(metric.key) || false;
+                            
+                            return (
+                              <div
+                                key={metric.key}
+                                className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/50'
+                                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleMetricSelection(campaign.id, metric.key);
+                                }}
+                                data-testid={`metric-${campaign.id}-${metric.key}`}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleMetricSelection(campaign.id, metric.key)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  data-testid={`checkbox-metric-${campaign.id}-${metric.key}`}
+                                />
+                                <Icon className="w-4 h-4 text-slate-500" />
+                                <div className="flex-1">
+                                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{metric.label}</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">{metric.getValue(campaign)}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="flex items-center justify-between pt-4 border-t">

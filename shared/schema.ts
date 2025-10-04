@@ -91,6 +91,21 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const linkedinConnections = pgTable("linkedin_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  adAccountId: text("ad_account_id").notNull(),
+  adAccountName: text("ad_account_name"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  clientId: text("client_id"),
+  clientSecret: text("client_secret"),
+  method: text("method").notNull(), // 'oauth' or 'manual_token'
+  expiresAt: timestamp("expires_at"),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const kpis = pgTable("kpis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id"), // Optional - null for platform-level KPIs
@@ -388,6 +403,18 @@ export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheet
   expiresAt: true,
 });
 
+export const insertLinkedInConnectionSchema = createInsertSchema(linkedinConnections).pick({
+  campaignId: true,
+  adAccountId: true,
+  adAccountName: true,
+  accessToken: true,
+  refreshToken: true,
+  clientId: true,
+  clientSecret: true,
+  method: true,
+  expiresAt: true,
+});
+
 export const insertKPISchema = createInsertSchema(kpis).pick({
   campaignId: true,
   platformType: true,
@@ -598,6 +625,8 @@ export type GA4Connection = typeof ga4Connections.$inferSelect;
 export type InsertGA4Connection = z.infer<typeof insertGA4ConnectionSchema>;
 export type GoogleSheetsConnection = typeof googleSheetsConnections.$inferSelect;
 export type InsertGoogleSheetsConnection = z.infer<typeof insertGoogleSheetsConnectionSchema>;
+export type LinkedInConnection = typeof linkedinConnections.$inferSelect;
+export type InsertLinkedInConnection = z.infer<typeof insertLinkedInConnectionSchema>;
 export type KPI = typeof kpis.$inferSelect;
 export type InsertKPI = z.infer<typeof insertKPISchema>;
 export type KPIProgress = typeof kpiProgress.$inferSelect;

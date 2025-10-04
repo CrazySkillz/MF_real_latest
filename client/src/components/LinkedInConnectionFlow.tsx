@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { SiLinkedin } from "react-icons/si";
-import { Briefcase, CheckCircle, AlertCircle, ExternalLink, FlaskConical, TrendingUp, MousePointerClick, DollarSign, Eye } from "lucide-react";
+import { Briefcase, CheckCircle, AlertCircle, ExternalLink, FlaskConical, TrendingUp, MousePointerClick, DollarSign, Eye, Target, Percent } from "lucide-react";
 
 interface LinkedInConnectionFlowProps {
   campaignId: string;
@@ -32,6 +32,14 @@ interface LinkedInCampaign {
   ctr: number;
   cpc: number;
   selected?: boolean;
+  selectedMetrics?: string[];
+}
+
+interface MetricOption {
+  key: string;
+  label: string;
+  icon: any;
+  getValue: (campaign: LinkedInCampaign) => string;
 }
 
 // Mock data for test mode

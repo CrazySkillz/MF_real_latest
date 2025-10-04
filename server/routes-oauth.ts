@@ -2910,6 +2910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             adName: `Ad ${i + 1} - ${campaign.name}`,
             campaignUrn: campaign.id,
             campaignName: campaign.name,
+            campaignSelectedMetrics: campaign.selectedMetrics || [], // Store campaign's selected metrics
             impressions,
             clicks,
             spend,

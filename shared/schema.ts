@@ -135,6 +135,7 @@ export const linkedinAdPerformance = pgTable("linkedin_ad_performance", {
   adName: text("ad_name").notNull(),
   campaignUrn: text("campaign_urn").notNull(),
   campaignName: text("campaign_name").notNull(),
+  campaignSelectedMetrics: text("campaign_selected_metrics").array(), // Metrics selected for this ad's campaign
   impressions: integer("impressions").notNull().default(0),
   clicks: integer("clicks").notNull().default(0),
   spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default("0"),
@@ -677,6 +678,7 @@ export const insertLinkedInAdPerformanceSchema = createInsertSchema(linkedinAdPe
   adName: true,
   campaignUrn: true,
   campaignName: true,
+  campaignSelectedMetrics: true,
   impressions: true,
   clicks: true,
   spend: true,

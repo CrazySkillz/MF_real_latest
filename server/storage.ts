@@ -961,6 +961,7 @@ export class MemStorage implements IStorage {
       adName: ad.adName,
       campaignUrn: ad.campaignUrn,
       campaignName: ad.campaignName,
+      campaignSelectedMetrics: ad.campaignSelectedMetrics || null,
       impressions: ad.impressions || 0,
       clicks: ad.clicks || 0,
       spend: ad.spend || "0",

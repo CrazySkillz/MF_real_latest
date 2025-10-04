@@ -325,7 +325,17 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : adsData && adsData.length > 0 ? (
                   (() => {
-                    const selectedMetrics = sessionData?.session?.selectedMetricKeys || [];
+                    // Find common metrics across ALL ads (intersection of each ad's campaignSelectedMetrics)
+                    const allMetricSets = adsData
+                      .map(ad => ad.campaignSelectedMetrics || [])
+                      .filter(metrics => metrics.length > 0);
+                    
+                    const commonMetrics = allMetricSets.length > 0
+                      ? allMetricSets.reduce((common, adMetrics) => 
+                          common.filter(m => adMetrics.includes(m))
+                        )
+                      : [];
+                    
                     const sortedAds = [...adsData].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
                     const topAd = sortedAds[0];
                     
@@ -340,7 +350,7 @@ export default function LinkedInAnalytics() {
                       cpc: Math.max(...sortedAds.map(ad => parseFloat(ad.cpc))),
                     };
 
-                    // Define which metrics to display based on selection
+                    // Define which metrics to display based on common selection across all ads
                     const displayMetrics = [
                       { key: 'impressions', label: 'Impressions', format: formatNumber, color: 'bg-blue-500' },
                       { key: 'clicks', label: 'Clicks', format: formatNumber, color: 'bg-green-500' },
@@ -348,7 +358,7 @@ export default function LinkedInAnalytics() {
                       { key: 'ctr', label: 'CTR', format: formatPercentage, color: 'bg-purple-500' },
                       { key: 'cpc', label: 'CPC', format: formatCurrency, color: 'bg-orange-500' },
                       { key: 'conversions', label: 'Conversions', format: formatNumber, color: 'bg-indigo-500' },
-                    ].filter(metric => selectedMetrics.includes(metric.key) || selectedMetrics.length === 0);
+                    ].filter(metric => commonMetrics.includes(metric.key));
 
                     return (
                       <div className="space-y-6">

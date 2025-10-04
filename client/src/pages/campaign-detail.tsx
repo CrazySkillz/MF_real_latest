@@ -2259,43 +2259,26 @@ export default function CampaignDetail() {
                     </div>
                   </div>
 
-                  {/* Google Sheets Analytics Link - Always show for Summer Splash campaign */}
-                  {platform.platform === "Google Sheets" && (
-                    <div className="px-3 pb-3">
-                      <div className="pt-2 border-t">
-                        <Link href={`/campaigns/${campaign.id}/google-sheets-data`}>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <FileSpreadsheet className="w-4 h-4 mr-2" />
-                            View Detailed Analytics
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* LinkedIn Analytics Link - Always show for Summer Splash campaign */}
-                  {platform.platform === "LinkedIn Ads" && (
-                    <div className="px-3 pb-3">
-                      <div className="pt-2 border-t">
-                        <Link href={`/campaigns/${campaign.id}/linkedin-analytics`}>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <BarChart3 className="w-4 h-4 mr-2" />
-                            View Detailed Analytics
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Connected Platform Metrics */}
+                  {/* Connected Platform Metrics - Only show when platform is connected */}
                   {platform.connected && (
                     <div className="px-3 pb-3">
                       <div className="space-y-4">
                         {platform.platform === "Google Analytics" && (
                           <div className="pt-2 border-t">
                             <Link href={`/campaigns/${campaign.id}/ga4-metrics`}>
-                              <Button variant="outline" size="sm" className="w-full">
+                              <Button variant="outline" size="sm" className="w-full" data-testid="button-view-ga4-analytics">
                                 <BarChart3 className="w-4 h-4 mr-2" />
+                                View Detailed Analytics
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                        
+                        {platform.platform === "Google Sheets" && (
+                          <div className="pt-2 border-t">
+                            <Link href={`/campaigns/${campaign.id}/google-sheets-data`}>
+                              <Button variant="outline" size="sm" className="w-full" data-testid="button-view-sheets-analytics">
+                                <FileSpreadsheet className="w-4 h-4 mr-2" />
                                 View Detailed Analytics
                               </Button>
                             </Link>
@@ -2305,7 +2288,7 @@ export default function CampaignDetail() {
                         {platform.platform === "LinkedIn Ads" && (
                           <div className="pt-2 border-t">
                             <Link href={`/campaigns/${campaign.id}/linkedin-analytics`}>
-                              <Button variant="outline" size="sm" className="w-full">
+                              <Button variant="outline" size="sm" className="w-full" data-testid="button-view-linkedin-analytics">
                                 <BarChart3 className="w-4 h-4 mr-2" />
                                 View Detailed Analytics
                               </Button>

@@ -1849,25 +1849,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid request body" });
       }
       
+      // Count selected campaigns and metrics
+      const selectedCampaignsCount = campaigns.length;
+      const selectedMetricsCount = campaigns.reduce((sum, c) => sum + (c.selectedMetrics?.length || 0), 0);
+      
       // Create import session
       const session = await storage.createLinkedInImportSession({
         campaignId,
         adAccountId,
         adAccountName,
-        status: "completed",
-        importedAt: new Date()
+        selectedCampaignsCount,
+        selectedMetricsCount
       });
       
       // Create metrics for each campaign and selected metric
       for (const campaign of campaigns) {
         if (campaign.selectedMetrics && Array.isArray(campaign.selectedMetrics)) {
-          for (const metricType of campaign.selectedMetrics) {
+          for (const metricKey of campaign.selectedMetrics) {
+            const metricValue = (Math.random() * 10000 + 1000).toFixed(2);
             await storage.createLinkedInImportMetric({
               sessionId: session.id,
-              campaignId: campaign.id,
+              campaignUrn: campaign.id,
               campaignName: campaign.name,
-              metricType,
-              value: Math.floor(Math.random() * 10000) + 1000
+              campaignStatus: campaign.status || "active",
+              metricKey,
+              metricValue
             });
           }
         }
@@ -1877,24 +1883,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (let i = 0; i < numAds; i++) {
           const impressions = Math.floor(Math.random() * 50000) + 10000;
           const clicks = Math.floor(Math.random() * 2000) + 500;
-          const spend = parseFloat((Math.random() * 5000 + 1000).toFixed(2));
+          const spend = (Math.random() * 5000 + 1000).toFixed(2);
           const conversions = Math.floor(Math.random() * 100) + 10;
-          const revenue = parseFloat((conversions * (Math.random() * 200 + 50)).toFixed(2));
+          const revenue = (conversions * (Math.random() * 200 + 50)).toFixed(2);
+          const ctr = ((clicks / impressions) * 100).toFixed(2);
+          const cpc = (parseFloat(spend) / clicks).toFixed(2);
+          const conversionRate = ((conversions / clicks) * 100).toFixed(2);
           
           await storage.createLinkedInAdPerformance({
             sessionId: session.id,
             adId: `ad-${campaign.id}-${i + 1}`,
             adName: `Ad ${i + 1} - ${campaign.name}`,
-            campaignId: campaign.id,
+            campaignUrn: campaign.id,
             campaignName: campaign.name,
             impressions,
             clicks,
             spend,
             conversions,
             revenue,
-            ctr: parseFloat(((clicks / impressions) * 100).toFixed(2)),
-            cpc: parseFloat((spend / clicks).toFixed(2)),
-            conversionRate: parseFloat(((conversions / clicks) * 100).toFixed(2))
+            ctr,
+            cpc,
+            conversionRate
           });
         }
       }
@@ -1919,10 +1928,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metrics = await storage.getLinkedInImportMetrics(sessionId);
       const ads = await storage.getLinkedInAdPerformance(sessionId);
       
-      // Aggregate metrics
+      // Aggregate metrics (convert string values to numbers)
       const totalImpressions = ads.reduce((sum, ad) => sum + ad.impressions, 0);
       const totalClicks = ads.reduce((sum, ad) => sum + ad.clicks, 0);
-      const totalSpend = ads.reduce((sum, ad) => sum + ad.spend, 0);
+      const totalSpend = ads.reduce((sum, ad) => sum + parseFloat(ad.spend || '0'), 0);
       const totalConversions = ads.reduce((sum, ad) => sum + ad.conversions, 0);
       
       // Calculate derived metrics
@@ -1958,8 +1967,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const ads = await storage.getLinkedInAdPerformance(sessionId);
       
-      // Sort by revenue descending
-      const sortedAds = ads.sort((a, b) => b.revenue - a.revenue);
+      // Sort by revenue descending (convert string to number for comparison)
+      const sortedAds = ads.sort((a, b) => {
+        const revenueA = parseFloat(a.revenue || '0');
+        const revenueB = parseFloat(b.revenue || '0');
+        return revenueB - revenueA;
+      });
       
       res.json(sortedAds);
     } catch (error) {

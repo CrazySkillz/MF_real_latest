@@ -29,6 +29,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
   const [adAccounts, setAdAccounts] = useState<AdAccount[]>([]);
   const [selectedAdAccount, setSelectedAdAccount] = useState<string>('');
   const [manualAdAccountId, setManualAdAccountId] = useState<string>('');
+  const [manualAdAccountName, setManualAdAccountName] = useState<string>('');
   const [manualAccessToken, setManualAccessToken] = useState<string>('');
   const { toast } = useToast();
 
@@ -225,10 +226,10 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
   };
 
   const handleManualTokenConnection = async () => {
-    if (!manualAccessToken || !manualAdAccountId) {
+    if (!manualAccessToken || !manualAdAccountId || !manualAdAccountName) {
       toast({
         title: "Missing Information",
-        description: "Please provide both access token and ad account ID.",
+        description: "Please provide access token, ad account ID, and ad account name.",
         variant: "destructive"
       });
       return;
@@ -237,13 +238,15 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
     setIsConnecting(true);
 
     try {
-      const response = await fetch('/api/linkedin/connect-manual', {
+      const response = await fetch('/api/linkedin/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId,
           accessToken: manualAccessToken,
-          adAccountId: manualAdAccountId
+          adAccountId: manualAdAccountId,
+          adAccountName: manualAdAccountName,
+          method: 'manual'
         })
       });
 
@@ -492,9 +495,24 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="manual-ad-account-name">Ad Account Name</Label>
+              <Input
+                id="manual-ad-account-name"
+                type="text"
+                placeholder="e.g., Marketing Campaign Account"
+                value={manualAdAccountName}
+                onChange={(e) => setManualAdAccountName(e.target.value)}
+                data-testid="input-ad-account-name"
+              />
+              <p className="text-xs text-slate-500">
+                A friendly name to identify this ad account
+              </p>
+            </div>
+
             <Button 
               onClick={handleManualTokenConnection}
-              disabled={isConnecting || !manualAccessToken || !manualAdAccountId}
+              disabled={isConnecting || !manualAccessToken || !manualAdAccountId || !manualAdAccountName}
               className="w-full bg-blue-600 hover:bg-blue-700"
               data-testid="button-connect-manual"
             >

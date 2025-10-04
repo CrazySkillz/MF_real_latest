@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertKPISchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -1738,6 +1738,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         error: 'Failed to transfer Google Sheets connection'
+      });
+    }
+  });
+
+  // LinkedIn API routes
+  
+  // POST /api/linkedin/connect - Manual token connection
+  app.post("/api/linkedin/connect", async (req, res) => {
+    try {
+      const validatedData = insertLinkedInConnectionSchema.parse(req.body);
+      const connection = await storage.createLinkedInConnection(validatedData);
+      
+      res.status(201).json({
+        success: true,
+        connection: {
+          id: connection.id,
+          campaignId: connection.campaignId,
+          adAccountId: connection.adAccountId,
+          adAccountName: connection.adAccountName,
+          method: connection.method,
+          connectedAt: connection.connectedAt
+        },
+        message: 'LinkedIn connection created successfully'
+      });
+    } catch (error) {
+      console.error('LinkedIn connection error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid LinkedIn connection data",
+          details: error.errors
+        });
+      }
+      res.status(500).json({
+        success: false,
+        error: 'Failed to create LinkedIn connection'
+      });
+    }
+  });
+
+  // GET /api/linkedin/check-connection/:campaignId - Check if LinkedIn is connected
+  app.get("/api/linkedin/check-connection/:campaignId", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const connection = await storage.getLinkedInConnection(campaignId);
+      
+      if (!connection || !connection.adAccountId) {
+        return res.json({ connected: false });
+      }
+      
+      res.json({
+        connected: true,
+        connection: {
+          id: connection.id,
+          adAccountId: connection.adAccountId,
+          adAccountName: connection.adAccountName,
+          method: connection.method,
+          connectedAt: connection.connectedAt
+        }
+      });
+    } catch (error) {
+      console.error('LinkedIn connection check error:', error);
+      res.json({ connected: false });
+    }
+  });
+
+  // DELETE /api/linkedin/disconnect/:campaignId - Remove connection
+  app.delete("/api/linkedin/disconnect/:campaignId", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const deleted = await storage.deleteLinkedInConnection(campaignId);
+      
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          error: "LinkedIn connection not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: 'LinkedIn connection deleted successfully'
+      });
+    } catch (error) {
+      console.error('LinkedIn connection deletion error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to delete LinkedIn connection'
+      });
+    }
+  });
+
+  // PATCH /api/linkedin/update/:campaignId - Update connection
+  app.patch("/api/linkedin/update/:campaignId", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const validatedData = insertLinkedInConnectionSchema.partial().parse(req.body);
+      
+      const updatedConnection = await storage.updateLinkedInConnection(campaignId, validatedData);
+      
+      if (!updatedConnection) {
+        return res.status(404).json({
+          success: false,
+          error: "LinkedIn connection not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        connection: {
+          id: updatedConnection.id,
+          campaignId: updatedConnection.campaignId,
+          adAccountId: updatedConnection.adAccountId,
+          adAccountName: updatedConnection.adAccountName,
+          method: updatedConnection.method,
+          connectedAt: updatedConnection.connectedAt
+        },
+        message: 'LinkedIn connection updated successfully'
+      });
+    } catch (error) {
+      console.error('LinkedIn connection update error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid LinkedIn connection data",
+          details: error.errors
+        });
+      }
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update LinkedIn connection'
       });
     }
   });

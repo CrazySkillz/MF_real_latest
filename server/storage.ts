@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull } from "drizzle-orm";
@@ -40,6 +40,12 @@ export interface IStorage {
   createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection>;
   updateGoogleSheetsConnection(campaignId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined>;
   deleteGoogleSheetsConnection(campaignId: string): Promise<boolean>;
+  
+  // LinkedIn Connections
+  getLinkedInConnection(campaignId: string): Promise<LinkedInConnection | undefined>;
+  createLinkedInConnection(connection: InsertLinkedInConnection): Promise<LinkedInConnection>;
+  updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined>;
+  deleteLinkedInConnection(campaignId: string): Promise<boolean>;
   
   // KPIs
   getCampaignKPIs(campaignId: string): Promise<KPI[]>;
@@ -185,6 +191,7 @@ export class MemStorage implements IStorage {
   private performanceData: Map<string, PerformanceData>;
   private ga4Connections: Map<string, GA4Connection>;
   private googleSheetsConnections: Map<string, GoogleSheetsConnection>;
+  private linkedinConnections: Map<string, LinkedInConnection>;
   private kpis: Map<string, KPI>;
   private kpiProgress: Map<string, KPIProgress>;
   private kpiAlerts: Map<string, KPIAlert>;
@@ -208,6 +215,7 @@ export class MemStorage implements IStorage {
     this.performanceData = new Map();
     this.ga4Connections = new Map();
     this.googleSheetsConnections = new Map();
+    this.linkedinConnections = new Map();
     this.kpis = new Map();
     this.kpiProgress = new Map();
     this.kpiAlerts = new Map();
@@ -821,6 +829,49 @@ export class MemStorage implements IStorage {
 
   async deleteGoogleSheetsConnection(campaignId: string): Promise<boolean> {
     return this.googleSheetsConnections.delete(campaignId);
+  }
+
+  // LinkedIn Connection methods
+  async getLinkedInConnection(campaignId: string): Promise<LinkedInConnection | undefined> {
+    return this.linkedinConnections.get(campaignId);
+  }
+
+  async createLinkedInConnection(connection: InsertLinkedInConnection): Promise<LinkedInConnection> {
+    const id = randomUUID();
+    const linkedinConnection: LinkedInConnection = {
+      id,
+      campaignId: connection.campaignId,
+      adAccountId: connection.adAccountId,
+      adAccountName: connection.adAccountName || null,
+      accessToken: connection.accessToken || null,
+      refreshToken: connection.refreshToken || null,
+      clientId: connection.clientId || null,
+      clientSecret: connection.clientSecret || null,
+      method: connection.method,
+      expiresAt: connection.expiresAt || null,
+      connectedAt: new Date(),
+      createdAt: new Date(),
+    };
+    
+    this.linkedinConnections.set(connection.campaignId, linkedinConnection);
+    return linkedinConnection;
+  }
+
+  async updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined> {
+    const existing = this.linkedinConnections.get(campaignId);
+    if (!existing) return undefined;
+    
+    const updated: LinkedInConnection = {
+      ...existing,
+      ...connection,
+    };
+    
+    this.linkedinConnections.set(campaignId, updated);
+    return updated;
+  }
+
+  async deleteLinkedInConnection(campaignId: string): Promise<boolean> {
+    return this.linkedinConnections.delete(campaignId);
   }
 
   // KPI methods
@@ -1448,6 +1499,36 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(googleSheetsConnections)
       .where(eq(googleSheetsConnections.campaignId, campaignId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // LinkedIn Connection methods
+  async getLinkedInConnection(campaignId: string): Promise<LinkedInConnection | undefined> {
+    const [connection] = await db.select().from(linkedinConnections).where(eq(linkedinConnections.campaignId, campaignId));
+    return connection || undefined;
+  }
+
+  async createLinkedInConnection(connection: InsertLinkedInConnection): Promise<LinkedInConnection> {
+    const [linkedinConnection] = await db
+      .insert(linkedinConnections)
+      .values(connection)
+      .returning();
+    return linkedinConnection;
+  }
+
+  async updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined> {
+    const [updated] = await db
+      .update(linkedinConnections)
+      .set(connection)
+      .where(eq(linkedinConnections.campaignId, campaignId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteLinkedInConnection(campaignId: string): Promise<boolean> {
+    const result = await db
+      .delete(linkedinConnections)
+      .where(eq(linkedinConnections.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
   }
 

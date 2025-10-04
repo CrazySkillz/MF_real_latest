@@ -27,7 +27,10 @@ export default function CampaignTable() {
     return ((clicks / impressions) * 100).toFixed(2) + "%";
   };
 
-  const getPlatformIcon = (platform: string) => {
+  const getPlatformIcon = (platform: string | null) => {
+    if (!platform) {
+      return "fas fa-ad text-slate-500";
+    }
     switch (platform.toLowerCase()) {
       case "facebook":
         return "fab fa-facebook text-blue-600";

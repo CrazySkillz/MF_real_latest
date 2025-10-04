@@ -1838,6 +1838,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // LinkedIn Import Routes
+  
+  // Create LinkedIn import session with metrics and ad performance data
+  app.post("/api/linkedin/imports", async (req, res) => {
+    try {
+      const { campaignId, adAccountId, adAccountName, campaigns } = req.body;
+      
+      if (!campaignId || !adAccountId || !adAccountName || !campaigns || !Array.isArray(campaigns)) {
+        return res.status(400).json({ message: "Invalid request body" });
+      }
+      
+      // Create import session
+      const session = await storage.createLinkedInImportSession({
+        campaignId,
+        adAccountId,
+        adAccountName,
+        status: "completed",
+        importedAt: new Date()
+      });
+      
+      // Create metrics for each campaign and selected metric
+      for (const campaign of campaigns) {
+        if (campaign.selectedMetrics && Array.isArray(campaign.selectedMetrics)) {
+          for (const metricType of campaign.selectedMetrics) {
+            await storage.createLinkedInImportMetric({
+              sessionId: session.id,
+              campaignId: campaign.id,
+              campaignName: campaign.name,
+              metricType,
+              value: Math.floor(Math.random() * 10000) + 1000
+            });
+          }
+        }
+        
+        // Generate mock ad performance data (2-3 ads per campaign)
+        const numAds = Math.floor(Math.random() * 2) + 2;
+        for (let i = 0; i < numAds; i++) {
+          const impressions = Math.floor(Math.random() * 50000) + 10000;
+          const clicks = Math.floor(Math.random() * 2000) + 500;
+          const spend = parseFloat((Math.random() * 5000 + 1000).toFixed(2));
+          const conversions = Math.floor(Math.random() * 100) + 10;
+          const revenue = parseFloat((conversions * (Math.random() * 200 + 50)).toFixed(2));
+          
+          await storage.createLinkedInAdPerformance({
+            sessionId: session.id,
+            adId: `ad-${campaign.id}-${i + 1}`,
+            adName: `Ad ${i + 1} - ${campaign.name}`,
+            campaignId: campaign.id,
+            campaignName: campaign.name,
+            impressions,
+            clicks,
+            spend,
+            conversions,
+            revenue,
+            ctr: parseFloat(((clicks / impressions) * 100).toFixed(2)),
+            cpc: parseFloat((spend / clicks).toFixed(2)),
+            conversionRate: parseFloat(((conversions / clicks) * 100).toFixed(2))
+          });
+        }
+      }
+      
+      res.status(201).json({ success: true, sessionId: session.id });
+    } catch (error) {
+      console.error('LinkedIn import creation error:', error);
+      res.status(500).json({ message: "Failed to create LinkedIn import" });
+    }
+  });
+  
+  // Get import session overview with aggregated metrics
+  app.get("/api/linkedin/imports/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      const session = await storage.getLinkedInImportSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Import session not found" });
+      }
+      
+      const metrics = await storage.getLinkedInImportMetrics(sessionId);
+      const ads = await storage.getLinkedInAdPerformance(sessionId);
+      
+      // Aggregate metrics
+      const totalImpressions = ads.reduce((sum, ad) => sum + ad.impressions, 0);
+      const totalClicks = ads.reduce((sum, ad) => sum + ad.clicks, 0);
+      const totalSpend = ads.reduce((sum, ad) => sum + ad.spend, 0);
+      const totalConversions = ads.reduce((sum, ad) => sum + ad.conversions, 0);
+      
+      // Calculate derived metrics
+      const avgCTR = totalImpressions > 0 
+        ? parseFloat(((totalClicks / totalImpressions) * 100).toFixed(2))
+        : 0;
+      const avgCPC = totalClicks > 0 
+        ? parseFloat((totalSpend / totalClicks).toFixed(2))
+        : 0;
+      
+      res.json({
+        session,
+        metrics,
+        aggregated: {
+          totalImpressions,
+          totalClicks,
+          totalSpend: parseFloat(totalSpend.toFixed(2)),
+          avgCTR,
+          avgCPC,
+          totalConversions
+        }
+      });
+    } catch (error) {
+      console.error('LinkedIn import session fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch import session" });
+    }
+  });
+  
+  // Get ad performance data sorted by revenue
+  app.get("/api/linkedin/imports/:sessionId/ads", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      const ads = await storage.getLinkedInAdPerformance(sessionId);
+      
+      // Sort by revenue descending
+      const sortedAds = ads.sort((a, b) => b.revenue - a.revenue);
+      
+      res.json(sortedAds);
+    } catch (error) {
+      console.error('LinkedIn ad performance fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch ad performance" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

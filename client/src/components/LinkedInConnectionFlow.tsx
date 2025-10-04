@@ -422,24 +422,44 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
     setIsConnecting(true);
 
     try {
-      // In test mode, simulate import
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const totalMetrics = selectedCampaigns.reduce((sum, c) => sum + (c.selectedMetrics?.length || 0), 0);
-      
-      setStep('connected');
-      toast({
-        title: "Campaigns Imported!",
-        description: `Successfully imported ${selectedCampaigns.length} campaign${selectedCampaigns.length > 1 ? 's' : ''} with ${totalMetrics} total metrics.`
+      // Call API to create import session
+      const response = await fetch('/api/linkedin/imports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          adAccountId: selectedAdAccount,
+          adAccountName: adAccounts.find(a => a.id === selectedAdAccount)?.name || '',
+          campaigns: selectedCampaigns.map(c => ({
+            id: c.id,
+            name: c.name,
+            status: c.status,
+            selectedMetrics: c.selectedMetrics || []
+          }))
+        })
       });
-      onConnectionSuccess();
+
+      const data = await response.json();
+      
+      if (data.success && data.sessionId) {
+        const totalMetrics = selectedCampaigns.reduce((sum, c) => sum + (c.selectedMetrics?.length || 0), 0);
+        
+        toast({
+          title: "Campaigns Imported!",
+          description: `Successfully imported ${selectedCampaigns.length} campaign${selectedCampaigns.length > 1 ? 's' : ''} with ${totalMetrics} total metrics.`
+        });
+        
+        // Redirect to LinkedIn analytics page
+        window.location.href = `/campaigns/${campaignId}/linkedin-analytics?session=${data.sessionId}`;
+      } else {
+        throw new Error(data.error || 'Failed to create import session');
+      }
     } catch (error: any) {
       toast({
         title: "Import Failed",
         description: error.message || "Failed to import campaign metrics",
         variant: "destructive"
       });
-    } finally {
       setIsConnecting(false);
     }
   };

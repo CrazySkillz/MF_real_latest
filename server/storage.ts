@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull } from "drizzle-orm";
@@ -46,6 +46,19 @@ export interface IStorage {
   createLinkedInConnection(connection: InsertLinkedInConnection): Promise<LinkedInConnection>;
   updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined>;
   deleteLinkedInConnection(campaignId: string): Promise<boolean>;
+  
+  // LinkedIn Import Sessions
+  getLinkedInImportSession(sessionId: string): Promise<LinkedInImportSession | undefined>;
+  getCampaignLinkedInImportSessions(campaignId: string): Promise<LinkedInImportSession[]>;
+  createLinkedInImportSession(session: InsertLinkedInImportSession): Promise<LinkedInImportSession>;
+  
+  // LinkedIn Import Metrics
+  getLinkedInImportMetrics(sessionId: string): Promise<LinkedInImportMetric[]>;
+  createLinkedInImportMetric(metric: InsertLinkedInImportMetric): Promise<LinkedInImportMetric>;
+  
+  // LinkedIn Ad Performance
+  getLinkedInAdPerformance(sessionId: string): Promise<LinkedInAdPerformance[]>;
+  createLinkedInAdPerformance(ad: InsertLinkedInAdPerformance): Promise<LinkedInAdPerformance>;
   
   // KPIs
   getCampaignKPIs(campaignId: string): Promise<KPI[]>;
@@ -192,6 +205,9 @@ export class MemStorage implements IStorage {
   private ga4Connections: Map<string, GA4Connection>;
   private googleSheetsConnections: Map<string, GoogleSheetsConnection>;
   private linkedinConnections: Map<string, LinkedInConnection>;
+  private linkedinImportSessions: Map<string, LinkedInImportSession>;
+  private linkedinImportMetrics: Map<string, LinkedInImportMetric>;
+  private linkedinAdPerformance: Map<string, LinkedInAdPerformance>;
   private kpis: Map<string, KPI>;
   private kpiProgress: Map<string, KPIProgress>;
   private kpiAlerts: Map<string, KPIAlert>;
@@ -216,6 +232,9 @@ export class MemStorage implements IStorage {
     this.ga4Connections = new Map();
     this.googleSheetsConnections = new Map();
     this.linkedinConnections = new Map();
+    this.linkedinImportSessions = new Map();
+    this.linkedinImportMetrics = new Map();
+    this.linkedinAdPerformance = new Map();
     this.kpis = new Map();
     this.kpiProgress = new Map();
     this.kpiAlerts = new Map();
@@ -874,6 +893,88 @@ export class MemStorage implements IStorage {
     return this.linkedinConnections.delete(campaignId);
   }
 
+  // LinkedIn Import Session methods
+  async getLinkedInImportSession(sessionId: string): Promise<LinkedInImportSession | undefined> {
+    return this.linkedinImportSessions.get(sessionId);
+  }
+
+  async getCampaignLinkedInImportSessions(campaignId: string): Promise<LinkedInImportSession[]> {
+    return Array.from(this.linkedinImportSessions.values())
+      .filter(session => session.campaignId === campaignId)
+      .sort((a, b) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime());
+  }
+
+  async createLinkedInImportSession(session: InsertLinkedInImportSession): Promise<LinkedInImportSession> {
+    const id = randomUUID();
+    const importSession: LinkedInImportSession = {
+      id,
+      campaignId: session.campaignId,
+      adAccountId: session.adAccountId,
+      adAccountName: session.adAccountName || null,
+      selectedCampaignsCount: session.selectedCampaignsCount || 0,
+      selectedMetricsCount: session.selectedMetricsCount || 0,
+      importedAt: new Date(),
+    };
+    
+    this.linkedinImportSessions.set(id, importSession);
+    return importSession;
+  }
+
+  // LinkedIn Import Metrics methods
+  async getLinkedInImportMetrics(sessionId: string): Promise<LinkedInImportMetric[]> {
+    return Array.from(this.linkedinImportMetrics.values())
+      .filter(metric => metric.sessionId === sessionId)
+      .sort((a, b) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime());
+  }
+
+  async createLinkedInImportMetric(metric: InsertLinkedInImportMetric): Promise<LinkedInImportMetric> {
+    const id = randomUUID();
+    const importMetric: LinkedInImportMetric = {
+      id,
+      sessionId: metric.sessionId,
+      campaignUrn: metric.campaignUrn,
+      campaignName: metric.campaignName,
+      campaignStatus: metric.campaignStatus || "active",
+      metricKey: metric.metricKey,
+      metricValue: metric.metricValue,
+      importedAt: new Date(),
+    };
+    
+    this.linkedinImportMetrics.set(id, importMetric);
+    return importMetric;
+  }
+
+  // LinkedIn Ad Performance methods
+  async getLinkedInAdPerformance(sessionId: string): Promise<LinkedInAdPerformance[]> {
+    return Array.from(this.linkedinAdPerformance.values())
+      .filter(ad => ad.sessionId === sessionId)
+      .sort((a, b) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime());
+  }
+
+  async createLinkedInAdPerformance(ad: InsertLinkedInAdPerformance): Promise<LinkedInAdPerformance> {
+    const id = randomUUID();
+    const adPerformance: LinkedInAdPerformance = {
+      id,
+      sessionId: ad.sessionId,
+      adId: ad.adId,
+      adName: ad.adName,
+      campaignUrn: ad.campaignUrn,
+      campaignName: ad.campaignName,
+      impressions: ad.impressions || 0,
+      clicks: ad.clicks || 0,
+      spend: ad.spend || "0",
+      conversions: ad.conversions || 0,
+      ctr: ad.ctr || "0",
+      cpc: ad.cpc || "0",
+      conversionRate: ad.conversionRate || "0",
+      revenue: ad.revenue || null,
+      importedAt: new Date(),
+    };
+    
+    this.linkedinAdPerformance.set(id, adPerformance);
+    return adPerformance;
+  }
+
   // KPI methods
   async getCampaignKPIs(campaignId: string): Promise<KPI[]> {
     return Array.from(this.kpis.values()).filter(kpi => kpi.campaignId === campaignId);
@@ -1530,6 +1631,59 @@ export class DatabaseStorage implements IStorage {
       .delete(linkedinConnections)
       .where(eq(linkedinConnections.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
+  }
+
+  // LinkedIn Import Session methods
+  async getLinkedInImportSession(sessionId: string): Promise<LinkedInImportSession | undefined> {
+    const [session] = await db.select().from(linkedinImportSessions).where(eq(linkedinImportSessions.id, sessionId));
+    return session || undefined;
+  }
+
+  async getCampaignLinkedInImportSessions(campaignId: string): Promise<LinkedInImportSession[]> {
+    return await db.select()
+      .from(linkedinImportSessions)
+      .where(eq(linkedinImportSessions.campaignId, campaignId))
+      .orderBy(linkedinImportSessions.importedAt);
+  }
+
+  async createLinkedInImportSession(session: InsertLinkedInImportSession): Promise<LinkedInImportSession> {
+    const [importSession] = await db
+      .insert(linkedinImportSessions)
+      .values(session)
+      .returning();
+    return importSession;
+  }
+
+  // LinkedIn Import Metrics methods
+  async getLinkedInImportMetrics(sessionId: string): Promise<LinkedInImportMetric[]> {
+    return await db.select()
+      .from(linkedinImportMetrics)
+      .where(eq(linkedinImportMetrics.sessionId, sessionId))
+      .orderBy(linkedinImportMetrics.importedAt);
+  }
+
+  async createLinkedInImportMetric(metric: InsertLinkedInImportMetric): Promise<LinkedInImportMetric> {
+    const [importMetric] = await db
+      .insert(linkedinImportMetrics)
+      .values(metric)
+      .returning();
+    return importMetric;
+  }
+
+  // LinkedIn Ad Performance methods
+  async getLinkedInAdPerformance(sessionId: string): Promise<LinkedInAdPerformance[]> {
+    return await db.select()
+      .from(linkedinAdPerformance)
+      .where(eq(linkedinAdPerformance.sessionId, sessionId))
+      .orderBy(linkedinAdPerformance.importedAt);
+  }
+
+  async createLinkedInAdPerformance(ad: InsertLinkedInAdPerformance): Promise<LinkedInAdPerformance> {
+    const [adPerformance] = await db
+      .insert(linkedinAdPerformance)
+      .values(ad)
+      .returning();
+    return adPerformance;
   }
 
   // KPI methods

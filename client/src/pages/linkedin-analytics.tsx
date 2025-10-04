@@ -333,52 +333,51 @@ export default function LinkedInAnalytics() {
                       </div>
                     ) : adsData && adsData.length > 0 ? (
                       <div className="space-y-3">
-                        {adsData.map((ad: any, index: number) => (
-                          <div 
-                            key={ad.id}
-                            className="border rounded-lg p-4 hover:border-blue-500 transition-colors"
-                            data-testid={`ad-card-${index}`}
-                          >
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <h4 className="font-medium text-slate-900 dark:text-white">{ad.adName}</h4>
-                                <p className="text-sm text-slate-500">{ad.campaignName}</p>
-                              </div>
-                              {ad.revenue && ad.revenue > 0 && (
-                                <div className="text-right">
-                                  <p className="text-sm text-slate-500">Revenue</p>
-                                  <p className="text-lg font-bold text-green-600">{formatCurrency(parseFloat(ad.revenue))}</p>
+                        {adsData.map((ad: any, index: number) => {
+                          const selectedMetrics = sessionData?.session?.selectedMetricKeys || [];
+                          const metricConfig = [
+                            { key: 'impressions', label: 'Impressions', value: ad.impressions, formatter: formatNumber },
+                            { key: 'clicks', label: 'Clicks', value: ad.clicks, formatter: formatNumber },
+                            { key: 'spend', label: 'Spend', value: parseFloat(ad.spend), formatter: formatCurrency },
+                            { key: 'ctr', label: 'CTR', value: parseFloat(ad.ctr), formatter: formatPercentage },
+                            { key: 'cpc', label: 'CPC', value: parseFloat(ad.cpc), formatter: formatCurrency },
+                            { key: 'conversions', label: 'Conversions', value: ad.conversions, formatter: formatNumber },
+                            { key: 'revenue', label: 'Revenue', value: parseFloat(ad.revenue || '0'), formatter: formatCurrency },
+                          ].filter(metric => selectedMetrics.length === 0 || selectedMetrics.includes(metric.key));
+
+                          const gridCols = metricConfig.length <= 3 ? 'md:grid-cols-3' : 
+                                         metricConfig.length <= 4 ? 'md:grid-cols-4' : 
+                                         metricConfig.length <= 5 ? 'md:grid-cols-5' : 'md:grid-cols-6';
+
+                          return (
+                            <div 
+                              key={ad.id}
+                              className="border rounded-lg p-4 hover:border-blue-500 transition-colors"
+                              data-testid={`ad-card-${index}`}
+                            >
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-slate-900 dark:text-white">{ad.adName}</h4>
+                                  <p className="text-sm text-slate-500">{ad.campaignName}</p>
                                 </div>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-sm">
-                              <div>
-                                <p className="text-slate-500 mb-1">Impressions</p>
-                                <p className="font-medium">{formatNumber(ad.impressions)}</p>
+                                {ad.revenue && parseFloat(ad.revenue) > 0 && (
+                                  <div className="text-right">
+                                    <p className="text-sm text-slate-500">Revenue</p>
+                                    <p className="text-lg font-bold text-green-600">{formatCurrency(parseFloat(ad.revenue))}</p>
+                                  </div>
+                                )}
                               </div>
-                              <div>
-                                <p className="text-slate-500 mb-1">Clicks</p>
-                                <p className="font-medium">{formatNumber(ad.clicks)}</p>
-                              </div>
-                              <div>
-                                <p className="text-slate-500 mb-1">Spend</p>
-                                <p className="font-medium">{formatCurrency(parseFloat(ad.spend))}</p>
-                              </div>
-                              <div>
-                                <p className="text-slate-500 mb-1">CTR</p>
-                                <p className="font-medium">{formatPercentage(parseFloat(ad.ctr))}</p>
-                              </div>
-                              <div>
-                                <p className="text-slate-500 mb-1">CPC</p>
-                                <p className="font-medium">{formatCurrency(parseFloat(ad.cpc))}</p>
-                              </div>
-                              <div>
-                                <p className="text-slate-500 mb-1">Conversions</p>
-                                <p className="font-medium">{formatNumber(ad.conversions)}</p>
+                              <div className={`grid grid-cols-2 ${gridCols} gap-3 text-sm`}>
+                                {metricConfig.map(metric => (
+                                  <div key={metric.key}>
+                                    <p className="text-slate-500 mb-1">{metric.label}</p>
+                                    <p className="font-medium">{metric.formatter(metric.value)}</p>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-slate-500 text-center py-4">No ad performance data available</p>

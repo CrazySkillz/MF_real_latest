@@ -2857,13 +2857,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedCampaignsCount = campaigns.length;
       const selectedMetricsCount = campaigns.reduce((sum, c) => sum + (c.selectedMetrics?.length || 0), 0);
       
+      // Collect unique selected metric keys across all campaigns
+      const selectedMetricKeysSet = new Set<string>();
+      campaigns.forEach(c => {
+        if (c.selectedMetrics && Array.isArray(c.selectedMetrics)) {
+          c.selectedMetrics.forEach((key: string) => selectedMetricKeysSet.add(key));
+        }
+      });
+      const selectedMetricKeys = Array.from(selectedMetricKeysSet);
+      
       // Create import session
       const session = await storage.createLinkedInImportSession({
         campaignId,
         adAccountId,
         adAccountName,
         selectedCampaignsCount,
-        selectedMetricsCount
+        selectedMetricsCount,
+        selectedMetricKeys
       });
       
       // Create metrics for each campaign and selected metric

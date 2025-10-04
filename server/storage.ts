@@ -913,6 +913,7 @@ export class MemStorage implements IStorage {
       adAccountName: session.adAccountName || null,
       selectedCampaignsCount: session.selectedCampaignsCount || 0,
       selectedMetricsCount: session.selectedMetricsCount || 0,
+      selectedMetricKeys: session.selectedMetricKeys || null,
       importedAt: new Date(),
     };
     

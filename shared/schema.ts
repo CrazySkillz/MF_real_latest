@@ -113,6 +113,7 @@ export const linkedinImportSessions = pgTable("linkedin_import_sessions", {
   adAccountName: text("ad_account_name"),
   selectedCampaignsCount: integer("selected_campaigns_count").notNull().default(0),
   selectedMetricsCount: integer("selected_metrics_count").notNull().default(0),
+  selectedMetricKeys: text("selected_metric_keys").array(),
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -658,6 +659,7 @@ export const insertLinkedInImportSessionSchema = createInsertSchema(linkedinImpo
   adAccountName: true,
   selectedCampaignsCount: true,
   selectedMetricsCount: true,
+  selectedMetricKeys: true,
 });
 
 export const insertLinkedInImportMetricSchema = createInsertSchema(linkedinImportMetrics).pick({

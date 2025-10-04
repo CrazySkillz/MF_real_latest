@@ -380,11 +380,12 @@ export default function LinkedInAnalytics() {
                             </CardDescription>
                           </CardHeader>
                           <CardContent>
-                            <ResponsiveContainer width="100%" height={Math.max(400, sortedAds.length * 120)}>
-                              <BarChart 
-                                data={sortedAds.map(ad => {
+                            <ResponsiveContainer width="100%" height={450}>
+                              <LineChart 
+                                data={sortedAds.map((ad, index) => {
                                   const data: any = { 
                                     name: ad.adName,
+                                    index: index + 1,
                                     revenue: parseFloat(ad.revenue || '0')
                                   };
                                   displayMetrics.forEach(metric => {
@@ -396,24 +397,39 @@ export default function LinkedInAnalytics() {
                                   });
                                   return data;
                                 })}
-                                layout="vertical"
-                                margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                               >
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" tick={{ fontSize: 12 }} />
-                                <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} width={90} />
+                                <XAxis 
+                                  dataKey="name" 
+                                  tick={{ fontSize: 12 }} 
+                                  angle={-45}
+                                  textAnchor="end"
+                                  height={80}
+                                />
+                                <YAxis tick={{ fontSize: 12 }} />
                                 <Tooltip />
                                 <Legend />
                                 {displayMetrics.map(metric => (
-                                  <Bar 
+                                  <Line 
                                     key={metric.key}
+                                    type="monotone"
                                     dataKey={metric.key} 
-                                    fill={metric.color.replace('bg-', '#').replace('blue-500', '3b82f6').replace('green-500', '10b981').replace('red-500', 'ef4444').replace('purple-500', 'a855f7').replace('orange-500', 'f97316').replace('indigo-500', '6366f1')} 
+                                    stroke={metric.color.replace('bg-', '#').replace('blue-500', '3b82f6').replace('green-500', '10b981').replace('red-500', 'ef4444').replace('purple-500', 'a855f7').replace('orange-500', 'f97316').replace('indigo-500', '6366f1')} 
+                                    strokeWidth={2}
+                                    dot={{ r: 5 }}
                                     name={metric.label}
                                   />
                                 ))}
-                                <Bar dataKey="revenue" fill="#22c55e" name="Revenue ($)" />
-                              </BarChart>
+                                <Line 
+                                  type="monotone"
+                                  dataKey="revenue" 
+                                  stroke="#22c55e" 
+                                  strokeWidth={2}
+                                  dot={{ r: 5 }}
+                                  name="Revenue ($)" 
+                                />
+                              </LineChart>
                             </ResponsiveContainer>
                             
                             {/* Ad Details Cards */}

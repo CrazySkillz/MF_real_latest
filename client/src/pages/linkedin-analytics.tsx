@@ -320,189 +320,122 @@ export default function LinkedInAnalytics() {
               <TabsContent value="ads" className="space-y-6" data-testid="content-ads">
                 {adsLoading ? (
                   <div className="animate-pulse space-y-4">
-                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                    <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                    <div className="h-48 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-96 bg-slate-200 dark:bg-slate-800 rounded"></div>
                   </div>
                 ) : adsData && adsData.length > 0 ? (
                   (() => {
                     const selectedMetrics = sessionData?.session?.selectedMetricKeys || [];
                     const sortedAds = [...adsData].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
                     const topAd = sortedAds[0];
-                    const totalRevenue = sortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0);
-                    const topAdRevenuePct = totalRevenue > 0 ? (parseFloat(topAd.revenue || '0') / totalRevenue * 100).toFixed(1) : 0;
+                    
+                    // Calculate max values for each metric for comparison bars
+                    const maxValues = {
+                      impressions: Math.max(...sortedAds.map(ad => ad.impressions)),
+                      clicks: Math.max(...sortedAds.map(ad => ad.clicks)),
+                      spend: Math.max(...sortedAds.map(ad => parseFloat(ad.spend))),
+                      conversions: Math.max(...sortedAds.map(ad => ad.conversions)),
+                      revenue: Math.max(...sortedAds.map(ad => parseFloat(ad.revenue || '0'))),
+                      ctr: Math.max(...sortedAds.map(ad => parseFloat(ad.ctr))),
+                      cpc: Math.max(...sortedAds.map(ad => parseFloat(ad.cpc))),
+                    };
 
-                    // Prepare chart data with only selected metrics
-                    const chartData = sortedAds.map(ad => {
-                      const data: any = { name: ad.adName.substring(0, 20) };
-                      if (selectedMetrics.includes('impressions') || selectedMetrics.length === 0) {
-                        data.impressions = ad.impressions;
-                      }
-                      if (selectedMetrics.includes('clicks') || selectedMetrics.length === 0) {
-                        data.clicks = ad.clicks;
-                      }
-                      if (selectedMetrics.includes('spend') || selectedMetrics.length === 0) {
-                        data.spend = parseFloat(ad.spend);
-                      }
-                      if (selectedMetrics.includes('conversions') || selectedMetrics.length === 0) {
-                        data.conversions = ad.conversions;
-                      }
-                      data.revenue = parseFloat(ad.revenue || '0');
-                      if (selectedMetrics.includes('ctr') || selectedMetrics.length === 0) {
-                        data.ctr = parseFloat(ad.ctr);
-                      }
-                      if (selectedMetrics.includes('cpc') || selectedMetrics.length === 0) {
-                        data.cpc = parseFloat(ad.cpc);
-                      }
-                      return data;
-                    });
+                    // Define which metrics to display based on selection
+                    const displayMetrics = [
+                      { key: 'impressions', label: 'Impressions', format: formatNumber, color: 'bg-blue-500' },
+                      { key: 'clicks', label: 'Clicks', format: formatNumber, color: 'bg-green-500' },
+                      { key: 'spend', label: 'Spend', format: formatCurrency, color: 'bg-red-500' },
+                      { key: 'ctr', label: 'CTR', format: formatPercentage, color: 'bg-purple-500' },
+                      { key: 'cpc', label: 'CPC', format: formatCurrency, color: 'bg-orange-500' },
+                      { key: 'conversions', label: 'Conversions', format: formatNumber, color: 'bg-indigo-500' },
+                    ].filter(metric => selectedMetrics.includes(metric.key) || selectedMetrics.length === 0);
 
                     return (
                       <div className="space-y-6">
-                        {/* Top Performer Highlight */}
-                        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800" data-testid="top-performer-card">
-                          <CardContent className="pt-6">
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                                  <Trophy className="w-6 h-6 text-green-600 dark:text-green-400" />
-                                </div>
+                        {/* Top Performer Banner */}
+                        <Card className="bg-gradient-to-r from-green-500 to-emerald-600 text-white" data-testid="top-performer-banner">
+                          <CardContent className="py-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Trophy className="w-8 h-8" />
                                 <div>
-                                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Top Revenue Driver</h3>
-                                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{topAd.adName}</p>
-                                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{topAd.campaignName}</p>
+                                  <p className="text-sm opacity-90">Top Revenue Driver</p>
+                                  <p className="text-xl font-bold">{topAd.adName}</p>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm text-slate-600 dark:text-slate-400">Revenue Generated</p>
-                                <p className="text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(parseFloat(topAd.revenue || '0'))}</p>
-                                <p className="text-xs text-slate-500 mt-1">{topAdRevenuePct}% of total revenue</p>
+                                <p className="text-3xl font-bold">{formatCurrency(parseFloat(topAd.revenue || '0'))}</p>
+                                <p className="text-sm opacity-90">in revenue</p>
                               </div>
                             </div>
                           </CardContent>
                         </Card>
 
-                        {/* Performance Charts */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          {/* Volume Metrics Chart */}
-                          {(selectedMetrics.includes('impressions') || selectedMetrics.includes('clicks') || selectedMetrics.length === 0) && (
-                            <Card data-testid="volume-metrics-chart">
-                              <CardHeader>
-                                <CardTitle className="text-base">Volume Metrics Comparison</CardTitle>
-                                <CardDescription>Compare reach and engagement across ads</CardDescription>
-                              </CardHeader>
-                              <CardContent>
-                                <ResponsiveContainer width="100%" height={300}>
-                                  <BarChart data={chartData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                                    <YAxis tick={{ fontSize: 12 }} />
-                                    <Tooltip />
-                                    <Legend />
-                                    {(selectedMetrics.includes('impressions') || selectedMetrics.length === 0) && (
-                                      <Bar dataKey="impressions" fill="#3b82f6" name="Impressions" />
-                                    )}
-                                    {(selectedMetrics.includes('clicks') || selectedMetrics.length === 0) && (
-                                      <Bar dataKey="clicks" fill="#10b981" name="Clicks" />
-                                    )}
-                                  </BarChart>
-                                </ResponsiveContainer>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Revenue & Spend Chart */}
-                          <Card data-testid="revenue-spend-chart">
-                            <CardHeader>
-                              <CardTitle className="text-base">Revenue vs Spend Analysis</CardTitle>
-                              <CardDescription>Identify profitable ad campaigns</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={chartData}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                                  <YAxis tick={{ fontSize: 12 }} />
-                                  <Tooltip />
-                                  <Legend />
-                                  <Bar dataKey="revenue" fill="#10b981" name="Revenue ($)" />
-                                  {(selectedMetrics.includes('spend') || selectedMetrics.length === 0) && (
-                                    <Bar dataKey="spend" fill="#ef4444" name="Spend ($)" />
-                                  )}
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </CardContent>
-                          </Card>
-                        </div>
-
-                        {/* Efficiency Metrics */}
-                        {(selectedMetrics.includes('ctr') || selectedMetrics.includes('cpc') || selectedMetrics.length === 0) && (
-                          <Card data-testid="efficiency-metrics-chart">
-                            <CardHeader>
-                              <CardTitle className="text-base">Efficiency Metrics</CardTitle>
-                              <CardDescription>CTR and CPC performance trends</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <ResponsiveContainer width="100%" height={250}>
-                                <LineChart data={chartData}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                                  <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-                                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
-                                  <Tooltip />
-                                  <Legend />
-                                  {(selectedMetrics.includes('ctr') || selectedMetrics.length === 0) && (
-                                    <Line yAxisId="left" type="monotone" dataKey="ctr" stroke="#3b82f6" name="CTR (%)" />
-                                  )}
-                                  {(selectedMetrics.includes('cpc') || selectedMetrics.length === 0) && (
-                                    <Line yAxisId="right" type="monotone" dataKey="cpc" stroke="#8b5cf6" name="CPC ($)" />
-                                  )}
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </CardContent>
-                          </Card>
-                        )}
-
-                        {/* Revenue Leaderboard */}
-                        <Card data-testid="revenue-leaderboard">
+                        {/* Comparison Table */}
+                        <Card data-testid="comparison-table">
                           <CardHeader>
-                            <CardTitle className="text-base">Revenue Leaderboard</CardTitle>
-                            <CardDescription>Ads ranked by revenue performance</CardDescription>
+                            <CardTitle>Ad Performance Comparison</CardTitle>
+                            <CardDescription>
+                              Compare {displayMetrics.map(m => m.label).join(', ')} and Revenue across all ads
+                            </CardDescription>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-2">
+                            <div className="space-y-6">
                               {sortedAds.map((ad, index) => {
                                 const revenue = parseFloat(ad.revenue || '0');
-                                const revenuePct = totalRevenue > 0 ? (revenue / totalRevenue * 100).toFixed(1) : 0;
                                 const isTop = index === 0;
-                                const isBottom = index === sortedAds.length - 1;
+                                const isBottom = index === sortedAds.length - 1 && sortedAds.length > 2;
 
                                 return (
                                   <div 
                                     key={ad.id}
-                                    className={`flex items-center justify-between p-3 rounded-lg border ${
-                                      isTop ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' :
-                                      isBottom && sortedAds.length > 2 ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' :
-                                      'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'
-                                    }`}
-                                    data-testid={`leaderboard-ad-${index}`}
+                                    className={`border-l-4 ${isTop ? 'border-green-500' : isBottom ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'} pl-4 py-3`}
+                                    data-testid={`ad-comparison-${index}`}
                                   >
-                                    <div className="flex items-center gap-3 flex-1">
-                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                                        isTop ? 'bg-green-500 text-white' :
-                                        isBottom && sortedAds.length > 2 ? 'bg-red-500 text-white' :
-                                        'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-300'
-                                      }`}>
-                                        {index + 1}
-                                      </div>
+                                    {/* Ad Header */}
+                                    <div className="flex items-start justify-between mb-4">
                                       <div className="flex-1">
-                                        <p className="font-medium text-slate-900 dark:text-white">{ad.adName}</p>
-                                        <p className="text-xs text-slate-500">{ad.campaignName}</p>
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <h4 className="text-lg font-semibold text-slate-900 dark:text-white">{ad.adName}</h4>
+                                          {isTop && <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded">TOP PERFORMER</span>}
+                                          {isBottom && <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-2 py-1 rounded">NEEDS OPTIMIZATION</span>}
+                                        </div>
+                                        <p className="text-sm text-slate-500">{ad.campaignName}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-sm text-slate-500">Revenue</p>
+                                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(revenue)}</p>
                                       </div>
                                     </div>
-                                    <div className="text-right">
-                                      <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(revenue)}</p>
-                                      <p className="text-xs text-slate-500">{revenuePct}% of total</p>
+
+                                    {/* Metrics Comparison Bars */}
+                                    <div className="space-y-3">
+                                      {displayMetrics.map(metric => {
+                                        let value: number;
+                                        if (metric.key === 'spend' || metric.key === 'ctr' || metric.key === 'cpc') {
+                                          value = parseFloat((ad as any)[metric.key]);
+                                        } else {
+                                          value = (ad as any)[metric.key];
+                                        }
+                                        const percentage = maxValues[metric.key as keyof typeof maxValues] > 0 
+                                          ? (value / maxValues[metric.key as keyof typeof maxValues]) * 100 
+                                          : 0;
+
+                                        return (
+                                          <div key={metric.key} data-testid={`metric-${metric.key}-${index}`}>
+                                            <div className="flex items-center justify-between mb-1">
+                                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{metric.label}</span>
+                                              <span className="text-sm font-semibold text-slate-900 dark:text-white">{metric.format(value)}</span>
+                                            </div>
+                                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                              <div 
+                                                className={`${metric.color} h-2 rounded-full transition-all duration-300`}
+                                                style={{ width: `${percentage}%` }}
+                                              ></div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   </div>
                                 );
@@ -511,41 +444,31 @@ export default function LinkedInAnalytics() {
                           </CardContent>
                         </Card>
 
-                        {/* Insights Panel */}
-                        <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" data-testid="insights-panel">
-                          <CardHeader>
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <Award className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                              Key Insights
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-3">
-                              <div className="flex items-start gap-3">
-                                <div className="w-2 h-2 bg-green-500 rounded-full mt-1.5"></div>
-                                <p className="text-sm text-slate-700 dark:text-slate-300">
-                                  <span className="font-semibold">{topAd.adName}</span> is your top performer, generating {topAdRevenuePct}% of total revenue ({formatCurrency(parseFloat(topAd.revenue || '0'))}).
-                                </p>
-                              </div>
-                              {sortedAds.length > 1 && (
-                                <div className="flex items-start gap-3">
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></div>
-                                  <p className="text-sm text-slate-700 dark:text-slate-300">
-                                    Average revenue per ad: <span className="font-semibold">{formatCurrency(totalRevenue / sortedAds.length)}</span>
-                                  </p>
-                                </div>
-                              )}
-                              {sortedAds.length > 2 && (
-                                <div className="flex items-start gap-3">
-                                  <div className="w-2 h-2 bg-amber-500 rounded-full mt-1.5"></div>
-                                  <p className="text-sm text-slate-700 dark:text-slate-300">
-                                    Bottom performer <span className="font-semibold">{sortedAds[sortedAds.length - 1].adName}</span> could benefit from optimization or budget reallocation.
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
+                        {/* Quick Stats Summary */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <Card data-testid="total-revenue-stat">
+                            <CardContent className="pt-6">
+                              <p className="text-sm text-slate-500 mb-1">Total Revenue</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(sortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0))}
+                              </p>
+                            </CardContent>
+                          </Card>
+                          <Card data-testid="avg-revenue-stat">
+                            <CardContent className="pt-6">
+                              <p className="text-sm text-slate-500 mb-1">Average Revenue/Ad</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(sortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0) / sortedAds.length)}
+                              </p>
+                            </CardContent>
+                          </Card>
+                          <Card data-testid="total-ads-stat">
+                            <CardContent className="pt-6">
+                              <p className="text-sm text-slate-500 mb-1">Total Ads Compared</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">{sortedAds.length}</p>
+                            </CardContent>
+                          </Card>
+                        </div>
                       </div>
                     );
                   })()

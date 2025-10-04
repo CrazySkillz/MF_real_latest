@@ -5,9 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { SiLinkedin } from "react-icons/si";
-import { Briefcase, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
+import { Briefcase, CheckCircle, AlertCircle, ExternalLink, FlaskConical, TrendingUp, MousePointerClick, DollarSign, Eye } from "lucide-react";
 
 interface LinkedInConnectionFlowProps {
   campaignId: string;
@@ -19,20 +21,108 @@ interface AdAccount {
   name: string;
 }
 
+interface LinkedInCampaign {
+  id: string;
+  name: string;
+  status: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  conversions: number;
+  ctr: number;
+  cpc: number;
+  selected?: boolean;
+}
+
+// Mock data for test mode
+const MOCK_AD_ACCOUNTS: AdAccount[] = [
+  { id: "urn:li:sponsoredAccount:123456789", name: "Marketing Department - Main Account" },
+  { id: "urn:li:sponsoredAccount:987654321", name: "Product Launch Campaigns" }
+];
+
+const MOCK_CAMPAIGNS: LinkedInCampaign[] = [
+  {
+    id: "urn:li:sponsoredCampaign:001",
+    name: "Brand Awareness Q1 2025",
+    status: "active",
+    impressions: 145230,
+    clicks: 3845,
+    spend: 4250.50,
+    conversions: 127,
+    ctr: 2.65,
+    cpc: 1.11
+  },
+  {
+    id: "urn:li:sponsoredCampaign:002",
+    name: "Lead Generation - Tech Professionals",
+    status: "active",
+    impressions: 89420,
+    clicks: 2156,
+    spend: 3180.25,
+    conversions: 89,
+    ctr: 2.41,
+    cpc: 1.47
+  },
+  {
+    id: "urn:li:sponsoredCampaign:003",
+    name: "Product Launch - Enterprise Software",
+    status: "active",
+    impressions: 203450,
+    clicks: 5234,
+    spend: 6890.75,
+    conversions: 201,
+    ctr: 2.57,
+    cpc: 1.32
+  },
+  {
+    id: "urn:li:sponsoredCampaign:004",
+    name: "Recruitment Marketing Campaign",
+    status: "paused",
+    impressions: 45120,
+    clicks: 892,
+    spend: 1250.00,
+    conversions: 34,
+    ctr: 1.98,
+    cpc: 1.40
+  }
+];
+
 export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: LinkedInConnectionFlowProps) {
-  // Check if OAuth credentials are configured at platform level
   const hasEnvCredentials = import.meta.env.VITE_LINKEDIN_CLIENT_ID && import.meta.env.VITE_LINKEDIN_CLIENT_SECRET;
   
-  const [step, setStep] = useState<'credentials' | 'connecting' | 'select-account' | 'connected'>('credentials');
+  const [step, setStep] = useState<'credentials' | 'connecting' | 'select-account' | 'select-campaigns' | 'connected'>('credentials');
   const [clientId, setClientId] = useState(import.meta.env.VITE_LINKEDIN_CLIENT_ID || '');
   const [clientSecret, setClientSecret] = useState(import.meta.env.VITE_LINKEDIN_CLIENT_SECRET || '');
   const [showClientIdInput, setShowClientIdInput] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false);
   const [adAccounts, setAdAccounts] = useState<AdAccount[]>([]);
   const [selectedAdAccount, setSelectedAdAccount] = useState<string>('');
+  const [campaigns, setCampaigns] = useState<LinkedInCampaign[]>([]);
   const { toast } = useToast();
 
+  const handleTestModeConnection = () => {
+    setIsConnecting(true);
+    setStep('connecting');
+
+    // Simulate API delay
+    setTimeout(() => {
+      setAdAccounts(MOCK_AD_ACCOUNTS);
+      setStep('select-account');
+      setIsConnecting(false);
+      toast({
+        title: "Test Mode Connected!",
+        description: "Select an ad account to view available campaigns.",
+      });
+    }, 1500);
+  };
+
   const handleLinkedInOAuth = async () => {
+    if (isTestMode) {
+      handleTestModeConnection();
+      return;
+    }
+
     if (!clientId || !clientSecret) {
       setShowClientIdInput(true);
       toast({
@@ -47,7 +137,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
     setStep('connecting');
 
     try {
-      // Use current domain for redirect - works for both localhost and Replit domains
       const redirectUri = `${window.location.origin}/oauth-callback.html`;
       const scope = 'r_ads_reporting rw_ads r_organization_admin';
       
@@ -59,7 +148,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
         `scope=${encodeURIComponent(scope)}&` +
         `state=campaign_${campaignId}`;
 
-      // Open popup for OAuth
       const popup = window.open(authUrl, 'linkedin-oauth', 'width=500,height=600');
       
       if (!popup) {
@@ -75,11 +163,9 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
       
       console.log('OAuth popup opened successfully');
       
-      // Listen for OAuth callback
       const handleMessage = async (event: MessageEvent) => {
         console.log('Received message:', event.data, 'from origin:', event.origin);
         
-        // Accept messages from same origin (more flexible for Replit domains)
         const currentOrigin = window.location.origin;
         if (event.origin !== currentOrigin) {
           console.log(`Rejecting message from ${event.origin}, expected ${currentOrigin}`);
@@ -90,7 +176,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
           const authCode = event.data.code;
           
           try {
-            // Exchange authorization code for tokens
             const response = await fetch('/api/linkedin/oauth/callback', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -148,7 +233,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
 
       window.addEventListener('message', handleMessage);
       
-      // Handle popup being closed manually
       const checkClosed = setInterval(() => {
         if (popup?.closed) {
           clearInterval(checkClosed);
@@ -159,7 +243,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
         }
       }, 1000);
       
-      // Set timeout for OAuth flow (5 minutes)
       const timeoutId = setTimeout(() => {
         console.log('OAuth flow timed out');
         toast({
@@ -189,6 +272,17 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
         title: "Selection Required",
         description: "Please select an ad account to continue.",
         variant: "destructive"
+      });
+      return;
+    }
+
+    if (isTestMode) {
+      // Show campaign selection in test mode
+      setCampaigns(MOCK_CAMPAIGNS.map(c => ({ ...c, selected: false })));
+      setStep('select-campaigns');
+      toast({
+        title: "Ad Account Selected",
+        description: "Choose which campaigns to import metrics from."
       });
       return;
     }
@@ -224,6 +318,47 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
     }
   };
 
+  const toggleCampaignSelection = (campaignId: string) => {
+    setCampaigns(campaigns.map(c => 
+      c.id === campaignId ? { ...c, selected: !c.selected } : c
+    ));
+  };
+
+  const handleImportSelectedCampaigns = async () => {
+    const selectedCampaigns = campaigns.filter(c => c.selected);
+    
+    if (selectedCampaigns.length === 0) {
+      toast({
+        title: "No Campaigns Selected",
+        description: "Please select at least one campaign to import.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsConnecting(true);
+
+    try {
+      // In test mode, simulate import
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setStep('connected');
+      toast({
+        title: "Campaigns Imported!",
+        description: `Successfully imported ${selectedCampaigns.length} campaign${selectedCampaigns.length > 1 ? 's' : ''} with metrics.`
+      });
+      onConnectionSuccess();
+    } catch (error: any) {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import campaign metrics",
+        variant: "destructive"
+      });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
   if (step === 'connected') {
     return (
       <Card className="w-full max-w-md">
@@ -235,8 +370,14 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
             <div>
               <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Successfully Connected!</h3>
               <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Your LinkedIn ad account is now connected to this campaign. You can now access detailed analytics and campaign data.
+                Your LinkedIn ad data is now connected to this campaign. You can now access detailed analytics and campaign metrics.
               </p>
+              {isTestMode && (
+                <Badge variant="outline" className="mt-3">
+                  <FlaskConical className="w-3 h-3 mr-1" />
+                  Test Mode
+                </Badge>
+              )}
             </div>
             <Button 
               onClick={() => {
@@ -249,6 +390,112 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
             >
               Done
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (step === 'select-campaigns') {
+    const selectedCount = campaigns.filter(c => c.selected).length;
+    
+    return (
+      <Card className="w-full max-w-2xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <SiLinkedin className="w-5 h-5 text-blue-600" />
+            Select Campaigns to Import
+          </CardTitle>
+          <CardDescription>
+            Choose which campaigns you want to import metrics from
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {campaigns.map((campaign) => (
+              <div 
+                key={campaign.id}
+                className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                  campaign.selected 
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' 
+                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+                onClick={() => toggleCampaignSelection(campaign.id)}
+                data-testid={`campaign-option-${campaign.id}`}
+              >
+                <div className="flex items-start gap-3">
+                  <Checkbox 
+                    checked={campaign.selected}
+                    onCheckedChange={() => toggleCampaignSelection(campaign.id)}
+                    className="mt-1"
+                    data-testid={`checkbox-campaign-${campaign.id}`}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h4 className="font-medium text-slate-900 dark:text-white">{campaign.name}</h4>
+                        <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'} className="mt-1">
+                          {campaign.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-slate-500" />
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Impressions</p>
+                          <p className="font-medium text-sm">{campaign.impressions.toLocaleString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MousePointerClick className="w-4 h-4 text-slate-500" />
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Clicks</p>
+                          <p className="font-medium text-sm">{campaign.clicks.toLocaleString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-slate-500" />
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Spend</p>
+                          <p className="font-medium text-sm">${campaign.spend.toFixed(2)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-slate-500" />
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">CTR</p>
+                          <p className="font-medium text-sm">{campaign.ctr}%</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between pt-4 border-t">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {selectedCount} campaign{selectedCount !== 1 ? 's' : ''} selected
+            </p>
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setStep('select-account')}
+                data-testid="button-back-to-accounts"
+              >
+                Back
+              </Button>
+              <Button 
+                onClick={handleImportSelectedCampaigns}
+                disabled={selectedCount === 0 || isConnecting}
+                className="bg-blue-600 hover:bg-blue-700"
+                data-testid="button-import-campaigns"
+              >
+                {isConnecting ? "Importing..." : `Import ${selectedCount} Campaign${selectedCount !== 1 ? 's' : ''}`}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -292,7 +539,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 data-testid="button-confirm-account"
               >
-                Connect Selected Account
+                {isTestMode ? 'View Campaigns' : 'Connect Selected Account'}
               </Button>
             </>
           ) : (
@@ -324,9 +571,13 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
               <SiLinkedin className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Connecting to LinkedIn...</h3>
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+                {isTestMode ? 'Connecting in Test Mode...' : 'Connecting to LinkedIn...'}
+              </h3>
               <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Please complete the authentication in the popup window
+                {isTestMode 
+                  ? 'Simulating OAuth connection with sample data' 
+                  : 'Please complete the authentication in the popup window'}
               </p>
             </div>
           </div>
@@ -347,7 +598,24 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!showClientIdInput && !hasEnvCredentials ? (
+        {/* Test Mode Toggle */}
+        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2">
+            <FlaskConical className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+            <div>
+              <Label htmlFor="test-mode" className="text-sm font-medium cursor-pointer">Test Mode</Label>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Use sample data for testing</p>
+            </div>
+          </div>
+          <Switch
+            id="test-mode"
+            checked={isTestMode}
+            onCheckedChange={setIsTestMode}
+            data-testid="switch-test-mode"
+          />
+        </div>
+
+        {!showClientIdInput && !hasEnvCredentials && !isTestMode ? (
           <div className="space-y-4">
             <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
               <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />
@@ -386,17 +654,32 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
               Connect with LinkedIn OAuth
             </Button>
           </div>
-        ) : hasEnvCredentials && !showClientIdInput ? (
+        ) : (hasEnvCredentials || isTestMode) && !showClientIdInput ? (
           <div className="space-y-4">
             <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
               <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="text-center">
-              <Badge variant="outline" className="mb-3">Platform Configured</Badge>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Ready to Connect</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
-                OAuth credentials are already configured. Click below to connect your LinkedIn ad account securely.
-              </p>
+              {isTestMode ? (
+                <>
+                  <Badge variant="outline" className="mb-3">
+                    <FlaskConical className="w-3 h-3 mr-1" />
+                    Test Mode Active
+                  </Badge>
+                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Test with Sample Data</h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+                    Connect using simulated OAuth flow with realistic sample campaign data. Perfect for testing and development.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Badge variant="outline" className="mb-3">Platform Configured</Badge>
+                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Ready to Connect</h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+                    OAuth credentials are already configured. Click below to connect your LinkedIn ad account securely.
+                  </p>
+                </>
+              )}
             </div>
             
             <Button 
@@ -406,7 +689,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
               data-testid="button-start-oauth"
             >
               <SiLinkedin className="w-4 h-4 mr-2" />
-              {isConnecting ? "Connecting..." : "Connect with LinkedIn"}
+              {isConnecting ? "Connecting..." : isTestMode ? "Start Test Connection" : "Connect with LinkedIn"}
             </Button>
           </div>
         ) : (

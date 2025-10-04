@@ -106,6 +106,45 @@ export const linkedinConnections = pgTable("linkedin_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const linkedinImportSessions = pgTable("linkedin_import_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  adAccountId: text("ad_account_id").notNull(),
+  adAccountName: text("ad_account_name"),
+  selectedCampaignsCount: integer("selected_campaigns_count").notNull().default(0),
+  selectedMetricsCount: integer("selected_metrics_count").notNull().default(0),
+  importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const linkedinImportMetrics = pgTable("linkedin_import_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: text("session_id").notNull(),
+  campaignUrn: text("campaign_urn").notNull(), // LinkedIn campaign URN
+  campaignName: text("campaign_name").notNull(),
+  campaignStatus: text("campaign_status").notNull().default("active"),
+  metricKey: text("metric_key").notNull(), // 'impressions', 'clicks', 'spend', etc.
+  metricValue: decimal("metric_value", { precision: 15, scale: 2 }).notNull(),
+  importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const linkedinAdPerformance = pgTable("linkedin_ad_performance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: text("session_id").notNull(),
+  adId: text("ad_id").notNull(), // LinkedIn ad/creative ID
+  adName: text("ad_name").notNull(),
+  campaignUrn: text("campaign_urn").notNull(),
+  campaignName: text("campaign_name").notNull(),
+  impressions: integer("impressions").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default("0"),
+  conversions: integer("conversions").notNull().default(0),
+  ctr: decimal("ctr", { precision: 5, scale: 2 }).notNull().default("0"), // Click-through rate
+  cpc: decimal("cpc", { precision: 10, scale: 2 }).notNull().default("0"), // Cost per click
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }).notNull().default("0"),
+  revenue: decimal("revenue", { precision: 10, scale: 2 }).default("0"),
+  importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const kpis = pgTable("kpis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id"), // Optional - null for platform-level KPIs
@@ -613,6 +652,39 @@ export const insertAttributionInsightSchema = createInsertSchema(attributionInsi
   firstClickConversions: true,
 });
 
+export const insertLinkedInImportSessionSchema = createInsertSchema(linkedinImportSessions).pick({
+  campaignId: true,
+  adAccountId: true,
+  adAccountName: true,
+  selectedCampaignsCount: true,
+  selectedMetricsCount: true,
+});
+
+export const insertLinkedInImportMetricSchema = createInsertSchema(linkedinImportMetrics).pick({
+  sessionId: true,
+  campaignUrn: true,
+  campaignName: true,
+  campaignStatus: true,
+  metricKey: true,
+  metricValue: true,
+});
+
+export const insertLinkedInAdPerformanceSchema = createInsertSchema(linkedinAdPerformance).pick({
+  sessionId: true,
+  adId: true,
+  adName: true,
+  campaignUrn: true,
+  campaignName: true,
+  impressions: true,
+  clicks: true,
+  spend: true,
+  conversions: true,
+  ctr: true,
+  cpc: true,
+  conversionRate: true,
+  revenue: true,
+});
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Metric = typeof metrics.$inferSelect;
@@ -657,3 +729,9 @@ export type AttributionResult = typeof attributionResults.$inferSelect;
 export type InsertAttributionResult = z.infer<typeof insertAttributionResultSchema>;
 export type AttributionInsight = typeof attributionInsights.$inferSelect;
 export type InsertAttributionInsight = z.infer<typeof insertAttributionInsightSchema>;
+export type LinkedInImportSession = typeof linkedinImportSessions.$inferSelect;
+export type InsertLinkedInImportSession = z.infer<typeof insertLinkedInImportSessionSchema>;
+export type LinkedInImportMetric = typeof linkedinImportMetrics.$inferSelect;
+export type InsertLinkedInImportMetric = z.infer<typeof insertLinkedInImportMetricSchema>;
+export type LinkedInAdPerformance = typeof linkedinAdPerformance.$inferSelect;
+export type InsertLinkedInAdPerformance = z.infer<typeof insertLinkedInAdPerformanceSchema>;

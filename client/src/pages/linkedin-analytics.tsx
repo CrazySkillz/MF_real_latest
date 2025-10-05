@@ -9,7 +9,7 @@ import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, Dol
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 
 export default function LinkedInAnalytics() {
   const [, params] = useRoute("/campaigns/:id/linkedin-analytics");
@@ -355,17 +355,21 @@ export default function LinkedInAnalytics() {
                       '#8b5cf6', // violet
                     ];
 
-                    // Transform data: Create data points for each metric value
-                    // Each point will have the metric name and values for each ad
-                    const chartData = availableMetrics.map(metric => {
-                      const point: any = { metric: metric.label };
-                      sortedAds.forEach((ad, index) => {
-                        const value = metric.key === 'spend' || metric.key === 'ctr' || metric.key === 'cpc' || metric.key === 'revenue'
-                          ? parseFloat((ad as any)[metric.key] || '0')
-                          : (ad as any)[metric.key] || 0;
-                        point[ad.adName] = value;
-                      });
-                      return point;
+                    // Get the current selected metric or default to impressions
+                    const currentMetric = availableMetrics.find(m => m.key === selectedMetric) || availableMetrics[0];
+
+                    // Transform data: Create chart data for the selected metric only
+                    // X-axis will be ad names, Y-axis will be the metric value
+                    const chartData = sortedAds.map((ad, index) => {
+                      const value = currentMetric.key === 'spend' || currentMetric.key === 'ctr' || currentMetric.key === 'cpc' || currentMetric.key === 'revenue'
+                        ? parseFloat((ad as any)[currentMetric.key] || '0')
+                        : (ad as any)[currentMetric.key] || 0;
+                      
+                      return {
+                        name: ad.adName,
+                        value: value,
+                        color: adColors[index % adColors.length],
+                      };
                     });
 
                     return (
@@ -392,49 +396,59 @@ export default function LinkedInAnalytics() {
                         {/* Visual Performance Comparison */}
                         <Card data-testid="comparison-chart">
                           <CardHeader>
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                               <div>
                                 <CardTitle>Ad Performance Comparison</CardTitle>
                                 <CardDescription>
-                                  Compare multiple ads across all metrics
+                                  Select a metric to compare across all ads
                                 </CardDescription>
                               </div>
+                              <Select value={selectedMetric} onValueChange={setSelectedMetric}>
+                                <SelectTrigger className="w-[200px]" data-testid="select-metric">
+                                  <SelectValue placeholder="Select metric" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableMetrics.map(metric => (
+                                    <SelectItem key={metric.key} value={metric.key}>
+                                      {metric.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                           </CardHeader>
                           <CardContent>
                             <ResponsiveContainer width="100%" height={450}>
-                              <LineChart 
+                              <BarChart 
                                 data={chartData}
-                                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
                               >
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis 
-                                  dataKey="metric" 
+                                  dataKey="name" 
                                   tick={{ fontSize: 12 }} 
                                   angle={-45}
                                   textAnchor="end"
-                                  height={80}
+                                  height={100}
                                 />
-                                <YAxis tick={{ fontSize: 12 }} />
+                                <YAxis 
+                                  tick={{ fontSize: 12 }}
+                                  tickFormatter={(value) => currentMetric.format(value)}
+                                />
                                 <Tooltip 
-                                  formatter={(value: any, name: string) => {
-                                    const metric = availableMetrics.find(m => m.label === chartData.find(d => Object.keys(d).includes(name))?.metric);
-                                    return metric ? metric.format(value) : value;
-                                  }}
+                                  formatter={(value: any) => currentMetric.format(value)}
+                                  labelStyle={{ color: '#000' }}
                                 />
-                                <Legend />
-                                {sortedAds.map((ad, index) => (
-                                  <Line 
-                                    key={ad.id}
-                                    type="monotone"
-                                    dataKey={ad.adName} 
-                                    stroke={adColors[index % adColors.length]} 
-                                    strokeWidth={2}
-                                    dot={{ r: 5 }}
-                                    name={ad.adName}
-                                  />
-                                ))}
-                              </LineChart>
+                                <Bar 
+                                  dataKey="value" 
+                                  name={currentMetric.label}
+                                  radius={[8, 8, 0, 0]}
+                                >
+                                  {chartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
                             </ResponsiveContainer>
                             
                             {/* Ad Details Cards */}

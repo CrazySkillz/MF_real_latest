@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
@@ -14,6 +15,7 @@ export default function LinkedInAnalytics() {
   const [, params] = useRoute("/campaigns/:id/linkedin-analytics");
   const [location, setLocation] = useLocation();
   const sessionId = new URLSearchParams(window.location.search).get('session');
+  const [selectedMetric, setSelectedMetric] = useState<string>('impressions');
 
   // Fetch import session data
   const { data: sessionData, isLoading: sessionLoading } = useQuery({
@@ -82,7 +84,7 @@ export default function LinkedInAnalytics() {
     );
   }
 
-  const { session, metrics, aggregated } = sessionData;
+  const { session, metrics, aggregated } = sessionData as any;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -323,42 +325,48 @@ export default function LinkedInAnalytics() {
                     <div className="h-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
                     <div className="h-96 bg-slate-200 dark:bg-slate-800 rounded"></div>
                   </div>
-                ) : adsData && adsData.length > 0 ? (
+                ) : adsData && (adsData as any[]).length > 0 ? (
                   (() => {
-                    // Find common metrics across ALL ads (intersection of each ad's campaignSelectedMetrics)
-                    const allMetricSets = adsData
-                      .map(ad => ad.campaignSelectedMetrics || [])
-                      .filter(metrics => metrics.length > 0);
-                    
-                    const commonMetrics = allMetricSets.length > 0
-                      ? allMetricSets.reduce((common, adMetrics) => 
-                          common.filter(m => adMetrics.includes(m))
-                        )
-                      : [];
-                    
-                    const sortedAds = [...adsData].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
+                    const sortedAds = [...(adsData as any[])].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
                     const topAd = sortedAds[0];
                     
-                    // Calculate max values for each metric for comparison bars
-                    const maxValues = {
-                      impressions: Math.max(...sortedAds.map(ad => ad.impressions)),
-                      clicks: Math.max(...sortedAds.map(ad => ad.clicks)),
-                      spend: Math.max(...sortedAds.map(ad => parseFloat(ad.spend))),
-                      conversions: Math.max(...sortedAds.map(ad => ad.conversions)),
-                      revenue: Math.max(...sortedAds.map(ad => parseFloat(ad.revenue || '0'))),
-                      ctr: Math.max(...sortedAds.map(ad => parseFloat(ad.ctr))),
-                      cpc: Math.max(...sortedAds.map(ad => parseFloat(ad.cpc))),
-                    };
+                    // Available metrics for comparison
+                    const availableMetrics = [
+                      { key: 'impressions', label: 'Impressions', format: formatNumber },
+                      { key: 'clicks', label: 'Clicks', format: formatNumber },
+                      { key: 'spend', label: 'Spend', format: formatCurrency },
+                      { key: 'ctr', label: 'CTR', format: formatPercentage },
+                      { key: 'cpc', label: 'CPC', format: formatCurrency },
+                      { key: 'conversions', label: 'Conversions', format: formatNumber },
+                      { key: 'revenue', label: 'Revenue', format: formatCurrency },
+                    ];
 
-                    // Define which metrics to display based on common selection across all ads
-                    const displayMetrics = [
-                      { key: 'impressions', label: 'Impressions', format: formatNumber, color: 'bg-blue-500' },
-                      { key: 'clicks', label: 'Clicks', format: formatNumber, color: 'bg-green-500' },
-                      { key: 'spend', label: 'Spend', format: formatCurrency, color: 'bg-red-500' },
-                      { key: 'ctr', label: 'CTR', format: formatPercentage, color: 'bg-purple-500' },
-                      { key: 'cpc', label: 'CPC', format: formatCurrency, color: 'bg-orange-500' },
-                      { key: 'conversions', label: 'Conversions', format: formatNumber, color: 'bg-indigo-500' },
-                    ].filter(metric => commonMetrics.includes(metric.key));
+                    // Colors for each ad line
+                    const adColors = [
+                      '#3b82f6', // blue
+                      '#10b981', // green
+                      '#ef4444', // red
+                      '#a855f7', // purple
+                      '#f97316', // orange
+                      '#6366f1', // indigo
+                      '#ec4899', // pink
+                      '#14b8a6', // teal
+                      '#f59e0b', // amber
+                      '#8b5cf6', // violet
+                    ];
+
+                    // Transform data: Create data points for each metric value
+                    // Each point will have the metric name and values for each ad
+                    const chartData = availableMetrics.map(metric => {
+                      const point: any = { metric: metric.label };
+                      sortedAds.forEach((ad, index) => {
+                        const value = metric.key === 'spend' || metric.key === 'ctr' || metric.key === 'cpc' || metric.key === 'revenue'
+                          ? parseFloat((ad as any)[metric.key] || '0')
+                          : (ad as any)[metric.key] || 0;
+                        point[ad.adName] = value;
+                      });
+                      return point;
+                    });
 
                     return (
                       <div className="space-y-6">
@@ -384,61 +392,48 @@ export default function LinkedInAnalytics() {
                         {/* Visual Performance Comparison */}
                         <Card data-testid="comparison-chart">
                           <CardHeader>
-                            <CardTitle>Ad Performance Comparison</CardTitle>
-                            <CardDescription>
-                              Compare {displayMetrics.map(m => m.label).join(', ')} and Revenue across all ads
-                            </CardDescription>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <CardTitle>Ad Performance Comparison</CardTitle>
+                                <CardDescription>
+                                  Compare multiple ads across all metrics
+                                </CardDescription>
+                              </div>
+                            </div>
                           </CardHeader>
                           <CardContent>
                             <ResponsiveContainer width="100%" height={450}>
                               <LineChart 
-                                data={sortedAds.map((ad, index) => {
-                                  const data: any = { 
-                                    name: ad.adName,
-                                    index: index + 1,
-                                    revenue: parseFloat(ad.revenue || '0')
-                                  };
-                                  displayMetrics.forEach(metric => {
-                                    if (metric.key === 'spend' || metric.key === 'ctr' || metric.key === 'cpc') {
-                                      data[metric.key] = parseFloat((ad as any)[metric.key]);
-                                    } else {
-                                      data[metric.key] = (ad as any)[metric.key];
-                                    }
-                                  });
-                                  return data;
-                                })}
+                                data={chartData}
                                 margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                               >
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis 
-                                  dataKey="name" 
+                                  dataKey="metric" 
                                   tick={{ fontSize: 12 }} 
                                   angle={-45}
                                   textAnchor="end"
                                   height={80}
                                 />
                                 <YAxis tick={{ fontSize: 12 }} />
-                                <Tooltip />
+                                <Tooltip 
+                                  formatter={(value: any, name: string) => {
+                                    const metric = availableMetrics.find(m => m.label === chartData.find(d => Object.keys(d).includes(name))?.metric);
+                                    return metric ? metric.format(value) : value;
+                                  }}
+                                />
                                 <Legend />
-                                {displayMetrics.map(metric => (
+                                {sortedAds.map((ad, index) => (
                                   <Line 
-                                    key={metric.key}
+                                    key={ad.id}
                                     type="monotone"
-                                    dataKey={metric.key} 
-                                    stroke={metric.color.replace('bg-', '#').replace('blue-500', '3b82f6').replace('green-500', '10b981').replace('red-500', 'ef4444').replace('purple-500', 'a855f7').replace('orange-500', 'f97316').replace('indigo-500', '6366f1')} 
+                                    dataKey={ad.adName} 
+                                    stroke={adColors[index % adColors.length]} 
                                     strokeWidth={2}
                                     dot={{ r: 5 }}
-                                    name={metric.label}
+                                    name={ad.adName}
                                   />
                                 ))}
-                                <Line 
-                                  type="monotone"
-                                  dataKey="revenue" 
-                                  stroke="#22c55e" 
-                                  strokeWidth={2}
-                                  dot={{ r: 5 }}
-                                  name="Revenue ($)" 
-                                />
                               </LineChart>
                             </ResponsiveContainer>
                             
@@ -460,11 +455,10 @@ export default function LinkedInAnalytics() {
                                     data-testid={`ad-detail-${index}`}
                                   >
                                     <div className="flex items-center gap-3">
-                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                                        isTop ? 'bg-green-500 text-white' : 
-                                        isBottom ? 'bg-red-500 text-white' : 
-                                        'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-300'
-                                      }`}>
+                                      <div 
+                                        className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white"
+                                        style={{ backgroundColor: adColors[index % adColors.length] }}
+                                      >
                                         {index + 1}
                                       </div>
                                       <div>

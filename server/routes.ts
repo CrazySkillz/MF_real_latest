@@ -1838,12 +1838,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // LinkedIn OAuth and API Routes
+  
+  // OAuth callback - exchange code for access token and fetch ad accounts
+  app.post("/api/linkedin/oauth/callback", async (req, res) => {
+    try {
+      const { authCode, clientId, clientSecret, redirectUri, campaignId } = req.body;
+      
+      if (!authCode || !clientId || !clientSecret || !redirectUri) {
+        return res.status(400).json({ success: false, error: "Missing required OAuth parameters" });
+      }
+
+      // Import the LinkedIn client
+      const { LinkedInClient } = await import('./linkedinClient');
+      
+      // Exchange authorization code for access token
+      const tokens = await LinkedInClient.exchangeCodeForToken(
+        authCode,
+        clientId,
+        clientSecret,
+        redirectUri
+      );
+      
+      // Create LinkedIn client with access token
+      const linkedInClient = new LinkedInClient(tokens.access_token);
+      
+      // Fetch ad accounts
+      const adAccounts = await linkedInClient.getAdAccounts();
+      
+      // Store the access token (in a real app, you'd store this in a database associated with the campaign)
+      // For now, we'll return it to the frontend to use in subsequent requests
+      res.json({
+        success: true,
+        accessToken: tokens.access_token,
+        expiresIn: tokens.expires_in,
+        adAccounts: adAccounts.map(account => ({
+          id: account.id,
+          name: account.name
+        }))
+      });
+    } catch (error: any) {
+      console.error('LinkedIn OAuth callback error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Failed to complete OAuth flow' 
+      });
+    }
+  });
+
+  // Fetch campaigns for a specific ad account
+  app.post("/api/linkedin/campaigns", async (req, res) => {
+    try {
+      const { accessToken, adAccountId } = req.body;
+      
+      if (!accessToken || !adAccountId) {
+        return res.status(400).json({ error: "Missing accessToken or adAccountId" });
+      }
+
+      const { LinkedInClient } = await import('./linkedinClient');
+      const linkedInClient = new LinkedInClient(accessToken);
+      
+      const campaigns = await linkedInClient.getCampaigns(adAccountId);
+      
+      // Get analytics for campaigns (last 30 days)
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
+      
+      const campaignIds = campaigns.map(c => c.id);
+      
+      let analytics: any[] = [];
+      if (campaignIds.length > 0) {
+        analytics = await linkedInClient.getCampaignAnalytics(
+          campaignIds,
+          startDate.toISOString().split('T')[0],
+          endDate.toISOString().split('T')[0]
+        );
+      }
+      
+      // Merge campaign data with analytics
+      const campaignsWithMetrics = campaigns.map(campaign => {
+        const campaignAnalytics = analytics.find(a => 
+          a.pivotValues?.includes(campaign.id)
+        ) || {};
+        
+        const impressions = campaignAnalytics.impressions || 0;
+        const clicks = campaignAnalytics.clicks || 0;
+        const cost = parseFloat(campaignAnalytics.costInLocalCurrency || '0');
+        const conversions = campaignAnalytics.externalWebsiteConversions || 0;
+        
+        return {
+          id: campaign.id,
+          name: campaign.name,
+          status: campaign.status?.toLowerCase() || 'unknown',
+          impressions,
+          clicks,
+          spend: cost,
+          conversions,
+          ctr: impressions > 0 ? ((clicks / impressions) * 100) : 0,
+          cpc: clicks > 0 ? (cost / clicks) : 0
+        };
+      });
+      
+      res.json(campaignsWithMetrics);
+    } catch (error: any) {
+      console.error('LinkedIn campaigns fetch error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch campaigns' });
+    }
+  });
+  
   // LinkedIn Import Routes
   
   // Create LinkedIn import session with metrics and ad performance data
   app.post("/api/linkedin/imports", async (req, res) => {
     try {
-      const { campaignId, adAccountId, adAccountName, campaigns } = req.body;
+      const { campaignId, adAccountId, adAccountName, campaigns, accessToken, isTestMode } = req.body;
       
       if (!campaignId || !adAccountId || !adAccountName || !campaigns || !Array.isArray(campaigns)) {
         return res.status(400).json({ message: "Invalid request body" });
@@ -1862,56 +1971,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
         selectedMetricsCount
       });
       
-      // Create metrics for each campaign and selected metric
-      for (const campaign of campaigns) {
-        if (campaign.selectedMetrics && Array.isArray(campaign.selectedMetrics)) {
-          for (const metricKey of campaign.selectedMetrics) {
-            const metricValue = (Math.random() * 10000 + 1000).toFixed(2);
-            await storage.createLinkedInImportMetric({
+      if (isTestMode || !accessToken) {
+        // TEST MODE: Generate mock data
+        for (const campaign of campaigns) {
+          if (campaign.selectedMetrics && Array.isArray(campaign.selectedMetrics)) {
+            for (const metricKey of campaign.selectedMetrics) {
+              const metricValue = (Math.random() * 10000 + 1000).toFixed(2);
+              await storage.createLinkedInImportMetric({
+                sessionId: session.id,
+                campaignUrn: campaign.id,
+                campaignName: campaign.name,
+                campaignStatus: campaign.status || "active",
+                metricKey,
+                metricValue
+              });
+            }
+          }
+          
+          // Generate mock ad performance data (2-3 ads per campaign)
+          const numAds = Math.floor(Math.random() * 2) + 2;
+          for (let i = 0; i < numAds; i++) {
+            const impressions = Math.floor(Math.random() * 50000) + 10000;
+            const clicks = Math.floor(Math.random() * 2000) + 500;
+            const spend = (Math.random() * 5000 + 1000).toFixed(2);
+            const conversions = Math.floor(Math.random() * 100) + 10;
+            const revenue = (conversions * (Math.random() * 200 + 50)).toFixed(2);
+            const ctr = ((clicks / impressions) * 100).toFixed(2);
+            const cpc = (parseFloat(spend) / clicks).toFixed(2);
+            const conversionRate = ((conversions / clicks) * 100).toFixed(2);
+            
+            await storage.createLinkedInAdPerformance({
               sessionId: session.id,
+              adId: `ad-${campaign.id}-${i + 1}`,
+              adName: `Ad ${i + 1} - ${campaign.name}`,
               campaignUrn: campaign.id,
               campaignName: campaign.name,
-              campaignStatus: campaign.status || "active",
-              metricKey,
-              metricValue
+              campaignSelectedMetrics: campaign.selectedMetrics || [],
+              impressions,
+              clicks,
+              spend,
+              conversions,
+              revenue,
+              ctr,
+              cpc,
+              conversionRate
             });
           }
         }
+      } else {
+        // REAL MODE: Fetch real data from LinkedIn
+        const { LinkedInClient } = await import('./linkedinClient');
+        const linkedInClient = new LinkedInClient(accessToken);
         
-        // Generate mock ad performance data (2-3 ads per campaign)
-        const numAds = Math.floor(Math.random() * 2) + 2;
-        for (let i = 0; i < numAds; i++) {
-          const impressions = Math.floor(Math.random() * 50000) + 10000;
-          const clicks = Math.floor(Math.random() * 2000) + 500;
-          const spend = (Math.random() * 5000 + 1000).toFixed(2);
-          const conversions = Math.floor(Math.random() * 100) + 10;
-          const revenue = (conversions * (Math.random() * 200 + 50)).toFixed(2);
-          const ctr = ((clicks / impressions) * 100).toFixed(2);
-          const cpc = (parseFloat(spend) / clicks).toFixed(2);
-          const conversionRate = ((conversions / clicks) * 100).toFixed(2);
+        // Get date range (last 30 days)
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+        
+        const campaignIds = campaigns.map(c => c.id);
+        
+        // Fetch campaign analytics
+        const campaignAnalytics = await linkedInClient.getCampaignAnalytics(
+          campaignIds,
+          startDate.toISOString().split('T')[0],
+          endDate.toISOString().split('T')[0]
+        );
+        
+        // Fetch creatives (ads) for each campaign
+        const creatives = await linkedInClient.getCreatives(campaignIds);
+        
+        // Fetch creative analytics
+        const creativeAnalytics = await linkedInClient.getCreativeAnalytics(
+          campaignIds,
+          startDate.toISOString().split('T')[0],
+          endDate.toISOString().split('T')[0]
+        );
+        
+        // Store campaign metrics
+        for (const campaign of campaigns) {
+          const campAnalytics = campaignAnalytics.find(a => 
+            a.pivotValues?.includes(campaign.id)
+          ) || {};
           
-          await storage.createLinkedInAdPerformance({
-            sessionId: session.id,
-            adId: `ad-${campaign.id}-${i + 1}`,
-            adName: `Ad ${i + 1} - ${campaign.name}`,
-            campaignUrn: campaign.id,
-            campaignName: campaign.name,
-            impressions,
-            clicks,
-            spend,
-            conversions,
-            revenue,
-            ctr,
-            cpc,
-            conversionRate
-          });
+          if (campaign.selectedMetrics && Array.isArray(campaign.selectedMetrics)) {
+            for (const metricKey of campaign.selectedMetrics) {
+              let metricValue = '0';
+              
+              switch (metricKey) {
+                case 'impressions':
+                  metricValue = String(campAnalytics.impressions || 0);
+                  break;
+                case 'clicks':
+                  metricValue = String(campAnalytics.clicks || 0);
+                  break;
+                case 'spend':
+                  metricValue = String(campAnalytics.costInLocalCurrency || 0);
+                  break;
+                case 'conversions':
+                  metricValue = String(campAnalytics.externalWebsiteConversions || 0);
+                  break;
+                case 'ctr':
+                  const imps = campAnalytics.impressions || 0;
+                  const clks = campAnalytics.clicks || 0;
+                  metricValue = imps > 0 ? String((clks / imps) * 100) : '0';
+                  break;
+                case 'cpc':
+                  const cost = campAnalytics.costInLocalCurrency || 0;
+                  const clicks = campAnalytics.clicks || 0;
+                  metricValue = clicks > 0 ? String(cost / clicks) : '0';
+                  break;
+              }
+              
+              await storage.createLinkedInImportMetric({
+                sessionId: session.id,
+                campaignUrn: campaign.id,
+                campaignName: campaign.name,
+                campaignStatus: campaign.status || "active",
+                metricKey,
+                metricValue
+              });
+            }
+          }
+          
+          // Store ad/creative performance
+          const campaignCreatives = creatives.filter(c => c.campaignId === campaign.id);
+          
+          for (const creative of campaignCreatives) {
+            const creativeStats = creativeAnalytics.find(a => 
+              a.pivotValues?.includes(creative.id)
+            ) || {};
+            
+            const impressions = creativeStats.impressions || 0;
+            const clicks = creativeStats.clicks || 0;
+            const spend = String(creativeStats.costInLocalCurrency || 0);
+            const conversions = creativeStats.externalWebsiteConversions || 0;
+            const revenue = String(conversions * 150); // Estimate: $150 per conversion
+            const ctr = impressions > 0 ? String((clicks / impressions) * 100) : '0';
+            const cpc = clicks > 0 ? String(parseFloat(spend) / clicks) : '0';
+            const conversionRate = clicks > 0 ? String((conversions / clicks) * 100) : '0';
+            
+            await storage.createLinkedInAdPerformance({
+              sessionId: session.id,
+              adId: creative.id,
+              adName: creative.name || `Creative ${creative.id}`,
+              campaignUrn: campaign.id,
+              campaignName: campaign.name,
+              campaignSelectedMetrics: campaign.selectedMetrics || [],
+              impressions,
+              clicks,
+              spend,
+              conversions,
+              revenue,
+              ctr,
+              cpc,
+              conversionRate
+            });
+          }
         }
       }
       
       res.status(201).json({ success: true, sessionId: session.id });
-    } catch (error) {
+    } catch (error: any) {
       console.error('LinkedIn import creation error:', error);
-      res.status(500).json({ message: "Failed to create LinkedIn import" });
+      res.status(500).json({ message: error.message || "Failed to create LinkedIn import" });
     }
   });
   

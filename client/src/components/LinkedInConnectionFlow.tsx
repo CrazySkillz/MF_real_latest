@@ -143,6 +143,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
   const [showClientIdInput, setShowClientIdInput] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isTestMode, setIsTestMode] = useState(false);
+  const [accessToken, setAccessToken] = useState<string>('');
   const [adAccounts, setAdAccounts] = useState<AdAccount[]>([]);
   const [selectedAdAccount, setSelectedAdAccount] = useState<string>('');
   const [campaigns, setCampaigns] = useState<LinkedInCampaign[]>([]);
@@ -238,6 +239,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
             const data = await response.json();
             
             if (data.success) {
+              setAccessToken(data.accessToken);
               setAdAccounts(data.adAccounts || []);
               setStep('select-account');
               toast({
@@ -338,32 +340,44 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
       return;
     }
 
+    setIsConnecting(true);
+
     try {
-      const response = await fetch('/api/linkedin/select-ad-account', {
+      const response = await fetch('/api/linkedin/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          campaignId,
+          accessToken,
           adAccountId: selectedAdAccount
         })
       });
 
       const data = await response.json();
       
-      if (data.success) {
-        setStep('connected');
+      if (response.ok) {
+        // Map campaigns to include selection state
+        const campaignsWithSelection = data.map((c: any) => ({
+          ...c,
+          selected: false,
+          selectedMetrics: AVAILABLE_METRICS.map(m => m.key)
+        }));
+        
+        setCampaigns(campaignsWithSelection);
+        setStep('select-campaigns');
+        setIsConnecting(false);
         toast({
-          title: "Ad Account Connected!",
-          description: "Your LinkedIn ad account is now connected to this campaign."
+          title: "Campaigns Loaded!",
+          description: `Found ${data.length} campaigns. Select which ones to import.`
         });
-        onConnectionSuccess();
       } else {
-        throw new Error(data.error || 'Failed to connect ad account');
+        throw new Error(data.error || 'Failed to fetch campaigns');
       }
     } catch (error: any) {
+      console.error('Campaign fetch error:', error);
+      setIsConnecting(false);
       toast({
-        title: "Selection Failed",
-        description: error.message || "Failed to connect to selected ad account",
+        title: "Failed to Load Campaigns",
+        description: error.message || "Failed to fetch campaigns from LinkedIn",
         variant: "destructive"
       });
     }
@@ -430,6 +444,8 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
           campaignId,
           adAccountId: selectedAdAccount,
           adAccountName: adAccounts.find(a => a.id === selectedAdAccount)?.name || '',
+          accessToken: isTestMode ? undefined : accessToken,
+          isTestMode,
           campaigns: selectedCampaigns.map(c => ({
             id: c.id,
             name: c.name,

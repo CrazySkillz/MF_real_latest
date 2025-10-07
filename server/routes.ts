@@ -2202,6 +2202,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch ad performance" });
     }
   });
+  
+  // Check if LinkedIn is connected for a campaign
+  app.get("/api/linkedin/check-connection/:campaignId", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      
+      // Check if there's an active import session for this campaign
+      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+      
+      if (sessions && sessions.length > 0) {
+        // Get the most recent session
+        const latestSession = sessions[sessions.length - 1];
+        res.json({ 
+          connected: true, 
+          sessionId: latestSession.id,
+          adAccountName: latestSession.adAccountName
+        });
+      } else {
+        res.json({ connected: false });
+      }
+    } catch (error) {
+      console.error('LinkedIn connection check error:', error);
+      res.json({ connected: false });
+    }
+  });
+  
+  // Transfer LinkedIn import sessions from temp campaign to actual campaign
+  app.post("/api/linkedin/transfer-connection", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+      
+      if (!fromCampaignId || !toCampaignId) {
+        return res.status(400).json({ success: false, error: "Missing campaign IDs" });
+      }
+      
+      // Get all import sessions for the temp campaign
+      const sessions = await storage.getCampaignLinkedInImportSessions(fromCampaignId);
+      
+      if (sessions && sessions.length > 0) {
+        // Update each session to point to the new campaign
+        for (const session of sessions) {
+          await storage.updateLinkedInImportSessionCampaignId(session.id, toCampaignId);
+        }
+        
+        console.log(`✅ Transferred ${sessions.length} LinkedIn import session(s) from ${fromCampaignId} to ${toCampaignId}`);
+        res.json({ success: true, transferredSessions: sessions.length });
+      } else {
+        res.json({ success: false, error: "No LinkedIn import sessions found" });
+      }
+    } catch (error: any) {
+      console.error('LinkedIn connection transfer error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

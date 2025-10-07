@@ -688,6 +688,31 @@ export default function Campaigns() {
       } else {
         console.log('🔧 Google Sheets not in selected platforms, skipping transfer');
       }
+      
+      // Transfer LinkedIn connection if LinkedIn was connected
+      if (selectedPlatforms.includes('LinkedIn Ads')) {
+        console.log('🔧 Attempting LinkedIn transfer...');
+        try {
+          const response = await fetch('/api/linkedin/transfer-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromCampaignId: 'temp-campaign-setup',
+              toCampaignId: (newCampaign as any).id
+            })
+          });
+          const result = await response.json();
+          if (result.success) {
+            console.log('✅ LinkedIn connection transferred successfully to campaign:', (newCampaign as any).id);
+          } else {
+            console.error('❌ LinkedIn transfer failed:', result.error);
+          }
+        } catch (error) {
+          console.error('❌ Failed to transfer LinkedIn connection:', error);
+        }
+      } else {
+        console.log('🔧 LinkedIn not in selected platforms, skipping transfer');
+      }
     }
   };
 
@@ -927,6 +952,17 @@ export default function Campaigns() {
                               }
                             } catch (error) {
                               console.log('No Google Sheets connection found');
+                            }
+                            
+                            // Check for LinkedIn connection
+                            try {
+                              const linkedinResponse = await fetch('/api/linkedin/check-connection/temp-campaign-setup');
+                              const linkedinData = await linkedinResponse.json();
+                              if (linkedinData.connected) {
+                                connectedPlatforms.push('LinkedIn Ads');
+                              }
+                            } catch (error) {
+                              console.log('No LinkedIn connection found');
                             }
                             
                             // Always include demo platforms for now

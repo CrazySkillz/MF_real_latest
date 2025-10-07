@@ -51,6 +51,7 @@ export interface IStorage {
   getLinkedInImportSession(sessionId: string): Promise<LinkedInImportSession | undefined>;
   getCampaignLinkedInImportSessions(campaignId: string): Promise<LinkedInImportSession[]>;
   createLinkedInImportSession(session: InsertLinkedInImportSession): Promise<LinkedInImportSession>;
+  updateLinkedInImportSessionCampaignId(sessionId: string, newCampaignId: string): Promise<LinkedInImportSession | undefined>;
   
   // LinkedIn Import Metrics
   getLinkedInImportMetrics(sessionId: string): Promise<LinkedInImportMetric[]>;
@@ -921,6 +922,21 @@ export class MemStorage implements IStorage {
     return importSession;
   }
 
+  async updateLinkedInImportSessionCampaignId(sessionId: string, newCampaignId: string): Promise<LinkedInImportSession | undefined> {
+    const session = this.linkedinImportSessions.get(sessionId);
+    if (!session) {
+      return undefined;
+    }
+    
+    const updatedSession: LinkedInImportSession = {
+      ...session,
+      campaignId: newCampaignId,
+    };
+    
+    this.linkedinImportSessions.set(sessionId, updatedSession);
+    return updatedSession;
+  }
+
   // LinkedIn Import Metrics methods
   async getLinkedInImportMetrics(sessionId: string): Promise<LinkedInImportMetric[]> {
     return Array.from(this.linkedinImportMetrics.values())
@@ -1654,6 +1670,15 @@ export class DatabaseStorage implements IStorage {
       .values(session)
       .returning();
     return importSession;
+  }
+
+  async updateLinkedInImportSessionCampaignId(sessionId: string, newCampaignId: string): Promise<LinkedInImportSession | undefined> {
+    const [updated] = await db
+      .update(linkedinImportSessions)
+      .set({ campaignId: newCampaignId })
+      .where(eq(linkedinImportSessions.id, sessionId))
+      .returning();
+    return updated || undefined;
   }
 
   // LinkedIn Import Metrics methods

@@ -958,11 +958,15 @@ export default function Campaigns() {
                             try {
                               const linkedinResponse = await fetch('/api/linkedin/check-connection/temp-campaign-setup');
                               const linkedinData = await linkedinResponse.json();
+                              console.log('🔧 LinkedIn check response:', linkedinData);
                               if (linkedinData.connected) {
+                                console.log('✅ LinkedIn connected! Adding to platforms');
                                 connectedPlatforms.push('LinkedIn Ads');
+                              } else {
+                                console.log('❌ LinkedIn not connected');
                               }
                             } catch (error) {
-                              console.log('No LinkedIn connection found');
+                              console.log('❌ LinkedIn connection check error:', error);
                             }
                             
                             // Always include demo platforms for now

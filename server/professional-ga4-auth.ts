@@ -86,9 +86,9 @@ export class ProfessionalGA4Auth {
   // Get all connections (for debugging)
   getAllConnections(): Array<{ campaignId: string; connection: GA4Connection }> {
     const result: Array<{ campaignId: string; connection: GA4Connection }> = [];
-    this.connections.forEach((connection, campaignId) => {
+    for (const [campaignId, connection] of this.connections) {
       result.push({ campaignId, connection });
-    });
+    }
     return result;
   }
 }

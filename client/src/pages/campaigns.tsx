@@ -542,14 +542,7 @@ export default function Campaigns() {
     },
     onSuccess: async (newCampaign) => {
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-      toast({
-        title: "Campaign created",
-        description: "Your new campaign has been created successfully.",
-      });
-      setIsCreateModalOpen(false);
-      setShowConnectorsStep(false);
-      setCampaignData(null);
-      form.reset();
+      // Don't close modal here - let handleConnectorsComplete do it after transfers
     },
     onError: () => {
       toast({
@@ -725,6 +718,16 @@ export default function Campaigns() {
       } else {
         console.log('🔧 LinkedIn not in selected platforms, skipping transfer');
       }
+      
+      // All transfers complete - now close modal and show success
+      toast({
+        title: "Campaign created",
+        description: "Your new campaign has been created successfully.",
+      });
+      setIsCreateModalOpen(false);
+      setShowConnectorsStep(false);
+      setCampaignData(null);
+      form.reset();
     }
   };
 

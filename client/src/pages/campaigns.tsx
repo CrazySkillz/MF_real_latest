@@ -374,8 +374,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                     <LinkedInConnectionFlow
                       campaignId="temp-campaign-setup"
                       onConnectionSuccess={() => {
-                        setConnectedPlatforms(prev => [...prev, 'linkedin']);
-                        setSelectedPlatforms(prev => [...prev, 'linkedin']);
+                        setConnectedPlatforms(prev => [...prev, 'LinkedIn Ads']);
+                        setSelectedPlatforms(prev => [...prev, 'LinkedIn Ads']);
                         setExpandedPlatforms(prev => ({ ...prev, 'linkedin': false }));
                         toast({
                           title: "LinkedIn Ads Connected!",

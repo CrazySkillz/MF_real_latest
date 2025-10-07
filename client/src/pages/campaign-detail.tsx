@@ -1146,7 +1146,9 @@ export default function CampaignDetail() {
     queryFn: async () => {
       const response = await fetch(`/api/linkedin/check-connection/${campaignId}`);
       if (!response.ok) return { connected: false, sessions: [] };
-      return response.json();
+      const data = await response.json();
+      console.log('🔍 LinkedIn connection data:', data);
+      return data;
     },
   });
 
@@ -2299,7 +2301,12 @@ export default function CampaignDetail() {
                         
                         {platform.platform === "LinkedIn Ads" && (
                           <div className="pt-2 border-t">
-                            <Link href={`/campaigns/${campaign.id}/linkedin-analytics${linkedinConnection?.sessionId ? `?session=${linkedinConnection.sessionId}` : ''}`}>
+                            <Link href={`/campaigns/${campaign.id}/linkedin-analytics${linkedinConnection?.sessionId ? `?session=${linkedinConnection.sessionId}` : ''}`}
+                              onClick={() => {
+                                console.log('🔗 LinkedIn analytics link clicked. SessionId:', linkedinConnection?.sessionId);
+                                console.log('🔗 Full URL:', `/campaigns/${campaign.id}/linkedin-analytics${linkedinConnection?.sessionId ? `?session=${linkedinConnection.sessionId}` : ''}`);
+                              }}
+                            >
                               <Button variant="outline" size="sm" className="w-full" data-testid="button-view-linkedin-analytics">
                                 <BarChart3 className="w-4 h-4 mr-2" />
                                 View Detailed Analytics

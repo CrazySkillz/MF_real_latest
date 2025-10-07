@@ -465,8 +465,9 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
           description: `Successfully imported ${selectedCampaigns.length} campaign${selectedCampaigns.length > 1 ? 's' : ''} with ${totalMetrics} total metrics.`
         });
         
-        // Redirect to LinkedIn analytics page
-        window.location.href = `/campaigns/${campaignId}/linkedin-analytics?session=${data.sessionId}`;
+        // Set to connected state and call onConnectionSuccess to complete campaign creation
+        setStep('connected');
+        setIsConnecting(false);
       } else {
         throw new Error(data.error || 'Failed to create import session');
       }
@@ -505,11 +506,10 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
                 setStep('credentials');
                 onConnectionSuccess();
               }}
-              variant="outline"
-              className="w-full"
-              data-testid="button-done"
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              data-testid="button-create-campaign"
             >
-              Done
+              Create Campaign
             </Button>
           </div>
         </CardContent>
@@ -693,11 +693,11 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
               
               <Button 
                 onClick={handleAdAccountSelection}
-                disabled={!selectedAdAccount}
+                disabled={!selectedAdAccount || isConnecting}
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 data-testid="button-confirm-account"
               >
-                {isTestMode ? 'View Campaigns' : 'Connect Selected Account'}
+                {isConnecting ? 'Loading...' : 'View Campaigns'}
               </Button>
             </>
           ) : (

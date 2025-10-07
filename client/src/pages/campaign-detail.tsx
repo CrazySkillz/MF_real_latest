@@ -1139,6 +1139,17 @@ export default function CampaignDetail() {
     },
   });
 
+  // Check LinkedIn connection status and get import sessions
+  const { data: linkedinConnection } = useQuery({
+    queryKey: ["/api/linkedin/check-connection", campaignId],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/linkedin/check-connection/${campaignId}`);
+      if (!response.ok) return { connected: false, sessions: [] };
+      return response.json();
+    },
+  });
+
   // Determine connected platforms based on actual connections
   const connectedPlatformNames = campaign?.platform?.split(', ') || [];
   
@@ -1209,13 +1220,13 @@ export default function CampaignDetail() {
     },
     {
       platform: "LinkedIn Ads",
-      connected: connectedPlatformNames.includes("LinkedIn Ads"),
-      impressions: connectedPlatformNames.includes("LinkedIn Ads") ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0,
-      clicks: connectedPlatformNames.includes("LinkedIn Ads") ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0,
-      conversions: connectedPlatformNames.includes("LinkedIn Ads") ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0,
-      spend: connectedPlatformNames.includes("LinkedIn Ads") ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00",
-      ctr: connectedPlatformNames.includes("LinkedIn Ads") ? "2.78%" : "0.00%",
-      cpc: connectedPlatformNames.includes("LinkedIn Ads") ? "$0.48" : "$0.00"
+      connected: !!linkedinConnection?.connected || connectedPlatformNames.includes("LinkedIn Ads"),
+      impressions: (linkedinConnection?.connected || connectedPlatformNames.includes("LinkedIn Ads")) ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0,
+      clicks: (linkedinConnection?.connected || connectedPlatformNames.includes("LinkedIn Ads")) ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0,
+      conversions: (linkedinConnection?.connected || connectedPlatformNames.includes("LinkedIn Ads")) ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0,
+      spend: (linkedinConnection?.connected || connectedPlatformNames.includes("LinkedIn Ads")) ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00",
+      ctr: (linkedinConnection?.connected || connectedPlatformNames.includes("LinkedIn Ads")) ? "2.78%" : "0.00%",
+      cpc: (linkedinConnection?.connected || connectedPlatformNames.includes("LinkedIn Ads")) ? "$0.48" : "$0.00"
     },
     {
       platform: "Shopify",
@@ -2288,7 +2299,7 @@ export default function CampaignDetail() {
                         
                         {platform.platform === "LinkedIn Ads" && (
                           <div className="pt-2 border-t">
-                            <Link href={`/campaigns/${campaign.id}/linkedin-analytics`}>
+                            <Link href={`/campaigns/${campaign.id}/linkedin-analytics${linkedinConnection?.sessions?.[0]?.id ? `?session=${linkedinConnection.sessions[0].id}` : ''}`}>
                               <Button variant="outline" size="sm" className="w-full" data-testid="button-view-linkedin-analytics">
                                 <BarChart3 className="w-4 h-4 mr-2" />
                                 View Detailed Analytics

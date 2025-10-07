@@ -2211,15 +2211,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if there's an active import session for this campaign
       const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
       
+      console.log(`🔍 LinkedIn check for campaign ${campaignId}: Found ${sessions?.length || 0} sessions`);
+      
       if (sessions && sessions.length > 0) {
         // Get the most recent session
         const latestSession = sessions[sessions.length - 1];
-        res.json({ 
+        const response = { 
           connected: true, 
           sessionId: latestSession.id,
           adAccountName: latestSession.adAccountName
-        });
+        };
+        console.log(`✅ Returning LinkedIn connection data:`, response);
+        res.json(response);
       } else {
+        console.log(`❌ No LinkedIn sessions found for campaign ${campaignId}`);
         res.json({ connected: false });
       }
     } catch (error) {
@@ -2233,6 +2238,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { fromCampaignId, toCampaignId } = req.body;
       
+      console.log(`🔄 LinkedIn transfer request: ${fromCampaignId} → ${toCampaignId}`);
+      
       if (!fromCampaignId || !toCampaignId) {
         return res.status(400).json({ success: false, error: "Missing campaign IDs" });
       }
@@ -2240,15 +2247,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all import sessions for the temp campaign
       const sessions = await storage.getCampaignLinkedInImportSessions(fromCampaignId);
       
+      console.log(`🔍 Found ${sessions?.length || 0} sessions to transfer`);
+      
       if (sessions && sessions.length > 0) {
         // Update each session to point to the new campaign
         for (const session of sessions) {
+          console.log(`  📝 Transferring session ${session.id} from ${session.campaignId} to ${toCampaignId}`);
           await storage.updateLinkedInImportSessionCampaignId(session.id, toCampaignId);
         }
         
         console.log(`✅ Transferred ${sessions.length} LinkedIn import session(s) from ${fromCampaignId} to ${toCampaignId}`);
         res.json({ success: true, transferredSessions: sessions.length });
       } else {
+        console.log(`❌ No LinkedIn import sessions found for ${fromCampaignId}`);
         res.json({ success: false, error: "No LinkedIn import sessions found" });
       }
     } catch (error: any) {

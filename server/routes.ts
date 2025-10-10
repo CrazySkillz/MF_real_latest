@@ -1974,7 +1974,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isTestMode || !accessToken) {
         // TEST MODE: Generate mock data
         for (const campaign of campaigns) {
-          if (campaign.selectedMetrics && Array.isArray(campaign.selectedMetrics)) {
+          // Only process campaigns that have selected metrics
+          if (campaign.selectedMetrics && Array.isArray(campaign.selectedMetrics) && campaign.selectedMetrics.length > 0) {
             for (const metricKey of campaign.selectedMetrics) {
               const metricValue = (Math.random() * 10000 + 1000).toFixed(2);
               await storage.createLinkedInImportMetric({
@@ -1988,34 +1989,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          // Generate mock ad performance data (2-3 ads per campaign)
-          const numAds = Math.floor(Math.random() * 2) + 2;
-          for (let i = 0; i < numAds; i++) {
-            const impressions = Math.floor(Math.random() * 50000) + 10000;
-            const clicks = Math.floor(Math.random() * 2000) + 500;
-            const spend = (Math.random() * 5000 + 1000).toFixed(2);
-            const conversions = Math.floor(Math.random() * 100) + 10;
-            const revenue = (conversions * (Math.random() * 200 + 50)).toFixed(2);
-            const ctr = ((clicks / impressions) * 100).toFixed(2);
-            const cpc = (parseFloat(spend) / clicks).toFixed(2);
-            const conversionRate = ((conversions / clicks) * 100).toFixed(2);
-            
-            await storage.createLinkedInAdPerformance({
-              sessionId: session.id,
-              adId: `ad-${campaign.id}-${i + 1}`,
-              adName: `Ad ${i + 1} - ${campaign.name}`,
-              campaignUrn: campaign.id,
-              campaignName: campaign.name,
-              campaignSelectedMetrics: campaign.selectedMetrics || [],
-              impressions,
-              clicks,
-              spend,
-              conversions,
-              revenue,
-              ctr,
-              cpc,
-              conversionRate
-            });
+          // Generate mock ad performance data (2-3 ads per campaign) - only if campaign has selected metrics
+          if (campaign.selectedMetrics && campaign.selectedMetrics.length > 0) {
+            const numAds = Math.floor(Math.random() * 2) + 2;
+            for (let i = 0; i < numAds; i++) {
+              const impressions = Math.floor(Math.random() * 50000) + 10000;
+              const clicks = Math.floor(Math.random() * 2000) + 500;
+              const spend = (Math.random() * 5000 + 1000).toFixed(2);
+              const conversions = Math.floor(Math.random() * 100) + 10;
+              const revenue = (conversions * (Math.random() * 200 + 50)).toFixed(2);
+              const ctr = ((clicks / impressions) * 100).toFixed(2);
+              const cpc = (parseFloat(spend) / clicks).toFixed(2);
+              const conversionRate = ((conversions / clicks) * 100).toFixed(2);
+              
+              await storage.createLinkedInAdPerformance({
+                sessionId: session.id,
+                adId: `ad-${campaign.id}-${i + 1}`,
+                adName: `Ad ${i + 1} - ${campaign.name}`,
+                campaignUrn: campaign.id,
+                campaignName: campaign.name,
+                campaignSelectedMetrics: campaign.selectedMetrics || [],
+                impressions,
+                clicks,
+                spend,
+                conversions,
+                revenue,
+                ctr,
+                cpc,
+                conversionRate
+              });
+            }
           }
         }
       } else {
@@ -2049,6 +2052,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Store campaign metrics
         for (const campaign of campaigns) {
+          // Only process campaigns that have selected metrics
+          if (!campaign.selectedMetrics || !Array.isArray(campaign.selectedMetrics) || campaign.selectedMetrics.length === 0) {
+            continue;
+          }
+          
           const campAnalytics = campaignAnalytics.find(a => 
             a.pivotValues?.includes(campaign.id)
           ) || {};
@@ -2079,6 +2087,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   const cost = campAnalytics.costInLocalCurrency || 0;
                   const clicks = campAnalytics.clicks || 0;
                   metricValue = clicks > 0 ? String(cost / clicks) : '0';
+                  break;
+                case 'leads':
+                  metricValue = String(campAnalytics.leadGenerationMailContactInfoShares || campAnalytics.leadGenerationMailInterestedClicks || 0);
+                  break;
+                case 'likes':
+                  metricValue = String(campAnalytics.likes || campAnalytics.reactions || 0);
+                  break;
+                case 'comments':
+                  metricValue = String(campAnalytics.comments || 0);
+                  break;
+                case 'shares':
+                  metricValue = String(campAnalytics.shares || 0);
+                  break;
+                case 'totalengagements':
+                  const engagements = (campAnalytics.likes || 0) + (campAnalytics.comments || 0) + (campAnalytics.shares || 0) + (campAnalytics.clicks || 0);
+                  metricValue = String(engagements);
+                  break;
+                case 'reach':
+                  metricValue = String(campAnalytics.approximateUniqueImpressions || campAnalytics.impressions || 0);
+                  break;
+                case 'videoviews':
+                  metricValue = String(campAnalytics.videoViews || campAnalytics.videoStarts || 0);
+                  break;
+                case 'viralimpressions':
+                  metricValue = String(campAnalytics.viralImpressions || 0);
                   break;
               }
               

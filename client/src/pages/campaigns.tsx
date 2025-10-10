@@ -22,6 +22,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
+import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 
 const campaignFormSchema = insertCampaignSchema.extend({
   name: z.string().min(1, "Campaign name is required"),
@@ -369,7 +370,22 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                     />
                   )}
                   
-                  {!['google-analytics', 'google-sheets'].includes(platform.id) && (
+                  {platform.id === 'linkedin' && (
+                    <LinkedInConnectionFlow
+                      campaignId="temp-campaign-setup"
+                      onConnectionSuccess={() => {
+                        setConnectedPlatforms(prev => [...prev, 'linkedin']);
+                        setSelectedPlatforms(prev => [...prev, 'linkedin']);
+                        setExpandedPlatforms(prev => ({ ...prev, 'linkedin': false }));
+                        toast({
+                          title: "LinkedIn Ads Connected!",
+                          description: "Successfully connected to your LinkedIn ad account."
+                        });
+                      }}
+                    />
+                  )}
+                  
+                  {!['google-analytics', 'google-sheets', 'linkedin'].includes(platform.id) && (
                     <div className="text-center py-6">
                       <div className="text-slate-600 dark:text-slate-400 mb-3">
                         {platform.name} integration coming soon

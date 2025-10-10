@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -480,6 +480,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
 }
 
 export default function Campaigns() {
+  const [, setLocation] = useLocation();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showConnectorsStep, setShowConnectorsStep] = useState(false);
   const [campaignData, setCampaignData] = useState<CampaignFormData | null>(null);
@@ -538,6 +539,9 @@ export default function Campaigns() {
       setShowConnectorsStep(false);
       setCampaignData(null);
       form.reset();
+      
+      // Navigate to campaigns page to show the newly created campaign
+      setLocation("/campaigns");
     },
     onError: () => {
       toast({

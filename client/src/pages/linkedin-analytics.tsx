@@ -7,11 +7,40 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, X } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
+
+// LinkedIn KPI Templates
+const LINKEDIN_KPI_TEMPLATES = [
+  {
+    name: "LinkedIn CTR Target",
+    description: "Monitor click-through rate performance",
+    target: "2.5%",
+    metric: "CTR"
+  },
+  {
+    name: "LinkedIn CPC Optimization",
+    description: "Keep cost per click under target",
+    target: "5.00$",
+    metric: "CPC"
+  },
+  {
+    name: "LinkedIn Conversion Rate",
+    description: "Track conversion performance",
+    target: "3.0%",
+    metric: "Conversion Rate"
+  },
+  {
+    name: "LinkedIn ROAS",
+    description: "Return on ad spend target",
+    target: "4.0x",
+    metric: "ROAS"
+  }
+];
 
 export default function LinkedInAnalytics() {
   const [, params] = useRoute("/campaigns/:id/linkedin-analytics");
@@ -21,6 +50,7 @@ export default function LinkedInAnalytics() {
   const [sortBy, setSortBy] = useState<string>('name');
   const [filterBy, setFilterBy] = useState<string>('all');
   const [viewMode, setViewMode] = useState<string>('performance');
+  const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const campaignId = params?.id;
 
   // Fetch campaign data
@@ -536,11 +566,12 @@ export default function LinkedInAnalytics() {
                           No KPIs have been created for this campaign yet.
                         </p>
                         <Button 
-                          onClick={() => setLocation(`/campaigns/${campaignId}`)}
+                          onClick={() => setIsKPIModalOpen(true)}
                           data-testid="button-create-kpi"
+                          className="bg-blue-600 hover:bg-blue-700"
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          Go to Campaign to Create KPI
+                          Create KPIs
                         </Button>
                       </div>
                     </CardContent>
@@ -928,6 +959,74 @@ export default function LinkedInAnalytics() {
           </div>
         </main>
       </div>
+
+      {/* Create LinkedIn KPI Modal */}
+      <Dialog open={isKPIModalOpen} onOpenChange={setIsKPIModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-xl font-bold">Create LinkedIn KPI</DialogTitle>
+                <DialogDescription className="mt-1">
+                  Set up a key performance indicator to track your LinkedIn campaign success
+                </DialogDescription>
+              </div>
+              <DialogClose className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </DialogClose>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Choose a template or create custom KPI:
+            </h3>
+
+            {/* Template Options */}
+            <div className="space-y-3">
+              {LINKEDIN_KPI_TEMPLATES.map((template, index) => (
+                <div
+                  key={index}
+                  className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+                  data-testid={`kpi-template-${index}`}
+                  onClick={() => {
+                    // TODO: Implement KPI creation with template
+                    console.log('Selected template:', template);
+                  }}
+                >
+                  <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
+                    {template.name}
+                  </h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                    {template.description}
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-500">
+                    Target: <span className="font-medium text-blue-600 dark:text-blue-400">{template.target}</span>
+                  </p>
+                </div>
+              ))}
+
+              {/* Create Custom KPI Option */}
+              <div
+                className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+                data-testid="kpi-template-custom"
+                onClick={() => {
+                  // TODO: Implement custom KPI creation
+                  console.log('Create custom KPI');
+                }}
+              >
+                <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
+                  Create Custom KPI
+                </h4>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Build your own KPI from scratch
+                </p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

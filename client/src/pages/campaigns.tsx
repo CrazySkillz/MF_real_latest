@@ -980,11 +980,6 @@ export default function Campaigns() {
                               console.log('No LinkedIn connection found');
                             }
                             
-                            // Always include demo platforms for now
-                            if (!connectedPlatforms.includes('facebook')) {
-                              connectedPlatforms.push('facebook');
-                            }
-                            
                             console.log('🔧 Detected connected platforms:', connectedPlatforms);
                             handleConnectorsComplete(connectedPlatforms);
                           }}

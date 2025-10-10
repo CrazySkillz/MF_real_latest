@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
@@ -19,25 +24,29 @@ const LINKEDIN_KPI_TEMPLATES = [
   {
     name: "LinkedIn CTR Target",
     description: "Monitor click-through rate performance",
-    target: "2.5%",
+    targetValue: "2.5",
+    unit: "%",
     metric: "CTR"
   },
   {
     name: "LinkedIn CPC Optimization",
     description: "Keep cost per click under target",
-    target: "5.00$",
+    targetValue: "5.00",
+    unit: "$",
     metric: "CPC"
   },
   {
     name: "LinkedIn Conversion Rate",
     description: "Track conversion performance",
-    target: "3.0%",
+    targetValue: "3.0",
+    unit: "%",
     metric: "Conversion Rate"
   },
   {
     name: "LinkedIn ROAS",
     description: "Return on ad spend target",
-    target: "4.0x",
+    targetValue: "4.0",
+    unit: "x",
     metric: "ROAS"
   }
 ];
@@ -51,7 +60,22 @@ export default function LinkedInAnalytics() {
   const [filterBy, setFilterBy] = useState<string>('all');
   const [viewMode, setViewMode] = useState<string>('performance');
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
+  const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('templates');
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const { toast } = useToast();
   const campaignId = params?.id;
+  
+  // KPI Form State
+  const [kpiForm, setKpiForm] = useState({
+    name: '',
+    unit: '',
+    description: '',
+    targetValue: '',
+    currentValue: '',
+    priority: 'high',
+    timeframe: 'monthly',
+    trackingPeriod: '30'
+  });
 
   // Fetch campaign data
   const { data: campaignData, isLoading: campaignLoading } = useQuery({
@@ -70,6 +94,85 @@ export default function LinkedInAnalytics() {
     queryKey: ['/api/linkedin/imports', sessionId, 'ads'],
     enabled: !!sessionId,
   });
+
+  // Create KPI mutation
+  const createKpiMutation = useMutation({
+    mutationFn: async (kpiData: any) => {
+      const res = await apiRequest('POST', '/api/kpis', kpiData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'kpis'] });
+      toast({
+        title: "KPI Created",
+        description: "Your LinkedIn KPI has been created successfully.",
+      });
+      setIsKPIModalOpen(false);
+      setModalStep('templates');
+      setKpiForm({
+        name: '',
+        unit: '',
+        description: '',
+        targetValue: '',
+        currentValue: '',
+        priority: 'high',
+        timeframe: 'monthly',
+        trackingPeriod: '30'
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create KPI",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle template selection
+  const handleTemplateSelect = (template: any) => {
+    setSelectedTemplate(template);
+    setKpiForm({
+      name: template.name,
+      unit: template.unit,
+      description: template.description,
+      targetValue: template.targetValue,
+      currentValue: '',
+      priority: 'high',
+      timeframe: 'monthly',
+      trackingPeriod: '30'
+    });
+    setModalStep('configuration');
+  };
+
+  // Handle back to templates
+  const handleBackToTemplates = () => {
+    setModalStep('templates');
+    setSelectedTemplate(null);
+  };
+
+  // Handle create KPI
+  const handleCreateKPI = () => {
+    const kpiData = {
+      campaignId: campaignId,
+      platformType: 'linkedin',
+      name: kpiForm.name,
+      targetValue: kpiForm.targetValue,
+      currentValue: kpiForm.currentValue || '0',
+      unit: kpiForm.unit,
+      description: kpiForm.description,
+      priority: kpiForm.priority,
+      timeframe: kpiForm.timeframe,
+      trackingPeriod: parseInt(kpiForm.trackingPeriod),
+      status: 'tracking',
+      rollingAverage: '7day',
+      alertsEnabled: true,
+      emailNotifications: false,
+      slackNotifications: false,
+      alertFrequency: 'daily'
+    };
+    createKpiMutation.mutate(kpiData);
+  };
 
   // Fetch campaign KPIs
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
@@ -961,7 +1064,13 @@ export default function LinkedInAnalytics() {
       </div>
 
       {/* Create LinkedIn KPI Modal */}
-      <Dialog open={isKPIModalOpen} onOpenChange={setIsKPIModalOpen}>
+      <Dialog open={isKPIModalOpen} onOpenChange={(open) => {
+        setIsKPIModalOpen(open);
+        if (!open) {
+          setModalStep('templates');
+          setSelectedTemplate(null);
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">Create LinkedIn KPI</DialogTitle>
@@ -970,53 +1079,213 @@ export default function LinkedInAnalytics() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-              Choose a template or create custom KPI:
-            </h3>
+          {modalStep === 'templates' ? (
+            <div className="space-y-4 py-4">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Choose a template or create custom KPI:
+              </h3>
 
-            {/* Template Options */}
-            <div className="space-y-3">
-              {LINKEDIN_KPI_TEMPLATES.map((template, index) => (
+              {/* Template Options */}
+              <div className="space-y-3">
+                {LINKEDIN_KPI_TEMPLATES.map((template, index) => (
+                  <div
+                    key={index}
+                    className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+                    data-testid={`kpi-template-${index}`}
+                    onClick={() => handleTemplateSelect(template)}
+                  >
+                    <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
+                      {template.name}
+                    </h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                      {template.description}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-500">
+                      Target: <span className="font-medium text-blue-600 dark:text-blue-400">{template.targetValue}{template.unit}</span>
+                    </p>
+                  </div>
+                ))}
+
+                {/* Create Custom KPI Option */}
                 <div
-                  key={index}
-                  className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
-                  data-testid={`kpi-template-${index}`}
+                  className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+                  data-testid="kpi-template-custom"
                   onClick={() => {
-                    // TODO: Implement KPI creation with template
-                    console.log('Selected template:', template);
+                    setKpiForm({
+                      name: '',
+                      unit: '',
+                      description: '',
+                      targetValue: '',
+                      currentValue: '',
+                      priority: 'high',
+                      timeframe: 'monthly',
+                      trackingPeriod: '30'
+                    });
+                    setModalStep('configuration');
                   }}
                 >
                   <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
-                    {template.name}
+                    Create Custom KPI
                   </h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                    {template.description}
-                  </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-500">
-                    Target: <span className="font-medium text-blue-600 dark:text-blue-400">{template.target}</span>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Build your own KPI from scratch
                   </p>
                 </div>
-              ))}
-
-              {/* Create Custom KPI Option */}
-              <div
-                className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
-                data-testid="kpi-template-custom"
-                onClick={() => {
-                  // TODO: Implement custom KPI creation
-                  console.log('Create custom KPI');
-                }}
-              >
-                <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
-                  Create Custom KPI
-                </h4>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Build your own KPI from scratch
-                </p>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              {/* Header with back button */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  KPI Configuration
+                </h3>
+                <Button
+                  variant="ghost"
+                  onClick={handleBackToTemplates}
+                  className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  data-testid="button-back-to-templates"
+                >
+                  <ChevronRight className="w-4 h-4 mr-1 rotate-180" />
+                  Back to Templates
+                </Button>
+              </div>
+
+              {/* KPI Form */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-name">KPI Name</Label>
+                  <Input
+                    id="kpi-name"
+                    value={kpiForm.name}
+                    onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
+                    placeholder="Enter KPI name"
+                    data-testid="input-kpi-name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-unit">Unit</Label>
+                  <Input
+                    id="kpi-unit"
+                    value={kpiForm.unit}
+                    onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
+                    placeholder="%"
+                    data-testid="input-kpi-unit"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="kpi-description">Description</Label>
+                <Textarea
+                  id="kpi-description"
+                  value={kpiForm.description}
+                  onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
+                  placeholder="Enter description"
+                  rows={3}
+                  data-testid="input-kpi-description"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-target">Target Value</Label>
+                  <Input
+                    id="kpi-target"
+                    type="number"
+                    step="0.01"
+                    value={kpiForm.targetValue}
+                    onChange={(e) => setKpiForm({ ...kpiForm, targetValue: e.target.value })}
+                    placeholder="2.5"
+                    data-testid="input-kpi-target"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-current">Current Value</Label>
+                  <Input
+                    id="kpi-current"
+                    type="number"
+                    step="0.01"
+                    value={kpiForm.currentValue}
+                    onChange={(e) => setKpiForm({ ...kpiForm, currentValue: e.target.value })}
+                    placeholder="Enter current value"
+                    data-testid="input-kpi-current"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-priority">Priority</Label>
+                  <Select
+                    value={kpiForm.priority}
+                    onValueChange={(value) => setKpiForm({ ...kpiForm, priority: value })}
+                  >
+                    <SelectTrigger id="kpi-priority" data-testid="select-kpi-priority">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-timeframe">Timeframe</Label>
+                  <Select
+                    value={kpiForm.timeframe}
+                    onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
+                  >
+                    <SelectTrigger id="kpi-timeframe" data-testid="select-kpi-timeframe">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-tracking">Tracking Period (days)</Label>
+                  <Input
+                    id="kpi-tracking"
+                    type="number"
+                    value={kpiForm.trackingPeriod}
+                    onChange={(e) => setKpiForm({ ...kpiForm, trackingPeriod: e.target.value })}
+                    placeholder="30"
+                    data-testid="input-kpi-tracking"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsKPIModalOpen(false)}
+                  data-testid="button-cancel-kpi"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateKPI}
+                  disabled={createKpiMutation.isPending || !kpiForm.name || !kpiForm.targetValue}
+                  className="bg-blue-600 hover:bg-blue-700"
+                  data-testid="button-create-kpi"
+                >
+                  {createKpiMutation.isPending ? 'Creating...' : 'Create KPI'}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

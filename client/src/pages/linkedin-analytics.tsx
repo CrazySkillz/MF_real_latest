@@ -98,7 +98,7 @@ export default function LinkedInAnalytics() {
   // Create KPI mutation
   const createKpiMutation = useMutation({
     mutationFn: async (kpiData: any) => {
-      const res = await apiRequest('POST', '/api/kpis', kpiData);
+      const res = await apiRequest('POST', `/api/campaigns/${campaignId}/kpis`, kpiData);
       return res.json();
     },
     onSuccess: () => {
@@ -154,7 +154,7 @@ export default function LinkedInAnalytics() {
   // Handle create KPI
   const handleCreateKPI = () => {
     const kpiData = {
-      campaignId: campaignId,
+      // campaignId is extracted from URL by backend, don't send it
       platformType: 'linkedin',
       name: kpiForm.name,
       targetValue: kpiForm.targetValue,

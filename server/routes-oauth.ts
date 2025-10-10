@@ -2124,6 +2124,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create platform benchmark
+  app.post("/api/platforms/:platformType/benchmarks", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      
+      const validatedData = insertBenchmarkSchema.parse({
+        ...req.body,
+        platformType: platformType,
+        campaignId: null
+      });
+      
+      // Calculate initial variance if current value exists
+      if (validatedData.currentValue && validatedData.benchmarkValue) {
+        const currentVal = parseFloat(validatedData.currentValue.toString());
+        const benchmarkVal = parseFloat(validatedData.benchmarkValue.toString());
+        const variance = ((currentVal - benchmarkVal) / benchmarkVal) * 100;
+        validatedData.variance = variance.toString();
+      }
+      
+      const benchmark = await storage.createBenchmark(validatedData);
+      res.status(201).json(benchmark);
+    } catch (error) {
+      console.error('Platform benchmark creation error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid benchmark data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create platform benchmark" });
+    }
+  });
+
   // Get single benchmark
   app.get("/api/benchmarks/:id", async (req, res) => {
     try {

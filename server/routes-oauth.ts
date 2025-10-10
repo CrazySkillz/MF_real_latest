@@ -1873,6 +1873,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Transfer LinkedIn connection from temporary campaign ID to real campaign ID
+  app.post("/api/linkedin/transfer-connection", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+      
+      if (!fromCampaignId || !toCampaignId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Both fromCampaignId and toCampaignId are required" 
+        });
+      }
+
+      // Get the existing connection
+      const existingConnection = await storage.getLinkedInConnection(fromCampaignId);
+      
+      console.log('Transfer LinkedIn connection - existing connection:', {
+        fromCampaignId,
+        toCampaignId,
+        found: !!existingConnection,
+        hasAccessToken: !!existingConnection?.accessToken,
+        adAccountId: existingConnection?.adAccountId
+      });
+
+      if (!existingConnection) {
+        return res.status(404).json({
+          success: false,
+          error: 'No LinkedIn connection found for source campaign'
+        });
+      }
+
+      // Create new connection for the real campaign
+      const newConnection = await storage.createLinkedInConnection({
+        campaignId: toCampaignId,
+        adAccountId: existingConnection.adAccountId,
+        adAccountName: existingConnection.adAccountName,
+        accessToken: existingConnection.accessToken,
+        refreshToken: existingConnection.refreshToken,
+        clientId: existingConnection.clientId,
+        clientSecret: existingConnection.clientSecret,
+        method: existingConnection.method || 'oauth',
+        expiresAt: existingConnection.expiresAt
+      });
+      
+      console.log('Transfer LinkedIn connection - new connection created:', {
+        id: newConnection.id,
+        campaignId: newConnection.campaignId,
+        adAccountId: newConnection.adAccountId,
+        hasAccessToken: !!newConnection.accessToken
+      });
+
+      // Delete the temporary connection
+      await storage.deleteLinkedInConnection(fromCampaignId);
+
+      res.json({
+        success: true,
+        message: 'LinkedIn connection transferred successfully'
+      });
+    } catch (error) {
+      console.error('LinkedIn connection transfer error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to transfer LinkedIn connection'
+      });
+    }
+  });
+
   // KPI routes
   app.get("/api/campaigns/:id/kpis", async (req, res) => {
     try {

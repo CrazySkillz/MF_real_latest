@@ -1670,6 +1670,15 @@ export class DatabaseStorage implements IStorage {
     return importSession;
   }
 
+  async updateLinkedInImportSession(sessionId: string, updates: Partial<InsertLinkedInImportSession>): Promise<LinkedInImportSession | undefined> {
+    const [updated] = await db
+      .update(linkedinImportSessions)
+      .set(updates)
+      .where(eq(linkedinImportSessions.id, sessionId))
+      .returning();
+    return updated || undefined;
+  }
+
   // LinkedIn Import Metrics methods
   async getLinkedInImportMetrics(sessionId: string): Promise<LinkedInImportMetric[]> {
     return await db.select()

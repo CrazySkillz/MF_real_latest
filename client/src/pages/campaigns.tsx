@@ -119,7 +119,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
       console.log('📊 Calling onPlatformsChange with:', connectedPlatforms);
       onPlatformsChange(connectedPlatforms);
     }
-  }, [connectedPlatforms, onPlatformsChange]);
+  }, [connectedPlatforms]); // Remove onPlatformsChange from deps to avoid stale closure issues
 
   const handlePlatformClick = (platformId: string) => {
     if (connectedPlatforms.includes(platformId)) {
@@ -390,6 +390,11 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                         setConnectedPlatforms(prev => {
                           const updated = [...prev, 'linkedin'];
                           console.log('🔗 Updated connectedPlatforms to:', updated);
+                          // Also update parent immediately
+                          if (onPlatformsChange) {
+                            console.log('🔗 Immediately updating parent with:', updated);
+                            onPlatformsChange(updated);
+                          }
                           return updated;
                         });
                         setSelectedPlatforms(prev => [...prev, 'linkedin']);
@@ -646,6 +651,9 @@ export default function Campaigns() {
 
   const handleConnectorsComplete = async (selectedPlatforms: string[]) => {
     if (campaignData) {
+      console.log('🚀 handleConnectorsComplete called with platforms:', selectedPlatforms);
+      console.log('🚀 Current connectedPlatformsInDialog:', connectedPlatformsInDialog);
+      
       // Create campaign with connected platforms data - no artificial metrics
       const campaignWithPlatforms = {
         ...campaignData,

@@ -45,6 +45,7 @@ interface DataConnectorsStepProps {
   onBack: () => void;
   isLoading: boolean;
   onLinkedInImportComplete?: () => void;
+  onPlatformsChange?: (platforms: string[]) => void;
 }
 
 const platforms = [
@@ -99,7 +100,7 @@ const platforms = [
   }
 ];
 
-function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLinkedInImportComplete }: DataConnectorsStepProps & { campaignData: CampaignFormData }) {
+function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLinkedInImportComplete, onPlatformsChange }: DataConnectorsStepProps & { campaignData: CampaignFormData }) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({});
@@ -110,6 +111,15 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const [ga4AccessToken, setGA4AccessToken] = useState<string>('');
   const [ga4RefreshToken, setGA4RefreshToken] = useState<string>('');
   const { toast } = useToast();
+
+  // Notify parent whenever connected platforms change
+  useEffect(() => {
+    console.log('📊 DataConnectorsStep - connectedPlatforms changed:', connectedPlatforms);
+    if (onPlatformsChange) {
+      console.log('📊 Calling onPlatformsChange with:', connectedPlatforms);
+      onPlatformsChange(connectedPlatforms);
+    }
+  }, [connectedPlatforms, onPlatformsChange]);
 
   const handlePlatformClick = (platformId: string) => {
     if (connectedPlatforms.includes(platformId)) {
@@ -376,7 +386,12 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                       campaignId="temp-campaign-setup"
                       mode="new"
                       onConnectionSuccess={() => {
-                        setConnectedPlatforms(prev => [...prev, 'linkedin']);
+                        console.log('🔗 LinkedIn onConnectionSuccess fired!');
+                        setConnectedPlatforms(prev => {
+                          const updated = [...prev, 'linkedin'];
+                          console.log('🔗 Updated connectedPlatforms to:', updated);
+                          return updated;
+                        });
                         setSelectedPlatforms(prev => [...prev, 'linkedin']);
                         setExpandedPlatforms(prev => ({ ...prev, 'linkedin': false }));
                         toast({
@@ -494,6 +509,12 @@ export default function Campaigns() {
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [linkedInImportComplete, setLinkedInImportComplete] = useState(false);
+  const [connectedPlatformsInDialog, setConnectedPlatformsInDialog] = useState<string[]>([]);
+  
+  // Debug: log whenever connectedPlatformsInDialog changes
+  useEffect(() => {
+    console.log('🎯 connectedPlatformsInDialog updated:', connectedPlatformsInDialog);
+  }, [connectedPlatformsInDialog]);
   const { toast } = useToast();
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
@@ -732,6 +753,7 @@ export default function Campaigns() {
       setShowConnectorsStep(false);
       setCampaignData(null);
       setLinkedInImportComplete(false);
+      setConnectedPlatformsInDialog([]);
       form.reset();
       
       // Navigate to campaigns page after all transfers complete
@@ -915,7 +937,13 @@ export default function Campaigns() {
                         type="button" 
                         variant="outline" 
                         className="flex-1"
-                        onClick={() => setIsCreateModalOpen(false)}
+                        onClick={() => {
+                          setIsCreateModalOpen(false);
+                          setConnectedPlatformsInDialog([]);
+                          setShowConnectorsStep(false);
+                          setCampaignData(null);
+                          setLinkedInImportComplete(false);
+                        }}
                       >
                         Cancel
                       </Button>
@@ -936,6 +964,7 @@ export default function Campaigns() {
                           isLoading={createCampaignMutation.isPending}
                           campaignData={campaignData!}
                           onLinkedInImportComplete={() => setLinkedInImportComplete(true)}
+                          onPlatformsChange={setConnectedPlatformsInDialog}
                         />
                       </div>
                       
@@ -953,45 +982,10 @@ export default function Campaigns() {
                         <Button 
                           type="button" 
                           className="flex-1"
-                          onClick={async () => {
-                            // Dynamically detect connected platforms
-                            const connectedPlatforms = [];
-                            
-                            // Check for GA4 connection
-                            try {
-                              const ga4Response = await fetch('/api/ga4/check-connection/temp-campaign-setup');
-                              const ga4Data = await ga4Response.json();
-                              if (ga4Data.connected) {
-                                connectedPlatforms.push('google-analytics');
-                              }
-                            } catch (error) {
-                              console.log('No GA4 connection found');
-                            }
-                            
-                            // Check for Google Sheets connection
-                            try {
-                              const sheetsResponse = await fetch('/api/google-sheets/check-connection/temp-campaign-setup');
-                              const sheetsData = await sheetsResponse.json();
-                              if (sheetsData.connected) {
-                                connectedPlatforms.push('google-sheets');
-                              }
-                            } catch (error) {
-                              console.log('No Google Sheets connection found');
-                            }
-                            
-                            // Check for LinkedIn connection
-                            try {
-                              const linkedInResponse = await fetch('/api/linkedin/check-connection/temp-campaign-setup');
-                              const linkedInData = await linkedInResponse.json();
-                              if (linkedInData.connected) {
-                                connectedPlatforms.push('linkedin');
-                              }
-                            } catch (error) {
-                              console.log('No LinkedIn connection found');
-                            }
-                            
-                            console.log('🔧 Detected connected platforms:', connectedPlatforms);
-                            handleConnectorsComplete(connectedPlatforms);
+                          onClick={() => {
+                            // Use the platforms tracked by DataConnectorsStep
+                            console.log('🔧 Using tracked platforms:', connectedPlatformsInDialog);
+                            handleConnectorsComplete(connectedPlatformsInDialog);
                           }}
                           disabled={createCampaignMutation.isPending}
                         >

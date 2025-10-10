@@ -467,10 +467,13 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
           description: `Successfully imported ${selectedCampaigns.length} campaign${selectedCampaigns.length > 1 ? 's' : ''} with ${totalMetrics} total metrics.`
         });
         
-        // For new campaigns, trigger callback and let parent handle next steps
+        // For new campaigns, trigger both connection success and import complete callbacks
         // For existing campaigns, redirect to LinkedIn analytics page
         if (mode === 'new') {
           setIsConnecting(false);
+          // Call onConnectionSuccess to update platform state
+          onConnectionSuccess();
+          // Call onImportComplete to show Create Campaign button
           if (onImportComplete) {
             onImportComplete();
           }

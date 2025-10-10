@@ -44,6 +44,7 @@ interface DataConnectorsStepProps {
   onComplete: (selectedPlatforms: string[]) => void;
   onBack: () => void;
   isLoading: boolean;
+  onLinkedInImportComplete?: () => void;
 }
 
 const platforms = [
@@ -98,7 +99,7 @@ const platforms = [
   }
 ];
 
-function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: DataConnectorsStepProps & { campaignData: CampaignFormData }) {
+function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLinkedInImportComplete }: DataConnectorsStepProps & { campaignData: CampaignFormData }) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({});
@@ -373,6 +374,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                   {platform.id === 'linkedin' && (
                     <LinkedInConnectionFlow
                       campaignId="temp-campaign-setup"
+                      mode="new"
                       onConnectionSuccess={() => {
                         setConnectedPlatforms(prev => [...prev, 'linkedin']);
                         setSelectedPlatforms(prev => [...prev, 'linkedin']);
@@ -381,6 +383,11 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData }: Dat
                           title: "LinkedIn Ads Connected!",
                           description: "Successfully connected to your LinkedIn ad account."
                         });
+                      }}
+                      onImportComplete={() => {
+                        if (onLinkedInImportComplete) {
+                          onLinkedInImportComplete();
+                        }
                       }}
                     />
                   )}
@@ -486,6 +493,7 @@ export default function Campaigns() {
   const [campaignData, setCampaignData] = useState<CampaignFormData | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
+  const [linkedInImportComplete, setLinkedInImportComplete] = useState(false);
   const { toast } = useToast();
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
@@ -538,6 +546,7 @@ export default function Campaigns() {
       setIsCreateModalOpen(false);
       setShowConnectorsStep(false);
       setCampaignData(null);
+      setLinkedInImportComplete(false);
       form.reset();
       
       // Navigate to campaigns page to show the newly created campaign
@@ -722,6 +731,7 @@ export default function Campaigns() {
 
   const handleBackToForm = () => {
     setShowConnectorsStep(false);
+    setLinkedInImportComplete(false);
   };
 
   const toggleCampaignStatus = (campaign: Campaign) => {
@@ -915,6 +925,7 @@ export default function Campaigns() {
                           onBack={handleBackToForm}
                           isLoading={createCampaignMutation.isPending}
                           campaignData={campaignData!}
+                          onLinkedInImportComplete={() => setLinkedInImportComplete(true)}
                         />
                       </div>
                       
@@ -956,6 +967,17 @@ export default function Campaigns() {
                               }
                             } catch (error) {
                               console.log('No Google Sheets connection found');
+                            }
+                            
+                            // Check for LinkedIn connection
+                            try {
+                              const linkedInResponse = await fetch('/api/linkedin/check-connection/temp-campaign-setup');
+                              const linkedInData = await linkedInResponse.json();
+                              if (linkedInData.connected) {
+                                connectedPlatforms.push('linkedin');
+                              }
+                            } catch (error) {
+                              console.log('No LinkedIn connection found');
                             }
                             
                             // Always include demo platforms for now

@@ -75,15 +75,16 @@ export default function LinkedInAnalytics() {
       'clicks': { icon: MousePointerClick, format: formatNumber, label: 'Total Clicks' },
       'spend': { icon: DollarSign, format: formatCurrency, label: 'Total Spend' },
       'conversions': { icon: Target, format: formatNumber, label: 'Total Conversions' },
-      'ctr': { icon: Activity, format: formatPercentage, label: 'Conversion Rate' },
-      'cpc': { icon: DollarSign, format: formatCurrency, label: 'Average CPC' },
       'leads': { icon: Users, format: formatNumber, label: 'Total Leads' },
       'likes': { icon: Heart, format: formatNumber, label: 'Total Likes' },
       'comments': { icon: MessageCircle, format: formatNumber, label: 'Total Comments' },
       'shares': { icon: Share2, format: formatNumber, label: 'Total Shares' },
-      'engagements': { icon: Activity, format: formatNumber, label: 'Total Engagements' },
+      'totalengagements': { icon: Activity, format: formatNumber, label: 'Total Engagements' },
       'reach': { icon: Users, format: formatNumber, label: 'Total Reach' },
-      'videoViews': { icon: Play, format: formatNumber, label: 'Video Views' },
+      'videoviews': { icon: Play, format: formatNumber, label: 'Total Video Views' },
+      'viralimpressions': { icon: Activity, format: formatNumber, label: 'Total Viral Impressions' },
+      'ctr': { icon: Activity, format: formatPercentage, label: 'Click-Through Rate' },
+      'cpc': { icon: DollarSign, format: formatCurrency, label: 'Cost Per Click' },
     };
 
     return metricConfig[metricKey] || { icon: BarChart3, format: formatNumber, label: metricKey };

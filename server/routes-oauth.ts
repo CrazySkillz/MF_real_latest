@@ -3051,31 +3051,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metrics = await storage.getLinkedInImportMetrics(sessionId);
       const ads = await storage.getLinkedInAdPerformance(sessionId);
       
-      // Aggregate metrics (convert string values to numbers)
-      const totalImpressions = ads.reduce((sum, ad) => sum + ad.impressions, 0);
-      const totalClicks = ads.reduce((sum, ad) => sum + ad.clicks, 0);
-      const totalSpend = ads.reduce((sum, ad) => sum + parseFloat(ad.spend || '0'), 0);
-      const totalConversions = ads.reduce((sum, ad) => sum + ad.conversions, 0);
+      // Get unique selected metrics from the imported data
+      const selectedMetrics = Array.from(new Set(metrics.map((m: any) => m.metricKey)));
       
-      // Calculate derived metrics
-      const avgCTR = totalImpressions > 0 
-        ? parseFloat(((totalClicks / totalImpressions) * 100).toFixed(2))
-        : 0;
-      const avgCPC = totalClicks > 0 
-        ? parseFloat((totalSpend / totalClicks).toFixed(2))
-        : 0;
+      // Dynamically aggregate only the selected metrics
+      const aggregated: Record<string, number> = {};
+      
+      selectedMetrics.forEach((metricKey: string) => {
+        const total = metrics
+          .filter((m: any) => m.metricKey === metricKey)
+          .reduce((sum: number, m: any) => sum + parseFloat(m.metricValue || '0'), 0);
+        
+        // Use consistent naming: total{MetricName}
+        const aggregateKey = `total${metricKey.charAt(0).toUpperCase() + metricKey.slice(1)}`;
+        aggregated[aggregateKey] = parseFloat(total.toFixed(2));
+      });
       
       res.json({
         session,
         metrics,
-        aggregated: {
-          totalImpressions,
-          totalClicks,
-          totalSpend: parseFloat(totalSpend.toFixed(2)),
-          avgCTR,
-          avgCPC,
-          totalConversions
-        }
+        aggregated
       });
     } catch (error) {
       console.error('LinkedIn import session fetch error:', error);

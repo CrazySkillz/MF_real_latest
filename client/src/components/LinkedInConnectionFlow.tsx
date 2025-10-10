@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { SiLinkedin } from "react-icons/si";
-import { Briefcase, CheckCircle, AlertCircle, ExternalLink, FlaskConical, TrendingUp, MousePointerClick, DollarSign, Eye, Target, Percent } from "lucide-react";
+import { Briefcase, CheckCircle, AlertCircle, ExternalLink, FlaskConical, TrendingUp, MousePointerClick, DollarSign, Eye, Target, Percent, UserPlus, Heart, MessageCircle, Share2, Activity, Users, Play, Repeat2 } from "lucide-react";
 
 interface LinkedInConnectionFlowProps {
   campaignId: string;
@@ -31,6 +31,14 @@ interface LinkedInCampaign {
   clicks: number;
   spend: number;
   conversions: number;
+  leads: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  totalEngagements: number;
+  reach: number;
+  videoViews: number;
+  viralImpressions: number;
   ctr: number;
   cpc: number;
   selected?: boolean;
@@ -59,6 +67,14 @@ const MOCK_CAMPAIGNS: LinkedInCampaign[] = [
     clicks: 3845,
     spend: 4250.50,
     conversions: 127,
+    leads: 98,
+    likes: 456,
+    comments: 123,
+    shares: 89,
+    totalEngagements: 668,
+    reach: 98450,
+    videoViews: 12340,
+    viralImpressions: 23450,
     ctr: 2.65,
     cpc: 1.11
   },
@@ -70,6 +86,14 @@ const MOCK_CAMPAIGNS: LinkedInCampaign[] = [
     clicks: 2156,
     spend: 3180.25,
     conversions: 89,
+    leads: 156,
+    likes: 234,
+    comments: 67,
+    shares: 45,
+    totalEngagements: 346,
+    reach: 67890,
+    videoViews: 8920,
+    viralImpressions: 15670,
     ctr: 2.41,
     cpc: 1.47
   },
@@ -81,6 +105,14 @@ const MOCK_CAMPAIGNS: LinkedInCampaign[] = [
     clicks: 5234,
     spend: 6890.75,
     conversions: 201,
+    leads: 189,
+    likes: 678,
+    comments: 234,
+    shares: 156,
+    totalEngagements: 1068,
+    reach: 145670,
+    videoViews: 18920,
+    viralImpressions: 34560,
     ctr: 2.57,
     cpc: 1.32
   },
@@ -92,6 +124,14 @@ const MOCK_CAMPAIGNS: LinkedInCampaign[] = [
     clicks: 892,
     spend: 1250.00,
     conversions: 34,
+    leads: 67,
+    likes: 123,
+    comments: 45,
+    shares: 23,
+    totalEngagements: 191,
+    reach: 34560,
+    videoViews: 4560,
+    viralImpressions: 8920,
     ctr: 1.98,
     cpc: 1.40
   }
@@ -117,22 +157,58 @@ const AVAILABLE_METRICS: MetricOption[] = [
     getValue: (campaign) => `$${campaign.spend.toFixed(2)}`
   },
   {
-    key: 'ctr',
-    label: 'CTR',
-    icon: TrendingUp,
-    getValue: (campaign) => `${campaign.ctr}%`
-  },
-  {
     key: 'conversions',
     label: 'Conversions',
     icon: Target,
     getValue: (campaign) => campaign.conversions.toLocaleString()
   },
   {
-    key: 'cpc',
-    label: 'CPC',
-    icon: Percent,
-    getValue: (campaign) => `$${campaign.cpc.toFixed(2)}`
+    key: 'leads',
+    label: 'Leads',
+    icon: UserPlus,
+    getValue: (campaign) => campaign.leads.toLocaleString()
+  },
+  {
+    key: 'likes',
+    label: 'Likes',
+    icon: Heart,
+    getValue: (campaign) => campaign.likes.toLocaleString()
+  },
+  {
+    key: 'comments',
+    label: 'Comments',
+    icon: MessageCircle,
+    getValue: (campaign) => campaign.comments.toLocaleString()
+  },
+  {
+    key: 'shares',
+    label: 'Shares',
+    icon: Share2,
+    getValue: (campaign) => campaign.shares.toLocaleString()
+  },
+  {
+    key: 'totalEngagements',
+    label: 'Total Engagements',
+    icon: Activity,
+    getValue: (campaign) => campaign.totalEngagements.toLocaleString()
+  },
+  {
+    key: 'reach',
+    label: 'Reach',
+    icon: Users,
+    getValue: (campaign) => campaign.reach.toLocaleString()
+  },
+  {
+    key: 'videoViews',
+    label: 'Video Views',
+    icon: Play,
+    getValue: (campaign) => campaign.videoViews.toLocaleString()
+  },
+  {
+    key: 'viralImpressions',
+    label: 'Viral Impressions',
+    icon: Repeat2,
+    getValue: (campaign) => campaign.viralImpressions.toLocaleString()
   }
 ];
 

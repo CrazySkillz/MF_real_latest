@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertKPISchema, insertKPIProgressSchema, insertNotificationSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertKPISchema, insertKPIProgressSchema, insertNotificationSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, insertBenchmarkSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -1266,6 +1266,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('=== Platform KPI deletion error ===:', error);
       console.error('Error stack:', error.stack);
       res.status(500).json({ message: "Failed to delete KPI", error: error.message });
+    }
+  });
+
+  // Platform-level Benchmark routes
+  app.get("/api/platforms/:platformType/benchmarks", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      const benchmarks = await storage.getPlatformBenchmarks(platformType);
+      res.json(benchmarks);
+    } catch (error) {
+      console.error('Platform Benchmark fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch platform benchmarks" });
+    }
+  });
+
+  app.post("/api/platforms/:platformType/benchmarks", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      
+      const validatedBenchmark = insertBenchmarkSchema.parse({
+        ...req.body,
+        platformType: platformType,
+        campaignId: null
+      });
+      
+      const benchmark = await storage.createBenchmark(validatedBenchmark);
+      res.json(benchmark);
+    } catch (error) {
+      console.error('Platform Benchmark creation error:', error);
+      res.status(500).json({ message: "Failed to create platform benchmark" });
     }
   });
 

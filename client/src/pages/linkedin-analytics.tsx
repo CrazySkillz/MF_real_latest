@@ -60,6 +60,7 @@ export default function LinkedInAnalytics() {
   const [filterBy, setFilterBy] = useState<string>('all');
   const [viewMode, setViewMode] = useState<string>('performance');
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
+  const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('templates');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const { toast } = useToast();
@@ -75,6 +76,21 @@ export default function LinkedInAnalytics() {
     priority: 'high',
     timeframe: 'monthly',
     trackingPeriod: '30'
+  });
+
+  // Benchmark Form State
+  const [benchmarkForm, setBenchmarkForm] = useState({
+    name: '',
+    category: '',
+    benchmarkType: '',
+    unit: '',
+    benchmarkValue: '',
+    industry: '',
+    description: '',
+    source: '',
+    geographicLocation: '',
+    period: 'monthly',
+    confidenceLevel: ''
   });
 
   // Fetch campaign data
@@ -174,15 +190,69 @@ export default function LinkedInAnalytics() {
     createKpiMutation.mutate(kpiData);
   };
 
+  // Create Benchmark mutation
+  const createBenchmarkMutation = useMutation({
+    mutationFn: async (benchmarkData: any) => {
+      const res = await apiRequest('POST', '/api/platforms/linkedin/benchmarks', benchmarkData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks'] });
+      toast({
+        title: "Benchmark Created",
+        description: "Your LinkedIn benchmark has been created successfully.",
+      });
+      setIsBenchmarkModalOpen(false);
+      setBenchmarkForm({
+        name: '',
+        category: '',
+        benchmarkType: '',
+        unit: '',
+        benchmarkValue: '',
+        industry: '',
+        description: '',
+        source: '',
+        geographicLocation: '',
+        period: 'monthly',
+        confidenceLevel: ''
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create benchmark",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle create Benchmark
+  const handleCreateBenchmark = () => {
+    const benchmarkData = {
+      name: benchmarkForm.name,
+      category: benchmarkForm.category,
+      benchmarkType: benchmarkForm.benchmarkType,
+      unit: benchmarkForm.unit,
+      benchmarkValue: benchmarkForm.benchmarkValue,
+      industry: benchmarkForm.industry,
+      description: benchmarkForm.description,
+      source: benchmarkForm.source,
+      geographicLocation: benchmarkForm.geographicLocation,
+      period: benchmarkForm.period,
+      confidenceLevel: benchmarkForm.confidenceLevel,
+      isActive: true
+    };
+    createBenchmarkMutation.mutate(benchmarkData);
+  };
+
   // Fetch platform-level LinkedIn KPIs
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
     queryKey: ['/api/platforms/linkedin/kpis'],
   });
 
-  // Fetch campaign Benchmarks
+  // Fetch platform-level LinkedIn Benchmarks
   const { data: benchmarksData, isLoading: benchmarksLoading } = useQuery({
-    queryKey: ['/api/campaigns', campaignId, 'benchmarks'],
-    enabled: !!campaignId,
+    queryKey: ['/api/platforms/linkedin/benchmarks'],
   });
 
   const formatNumber = (num: number | string) => {
@@ -833,11 +903,12 @@ export default function LinkedInAnalytics() {
                           No benchmarks have been created for this campaign yet.
                         </p>
                         <Button 
-                          onClick={() => setLocation(`/campaigns/${campaignId}`)}
+                          onClick={() => setIsBenchmarkModalOpen(true)}
                           data-testid="button-create-benchmark"
+                          className="bg-blue-600 hover:bg-blue-700"
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          Go to Campaign to Create Benchmark
+                          Create Benchmark
                         </Button>
                       </div>
                     </CardContent>
@@ -1285,6 +1356,196 @@ export default function LinkedInAnalytics() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create LinkedIn Benchmark Modal */}
+      <Dialog open={isBenchmarkModalOpen} onOpenChange={setIsBenchmarkModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Create LinkedIn Benchmark</DialogTitle>
+            <DialogDescription className="mt-1">
+              Set up a benchmark to compare your LinkedIn performance against industry standards
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Benchmark Form */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-name">Benchmark Name</Label>
+                <Input
+                  id="benchmark-name"
+                  value={benchmarkForm.name}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
+                  placeholder="e.g., LinkedIn CTR Benchmark"
+                  data-testid="input-benchmark-name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-category">Category</Label>
+                <Select
+                  value={benchmarkForm.category}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, category: value })}
+                >
+                  <SelectTrigger id="benchmark-category" data-testid="select-benchmark-category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="engagement">Engagement</SelectItem>
+                    <SelectItem value="conversion">Conversion</SelectItem>
+                    <SelectItem value="cost">Cost</SelectItem>
+                    <SelectItem value="reach">Reach</SelectItem>
+                    <SelectItem value="performance">Performance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-type">Benchmark Type</Label>
+                <Select
+                  value={benchmarkForm.benchmarkType}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, benchmarkType: value })}
+                >
+                  <SelectTrigger id="benchmark-type" data-testid="select-benchmark-type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="industry_average">Industry Average</SelectItem>
+                    <SelectItem value="competitor">Competitor</SelectItem>
+                    <SelectItem value="historical">Historical</SelectItem>
+                    <SelectItem value="target">Target</SelectItem>
+                    <SelectItem value="best_practice">Best Practice</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-unit">Unit</Label>
+                <Input
+                  id="benchmark-unit"
+                  value={benchmarkForm.unit}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, unit: e.target.value })}
+                  placeholder="%, $, count, etc."
+                  data-testid="input-benchmark-unit"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-value">Benchmark Value</Label>
+                <Input
+                  id="benchmark-value"
+                  value={benchmarkForm.benchmarkValue}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, benchmarkValue: e.target.value })}
+                  placeholder="Enter benchmark value"
+                  data-testid="input-benchmark-value"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-industry">Industry</Label>
+                <Input
+                  id="benchmark-industry"
+                  value={benchmarkForm.industry}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, industry: e.target.value })}
+                  placeholder="e.g., Technology, Healthcare"
+                  data-testid="input-benchmark-industry"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-description">Description</Label>
+              <Textarea
+                id="benchmark-description"
+                value={benchmarkForm.description}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, description: e.target.value })}
+                placeholder="Describe this benchmark and its source"
+                rows={3}
+                data-testid="input-benchmark-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-source">Source</Label>
+                <Input
+                  id="benchmark-source"
+                  value={benchmarkForm.source}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, source: e.target.value })}
+                  placeholder="e.g., LinkedIn Marketing Solutions"
+                  data-testid="input-benchmark-source"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-location">Geographic Location</Label>
+                <Input
+                  id="benchmark-location"
+                  value={benchmarkForm.geographicLocation}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, geographicLocation: e.target.value })}
+                  placeholder="e.g., Global, US, Europe"
+                  data-testid="input-benchmark-location"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-period">Period</Label>
+                <Select
+                  value={benchmarkForm.period}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, period: value })}
+                >
+                  <SelectTrigger id="benchmark-period" data-testid="select-benchmark-period">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-confidence">Confidence Level</Label>
+                <Input
+                  id="benchmark-confidence"
+                  value={benchmarkForm.confidenceLevel}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, confidenceLevel: e.target.value })}
+                  placeholder="e.g., 95%, High, Medium"
+                  data-testid="input-benchmark-confidence"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsBenchmarkModalOpen(false)}
+                data-testid="button-cancel-benchmark"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateBenchmark}
+                disabled={createBenchmarkMutation.isPending || !benchmarkForm.name || !benchmarkForm.benchmarkValue}
+                className="bg-blue-600 hover:bg-blue-700"
+                data-testid="button-create-benchmark-submit"
+              >
+                {createBenchmarkMutation.isPending ? 'Creating...' : 'Create Benchmark'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

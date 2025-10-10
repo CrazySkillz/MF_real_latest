@@ -2989,6 +2989,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Create LinkedIn connection for transfer to work
+      // Check if connection already exists for this campaign
+      const existingConnection = await storage.getLinkedInConnection(campaignId);
+      
+      if (!existingConnection) {
+        // Create a test mode connection (using test data, no real OAuth tokens)
+        await storage.createLinkedInConnection({
+          campaignId,
+          adAccountId,
+          adAccountName,
+          accessToken: 'test-mode-token', // Placeholder for test mode
+          refreshToken: null,
+          clientId: null,
+          clientSecret: null,
+          method: 'test',
+          expiresAt: null
+        });
+        
+        console.log('Created LinkedIn test mode connection for campaign:', campaignId);
+      }
+      
       res.status(201).json({ success: true, sessionId: session.id });
     } catch (error) {
       console.error('LinkedIn import creation error:', error);

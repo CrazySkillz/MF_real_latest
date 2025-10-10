@@ -1282,6 +1282,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/platforms/:platformType/benchmarks", async (req, res) => {
+    console.log('=== CREATE PLATFORM BENCHMARK ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     try {
       const { platformType } = req.params;
       
@@ -1291,10 +1294,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignId: null
       });
       
+      console.log('Validated benchmark:', JSON.stringify(validatedBenchmark, null, 2));
+      
       const benchmark = await storage.createBenchmark(validatedBenchmark);
+      console.log('Created benchmark:', JSON.stringify(benchmark, null, 2));
+      
       res.json(benchmark);
     } catch (error) {
       console.error('Platform Benchmark creation error:', error);
+      if (error instanceof z.ZodError) {
+        console.error('Zod validation errors:', JSON.stringify(error.errors, null, 2));
+        return res.status(400).json({ message: "Invalid benchmark data", errors: error.errors });
+      }
       res.status(500).json({ message: "Failed to create platform benchmark" });
     }
   });

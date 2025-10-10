@@ -549,8 +549,7 @@ export default function Campaigns() {
       setLinkedInImportComplete(false);
       form.reset();
       
-      // Navigate to campaigns page to show the newly created campaign
-      setLocation("/campaigns");
+      // Note: Navigation happens in handleConnectorsComplete after transfers
     },
     onError: () => {
       toast({
@@ -703,7 +702,7 @@ export default function Campaigns() {
       }
 
       // Transfer LinkedIn connection if LinkedIn was connected
-      if (selectedPlatforms.includes('LinkedIn Ads')) {
+      if (selectedPlatforms.includes('linkedin')) {
         console.log('🔧 Attempting LinkedIn transfer...');
         try {
           const response = await fetch('/api/linkedin/transfer-connection', {
@@ -726,6 +725,9 @@ export default function Campaigns() {
       } else {
         console.log('🔧 LinkedIn not in selected platforms, skipping transfer');
       }
+
+      // Navigate to campaigns page after all transfers complete
+      setLocation("/campaigns");
     }
   };
 

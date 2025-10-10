@@ -26,7 +26,6 @@ export default function Sidebar() {
     { path: "/campaigns", label: "Campaigns", icon: Target },
     { path: "/audiences", label: "Audiences", icon: Users },
     { path: "/reports", label: "Reports", icon: FileText },
-    { path: "/integrations", label: "Integrations", icon: Plug },
     { path: "/notifications", label: "Notifications", icon: Bell },
   ];
 
@@ -89,13 +88,6 @@ export default function Sidebar() {
               );
             })
           )}
-          
-          <Link href="/integrations">
-            <div className="btn-gradient btn-accent text-sm flex items-center cursor-pointer">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Integration
-            </div>
-          </Link>
         </div>
       </div>
     </aside>

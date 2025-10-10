@@ -1926,6 +1926,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Delete the temporary connection
       await storage.deleteLinkedInConnection(fromCampaignId);
 
+      // Update import sessions to point to the new campaign ID
+      const sessions = await storage.getCampaignLinkedInImportSessions(fromCampaignId);
+      for (const session of sessions) {
+        // Update the session's campaignId
+        await storage.updateLinkedInImportSession(session.id, { campaignId: toCampaignId });
+      }
+      
+      console.log(`Updated ${sessions.length} import session(s) to new campaign ID`);
+
       res.json({
         success: true,
         message: 'LinkedIn connection transferred successfully'
@@ -3017,6 +3026,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all import sessions for a campaign
+  app.get("/api/linkedin/import-sessions/:campaignId", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+      res.json(sessions);
+    } catch (error) {
+      console.error('LinkedIn import sessions fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch import sessions" });
+    }
+  });
+
   // Get import session overview with aggregated metrics
   app.get("/api/linkedin/imports/:sessionId", async (req, res) => {
     try {

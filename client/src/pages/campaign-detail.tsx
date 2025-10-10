@@ -1096,6 +1096,19 @@ export default function CampaignDetail() {
     },
   });
 
+  // Fetch latest LinkedIn import session for analytics link
+  const { data: linkedInSession } = useQuery({
+    queryKey: ["/api/linkedin/import-sessions", campaignId],
+    enabled: !!campaignId && !!linkedInConnection?.connected,
+    queryFn: async () => {
+      const response = await fetch(`/api/linkedin/import-sessions/${campaignId}`);
+      if (!response.ok) return null;
+      const sessions = await response.json();
+      // Return the latest session (they're sorted by date, newest first)
+      return sessions.length > 0 ? sessions[0] : null;
+    },
+  });
+
   const { data: ga4Metrics, isLoading: ga4Loading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId && !!ga4Connection?.connected,
@@ -2312,7 +2325,7 @@ export default function CampaignDetail() {
                         
                         {platform.platform === "LinkedIn Ads" && (
                           <div className="pt-2 border-t">
-                            <Link href={`/campaigns/${campaign.id}/linkedin-analytics`}>
+                            <Link href={`/campaigns/${campaign.id}/linkedin-analytics${linkedInSession?.id ? `?session=${linkedInSession.id}` : ''}`}>
                               <Button variant="outline" size="sm" className="w-full" data-testid="button-view-linkedin-analytics">
                                 <BarChart3 className="w-4 h-4 mr-2" />
                                 View Detailed Analytics

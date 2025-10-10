@@ -51,6 +51,7 @@ export interface IStorage {
   getLinkedInImportSession(sessionId: string): Promise<LinkedInImportSession | undefined>;
   getCampaignLinkedInImportSessions(campaignId: string): Promise<LinkedInImportSession[]>;
   createLinkedInImportSession(session: InsertLinkedInImportSession): Promise<LinkedInImportSession>;
+  updateLinkedInImportSession(sessionId: string, updates: Partial<InsertLinkedInImportSession>): Promise<LinkedInImportSession | undefined>;
   
   // LinkedIn Import Metrics
   getLinkedInImportMetrics(sessionId: string): Promise<LinkedInImportMetric[]>;
@@ -919,6 +920,19 @@ export class MemStorage implements IStorage {
     
     this.linkedinImportSessions.set(id, importSession);
     return importSession;
+  }
+
+  async updateLinkedInImportSession(sessionId: string, updates: Partial<InsertLinkedInImportSession>): Promise<LinkedInImportSession | undefined> {
+    const existing = this.linkedinImportSessions.get(sessionId);
+    if (!existing) return undefined;
+    
+    const updated: LinkedInImportSession = {
+      ...existing,
+      ...updates,
+    };
+    
+    this.linkedinImportSessions.set(sessionId, updated);
+    return updated;
   }
 
   // LinkedIn Import Metrics methods

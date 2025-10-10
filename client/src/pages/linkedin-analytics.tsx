@@ -237,10 +237,10 @@ export default function LinkedInAnalytics() {
       industry: benchmarkForm.industry,
       description: benchmarkForm.description,
       source: benchmarkForm.source,
-      geographicLocation: benchmarkForm.geographicLocation,
+      geoLocation: benchmarkForm.geographicLocation, // Schema expects geoLocation not geographicLocation
       period: benchmarkForm.period,
       confidenceLevel: benchmarkForm.confidenceLevel,
-      isActive: true
+      status: 'active' // Add status field required by schema
     };
     createBenchmarkMutation.mutate(benchmarkData);
   };

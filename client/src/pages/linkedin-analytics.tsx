@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -50,9 +50,41 @@ export default function LinkedInAnalytics() {
     enabled: !!campaignId,
   });
 
-  const formatNumber = (num: number) => num?.toLocaleString() || '0';
-  const formatCurrency = (num: number) => `$${num?.toFixed(2) || '0.00'}`;
-  const formatPercentage = (num: number) => `${num?.toFixed(2) || '0.00'}%`;
+  const formatNumber = (num: number | string) => {
+    const n = typeof num === 'string' ? parseFloat(num) : num;
+    return (isNaN(n) ? 0 : n).toLocaleString();
+  };
+  
+  const formatCurrency = (num: number | string) => {
+    const n = typeof num === 'string' ? parseFloat(num) : num;
+    return `$${(isNaN(n) ? 0 : n).toFixed(2)}`;
+  };
+  
+  const formatPercentage = (num: number | string) => {
+    const n = typeof num === 'string' ? parseFloat(num) : num;
+    return `${(isNaN(n) ? 0 : n).toFixed(2)}%`;
+  };
+
+  // Helper function to get metric icon and formatted value
+  const getMetricDisplay = (metricKey: string, value: number | string) => {
+    const metricConfig: Record<string, { icon: any; format: (v: number | string) => string; label: string }> = {
+      'impressions': { icon: Eye, format: formatNumber, label: 'Total Impressions' },
+      'clicks': { icon: MousePointerClick, format: formatNumber, label: 'Total Clicks' },
+      'spend': { icon: DollarSign, format: formatCurrency, label: 'Total Spend' },
+      'conversions': { icon: Target, format: formatNumber, label: 'Total Conversions' },
+      'ctr': { icon: Activity, format: formatPercentage, label: 'Conversion Rate' },
+      'cpc': { icon: DollarSign, format: formatCurrency, label: 'Average CPC' },
+      'leads': { icon: Users, format: formatNumber, label: 'Total Leads' },
+      'likes': { icon: Heart, format: formatNumber, label: 'Total Likes' },
+      'comments': { icon: MessageCircle, format: formatNumber, label: 'Total Comments' },
+      'shares': { icon: Share2, format: formatNumber, label: 'Total Shares' },
+      'engagements': { icon: Activity, format: formatNumber, label: 'Total Engagements' },
+      'reach': { icon: Users, format: formatNumber, label: 'Total Reach' },
+      'videoViews': { icon: Play, format: formatNumber, label: 'Video Views' },
+    };
+
+    return metricConfig[metricKey] || { icon: BarChart3, format: formatNumber, label: metricKey };
+  };
 
   const getTrendIcon = (direction: 'up' | 'down' | 'neutral') => {
     if (direction === 'up') return <TrendingUp className="w-4 h-4 text-green-500" />;
@@ -132,215 +164,105 @@ export default function LinkedInAnalytics() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6" data-testid="content-overview">
-                {/* Aggregated Metrics Cards */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Impressions</CardTitle>
-                      <Eye className="w-4 h-4 text-slate-500" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {formatNumber(sessionData ? aggregated?.totalImpressions : campaign?.impressions || 0)}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
-                      <MousePointerClick className="w-4 h-4 text-slate-500" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {formatNumber(sessionData ? aggregated?.totalClicks : campaign?.clicks || 0)}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Spend</CardTitle>
-                      <DollarSign className="w-4 h-4 text-slate-500" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {formatCurrency(sessionData ? aggregated?.totalSpend : campaign?.spend || 0)}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Average CTR</CardTitle>
-                      <TrendingUp className="w-4 h-4 text-slate-500" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {formatPercentage(sessionData ? aggregated?.avgCTR : campaign?.ctr || 0)}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Average CPC</CardTitle>
-                      <DollarSign className="w-4 h-4 text-slate-500" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {formatCurrency(sessionData ? aggregated?.avgCPC : campaign?.cpc || 0)}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Conversions</CardTitle>
-                      <Target className="w-4 h-4 text-slate-500" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {formatNumber(sessionData ? aggregated?.totalConversions : campaign?.conversions || 0)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Campaign Breakdown */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Campaign Breakdown</CardTitle>
-                    <CardDescription>
-                      {sessionData ? 'Metrics by imported campaign' : 'Campaign performance metrics'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {sessionData && metrics && metrics.length > 0 ? (
-                        // Show LinkedIn imported campaigns
-                        Object.values(
-                          metrics.reduce((acc: any, metric: any) => {
-                            if (!acc[metric.campaignUrn]) {
-                              acc[metric.campaignUrn] = {
-                                name: metric.campaignName,
-                                status: metric.campaignStatus,
-                                metrics: {}
-                              };
-                            }
-                            acc[metric.campaignUrn].metrics[metric.metricKey] = parseFloat(metric.metricValue);
-                            return acc;
-                          }, {})
-                        ).map((linkedInCampaign: any, index: number) => (
-                          <div key={index} className="border-b pb-4 last:border-0">
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-medium text-slate-900 dark:text-white">{linkedInCampaign.name}</h4>
-                              <span className={`text-xs px-2 py-1 rounded ${
-                                linkedInCampaign.status === 'active' 
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                  : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
-                              }`}>
-                                {linkedInCampaign.status}
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              {linkedInCampaign.metrics.impressions && (
-                                <div>
-                                  <span className="text-slate-500">Impressions:</span>
-                                  <span className="ml-2 font-medium">{formatNumber(linkedInCampaign.metrics.impressions)}</span>
-                                </div>
-                              )}
-                              {linkedInCampaign.metrics.clicks && (
-                                <div>
-                                  <span className="text-slate-500">Clicks:</span>
-                                  <span className="ml-2 font-medium">{formatNumber(linkedInCampaign.metrics.clicks)}</span>
-                                </div>
-                              )}
-                              {linkedInCampaign.metrics.spend && (
-                                <div>
-                                  <span className="text-slate-500">Spend:</span>
-                                  <span className="ml-2 font-medium">{formatCurrency(linkedInCampaign.metrics.spend)}</span>
-                                </div>
-                              )}
-                              {linkedInCampaign.metrics.ctr && (
-                                <div>
-                                  <span className="text-slate-500">CTR:</span>
-                                  <span className="ml-2 font-medium">{formatPercentage(linkedInCampaign.metrics.ctr)}</span>
-                                </div>
-                              )}
-                              {linkedInCampaign.metrics.conversions && (
-                                <div>
-                                  <span className="text-slate-500">Conversions:</span>
-                                  <span className="ml-2 font-medium">{formatNumber(linkedInCampaign.metrics.conversions)}</span>
-                                </div>
-                              )}
-                              {linkedInCampaign.metrics.cpc && (
-                                <div>
-                                  <span className="text-slate-500">CPC:</span>
-                                  <span className="ml-2 font-medium">{formatCurrency(linkedInCampaign.metrics.cpc)}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      ) : campaign ? (
-                        // Show this campaign's data
-                        <div className="border-b pb-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium text-slate-900 dark:text-white">{campaign.name}</h4>
-                            <span className={`text-xs px-2 py-1 rounded ${
-                              campaign.status === 'active' 
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
-                            }`}>
-                              {campaign.status || 'active'}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                            {campaign.impressions !== undefined && (
-                              <div>
-                                <span className="text-slate-500">Impressions:</span>
-                                <span className="ml-2 font-medium">{formatNumber(campaign.impressions)}</span>
+                {sessionData && aggregated ? (
+                  <>
+                    {/* LinkedIn Metrics Grid - 4 columns like the screenshot */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {Object.entries(aggregated).map(([key, value]: [string, any]) => {
+                        const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
+                        const { icon: Icon, format, label } = getMetricDisplay(metricKey, value);
+                        
+                        return (
+                          <Card key={key} className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-6">
+                              <div className="flex items-start justify-between mb-4">
+                                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  {label}
+                                </h3>
+                                <Icon className="w-4 h-4 text-slate-400" />
                               </div>
-                            )}
-                            {campaign.clicks !== undefined && (
-                              <div>
-                                <span className="text-slate-500">Clicks:</span>
-                                <span className="ml-2 font-medium">{formatNumber(campaign.clicks)}</span>
-                              </div>
-                            )}
-                            {campaign.spend !== undefined && (
-                              <div>
-                                <span className="text-slate-500">Spend:</span>
-                                <span className="ml-2 font-medium">{formatCurrency(campaign.spend)}</span>
-                              </div>
-                            )}
-                            {campaign.ctr !== undefined && (
-                              <div>
-                                <span className="text-slate-500">CTR:</span>
-                                <span className="ml-2 font-medium">{formatPercentage(campaign.ctr)}</span>
-                              </div>
-                            )}
-                            {campaign.conversions !== undefined && (
-                              <div>
-                                <span className="text-slate-500">Conversions:</span>
-                                <span className="ml-2 font-medium">{formatNumber(campaign.conversions)}</span>
-                              </div>
-                            )}
-                            {campaign.cpc !== undefined && (
-                              <div>
-                                <span className="text-slate-500">CPC:</span>
-                                <span className="ml-2 font-medium">{formatCurrency(campaign.cpc)}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-slate-500 text-center py-4">No metrics data available</p>
-                      )}
+                              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                                {format(value)}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
-                  </CardContent>
-                </Card>
+
+                    {/* Campaign Breakdown */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Campaign Breakdown</CardTitle>
+                        <CardDescription>Metrics by imported LinkedIn campaign</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {metrics && metrics.length > 0 ? (
+                            Object.values(
+                              metrics.reduce((acc: any, metric: any) => {
+                                if (!acc[metric.campaignUrn]) {
+                                  acc[metric.campaignUrn] = {
+                                    name: metric.campaignName,
+                                    status: metric.campaignStatus,
+                                    metrics: {}
+                                  };
+                                }
+                                acc[metric.campaignUrn].metrics[metric.metricKey] = parseFloat(metric.metricValue);
+                                return acc;
+                              }, {})
+                            ).map((linkedInCampaign: any, index: number) => (
+                              <div key={index} className="border-b pb-4 last:border-0">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="font-medium text-slate-900 dark:text-white">{linkedInCampaign.name}</h4>
+                                  <Badge variant={linkedInCampaign.status === 'active' ? 'default' : 'secondary'}>
+                                    {linkedInCampaign.status}
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                  {Object.entries(linkedInCampaign.metrics).map(([key, value]: [string, any]) => {
+                                    const { format, label } = getMetricDisplay(key, value);
+                                    return (
+                                      <div key={key}>
+                                        <span className="text-slate-500">{label.replace('Total ', '').replace('Average ', '')}:</span>
+                                        <span className="ml-2 font-medium">{format(value)}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-slate-500 text-center py-4">No campaign data available</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>No LinkedIn Data Available</CardTitle>
+                      <CardDescription>
+                        No LinkedIn import session data found for this campaign
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-8">
+                        <p className="text-slate-600 dark:text-slate-400 mb-4">
+                          To view LinkedIn campaign metrics, you need to import data from your LinkedIn Ads account.
+                        </p>
+                        <Button 
+                          onClick={() => setLocation(`/campaigns/${campaignId}`)}
+                          data-testid="button-import-linkedin"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Go to Campaign to Import LinkedIn Data
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* KPIs Tab */}

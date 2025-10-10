@@ -98,11 +98,11 @@ export default function LinkedInAnalytics() {
   // Create KPI mutation
   const createKpiMutation = useMutation({
     mutationFn: async (kpiData: any) => {
-      const res = await apiRequest('POST', `/api/campaigns/${campaignId}/kpis`, kpiData);
+      const res = await apiRequest('POST', '/api/platforms/linkedin/kpis', kpiData);
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis'] });
       toast({
         title: "KPI Created",
         description: "Your LinkedIn KPI has been created successfully.",
@@ -154,8 +154,8 @@ export default function LinkedInAnalytics() {
   // Handle create KPI
   const handleCreateKPI = () => {
     const kpiData = {
-      // campaignId is extracted from URL by backend, don't send it
-      platformType: 'linkedin',
+      // platformType is extracted from URL by backend, don't send it
+      // campaignId is null for platform-level KPIs
       name: kpiForm.name,
       targetValue: kpiForm.targetValue,
       currentValue: kpiForm.currentValue || '0',
@@ -174,10 +174,9 @@ export default function LinkedInAnalytics() {
     createKpiMutation.mutate(kpiData);
   };
 
-  // Fetch campaign KPIs
+  // Fetch platform-level LinkedIn KPIs
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
-    queryKey: ['/api/campaigns', campaignId, 'kpis'],
-    enabled: !!campaignId,
+    queryKey: ['/api/platforms/linkedin/kpis'],
   });
 
   // Fetch campaign Benchmarks

@@ -14,6 +14,8 @@ import { Briefcase, CheckCircle, AlertCircle, ExternalLink, FlaskConical, Trendi
 interface LinkedInConnectionFlowProps {
   campaignId: string;
   onConnectionSuccess: () => void;
+  mode?: 'new' | 'existing';
+  onImportComplete?: () => void;
 }
 
 interface AdAccount {
@@ -134,7 +136,7 @@ const AVAILABLE_METRICS: MetricOption[] = [
   }
 ];
 
-export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: LinkedInConnectionFlowProps) {
+export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode = 'existing', onImportComplete }: LinkedInConnectionFlowProps) {
   const hasEnvCredentials = import.meta.env.VITE_LINKEDIN_CLIENT_ID && import.meta.env.VITE_LINKEDIN_CLIENT_SECRET;
   
   const [step, setStep] = useState<'credentials' | 'connecting' | 'select-account' | 'select-campaigns' | 'connected'>('credentials');
@@ -465,8 +467,16 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess }: Link
           description: `Successfully imported ${selectedCampaigns.length} campaign${selectedCampaigns.length > 1 ? 's' : ''} with ${totalMetrics} total metrics.`
         });
         
-        // Redirect to LinkedIn analytics page
-        window.location.href = `/campaigns/${campaignId}/linkedin-analytics?session=${data.sessionId}`;
+        // For new campaigns, trigger callback and let parent handle next steps
+        // For existing campaigns, redirect to LinkedIn analytics page
+        if (mode === 'new') {
+          setIsConnecting(false);
+          if (onImportComplete) {
+            onImportComplete();
+          }
+        } else {
+          window.location.href = `/campaigns/${campaignId}/linkedin-analytics?session=${data.sessionId}`;
+        }
       } else {
         throw new Error(data.error || 'Failed to create import session');
       }

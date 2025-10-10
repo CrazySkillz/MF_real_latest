@@ -979,19 +979,26 @@ export default function Campaigns() {
                           <ArrowLeft className="w-4 h-4 mr-2" />
                           Back
                         </Button>
-                        <Button 
-                          type="button" 
-                          className="flex-1"
-                          onClick={() => {
-                            // Use the platforms tracked by DataConnectorsStep
-                            console.log('🔧 Using tracked platforms:', connectedPlatformsInDialog);
-                            handleConnectorsComplete(connectedPlatformsInDialog);
-                          }}
-                          disabled={createCampaignMutation.isPending}
-                        >
-                          {createCampaignMutation.isPending ? "Creating..." : "Create Campaign"}
-                          <CheckCircle className="w-4 h-4 ml-2" />
-                        </Button>
+                        {linkedInImportComplete && (
+                          <Button 
+                            type="button" 
+                            className="flex-1"
+                            onClick={() => {
+                              // Use the platforms tracked by DataConnectorsStep
+                              console.log('🔧 Using tracked platforms:', connectedPlatformsInDialog);
+                              handleConnectorsComplete(connectedPlatformsInDialog);
+                            }}
+                            disabled={createCampaignMutation.isPending}
+                          >
+                            {createCampaignMutation.isPending ? "Creating..." : "Create Campaign"}
+                            <CheckCircle className="w-4 h-4 ml-2" />
+                          </Button>
+                        )}
+                        {!linkedInImportComplete && (
+                          <div className="flex-1 text-sm text-slate-500 dark:text-slate-400 text-center">
+                            Connect platforms or skip to create campaign
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

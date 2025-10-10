@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -16,6 +18,7 @@ export default function LinkedInAnalytics() {
   const [location, setLocation] = useLocation();
   const sessionId = new URLSearchParams(window.location.search).get('session');
   const [selectedMetric, setSelectedMetric] = useState<string>('impressions');
+  const campaignId = params?.id;
 
   // Fetch import session data
   const { data: sessionData, isLoading: sessionLoading } = useQuery({
@@ -27,6 +30,18 @@ export default function LinkedInAnalytics() {
   const { data: adsData, isLoading: adsLoading } = useQuery({
     queryKey: ['/api/linkedin/imports', sessionId, 'ads'],
     enabled: !!sessionId,
+  });
+
+  // Fetch campaign KPIs
+  const { data: kpisData, isLoading: kpisLoading } = useQuery({
+    queryKey: ['/api/campaigns', campaignId, 'kpis'],
+    enabled: !!campaignId,
+  });
+
+  // Fetch campaign Benchmarks
+  const { data: benchmarksData, isLoading: benchmarksLoading } = useQuery({
+    queryKey: ['/api/campaigns', campaignId, 'benchmarks'],
+    enabled: !!campaignId,
   });
 
   const formatNumber = (num: number) => num?.toLocaleString() || '0';
@@ -58,33 +73,8 @@ export default function LinkedInAnalytics() {
     );
   }
 
-  if (!sessionData) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Navigation />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-6">
-            <div className="max-w-7xl mx-auto">
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <p className="text-slate-600 dark:text-slate-400">No session data found</p>
-                  <Button 
-                    onClick={() => setLocation(`/campaigns/${params?.id}`)} 
-                    className="mt-4"
-                  >
-                    Return to Campaign
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  const { session, metrics, aggregated } = sessionData as any;
+  // Extract session data if available
+  const { session, metrics, aggregated } = (sessionData as any) || {};
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -111,9 +101,15 @@ export default function LinkedInAnalytics() {
                     <SiLinkedin className="w-6 h-6 text-blue-600" />
                     LinkedIn Analytics
                   </h1>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {session.adAccountName} • {session.selectedCampaignsCount} campaigns • {session.selectedMetricsCount} metrics
-                  </p>
+                  {session ? (
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      {session.adAccountName} • {session.selectedCampaignsCount} campaigns • {session.selectedMetricsCount} metrics
+                    </p>
+                  ) : (
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Campaign analytics and performance tracking
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -129,16 +125,41 @@ export default function LinkedInAnalytics() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6" data-testid="content-overview">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {!sessionData ? (
                   <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Impressions</CardTitle>
-                      <Eye className="w-4 h-4 text-slate-500" />
+                    <CardHeader>
+                      <CardTitle>No LinkedIn Data Available</CardTitle>
+                      <CardDescription>
+                        No LinkedIn import session data found for this campaign
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{formatNumber(aggregated?.totalImpressions || 0)}</div>
+                      <div className="text-center py-8">
+                        <p className="text-slate-600 dark:text-slate-400 mb-4">
+                          To view LinkedIn campaign metrics, you need to import data from your LinkedIn Ads account.
+                        </p>
+                        <Button 
+                          onClick={() => setLocation(`/campaigns/${campaignId}`)}
+                          data-testid="button-import-linkedin"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Go to Campaign to Import LinkedIn Data
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
+                ) : (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Total Impressions</CardTitle>
+                          <Eye className="w-4 h-4 text-slate-500" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{formatNumber(aggregated?.totalImpressions || 0)}</div>
+                        </CardContent>
+                      </Card>
 
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -270,52 +291,326 @@ export default function LinkedInAnalytics() {
                     </div>
                   </CardContent>
                 </Card>
+                  </>
+                )}
               </TabsContent>
 
               {/* KPIs Tab */}
               <TabsContent value="kpis" className="space-y-6" data-testid="content-kpis">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5" />
-                      LinkedIn Campaign KPIs
-                    </CardTitle>
-                    <CardDescription>
-                      Create and monitor key performance indicators for your LinkedIn campaigns
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8">
-                      <p className="text-slate-600 dark:text-slate-400 mb-4">
-                        KPI tracking coming soon. You'll be able to set targets and monitor performance against your LinkedIn campaign metrics.
-                      </p>
-                      <Button disabled>Create KPI</Button>
+                {kpisLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  </div>
+                ) : kpisData && (kpisData as any[]).length > 0 ? (
+                  <>
+                    {/* KPI Summary Cards */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {(kpisData as any[]).length}
+                              </p>
+                            </div>
+                            <Target className="w-8 h-8 text-blue-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Active KPIs</p>
+                              <p className="text-2xl font-bold text-green-600">
+                                {(kpisData as any[]).filter((k: any) => k.status === 'active').length}
+                              </p>
+                            </div>
+                            <CheckCircle2 className="w-8 h-8 text-green-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">High Priority</p>
+                              <p className="text-2xl font-bold text-red-600">
+                                {(kpisData as any[]).filter((k: any) => k.priority === 'high').length}
+                              </p>
+                            </div>
+                            <AlertCircle className="w-8 h-8 text-red-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">In Progress</p>
+                              <p className="text-2xl font-bold text-blue-600">
+                                {(kpisData as any[]).filter((k: any) => k.status === 'active').length}
+                              </p>
+                            </div>
+                            <Clock className="w-8 h-8 text-blue-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
-                  </CardContent>
-                </Card>
+
+                    {/* KPI Cards */}
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      {(kpisData as any[]).map((kpi: any) => (
+                        <Card key={kpi.id} data-testid={`kpi-card-${kpi.id}`}>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                                <CardDescription className="text-sm">
+                                  {kpi.description || 'No description provided'}
+                                </CardDescription>
+                              </div>
+                              <div className="flex gap-2">
+                                <Badge variant={kpi.status === 'active' ? 'default' : 'secondary'}>
+                                  {kpi.status || 'active'}
+                                </Badge>
+                                {kpi.priority && (
+                                  <Badge variant="outline" className={
+                                    kpi.priority === 'high' ? 'text-red-600 border-red-300' :
+                                    kpi.priority === 'medium' ? 'text-yellow-600 border-yellow-300' :
+                                    'text-green-600 border-green-300'
+                                  }>
+                                    {kpi.priority}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                  Current
+                                </div>
+                                <div className="text-xl font-bold text-slate-900 dark:text-white">
+                                  {kpi.currentValue || '0'}{kpi.unit || ''}
+                                </div>
+                              </div>
+                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                  Target
+                                </div>
+                                <div className="text-xl font-bold text-slate-900 dark:text-white">
+                                  {kpi.targetValue || '0'}{kpi.unit || ''}
+                                </div>
+                              </div>
+                            </div>
+                            {kpi.category && (
+                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                                Category: <span className="font-medium">{kpi.category}</span>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5" />
+                        LinkedIn Campaign KPIs
+                      </CardTitle>
+                      <CardDescription>
+                        Track key performance indicators for your LinkedIn campaigns
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-8">
+                        <p className="text-slate-600 dark:text-slate-400 mb-4">
+                          No KPIs have been created for this campaign yet.
+                        </p>
+                        <Button 
+                          onClick={() => setLocation(`/campaigns/${campaignId}`)}
+                          data-testid="button-create-kpi"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Go to Campaign to Create KPI
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* Benchmarks Tab */}
               <TabsContent value="benchmarks" className="space-y-6" data-testid="content-benchmarks">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Trophy className="w-5 h-5" />
-                      LinkedIn Benchmarks
-                    </CardTitle>
-                    <CardDescription>
-                      Compare your performance against industry benchmarks
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8">
-                      <p className="text-slate-600 dark:text-slate-400 mb-4">
-                        Benchmark tracking coming soon. You'll be able to compare your LinkedIn campaign performance against industry standards.
-                      </p>
-                      <Button disabled>Create Benchmark</Button>
+                {benchmarksLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  </div>
+                ) : benchmarksData && (benchmarksData as any[]).length > 0 ? (
+                  <>
+                    {/* Benchmark Summary Cards */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {(benchmarksData as any[]).length}
+                              </p>
+                            </div>
+                            <Award className="w-8 h-8 text-blue-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Active</p>
+                              <p className="text-2xl font-bold text-green-600">
+                                {(benchmarksData as any[]).filter((b: any) => b.isActive).length}
+                              </p>
+                            </div>
+                            <CheckCircle2 className="w-8 h-8 text-green-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Categories</p>
+                              <p className="text-2xl font-bold text-purple-600">
+                                {new Set((benchmarksData as any[]).map((b: any) => b.category)).size}
+                              </p>
+                            </div>
+                            <BarChart3 className="w-8 h-8 text-purple-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Industries</p>
+                              <p className="text-2xl font-bold text-blue-600">
+                                {new Set((benchmarksData as any[]).map((b: any) => b.industry)).size}
+                              </p>
+                            </div>
+                            <Trophy className="w-8 h-8 text-blue-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
-                  </CardContent>
-                </Card>
+
+                    {/* Benchmark Cards */}
+                    <div className="space-y-4">
+                      {(benchmarksData as any[]).map((benchmark: any) => (
+                        <Card key={benchmark.id} data-testid={`benchmark-card-${benchmark.id}`}>
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between mb-4">
+                              <div>
+                                <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
+                                  {benchmark.name}
+                                </h3>
+                                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                  {benchmark.description || 'No description provided'}
+                                </p>
+                                <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
+                                  {benchmark.industry && <span>{benchmark.industry}</span>}
+                                  {benchmark.period && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{benchmark.period}</span>
+                                    </>
+                                  )}
+                                  {benchmark.category && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{benchmark.category}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <Badge variant={benchmark.isActive ? 'default' : 'secondary'}>
+                                {benchmark.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-3">
+                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                  Current Value
+                                </div>
+                                <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                  {benchmark.currentValue || '0'}{benchmark.unit || ''}
+                                </div>
+                              </div>
+
+                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                  Target Value
+                                </div>
+                                <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                  {benchmark.targetValue || '0'}{benchmark.unit || ''}
+                                </div>
+                              </div>
+
+                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                  Source
+                                </div>
+                                <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                  {benchmark.source || 'LinkedIn'}
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Trophy className="w-5 h-5" />
+                        LinkedIn Benchmarks
+                      </CardTitle>
+                      <CardDescription>
+                        Compare your performance against industry benchmarks
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-8">
+                        <p className="text-slate-600 dark:text-slate-400 mb-4">
+                          No benchmarks have been created for this campaign yet.
+                        </p>
+                        <Button 
+                          onClick={() => setLocation(`/campaigns/${campaignId}`)}
+                          data-testid="button-create-benchmark"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Go to Campaign to Create Benchmark
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* Ad Comparison Tab */}

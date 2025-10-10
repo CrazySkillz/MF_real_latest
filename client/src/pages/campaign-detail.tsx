@@ -1085,6 +1085,17 @@ export default function CampaignDetail() {
     },
   });
 
+  // Check LinkedIn connection status
+  const { data: linkedInConnection } = useQuery({
+    queryKey: ["/api/linkedin/check-connection", campaignId],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/linkedin/check-connection/${campaignId}`);
+      if (!response.ok) return { connected: false };
+      return response.json();
+    },
+  });
+
   const { data: ga4Metrics, isLoading: ga4Loading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId && !!ga4Connection?.connected,
@@ -1140,7 +1151,20 @@ export default function CampaignDetail() {
   });
 
   // Determine connected platforms based on actual connections
-  const connectedPlatformNames = campaign?.platform?.split(', ') || [];
+  const connectedPlatformIds = campaign?.platform?.split(', ') || [];
+  
+  // Map platform IDs to display names
+  const platformIdToName: Record<string, string> = {
+    'google-analytics': 'Google Analytics',
+    'google-sheets': 'Google Sheets',
+    'linkedin': 'LinkedIn Ads',
+    'facebook': 'Facebook Ads',
+    'google-ads': 'Google Ads',
+    'tiktok': 'TikTok Ads',
+    'shopify': 'Shopify'
+  };
+  
+  const connectedPlatformNames = connectedPlatformIds.map(id => platformIdToName[id] || id);
   
   // Use campaign data for realistic platform distribution
   const campaignImpressions = campaign?.impressions || 0;
@@ -1209,13 +1233,13 @@ export default function CampaignDetail() {
     },
     {
       platform: "LinkedIn Ads",
-      connected: connectedPlatformNames.includes("LinkedIn Ads"),
-      impressions: connectedPlatformNames.includes("LinkedIn Ads") ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0,
-      clicks: connectedPlatformNames.includes("LinkedIn Ads") ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0,
-      conversions: connectedPlatformNames.includes("LinkedIn Ads") ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0,
-      spend: connectedPlatformNames.includes("LinkedIn Ads") ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00",
-      ctr: connectedPlatformNames.includes("LinkedIn Ads") ? "2.78%" : "0.00%",
-      cpc: connectedPlatformNames.includes("LinkedIn Ads") ? "$0.48" : "$0.00"
+      connected: !!linkedInConnection?.connected,
+      impressions: linkedInConnection?.connected ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0,
+      clicks: linkedInConnection?.connected ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0,
+      conversions: linkedInConnection?.connected ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0,
+      spend: linkedInConnection?.connected ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00",
+      ctr: linkedInConnection?.connected ? "2.78%" : "0.00%",
+      cpc: linkedInConnection?.connected ? "$0.48" : "$0.00"
     },
     {
       platform: "Shopify",

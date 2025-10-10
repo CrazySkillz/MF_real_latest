@@ -538,18 +538,9 @@ export default function Campaigns() {
       return response.json();
     },
     onSuccess: async (newCampaign) => {
+      // Only invalidate queries here
+      // Dialog closing and navigation happen in handleConnectorsComplete after transfers
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-      toast({
-        title: "Campaign created",
-        description: "Your new campaign has been created successfully.",
-      });
-      setIsCreateModalOpen(false);
-      setShowConnectorsStep(false);
-      setCampaignData(null);
-      setLinkedInImportComplete(false);
-      form.reset();
-      
-      // Note: Navigation happens in handleConnectorsComplete after transfers
     },
     onError: () => {
       toast({
@@ -645,10 +636,15 @@ export default function Campaigns() {
         spend: "0",     // Backend expects string, not number
       };
       
+      console.log('🔧 Creating campaign with platforms:', selectedPlatforms);
+      
       // Create the campaign and wait for response
       const newCampaign = await new Promise((resolve, reject) => {
         createCampaignMutation.mutate(campaignWithPlatforms, {
-          onSuccess: resolve,
+          onSuccess: (data) => {
+            console.log('✅ Campaign created:', data);
+            resolve(data);
+          },
           onError: reject
         });
       });
@@ -726,6 +722,18 @@ export default function Campaigns() {
         console.log('🔧 LinkedIn not in selected platforms, skipping transfer');
       }
 
+      // All transfers complete - now clean up and navigate
+      toast({
+        title: "Campaign created",
+        description: "Your new campaign has been created successfully.",
+      });
+      
+      setIsCreateModalOpen(false);
+      setShowConnectorsStep(false);
+      setCampaignData(null);
+      setLinkedInImportComplete(false);
+      form.reset();
+      
       // Navigate to campaigns page after all transfers complete
       setLocation("/campaigns");
     }

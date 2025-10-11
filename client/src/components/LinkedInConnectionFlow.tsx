@@ -43,6 +43,7 @@ interface LinkedInCampaign {
   cpc: number;
   selected?: boolean;
   selectedMetrics?: string[];
+  conversionValue?: string;
 }
 
 interface MetricOption {
@@ -623,9 +624,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
         <CardContent className="space-y-4">
           <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
             {campaigns.map((campaign) => {
-              const selectedMetricsCount = campaign.selectedMetrics?.length || 0;
-              const allMetricsSelected = selectedMetricsCount === AVAILABLE_METRICS.length;
-              
               return (
                 <div 
                   key={campaign.id}
@@ -654,7 +652,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                                 {campaign.status}
                               </Badge>
                               <Badge variant="outline" className="text-xs">
-                                {selectedMetricsCount} of {AVAILABLE_METRICS.length} metrics
+                                {AVAILABLE_METRICS.length} Core Metrics + 6 Derived Metrics
                               </Badge>
                             </div>
                           </div>
@@ -662,57 +660,93 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                       </div>
                     </div>
 
-                    {/* Metrics Selection */}
+                    {/* Metrics Information */}
                     {campaign.selected && (
-                      <div className="ml-9 space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between mb-2">
-                          <Label className="text-sm font-medium">Select Metrics to Import</Label>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleAllMetricsForCampaign(campaign.id, !allMetricsSelected);
-                            }}
-                            className="h-7 text-xs"
-                            data-testid={`button-toggle-all-metrics-${campaign.id}`}
-                          >
-                            {allMetricsSelected ? 'Deselect All' : 'Select All'}
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {AVAILABLE_METRICS.map((metric) => {
-                            const Icon = metric.icon;
-                            const isSelected = campaign.selectedMetrics?.includes(metric.key) || false;
-                            
-                            return (
-                              <div
-                                key={metric.key}
-                                className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${
-                                  isSelected
-                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/50'
-                                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleMetricSelection(campaign.id, metric.key);
-                                }}
-                                data-testid={`metric-${campaign.id}-${metric.key}`}
-                              >
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={() => toggleMetricSelection(campaign.id, metric.key)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  data-testid={`checkbox-metric-${campaign.id}-${metric.key}`}
-                                />
-                                <Icon className="w-4 h-4 text-slate-500" />
-                                <div className="flex-1">
-                                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{metric.label}</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">{metric.getValue(campaign)}</p>
+                      <div className="ml-9 space-y-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+                        {/* Core Metrics */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Core Metrics</Label>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">These metrics will be imported automatically</p>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {AVAILABLE_METRICS.map((metric) => {
+                              const Icon = metric.icon;
+                              
+                              return (
+                                <div
+                                  key={metric.key}
+                                  className="flex items-center gap-2 p-2 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                                  data-testid={`core-metric-${campaign.id}-${metric.key}`}
+                                >
+                                  <Icon className="w-4 h-4 text-blue-500" />
+                                  <div className="flex-1">
+                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{metric.label}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">{metric.getValue(campaign)}</p>
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Derived Metrics */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Derived Metrics</Label>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Calculated from core metrics</p>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {[
+                              { key: 'cvr', label: 'Conversion Rate (CVR)', icon: Target },
+                              { key: 'cpa', label: 'Cost per Conversion (CPA)', icon: DollarSign },
+                              { key: 'cpl', label: 'Cost per Lead (CPL)', icon: DollarSign },
+                              { key: 'er', label: 'Engagement Rate (ER)', icon: Activity },
+                              { key: 'roi', label: 'Return on Investment (ROI)', icon: TrendingUp },
+                              { key: 'roas', label: 'Return on Ad Spend (ROAS)', icon: TrendingUp }
+                            ].map((metric) => {
+                              const Icon = metric.icon;
+                              
+                              return (
+                                <div
+                                  key={metric.key}
+                                  className="flex items-center gap-2 p-2 rounded border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30"
+                                  data-testid={`derived-metric-${campaign.id}-${metric.key}`}
+                                >
+                                  <Icon className="w-4 h-4 text-green-600" />
+                                  <div className="flex-1">
+                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{metric.label}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Conversion Value Input */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`conversion-value-${campaign.id}`} className="text-sm font-medium">
+                            Conversion Value
+                          </Label>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Enter the average value per conversion for ROI and ROAS calculations
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="w-4 h-4 text-slate-500" />
+                            <Input
+                              id={`conversion-value-${campaign.id}`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={campaign.conversionValue || ''}
+                              onChange={(e) => {
+                                setCampaigns(prev => prev.map(c => 
+                                  c.id === campaign.id 
+                                    ? { ...c, conversionValue: e.target.value }
+                                    : c
+                                ));
+                              }}
+                              className="flex-1"
+                              data-testid={`input-conversion-value-${campaign.id}`}
+                            />
+                          </div>
                         </div>
                       </div>
                     )}

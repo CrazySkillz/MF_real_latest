@@ -584,79 +584,8 @@ export default function LinkedInAnalytics() {
                                     </div>
                                   </div>
 
-                                  {/* Performance Indicators */}
-                                  <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
-                                    <div className="flex items-center gap-3 flex-wrap">
-                                      {/* CTR Indicators */}
-                                      {ctr > 5 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">CTR Excellent</span>
-                                        </div>
-                                      )}
-                                      {ctr < 1 && ctr > 0 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">CTR Weak</span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* Conversion Rate Indicators */}
-                                      {convRate > 10 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">Conversion High</span>
-                                        </div>
-                                      )}
-                                      {convRate < 2 && convRate > 0 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">Conversion Low</span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* CPA Indicators */}
-                                      {cpa > 0 && cpa < 150 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">CPA Strong</span>
-                                        </div>
-                                      )}
-                                      {cpa > 300 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">CPA Weak</span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* ROAS Indicators */}
-                                      {roas > 4 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Strong</span>
-                                        </div>
-                                      )}
-                                      {roas > 0 && roas < 1.5 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Weak</span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* Engagement Rate Indicators */}
-                                      {engagementRate > 2 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Good</span>
-                                        </div>
-                                      )}
-                                      {engagementRate > 0 && engagementRate < 0.5 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Low</span>
-                                        </div>
-                                      )}
-                                    </div>
+                                  {/* View Details Button */}
+                                  <div className="flex items-center justify-end pt-3 border-t border-slate-200 dark:border-slate-700">
                                     <Button 
                                       variant="ghost" 
                                       size="sm" 
@@ -1872,6 +1801,102 @@ export default function LinkedInAnalytics() {
                 )}
               </div>
             </div>
+
+            {/* Performance Indicators */}
+            {selectedCampaignDetails && (
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Performance Analysis</h4>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {(() => {
+                    const impressions = selectedCampaignDetails.metrics.impressions || 0;
+                    const clicks = selectedCampaignDetails.metrics.clicks || 0;
+                    const spend = selectedCampaignDetails.metrics.spend || 0;
+                    const conversions = selectedCampaignDetails.metrics.conversions || 0;
+                    const engagements = selectedCampaignDetails.metrics.engagements || 0;
+                    
+                    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+                    const convRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
+                    const cpa = conversions > 0 ? spend / conversions : 0;
+                    const engagementRate = impressions > 0 ? (engagements / impressions) * 100 : 0;
+                    const roas = aggregated?.roas || 0;
+                    
+                    return (
+                      <>
+                        {/* CTR Indicators */}
+                        {ctr > 5 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">CTR Excellent</span>
+                          </div>
+                        )}
+                        {ctr < 1 && ctr > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">CTR Weak</span>
+                          </div>
+                        )}
+                        
+                        {/* Conversion Rate Indicators */}
+                        {convRate > 10 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">Conversion High</span>
+                          </div>
+                        )}
+                        {convRate < 2 && convRate > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">Conversion Low</span>
+                          </div>
+                        )}
+                        
+                        {/* CPA Indicators */}
+                        {cpa > 0 && cpa < 150 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">CPA Strong</span>
+                          </div>
+                        )}
+                        {cpa > 300 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">CPA Weak</span>
+                          </div>
+                        )}
+                        
+                        {/* ROAS Indicators */}
+                        {roas > 4 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Strong</span>
+                          </div>
+                        )}
+                        {roas > 0 && roas < 1.5 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Weak</span>
+                          </div>
+                        )}
+                        
+                        {/* Engagement Rate Indicators */}
+                        {engagementRate > 2 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Good</span>
+                          </div>
+                        )}
+                        {engagementRate > 0 && engagementRate < 0.5 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Low</span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

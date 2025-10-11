@@ -61,6 +61,8 @@ export default function LinkedInAnalytics() {
   const [viewMode, setViewMode] = useState<string>('performance');
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
+  const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
+  const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('templates');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const { toast } = useToast();
@@ -594,7 +596,16 @@ export default function LinkedInAnalytics() {
                                         </div>
                                       )}
                                     </div>
-                                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="text-blue-600 hover:text-blue-700"
+                                      onClick={() => {
+                                        setSelectedCampaignDetails(linkedInCampaign);
+                                        setIsCampaignDetailsModalOpen(true);
+                                      }}
+                                      data-testid={`button-view-details-${index}`}
+                                    >
                                       View Details →
                                     </Button>
                                   </div>
@@ -1604,6 +1615,201 @@ export default function LinkedInAnalytics() {
               >
                 {createBenchmarkMutation.isPending ? 'Creating...' : 'Create Benchmark'}
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Campaign Details Modal */}
+      <Dialog open={isCampaignDetailsModalOpen} onOpenChange={setIsCampaignDetailsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              {selectedCampaignDetails?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Campaign ID: {selectedCampaignDetails ? Object.keys(metrics?.reduce((acc: any, m: any) => ({ ...acc, [m.campaignUrn]: true }), {}) || {}).indexOf(selectedCampaignDetails.urn) + 1 : ''} • 
+              <Badge 
+                variant={selectedCampaignDetails?.status === 'active' ? 'default' : 'secondary'}
+                className={selectedCampaignDetails?.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 ml-2' : 'ml-2'}
+              >
+                {selectedCampaignDetails?.status}
+              </Badge>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* Core Metrics Section */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Core Metrics</h4>
+              <div className="grid grid-cols-3 gap-4">
+                {/* Impressions */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Impressions</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.impressions || 0)}
+                  </p>
+                </div>
+                {/* Reach */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Reach</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.reach || 0)}
+                  </p>
+                </div>
+                {/* Clicks */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Clicks</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.clicks || 0)}
+                  </p>
+                </div>
+                {/* Engagements */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Engagements</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.engagements || 0)}
+                  </p>
+                </div>
+                {/* Spend */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Spend</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatCurrency(selectedCampaignDetails?.metrics.spend || 0)}
+                  </p>
+                </div>
+                {/* Conversions */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Conversions</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.conversions || 0)}
+                  </p>
+                </div>
+                {/* Leads */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Leads</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.leads || 0)}
+                  </p>
+                </div>
+                {/* Video Views */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Video Views</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.videoviews || selectedCampaignDetails?.metrics.videoViews || 0)}
+                  </p>
+                </div>
+                {/* Viral Impressions */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Viral Impressions</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.viralimpressions || selectedCampaignDetails?.metrics.viralImpressions || 0)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Derived Metrics Section */}
+            <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Derived Metrics</h4>
+              <div className="grid grid-cols-3 gap-4">
+                {/* CTR */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CTR (Click-Through Rate)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatPercentage(
+                      selectedCampaignDetails?.metrics.impressions > 0
+                        ? (selectedCampaignDetails?.metrics.clicks / selectedCampaignDetails?.metrics.impressions) * 100
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* CPC */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPC (Cost Per Click)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatCurrency(
+                      selectedCampaignDetails?.metrics.clicks > 0
+                        ? selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.clicks
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* CPM */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPM (Cost Per Mille)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatCurrency(
+                      selectedCampaignDetails?.metrics.impressions > 0
+                        ? (selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.impressions) * 1000
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* CVR */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CVR (Conversion Rate)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatPercentage(
+                      selectedCampaignDetails?.metrics.clicks > 0
+                        ? (selectedCampaignDetails?.metrics.conversions / selectedCampaignDetails?.metrics.clicks) * 100
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* CPA */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPA (Cost Per Acquisition)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatCurrency(
+                      selectedCampaignDetails?.metrics.conversions > 0
+                        ? selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.conversions
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* CPL */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPL (Cost Per Lead)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatCurrency(
+                      selectedCampaignDetails?.metrics.leads > 0
+                        ? selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.leads
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* ER */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ER (Engagement Rate)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatPercentage(
+                      selectedCampaignDetails?.metrics.impressions > 0
+                        ? (selectedCampaignDetails?.metrics.engagements / selectedCampaignDetails?.metrics.impressions) * 100
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* ROI */}
+                {aggregated?.roi !== undefined && (
+                  <div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROI (Return on Investment)</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {formatPercentage(aggregated.roi || 0)}
+                    </p>
+                  </div>
+                )}
+                {/* ROAS */}
+                {aggregated?.roas !== undefined && (
+                  <div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROAS (Return on Ad Spend)</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {(aggregated.roas || 0).toFixed(2)}x
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </DialogContent>

@@ -378,8 +378,8 @@ export default function LinkedInAnalytics() {
               <TabsContent value="overview" className="space-y-6" data-testid="content-overview">
                 {sessionData && aggregated ? (
                   <>
-                    {/* LinkedIn Metrics Grid - 4 columns like the screenshot */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* LinkedIn Metrics Grid - 5 columns for narrower cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
                       {Object.entries(aggregated).map(([key, value]: [string, any]) => {
                         const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
                         const { icon: Icon, format, label } = getMetricDisplay(metricKey, value);

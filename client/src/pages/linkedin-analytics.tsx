@@ -58,7 +58,6 @@ export default function LinkedInAnalytics() {
   const [selectedMetric, setSelectedMetric] = useState<string>('impressions');
   const [sortBy, setSortBy] = useState<string>('name');
   const [filterBy, setFilterBy] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<string>('performance');
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
@@ -404,26 +403,14 @@ export default function LinkedInAnalytics() {
 
                     {/* Campaign Breakdown */}
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <BarChart3 className="w-5 h-5 text-slate-600" />
-                          <div>
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Campaign Breakdown</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                              Comprehensive metrics by individual campaigns
-                            </p>
-                          </div>
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-slate-600" />
+                        <div>
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Campaign Breakdown</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Comprehensive metrics by individual campaigns
+                          </p>
                         </div>
-                        <Select value={viewMode} onValueChange={setViewMode}>
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="View" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="performance">Performance</SelectItem>
-                            <SelectItem value="engagement">Engagement</SelectItem>
-                            <SelectItem value="conversions">Conversions</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
 
                       {/* Sort and Filter Controls */}
@@ -438,9 +425,11 @@ export default function LinkedInAnalytics() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="name">Name</SelectItem>
-                                <SelectItem value="impressions">Impressions</SelectItem>
-                                <SelectItem value="clicks">Clicks</SelectItem>
                                 <SelectItem value="spend">Spend</SelectItem>
+                                <SelectItem value="conversions">Conversions</SelectItem>
+                                <SelectItem value="roas">ROAS</SelectItem>
+                                <SelectItem value="ctr">CTR</SelectItem>
+                                <SelectItem value="cpa">CPA</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>

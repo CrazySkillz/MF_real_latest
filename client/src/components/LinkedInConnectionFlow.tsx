@@ -146,16 +146,49 @@ const AVAILABLE_METRICS: MetricOption[] = [
     getValue: (campaign) => campaign.impressions.toLocaleString()
   },
   {
+    key: 'reach',
+    label: 'Reach',
+    icon: Users,
+    getValue: (campaign) => campaign.reach.toLocaleString()
+  },
+  {
     key: 'clicks',
     label: 'Clicks',
     icon: MousePointerClick,
     getValue: (campaign) => campaign.clicks.toLocaleString()
   },
   {
+    key: 'ctr',
+    label: 'CTR',
+    icon: Percent,
+    getValue: (campaign) => `${campaign.ctr.toFixed(2)}%`
+  },
+  {
+    key: 'engagements',
+    label: 'Engagements',
+    icon: Activity,
+    getValue: (campaign) => campaign.totalEngagements.toLocaleString()
+  },
+  {
     key: 'spend',
     label: 'Spend',
     icon: DollarSign,
     getValue: (campaign) => `$${campaign.spend.toFixed(2)}`
+  },
+  {
+    key: 'cpc',
+    label: 'CPC',
+    icon: DollarSign,
+    getValue: (campaign) => `$${campaign.cpc.toFixed(2)}`
+  },
+  {
+    key: 'cpm',
+    label: 'CPM',
+    icon: DollarSign,
+    getValue: (campaign) => {
+      const cpm = (campaign.spend / campaign.impressions) * 1000;
+      return `$${cpm.toFixed(2)}`;
+    }
   },
   {
     key: 'conversions',
@@ -168,36 +201,6 @@ const AVAILABLE_METRICS: MetricOption[] = [
     label: 'Leads',
     icon: UserPlus,
     getValue: (campaign) => campaign.leads.toLocaleString()
-  },
-  {
-    key: 'likes',
-    label: 'Likes',
-    icon: Heart,
-    getValue: (campaign) => campaign.likes.toLocaleString()
-  },
-  {
-    key: 'comments',
-    label: 'Comments',
-    icon: MessageCircle,
-    getValue: (campaign) => campaign.comments.toLocaleString()
-  },
-  {
-    key: 'shares',
-    label: 'Shares',
-    icon: Share2,
-    getValue: (campaign) => campaign.shares.toLocaleString()
-  },
-  {
-    key: 'totalEngagements',
-    label: 'Total Engagements',
-    icon: Activity,
-    getValue: (campaign) => campaign.totalEngagements.toLocaleString()
-  },
-  {
-    key: 'reach',
-    label: 'Reach',
-    icon: Users,
-    getValue: (campaign) => campaign.reach.toLocaleString()
   },
   {
     key: 'videoViews',

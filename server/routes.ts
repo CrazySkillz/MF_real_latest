@@ -2250,7 +2250,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversionValue = parseFloat(session.conversionValue || '0');
       const totalRevenue = totalConversions * conversionValue;
       
-      // CPM - Cost Per Mille: (Spend / Impressions) × 1000
+      // CTR - Click-Through Rate: (Total Clicks / Total Impressions) × 100
+      if (totalImpressions > 0 && totalClicks > 0) {
+        aggregated.totalCtr = parseFloat(((totalClicks / totalImpressions) * 100).toFixed(2));
+      }
+      
+      // CPC - Cost Per Click: Total Spend / Total Clicks
+      if (totalClicks > 0 && totalSpend > 0) {
+        aggregated.totalCpc = parseFloat((totalSpend / totalClicks).toFixed(2));
+      }
+      
+      // CPM - Cost Per Mille: (Total Spend / Total Impressions) × 1000
       if (totalImpressions > 0 && totalSpend > 0) {
         aggregated.cpm = parseFloat(((totalSpend / totalImpressions) * 1000).toFixed(2));
       }

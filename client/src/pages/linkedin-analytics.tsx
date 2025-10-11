@@ -408,10 +408,60 @@ export default function LinkedInAnalytics() {
                           <div>
                             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Campaign Breakdown</h3>
                             <p className="text-sm text-slate-500 dark:text-slate-400">
-                              {metrics ? Object.keys(metrics.reduce((acc: any, m: any) => ({ ...acc, [m.campaignUrn]: true }), {})).length : 0} campaigns
+                              Comprehensive metrics by individual campaigns
                             </p>
                           </div>
                         </div>
+                        <Select value={viewMode} onValueChange={setViewMode}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="View" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="performance">Performance</SelectItem>
+                            <SelectItem value="engagement">Engagement</SelectItem>
+                            <SelectItem value="conversions">Conversions</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Sort and Filter Controls */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <ArrowUpDown className="w-4 h-4 text-slate-500" />
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Sort by:</span>
+                            <Select value={sortBy} onValueChange={setSortBy}>
+                              <SelectTrigger className="w-[140px] h-9">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="name">Name</SelectItem>
+                                <SelectItem value="impressions">Impressions</SelectItem>
+                                <SelectItem value="clicks">Clicks</SelectItem>
+                                <SelectItem value="spend">Spend</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-slate-500" />
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Filter:</span>
+                            <Select value={filterBy} onValueChange={setFilterBy}>
+                              <SelectTrigger className="w-[140px] h-9">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="paused">Paused</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        <span className="text-sm text-slate-600 dark:text-slate-400">
+                          {metrics ? Object.keys(metrics.reduce((acc: any, m: any) => ({ ...acc, [m.campaignUrn]: true }), {})).length : 0} campaigns
+                        </span>
                       </div>
 
                       {metrics && metrics.length > 0 ? (

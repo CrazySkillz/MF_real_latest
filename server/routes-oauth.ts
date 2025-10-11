@@ -3101,6 +3101,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated[aggregateKey] = parseFloat(total.toFixed(2));
       });
       
+      // Calculate derived metrics (ROI and ROAS) if conversion value is available
+      if (session.conversionValue && parseFloat(session.conversionValue) > 0) {
+        const conversionValue = parseFloat(session.conversionValue);
+        const totalConversions = aggregated.totalConversions || 0;
+        const totalSpend = aggregated.totalSpend || 0;
+        
+        // Calculate revenue
+        const revenue = totalConversions * conversionValue;
+        
+        // Calculate ROI: ((Revenue - Spend) / Spend) * 100
+        if (totalSpend > 0) {
+          const roi = ((revenue - totalSpend) / totalSpend) * 100;
+          aggregated.roi = parseFloat(roi.toFixed(2));
+          
+          // Calculate ROAS: Revenue / Spend
+          const roas = revenue / totalSpend;
+          aggregated.roas = parseFloat(roas.toFixed(2));
+        }
+      }
+      
       res.json({
         session,
         metrics,

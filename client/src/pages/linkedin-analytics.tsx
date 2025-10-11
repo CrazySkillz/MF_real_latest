@@ -287,6 +287,8 @@ export default function LinkedInAnalytics() {
       'viralimpressions': { icon: Activity, format: formatNumber, label: 'Total Viral Impressions' },
       'ctr': { icon: Activity, format: formatPercentage, label: 'Click-Through Rate' },
       'cpc': { icon: DollarSign, format: formatCurrency, label: 'Cost Per Click' },
+      'roi': { icon: TrendingUp, format: formatPercentage, label: 'Return on Investment (ROI)' },
+      'roas': { icon: TrendingUp, format: (v: number | string) => `${typeof v === 'number' ? v.toFixed(2) : v}x`, label: 'Return on Ad Spend (ROAS)' },
     };
 
     return metricConfig[metricKey] || { icon: BarChart3, format: formatNumber, label: metricKey };

@@ -401,178 +401,166 @@ export default function LinkedInAnalytics() {
                     </div>
 
                     {/* Campaign Breakdown */}
-                    <Card>
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <BarChart3 className="w-5 h-5 text-slate-600" />
-                            <div>
-                              <CardTitle>Campaign Breakdown</CardTitle>
-                              <CardDescription>Comprehensive metrics by individual campaigns</CardDescription>
-                            </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <BarChart3 className="w-5 h-5 text-slate-600" />
+                          <div>
+                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Campaign Breakdown</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {metrics ? Object.keys(metrics.reduce((acc: any, m: any) => ({ ...acc, [m.campaignUrn]: true }), {})).length : 0} campaigns
+                            </p>
                           </div>
-                          <Select value={viewMode} onValueChange={setViewMode}>
-                            <SelectTrigger className="w-[180px]">
-                              <SelectValue placeholder="View" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="performance">Performance</SelectItem>
-                              <SelectItem value="engagement">Engagement</SelectItem>
-                              <SelectItem value="conversions">Conversions</SelectItem>
-                            </SelectContent>
-                          </Select>
                         </div>
-                        
-                        {/* Sort and Filter Controls */}
-                        <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                              <ArrowUpDown className="w-4 h-4 text-slate-500" />
-                              <span className="text-sm text-slate-600 dark:text-slate-400">Sort by:</span>
-                              <Select value={sortBy} onValueChange={setSortBy}>
-                                <SelectTrigger className="w-[140px] h-9">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="name">Name</SelectItem>
-                                  <SelectItem value="impressions">Impressions</SelectItem>
-                                  <SelectItem value="clicks">Clicks</SelectItem>
-                                  <SelectItem value="spend">Spend</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                      </div>
+
+                      {metrics && metrics.length > 0 ? (
+                        <div className="space-y-4">
+                          {Object.values(
+                            metrics.reduce((acc: any, metric: any) => {
+                              if (!acc[metric.campaignUrn]) {
+                                acc[metric.campaignUrn] = {
+                                  urn: metric.campaignUrn,
+                                  name: metric.campaignName,
+                                  status: metric.campaignStatus,
+                                  metrics: {}
+                                };
+                              }
+                              acc[metric.campaignUrn].metrics[metric.metricKey] = parseFloat(metric.metricValue);
+                              return acc;
+                            }, {})
+                          ).map((linkedInCampaign: any, index: number) => {
+                            // Calculate derived metrics
+                            const impressions = linkedInCampaign.metrics.impressions || 0;
+                            const clicks = linkedInCampaign.metrics.clicks || 0;
+                            const spend = linkedInCampaign.metrics.spend || 0;
+                            const conversions = linkedInCampaign.metrics.conversions || 0;
                             
-                            <div className="flex items-center gap-2">
-                              <Filter className="w-4 h-4 text-slate-500" />
-                              <span className="text-sm text-slate-600 dark:text-slate-400">Filter:</span>
-                              <Select value={filterBy} onValueChange={setFilterBy}>
-                                <SelectTrigger className="w-[140px] h-9">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="all">All</SelectItem>
-                                  <SelectItem value="active">Active</SelectItem>
-                                  <SelectItem value="paused">Paused</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          
-                          <span className="text-sm text-slate-600 dark:text-slate-400">
-                            {metrics ? Object.keys(metrics.reduce((acc: any, m: any) => ({ ...acc, [m.campaignUrn]: true }), {})).length : 0} campaigns
-                          </span>
-                        </div>
-                      </CardHeader>
-                      
-                      <CardContent className="p-0">
-                        {metrics && metrics.length > 0 ? (
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead className="bg-slate-50 dark:bg-slate-800/50">
-                                <tr>
-                                  <th className="text-left px-6 py-4 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                                    Campaign
-                                  </th>
-                                  <th className="text-left px-6 py-4 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                                    Status
-                                  </th>
-                                  {/* Dynamically render metric columns based on selected metrics */}
-                                  {(Array.from(new Set(metrics.map((m: any) => m.metricKey))) as string[]).map((metricKey: string) => {
-                                    const { label } = getMetricDisplay(metricKey, 0);
-                                    return (
-                                      <th key={metricKey} className="text-right px-6 py-4 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                                        {label.replace('Total ', '').replace('Average ', '')}
-                                      </th>
-                                    );
-                                  })}
-                                  <th className="text-center px-6 py-4 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                                    Actions
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                {Object.values(
-                                  metrics.reduce((acc: any, metric: any) => {
-                                    if (!acc[metric.campaignUrn]) {
-                                      acc[metric.campaignUrn] = {
-                                        urn: metric.campaignUrn,
-                                        name: metric.campaignName,
-                                        status: metric.campaignStatus,
-                                        metrics: {}
-                                      };
-                                    }
-                                    acc[metric.campaignUrn].metrics[metric.metricKey] = parseFloat(metric.metricValue);
-                                    return acc;
-                                  }, {})
-                                ).map((linkedInCampaign: any, index: number) => {
-                                  // Calculate performance indicators
-                                  const ctr = linkedInCampaign.metrics.ctr || 0;
-                                  const conversionRate = linkedInCampaign.metrics.conversions && linkedInCampaign.metrics.clicks
-                                    ? (linkedInCampaign.metrics.conversions / linkedInCampaign.metrics.clicks) * 100
-                                    : 0;
-                                  
-                                  return (
-                                    <tr 
-                                      key={index} 
-                                      className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
+                            const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+                            const cpc = clicks > 0 ? spend / clicks : 0;
+                            const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+                            const convRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
+                            const costPerConv = conversions > 0 ? spend / conversions : 0;
+                            
+                            return (
+                              <Card key={index} className="hover:shadow-md transition-shadow">
+                                <CardContent className="p-6">
+                                  {/* Campaign Header */}
+                                  <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-start gap-3">
+                                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
+                                      <div>
+                                        <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+                                          {linkedInCampaign.name}
+                                        </h4>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                                          Campaign ID: {index + 1}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <Badge 
+                                      variant={linkedInCampaign.status === 'active' ? 'default' : 'secondary'}
+                                      className={linkedInCampaign.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
                                     >
-                                      <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                          <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                          <div>
-                                            <p className="font-semibold text-slate-900 dark:text-white">
-                                              {linkedInCampaign.name}
-                                            </p>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                              ID: {index + 1}
-                                            </p>
-                                          </div>
+                                      {linkedInCampaign.status}
+                                    </Badge>
+                                  </div>
+
+                                  {/* Primary Metrics */}
+                                  <div className="grid grid-cols-4 gap-4 mb-4">
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Impressions</p>
+                                      <p className="text-lg font-bold text-slate-900 dark:text-white">
+                                        {formatNumber(impressions)}
+                                      </p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Clicks</p>
+                                      <p className="text-lg font-bold text-slate-900 dark:text-white">
+                                        {formatNumber(clicks)}
+                                      </p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Spend</p>
+                                      <p className="text-lg font-bold text-slate-900 dark:text-white">
+                                        {formatCurrency(spend)}
+                                      </p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Conversions</p>
+                                      <p className="text-lg font-bold text-slate-900 dark:text-white">
+                                        {formatNumber(conversions)}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Secondary Metrics */}
+                                  <div className="grid grid-cols-5 gap-3 mb-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                    <div>
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CTR</p>
+                                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {formatPercentage(ctr)}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPC</p>
+                                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {formatCurrency(cpc)}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPM</p>
+                                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {formatCurrency(cpm)}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Conv. Rate</p>
+                                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {formatPercentage(convRate)}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Cost/Conv.</p>
+                                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {formatCurrency(costPerConv)}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Performance Indicators */}
+                                  <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
+                                    <div className="flex items-center gap-3">
+                                      {ctr > 5 && (
+                                        <div className="flex items-center gap-1.5">
+                                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                                          <span className="text-sm text-slate-700 dark:text-slate-300">CTR Excellent</span>
                                         </div>
-                                      </td>
-                                      <td className="px-6 py-4">
-                                        <Badge 
-                                          variant={linkedInCampaign.status === 'active' ? 'default' : 'secondary'}
-                                          className={linkedInCampaign.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
-                                        >
-                                          {linkedInCampaign.status}
-                                        </Badge>
-                                      </td>
-                                      {/* Dynamically render metric values */}
-                                      {(Array.from(new Set(metrics.map((m: any) => m.metricKey))) as string[]).map((metricKey: string) => {
-                                        const value = linkedInCampaign.metrics[metricKey] || 0;
-                                        const { format } = getMetricDisplay(metricKey, value);
-                                        return (
-                                          <td key={metricKey} className="px-6 py-4 text-right">
-                                            <span className="font-semibold text-slate-900 dark:text-white">
-                                              {format(value)}
-                                            </span>
-                                          </td>
-                                        );
-                                      })}
-                                      <td className="px-6 py-4">
-                                        <div className="flex items-center justify-center gap-2">
-                                          {ctr > 5 && (
-                                            <div className="flex items-center gap-1 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded-full">
-                                              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                              <span className="text-xs font-medium text-green-700 dark:text-green-400">High CTR</span>
-                                            </div>
-                                          )}
-                                          <Button variant="ghost" size="sm" className="h-8">
-                                            <ChevronRight className="w-4 h-4" />
-                                          </Button>
+                                      )}
+                                      {convRate > 10 && (
+                                        <div className="flex items-center gap-1.5">
+                                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                                          <span className="text-sm text-slate-700 dark:text-slate-300">Conversion High</span>
                                         </div>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <p className="text-slate-500 text-center py-8">No campaign data available</p>
-                        )}
-                      </CardContent>
-                    </Card>
+                                      )}
+                                    </div>
+                                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
+                                      View Details →
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <Card>
+                          <CardContent className="p-8 text-center">
+                            <p className="text-slate-500">No campaign data available</p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <Card>

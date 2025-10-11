@@ -2003,13 +2003,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedCampaignsCount = campaigns.length;
       const selectedMetricsCount = campaigns.reduce((sum, c) => sum + (c.selectedMetrics?.length || 0), 0);
       
+      // Extract conversion value from the first campaign (all campaigns share the same conversion value)
+      const conversionValue = campaigns[0]?.conversionValue || '0';
+      
+      // Get unique selected metric keys across all campaigns
+      const allMetricKeys = campaigns.reduce((keys: string[], c: any) => {
+        if (c.selectedMetrics && Array.isArray(c.selectedMetrics)) {
+          c.selectedMetrics.forEach((key: string) => {
+            if (!keys.includes(key)) {
+              keys.push(key);
+            }
+          });
+        }
+        return keys;
+      }, []);
+      
       // Create import session
       const session = await storage.createLinkedInImportSession({
         campaignId,
         adAccountId,
         adAccountName,
         selectedCampaignsCount,
-        selectedMetricsCount
+        selectedMetricsCount,
+        conversionValue,
+        selectedMetricKeys: allMetricKeys
       });
       
       if (isTestMode || !accessToken) {
@@ -2017,7 +2034,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const campaign of campaigns) {
           // Only process campaigns that have selected metrics
           if (campaign.selectedMetrics && Array.isArray(campaign.selectedMetrics) && campaign.selectedMetrics.length > 0) {
-            for (const metricKey of campaign.selectedMetrics) {
+            // Filter out calculated metrics (CTR, CPC, CPM) - these should only be calculated, not imported
+            const coreMetrics = campaign.selectedMetrics.filter((m: string) => 
+              !['ctr', 'cpc', 'cpm'].includes(m.toLowerCase())
+            );
+            
+            for (const metricKey of coreMetrics) {
               const metricValue = (Math.random() * 10000 + 1000).toFixed(2);
               await storage.createLinkedInImportMetric({
                 sessionId: session.id,

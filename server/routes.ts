@@ -2240,6 +2240,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated[aggregateKey] = parseFloat(total.toFixed(2));
       });
       
+      // Calculate derived metrics from aggregated core metrics
+      const totalClicks = aggregated.totalClicks || 0;
+      const totalConversions = aggregated.totalConversions || 0;
+      const totalLeads = aggregated.totalLeads || 0;
+      const totalSpend = aggregated.totalSpend || 0;
+      const totalImpressions = aggregated.totalImpressions || 0;
+      const totalEngagements = aggregated.totalEngagements || 0;
+      const conversionValue = parseFloat(session.conversionValue || '0');
+      const totalRevenue = totalConversions * conversionValue;
+      
+      // CPM - Cost Per Mille: (Spend / Impressions) × 1000
+      if (totalImpressions > 0 && totalSpend > 0) {
+        aggregated.cpm = parseFloat(((totalSpend / totalImpressions) * 1000).toFixed(2));
+      }
+      
+      // CVR - Conversion Rate: (Conversions / Clicks) × 100
+      if (totalClicks > 0 && totalConversions > 0) {
+        aggregated.cvr = parseFloat(((totalConversions / totalClicks) * 100).toFixed(2));
+      }
+      
+      // CPA - Cost per Acquisition: Spend / Conversions
+      if (totalConversions > 0 && totalSpend > 0) {
+        aggregated.cpa = parseFloat((totalSpend / totalConversions).toFixed(2));
+      }
+      
+      // CPL - Cost per Lead: Spend / Leads
+      if (totalLeads > 0 && totalSpend > 0) {
+        aggregated.cpl = parseFloat((totalSpend / totalLeads).toFixed(2));
+      }
+      
+      // ER - Engagement Rate: (Total Engagements / Impressions) × 100
+      if (totalImpressions > 0 && totalEngagements > 0) {
+        aggregated.er = parseFloat(((totalEngagements / totalImpressions) * 100).toFixed(2));
+      }
+      
+      // ROI - Return on Investment: ((Revenue - Spend) / Spend) × 100
+      if (totalSpend > 0 && conversionValue > 0 && totalRevenue > 0) {
+        aggregated.roi = parseFloat((((totalRevenue - totalSpend) / totalSpend) * 100).toFixed(2));
+      }
+      
+      // ROAS - Return on Ad Spend: Revenue / Spend
+      if (totalSpend > 0 && conversionValue > 0 && totalRevenue > 0) {
+        aggregated.roas = parseFloat((totalRevenue / totalSpend).toFixed(2));
+      }
+      
       res.json({
         session,
         metrics,

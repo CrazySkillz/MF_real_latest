@@ -287,6 +287,10 @@ export default function LinkedInAnalytics() {
       'viralimpressions': { icon: Activity, format: formatNumber, label: 'Total Viral Impressions' },
       'ctr': { icon: Activity, format: formatPercentage, label: 'Click-Through Rate' },
       'cpc': { icon: DollarSign, format: formatCurrency, label: 'Cost Per Click' },
+      'cvr': { icon: Target, format: formatPercentage, label: 'Conversion Rate (CVR)' },
+      'cpa': { icon: DollarSign, format: formatCurrency, label: 'Cost per Conversion (CPA)' },
+      'cpl': { icon: DollarSign, format: formatCurrency, label: 'Cost per Lead (CPL)' },
+      'er': { icon: Activity, format: formatPercentage, label: 'Engagement Rate (ER)' },
       'roi': { icon: TrendingUp, format: formatPercentage, label: 'Return on Investment (ROI)' },
       'roas': { icon: TrendingUp, format: (v: number | string) => `${typeof v === 'number' ? v.toFixed(2) : v}x`, label: 'Return on Ad Spend (ROAS)' },
     };
@@ -375,21 +379,21 @@ export default function LinkedInAnalytics() {
                 {sessionData && aggregated ? (
                   <>
                     {/* LinkedIn Metrics Grid - 4 columns like the screenshot */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                       {Object.entries(aggregated).map(([key, value]: [string, any]) => {
                         const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
                         const { icon: Icon, format, label } = getMetricDisplay(metricKey, value);
                         
                         return (
                           <Card key={key} className="hover:shadow-md transition-shadow">
-                            <CardContent className="p-6">
-                              <div className="flex items-start justify-between mb-4">
-                                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
                                   {label}
                                 </h3>
                                 <Icon className="w-4 h-4 text-slate-400" />
                               </div>
-                              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {format(value)}
                               </p>
                             </CardContent>

@@ -3101,11 +3101,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated[aggregateKey] = parseFloat(total.toFixed(2));
       });
       
-      // Calculate derived metrics (ROI and ROAS) if conversion value is available
+      // Calculate derived metrics
+      const totalConversions = aggregated.totalConversions || 0;
+      const totalSpend = aggregated.totalSpend || 0;
+      const totalClicks = aggregated.totalClicks || 0;
+      const totalLeads = aggregated.totalLeads || 0;
+      const totalImpressions = aggregated.totalImpressions || 0;
+      const totalEngagements = aggregated.totalTotalengagements || 0;
+      
+      // CVR (Conversion Rate): (Conversions / Clicks) * 100
+      if (totalClicks > 0) {
+        const cvr = (totalConversions / totalClicks) * 100;
+        aggregated.cvr = parseFloat(cvr.toFixed(2));
+      }
+      
+      // CPA (Cost per Conversion): Spend / Conversions
+      if (totalConversions > 0 && totalSpend > 0) {
+        const cpa = totalSpend / totalConversions;
+        aggregated.cpa = parseFloat(cpa.toFixed(2));
+      }
+      
+      // CPL (Cost per Lead): Spend / Leads
+      if (totalLeads > 0 && totalSpend > 0) {
+        const cpl = totalSpend / totalLeads;
+        aggregated.cpl = parseFloat(cpl.toFixed(2));
+      }
+      
+      // ER (Engagement Rate): (Total Engagements / Impressions) * 100
+      if (totalImpressions > 0) {
+        const er = (totalEngagements / totalImpressions) * 100;
+        aggregated.er = parseFloat(er.toFixed(2));
+      }
+      
+      // ROI and ROAS if conversion value is available
       if (session.conversionValue && parseFloat(session.conversionValue) > 0) {
         const conversionValue = parseFloat(session.conversionValue);
-        const totalConversions = aggregated.totalConversions || 0;
-        const totalSpend = aggregated.totalSpend || 0;
         
         // Calculate revenue
         const revenue = totalConversions * conversionValue;

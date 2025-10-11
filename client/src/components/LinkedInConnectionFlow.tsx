@@ -158,12 +158,6 @@ const AVAILABLE_METRICS: MetricOption[] = [
     getValue: (campaign) => campaign.clicks.toLocaleString()
   },
   {
-    key: 'ctr',
-    label: 'CTR',
-    icon: Percent,
-    getValue: (campaign) => `${campaign.ctr.toFixed(2)}%`
-  },
-  {
     key: 'engagements',
     label: 'Engagements',
     icon: Activity,
@@ -174,21 +168,6 @@ const AVAILABLE_METRICS: MetricOption[] = [
     label: 'Spend',
     icon: DollarSign,
     getValue: (campaign) => `$${campaign.spend.toFixed(2)}`
-  },
-  {
-    key: 'cpc',
-    label: 'CPC',
-    icon: DollarSign,
-    getValue: (campaign) => `$${campaign.cpc.toFixed(2)}`
-  },
-  {
-    key: 'cpm',
-    label: 'CPM',
-    icon: DollarSign,
-    getValue: (campaign) => {
-      const cpm = (campaign.spend / campaign.impressions) * 1000;
-      return `$${cpm.toFixed(2)}`;
-    }
   },
   {
     key: 'conversions',
@@ -645,7 +624,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                                 {campaign.status}
                               </Badge>
                               <Badge variant="outline" className="text-xs">
-                                {AVAILABLE_METRICS.length} Core Metrics + 6 Derived Metrics
+                                9 Core Metrics + 9 Derived Metrics
                               </Badge>
                             </div>
                           </div>
@@ -687,8 +666,11 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                           <p className="text-xs text-slate-500 dark:text-slate-400">Calculated from core metrics</p>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                             {[
+                              { key: 'ctr', label: 'Click-Through Rate (CTR)', icon: Percent },
+                              { key: 'cpc', label: 'Cost Per Click (CPC)', icon: DollarSign },
+                              { key: 'cpm', label: 'Cost Per Mille (CPM)', icon: DollarSign },
                               { key: 'cvr', label: 'Conversion Rate (CVR)', icon: Target },
-                              { key: 'cpa', label: 'Cost per Conversion (CPA)', icon: DollarSign },
+                              { key: 'cpa', label: 'Cost per Acquisition (CPA)', icon: DollarSign },
                               { key: 'cpl', label: 'Cost per Lead (CPL)', icon: DollarSign },
                               { key: 'er', label: 'Engagement Rate (ER)', icon: Activity },
                               { key: 'roi', label: 'Return on Investment (ROI)', icon: TrendingUp },

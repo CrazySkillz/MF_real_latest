@@ -2971,6 +2971,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const selectedMetricKeys = Array.from(selectedMetricKeysSet);
       
+      // Get conversion value from the first campaign (all campaigns share the same value)
+      const conversionValue = campaigns[0]?.conversionValue || null;
+      
       // Create import session
       const session = await storage.createLinkedInImportSession({
         campaignId,
@@ -2978,7 +2981,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adAccountName,
         selectedCampaignsCount,
         selectedMetricsCount,
-        selectedMetricKeys
+        selectedMetricKeys,
+        conversionValue: conversionValue
       });
       
       // Create metrics for each campaign and selected metric

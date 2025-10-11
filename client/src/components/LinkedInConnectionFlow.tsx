@@ -501,17 +501,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
       return;
     }
 
-    // Validate that each selected campaign has at least one metric selected
-    const campaignsWithoutMetrics = selectedCampaigns.filter(c => !c.selectedMetrics || c.selectedMetrics.length === 0);
-    if (campaignsWithoutMetrics.length > 0) {
-      toast({
-        title: "No Metrics Selected",
-        description: `Please select at least one metric for: ${campaignsWithoutMetrics[0].name}`,
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsConnecting(true);
 
     try {
@@ -529,7 +518,8 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
             id: c.id,
             name: c.name,
             status: c.status,
-            selectedMetrics: c.selectedMetrics || []
+            selectedMetrics: c.selectedMetrics || [],
+            conversionValue: c.conversionValue || null
           }))
         })
       });

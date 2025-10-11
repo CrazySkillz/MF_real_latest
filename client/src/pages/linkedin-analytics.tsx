@@ -753,6 +753,24 @@ export default function LinkedInAnalytics() {
 
               {/* Benchmarks Tab */}
               <TabsContent value="benchmarks" className="space-y-6" data-testid="content-benchmarks">
+                {/* Header with Create Button */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Benchmarks</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                      Compare your performance against industry benchmarks
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => setIsBenchmarkModalOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    data-testid="button-create-benchmark"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Benchmark
+                  </Button>
+                </div>
+
                 {benchmarksLoading ? (
                   <div className="animate-pulse space-y-4">
                     <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>

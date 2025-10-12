@@ -1592,36 +1592,37 @@ export default function LinkedInAnalytics() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="kpi-timeframe">Timeframe</Label>
-                  <Select
-                    value={kpiForm.timeframe}
-                    onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
-                  >
-                    <SelectTrigger id="kpi-timeframe" data-testid="select-kpi-timeframe">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="kpi-tracking">Tracking Period (days)</Label>
-                  <Input
-                    id="kpi-tracking"
-                    type="number"
-                    value={kpiForm.trackingPeriod}
-                    onChange={(e) => setKpiForm({ ...kpiForm, trackingPeriod: e.target.value })}
-                    placeholder="30"
-                    data-testid="input-kpi-tracking"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-timeframe">Timeframe</Label>
+                <Select
+                  value={kpiForm.timeframe}
+                  onValueChange={(value) => {
+                    const trackingPeriodMap: Record<string, string> = {
+                      'daily': '1',
+                      'weekly': '7',
+                      'monthly': '30',
+                      'quarterly': '90'
+                    };
+                    setKpiForm({ 
+                      ...kpiForm, 
+                      timeframe: value,
+                      trackingPeriod: trackingPeriodMap[value] || '30'
+                    });
+                  }}
+                >
+                  <SelectTrigger id="kpi-timeframe" data-testid="select-kpi-timeframe">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily (1 day)</SelectItem>
+                    <SelectItem value="weekly">Weekly (7 days)</SelectItem>
+                    <SelectItem value="monthly">Monthly (30 days)</SelectItem>
+                    <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  How often to measure progress toward your target
+                </p>
               </div>
 
               {/* Action Buttons */}

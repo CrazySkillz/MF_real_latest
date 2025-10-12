@@ -821,6 +821,52 @@ export default function LinkedInAnalytics() {
                                 </div>
                               </div>
                             </div>
+                            
+                            {/* Progress Tracker */}
+                            {kpi.targetValue && kpi.currentValue && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-slate-600 dark:text-slate-400">Progress</span>
+                                  <span className="font-semibold text-slate-900 dark:text-white">
+                                    {Math.min(Math.round((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100), 100)}%
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                  <div 
+                                    className={`h-2.5 rounded-full transition-all ${
+                                      (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 1 
+                                        ? 'bg-green-500' 
+                                        : (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 0.7
+                                        ? 'bg-blue-500'
+                                        : (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 0.4
+                                        ? 'bg-yellow-500'
+                                        : 'bg-red-500'
+                                    }`}
+                                    style={{ width: `${Math.min((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100, 100)}%` }}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2 text-xs">
+                                  {(parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 1 ? (
+                                    <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                                      <CheckCircle2 className="w-3 h-3" /> Target achieved!
+                                    </span>
+                                  ) : (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 0.7 ? (
+                                    <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                      <TrendingUp className="w-3 h-3" /> On track
+                                    </span>
+                                  ) : (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 0.4 ? (
+                                    <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3" /> Needs attention
+                                    </span>
+                                  ) : (
+                                    <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3" /> Off track
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
                             {kpi.category && (
                               <div className="text-sm text-slate-600 dark:text-slate-400">
                                 Category: <span className="font-medium">{kpi.category}</span>
@@ -1350,28 +1396,73 @@ export default function LinkedInAnalytics() {
               </div>
 
               {/* KPI Form */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="kpi-name">KPI Name</Label>
-                  <Input
-                    id="kpi-name"
-                    value={kpiForm.name}
-                    onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
-                    placeholder="Enter KPI name"
-                    data-testid="input-kpi-name"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="kpi-unit">Unit</Label>
-                  <Input
-                    id="kpi-unit"
-                    value={kpiForm.unit}
-                    onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
-                    placeholder="%"
-                    data-testid="input-kpi-unit"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-metric">Select Metric</Label>
+                <Select
+                  value={kpiForm.name}
+                  onValueChange={(value) => {
+                    // Get metric details
+                    const metricDetails = (() => {
+                      const key = value.toLowerCase();
+                      if (!aggregated) return { value: '', unit: '' };
+                      
+                      // Core metrics
+                      if (key === 'impressions') return { value: aggregated.totalImpressions?.toString() || '0', unit: '' };
+                      if (key === 'reach') return { value: aggregated.totalReach?.toString() || '0', unit: '' };
+                      if (key === 'clicks') return { value: aggregated.totalClicks?.toString() || '0', unit: '' };
+                      if (key === 'engagements') return { value: aggregated.totalEngagements?.toString() || '0', unit: '' };
+                      if (key === 'spend') return { value: aggregated.totalSpend?.toString() || '0', unit: '$' };
+                      if (key === 'conversions') return { value: aggregated.totalConversions?.toString() || '0', unit: '' };
+                      if (key === 'leads') return { value: aggregated.totalLeads?.toString() || '0', unit: '' };
+                      if (key === 'video views') return { value: aggregated.totalVideoViews?.toString() || '0', unit: '' };
+                      if (key === 'viral impressions') return { value: aggregated.totalViralImpressions?.toString() || '0', unit: '' };
+                      
+                      // Derived metrics
+                      if (key === 'ctr') return { value: aggregated.ctr?.toString() || '0', unit: '%' };
+                      if (key === 'cpc') return { value: aggregated.cpc?.toString() || '0', unit: '$' };
+                      if (key === 'cpm') return { value: aggregated.cpm?.toString() || '0', unit: '$' };
+                      if (key === 'cvr') return { value: aggregated.cvr?.toString() || '0', unit: '%' };
+                      if (key === 'cpa') return { value: aggregated.cpa?.toString() || '0', unit: '$' };
+                      if (key === 'cpl') return { value: aggregated.cpl?.toString() || '0', unit: '$' };
+                      if (key === 'er') return { value: aggregated.er?.toString() || '0', unit: '%' };
+                      if (key === 'roi') return { value: aggregated.roi?.toString() || '0', unit: '%' };
+                      if (key === 'roas') return { value: aggregated.roas?.toString() || '0', unit: 'x' };
+                      
+                      return { value: '0', unit: '' };
+                    })();
+                    
+                    setKpiForm({ 
+                      ...kpiForm, 
+                      name: value,
+                      currentValue: metricDetails.value,
+                      unit: metricDetails.unit
+                    });
+                  }}
+                >
+                  <SelectTrigger id="kpi-metric" data-testid="select-kpi-metric">
+                    <SelectValue placeholder="Choose a metric" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Impressions">Impressions</SelectItem>
+                    <SelectItem value="Reach">Reach</SelectItem>
+                    <SelectItem value="Clicks">Clicks</SelectItem>
+                    <SelectItem value="Engagements">Engagements</SelectItem>
+                    <SelectItem value="Spend">Spend</SelectItem>
+                    <SelectItem value="Conversions">Conversions</SelectItem>
+                    <SelectItem value="Leads">Leads</SelectItem>
+                    <SelectItem value="Video Views">Video Views</SelectItem>
+                    <SelectItem value="Viral Impressions">Viral Impressions</SelectItem>
+                    <SelectItem value="CTR">CTR (Click-Through Rate)</SelectItem>
+                    <SelectItem value="CPC">CPC (Cost Per Click)</SelectItem>
+                    <SelectItem value="CPM">CPM (Cost Per Mille)</SelectItem>
+                    <SelectItem value="CVR">CVR (Conversion Rate)</SelectItem>
+                    <SelectItem value="CPA">CPA (Cost Per Acquisition)</SelectItem>
+                    <SelectItem value="CPL">CPL (Cost Per Lead)</SelectItem>
+                    <SelectItem value="ER">ER (Engagement Rate)</SelectItem>
+                    <SelectItem value="ROI">ROI (Return on Investment)</SelectItem>
+                    <SelectItem value="ROAS">ROAS (Return on Ad Spend)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -1401,14 +1492,13 @@ export default function LinkedInAnalytics() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="kpi-current">Current Value</Label>
+                  <Label htmlFor="kpi-current">Current Value (Auto-populated)</Label>
                   <Input
                     id="kpi-current"
-                    type="number"
-                    step="0.01"
-                    value={kpiForm.currentValue}
-                    onChange={(e) => setKpiForm({ ...kpiForm, currentValue: e.target.value })}
-                    placeholder="Enter current value"
+                    type="text"
+                    value={kpiForm.currentValue ? `${kpiForm.currentValue}${kpiForm.unit}` : 'Select a metric first'}
+                    readOnly
+                    className="bg-slate-100 dark:bg-slate-800 cursor-not-allowed"
                     data-testid="input-kpi-current"
                   />
                 </div>

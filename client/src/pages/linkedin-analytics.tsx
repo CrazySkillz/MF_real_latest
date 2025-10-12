@@ -510,8 +510,13 @@ export default function LinkedInAnalytics() {
   };
 
   // PDF Helper: Add header
-  const addPDFHeader = (doc: any, title: string, reportType: string) => {
-    const { session } = (sessionData as any) || {};
+  const addPDFHeader = (doc: any, title: string, subtitle: string) => {
+    const { session, metrics } = (sessionData as any) || {};
+    
+    // Get unique campaign names from metrics
+    const campaignNames = metrics 
+      ? Array.from(new Set(metrics.map((m: any) => m.campaignName))).join(', ')
+      : 'N/A';
     
     // LinkedIn brand color header
     doc.setFillColor(0, 119, 181); // LinkedIn blue
@@ -523,16 +528,16 @@ export default function LinkedInAnalytics() {
     doc.setFont(undefined, 'bold');
     doc.text(title, 20, 20);
     
-    // Report type badge
+    // Subtitle
     doc.setFontSize(12);
     doc.setFont(undefined, 'normal');
-    doc.text(reportType.toUpperCase(), 20, 30);
+    doc.text(subtitle, 20, 30);
     
     // Report info
     doc.setTextColor(100, 100, 100);
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 50);
-    doc.text(`Campaign: ${session?.campaignName || 'N/A'}`, 20, 57);
+    doc.text(`Campaign: ${campaignNames}`, 20, 57);
   };
 
   // PDF Helper: Add section
@@ -550,7 +555,7 @@ export default function LinkedInAnalytics() {
   const generateOverviewPDF = (doc: any) => {
     const { session, aggregated } = (sessionData as any) || {};
     
-    addPDFHeader(doc, reportForm.name, 'Overview Report');
+    addPDFHeader(doc, reportForm.name, 'LinkedIn Metrics');
     
     let y = 70;
     
@@ -580,7 +585,7 @@ export default function LinkedInAnalytics() {
     
     // Core Metrics Section
     if (coreMetricsData.length > 0) {
-      y = addPDFSection(doc, '📊 Core Metrics', y, [52, 168, 83]);
+      y = addPDFSection(doc, 'Core Metrics', y, [52, 168, 83]);
       doc.setTextColor(50, 50, 50);
       doc.setFontSize(11);
       doc.setFont(undefined, 'normal');
@@ -598,7 +603,7 @@ export default function LinkedInAnalytics() {
     
     // Derived Metrics Section
     if (derivedMetricsData.length > 0) {
-      y = addPDFSection(doc, '📈 Derived Metrics', y, [255, 159, 64]);
+      y = addPDFSection(doc, 'Derived Metrics', y, [255, 159, 64]);
       doc.setTextColor(50, 50, 50);
       
       derivedMetricsData.forEach((metric: any) => {
@@ -622,10 +627,10 @@ export default function LinkedInAnalytics() {
 
   // Generate KPIs PDF
   const generateKPIsPDF = (doc: any) => {
-    addPDFHeader(doc, reportForm.name, 'KPIs Report');
+    addPDFHeader(doc, reportForm.name, 'LinkedIn Metrics');
     
     let y = 70;
-    y = addPDFSection(doc, '🎯 Key Performance Indicators', y, [156, 39, 176]);
+    y = addPDFSection(doc, 'Key Performance Indicators', y, [156, 39, 176]);
     
     doc.setTextColor(50, 50, 50);
     doc.setFontSize(11);
@@ -664,10 +669,10 @@ export default function LinkedInAnalytics() {
 
   // Generate Benchmarks PDF
   const generateBenchmarksPDF = (doc: any) => {
-    addPDFHeader(doc, reportForm.name, 'Benchmarks Report');
+    addPDFHeader(doc, reportForm.name, 'LinkedIn Metrics');
     
     let y = 70;
-    y = addPDFSection(doc, '🏆 Performance Benchmarks', y, [255, 99, 132]);
+    y = addPDFSection(doc, 'Performance Benchmarks', y, [255, 99, 132]);
     
     doc.setTextColor(50, 50, 50);
     doc.setFontSize(11);
@@ -708,10 +713,10 @@ export default function LinkedInAnalytics() {
 
   // Generate Ad Comparison PDF
   const generateAdComparisonPDF = (doc: any) => {
-    addPDFHeader(doc, reportForm.name, 'Ad Comparison Report');
+    addPDFHeader(doc, reportForm.name, 'LinkedIn Metrics');
     
     let y = 70;
-    y = addPDFSection(doc, '🎬 Ad Performance Comparison', y, [54, 162, 235]);
+    y = addPDFSection(doc, 'Ad Performance Comparison', y, [54, 162, 235]);
     
     doc.setTextColor(50, 50, 50);
     doc.setFontSize(11);

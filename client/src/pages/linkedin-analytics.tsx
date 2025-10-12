@@ -461,38 +461,31 @@ export default function LinkedInAnalytics() {
   };
 
   // Handle download report
-  const handleDownloadReport = () => {
-    let reportContent = '';
+  const handleDownloadReport = async () => {
     const reportName = reportForm.name || 'LinkedIn Report';
     
-    // Generate report content based on type
+    // Dynamically import jsPDF
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF();
+    
+    // Generate PDF based on type
     switch (reportForm.reportType) {
       case 'overview':
-        reportContent = generateOverviewReport();
+        generateOverviewPDF(doc);
         break;
       case 'kpis':
-        reportContent = generateKPIsReport();
+        generateKPIsPDF(doc);
         break;
       case 'benchmarks':
-        reportContent = generateBenchmarksReport();
+        generateBenchmarksPDF(doc);
         break;
       case 'ads':
-        reportContent = generateAdComparisonReport();
+        generateAdComparisonPDF(doc);
         break;
-      default:
-        reportContent = 'No report data available';
     }
 
-    // Create and download the report file
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${reportName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Download the PDF
+    doc.save(`${reportName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
 
     // Close modal and reset form
     setIsReportModalOpen(false);
@@ -512,108 +505,222 @@ export default function LinkedInAnalytics() {
 
     toast({
       title: "Report Downloaded",
-      description: "Your report has been downloaded successfully.",
+      description: "Your PDF report has been downloaded successfully.",
     });
   };
 
-  // Generate Overview Report
-  const generateOverviewReport = () => {
+  // PDF Helper: Add header
+  const addPDFHeader = (doc: any, title: string, reportType: string) => {
+    const { session } = (sessionData as any) || {};
+    
+    // LinkedIn brand color header
+    doc.setFillColor(0, 119, 181); // LinkedIn blue
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    // Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont(undefined, 'bold');
+    doc.text(title, 20, 20);
+    
+    // Report type badge
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text(reportType.toUpperCase(), 20, 30);
+    
+    // Report info
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 50);
+    doc.text(`Campaign: ${session?.campaignName || 'N/A'}`, 20, 57);
+  };
+
+  // PDF Helper: Add section
+  const addPDFSection = (doc: any, title: string, y: number, color: number[] = [66, 139, 202]) => {
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.rect(15, y, 180, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text(title, 20, y + 7);
+    return y + 15;
+  };
+
+  // Generate Overview PDF
+  const generateOverviewPDF = (doc: any) => {
     const { session, metrics } = (sessionData as any) || {};
     const coreMetrics = metrics?.coreMetrics || [];
     const derivedMetrics = metrics?.derivedMetrics || [];
     
-    let report = `=== LINKEDIN ANALYTICS - OVERVIEW REPORT ===\n`;
-    report += `Report Name: ${reportForm.name}\n`;
-    report += `Generated: ${new Date().toLocaleString()}\n`;
-    report += `Campaign: ${session?.campaignName || 'N/A'}\n\n`;
+    addPDFHeader(doc, reportForm.name, 'Overview Report');
     
-    report += `--- CORE METRICS ---\n`;
+    let y = 70;
+    
+    // Core Metrics Section
+    y = addPDFSection(doc, '📊 Core Metrics', y, [52, 168, 83]);
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
+    
     coreMetrics.forEach((metric: any) => {
-      report += `${metric.name}: ${metric.value}\n`;
+      doc.setFont(undefined, 'bold');
+      doc.text(`${metric.name}:`, 20, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(`${metric.value}`, 120, y);
+      y += 8;
     });
     
-    report += `\n--- DERIVED METRICS ---\n`;
+    y += 10;
+    
+    // Derived Metrics Section
+    y = addPDFSection(doc, '📈 Derived Metrics', y, [255, 159, 64]);
+    doc.setTextColor(50, 50, 50);
+    
     derivedMetrics.forEach((metric: any) => {
-      report += `${metric.name}: ${metric.value}\n`;
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFont(undefined, 'bold');
+      doc.text(`${metric.name}:`, 20, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(`${metric.value}`, 120, y);
+      y += 8;
     });
     
-    return report;
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
   };
 
-  // Generate KPIs Report
-  const generateKPIsReport = () => {
-    const { session } = (sessionData as any) || {};
+  // Generate KPIs PDF
+  const generateKPIsPDF = (doc: any) => {
+    addPDFHeader(doc, reportForm.name, 'KPIs Report');
     
-    let report = `=== LINKEDIN ANALYTICS - KPIs REPORT ===\n`;
-    report += `Report Name: ${reportForm.name}\n`;
-    report += `Generated: ${new Date().toLocaleString()}\n`;
-    report += `Campaign: ${session?.campaignName || 'N/A'}\n\n`;
+    let y = 70;
+    y = addPDFSection(doc, '🎯 Key Performance Indicators', y, [156, 39, 176]);
     
-    report += `--- KEY PERFORMANCE INDICATORS ---\n`;
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(11);
+    
     if (kpisData && Array.isArray(kpisData) && kpisData.length > 0) {
       kpisData.forEach((kpi: any) => {
-        report += `\nKPI: ${kpi.name}\n`;
-        report += `Metric: ${kpi.metricName}\n`;
-        report += `Current Value: ${kpi.currentValue || 'N/A'}\n`;
-        report += `Target Value: ${kpi.targetValue}\n`;
-        report += `Status: ${kpi.status || 'N/A'}\n`;
+        if (y > 260) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        // KPI Box
+        doc.setDrawColor(200, 200, 200);
+        doc.roundedRect(20, y - 5, 170, 30, 3, 3, 'S');
+        
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(12);
+        doc.text(kpi.name, 25, y + 2);
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        doc.text(`Metric: ${kpi.metricName}`, 25, y + 10);
+        doc.text(`Current: ${kpi.currentValue || 'N/A'}`, 25, y + 17);
+        doc.text(`Target: ${kpi.targetValue}`, 100, y + 17);
+        
+        y += 38;
       });
     } else {
-      report += `No KPIs configured\n`;
+      doc.text('No KPIs configured yet', 20, y);
     }
     
-    return report;
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
   };
 
-  // Generate Benchmarks Report
-  const generateBenchmarksReport = () => {
-    const { session } = (sessionData as any) || {};
+  // Generate Benchmarks PDF
+  const generateBenchmarksPDF = (doc: any) => {
+    addPDFHeader(doc, reportForm.name, 'Benchmarks Report');
     
-    let report = `=== LINKEDIN ANALYTICS - BENCHMARKS REPORT ===\n`;
-    report += `Report Name: ${reportForm.name}\n`;
-    report += `Generated: ${new Date().toLocaleString()}\n`;
-    report += `Campaign: ${session?.campaignName || 'N/A'}\n\n`;
+    let y = 70;
+    y = addPDFSection(doc, '🏆 Performance Benchmarks', y, [255, 99, 132]);
     
-    report += `--- PERFORMANCE BENCHMARKS ---\n`;
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(11);
+    
     if (benchmarksData && Array.isArray(benchmarksData) && benchmarksData.length > 0) {
       benchmarksData.forEach((benchmark: any) => {
-        report += `\nBenchmark: ${benchmark.name}\n`;
-        report += `Type: ${benchmark.benchmarkType}\n`;
-        report += `Metric: ${benchmark.metricName}\n`;
-        report += `Value: ${benchmark.benchmarkValue}\n`;
-        report += `Source: ${benchmark.source || 'N/A'}\n`;
+        if (y > 260) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        doc.setDrawColor(200, 200, 200);
+        doc.roundedRect(20, y - 5, 170, 35, 3, 3, 'S');
+        
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(12);
+        doc.text(benchmark.name, 25, y + 2);
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        doc.text(`Type: ${benchmark.benchmarkType}`, 25, y + 10);
+        doc.text(`Metric: ${benchmark.metricName}`, 25, y + 17);
+        doc.text(`Value: ${benchmark.benchmarkValue}`, 25, y + 24);
+        if (benchmark.source) {
+          doc.text(`Source: ${benchmark.source}`, 100, y + 24);
+        }
+        
+        y += 43;
       });
     } else {
-      report += `No benchmarks configured\n`;
+      doc.text('No benchmarks configured yet', 20, y);
     }
     
-    return report;
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
   };
 
-  // Generate Ad Comparison Report
-  const generateAdComparisonReport = () => {
-    const { session } = (sessionData as any) || {};
+  // Generate Ad Comparison PDF
+  const generateAdComparisonPDF = (doc: any) => {
+    addPDFHeader(doc, reportForm.name, 'Ad Comparison Report');
     
-    let report = `=== LINKEDIN ANALYTICS - AD COMPARISON REPORT ===\n`;
-    report += `Report Name: ${reportForm.name}\n`;
-    report += `Generated: ${new Date().toLocaleString()}\n`;
-    report += `Campaign: ${session?.campaignName || 'N/A'}\n\n`;
+    let y = 70;
+    y = addPDFSection(doc, '🎬 Ad Performance Comparison', y, [54, 162, 235]);
     
-    report += `--- AD PERFORMANCE COMPARISON ---\n`;
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(11);
+    
     if (adsData && Array.isArray(adsData) && adsData.length > 0) {
       adsData.forEach((ad: any, index: number) => {
-        report += `\nAd #${index + 1}: ${ad.adName || ad.name || 'Unnamed Ad'}\n`;
-        report += `Impressions: ${ad.impressions || 0}\n`;
-        report += `Clicks: ${ad.clicks || 0}\n`;
-        report += `CTR: ${ad.ctr || 0}%\n`;
-        report += `Spend: $${ad.spend || 0}\n`;
-        report += `Conversions: ${ad.conversions || 0}\n`;
+        if (y > 250) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        doc.setDrawColor(200, 200, 200);
+        doc.roundedRect(20, y - 5, 170, 42, 3, 3, 'S');
+        
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(12);
+        doc.text(`Ad #${index + 1}: ${ad.adName || ad.name || 'Unnamed Ad'}`, 25, y + 2);
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        doc.text(`Impressions: ${ad.impressions || 0}`, 25, y + 12);
+        doc.text(`Clicks: ${ad.clicks || 0}`, 100, y + 12);
+        doc.text(`CTR: ${ad.ctr || 0}%`, 25, y + 20);
+        doc.text(`Spend: $${ad.spend || 0}`, 100, y + 20);
+        doc.text(`Conversions: ${ad.conversions || 0}`, 25, y + 28);
+        
+        y += 50;
       });
     } else {
-      report += `No ad data available\n`;
+      doc.text('No ad data available', 20, y);
     }
     
-    return report;
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
   };
 
   // Dynamic labels based on benchmark type

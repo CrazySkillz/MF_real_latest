@@ -111,6 +111,18 @@ export default function LinkedInAnalytics() {
     confidenceLevel: ''
   });
 
+  // Report Form State
+  const [reportForm, setReportForm] = useState({
+    name: '',
+    description: '',
+    reportType: '',
+    configuration: null as any,
+    scheduleFrequency: null as string | null,
+    emailRecipients: [] as string[],
+    status: 'draft' as const
+  });
+  const [reportModalStep, setReportModalStep] = useState<'type' | 'configuration'>('type');
+
   // Fetch campaign data
   const { data: campaignData, isLoading: campaignLoading } = useQuery({
     queryKey: ['/api/campaigns', campaignId],
@@ -334,6 +346,95 @@ export default function LinkedInAnalytics() {
     } else {
       createBenchmarkMutation.mutate(benchmarkData);
     }
+  };
+
+  // Create Report mutation
+  const createReportMutation = useMutation({
+    mutationFn: async (reportData: any) => {
+      const res = await apiRequest('POST', '/api/linkedin/reports', reportData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/linkedin/reports'] });
+      toast({
+        title: "Report Created",
+        description: "Your LinkedIn report has been created successfully.",
+      });
+      setIsReportModalOpen(false);
+      setReportModalStep('type');
+      setReportForm({
+        name: '',
+        description: '',
+        reportType: '',
+        configuration: null,
+        scheduleFrequency: null,
+        emailRecipients: [],
+        status: 'draft'
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create report",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete Report mutation
+  const deleteReportMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const res = await apiRequest('DELETE', `/api/linkedin/reports/${reportId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/linkedin/reports'] });
+      toast({
+        title: "Report Deleted",
+        description: "The report has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete report",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle report type selection
+  const handleReportTypeSelect = (type: string) => {
+    const reportNames = {
+      'overview': 'Overview Report',
+      'kpis': 'KPIs Report',
+      'benchmarks': 'Benchmarks Report',
+      'ads': 'Ad Comparison Report',
+      'custom': 'Custom Report'
+    };
+    
+    setReportForm({
+      ...reportForm,
+      reportType: type,
+      name: reportNames[type as keyof typeof reportNames] || 'Report',
+      configuration: {}
+    });
+    setReportModalStep('configuration');
+  };
+
+  // Handle create report
+  const handleCreateReport = () => {
+    const reportData = {
+      campaignId: campaignId || null,
+      name: reportForm.name,
+      description: reportForm.description || null,
+      reportType: reportForm.reportType,
+      configuration: reportForm.configuration,
+      scheduleFrequency: reportForm.scheduleFrequency,
+      emailRecipients: reportForm.emailRecipients.length > 0 ? reportForm.emailRecipients : null,
+      status: reportForm.status
+    };
+    createReportMutation.mutate(reportData);
   };
 
   // Dynamic labels based on benchmark type
@@ -2562,6 +2663,203 @@ export default function LinkedInAnalytics() {
                   })()}
                 </div>
               </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Report Modal */}
+      <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Create LinkedIn Report</DialogTitle>
+            <DialogDescription className="mt-1">
+              Generate comprehensive analytics reports for your LinkedIn campaigns
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {reportModalStep === 'type' ? (
+              <>
+                {/* Report Type Selection */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-base font-semibold">Select Report Type</Label>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Choose what data to include in your report
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {/* Overview Report */}
+                    <div
+                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+                      data-testid="report-type-overview"
+                      onClick={() => handleReportTypeSelect('overview')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <BarChart3 className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Overview Report</h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Complete analytics overview with all core metrics and performance indicators
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* KPIs Report */}
+                    <div
+                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+                      data-testid="report-type-kpis"
+                      onClick={() => handleReportTypeSelect('kpis')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Target className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-slate-900 dark:text-white">KPIs Report</h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Focused report on key performance indicators and targets
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Benchmarks Report */}
+                    <div
+                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+                      data-testid="report-type-benchmarks"
+                      onClick={() => handleReportTypeSelect('benchmarks')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Trophy className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Benchmarks Report</h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Performance benchmarks and industry comparisons
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Ad Comparison Report */}
+                    <div
+                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+                      data-testid="report-type-ads"
+                      onClick={() => handleReportTypeSelect('ads')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Activity className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Ad Comparison Report</h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Detailed ad-level performance analysis and rankings
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Custom Report */}
+                    <div
+                      className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+                      data-testid="report-type-custom"
+                      onClick={() => handleReportTypeSelect('custom')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Plus className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Custom Report</h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Build a custom report with selected elements from all tabs
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsReportModalOpen(false)}
+                    data-testid="button-cancel-report"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Configuration Step */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      Configure Report
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setReportModalStep('type')}
+                      data-testid="button-back-to-types"
+                    >
+                      <ChevronRight className="w-4 h-4 mr-1 rotate-180" />
+                      Back
+                    </Button>
+                  </div>
+
+                  {/* Report Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="report-name">Report Name</Label>
+                    <Input
+                      id="report-name"
+                      value={reportForm.name}
+                      onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
+                      placeholder="Enter report name"
+                      data-testid="input-report-name"
+                    />
+                  </div>
+
+                  {/* Report Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="report-description">Description (Optional)</Label>
+                    <Textarea
+                      id="report-description"
+                      value={reportForm.description}
+                      onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                      placeholder="Add a description for this report"
+                      rows={3}
+                      data-testid="input-report-description"
+                    />
+                  </div>
+
+                  {/* Report Type Badge */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-500">Report Type:</span>
+                    <Badge>{reportForm.reportType}</Badge>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsReportModalOpen(false);
+                      setReportModalStep('type');
+                    }}
+                    data-testid="button-cancel-report-config"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateReport}
+                    disabled={!reportForm.name || createReportMutation.isPending}
+                    data-testid="button-create-report-submit"
+                  >
+                    {createReportMutation.isPending ? 'Creating...' : 'Create Report'}
+                  </Button>
+                </div>
+              </>
             )}
           </div>
         </DialogContent>

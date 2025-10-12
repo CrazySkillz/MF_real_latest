@@ -493,7 +493,17 @@ export default function LinkedInAnalytics() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6" data-testid="content-overview">
-                {sessionData && aggregated ? (
+                {sessionLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    </div>
+                    <div className="h-96 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  </div>
+                ) : sessionData && aggregated ? (
                   <>
                     {/* LinkedIn Metrics Grid - 4 columns - Core Metrics Only */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">

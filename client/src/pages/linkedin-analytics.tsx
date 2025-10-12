@@ -642,21 +642,45 @@ export default function LinkedInAnalytics() {
           y = 20;
         }
         
-        // KPI Box
+        // KPI Box - increased height for progress bar
         doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(20, y - 5, 170, 30, 3, 3, 'S');
+        doc.roundedRect(20, y - 5, 170, 38, 3, 3, 'S');
         
+        // Metric name
         doc.setFont(undefined, 'bold');
-        doc.setFontSize(12);
-        doc.text(kpi.name, 25, y + 2);
+        doc.setFontSize(10);
+        doc.text(`Metric: ${kpi.metricName || kpi.name}`, 25, y + 2);
         
+        // Current and Target values
         doc.setFont(undefined, 'normal');
         doc.setFontSize(10);
-        doc.text(`Metric: ${kpi.metricName}`, 25, y + 10);
-        doc.text(`Current: ${kpi.currentValue || 'N/A'}`, 25, y + 17);
-        doc.text(`Target: ${kpi.targetValue}`, 100, y + 17);
+        doc.text(`Current: ${kpi.currentValue || 'N/A'}`, 25, y + 10);
+        doc.text(`Target: ${kpi.targetValue}`, 100, y + 10);
         
-        y += 38;
+        // Progress bar
+        const current = parseFloat(kpi.currentValue) || 0;
+        const target = parseFloat(kpi.targetValue) || 100;
+        const progress = Math.min((current / target) * 100, 100);
+        
+        // Progress bar background (gray)
+        doc.setFillColor(230, 230, 230);
+        doc.roundedRect(25, y + 18, 160, 8, 2, 2, 'F');
+        
+        // Progress bar fill (green if >= 100%, blue otherwise)
+        if (progress > 0) {
+          const fillColor = progress >= 100 ? [52, 168, 83] : [66, 139, 202];
+          doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
+          const barWidth = (160 * progress) / 100;
+          doc.roundedRect(25, y + 18, barWidth, 8, 2, 2, 'F');
+        }
+        
+        // Progress percentage text
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`${progress.toFixed(1)}%`, 95, y + 23, { align: 'center' });
+        doc.setTextColor(50, 50, 50);
+        
+        y += 46;
       });
     } else {
       doc.text('No KPIs configured yet', 20, y);

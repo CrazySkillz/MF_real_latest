@@ -3014,7 +3014,7 @@ export default function LinkedInAnalytics() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-6 border-t mt-6">
+            <div className="flex items-center justify-between pt-6 border-t mt-6">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -3037,25 +3037,50 @@ export default function LinkedInAnalytics() {
               >
                 Cancel
               </Button>
-              {reportForm.reportType && reportForm.reportType !== 'custom' && (
+              
+              <div className="flex items-center gap-2">
                 <Button
-                  onClick={handleCreateReport}
-                  disabled={!reportForm.name || createReportMutation.isPending}
-                  data-testid="button-create-report-submit"
-                  className="gap-2"
+                  variant="link"
+                  onClick={() => {
+                    setReportModalStep('standard');
+                    setReportForm({
+                      name: '',
+                      description: '',
+                      reportType: '',
+                      configuration: null,
+                      scheduleEnabled: false,
+                      scheduleFrequency: 'weekly',
+                      scheduleDayOfWeek: 'monday',
+                      scheduleTime: '9:00 AM',
+                      emailRecipients: '',
+                      status: 'draft'
+                    });
+                  }}
+                  data-testid="button-reset-report"
                 >
-                  {createReportMutation.isPending ? (
-                    'Creating...'
-                  ) : reportForm.scheduleEnabled ? (
-                    'Schedule Report'
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      Generate & Download Report
-                    </>
-                  )}
+                  Reset
                 </Button>
-              )}
+                
+                {reportForm.reportType && reportForm.reportType !== 'custom' && (
+                  <Button
+                    onClick={handleCreateReport}
+                    disabled={!reportForm.name || createReportMutation.isPending}
+                    data-testid="button-create-report-submit"
+                    className="gap-2"
+                  >
+                    {createReportMutation.isPending ? (
+                      'Creating...'
+                    ) : reportForm.scheduleEnabled ? (
+                      'Schedule Report'
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Generate & Download Report
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </DialogContent>

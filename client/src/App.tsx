@@ -38,6 +38,7 @@ function Router() {
       <Route path="/campaigns/:id/linkedin-analytics" component={LinkedInAnalytics} />
       <Route path="/campaigns/:id/kpis" component={KPIs} />
       <Route path="/platforms/:platformType/kpis" component={PlatformKPIs} />
+      <Route path="/linkedin-analytics" component={LinkedInAnalytics} />
       <Route path="/audiences" component={Audiences} />
       <Route path="/reports" component={Reports} />
       <Route path="/notifications" component={Notifications} />

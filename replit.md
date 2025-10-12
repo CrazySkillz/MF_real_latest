@@ -32,7 +32,7 @@ Preferred communication style: Simple, everyday language.
 - **Development Storage**: In-memory storage
 
 ### Core Features
-- **Data Models**: Campaigns, Metrics, Integrations, Performance Data.
+- **Data Models**: Campaigns, Metrics, Integrations, Performance Data, LinkedIn Reports.
 - **Frontend Components**: Dashboard, Integrations management, comprehensive UI components.
 - **Backend Services**: Abstracted storage interface, RESTful endpoints, Zod validation, centralized error handling.
 - **Data Flow**: Client requests via TanStack Query -> FastAPI handles validation -> Abstract storage interface -> PostgreSQL via Drizzle ORM -> Typed responses to frontend -> React Query manages UI updates.
@@ -41,6 +41,7 @@ Preferred communication style: Simple, everyday language.
 - **Dynamic Platform Detection**: Identifies connected services during campaign creation.
 - **Auto-Refresh**: Configurable auto-refresh functionality for data.
 - **Error Handling**: Seamless fallback analytics data display and silent token management for uninterrupted user experience (e.g., for OAuth issues).
+- **LinkedIn Reports**: 5th tab in LinkedIn Analytics with support for creating, managing, and viewing reports. Report types include Overview, KPIs, Benchmarks, Ad Comparison, and Custom reports. Features include two-step creation modal (type selection → configuration), report listing with metadata, and foundation for download/email/scheduling capabilities.
 
 ## External Dependencies
 

@@ -516,10 +516,11 @@ export default function LinkedInAnalytics() {
                           // Filter out derived metrics
                           if (derivedMetrics.includes(metricKey)) return false;
                           
-                          // Filter based on selected metrics from the session
+                          // Filter based on selected metrics from the session (case-insensitive)
                           const selectedMetricKeys = session?.selectedMetricKeys || [];
                           if (selectedMetricKeys.length > 0) {
-                            return selectedMetricKeys.includes(metricKey);
+                            const selectedMetricKeysLower = selectedMetricKeys.map((k: string) => k.toLowerCase());
+                            return selectedMetricKeysLower.includes(metricKey);
                           }
                           
                           return true;

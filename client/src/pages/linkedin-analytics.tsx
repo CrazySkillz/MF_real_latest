@@ -705,28 +705,77 @@ export default function LinkedInAnalytics() {
     
     if (benchmarksData && Array.isArray(benchmarksData) && benchmarksData.length > 0) {
       benchmarksData.forEach((benchmark: any) => {
-        if (y > 260) {
+        if (y > 230) {
           doc.addPage();
           y = 20;
         }
         
+        // Benchmark Box - increased height for all content
         doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(20, y - 5, 170, 35, 3, 3, 'S');
+        doc.roundedRect(20, y - 5, 170, 60, 3, 3, 'S');
         
+        // Benchmark title
         doc.setFont(undefined, 'bold');
         doc.setFontSize(12);
         doc.text(benchmark.name, 25, y + 2);
         
+        // Description
         doc.setFont(undefined, 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text(benchmark.description || 'No description provided', 25, y + 9);
+        
+        // Context line (industry • period • type)
+        const contextParts = [
+          benchmark.industry || benchmark.source || '',
+          benchmark.period || '',
+          benchmark.benchmarkType || ''
+        ].filter(p => p).join(' • ');
+        doc.text(contextParts, 25, y + 15);
+        doc.setTextColor(50, 50, 50);
+        
+        // Values section
         doc.setFontSize(10);
-        doc.text(`Type: ${benchmark.benchmarkType}`, 25, y + 10);
-        doc.text(`Metric: ${benchmark.metricName}`, 25, y + 17);
-        doc.text(`Value: ${benchmark.benchmarkValue}`, 25, y + 24);
-        if (benchmark.source) {
-          doc.text(`Source: ${benchmark.source}`, 100, y + 24);
+        doc.setFont(undefined, 'bold');
+        doc.text('Your Performance', 25, y + 23);
+        doc.text('Benchmark Value', 85, y + 23);
+        doc.text('Source', 145, y + 23);
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(11);
+        doc.text(`${benchmark.currentValue || '0'}${benchmark.unit || ''}`, 25, y + 31);
+        doc.text(`${benchmark.benchmarkValue || '0'}${benchmark.unit || ''}`, 85, y + 31);
+        doc.text(benchmark.source || 'LinkedIn', 145, y + 31);
+        
+        // Performance vs Benchmark
+        if (benchmark.currentValue && benchmark.benchmarkValue) {
+          const current = parseFloat(benchmark.currentValue);
+          const benchmarkVal = parseFloat(benchmark.benchmarkValue);
+          const diff = current - benchmarkVal;
+          const percentDiff = benchmarkVal > 0 ? Math.abs((diff / benchmarkVal) * 100).toFixed(0) : '0';
+          const status = current > benchmarkVal ? 'Above' : current < benchmarkVal ? 'Below' : 'At';
+          const statusColor = current >= benchmarkVal ? [52, 168, 83] : [220, 38, 38]; // green or red
+          
+          doc.setFontSize(9);
+          doc.setFont(undefined, 'bold');
+          doc.text('Performance vs Benchmark:', 25, y + 41);
+          
+          // Status badge
+          doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+          doc.roundedRect(25, y + 44, 35, 8, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(8);
+          doc.text(`${percentDiff}% ${status}`, 42.5, y + 49, { align: 'center' });
+          
+          // Status text
+          doc.setTextColor(100, 100, 100);
+          doc.setFont(undefined, 'normal');
+          const statusText = current >= benchmarkVal ? 'Exceeds benchmark' : 'Needs improvement';
+          doc.text(statusText, 63, y + 49);
+          doc.setTextColor(50, 50, 50);
         }
         
-        y += 43;
+        y += 68;
       });
     } else {
       doc.text('No benchmarks configured yet', 20, y);

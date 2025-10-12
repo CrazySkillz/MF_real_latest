@@ -1310,6 +1310,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/platforms/:platformType/benchmarks/:benchmarkId", async (req, res) => {
+    console.log('=== UPDATE PLATFORM BENCHMARK ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    try {
+      const { benchmarkId } = req.params;
+      
+      const validatedBenchmark = insertBenchmarkSchema.partial().parse(req.body);
+      console.log('Validated benchmark update:', JSON.stringify(validatedBenchmark, null, 2));
+      
+      const benchmark = await storage.updateBenchmark(benchmarkId, validatedBenchmark);
+      if (!benchmark) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      
+      console.log('Updated benchmark:', JSON.stringify(benchmark, null, 2));
+      res.json(benchmark);
+    } catch (error) {
+      console.error('Platform Benchmark update error:', error);
+      if (error instanceof z.ZodError) {
+        console.error('Zod validation errors:', JSON.stringify(error.errors, null, 2));
+        return res.status(400).json({ message: "Invalid benchmark data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update platform benchmark" });
+    }
+  });
+
+  app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId", async (req, res) => {
+    console.log('=== DELETE PLATFORM BENCHMARK ===');
+    console.log('Benchmark ID:', req.params.benchmarkId);
+    
+    try {
+      const { benchmarkId } = req.params;
+      
+      const deleted = await storage.deleteBenchmark(benchmarkId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      
+      console.log(`Benchmark ${benchmarkId} successfully deleted`);
+      res.json({ message: "Benchmark deleted successfully", success: true });
+    } catch (error) {
+      console.error('Platform Benchmark deletion error:', error);
+      res.status(500).json({ message: "Failed to delete benchmark" });
+    }
+  });
+
   app.post("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;

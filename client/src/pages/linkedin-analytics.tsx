@@ -62,7 +62,7 @@ export default function LinkedInAnalytics() {
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
-  const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('templates');
+  const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const { toast } = useToast();
   const campaignId = params?.id;
@@ -125,7 +125,7 @@ export default function LinkedInAnalytics() {
         description: "Your LinkedIn KPI has been created successfully.",
       });
       setIsKPIModalOpen(false);
-      setModalStep('templates');
+      setModalStep('configuration');
       setKpiForm({
         name: '',
         unit: '',
@@ -1311,7 +1311,7 @@ export default function LinkedInAnalytics() {
       <Dialog open={isKPIModalOpen} onOpenChange={(open) => {
         setIsKPIModalOpen(open);
         if (!open) {
-          setModalStep('templates');
+          setModalStep('configuration');
           setSelectedTemplate(null);
         }
       }}>

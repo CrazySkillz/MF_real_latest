@@ -20,6 +20,19 @@ import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 
+// Helper: Derive category from metric
+const getCategoryFromMetric = (metric: string): string => {
+  const metricLower = metric.toLowerCase();
+  
+  if (['ctr', 'cpc', 'cpm', 'cpa', 'cpl'].some(m => metricLower.includes(m))) return 'cost';
+  if (['cvr', 'conversions', 'leads'].some(m => metricLower.includes(m))) return 'conversion';
+  if (['er', 'engagements', 'likes', 'comments', 'shares'].some(m => metricLower.includes(m))) return 'engagement';
+  if (['impressions', 'reach', 'viral'].some(m => metricLower.includes(m))) return 'reach';
+  if (['roi', 'roas', 'video'].some(m => metricLower.includes(m))) return 'performance';
+  
+  return 'performance'; // default
+};
+
 // LinkedIn KPI Templates
 const LINKEDIN_KPI_TEMPLATES = [
   {
@@ -84,7 +97,6 @@ export default function LinkedInAnalytics() {
   const [benchmarkForm, setBenchmarkForm] = useState({
     metric: '',
     name: '',
-    category: '',
     benchmarkType: '',
     unit: '',
     benchmarkValue: '',
@@ -232,7 +244,6 @@ export default function LinkedInAnalytics() {
       setBenchmarkForm({
         metric: '',
         name: '',
-        category: '',
         benchmarkType: '',
         unit: '',
         benchmarkValue: '',
@@ -256,9 +267,10 @@ export default function LinkedInAnalytics() {
 
   // Handle create Benchmark
   const handleCreateBenchmark = () => {
+    const derivedCategory = getCategoryFromMetric(benchmarkForm.metric);
     const benchmarkData = {
       name: benchmarkForm.name,
-      category: benchmarkForm.category,
+      category: derivedCategory,
       benchmarkType: benchmarkForm.benchmarkType,
       unit: benchmarkForm.unit,
       benchmarkValue: benchmarkForm.benchmarkValue,
@@ -266,12 +278,46 @@ export default function LinkedInAnalytics() {
       industry: benchmarkForm.industry,
       description: benchmarkForm.description,
       source: benchmarkForm.source,
-      geoLocation: benchmarkForm.geographicLocation, // Schema expects geoLocation not geographicLocation
+      geoLocation: benchmarkForm.geographicLocation,
       period: benchmarkForm.period,
       confidenceLevel: benchmarkForm.confidenceLevel,
-      status: 'active' // Add status field required by schema
+      status: 'active'
     };
     createBenchmarkMutation.mutate(benchmarkData);
+  };
+
+  // Dynamic labels based on benchmark type
+  const getBenchmarkValueLabel = (type: string) => {
+    switch(type) {
+      case 'industry_average': return 'Industry Benchmark Value';
+      case 'competitor': return 'Competitor Value';
+      case 'historical': return 'Historical Value';
+      case 'target': return 'Target Value';
+      case 'best_practice': return 'Best Practice Value';
+      default: return 'Benchmark Value';
+    }
+  };
+
+  const getContextFieldLabel = (type: string) => {
+    switch(type) {
+      case 'industry_average': return 'Industry';
+      case 'competitor': return 'Competitor Name';
+      case 'historical': return 'Time Period';
+      case 'target': return 'Goal Context';
+      case 'best_practice': return 'Source/Authority';
+      default: return 'Context';
+    }
+  };
+
+  const getContextFieldPlaceholder = (type: string) => {
+    switch(type) {
+      case 'industry_average': return 'e.g., Technology, Healthcare';
+      case 'competitor': return 'e.g., Company XYZ';
+      case 'historical': return 'e.g., Q1 2024, Last Year';
+      case 'target': return 'e.g., Q4 Goal, Annual Target';
+      case 'best_practice': return 'e.g., LinkedIn Marketing Labs';
+      default: return 'Enter context';
+    }
   };
 
   // Fetch platform-level LinkedIn KPIs
@@ -1777,36 +1823,15 @@ export default function LinkedInAnalytics() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-name">Benchmark Name</Label>
-                <Input
-                  id="benchmark-name"
-                  value={benchmarkForm.name}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
-                  placeholder="e.g., LinkedIn CTR Benchmark"
-                  data-testid="input-benchmark-name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-category">Category</Label>
-                <Select
-                  value={benchmarkForm.category}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, category: value })}
-                >
-                  <SelectTrigger id="benchmark-category" data-testid="select-benchmark-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="engagement">Engagement</SelectItem>
-                    <SelectItem value="conversion">Conversion</SelectItem>
-                    <SelectItem value="cost">Cost</SelectItem>
-                    <SelectItem value="reach">Reach</SelectItem>
-                    <SelectItem value="performance">Performance</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-name">Benchmark Name</Label>
+              <Input
+                id="benchmark-name"
+                value={benchmarkForm.name}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
+                placeholder="e.g., LinkedIn CTR Benchmark"
+                data-testid="input-benchmark-name"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -1857,7 +1882,9 @@ export default function LinkedInAnalytics() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="benchmark-value">Industry Benchmark Value</Label>
+                <Label htmlFor="benchmark-value">
+                  {getBenchmarkValueLabel(benchmarkForm.benchmarkType)}
+                </Label>
                 <Input
                   id="benchmark-value"
                   type="number"
@@ -1870,12 +1897,14 @@ export default function LinkedInAnalytics() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="benchmark-industry">Industry</Label>
+                <Label htmlFor="benchmark-industry">
+                  {getContextFieldLabel(benchmarkForm.benchmarkType)}
+                </Label>
                 <Input
                   id="benchmark-industry"
                   value={benchmarkForm.industry}
                   onChange={(e) => setBenchmarkForm({ ...benchmarkForm, industry: e.target.value })}
-                  placeholder="e.g., Technology, Healthcare"
+                  placeholder={getContextFieldPlaceholder(benchmarkForm.benchmarkType)}
                   data-testid="input-benchmark-industry"
                 />
               </div>

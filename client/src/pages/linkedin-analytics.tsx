@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
@@ -117,8 +118,11 @@ export default function LinkedInAnalytics() {
     description: '',
     reportType: '',
     configuration: null as any,
-    scheduleFrequency: null as string | null,
-    emailRecipients: [] as string[],
+    scheduleEnabled: false,
+    scheduleFrequency: 'weekly',
+    scheduleDayOfWeek: 'monday',
+    scheduleTime: '9:00 AM',
+    emailRecipients: '',
     status: 'draft' as const
   });
   const [reportModalStep, setReportModalStep] = useState<'standard' | 'custom' | 'type' | 'configuration'>('standard');
@@ -361,14 +365,17 @@ export default function LinkedInAnalytics() {
         description: "Your LinkedIn report has been created successfully.",
       });
       setIsReportModalOpen(false);
-      setReportModalStep('type');
+      setReportModalStep('standard');
       setReportForm({
         name: '',
         description: '',
         reportType: '',
         configuration: null,
-        scheduleFrequency: null,
-        emailRecipients: [],
+        scheduleEnabled: false,
+        scheduleFrequency: 'weekly',
+        scheduleDayOfWeek: 'monday',
+        scheduleTime: '9:00 AM',
+        emailRecipients: '',
         status: 'draft'
       });
     },
@@ -424,14 +431,24 @@ export default function LinkedInAnalytics() {
 
   // Handle create report
   const handleCreateReport = () => {
+    // Convert email recipients string to array
+    const emailRecipientsArray = reportForm.emailRecipients
+      ? reportForm.emailRecipients.split(',').map(email => email.trim()).filter(email => email.length > 0)
+      : [];
+
     const reportData = {
       campaignId: campaignId || null,
       name: reportForm.name,
       description: reportForm.description || null,
       reportType: reportForm.reportType,
-      configuration: reportForm.configuration,
-      scheduleFrequency: reportForm.scheduleFrequency,
-      emailRecipients: reportForm.emailRecipients.length > 0 ? reportForm.emailRecipients : null,
+      configuration: {
+        ...reportForm.configuration,
+        scheduleEnabled: reportForm.scheduleEnabled,
+        scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
+        scheduleTime: reportForm.scheduleTime
+      },
+      scheduleFrequency: reportForm.scheduleEnabled ? reportForm.scheduleFrequency : null,
+      emailRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
       status: reportForm.status
     };
     createReportMutation.mutate(reportData);
@@ -2832,6 +2849,124 @@ export default function LinkedInAnalytics() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Schedule Automatic Reports */}
+                    <div className="pt-4 border-t mt-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Checkbox
+                          id="schedule-reports"
+                          checked={reportForm.scheduleEnabled}
+                          onCheckedChange={(checked) => 
+                            setReportForm({ ...reportForm, scheduleEnabled: checked as boolean })
+                          }
+                          data-testid="checkbox-schedule-reports"
+                        />
+                        <Label 
+                          htmlFor="schedule-reports" 
+                          className="text-base font-semibold cursor-pointer"
+                        >
+                          Schedule Automatic Reports
+                        </Label>
+                      </div>
+
+                      {reportForm.scheduleEnabled && (
+                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* Frequency */}
+                            <div className="space-y-2">
+                              <Label htmlFor="schedule-frequency">Frequency</Label>
+                              <Select
+                                value={reportForm.scheduleFrequency}
+                                onValueChange={(value) => 
+                                  setReportForm({ ...reportForm, scheduleFrequency: value })
+                                }
+                              >
+                                <SelectTrigger id="schedule-frequency" data-testid="select-frequency">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="daily">Daily</SelectItem>
+                                  <SelectItem value="weekly">Weekly</SelectItem>
+                                  <SelectItem value="monthly">Monthly</SelectItem>
+                                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Day of Week */}
+                            <div className="space-y-2">
+                              <Label htmlFor="schedule-day">Day of Week</Label>
+                              <Select
+                                value={reportForm.scheduleDayOfWeek}
+                                onValueChange={(value) => 
+                                  setReportForm({ ...reportForm, scheduleDayOfWeek: value })
+                                }
+                              >
+                                <SelectTrigger id="schedule-day" data-testid="select-day">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="monday">Monday</SelectItem>
+                                  <SelectItem value="tuesday">Tuesday</SelectItem>
+                                  <SelectItem value="wednesday">Wednesday</SelectItem>
+                                  <SelectItem value="thursday">Thursday</SelectItem>
+                                  <SelectItem value="friday">Friday</SelectItem>
+                                  <SelectItem value="saturday">Saturday</SelectItem>
+                                  <SelectItem value="sunday">Sunday</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Time */}
+                          <div className="space-y-2">
+                            <Label htmlFor="schedule-time">Time</Label>
+                            <Select
+                              value={reportForm.scheduleTime}
+                              onValueChange={(value) => 
+                                setReportForm({ ...reportForm, scheduleTime: value })
+                              }
+                            >
+                              <SelectTrigger id="schedule-time" data-testid="select-time">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="6:00 AM">6:00 AM</SelectItem>
+                                <SelectItem value="7:00 AM">7:00 AM</SelectItem>
+                                <SelectItem value="8:00 AM">8:00 AM</SelectItem>
+                                <SelectItem value="9:00 AM">9:00 AM</SelectItem>
+                                <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                                <SelectItem value="11:00 AM">11:00 AM</SelectItem>
+                                <SelectItem value="12:00 PM">12:00 PM</SelectItem>
+                                <SelectItem value="1:00 PM">1:00 PM</SelectItem>
+                                <SelectItem value="2:00 PM">2:00 PM</SelectItem>
+                                <SelectItem value="3:00 PM">3:00 PM</SelectItem>
+                                <SelectItem value="4:00 PM">4:00 PM</SelectItem>
+                                <SelectItem value="5:00 PM">5:00 PM</SelectItem>
+                                <SelectItem value="6:00 PM">6:00 PM</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Email Recipients */}
+                          <div className="space-y-2">
+                            <Label htmlFor="email-recipients">Email Recipients</Label>
+                            <Input
+                              id="email-recipients"
+                              value={reportForm.emailRecipients}
+                              onChange={(e) => 
+                                setReportForm({ ...reportForm, emailRecipients: e.target.value })
+                              }
+                              placeholder="Enter email addresses (comma-separated)"
+                              data-testid="input-email-recipients"
+                            />
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              Reports will be automatically generated and sent to these email addresses
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2890,8 +3025,11 @@ export default function LinkedInAnalytics() {
                     description: '',
                     reportType: '',
                     configuration: null,
-                    scheduleFrequency: null,
-                    emailRecipients: [],
+                    scheduleEnabled: false,
+                    scheduleFrequency: 'weekly',
+                    scheduleDayOfWeek: 'monday',
+                    scheduleTime: '9:00 AM',
+                    emailRecipients: '',
                     status: 'draft'
                   });
                 }}

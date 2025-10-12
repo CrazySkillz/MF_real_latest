@@ -502,7 +502,17 @@ export default function LinkedInAnalytics() {
                           // Only show core metrics, exclude derived metrics
                           const derivedMetrics = ['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er', 'roi', 'roas'];
                           const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
-                          return !derivedMetrics.includes(metricKey);
+                          
+                          // Filter out derived metrics
+                          if (derivedMetrics.includes(metricKey)) return false;
+                          
+                          // Filter based on selected metrics from the session
+                          const selectedMetricKeys = session?.selectedMetricKeys || [];
+                          if (selectedMetricKeys.length > 0) {
+                            return selectedMetricKeys.includes(metricKey);
+                          }
+                          
+                          return true;
                         })
                         .map(([key, value]: [string, any]) => {
                           const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();

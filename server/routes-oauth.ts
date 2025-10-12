@@ -2154,6 +2154,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update platform benchmark
+  app.put("/api/platforms/:platformType/benchmarks/:benchmarkId", async (req, res) => {
+    try {
+      const { benchmarkId } = req.params;
+      
+      const validatedData = insertBenchmarkSchema.partial().parse(req.body);
+      
+      // Calculate variance if both values are provided
+      if (validatedData.currentValue && validatedData.benchmarkValue) {
+        const currentVal = parseFloat(validatedData.currentValue.toString());
+        const benchmarkVal = parseFloat(validatedData.benchmarkValue.toString());
+        const variance = ((currentVal - benchmarkVal) / benchmarkVal) * 100;
+        validatedData.variance = variance.toString();
+      }
+      
+      const benchmark = await storage.updateBenchmark(benchmarkId, validatedData);
+      if (!benchmark) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      
+      res.json(benchmark);
+    } catch (error) {
+      console.error('Platform benchmark update error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid benchmark data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update platform benchmark" });
+    }
+  });
+
+  // Delete platform benchmark
+  app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId", async (req, res) => {
+    try {
+      const { benchmarkId } = req.params;
+      
+      const deleted = await storage.deleteBenchmark(benchmarkId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      
+      res.json({ message: "Benchmark deleted successfully", success: true });
+    } catch (error) {
+      console.error('Platform benchmark deletion error:', error);
+      res.status(500).json({ message: "Failed to delete benchmark" });
+    }
+  });
+
   // Get single benchmark
   app.get("/api/benchmarks/:id", async (req, res) => {
     try {

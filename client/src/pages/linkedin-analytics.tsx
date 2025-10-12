@@ -272,8 +272,8 @@ export default function LinkedInAnalytics() {
       const res = await apiRequest('PUT', `/api/platforms/linkedin/benchmarks/${id}`, data);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks'] });
       toast({
         title: "Benchmark Updated",
         description: "Your LinkedIn benchmark has been updated successfully.",

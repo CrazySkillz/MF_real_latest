@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -3042,8 +3042,18 @@ export default function LinkedInAnalytics() {
                   onClick={handleCreateReport}
                   disabled={!reportForm.name || createReportMutation.isPending}
                   data-testid="button-create-report-submit"
+                  className="gap-2"
                 >
-                  {createReportMutation.isPending ? 'Creating...' : 'Create Report'}
+                  {createReportMutation.isPending ? (
+                    'Creating...'
+                  ) : reportForm.scheduleEnabled ? (
+                    'Schedule Report'
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      Generate & Download Report
+                    </>
+                  )}
                 </Button>
               )}
             </div>

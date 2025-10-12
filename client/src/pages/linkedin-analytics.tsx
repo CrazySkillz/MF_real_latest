@@ -715,6 +715,24 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : kpisData && (kpisData as any[]).length > 0 ? (
                   <>
+                    {/* Header with Create Button */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Track and monitor your LinkedIn campaign KPIs
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={() => setIsKPIModalOpen(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        data-testid="button-create-kpi-header"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create KPI
+                      </Button>
+                    </div>
+
                     {/* KPI Summary Cards */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <Card>

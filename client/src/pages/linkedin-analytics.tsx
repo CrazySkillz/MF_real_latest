@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2 } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -78,6 +78,7 @@ export default function LinkedInAnalytics() {
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
   const { toast } = useToast();
   const campaignId = params?.id;
   
@@ -265,6 +266,44 @@ export default function LinkedInAnalytics() {
     }
   });
 
+  // Update Benchmark mutation
+  const updateBenchmarkMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest('PUT', `/api/platforms/linkedin/benchmarks/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks'] });
+      toast({
+        title: "Benchmark Updated",
+        description: "Your LinkedIn benchmark has been updated successfully.",
+      });
+      setIsBenchmarkModalOpen(false);
+      setEditingBenchmark(null);
+      setBenchmarkForm({
+        metric: '',
+        name: '',
+        benchmarkType: '',
+        unit: '',
+        benchmarkValue: '',
+        currentValue: '',
+        industry: '',
+        description: '',
+        source: '',
+        geographicLocation: '',
+        period: 'monthly',
+        confidenceLevel: ''
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update benchmark",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Handle create Benchmark
   const handleCreateBenchmark = () => {
     const derivedCategory = getCategoryFromMetric(benchmarkForm.metric);
@@ -283,7 +322,12 @@ export default function LinkedInAnalytics() {
       confidenceLevel: benchmarkForm.confidenceLevel,
       status: 'active'
     };
-    createBenchmarkMutation.mutate(benchmarkData);
+    
+    if (editingBenchmark) {
+      updateBenchmarkMutation.mutate({ id: editingBenchmark.id, data: benchmarkData });
+    } else {
+      createBenchmarkMutation.mutate(benchmarkData);
+    }
   };
 
   // Dynamic labels based on benchmark type
@@ -1143,9 +1187,37 @@ export default function LinkedInAnalytics() {
                                   )}
                                 </div>
                               </div>
-                              <Badge variant={benchmark.isActive ? 'default' : 'secondary'}>
-                                {benchmark.isActive ? 'Active' : 'Inactive'}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={benchmark.isActive ? 'default' : 'secondary'}>
+                                  {benchmark.isActive ? 'Active' : 'Inactive'}
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingBenchmark(benchmark);
+                                    setBenchmarkForm({
+                                      metric: benchmark.metric || '',
+                                      name: benchmark.name || '',
+                                      benchmarkType: benchmark.benchmarkType || '',
+                                      unit: benchmark.unit || '',
+                                      benchmarkValue: benchmark.benchmarkValue || '',
+                                      currentValue: benchmark.currentValue || '',
+                                      industry: benchmark.industry || '',
+                                      description: benchmark.description || '',
+                                      source: benchmark.source || '',
+                                      geographicLocation: benchmark.geoLocation || '',
+                                      period: benchmark.period || 'monthly',
+                                      confidenceLevel: benchmark.confidenceLevel || ''
+                                    });
+                                    setIsBenchmarkModalOpen(true);
+                                  }}
+                                  data-testid={`button-edit-benchmark-${benchmark.id}`}
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
 
                             <div className="grid gap-4 md:grid-cols-3">
@@ -1741,13 +1813,36 @@ export default function LinkedInAnalytics() {
         </DialogContent>
       </Dialog>
 
-      {/* Create LinkedIn Benchmark Modal */}
-      <Dialog open={isBenchmarkModalOpen} onOpenChange={setIsBenchmarkModalOpen}>
+      {/* Create/Edit LinkedIn Benchmark Modal */}
+      <Dialog open={isBenchmarkModalOpen} onOpenChange={(open) => {
+        setIsBenchmarkModalOpen(open);
+        if (!open) {
+          setEditingBenchmark(null);
+          setBenchmarkForm({
+            metric: '',
+            name: '',
+            benchmarkType: '',
+            unit: '',
+            benchmarkValue: '',
+            currentValue: '',
+            industry: '',
+            description: '',
+            source: '',
+            geographicLocation: '',
+            period: 'monthly',
+            confidenceLevel: ''
+          });
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Create LinkedIn Benchmark</DialogTitle>
+            <DialogTitle className="text-xl font-bold">
+              {editingBenchmark ? 'Edit LinkedIn Benchmark' : 'Create LinkedIn Benchmark'}
+            </DialogTitle>
             <DialogDescription className="mt-1">
-              Set up a benchmark to compare your LinkedIn performance against industry standards
+              {editingBenchmark 
+                ? 'Update your benchmark to reflect new standards or goals' 
+                : 'Set up a benchmark to compare your LinkedIn performance against industry standards'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1989,11 +2084,18 @@ export default function LinkedInAnalytics() {
               </Button>
               <Button
                 onClick={handleCreateBenchmark}
-                disabled={createBenchmarkMutation.isPending || !benchmarkForm.name || !benchmarkForm.benchmarkValue}
+                disabled={
+                  (editingBenchmark ? updateBenchmarkMutation.isPending : createBenchmarkMutation.isPending) || 
+                  !benchmarkForm.name || 
+                  !benchmarkForm.benchmarkValue
+                }
                 className="bg-blue-600 hover:bg-blue-700"
-                data-testid="button-create-benchmark-submit"
+                data-testid={editingBenchmark ? "button-update-benchmark-submit" : "button-create-benchmark-submit"}
               >
-                {createBenchmarkMutation.isPending ? 'Creating...' : 'Create Benchmark'}
+                {editingBenchmark 
+                  ? (updateBenchmarkMutation.isPending ? 'Updating...' : 'Update Benchmark')
+                  : (createBenchmarkMutation.isPending ? 'Creating...' : 'Create Benchmark')
+                }
               </Button>
             </div>
           </div>

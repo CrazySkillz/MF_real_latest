@@ -3049,33 +3049,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Generate mock ad performance data (2-3 ads per campaign)
+        // Only generate data for metrics that were actually selected for this campaign
         const numAds = Math.floor(Math.random() * 2) + 2;
+        const selectedMetrics = campaign.selectedMetrics || [];
+        
         for (let i = 0; i < numAds; i++) {
-          const impressions = Math.floor(Math.random() * 50000) + 10000;
-          const clicks = Math.floor(Math.random() * 2000) + 500;
-          const spend = (Math.random() * 5000 + 1000).toFixed(2);
-          const conversions = Math.floor(Math.random() * 100) + 10;
-          const revenue = (conversions * (Math.random() * 200 + 50)).toFixed(2);
-          const ctr = ((clicks / impressions) * 100).toFixed(2);
-          const cpc = (parseFloat(spend) / clicks).toFixed(2);
-          const conversionRate = ((conversions / clicks) * 100).toFixed(2);
-          
-          await storage.createLinkedInAdPerformance({
+          // Initialize ad data with campaign info and defaults
+          const adData: any = {
             sessionId: session.id,
             adId: `ad-${campaign.id}-${i + 1}`,
             adName: `Ad ${i + 1} - ${campaign.name}`,
             campaignUrn: campaign.id,
             campaignName: campaign.name,
-            campaignSelectedMetrics: campaign.selectedMetrics || [], // Store campaign's selected metrics
-            impressions,
-            clicks,
-            spend,
-            conversions,
-            revenue,
-            ctr,
-            cpc,
-            conversionRate
-          });
+            campaignSelectedMetrics: selectedMetrics,
+            impressions: 0,
+            clicks: 0,
+            spend: "0",
+            conversions: 0,
+            revenue: "0",
+            ctr: "0",
+            cpc: "0",
+            conversionRate: "0"
+          };
+          
+          // Only populate metrics that were selected for this campaign
+          // Core metrics
+          if (selectedMetrics.includes('impressions')) {
+            adData.impressions = Math.floor(Math.random() * 50000) + 10000;
+          }
+          
+          if (selectedMetrics.includes('reach')) {
+            adData.reach = Math.floor(Math.random() * 40000) + 8000;
+          }
+          
+          if (selectedMetrics.includes('clicks')) {
+            adData.clicks = Math.floor(Math.random() * 2000) + 500;
+          }
+          
+          if (selectedMetrics.includes('engagements')) {
+            adData.engagements = Math.floor(Math.random() * 3000) + 600;
+          }
+          
+          if (selectedMetrics.includes('spend')) {
+            adData.spend = (Math.random() * 5000 + 1000).toFixed(2);
+          }
+          
+          if (selectedMetrics.includes('conversions')) {
+            adData.conversions = Math.floor(Math.random() * 100) + 10;
+          }
+          
+          if (selectedMetrics.includes('leads')) {
+            adData.leads = Math.floor(Math.random() * 80) + 5;
+          }
+          
+          if (selectedMetrics.includes('videoViews')) {
+            adData.videoViews = Math.floor(Math.random() * 5000) + 1000;
+          }
+          
+          if (selectedMetrics.includes('viralImpressions')) {
+            adData.viralImpressions = Math.floor(Math.random() * 10000) + 2000;
+          }
+          
+          // Calculate revenue if conversions are selected
+          if (selectedMetrics.includes('conversions') && adData.conversions > 0) {
+            adData.revenue = (adData.conversions * (Math.random() * 200 + 50)).toFixed(2);
+          }
+          
+          // Calculate all derived metrics only if base metrics are available
+          const spend = parseFloat(adData.spend);
+          
+          // CTR = (Clicks / Impressions) * 100
+          if (selectedMetrics.includes('clicks') && selectedMetrics.includes('impressions') && adData.impressions > 0) {
+            adData.ctr = ((adData.clicks / adData.impressions) * 100).toFixed(2);
+          }
+          
+          // CPC = Spend / Clicks
+          if (selectedMetrics.includes('spend') && selectedMetrics.includes('clicks') && adData.clicks > 0) {
+            adData.cpc = (spend / adData.clicks).toFixed(2);
+          }
+          
+          // CPM = (Spend / Impressions) * 1000
+          if (selectedMetrics.includes('spend') && selectedMetrics.includes('impressions') && adData.impressions > 0) {
+            adData.cpm = ((spend / adData.impressions) * 1000).toFixed(2);
+          }
+          
+          // CVR (Conversion Rate) = (Conversions / Clicks) * 100
+          if (selectedMetrics.includes('conversions') && selectedMetrics.includes('clicks') && adData.clicks > 0) {
+            adData.cvr = ((adData.conversions / adData.clicks) * 100).toFixed(2);
+            adData.conversionRate = adData.cvr; // Keep legacy field in sync
+          }
+          
+          // CPA (Cost per Acquisition) = Spend / Conversions
+          if (selectedMetrics.includes('spend') && selectedMetrics.includes('conversions') && adData.conversions > 0) {
+            adData.cpa = (spend / adData.conversions).toFixed(2);
+          }
+          
+          // CPL (Cost per Lead) = Spend / Leads
+          if (selectedMetrics.includes('spend') && selectedMetrics.includes('leads') && adData.leads > 0) {
+            adData.cpl = (spend / adData.leads).toFixed(2);
+          }
+          
+          // ER (Engagement Rate) = (Engagements / Impressions) * 100
+          if (selectedMetrics.includes('engagements') && selectedMetrics.includes('impressions') && adData.impressions > 0) {
+            adData.er = ((adData.engagements / adData.impressions) * 100).toFixed(2);
+          }
+          
+          // ROI = ((Revenue - Spend) / Spend) * 100
+          if (selectedMetrics.includes('conversions') && selectedMetrics.includes('spend') && spend > 0 && parseFloat(adData.revenue) > 0) {
+            const revenue = parseFloat(adData.revenue);
+            adData.roi = (((revenue - spend) / spend) * 100).toFixed(2);
+          }
+          
+          // ROAS = Revenue / Spend
+          if (selectedMetrics.includes('conversions') && selectedMetrics.includes('spend') && spend > 0 && parseFloat(adData.revenue) > 0) {
+            const revenue = parseFloat(adData.revenue);
+            adData.roas = (revenue / spend).toFixed(2);
+          }
+          
+          await storage.createLinkedInAdPerformance(adData);
         }
       }
       

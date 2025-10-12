@@ -137,14 +137,28 @@ export const linkedinAdPerformance = pgTable("linkedin_ad_performance", {
   campaignUrn: text("campaign_urn").notNull(),
   campaignName: text("campaign_name").notNull(),
   campaignSelectedMetrics: text("campaign_selected_metrics").array(), // Metrics selected for this ad's campaign
+  // Core Metrics (9 LinkedIn core metrics)
   impressions: integer("impressions").notNull().default(0),
+  reach: integer("reach").notNull().default(0),
   clicks: integer("clicks").notNull().default(0),
+  engagements: integer("engagements").notNull().default(0),
   spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default("0"),
   conversions: integer("conversions").notNull().default(0),
+  leads: integer("leads").notNull().default(0),
+  videoViews: integer("video_views").notNull().default(0),
+  viralImpressions: integer("viral_impressions").notNull().default(0),
+  // Derived Metrics (9 derived metrics)
   ctr: decimal("ctr", { precision: 5, scale: 2 }).notNull().default("0"), // Click-through rate
   cpc: decimal("cpc", { precision: 10, scale: 2 }).notNull().default("0"), // Cost per click
-  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }).notNull().default("0"),
+  cpm: decimal("cpm", { precision: 10, scale: 2 }).notNull().default("0"), // Cost per mille (1000 impressions)
+  cvr: decimal("cvr", { precision: 5, scale: 2 }).notNull().default("0"), // Conversion rate
+  cpa: decimal("cpa", { precision: 10, scale: 2 }).notNull().default("0"), // Cost per acquisition
+  cpl: decimal("cpl", { precision: 10, scale: 2 }).notNull().default("0"), // Cost per lead
+  er: decimal("er", { precision: 5, scale: 2 }).notNull().default("0"), // Engagement rate
+  roi: decimal("roi", { precision: 10, scale: 2 }).notNull().default("0"), // Return on investment
+  roas: decimal("roas", { precision: 10, scale: 2 }).notNull().default("0"), // Return on ad spend
   revenue: decimal("revenue", { precision: 10, scale: 2 }).default("0"),
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }).notNull().default("0"), // Legacy field, same as cvr
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -681,14 +695,28 @@ export const insertLinkedInAdPerformanceSchema = createInsertSchema(linkedinAdPe
   campaignUrn: true,
   campaignName: true,
   campaignSelectedMetrics: true,
+  // Core Metrics
   impressions: true,
+  reach: true,
   clicks: true,
+  engagements: true,
   spend: true,
   conversions: true,
+  leads: true,
+  videoViews: true,
+  viralImpressions: true,
+  // Derived Metrics
   ctr: true,
   cpc: true,
-  conversionRate: true,
+  cpm: true,
+  cvr: true,
+  cpa: true,
+  cpl: true,
+  er: true,
+  roi: true,
+  roas: true,
   revenue: true,
+  conversionRate: true,
 });
 
 export type Campaign = typeof campaigns.$inferSelect;

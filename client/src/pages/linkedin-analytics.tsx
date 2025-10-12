@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -121,7 +121,7 @@ export default function LinkedInAnalytics() {
     emailRecipients: [] as string[],
     status: 'draft' as const
   });
-  const [reportModalStep, setReportModalStep] = useState<'type' | 'configuration'>('type');
+  const [reportModalStep, setReportModalStep] = useState<'standard' | 'custom' | 'type' | 'configuration'>('standard');
 
   // Fetch campaign data
   const { data: campaignData, isLoading: campaignLoading } = useQuery({
@@ -2670,197 +2670,245 @@ export default function LinkedInAnalytics() {
 
       {/* Create Report Modal */}
       <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Create LinkedIn Report</DialogTitle>
-            <DialogDescription className="mt-1">
-              Generate comprehensive analytics reports for your LinkedIn campaigns
-            </DialogDescription>
+            <DialogTitle className="text-xl font-bold">Report Type</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
-            {reportModalStep === 'type' ? (
-              <>
-                {/* Report Type Selection */}
-                <div className="space-y-4">
+          <div className="py-4">
+            {/* Two Main Sections */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Standard Templates Section */}
+              <div
+                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${
+                  reportModalStep === 'standard'
+                    ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30'
+                    : 'border-slate-200 dark:border-slate-700'
+                }`}
+                onClick={() => setReportModalStep('standard')}
+                data-testid="section-standard-templates"
+              >
+                <div className="flex items-start gap-3">
+                  <FileText className="w-6 h-6 text-blue-600 mt-1" />
                   <div>
-                    <Label className="text-base font-semibold">Select Report Type</Label>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Standard Templates</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                      Choose what data to include in your report
+                      Pre-built professional report templates
                     </p>
                   </div>
+                </div>
+              </div>
 
-                  <div className="grid grid-cols-1 gap-3">
-                    {/* Overview Report */}
+              {/* Custom Report Section */}
+              <div
+                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${
+                  reportModalStep === 'custom'
+                    ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30'
+                    : 'border-slate-200 dark:border-slate-700'
+                }`}
+                onClick={() => setReportModalStep('custom')}
+                data-testid="section-custom-report"
+              >
+                <div className="flex items-start gap-3">
+                  <Settings className="w-6 h-6 text-blue-600 mt-1" />
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Custom Report</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Build your own customized report
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Standard Templates Content */}
+            {reportModalStep === 'standard' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Choose Template</h3>
+
+                  <div className="space-y-4">
+                    {/* Overview Template */}
                     <div
-                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
-                      data-testid="report-type-overview"
+                      className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
+                        reportForm.reportType === 'overview'
+                          ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30'
+                          : 'border-slate-200 dark:border-slate-700'
+                      }`}
                       onClick={() => handleReportTypeSelect('overview')}
+                      data-testid="template-overview"
                     >
                       <div className="flex items-start gap-3">
-                        <BarChart3 className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-slate-900 dark:text-white">Overview Report</h4>
+                        <BarChart3 className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Overview</h4>
                           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            Complete analytics overview with all core metrics and performance indicators
+                            Comprehensive overview of campaign performance metrics
                           </p>
+                          <div className="flex gap-2 mt-3">
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Overview</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Platforms</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Trends</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Insights</span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* KPIs Report */}
+                    {/* KPIs Template */}
                     <div
-                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
-                      data-testid="report-type-kpis"
+                      className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
+                        reportForm.reportType === 'kpis'
+                          ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30'
+                          : 'border-slate-200 dark:border-slate-700'
+                      }`}
                       onClick={() => handleReportTypeSelect('kpis')}
+                      data-testid="template-kpis"
                     >
                       <div className="flex items-start gap-3">
-                        <Target className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-slate-900 dark:text-white">KPIs Report</h4>
+                        <Target className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-slate-900 dark:text-white">KPIs</h4>
                           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            Focused report on key performance indicators and targets
+                            Key performance indicators and progress tracking
                           </p>
+                          <div className="flex gap-2 mt-3">
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Metrics</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Targets</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Progress</span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Benchmarks Report */}
+                    {/* Benchmarks Template */}
                     <div
-                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
-                      data-testid="report-type-benchmarks"
+                      className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
+                        reportForm.reportType === 'benchmarks'
+                          ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30'
+                          : 'border-slate-200 dark:border-slate-700'
+                      }`}
                       onClick={() => handleReportTypeSelect('benchmarks')}
+                      data-testid="template-benchmarks"
                     >
                       <div className="flex items-start gap-3">
-                        <Trophy className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-slate-900 dark:text-white">Benchmarks Report</h4>
+                        <Trophy className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Benchmarks</h4>
                           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            Performance benchmarks and industry comparisons
+                            Performance benchmarks and comparisons
                           </p>
+                          <div className="flex gap-2 mt-3">
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Industry</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Historical</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Goals</span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Ad Comparison Report */}
+                    {/* Ad Comparison Template */}
                     <div
-                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
-                      data-testid="report-type-ads"
+                      className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
+                        reportForm.reportType === 'ads'
+                          ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30'
+                          : 'border-slate-200 dark:border-slate-700'
+                      }`}
                       onClick={() => handleReportTypeSelect('ads')}
+                      data-testid="template-ad-comparison"
                     >
                       <div className="flex items-start gap-3">
-                        <Activity className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-slate-900 dark:text-white">Ad Comparison Report</h4>
+                        <Activity className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Ad Comparison</h4>
                           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            Detailed ad-level performance analysis and rankings
+                            Detailed ad-level performance analysis
                           </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Custom Report */}
-                    <div
-                      className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
-                      data-testid="report-type-custom"
-                      onClick={() => handleReportTypeSelect('custom')}
-                    >
-                      <div className="flex items-start gap-3">
-                        <Plus className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-slate-900 dark:text-white">Custom Report</h4>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            Build a custom report with selected elements from all tabs
-                          </p>
+                          <div className="flex gap-2 mt-3">
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Performance</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Ranking</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Insights</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex items-center justify-end gap-2 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsReportModalOpen(false)}
-                    data-testid="button-cancel-report"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Configuration Step */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                      Configure Report
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      onClick={() => setReportModalStep('type')}
-                      data-testid="button-back-to-types"
-                    >
-                      <ChevronRight className="w-4 h-4 mr-1 rotate-180" />
-                      Back
-                    </Button>
-                  </div>
+                {/* Report Configuration */}
+                {reportForm.reportType && reportForm.reportType !== 'custom' && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="space-y-2">
+                      <Label htmlFor="report-name">Report Name</Label>
+                      <Input
+                        id="report-name"
+                        value={reportForm.name}
+                        onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
+                        placeholder="Enter report name"
+                        data-testid="input-report-name"
+                      />
+                    </div>
 
-                  {/* Report Name */}
-                  <div className="space-y-2">
-                    <Label htmlFor="report-name">Report Name</Label>
-                    <Input
-                      id="report-name"
-                      value={reportForm.name}
-                      onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
-                      placeholder="Enter report name"
-                      data-testid="input-report-name"
-                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="report-description">Description (Optional)</Label>
+                      <Textarea
+                        id="report-description"
+                        value={reportForm.description}
+                        onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                        placeholder="Add a description for this report"
+                        rows={3}
+                        data-testid="input-report-description"
+                      />
+                    </div>
                   </div>
-
-                  {/* Report Description */}
-                  <div className="space-y-2">
-                    <Label htmlFor="report-description">Description (Optional)</Label>
-                    <Textarea
-                      id="report-description"
-                      value={reportForm.description}
-                      onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
-                      placeholder="Add a description for this report"
-                      rows={3}
-                      data-testid="input-report-description"
-                    />
-                  </div>
-
-                  {/* Report Type Badge */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-500">Report Type:</span>
-                    <Badge>{reportForm.reportType}</Badge>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center justify-end gap-2 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsReportModalOpen(false);
-                      setReportModalStep('type');
-                    }}
-                    data-testid="button-cancel-report-config"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleCreateReport}
-                    disabled={!reportForm.name || createReportMutation.isPending}
-                    data-testid="button-create-report-submit"
-                  >
-                    {createReportMutation.isPending ? 'Creating...' : 'Create Report'}
-                  </Button>
-                </div>
-              </>
+                )}
+              </div>
             )}
+
+            {/* Custom Report Content */}
+            {reportModalStep === 'custom' && (
+              <div className="space-y-4 py-8 text-center">
+                <Settings className="w-12 h-12 text-slate-400 mx-auto" />
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Custom Report Builder</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                    Custom report configuration will be available here
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-6 border-t mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsReportModalOpen(false);
+                  setReportModalStep('standard');
+                  setReportForm({
+                    name: '',
+                    description: '',
+                    reportType: '',
+                    configuration: null,
+                    scheduleFrequency: null,
+                    emailRecipients: [],
+                    status: 'draft'
+                  });
+                }}
+                data-testid="button-cancel-report"
+              >
+                Cancel
+              </Button>
+              {reportForm.reportType && reportForm.reportType !== 'custom' && (
+                <Button
+                  onClick={handleCreateReport}
+                  disabled={!reportForm.name || createReportMutation.isPending}
+                  data-testid="button-create-report-submit"
+                >
+                  {createReportMutation.isPending ? 'Creating...' : 'Create Report'}
+                </Button>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

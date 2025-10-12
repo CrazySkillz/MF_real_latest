@@ -3321,6 +3321,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // LinkedIn Reports Routes
+  
+  // Get all LinkedIn reports
+  app.get("/api/linkedin/reports", async (req, res) => {
+    try {
+      const reports = await storage.getLinkedInReports();
+      res.json(reports);
+    } catch (error) {
+      console.error('Failed to fetch LinkedIn reports:', error);
+      res.status(500).json({ message: "Failed to fetch reports" });
+    }
+  });
+
+  // Get single LinkedIn report
+  app.get("/api/linkedin/reports/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const report = await storage.getLinkedInReport(id);
+      
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      res.json(report);
+    } catch (error) {
+      console.error('Failed to fetch LinkedIn report:', error);
+      res.status(500).json({ message: "Failed to fetch report" });
+    }
+  });
+
+  // Create LinkedIn report
+  app.post("/api/linkedin/reports", async (req, res) => {
+    try {
+      const report = await storage.createLinkedInReport(req.body);
+      res.status(201).json(report);
+    } catch (error) {
+      console.error('Failed to create LinkedIn report:', error);
+      res.status(500).json({ message: "Failed to create report" });
+    }
+  });
+
+  // Update LinkedIn report
+  app.patch("/api/linkedin/reports/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateLinkedInReport(id, req.body);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error('Failed to update LinkedIn report:', error);
+      res.status(500).json({ message: "Failed to update report" });
+    }
+  });
+
+  // Delete LinkedIn report
+  app.delete("/api/linkedin/reports/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteLinkedInReport(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      res.json({ success: true, message: "Report deleted successfully" });
+    } catch (error) {
+      console.error('Failed to delete LinkedIn report:', error);
+      res.status(500).json({ message: "Failed to delete report" });
+    }
+  });
+
   const server = createServer(app);
   return server;
 }

@@ -674,10 +674,12 @@ export default function LinkedInAnalytics() {
           doc.roundedRect(25, y + 18, barWidth, 8, 2, 2, 'F');
         }
         
-        // Progress percentage text
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`${progress.toFixed(1)}%`, 95, y + 23, { align: 'center' });
+        // Progress percentage text - white and bold for visibility
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text(`${progress.toFixed(1)}%`, 105, y + 23, { align: 'center' });
+        doc.setFont(undefined, 'normal');
         doc.setTextColor(50, 50, 50);
         
         y += 46;

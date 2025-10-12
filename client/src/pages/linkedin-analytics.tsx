@@ -75,6 +75,7 @@ export default function LinkedInAnalytics() {
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
@@ -126,6 +127,11 @@ export default function LinkedInAnalytics() {
   const { data: adsData, isLoading: adsLoading } = useQuery({
     queryKey: ['/api/linkedin/imports', sessionId, 'ads'],
     enabled: !!sessionId,
+  });
+
+  // Fetch LinkedIn reports
+  const { data: reportsData, isLoading: reportsLoading } = useQuery({
+    queryKey: ['/api/linkedin/reports'],
   });
 
   // Create KPI mutation
@@ -484,11 +490,12 @@ export default function LinkedInAnalytics() {
 
             {/* Tabs */}
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-4" data-testid="tabs-list">
+              <TabsList className="grid w-full grid-cols-5" data-testid="tabs-list">
                 <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
                 <TabsTrigger value="kpis" data-testid="tab-kpis">KPIs</TabsTrigger>
                 <TabsTrigger value="benchmarks" data-testid="tab-benchmarks">Benchmarks</TabsTrigger>
                 <TabsTrigger value="ads" data-testid="tab-ads">Ad Comparison</TabsTrigger>
+                <TabsTrigger value="reports" data-testid="tab-reports">Reports</TabsTrigger>
               </TabsList>
 
               {/* Overview Tab */}
@@ -1612,6 +1619,94 @@ export default function LinkedInAnalytics() {
                   <Card>
                     <CardContent className="py-12 text-center">
                       <p className="text-slate-500">No ad performance data available</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Reports Tab */}
+              <TabsContent value="reports" className="space-y-6" data-testid="content-reports">
+                {/* Header with Create Button */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Reports</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Create, schedule, and manage analytics reports
+                    </p>
+                  </div>
+                  <Button 
+                    data-testid="button-create-report" 
+                    className="gap-2"
+                    onClick={() => setIsReportModalOpen(true)}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create Report
+                  </Button>
+                </div>
+
+                {/* Reports List */}
+                {reportsLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  </div>
+                ) : reportsData && Array.isArray(reportsData) && reportsData.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4">
+                    {reportsData.map((report: any) => (
+                      <Card key={report.id} data-testid={`report-${report.id}`}>
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+                                {report.name}
+                              </h3>
+                              {report.description && (
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                                  {report.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-4 text-sm">
+                                <Badge variant="outline">{report.reportType}</Badge>
+                                {report.scheduleFrequency && (
+                                  <span className="text-slate-500 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {report.scheduleFrequency}
+                                  </span>
+                                )}
+                                <span className="text-slate-400">
+                                  Created {new Date(report.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" size="sm" data-testid={`button-download-${report.id}`}>
+                                Download
+                              </Button>
+                              <Button variant="ghost" size="sm" data-testid={`button-edit-${report.id}`}>
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Report Library</CardTitle>
+                      <CardDescription>
+                        View and manage your saved reports
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-12">
+                        <BarChart3 className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                        <p className="text-slate-500 dark:text-slate-400">No reports created yet</p>
+                        <p className="text-sm text-slate-400 dark:text-slate-500 mt-2">
+                          Create your first report to get started
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
                 )}

@@ -431,27 +431,189 @@ export default function LinkedInAnalytics() {
 
   // Handle create report
   const handleCreateReport = () => {
-    // Convert email recipients string to array
-    const emailRecipientsArray = reportForm.emailRecipients
-      ? reportForm.emailRecipients.split(',').map(email => email.trim()).filter(email => email.length > 0)
-      : [];
+    if (reportForm.scheduleEnabled) {
+      // Convert email recipients string to array
+      const emailRecipientsArray = reportForm.emailRecipients
+        ? reportForm.emailRecipients.split(',').map(email => email.trim()).filter(email => email.length > 0)
+        : [];
 
-    const reportData = {
-      campaignId: campaignId || null,
-      name: reportForm.name,
-      description: reportForm.description || null,
-      reportType: reportForm.reportType,
-      configuration: {
-        ...reportForm.configuration,
-        scheduleEnabled: reportForm.scheduleEnabled,
-        scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
-        scheduleTime: reportForm.scheduleTime
-      },
-      scheduleFrequency: reportForm.scheduleEnabled ? reportForm.scheduleFrequency : null,
-      emailRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
-      status: reportForm.status
-    };
-    createReportMutation.mutate(reportData);
+      // Save scheduled report to database
+      const reportData = {
+        campaignId: campaignId || null,
+        name: reportForm.name,
+        description: reportForm.description || null,
+        reportType: reportForm.reportType,
+        configuration: {
+          ...reportForm.configuration,
+          scheduleEnabled: reportForm.scheduleEnabled,
+          scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
+          scheduleTime: reportForm.scheduleTime
+        },
+        scheduleFrequency: reportForm.scheduleFrequency,
+        emailRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
+        status: 'active'
+      };
+      createReportMutation.mutate(reportData);
+    } else {
+      // Generate and download report immediately
+      handleDownloadReport();
+    }
+  };
+
+  // Handle download report
+  const handleDownloadReport = () => {
+    let reportContent = '';
+    const reportName = reportForm.name || 'LinkedIn Report';
+    
+    // Generate report content based on type
+    switch (reportForm.reportType) {
+      case 'overview':
+        reportContent = generateOverviewReport();
+        break;
+      case 'kpis':
+        reportContent = generateKPIsReport();
+        break;
+      case 'benchmarks':
+        reportContent = generateBenchmarksReport();
+        break;
+      case 'ads':
+        reportContent = generateAdComparisonReport();
+        break;
+      default:
+        reportContent = 'No report data available';
+    }
+
+    // Create and download the report file
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${reportName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    // Close modal and reset form
+    setIsReportModalOpen(false);
+    setReportModalStep('standard');
+    setReportForm({
+      name: '',
+      description: '',
+      reportType: '',
+      configuration: null,
+      scheduleEnabled: false,
+      scheduleFrequency: 'weekly',
+      scheduleDayOfWeek: 'monday',
+      scheduleTime: '9:00 AM',
+      emailRecipients: '',
+      status: 'draft'
+    });
+
+    toast({
+      title: "Report Downloaded",
+      description: "Your report has been downloaded successfully.",
+    });
+  };
+
+  // Generate Overview Report
+  const generateOverviewReport = () => {
+    const { session, metrics } = (sessionData as any) || {};
+    const coreMetrics = metrics?.coreMetrics || [];
+    const derivedMetrics = metrics?.derivedMetrics || [];
+    
+    let report = `=== LINKEDIN ANALYTICS - OVERVIEW REPORT ===\n`;
+    report += `Report Name: ${reportForm.name}\n`;
+    report += `Generated: ${new Date().toLocaleString()}\n`;
+    report += `Campaign: ${session?.campaignName || 'N/A'}\n\n`;
+    
+    report += `--- CORE METRICS ---\n`;
+    coreMetrics.forEach((metric: any) => {
+      report += `${metric.name}: ${metric.value}\n`;
+    });
+    
+    report += `\n--- DERIVED METRICS ---\n`;
+    derivedMetrics.forEach((metric: any) => {
+      report += `${metric.name}: ${metric.value}\n`;
+    });
+    
+    return report;
+  };
+
+  // Generate KPIs Report
+  const generateKPIsReport = () => {
+    const { session } = (sessionData as any) || {};
+    
+    let report = `=== LINKEDIN ANALYTICS - KPIs REPORT ===\n`;
+    report += `Report Name: ${reportForm.name}\n`;
+    report += `Generated: ${new Date().toLocaleString()}\n`;
+    report += `Campaign: ${session?.campaignName || 'N/A'}\n\n`;
+    
+    report += `--- KEY PERFORMANCE INDICATORS ---\n`;
+    if (kpisData && Array.isArray(kpisData) && kpisData.length > 0) {
+      kpisData.forEach((kpi: any) => {
+        report += `\nKPI: ${kpi.name}\n`;
+        report += `Metric: ${kpi.metricName}\n`;
+        report += `Current Value: ${kpi.currentValue || 'N/A'}\n`;
+        report += `Target Value: ${kpi.targetValue}\n`;
+        report += `Status: ${kpi.status || 'N/A'}\n`;
+      });
+    } else {
+      report += `No KPIs configured\n`;
+    }
+    
+    return report;
+  };
+
+  // Generate Benchmarks Report
+  const generateBenchmarksReport = () => {
+    const { session } = (sessionData as any) || {};
+    
+    let report = `=== LINKEDIN ANALYTICS - BENCHMARKS REPORT ===\n`;
+    report += `Report Name: ${reportForm.name}\n`;
+    report += `Generated: ${new Date().toLocaleString()}\n`;
+    report += `Campaign: ${session?.campaignName || 'N/A'}\n\n`;
+    
+    report += `--- PERFORMANCE BENCHMARKS ---\n`;
+    if (benchmarksData && Array.isArray(benchmarksData) && benchmarksData.length > 0) {
+      benchmarksData.forEach((benchmark: any) => {
+        report += `\nBenchmark: ${benchmark.name}\n`;
+        report += `Type: ${benchmark.benchmarkType}\n`;
+        report += `Metric: ${benchmark.metricName}\n`;
+        report += `Value: ${benchmark.benchmarkValue}\n`;
+        report += `Source: ${benchmark.source || 'N/A'}\n`;
+      });
+    } else {
+      report += `No benchmarks configured\n`;
+    }
+    
+    return report;
+  };
+
+  // Generate Ad Comparison Report
+  const generateAdComparisonReport = () => {
+    const { session } = (sessionData as any) || {};
+    
+    let report = `=== LINKEDIN ANALYTICS - AD COMPARISON REPORT ===\n`;
+    report += `Report Name: ${reportForm.name}\n`;
+    report += `Generated: ${new Date().toLocaleString()}\n`;
+    report += `Campaign: ${session?.campaignName || 'N/A'}\n\n`;
+    
+    report += `--- AD PERFORMANCE COMPARISON ---\n`;
+    if (adsData && Array.isArray(adsData) && adsData.length > 0) {
+      adsData.forEach((ad: any, index: number) => {
+        report += `\nAd #${index + 1}: ${ad.adName || ad.name || 'Unnamed Ad'}\n`;
+        report += `Impressions: ${ad.impressions || 0}\n`;
+        report += `Clicks: ${ad.clicks || 0}\n`;
+        report += `CTR: ${ad.ctr || 0}%\n`;
+        report += `Spend: $${ad.spend || 0}\n`;
+        report += `Conversions: ${ad.conversions || 0}\n`;
+      });
+    } else {
+      report += `No ad data available\n`;
+    }
+    
+    return report;
   };
 
   // Dynamic labels based on benchmark type

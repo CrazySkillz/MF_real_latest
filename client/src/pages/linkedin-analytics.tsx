@@ -82,11 +82,13 @@ export default function LinkedInAnalytics() {
 
   // Benchmark Form State
   const [benchmarkForm, setBenchmarkForm] = useState({
+    metric: '',
     name: '',
     category: '',
     benchmarkType: '',
     unit: '',
     benchmarkValue: '',
+    currentValue: '',
     industry: '',
     description: '',
     source: '',
@@ -1660,6 +1662,76 @@ export default function LinkedInAnalytics() {
 
           <div className="space-y-4 py-4">
             {/* Benchmark Form */}
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-metric">Select Metric</Label>
+              <Select
+                value={benchmarkForm.metric}
+                onValueChange={(value) => {
+                  // Get metric details
+                  const metricDetails = (() => {
+                    const key = value.toLowerCase();
+                    if (!aggregated) return { value: '', unit: '', name: value };
+                    
+                    // Core metrics
+                    if (key === 'impressions') return { value: aggregated.totalImpressions?.toString() || '0', unit: '', name: 'Impressions' };
+                    if (key === 'reach') return { value: aggregated.totalReach?.toString() || '0', unit: '', name: 'Reach' };
+                    if (key === 'clicks') return { value: aggregated.totalClicks?.toString() || '0', unit: '', name: 'Clicks' };
+                    if (key === 'engagements') return { value: aggregated.totalEngagements?.toString() || '0', unit: '', name: 'Engagements' };
+                    if (key === 'spend') return { value: aggregated.totalSpend?.toString() || '0', unit: '$', name: 'Spend' };
+                    if (key === 'conversions') return { value: aggregated.totalConversions?.toString() || '0', unit: '', name: 'Conversions' };
+                    if (key === 'leads') return { value: aggregated.totalLeads?.toString() || '0', unit: '', name: 'Leads' };
+                    if (key === 'video views') return { value: aggregated.totalVideoViews?.toString() || '0', unit: '', name: 'Video Views' };
+                    if (key === 'viral impressions') return { value: aggregated.totalViralImpressions?.toString() || '0', unit: '', name: 'Viral Impressions' };
+                    
+                    // Derived metrics
+                    if (key === 'ctr') return { value: aggregated.ctr?.toFixed(2) || '0', unit: '%', name: 'CTR' };
+                    if (key === 'cpc') return { value: aggregated.cpc?.toFixed(2) || '0', unit: '$', name: 'CPC' };
+                    if (key === 'cpm') return { value: aggregated.cpm?.toFixed(2) || '0', unit: '$', name: 'CPM' };
+                    if (key === 'cvr') return { value: aggregated.conversionRate?.toFixed(2) || '0', unit: '%', name: 'CVR' };
+                    if (key === 'cpa') return { value: aggregated.cpa?.toFixed(2) || '0', unit: '$', name: 'CPA' };
+                    if (key === 'cpl') return { value: aggregated.cpl?.toFixed(2) || '0', unit: '$', name: 'CPL' };
+                    if (key === 'er') return { value: aggregated.engagementRate?.toFixed(2) || '0', unit: '%', name: 'ER' };
+                    if (key === 'roi') return { value: aggregated.roi?.toFixed(2) || '0', unit: '%', name: 'ROI' };
+                    if (key === 'roas') return { value: aggregated.roas?.toFixed(2) || '0', unit: 'x', name: 'ROAS' };
+                    
+                    return { value: '', unit: '', name: value };
+                  })();
+                  
+                  setBenchmarkForm({ 
+                    ...benchmarkForm, 
+                    metric: value,
+                    name: `${metricDetails.name} Benchmark`,
+                    unit: metricDetails.unit,
+                    currentValue: metricDetails.value
+                  });
+                }}
+              >
+                <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
+                  <SelectValue placeholder="Choose a metric" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Impressions">Impressions</SelectItem>
+                  <SelectItem value="Reach">Reach</SelectItem>
+                  <SelectItem value="Clicks">Clicks</SelectItem>
+                  <SelectItem value="Engagements">Engagements</SelectItem>
+                  <SelectItem value="Spend">Spend</SelectItem>
+                  <SelectItem value="Conversions">Conversions</SelectItem>
+                  <SelectItem value="Leads">Leads</SelectItem>
+                  <SelectItem value="Video Views">Video Views</SelectItem>
+                  <SelectItem value="Viral Impressions">Viral Impressions</SelectItem>
+                  <SelectItem value="CTR">CTR (Click-Through Rate)</SelectItem>
+                  <SelectItem value="CPC">CPC (Cost Per Click)</SelectItem>
+                  <SelectItem value="CPM">CPM (Cost Per Mille)</SelectItem>
+                  <SelectItem value="CVR">CVR (Conversion Rate)</SelectItem>
+                  <SelectItem value="CPA">CPA (Cost Per Acquisition)</SelectItem>
+                  <SelectItem value="CPL">CPL (Cost Per Lead)</SelectItem>
+                  <SelectItem value="ER">ER (Engagement Rate)</SelectItem>
+                  <SelectItem value="ROI">ROI (Return on Investment)</SelectItem>
+                  <SelectItem value="ROAS">ROAS (Return on Ad Spend)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="benchmark-name">Benchmark Name</Label>
@@ -1713,25 +1785,41 @@ export default function LinkedInAnalytics() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="benchmark-unit">Unit</Label>
+                <Label htmlFor="benchmark-unit">Unit (Auto-populated)</Label>
                 <Input
                   id="benchmark-unit"
+                  type="text"
                   value={benchmarkForm.unit}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, unit: e.target.value })}
-                  placeholder="%, $, count, etc."
+                  readOnly
+                  className="bg-slate-100 dark:bg-slate-800 cursor-not-allowed"
+                  placeholder="Select a metric first"
                   data-testid="input-benchmark-unit"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="benchmark-value">Benchmark Value</Label>
+                <Label htmlFor="benchmark-current">Current Value (Your Performance)</Label>
+                <Input
+                  id="benchmark-current"
+                  type="text"
+                  value={benchmarkForm.currentValue ? `${benchmarkForm.currentValue}${benchmarkForm.unit}` : 'Select a metric first'}
+                  readOnly
+                  className="bg-slate-100 dark:bg-slate-800 cursor-not-allowed"
+                  data-testid="input-benchmark-current"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-value">Industry Benchmark Value</Label>
                 <Input
                   id="benchmark-value"
+                  type="number"
+                  step="0.01"
                   value={benchmarkForm.benchmarkValue}
                   onChange={(e) => setBenchmarkForm({ ...benchmarkForm, benchmarkValue: e.target.value })}
-                  placeholder="Enter benchmark value"
+                  placeholder="e.g., 2.5"
                   data-testid="input-benchmark-value"
                 />
               </div>

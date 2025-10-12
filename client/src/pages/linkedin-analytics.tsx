@@ -426,7 +426,7 @@ export default function LinkedInAnalytics() {
       name: reportNames[type as keyof typeof reportNames] || 'Report',
       configuration: {}
     });
-    setReportModalStep('configuration');
+    // Keep reportModalStep as 'standard' for single-page design
   };
 
   // Handle create report

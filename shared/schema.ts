@@ -397,6 +397,25 @@ export const attributionInsights = pgTable("attribution_insights", {
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const linkedinReports = pgTable("linkedin_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  reportType: text("report_type").notNull(), // 'overview', 'kpis', 'benchmarks', 'ads', 'custom'
+  configuration: text("configuration"), // JSON string for custom report elements
+  // Schedule configuration
+  scheduleEnabled: boolean("schedule_enabled").notNull().default(false),
+  scheduleFrequency: text("schedule_frequency"), // 'daily', 'weekly', 'monthly', 'quarterly'
+  scheduleDayOfWeek: integer("schedule_day_of_week"), // 0-6 for weekly
+  scheduleDayOfMonth: integer("schedule_day_of_month"), // 1-31 for monthly
+  scheduleTime: text("schedule_time"), // HH:MM format
+  scheduleRecipients: text("schedule_recipients").array(), // Email addresses
+  lastSentAt: timestamp("last_sent_at"),
+  nextScheduledAt: timestamp("next_scheduled_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   name: true,
   clientWebsite: true,
@@ -538,6 +557,19 @@ export const insertBenchmarkHistorySchema = createInsertSchema(benchmarkHistory)
   variance: true,
   performanceRating: true,
   notes: true,
+});
+
+export const insertLinkedInReportSchema = createInsertSchema(linkedinReports).pick({
+  name: true,
+  description: true,
+  reportType: true,
+  configuration: true,
+  scheduleEnabled: true,
+  scheduleFrequency: true,
+  scheduleDayOfWeek: true,
+  scheduleDayOfMonth: true,
+  scheduleTime: true,
+  scheduleRecipients: true,
 });
 
 export const insertNotificationSchema = createInsertSchema(notifications).pick({
@@ -769,3 +801,5 @@ export type LinkedInImportMetric = typeof linkedinImportMetrics.$inferSelect;
 export type InsertLinkedInImportMetric = z.infer<typeof insertLinkedInImportMetricSchema>;
 export type LinkedInAdPerformance = typeof linkedinAdPerformance.$inferSelect;
 export type InsertLinkedInAdPerformance = z.infer<typeof insertLinkedInAdPerformanceSchema>;
+export type LinkedInReport = typeof linkedinReports.$inferSelect;
+export type InsertLinkedInReport = z.infer<typeof insertLinkedInReportSchema>;

@@ -8,12 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2 } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -141,6 +142,28 @@ export default function LinkedInAnalytics() {
       toast({
         title: "Error",
         description: error.message || "Failed to create KPI",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete KPI mutation
+  const deleteKpiMutation = useMutation({
+    mutationFn: async (kpiId: string) => {
+      const res = await apiRequest('DELETE', `/api/platforms/linkedin/kpis/${kpiId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis'] });
+      toast({
+        title: "KPI Deleted",
+        description: "The KPI has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete KPI",
         variant: "destructive",
       });
     }
@@ -798,13 +821,13 @@ export default function LinkedInAnalytics() {
                         <Card key={kpi.id} data-testid={`kpi-card-${kpi.id}`}>
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
-                              <div>
+                              <div className="flex-1">
                                 <CardTitle className="text-lg">{kpi.name}</CardTitle>
                                 <CardDescription className="text-sm">
                                   {kpi.description || 'No description provided'}
                                 </CardDescription>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex items-center gap-2">
                                 <Badge variant={kpi.status === 'active' ? 'default' : 'secondary'}>
                                   {kpi.status || 'active'}
                                 </Badge>
@@ -817,6 +840,35 @@ export default function LinkedInAnalytics() {
                                     {kpi.priority}
                                   </Badge>
                                 )}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                      data-testid={`button-delete-kpi-${kpi.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete KPI</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete "{kpi.name}"? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteKpiMutation.mutate(kpi.id)}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             </div>
                           </CardHeader>

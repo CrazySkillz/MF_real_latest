@@ -1337,16 +1337,55 @@ export default function LinkedInAnalytics() {
                     const sortedAds = [...(adsData as any[])].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
                     const topAd = sortedAds[0];
                     
-                    // Available metrics for comparison
-                    const availableMetrics = [
-                      { key: 'impressions', label: 'Impressions', format: formatNumber },
-                      { key: 'clicks', label: 'Clicks', format: formatNumber },
-                      { key: 'spend', label: 'Spend', format: formatCurrency },
-                      { key: 'ctr', label: 'CTR', format: formatPercentage },
-                      { key: 'cpc', label: 'CPC', format: formatCurrency },
-                      { key: 'conversions', label: 'Conversions', format: formatNumber },
-                      { key: 'revenue', label: 'Revenue', format: formatCurrency },
-                    ];
+                    // Get selected metrics from session to ensure consistency with Overview tab
+                    const selectedMetricKeys = session?.selectedMetricKeys || [];
+                    
+                    // Map of all possible metrics with their display properties
+                    const allMetricsMap: Record<string, { key: string, label: string, format: (v: any) => string }> = {
+                      impressions: { key: 'impressions', label: 'Impressions', format: formatNumber },
+                      clicks: { key: 'clicks', label: 'Clicks', format: formatNumber },
+                      spend: { key: 'spend', label: 'Spend', format: formatCurrency },
+                      ctr: { key: 'ctr', label: 'CTR', format: formatPercentage },
+                      cpc: { key: 'cpc', label: 'CPC', format: formatCurrency },
+                      cpm: { key: 'cpm', label: 'CPM', format: formatCurrency },
+                      conversions: { key: 'conversions', label: 'Conversions', format: formatNumber },
+                      revenue: { key: 'revenue', label: 'Revenue', format: formatCurrency },
+                      leads: { key: 'leads', label: 'Leads', format: formatNumber },
+                      engagements: { key: 'engagements', label: 'Engagements', format: formatNumber },
+                      reach: { key: 'reach', label: 'Reach', format: formatNumber },
+                      videoViews: { key: 'videoViews', label: 'Video Views', format: formatNumber },
+                      viralImpressions: { key: 'viralImpressions', label: 'Viral Impressions', format: formatNumber }
+                    };
+                    
+                    // Filter available metrics based on what was actually selected during import
+                    // Include both core metrics and their derived versions (e.g., if 'clicks' is selected, also show 'ctr', 'cpc')
+                    type MetricInfo = { key: string, label: string, format: (v: any) => string };
+                    const availableMetrics = selectedMetricKeys
+                      .map((key: string) => {
+                        // Add the core metric if it exists in the map
+                        const metrics: MetricInfo[] = [];
+                        if (allMetricsMap[key]) {
+                          metrics.push(allMetricsMap[key]);
+                        }
+                        
+                        // Add derived metrics based on selected core metrics
+                        if (key === 'impressions' && allMetricsMap.cpm && selectedMetricKeys.includes('spend')) {
+                          metrics.push(allMetricsMap.cpm);
+                        }
+                        if (key === 'clicks' && selectedMetricKeys.includes('impressions') && allMetricsMap.ctr) {
+                          metrics.push(allMetricsMap.ctr);
+                        }
+                        if (key === 'clicks' && selectedMetricKeys.includes('spend') && allMetricsMap.cpc) {
+                          metrics.push(allMetricsMap.cpc);
+                        }
+                        
+                        return metrics;
+                      })
+                      .flat()
+                      .filter((metric: MetricInfo, index: number, self: MetricInfo[]) => 
+                        // Remove duplicates
+                        index === self.findIndex((m: MetricInfo) => m.key === metric.key)
+                      );
 
                     // Colors for each ad line
                     const adColors = [
@@ -1362,13 +1401,32 @@ export default function LinkedInAnalytics() {
                       '#8b5cf6', // violet
                     ];
 
-                    // Get the current selected metric or default to impressions
-                    const currentMetric = availableMetrics.find(m => m.key === selectedMetric) || availableMetrics[0];
+                    // Get the current selected metric or default to first available metric
+                    const currentMetric = availableMetrics.find((m: MetricInfo) => m.key === selectedMetric) || availableMetrics[0];
+                    
+                    // If no metrics are available, show a message
+                    if (!currentMetric || availableMetrics.length === 0) {
+                      return (
+                        <Card data-testid="no-metrics-message">
+                          <CardContent className="py-12">
+                            <div className="text-center">
+                              <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                                No Metrics Available
+                              </h3>
+                              <p className="text-slate-600 dark:text-slate-400">
+                                The selected campaigns don't have metrics data for ad-level comparison.
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    }
 
                     // Transform data: Create chart data for the selected metric only
                     // X-axis will be ad names, Y-axis will be the metric value
                     const chartData = sortedAds.map((ad, index) => {
-                      const value = currentMetric.key === 'spend' || currentMetric.key === 'ctr' || currentMetric.key === 'cpc' || currentMetric.key === 'revenue'
+                      const value = currentMetric.key === 'spend' || currentMetric.key === 'ctr' || currentMetric.key === 'cpc' || currentMetric.key === 'revenue' || currentMetric.key === 'cpm'
                         ? parseFloat((ad as any)[currentMetric.key] || '0')
                         : (ad as any)[currentMetric.key] || 0;
                       
@@ -1415,7 +1473,7 @@ export default function LinkedInAnalytics() {
                                   <SelectValue placeholder="Select metric" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {availableMetrics.map(metric => (
+                                  {availableMetrics.map((metric: MetricInfo) => (
                                     <SelectItem key={metric.key} value={metric.key}>
                                       {metric.label}
                                     </SelectItem>

@@ -377,28 +377,35 @@ export default function LinkedInAnalytics() {
               <TabsContent value="overview" className="space-y-6" data-testid="content-overview">
                 {sessionData && aggregated ? (
                   <>
-                    {/* LinkedIn Metrics Grid - 4 columns */}
+                    {/* LinkedIn Metrics Grid - 4 columns - Core Metrics Only */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                      {Object.entries(aggregated).map(([key, value]: [string, any]) => {
-                        const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
-                        const { icon: Icon, format, label } = getMetricDisplay(metricKey, value);
-                        
-                        return (
-                          <Card key={key} className="hover:shadow-md transition-shadow">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                  {label}
-                                </h3>
-                                <Icon className="w-4 h-4 text-slate-400" />
-                              </div>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {format(value)}
-                              </p>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
+                      {Object.entries(aggregated)
+                        .filter(([key]) => {
+                          // Only show core metrics, exclude derived metrics
+                          const derivedMetrics = ['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er', 'roi', 'roas'];
+                          const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
+                          return !derivedMetrics.includes(metricKey);
+                        })
+                        .map(([key, value]: [string, any]) => {
+                          const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
+                          const { icon: Icon, format, label } = getMetricDisplay(metricKey, value);
+                          
+                          return (
+                            <Card key={key} className="hover:shadow-md transition-shadow">
+                              <CardContent className="p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                  <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                    {label}
+                                  </h3>
+                                  <Icon className="w-4 h-4 text-slate-400" />
+                                </div>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {format(value)}
+                                </p>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
                     </div>
 
                     {/* Campaign Breakdown */}

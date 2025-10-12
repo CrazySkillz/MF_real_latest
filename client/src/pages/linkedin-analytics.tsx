@@ -548,45 +548,71 @@ export default function LinkedInAnalytics() {
 
   // Generate Overview PDF
   const generateOverviewPDF = (doc: any) => {
-    const { session, metrics } = (sessionData as any) || {};
-    const coreMetrics = metrics?.coreMetrics || [];
-    const derivedMetrics = metrics?.derivedMetrics || [];
+    const { session, aggregated } = (sessionData as any) || {};
     
     addPDFHeader(doc, reportForm.name, 'Overview Report');
     
     let y = 70;
     
-    // Core Metrics Section
-    y = addPDFSection(doc, '📊 Core Metrics', y, [52, 168, 83]);
-    doc.setTextColor(50, 50, 50);
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'normal');
+    if (!aggregated || Object.keys(aggregated).length === 0) {
+      doc.setTextColor(100, 100, 100);
+      doc.setFontSize(12);
+      doc.text('No metrics data available', 20, y);
+      return;
+    }
     
-    coreMetrics.forEach((metric: any) => {
-      doc.setFont(undefined, 'bold');
-      doc.text(`${metric.name}:`, 20, y);
-      doc.setFont(undefined, 'normal');
-      doc.text(`${metric.value}`, 120, y);
-      y += 8;
+    // Separate core and derived metrics
+    const derivedMetrics = ['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er', 'roi', 'roas'];
+    const coreMetricsData: any[] = [];
+    const derivedMetricsData: any[] = [];
+    
+    Object.entries(aggregated).forEach(([key, value]: [string, any]) => {
+      const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
+      const { label, format } = getMetricDisplay(metricKey, value);
+      const formattedValue = format(value);
+      
+      if (derivedMetrics.includes(metricKey)) {
+        derivedMetricsData.push({ label, value: formattedValue });
+      } else {
+        coreMetricsData.push({ label, value: formattedValue });
+      }
     });
     
-    y += 10;
+    // Core Metrics Section
+    if (coreMetricsData.length > 0) {
+      y = addPDFSection(doc, '📊 Core Metrics', y, [52, 168, 83]);
+      doc.setTextColor(50, 50, 50);
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      
+      coreMetricsData.forEach((metric: any) => {
+        doc.setFont(undefined, 'bold');
+        doc.text(`${metric.label}:`, 20, y);
+        doc.setFont(undefined, 'normal');
+        doc.text(`${metric.value}`, 120, y);
+        y += 8;
+      });
+      
+      y += 10;
+    }
     
     // Derived Metrics Section
-    y = addPDFSection(doc, '📈 Derived Metrics', y, [255, 159, 64]);
-    doc.setTextColor(50, 50, 50);
-    
-    derivedMetrics.forEach((metric: any) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.setFont(undefined, 'bold');
-      doc.text(`${metric.name}:`, 20, y);
-      doc.setFont(undefined, 'normal');
-      doc.text(`${metric.value}`, 120, y);
-      y += 8;
-    });
+    if (derivedMetricsData.length > 0) {
+      y = addPDFSection(doc, '📈 Derived Metrics', y, [255, 159, 64]);
+      doc.setTextColor(50, 50, 50);
+      
+      derivedMetricsData.forEach((metric: any) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFont(undefined, 'bold');
+        doc.text(`${metric.label}:`, 20, y);
+        doc.setFont(undefined, 'normal');
+        doc.text(`${metric.value}`, 120, y);
+        y += 8;
+      });
+    }
     
     // Footer
     doc.setFontSize(8);

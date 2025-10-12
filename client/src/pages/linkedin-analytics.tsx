@@ -1870,7 +1870,7 @@ export default function LinkedInAnalytics() {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="benchmark-current">Your Performance</Label>
+                <Label htmlFor="benchmark-current">Current Value</Label>
                 <Input
                   id="benchmark-current"
                   type="text"

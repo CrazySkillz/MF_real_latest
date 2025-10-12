@@ -230,11 +230,13 @@ export default function LinkedInAnalytics() {
       });
       setIsBenchmarkModalOpen(false);
       setBenchmarkForm({
+        metric: '',
         name: '',
         category: '',
         benchmarkType: '',
         unit: '',
         benchmarkValue: '',
+        currentValue: '',
         industry: '',
         description: '',
         source: '',
@@ -260,6 +262,7 @@ export default function LinkedInAnalytics() {
       benchmarkType: benchmarkForm.benchmarkType,
       unit: benchmarkForm.unit,
       benchmarkValue: benchmarkForm.benchmarkValue,
+      currentValue: benchmarkForm.currentValue || '0',
       industry: benchmarkForm.industry,
       description: benchmarkForm.description,
       source: benchmarkForm.source,
@@ -1102,7 +1105,7 @@ export default function LinkedInAnalytics() {
                             <div className="grid gap-4 md:grid-cols-3">
                               <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                                 <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                                  Current Value
+                                  Your Performance
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
                                   {benchmark.currentValue || '0'}{benchmark.unit || ''}
@@ -1111,10 +1114,10 @@ export default function LinkedInAnalytics() {
 
                               <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                                 <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                                  Target Value
+                                  Benchmark Value
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
-                                  {benchmark.targetValue || '0'}{benchmark.unit || ''}
+                                  {benchmark.benchmarkValue || benchmark.targetValue || '0'}{benchmark.unit || ''}
                                 </div>
                               </div>
 
@@ -1127,6 +1130,48 @@ export default function LinkedInAnalytics() {
                                 </div>
                               </div>
                             </div>
+                            
+                            {/* Performance Comparison */}
+                            {benchmark.currentValue && benchmark.benchmarkValue && (
+                              <div className="mt-4 flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Performance vs Benchmark:
+                                  </span>
+                                  {(() => {
+                                    const current = parseFloat(benchmark.currentValue);
+                                    const benchmarkVal = parseFloat(benchmark.benchmarkValue || benchmark.targetValue);
+                                    const diff = current - benchmarkVal;
+                                    const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';
+                                    const isAbove = current > benchmarkVal;
+                                    
+                                    return (
+                                      <>
+                                        <Badge 
+                                          variant={isAbove ? "default" : "secondary"}
+                                          className={isAbove ? "bg-green-600" : "bg-red-600"}
+                                        >
+                                          {isAbove ? (
+                                            <>
+                                              <TrendingUp className="w-3 h-3 mr-1" />
+                                              {percentDiff}% Above
+                                            </>
+                                          ) : (
+                                            <>
+                                              <TrendingDown className="w-3 h-3 mr-1" />
+                                              {Math.abs(parseFloat(percentDiff))}% Below
+                                            </>
+                                          )}
+                                        </Badge>
+                                        <span className="text-xs text-slate-500">
+                                          {isAbove ? '🎉 Outperforming!' : '⚠️ Needs improvement'}
+                                        </span>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       ))}

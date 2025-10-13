@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull } from "drizzle-orm";
@@ -72,6 +72,11 @@ export interface IStorage {
   getCustomIntegration(campaignId: string): Promise<CustomIntegration | undefined>;
   createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration>;
   deleteCustomIntegration(campaignId: string): Promise<boolean>;
+  
+  // Custom Integration Metrics
+  getCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
+  createCustomIntegrationMetrics(metrics: InsertCustomIntegrationMetrics): Promise<CustomIntegrationMetrics>;
+  getLatestCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
   
   // KPIs
   getCampaignKPIs(campaignId: string): Promise<KPI[]>;
@@ -223,6 +228,7 @@ export class MemStorage implements IStorage {
   private linkedinAdPerformance: Map<string, LinkedInAdPerformance>;
   private linkedinReports: Map<string, LinkedInReport>;
   private customIntegrations: Map<string, CustomIntegration>;
+  private customIntegrationMetrics: Map<string, CustomIntegrationMetrics>;
   private kpis: Map<string, KPI>;
   private kpiProgress: Map<string, KPIProgress>;
   private kpiAlerts: Map<string, KPIAlert>;
@@ -252,6 +258,7 @@ export class MemStorage implements IStorage {
     this.linkedinAdPerformance = new Map();
     this.linkedinReports = new Map();
     this.customIntegrations = new Map();
+    this.customIntegrationMetrics = new Map();
     this.kpis = new Map();
     this.kpiProgress = new Map();
     this.kpiAlerts = new Map();
@@ -1110,6 +1117,43 @@ export class MemStorage implements IStorage {
     return this.customIntegrations.delete(integration.id);
   }
 
+  // Custom Integration Metrics methods
+  async getCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined> {
+    return Array.from(this.customIntegrationMetrics.values()).find(m => m.campaignId === campaignId);
+  }
+
+  async createCustomIntegrationMetrics(metricsData: InsertCustomIntegrationMetrics): Promise<CustomIntegrationMetrics> {
+    const id = randomUUID();
+    const metrics: CustomIntegrationMetrics = {
+      id,
+      campaignId: metricsData.campaignId,
+      impressions: metricsData.impressions || 0,
+      reach: metricsData.reach || 0,
+      clicks: metricsData.clicks || 0,
+      engagements: metricsData.engagements || 0,
+      spend: metricsData.spend || "0",
+      conversions: metricsData.conversions || 0,
+      leads: metricsData.leads || 0,
+      videoViews: metricsData.videoViews || 0,
+      viralImpressions: metricsData.viralImpressions || 0,
+      pdfFileName: metricsData.pdfFileName || null,
+      emailSubject: metricsData.emailSubject || null,
+      emailId: metricsData.emailId || null,
+      uploadedAt: new Date(),
+    };
+    
+    this.customIntegrationMetrics.set(id, metrics);
+    return metrics;
+  }
+
+  async getLatestCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined> {
+    const allMetrics = Array.from(this.customIntegrationMetrics.values())
+      .filter(m => m.campaignId === campaignId)
+      .sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime());
+    
+    return allMetrics[0];
+  }
+
   // KPI methods
   async getCampaignKPIs(campaignId: string): Promise<KPI[]> {
     return Array.from(this.kpis.values()).filter(kpi => kpi.campaignId === campaignId);
@@ -1901,6 +1945,31 @@ export class DatabaseStorage implements IStorage {
       .delete(customIntegrations)
       .where(eq(customIntegrations.campaignId, campaignId));
     return true;
+  }
+
+  // Custom Integration Metrics methods
+  async getCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined> {
+    const [metrics] = await db.select()
+      .from(customIntegrationMetrics)
+      .where(eq(customIntegrationMetrics.campaignId, campaignId));
+    return metrics || undefined;
+  }
+
+  async createCustomIntegrationMetrics(metricsData: InsertCustomIntegrationMetrics): Promise<CustomIntegrationMetrics> {
+    const [metrics] = await db
+      .insert(customIntegrationMetrics)
+      .values(metricsData)
+      .returning();
+    return metrics;
+  }
+
+  async getLatestCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined> {
+    const [metrics] = await db.select()
+      .from(customIntegrationMetrics)
+      .where(eq(customIntegrationMetrics.campaignId, campaignId))
+      .orderBy(customIntegrationMetrics.uploadedAt)
+      .limit(1);
+    return metrics || undefined;
   }
 
   // KPI methods

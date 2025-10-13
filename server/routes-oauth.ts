@@ -3379,6 +3379,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update LinkedIn report (PUT method)
+  app.put("/api/linkedin/reports/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateLinkedInReport(id, req.body);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error('Failed to update LinkedIn report:', error);
+      res.status(500).json({ message: "Failed to update report" });
+    }
+  });
+
   // Delete LinkedIn report
   app.delete("/api/linkedin/reports/:id", async (req, res) => {
     try {

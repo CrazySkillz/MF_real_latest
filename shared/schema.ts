@@ -170,6 +170,26 @@ export const customIntegrations = pgTable("custom_integrations", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  // Core Metrics (9 metrics from PDF)
+  impressions: integer("impressions").notNull().default(0),
+  reach: integer("reach").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  engagements: integer("engagements").notNull().default(0),
+  spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default("0"),
+  conversions: integer("conversions").notNull().default(0),
+  leads: integer("leads").notNull().default(0),
+  videoViews: integer("video_views").notNull().default(0),
+  viralImpressions: integer("viral_impressions").notNull().default(0),
+  // Metadata
+  pdfFileName: text("pdf_file_name"),
+  emailSubject: text("email_subject"),
+  emailId: text("email_id"), // To track which email was processed
+  uploadedAt: timestamp("uploaded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const kpis = pgTable("kpis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id"), // Optional - null for platform-level KPIs
@@ -765,6 +785,11 @@ export const insertCustomIntegrationSchema = createInsertSchema(customIntegratio
   createdAt: true,
 });
 
+export const insertCustomIntegrationMetricsSchema = createInsertSchema(customIntegrationMetrics).omit({
+  id: true,
+  uploadedAt: true,
+});
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Metric = typeof metrics.$inferSelect;
@@ -819,3 +844,5 @@ export type LinkedInReport = typeof linkedinReports.$inferSelect;
 export type InsertLinkedInReport = z.infer<typeof insertLinkedInReportSchema>;
 export type CustomIntegration = typeof customIntegrations.$inferSelect;
 export type InsertCustomIntegration = z.infer<typeof insertCustomIntegrationSchema>;
+export type CustomIntegrationMetrics = typeof customIntegrationMetrics.$inferSelect;
+export type InsertCustomIntegrationMetrics = z.infer<typeof insertCustomIntegrationMetricsSchema>;

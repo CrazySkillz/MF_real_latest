@@ -81,6 +81,7 @@ export default function LinkedInAnalytics() {
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
+  const [editingKPI, setEditingKPI] = useState<any>(null);
   const { toast } = useToast();
   const campaignId = params?.id;
   
@@ -243,6 +244,40 @@ export default function LinkedInAnalytics() {
     }
   });
 
+  // Update KPI mutation
+  const updateKpiMutation = useMutation({
+    mutationFn: async ({ id, kpiData }: { id: string, kpiData: any }) => {
+      const res = await apiRequest('PATCH', `/api/platforms/linkedin/kpis/${id}`, kpiData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis'] });
+      toast({
+        title: "KPI Updated",
+        description: "Your LinkedIn KPI has been updated successfully.",
+      });
+      setIsKPIModalOpen(false);
+      setEditingKPI(null);
+      setKpiForm({
+        name: '',
+        unit: '',
+        description: '',
+        targetValue: '',
+        currentValue: '',
+        priority: 'high',
+        timeframe: 'monthly',
+        trackingPeriod: '30'
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update KPI",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Handle template selection
   const handleTemplateSelect = (template: any) => {
     setSelectedTemplate(template);
@@ -285,7 +320,12 @@ export default function LinkedInAnalytics() {
       slackNotifications: false,
       alertFrequency: 'daily'
     };
-    createKpiMutation.mutate(kpiData);
+    
+    if (editingKPI) {
+      updateKpiMutation.mutate({ id: editingKPI.id, kpiData });
+    } else {
+      createKpiMutation.mutate(kpiData);
+    }
   };
 
   // Create Benchmark mutation
@@ -1979,6 +2019,29 @@ export default function LinkedInAnalytics() {
                                     {kpi.priority}
                                   </Badge>
                                 )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+                                  onClick={() => {
+                                    setEditingKPI(kpi);
+                                    setKpiForm({
+                                      name: kpi.name,
+                                      description: kpi.description || '',
+                                      metric: kpi.metric || '',
+                                      targetValue: kpi.targetValue || '',
+                                      currentValue: kpi.currentValue || '',
+                                      unit: kpi.unit || '',
+                                      priority: kpi.priority || 'medium',
+                                      status: kpi.status || 'active',
+                                      category: kpi.category || ''
+                                    });
+                                    setIsKPIModalOpen(true);
+                                  }}
+                                  data-testid={`button-edit-kpi-${kpi.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <Button 
@@ -2796,17 +2859,33 @@ export default function LinkedInAnalytics() {
         if (!open) {
           setModalStep('configuration');
           setSelectedTemplate(null);
+          setEditingKPI(null);
+          setKpiForm({
+            name: '',
+            unit: '',
+            description: '',
+            targetValue: '',
+            currentValue: '',
+            priority: 'high',
+            timeframe: 'monthly',
+            trackingPeriod: '30'
+          });
         }
       }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Create LinkedIn KPI</DialogTitle>
+            <DialogTitle className="text-xl font-bold">
+              {editingKPI ? 'Edit LinkedIn KPI' : 'Create LinkedIn KPI'}
+            </DialogTitle>
             <DialogDescription className="mt-1">
-              Set up a key performance indicator to track your LinkedIn campaign success
+              {editingKPI 
+                ? 'Update your key performance indicator settings'
+                : 'Set up a key performance indicator to track your LinkedIn campaign success'
+              }
             </DialogDescription>
           </DialogHeader>
 
-          {modalStep === 'templates' ? (
+          {modalStep === 'templates' && !editingKPI ? (
             <div className="space-y-4 py-4">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                 Choose a template or create custom KPI:
@@ -3049,11 +3128,14 @@ export default function LinkedInAnalytics() {
                 </Button>
                 <Button
                   onClick={handleCreateKPI}
-                  disabled={createKpiMutation.isPending || !kpiForm.name || !kpiForm.targetValue}
+                  disabled={(editingKPI ? updateKpiMutation.isPending : createKpiMutation.isPending) || !kpiForm.name || !kpiForm.targetValue}
                   className="bg-blue-600 hover:bg-blue-700"
-                  data-testid="button-create-kpi"
+                  data-testid={editingKPI ? "button-update-kpi" : "button-create-kpi"}
                 >
-                  {createKpiMutation.isPending ? 'Creating...' : 'Create KPI'}
+                  {editingKPI 
+                    ? (updateKpiMutation.isPending ? 'Updating...' : 'Update KPI')
+                    : (createKpiMutation.isPending ? 'Creating...' : 'Create KPI')
+                  }
                 </Button>
               </div>
             </div>

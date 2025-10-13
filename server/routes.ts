@@ -1269,6 +1269,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      
+      const validatedKPI = insertKPISchema.partial().parse(req.body);
+      
+      const kpi = await storage.updateKPI(kpiId, validatedKPI);
+      if (!kpi) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
+      
+      res.json(kpi);
+    } catch (error) {
+      console.error('Platform KPI update error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update platform KPI" });
+      }
+    }
+  });
+
   // Platform-level Benchmark routes
   app.get("/api/platforms/:platformType/benchmarks", async (req, res) => {
     try {

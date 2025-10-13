@@ -2637,7 +2637,30 @@ export default function LinkedInAnalytics() {
                   <Button 
                     data-testid="button-create-report" 
                     className="gap-2"
-                    onClick={() => setIsReportModalOpen(true)}
+                    onClick={() => {
+                      setEditingReportId(null);
+                      setReportModalStep('standard');
+                      setReportForm({
+                        name: '',
+                        description: '',
+                        reportType: '',
+                        configuration: null,
+                        scheduleEnabled: false,
+                        scheduleFrequency: 'weekly',
+                        scheduleDayOfWeek: 'monday',
+                        scheduleTime: '9:00 AM',
+                        emailRecipients: '',
+                        status: 'draft'
+                      });
+                      setCustomReportConfig({
+                        coreMetrics: [],
+                        derivedMetrics: [],
+                        kpis: [],
+                        benchmarks: [],
+                        includeAdComparison: false
+                      });
+                      setIsReportModalOpen(true);
+                    }}
                   >
                     <Plus className="w-4 h-4" />
                     Create Report

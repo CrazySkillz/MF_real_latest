@@ -1742,6 +1742,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Custom Integration routes
+  app.post("/api/custom-integration/connect", async (req, res) => {
+    try {
+      console.log("[Custom Integration] Received connection request:", req.body);
+      const { email, campaignId } = req.body;
+      
+      if (!email || !campaignId) {
+        console.log("[Custom Integration] Missing email or campaignId");
+        return res.status(400).json({ 
+          success: false,
+          error: "Email and campaign ID are required" 
+        });
+      }
+
+      // Validate email format
+      if (!email.includes('@')) {
+        console.log("[Custom Integration] Invalid email format:", email);
+        return res.status(400).json({ 
+          success: false,
+          error: "Invalid email format" 
+        });
+      }
+
+      // Create or update the custom integration
+      console.log("[Custom Integration] Creating custom integration for:", { campaignId, email });
+      const customIntegration = await storage.createCustomIntegration({
+        campaignId,
+        email
+      });
+      console.log("[Custom Integration] Created successfully:", customIntegration);
+
+      const responseData = { 
+        success: true,
+        customIntegration,
+        message: `Successfully connected to ${email}`
+      };
+      console.log("[Custom Integration] Sending response:", responseData);
+      res.json(responseData);
+    } catch (error) {
+      console.error("[Custom Integration] Connection error:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to connect custom integration" 
+      });
+    }
+  });
+
+  app.get("/api/custom-integration/:campaignId", async (req, res) => {
+    try {
+      const customIntegration = await storage.getCustomIntegration(req.params.campaignId);
+      if (!customIntegration) {
+        return res.status(404).json({ message: "Custom integration not found" });
+      }
+      res.json(customIntegration);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch custom integration" });
+    }
+  });
+
+  app.post("/api/custom-integration/transfer", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+      
+      if (!fromCampaignId || !toCampaignId) {
+        return res.status(400).json({ 
+          success: false,
+          error: "Both fromCampaignId and toCampaignId are required" 
+        });
+      }
+
+      // Get the temporary connection
+      const tempConnection = await storage.getCustomIntegration(fromCampaignId);
+      if (!tempConnection) {
+        return res.status(404).json({ 
+          success: false,
+          error: "Temporary custom integration not found" 
+        });
+      }
+
+      // Create new connection with the real campaign ID
+      await storage.createCustomIntegration({
+        campaignId: toCampaignId,
+        email: tempConnection.email
+      });
+
+      // Delete the temporary connection
+      await storage.deleteCustomIntegration(fromCampaignId);
+
+      res.json({ 
+        success: true,
+        message: "Custom integration transferred successfully" 
+      });
+    } catch (error) {
+      console.error("Custom integration transfer error:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to transfer custom integration" 
+      });
+    }
+  });
+
   // LinkedIn API routes
   
   // POST /api/linkedin/connect - Manual token connection

@@ -166,6 +166,7 @@ export const customIntegrations = pgTable("custom_integrations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
   email: text("email").notNull(),
+  webhookToken: text("webhook_token").notNull(),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

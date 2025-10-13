@@ -126,6 +126,7 @@ export default function LinkedInAnalytics() {
     status: 'draft' as const
   });
   const [reportModalStep, setReportModalStep] = useState<'standard' | 'custom' | 'type' | 'configuration'>('standard');
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
   
   // Custom Report Configuration State
   const [customReportConfig, setCustomReportConfig] = useState({
@@ -446,6 +447,49 @@ export default function LinkedInAnalytics() {
     }
   });
 
+  // Update Report mutation
+  const updateReportMutation = useMutation({
+    mutationFn: async ({ reportId, reportData }: { reportId: string, reportData: any }) => {
+      const res = await apiRequest('PUT', `/api/linkedin/reports/${reportId}`, reportData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/linkedin/reports'] });
+      toast({
+        title: "Report Updated",
+        description: "Your report has been updated successfully.",
+      });
+      setIsReportModalOpen(false);
+      setEditingReportId(null);
+      setReportForm({
+        name: '',
+        description: '',
+        reportType: '',
+        configuration: null,
+        scheduleEnabled: false,
+        scheduleFrequency: 'weekly',
+        scheduleDayOfWeek: 'monday',
+        scheduleTime: '9:00 AM',
+        emailRecipients: '',
+        status: 'draft'
+      });
+      setCustomReportConfig({
+        coreMetrics: [],
+        derivedMetrics: [],
+        kpis: [],
+        benchmarks: [],
+        includeAdComparison: false
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update report",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Handle report type selection
   const handleReportTypeSelect = (type: string) => {
     const reportNames = {
@@ -463,6 +507,50 @@ export default function LinkedInAnalytics() {
       configuration: {}
     });
     // Keep reportModalStep as 'standard' for single-page design
+  };
+
+  // Handle edit report
+  const handleEditReport = (report: any) => {
+    setEditingReportId(report.id);
+    
+    // Extract email recipients from array to string
+    const emailRecipientsString = report.emailRecipients && Array.isArray(report.emailRecipients)
+      ? report.emailRecipients.join(', ')
+      : '';
+    
+    // Check if scheduling is enabled
+    const scheduleEnabled = report.scheduleFrequency !== null && report.scheduleFrequency !== undefined;
+    
+    // Set report form with existing values
+    setReportForm({
+      name: report.name || '',
+      description: report.description || '',
+      reportType: report.reportType || '',
+      configuration: report.configuration || {},
+      scheduleEnabled: scheduleEnabled,
+      scheduleFrequency: report.scheduleFrequency || 'weekly',
+      scheduleDayOfWeek: report.configuration?.scheduleDayOfWeek || 'monday',
+      scheduleTime: report.configuration?.scheduleTime || '9:00 AM',
+      emailRecipients: emailRecipientsString,
+      status: report.status || 'draft'
+    });
+    
+    // Set custom report config if it's a custom report
+    if (report.reportType === 'custom' && report.configuration) {
+      setCustomReportConfig({
+        coreMetrics: report.configuration.coreMetrics || [],
+        derivedMetrics: report.configuration.derivedMetrics || [],
+        kpis: report.configuration.kpis || [],
+        benchmarks: report.configuration.benchmarks || [],
+        includeAdComparison: report.configuration.includeAdComparison || false
+      });
+      setReportModalStep('custom');
+    } else {
+      setReportModalStep('standard');
+    }
+    
+    // Open the modal
+    setIsReportModalOpen(true);
   };
 
   // Handle create report
@@ -492,6 +580,38 @@ export default function LinkedInAnalytics() {
       createReportMutation.mutate(reportData);
     } else {
       // Generate and download report immediately
+      handleDownloadReport();
+    }
+  };
+
+  // Handle update report
+  const handleUpdateReport = () => {
+    if (!editingReportId) return;
+    
+    if (reportForm.scheduleEnabled) {
+      // Convert email recipients string to array
+      const emailRecipientsArray = reportForm.emailRecipients
+        ? reportForm.emailRecipients.split(',').map(email => email.trim()).filter(email => email.length > 0)
+        : [];
+
+      // Update scheduled report in database
+      const reportData = {
+        name: reportForm.name,
+        description: reportForm.description || null,
+        reportType: reportForm.reportType,
+        configuration: {
+          ...reportForm.configuration,
+          scheduleEnabled: reportForm.scheduleEnabled,
+          scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
+          scheduleTime: reportForm.scheduleTime
+        },
+        scheduleFrequency: reportForm.scheduleFrequency,
+        emailRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
+        status: reportForm.status || 'active'
+      };
+      updateReportMutation.mutate({ reportId: editingReportId, reportData });
+    } else {
+      // If schedule is disabled, just download the report
       handleDownloadReport();
     }
   };
@@ -2562,7 +2682,12 @@ export default function LinkedInAnalytics() {
                               <Button variant="outline" size="sm" data-testid={`button-download-${report.id}`}>
                                 Download
                               </Button>
-                              <Button variant="ghost" size="sm" data-testid={`button-edit-${report.id}`}>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                data-testid={`button-edit-${report.id}`}
+                                onClick={() => handleEditReport(report)}
+                              >
                                 <Pencil className="w-4 h-4" />
                               </Button>
                               <AlertDialog>
@@ -3478,7 +3603,12 @@ export default function LinkedInAnalytics() {
       </Dialog>
 
       {/* Create Report Modal */}
-      <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
+      <Dialog open={isReportModalOpen} onOpenChange={(open) => {
+        setIsReportModalOpen(open);
+        if (!open) {
+          setEditingReportId(null);
+        }
+      }}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">Report Type</DialogTitle>
@@ -4142,6 +4272,7 @@ export default function LinkedInAnalytics() {
                 onClick={() => {
                   setIsReportModalOpen(false);
                   setReportModalStep('standard');
+                  setEditingReportId(null);
                   setReportForm({
                     name: '',
                     description: '',
@@ -4165,6 +4296,7 @@ export default function LinkedInAnalytics() {
                   variant="link"
                   onClick={() => {
                     setReportModalStep('standard');
+                    setEditingReportId(null);
                     setReportForm({
                       name: '',
                       description: '',
@@ -4185,13 +4317,15 @@ export default function LinkedInAnalytics() {
                 
                 {reportForm.reportType && reportForm.reportType !== 'custom' && (
                   <Button
-                    onClick={handleCreateReport}
-                    disabled={!reportForm.name || createReportMutation.isPending}
-                    data-testid="button-create-report-submit"
+                    onClick={editingReportId ? handleUpdateReport : handleCreateReport}
+                    disabled={!reportForm.name || createReportMutation.isPending || updateReportMutation.isPending}
+                    data-testid={editingReportId ? "button-update-report" : "button-create-report-submit"}
                     className="gap-2"
                   >
-                    {createReportMutation.isPending ? (
-                      'Creating...'
+                    {(createReportMutation.isPending || updateReportMutation.isPending) ? (
+                      editingReportId ? 'Updating...' : 'Creating...'
+                    ) : editingReportId ? (
+                      'Update Report'
                     ) : reportForm.scheduleEnabled ? (
                       'Schedule Report'
                     ) : (
@@ -4205,13 +4339,15 @@ export default function LinkedInAnalytics() {
                 
                 {reportModalStep === 'custom' && (
                   <Button
-                    onClick={handleCustomReport}
-                    disabled={!reportForm.name || createReportMutation.isPending}
-                    data-testid="button-create-custom-report"
+                    onClick={editingReportId ? handleUpdateReport : handleCustomReport}
+                    disabled={!reportForm.name || createReportMutation.isPending || updateReportMutation.isPending}
+                    data-testid={editingReportId ? "button-update-custom-report" : "button-create-custom-report"}
                     className="gap-2"
                   >
-                    {createReportMutation.isPending ? (
-                      'Creating...'
+                    {(createReportMutation.isPending || updateReportMutation.isPending) ? (
+                      editingReportId ? 'Updating...' : 'Creating...'
+                    ) : editingReportId ? (
+                      'Update Report'
                     ) : reportForm.scheduleEnabled ? (
                       'Schedule Report'
                     ) : (

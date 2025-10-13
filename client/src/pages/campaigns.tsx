@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown } from "lucide-react";
+import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink } from "lucide-react";
 import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -436,6 +436,22 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
             </div>
           );
         })}
+        
+        {/* Custom Integration Link */}
+        <div className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <Plus className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <div className="font-medium text-slate-900 dark:text-white">Custom Integration</div>
+                <div className="text-sm text-slate-500">Connect your own data source or API</div>
+              </div>
+            </div>
+            <ExternalLink className="w-5 h-5 text-slate-400" />
+          </div>
+        </div>
       </div>
       
       <div className="flex justify-between pt-6 border-t">

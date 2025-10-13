@@ -1780,11 +1780,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Generate a unique webhook token
+      const webhookToken = nanoid(32);
+      
       // Create or update the custom integration
-      console.log("[Custom Integration] Creating custom integration for:", { campaignId, email });
+      console.log("[Custom Integration] Creating custom integration for:", { campaignId, email, webhookToken });
       const customIntegration = await storage.createCustomIntegration({
         campaignId,
-        email
+        email,
+        webhookToken
       });
       console.log("[Custom Integration] Created successfully:", customIntegration);
 
@@ -1836,10 +1840,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create new connection with the real campaign ID
+      // Create new connection with the real campaign ID, preserving the webhook token
       await storage.createCustomIntegration({
         campaignId: toCampaignId,
-        email: tempConnection.email
+        email: tempConnection.email,
+        webhookToken: tempConnection.webhookToken
       });
 
       // Delete the temporary connection
@@ -1930,6 +1935,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("[PDF Upload] Error processing PDF:", error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to process PDF" 
+      });
+    }
+  });
+
+  // Public webhook endpoint for receiving PDFs from external services (Zapier, IFTTT, etc.)
+  app.post("/api/webhook/custom-integration/:token", upload.single('pdf'), async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      console.log(`[Webhook] Received request with token: ${token}`);
+      
+      if (!req.file) {
+        return res.status(400).json({ 
+          success: false,
+          error: "No PDF file provided" 
+        });
+      }
+
+      // Find the custom integration by webhook token
+      const customIntegrations = await storage.getAllCustomIntegrations();
+      const integration = customIntegrations.find(ci => ci.webhookToken === token);
+      
+      if (!integration) {
+        console.log(`[Webhook] Invalid token: ${token}`);
+        return res.status(401).json({ 
+          success: false,
+          error: "Invalid webhook token" 
+        });
+      }
+
+      console.log(`[Webhook] Processing PDF for campaign ${integration.campaignId}, file: ${req.file.originalname}, size: ${req.file.size} bytes`);
+
+      // Parse the PDF to extract metrics
+      const parsedMetrics = await parsePDFMetrics(req.file.buffer);
+      console.log(`[Webhook] Parsed metrics:`, parsedMetrics);
+
+      // Store the metrics in the database
+      const metrics = await storage.createCustomIntegrationMetrics({
+        campaignId: integration.campaignId,
+        impressions: parsedMetrics.impressions,
+        reach: parsedMetrics.reach,
+        clicks: parsedMetrics.clicks,
+        engagements: parsedMetrics.engagements,
+        spend: parsedMetrics.spend.toString(),
+        conversions: parsedMetrics.conversions,
+        leads: parsedMetrics.leads,
+        videoViews: parsedMetrics.videoViews,
+        viralImpressions: parsedMetrics.viralImpressions,
+        pdfFileName: req.file.originalname,
+        emailSubject: req.body.subject || null, // Optional: can be sent by webhook service
+        emailId: req.body.emailId || null, // Optional: can be sent by webhook service
+      });
+
+      console.log(`[Webhook] Metrics stored successfully:`, metrics.id);
+
+      res.json({
+        success: true,
+        message: "PDF processed successfully",
+        campaignId: integration.campaignId,
+        metricsId: metrics.id,
+        uploadedAt: metrics.uploadedAt,
+      });
+    } catch (error) {
+      console.error("[Webhook] Error processing PDF:", error);
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to process PDF" 

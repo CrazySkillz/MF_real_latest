@@ -70,6 +70,7 @@ export interface IStorage {
   
   // Custom Integrations
   getCustomIntegration(campaignId: string): Promise<CustomIntegration | undefined>;
+  getAllCustomIntegrations(): Promise<CustomIntegration[]>;
   createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration>;
   deleteCustomIntegration(campaignId: string): Promise<boolean>;
   
@@ -1087,12 +1088,17 @@ export class MemStorage implements IStorage {
     return Array.from(this.customIntegrations.values()).find(ci => ci.campaignId === campaignId);
   }
 
+  async getAllCustomIntegrations(): Promise<CustomIntegration[]> {
+    return Array.from(this.customIntegrations.values());
+  }
+
   async createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration> {
     // Check if integration already exists for this campaign
     const existing = await this.getCustomIntegration(integration.campaignId);
     if (existing) {
-      // Update existing integration with new email
+      // Update existing integration with new email and webhook token
       existing.email = integration.email;
+      existing.webhookToken = integration.webhookToken;
       existing.connectedAt = new Date();
       this.customIntegrations.set(existing.id, existing);
       return existing;
@@ -1103,6 +1109,7 @@ export class MemStorage implements IStorage {
       id,
       campaignId: integration.campaignId,
       email: integration.email,
+      webhookToken: integration.webhookToken,
       connectedAt: new Date(),
       createdAt: new Date(),
     };
@@ -1920,14 +1927,22 @@ export class DatabaseStorage implements IStorage {
     return integration || undefined;
   }
 
+  async getAllCustomIntegrations(): Promise<CustomIntegration[]> {
+    return db.select().from(customIntegrations);
+  }
+
   async createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration> {
     // Check if integration already exists for this campaign
     const existing = await this.getCustomIntegration(integration.campaignId);
     if (existing) {
-      // Update existing integration with new email
+      // Update existing integration with new email and webhook token
       const [updated] = await db
         .update(customIntegrations)
-        .set({ email: integration.email, connectedAt: new Date() })
+        .set({ 
+          email: integration.email, 
+          webhookToken: integration.webhookToken,
+          connectedAt: new Date() 
+        })
         .where(eq(customIntegrations.id, existing.id))
         .returning();
       return updated;

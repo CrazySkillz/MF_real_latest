@@ -511,18 +511,12 @@ export default function LinkedInAnalytics() {
 
   // Handle edit report
   const handleEditReport = (report: any) => {
-    console.log('=== EDIT REPORT DEBUG ===');
-    console.log('Full report object:', report);
-    console.log('Email recipients:', report.emailRecipients);
-    console.log('Configuration:', report.configuration);
-    
     setEditingReportId(report.id);
     
     // Extract email recipients from array to string
-    const emailRecipientsString = report.emailRecipients && Array.isArray(report.emailRecipients)
-      ? report.emailRecipients.join(', ')
+    const emailRecipientsString = report.scheduleRecipients && Array.isArray(report.scheduleRecipients)
+      ? report.scheduleRecipients.join(', ')
       : '';
-    console.log('Email recipients string:', emailRecipientsString);
     
     // Check if scheduling is enabled
     const scheduleEnabled = report.scheduleFrequency !== null && report.scheduleFrequency !== undefined;
@@ -532,7 +526,7 @@ export default function LinkedInAnalytics() {
     setReportModalStep(modalStep);
     
     // Set report form with existing values
-    const formData = {
+    setReportForm({
       name: report.name || '',
       description: report.description || '',
       reportType: report.reportType || '',
@@ -543,21 +537,17 @@ export default function LinkedInAnalytics() {
       scheduleTime: report.configuration?.scheduleTime || '9:00 AM',
       emailRecipients: emailRecipientsString,
       status: report.status || 'draft'
-    };
-    console.log('Setting form data:', formData);
-    setReportForm(formData);
+    });
     
     // Set custom report config if it's a custom report
     if (report.reportType === 'custom' && report.configuration?.customReportConfig) {
-      const customConfig = {
+      setCustomReportConfig({
         coreMetrics: report.configuration.customReportConfig.coreMetrics || [],
         derivedMetrics: report.configuration.customReportConfig.derivedMetrics || [],
         kpis: report.configuration.customReportConfig.kpis || [],
         benchmarks: report.configuration.customReportConfig.benchmarks || [],
         includeAdComparison: report.configuration.customReportConfig.includeAdComparison || false
-      };
-      console.log('Setting custom config:', customConfig);
-      setCustomReportConfig(customConfig);
+      });
     }
     
     // Open the modal after a brief delay to ensure state updates complete
@@ -587,7 +577,7 @@ export default function LinkedInAnalytics() {
           scheduleTime: reportForm.scheduleTime
         },
         scheduleFrequency: reportForm.scheduleFrequency,
-        emailRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
+        scheduleRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
         status: 'active'
       };
       createReportMutation.mutate(reportData);
@@ -626,7 +616,7 @@ export default function LinkedInAnalytics() {
               scheduleTime: reportForm.scheduleTime
             },
         scheduleFrequency: reportForm.scheduleFrequency,
-        emailRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
+        scheduleRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
         status: reportForm.status || 'active'
       };
       updateReportMutation.mutate({ reportId: editingReportId, reportData });
@@ -706,7 +696,7 @@ export default function LinkedInAnalytics() {
           scheduleTime: reportForm.scheduleTime
         },
         scheduleFrequency: reportForm.scheduleFrequency,
-        emailRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
+        scheduleRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
         status: 'active'
       };
       createReportMutation.mutate(reportData);

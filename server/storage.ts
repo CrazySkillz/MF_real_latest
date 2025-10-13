@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull } from "drizzle-orm";
@@ -67,6 +67,11 @@ export interface IStorage {
   createLinkedInReport(report: InsertLinkedInReport): Promise<LinkedInReport>;
   updateLinkedInReport(id: string, report: Partial<InsertLinkedInReport>): Promise<LinkedInReport | undefined>;
   deleteLinkedInReport(id: string): Promise<boolean>;
+  
+  // Custom Integrations
+  getCustomIntegration(campaignId: string): Promise<CustomIntegration | undefined>;
+  createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration>;
+  deleteCustomIntegration(campaignId: string): Promise<boolean>;
   
   // KPIs
   getCampaignKPIs(campaignId: string): Promise<KPI[]>;
@@ -217,6 +222,7 @@ export class MemStorage implements IStorage {
   private linkedinImportMetrics: Map<string, LinkedInImportMetric>;
   private linkedinAdPerformance: Map<string, LinkedInAdPerformance>;
   private linkedinReports: Map<string, LinkedInReport>;
+  private customIntegrations: Map<string, CustomIntegration>;
   private kpis: Map<string, KPI>;
   private kpiProgress: Map<string, KPIProgress>;
   private kpiAlerts: Map<string, KPIAlert>;
@@ -245,6 +251,7 @@ export class MemStorage implements IStorage {
     this.linkedinImportMetrics = new Map();
     this.linkedinAdPerformance = new Map();
     this.linkedinReports = new Map();
+    this.customIntegrations = new Map();
     this.kpis = new Map();
     this.kpiProgress = new Map();
     this.kpiAlerts = new Map();
@@ -1068,6 +1075,41 @@ export class MemStorage implements IStorage {
     return this.linkedinReports.delete(id);
   }
 
+  // Custom Integrations methods
+  async getCustomIntegration(campaignId: string): Promise<CustomIntegration | undefined> {
+    return Array.from(this.customIntegrations.values()).find(ci => ci.campaignId === campaignId);
+  }
+
+  async createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration> {
+    // Check if integration already exists for this campaign
+    const existing = await this.getCustomIntegration(integration.campaignId);
+    if (existing) {
+      // Update existing integration with new email
+      existing.email = integration.email;
+      existing.connectedAt = new Date();
+      this.customIntegrations.set(existing.id, existing);
+      return existing;
+    }
+    
+    const id = randomUUID();
+    const customIntegration: CustomIntegration = {
+      id,
+      campaignId: integration.campaignId,
+      email: integration.email,
+      connectedAt: new Date(),
+      createdAt: new Date(),
+    };
+    
+    this.customIntegrations.set(id, customIntegration);
+    return customIntegration;
+  }
+
+  async deleteCustomIntegration(campaignId: string): Promise<boolean> {
+    const integration = await this.getCustomIntegration(campaignId);
+    if (!integration) return false;
+    return this.customIntegrations.delete(integration.id);
+  }
+
   // KPI methods
   async getCampaignKPIs(campaignId: string): Promise<KPI[]> {
     return Array.from(this.kpis.values()).filter(kpi => kpi.campaignId === campaignId);
@@ -1823,6 +1865,41 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(linkedinReports)
       .where(eq(linkedinReports.id, id));
+    return true;
+  }
+
+  // Custom Integrations methods
+  async getCustomIntegration(campaignId: string): Promise<CustomIntegration | undefined> {
+    const [integration] = await db.select()
+      .from(customIntegrations)
+      .where(eq(customIntegrations.campaignId, campaignId));
+    return integration || undefined;
+  }
+
+  async createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration> {
+    // Check if integration already exists for this campaign
+    const existing = await this.getCustomIntegration(integration.campaignId);
+    if (existing) {
+      // Update existing integration with new email
+      const [updated] = await db
+        .update(customIntegrations)
+        .set({ email: integration.email, connectedAt: new Date() })
+        .where(eq(customIntegrations.id, existing.id))
+        .returning();
+      return updated;
+    }
+    
+    const [customIntegration] = await db
+      .insert(customIntegrations)
+      .values(integration)
+      .returning();
+    return customIntegration;
+  }
+
+  async deleteCustomIntegration(campaignId: string): Promise<boolean> {
+    await db
+      .delete(customIntegrations)
+      .where(eq(customIntegrations.campaignId, campaignId));
     return true;
   }
 

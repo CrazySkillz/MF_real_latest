@@ -110,6 +110,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const [showPropertySelector, setShowPropertySelector] = useState(false);
   const [ga4AccessToken, setGA4AccessToken] = useState<string>('');
   const [ga4RefreshToken, setGA4RefreshToken] = useState<string>('');
+  const [showCustomIntegrationModal, setShowCustomIntegrationModal] = useState(false);
+  const [customIntegrationEmail, setCustomIntegrationEmail] = useState('');
   const { toast } = useToast();
 
   // Notify parent whenever connected platforms change
@@ -209,6 +211,58 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
       });
     } finally {
       setIsConnecting(prev => ({ ...prev, 'google-analytics': false }));
+    }
+  };
+
+  const handleCustomIntegrationConnect = async () => {
+    if (!customIntegrationEmail || !customIntegrationEmail.includes('@')) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsConnecting(prev => ({ ...prev, 'custom-integration': true }));
+    
+    try {
+      const response = await fetch('/api/custom-integration/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: customIntegrationEmail
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setConnectedPlatforms(prev => [...prev, 'custom-integration']);
+        setSelectedPlatforms(prev => [...prev, 'custom-integration']);
+        setShowCustomIntegrationModal(false);
+        setCustomIntegrationEmail('');
+        
+        toast({
+          title: "Custom Integration Connected!",
+          description: `Successfully connected to ${customIntegrationEmail}`
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: data.error || "Failed to connect with provided email.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Custom integration connection error:', error);
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsConnecting(prev => ({ ...prev, 'custom-integration': false }));
     }
   };
 
@@ -438,7 +492,11 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
         })}
         
         {/* Custom Integration Link */}
-        <div className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all">
+        <div 
+          className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+          onClick={() => setShowCustomIntegrationModal(true)}
+          data-testid="button-custom-integration"
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
@@ -453,6 +511,58 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
           </div>
         </div>
       </div>
+      
+      {/* Custom Integration Modal */}
+      <Dialog open={showCustomIntegrationModal} onOpenChange={setShowCustomIntegrationModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Connect Custom Integration</DialogTitle>
+            <DialogDescription>
+              Enter an email address to connect and fetch PDF documents for your campaign analytics.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="custom-email">Email Address</Label>
+              <Input
+                id="custom-email"
+                type="email"
+                placeholder="analytics@example.com"
+                value={customIntegrationEmail}
+                onChange={(e) => setCustomIntegrationEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCustomIntegrationConnect();
+                  }
+                }}
+                data-testid="input-custom-integration-email"
+              />
+              <p className="text-sm text-slate-500">
+                We'll use this email to fetch and read PDF documents for your campaign data.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCustomIntegrationModal(false);
+                  setCustomIntegrationEmail('');
+                }}
+                data-testid="button-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCustomIntegrationConnect}
+                disabled={isConnecting['custom-integration']}
+                data-testid="button-connect-custom"
+              >
+                {isConnecting['custom-integration'] ? 'Connecting...' : 'Connect'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       
       <div className="flex justify-between pt-6 border-t">
         <Button variant="outline" onClick={onBack}>

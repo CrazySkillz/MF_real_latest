@@ -162,6 +162,14 @@ export const linkedinAdPerformance = pgTable("linkedin_ad_performance", {
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const customIntegrations = pgTable("custom_integrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  email: text("email").notNull(),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const kpis = pgTable("kpis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id"), // Optional - null for platform-level KPIs
@@ -751,6 +759,12 @@ export const insertLinkedInAdPerformanceSchema = createInsertSchema(linkedinAdPe
   conversionRate: true,
 });
 
+export const insertCustomIntegrationSchema = createInsertSchema(customIntegrations).omit({
+  id: true,
+  connectedAt: true,
+  createdAt: true,
+});
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Metric = typeof metrics.$inferSelect;
@@ -803,3 +817,5 @@ export type LinkedInAdPerformance = typeof linkedinAdPerformance.$inferSelect;
 export type InsertLinkedInAdPerformance = z.infer<typeof insertLinkedInAdPerformanceSchema>;
 export type LinkedInReport = typeof linkedinReports.$inferSelect;
 export type InsertLinkedInReport = z.infer<typeof insertLinkedInReportSchema>;
+export type CustomIntegration = typeof customIntegrations.$inferSelect;
+export type InsertCustomIntegration = z.infer<typeof insertCustomIntegrationSchema>;

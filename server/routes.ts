@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertKPISchema, insertKPIProgressSchema, insertNotificationSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, insertBenchmarkSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertKPISchema, insertKPIProgressSchema, insertNotificationSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, insertBenchmarkSchema, insertCustomIntegrationSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -298,6 +298,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid integration data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update integration" });
+    }
+  });
+
+  // Custom Integration routes
+  app.post("/api/custom-integration/connect", async (req, res) => {
+    try {
+      const { email, campaignId } = req.body;
+      
+      if (!email || !campaignId) {
+        return res.status(400).json({ 
+          success: false,
+          error: "Email and campaign ID are required" 
+        });
+      }
+
+      // Validate email format
+      if (!email.includes('@')) {
+        return res.status(400).json({ 
+          success: false,
+          error: "Invalid email format" 
+        });
+      }
+
+      // Create or update the custom integration
+      const customIntegration = await storage.createCustomIntegration({
+        campaignId,
+        email
+      });
+
+      res.json({ 
+        success: true,
+        customIntegration,
+        message: `Successfully connected to ${email}`
+      });
+    } catch (error) {
+      console.error("Custom integration connection error:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to connect custom integration" 
+      });
+    }
+  });
+
+  app.get("/api/custom-integration/:campaignId", async (req, res) => {
+    try {
+      const customIntegration = await storage.getCustomIntegration(req.params.campaignId);
+      if (!customIntegration) {
+        return res.status(404).json({ message: "Custom integration not found" });
+      }
+      res.json(customIntegration);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch custom integration" });
     }
   });
 

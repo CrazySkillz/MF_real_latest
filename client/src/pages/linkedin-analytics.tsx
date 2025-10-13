@@ -4078,6 +4078,11 @@ export default function LinkedInAnalytics() {
                             <SelectItem value="6:00 PM">6:00 PM</SelectItem>
                           </SelectContent>
                         </Select>
+                        {userTimeZone && (
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            All times are in your time zone: {getTimeZoneDisplay()}
+                          </p>
+                        )}
                       </div>
 
                       {/* Email Recipients */}

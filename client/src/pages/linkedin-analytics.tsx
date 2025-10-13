@@ -511,10 +511,6 @@ export default function LinkedInAnalytics() {
 
   // Handle edit report
   const handleEditReport = (report: any) => {
-    console.log('Edit report - full report:', report);
-    console.log('Edit report - scheduleFrequency:', report.scheduleFrequency);
-    console.log('Edit report - configuration:', report.configuration);
-    
     setEditingReportId(report.id);
     
     // Extract email recipients from array to string
@@ -547,7 +543,6 @@ export default function LinkedInAnalytics() {
       emailRecipients: emailRecipientsString,
       status: report.status || 'draft'
     };
-    console.log('Edit report - setting form to:', formData);
     setReportForm(formData);
     
     // Set custom report config if it's a custom report
@@ -3837,29 +3832,29 @@ export default function LinkedInAnalytics() {
 
                       {reportForm.scheduleEnabled && (
                         <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            {/* Frequency */}
-                            <div className="space-y-2">
-                              <Label htmlFor="schedule-frequency">Frequency</Label>
-                              <Select
-                                value={reportForm.scheduleFrequency}
-                                onValueChange={(value) => 
-                                  setReportForm({ ...reportForm, scheduleFrequency: value })
-                                }
-                              >
-                                <SelectTrigger id="schedule-frequency" data-testid="select-frequency">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="daily">Daily</SelectItem>
-                                  <SelectItem value="weekly">Weekly</SelectItem>
-                                  <SelectItem value="monthly">Monthly</SelectItem>
-                                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                          {/* Frequency */}
+                          <div className="space-y-2">
+                            <Label htmlFor="schedule-frequency">Frequency</Label>
+                            <Select
+                              value={reportForm.scheduleFrequency}
+                              onValueChange={(value) => 
+                                setReportForm({ ...reportForm, scheduleFrequency: value })
+                              }
+                            >
+                              <SelectTrigger id="schedule-frequency" data-testid="select-frequency">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                                <SelectItem value="quarterly">Quarterly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                            {/* Day of Week */}
+                          {/* Day of Week - Only for Weekly */}
+                          {reportForm.scheduleFrequency === 'weekly' && (
                             <div className="space-y-2">
                               <Label htmlFor="schedule-day">Day of Week</Label>
                               <Select
@@ -3882,7 +3877,29 @@ export default function LinkedInAnalytics() {
                                 </SelectContent>
                               </Select>
                             </div>
-                          </div>
+                          )}
+
+                          {/* Day of Month - Only for Monthly and Quarterly */}
+                          {(reportForm.scheduleFrequency === 'monthly' || reportForm.scheduleFrequency === 'quarterly') && (
+                            <div className="space-y-2">
+                              <Label htmlFor="schedule-day-month">Day of Month</Label>
+                              <Select
+                                value={reportForm.scheduleDayOfWeek}
+                                onValueChange={(value) => 
+                                  setReportForm({ ...reportForm, scheduleDayOfWeek: value })
+                                }
+                              >
+                                <SelectTrigger id="schedule-day-month" data-testid="select-day-month">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                                    <SelectItem key={day} value={day.toString()}>{day}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
 
                           {/* Time */}
                           <div className="space-y-2">
@@ -4213,48 +4230,68 @@ export default function LinkedInAnalytics() {
 
                   {reportForm.scheduleEnabled && (
                     <div className="space-y-4 pl-6">
-                      {/* Frequency and Day of Week */}
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* Frequency */}
+                      <div className="space-y-2">
+                        <Label htmlFor="schedule-frequency">Frequency</Label>
+                        <Select
+                          value={reportForm.scheduleFrequency}
+                          onValueChange={(value) => setReportForm({ ...reportForm, scheduleFrequency: value })}
+                        >
+                          <SelectTrigger id="schedule-frequency" data-testid="select-frequency">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="quarterly">Quarterly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Day of Week - Only for Weekly */}
+                      {reportForm.scheduleFrequency === 'weekly' && (
                         <div className="space-y-2">
-                          <Label htmlFor="schedule-frequency">Frequency</Label>
+                          <Label htmlFor="schedule-day">Day of Week</Label>
                           <Select
-                            value={reportForm.scheduleFrequency}
-                            onValueChange={(value) => setReportForm({ ...reportForm, scheduleFrequency: value })}
+                            value={reportForm.scheduleDayOfWeek}
+                            onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfWeek: value })}
                           >
-                            <SelectTrigger id="schedule-frequency" data-testid="select-frequency">
+                            <SelectTrigger id="schedule-day" data-testid="select-day">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="daily">Daily</SelectItem>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="monday">Monday</SelectItem>
+                              <SelectItem value="tuesday">Tuesday</SelectItem>
+                              <SelectItem value="wednesday">Wednesday</SelectItem>
+                              <SelectItem value="thursday">Thursday</SelectItem>
+                              <SelectItem value="friday">Friday</SelectItem>
+                              <SelectItem value="saturday">Saturday</SelectItem>
+                              <SelectItem value="sunday">Sunday</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
+                      )}
 
-                        {reportForm.scheduleFrequency === 'weekly' && (
-                          <div className="space-y-2">
-                            <Label htmlFor="schedule-day">Day of Week</Label>
-                            <Select
-                              value={reportForm.scheduleDayOfWeek}
-                              onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfWeek: value })}
-                            >
-                              <SelectTrigger id="schedule-day" data-testid="select-day">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="monday">Monday</SelectItem>
-                                <SelectItem value="tuesday">Tuesday</SelectItem>
-                                <SelectItem value="wednesday">Wednesday</SelectItem>
-                                <SelectItem value="thursday">Thursday</SelectItem>
-                                <SelectItem value="friday">Friday</SelectItem>
-                                <SelectItem value="saturday">Saturday</SelectItem>
-                                <SelectItem value="sunday">Sunday</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                      </div>
+                      {/* Day of Month - Only for Monthly and Quarterly */}
+                      {(reportForm.scheduleFrequency === 'monthly' || reportForm.scheduleFrequency === 'quarterly') && (
+                        <div className="space-y-2">
+                          <Label htmlFor="schedule-day-month">Day of Month</Label>
+                          <Select
+                            value={reportForm.scheduleDayOfWeek}
+                            onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfWeek: value })}
+                          >
+                            <SelectTrigger id="schedule-day-month" data-testid="select-day-month">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                                <SelectItem key={day} value={day.toString()}>{day}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
 
                       {/* Time */}
                       <div className="space-y-2">

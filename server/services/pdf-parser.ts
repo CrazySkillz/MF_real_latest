@@ -1,6 +1,7 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
+const pdfParse = PDFParse;
 
 export interface ParsedMetrics {
   impressions: number;
@@ -48,7 +49,7 @@ function extractNumber(text: string): number {
  */
 export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
   try {
-    const data = await pdf(buffer);
+    const data = await pdfParse(buffer);
     const text = data.text;
     
     // Patterns to search for each metric

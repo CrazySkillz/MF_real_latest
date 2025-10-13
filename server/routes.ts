@@ -304,9 +304,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Custom Integration routes
   app.post("/api/custom-integration/connect", async (req, res) => {
     try {
+      console.log("[Custom Integration] Received connection request:", req.body);
       const { email, campaignId } = req.body;
       
       if (!email || !campaignId) {
+        console.log("[Custom Integration] Missing email or campaignId");
         return res.status(400).json({ 
           success: false,
           error: "Email and campaign ID are required" 
@@ -315,6 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate email format
       if (!email.includes('@')) {
+        console.log("[Custom Integration] Invalid email format:", email);
         return res.status(400).json({ 
           success: false,
           error: "Invalid email format" 
@@ -322,18 +325,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create or update the custom integration
+      console.log("[Custom Integration] Creating custom integration for:", { campaignId, email });
       const customIntegration = await storage.createCustomIntegration({
         campaignId,
         email
       });
+      console.log("[Custom Integration] Created successfully:", customIntegration);
 
-      res.json({ 
+      const responseData = { 
         success: true,
         customIntegration,
         message: `Successfully connected to ${email}`
-      });
+      };
+      console.log("[Custom Integration] Sending response:", responseData);
+      res.json(responseData);
     } catch (error) {
-      console.error("Custom integration connection error:", error);
+      console.error("[Custom Integration] Connection error:", error);
       res.status(500).json({ 
         success: false,
         error: "Failed to connect custom integration" 

@@ -511,6 +511,10 @@ export default function LinkedInAnalytics() {
 
   // Handle edit report
   const handleEditReport = (report: any) => {
+    console.log('Edit report - full report:', report);
+    console.log('Edit report - scheduleFrequency:', report.scheduleFrequency);
+    console.log('Edit report - configuration:', report.configuration);
+    
     setEditingReportId(report.id);
     
     // Extract email recipients from array to string
@@ -526,7 +530,7 @@ export default function LinkedInAnalytics() {
     setReportModalStep(modalStep);
     
     // Set report form with existing values
-    setReportForm({
+    const formData = {
       name: report.name || '',
       description: report.description || '',
       reportType: report.reportType || '',
@@ -537,7 +541,9 @@ export default function LinkedInAnalytics() {
       scheduleTime: report.configuration?.scheduleTime || '9:00 AM',
       emailRecipients: emailRecipientsString,
       status: report.status || 'draft'
-    });
+    };
+    console.log('Edit report - setting form to:', formData);
+    setReportForm(formData);
     
     // Set custom report config if it's a custom report
     if (report.reportType === 'custom' && report.configuration?.customReportConfig) {

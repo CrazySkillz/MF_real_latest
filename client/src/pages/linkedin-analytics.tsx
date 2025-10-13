@@ -511,6 +511,10 @@ export default function LinkedInAnalytics() {
 
   // Handle edit report
   const handleEditReport = (report: any) => {
+    console.log('Editing report:', report);
+    console.log('Report configuration:', report.configuration);
+    console.log('Report type:', report.reportType);
+    
     setEditingReportId(report.id);
     
     // Extract email recipients from array to string
@@ -539,6 +543,14 @@ export default function LinkedInAnalytics() {
     if (report.reportType === 'custom' && report.configuration) {
       // Access the nested customReportConfig object
       const savedConfig = report.configuration.customReportConfig || report.configuration;
+      console.log('Saved config:', savedConfig);
+      console.log('Setting custom report config to:', {
+        coreMetrics: savedConfig.coreMetrics || [],
+        derivedMetrics: savedConfig.derivedMetrics || [],
+        kpis: savedConfig.kpis || [],
+        benchmarks: savedConfig.benchmarks || [],
+        includeAdComparison: savedConfig.includeAdComparison || false
+      });
       setCustomReportConfig({
         coreMetrics: savedConfig.coreMetrics || [],
         derivedMetrics: savedConfig.derivedMetrics || [],

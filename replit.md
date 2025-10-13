@@ -51,5 +51,30 @@ Preferred communication style: Simple, everyday language.
 - **Validation**: Zod
 - **Forms**: React Hook Form
 - **Marketing Platforms**: Facebook Ads, Google Analytics (GA4), LinkedIn Ads, Google Sheets
-- **Authentication**: OAuth 2.0 for Google services
+- **Authentication**: OAuth 2.0 for Google services and LinkedIn Ads
 - **Build Tools**: Vite, ESLint, PostCSS, ESBuild (for backend compilation)
+
+## OAuth Integration & Production Validation
+
+### LinkedIn OAuth (Production-Ready)
+- **Implementation**: Full OAuth 2.0 authorization code flow with PKCE-like security
+- **OAuth Callback**: `/oauth-callback.html` handles authorization code exchange
+- **Flow**: User authorization → Code exchange → Token storage → Ad account selection → Campaign import
+- **Test Mode**: Mock data available for development/demo without real credentials
+- **Production Mode**: Requires LinkedIn Developer App with Client ID and Secret
+- **Scopes Required**: `r_ads_reporting`, `rw_ads`, `r_organization_admin`
+- **Validation Guide**: See `LINKEDIN_OAUTH_VALIDATION.md` for complete setup instructions
+- **Secrets**: Set `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` environment variables for production
+- **Redirect URIs**: Configure in LinkedIn app to match deployment URL (e.g., `https://[domain]/oauth-callback.html`)
+
+### Google Analytics (GA4) OAuth  
+- **Implementation**: OAuth 2.0 flow with automatic token refresh
+- **Integration**: Real-time and historical metrics via GA4 API
+- **Token Management**: Automatic refresh on expiry with seamless fallback
+
+### Future Enhancements
+- **Token Persistence**: Store OAuth tokens in database (currently in-memory)
+- **Token Refresh**: Implement refresh token flow for long-lived LinkedIn sessions
+- **Multi-Account Support**: Multiple LinkedIn connections per user
+- **Webhook Integration**: Real-time updates via LinkedIn webhooks
+- **Email Delivery**: Resend integration available for report email functionality (not yet implemented)

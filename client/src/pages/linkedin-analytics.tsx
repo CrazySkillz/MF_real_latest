@@ -2565,6 +2565,36 @@ export default function LinkedInAnalytics() {
                               <Button variant="ghost" size="sm" data-testid={`button-edit-${report.id}`}>
                                 <Pencil className="w-4 h-4" />
                               </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    data-testid={`button-delete-${report.id}`}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Report</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{report.name}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteReportMutation.mutate(report.id)}
+                                      className="bg-red-600 hover:bg-red-700 text-white"
+                                      data-testid={`confirm-delete-${report.id}`}
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </div>
                         </CardContent>

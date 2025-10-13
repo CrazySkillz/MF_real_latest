@@ -1780,8 +1780,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Generate a unique webhook token
-      const webhookToken = nanoid(32);
+      // Check if integration already exists
+      const existing = await storage.getCustomIntegration(campaignId);
+      
+      // Only generate a new webhook token if this is a new integration
+      const webhookToken = existing?.webhookToken || nanoid(32);
       
       // Create or update the custom integration
       console.log("[Custom Integration] Creating custom integration for:", { campaignId, email, webhookToken });

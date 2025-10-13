@@ -1,22 +1,20 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, Upload, FileText, TrendingUp } from "lucide-react";
+import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
-import { queryClient } from "@/lib/queryClient";
 
 export default function CustomIntegrationAnalytics() {
   const [, params] = useRoute("/campaigns/:id/custom-integration-analytics");
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const campaignId = params?.id;
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Fetch campaign details
   const { data: campaign } = useQuery({
@@ -35,55 +33,6 @@ export default function CustomIntegrationAnalytics() {
     queryKey: ["/api/custom-integration", campaignId, "metrics"],
     enabled: !!campaignId,
   });
-
-  // PDF upload mutation
-  const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('pdf', file);
-      
-      const response = await fetch(`/api/custom-integration/${campaignId}/upload-pdf`, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to upload PDF');
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId, "metrics"] });
-      toast({
-        title: "PDF Processed Successfully",
-        description: "Metrics have been extracted and updated",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Upload Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        toast({
-          title: "Invalid File",
-          description: "Please select a PDF file",
-          variant: "destructive",
-        });
-        return;
-      }
-      uploadMutation.mutate(file);
-    }
-  };
 
   // Use real metrics if available, otherwise show placeholder
   const metrics = metricsData || {

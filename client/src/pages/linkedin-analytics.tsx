@@ -540,23 +540,14 @@ export default function LinkedInAnalytics() {
     });
     
     // Set custom report config if it's a custom report
-    if (report.reportType === 'custom' && report.configuration) {
-      // Access the nested customReportConfig object
-      const savedConfig = report.configuration.customReportConfig || report.configuration;
-      console.log('Saved config:', savedConfig);
-      console.log('Setting custom report config to:', {
-        coreMetrics: savedConfig.coreMetrics || [],
-        derivedMetrics: savedConfig.derivedMetrics || [],
-        kpis: savedConfig.kpis || [],
-        benchmarks: savedConfig.benchmarks || [],
-        includeAdComparison: savedConfig.includeAdComparison || false
-      });
+    if (report.reportType === 'custom' && report.configuration?.customReportConfig) {
+      console.log('Loading custom report config:', report.configuration.customReportConfig);
       setCustomReportConfig({
-        coreMetrics: savedConfig.coreMetrics || [],
-        derivedMetrics: savedConfig.derivedMetrics || [],
-        kpis: savedConfig.kpis || [],
-        benchmarks: savedConfig.benchmarks || [],
-        includeAdComparison: savedConfig.includeAdComparison || false
+        coreMetrics: report.configuration.customReportConfig.coreMetrics || [],
+        derivedMetrics: report.configuration.customReportConfig.derivedMetrics || [],
+        kpis: report.configuration.customReportConfig.kpis || [],
+        benchmarks: report.configuration.customReportConfig.benchmarks || [],
+        includeAdComparison: report.configuration.customReportConfig.includeAdComparison || false
       });
       setReportModalStep('custom');
     } else {

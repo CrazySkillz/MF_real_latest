@@ -1109,6 +1109,18 @@ export default function CampaignDetail() {
     },
   });
 
+  // Check Custom Integration connection status
+  const { data: customIntegration } = useQuery({
+    queryKey: ["/api/custom-integration", campaignId],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/custom-integration/${campaignId}`);
+      if (!response.ok) return { connected: false };
+      const data = await response.json();
+      return { connected: true, email: data.email };
+    },
+  });
+
   const { data: ga4Metrics, isLoading: ga4Loading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId && !!ga4Connection?.connected,
@@ -1263,6 +1275,16 @@ export default function CampaignDetail() {
       spend: "0.00", // Shopify doesn't track ad spend
       ctr: "0.00%",
       cpc: "$0.00"
+    },
+    {
+      platform: "Custom Integration",
+      connected: !!customIntegration?.connected,
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      spend: "0.00",
+      ctr: "0.00%",
+      cpc: "$0.00"
     }
   ];
 
@@ -1280,6 +1302,12 @@ export default function CampaignDetail() {
         return <i className="fab fa-tiktok w-5 h-5 text-black" />;
       case "Shopify":
         return <i className="fab fa-shopify w-5 h-5 text-green-600" />;
+      case "Custom Integration":
+        return (
+          <div className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+            <Plus className="w-3 h-3 text-white" />
+          </div>
+        );
       default:
         return <BarChart3 className="w-5 h-5 text-slate-500" />;
     }
@@ -2333,6 +2361,17 @@ export default function CampaignDetail() {
                             </Link>
                           </div>
                         )}
+                        
+                        {platform.platform === "Custom Integration" && (
+                          <div className="pt-2 border-t">
+                            <Link href={`/campaigns/${campaign.id}/custom-integration-analytics`}>
+                              <Button variant="outline" size="sm" className="w-full" data-testid="button-view-custom-analytics">
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                View Detailed Analytics
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -2378,27 +2417,6 @@ export default function CampaignDetail() {
                   )}
                 </Card>
                 ))}
-                
-                {/* Custom Connection Card */}
-                <Card className="border-dashed border-slate-300 dark:border-slate-600">
-                  <div className="flex items-center justify-between p-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
-                        <Plus className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-900 dark:text-white">Custom Integration</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Connect your custom data source
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Configure
-                    </Button>
-                  </div>
-                </Card>
                 </div>
               </div>
             </TabsContent>

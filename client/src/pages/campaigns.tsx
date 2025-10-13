@@ -231,6 +231,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          campaignId: 'temp-campaign-setup',
           email: customIntegrationEmail
         })
       });
@@ -875,6 +876,31 @@ export default function Campaigns() {
         }
       } else {
         console.log('🔧 LinkedIn not in selected platforms, skipping transfer');
+      }
+
+      // Transfer Custom Integration if custom integration was connected
+      if (selectedPlatforms.includes('custom-integration')) {
+        console.log('🔧 Attempting Custom Integration transfer...');
+        try {
+          const response = await fetch('/api/custom-integration/transfer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromCampaignId: 'temp-campaign-setup',
+              toCampaignId: (newCampaign as any).id
+            })
+          });
+          const result = await response.json();
+          if (result.success) {
+            console.log('✅ Custom Integration transferred successfully to campaign:', (newCampaign as any).id);
+          } else {
+            console.error('❌ Custom Integration transfer failed:', result.error);
+          }
+        } catch (error) {
+          console.error('❌ Failed to transfer Custom Integration:', error);
+        }
+      } else {
+        console.log('🔧 Custom Integration not in selected platforms, skipping transfer');
       }
 
       // All transfers complete - now clean up and navigate

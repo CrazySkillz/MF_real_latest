@@ -353,6 +353,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/custom-integration/transfer", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+      
+      if (!fromCampaignId || !toCampaignId) {
+        return res.status(400).json({ 
+          success: false,
+          error: "Both fromCampaignId and toCampaignId are required" 
+        });
+      }
+
+      // Get the temporary connection
+      const tempConnection = await storage.getCustomIntegration(fromCampaignId);
+      if (!tempConnection) {
+        return res.status(404).json({ 
+          success: false,
+          error: "Temporary custom integration not found" 
+        });
+      }
+
+      // Create new connection with the actual campaign ID
+      await storage.createCustomIntegration({
+        campaignId: toCampaignId,
+        email: tempConnection.email
+      });
+
+      // Delete the temporary connection
+      await storage.deleteCustomIntegration(fromCampaignId);
+
+      res.json({ 
+        success: true,
+        message: "Custom integration transferred successfully" 
+      });
+    } catch (error) {
+      console.error("Custom integration transfer error:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to transfer custom integration" 
+      });
+    }
+  });
+
   // Performance data routes
   app.get("/api/performance", async (req, res) => {
     try {

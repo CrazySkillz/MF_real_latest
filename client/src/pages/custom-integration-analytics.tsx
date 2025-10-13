@@ -113,6 +113,14 @@ export default function CustomIntegrationAnalytics() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
+                {/* Debug: Show customIntegration data */}
+                {customIntegration && (
+                  <div className="bg-yellow-100 p-4 rounded mb-4">
+                    <strong>Debug:</strong> Custom Integration Data:
+                    <pre>{JSON.stringify(customIntegration, null, 2)}</pre>
+                  </div>
+                )}
+                
                 {/* Webhook Instructions */}
                 {customIntegration?.webhookToken && (
                   <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950">

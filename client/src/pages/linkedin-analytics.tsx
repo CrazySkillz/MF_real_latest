@@ -3604,6 +3604,116 @@ export default function LinkedInAnalytics() {
                     </Label>
                   </div>
                 </div>
+
+                {/* Schedule Automatic Reports Section */}
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="schedule-reports"
+                      checked={reportForm.scheduleEnabled}
+                      onCheckedChange={(checked) => {
+                        setReportForm({
+                          ...reportForm,
+                          scheduleEnabled: checked as boolean
+                        });
+                      }}
+                      data-testid="checkbox-schedule-reports"
+                    />
+                    <Label htmlFor="schedule-reports" className="text-base cursor-pointer font-semibold">
+                      Schedule Automatic Reports
+                    </Label>
+                  </div>
+
+                  {reportForm.scheduleEnabled && (
+                    <div className="space-y-4 pl-6">
+                      {/* Frequency and Day of Week */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="schedule-frequency">Frequency</Label>
+                          <Select
+                            value={reportForm.scheduleFrequency}
+                            onValueChange={(value) => setReportForm({ ...reportForm, scheduleFrequency: value })}
+                          >
+                            <SelectTrigger id="schedule-frequency" data-testid="select-frequency">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="daily">Daily</SelectItem>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {reportForm.scheduleFrequency === 'weekly' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="schedule-day">Day of Week</Label>
+                            <Select
+                              value={reportForm.scheduleDayOfWeek}
+                              onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfWeek: value })}
+                            >
+                              <SelectTrigger id="schedule-day" data-testid="select-day">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="monday">Monday</SelectItem>
+                                <SelectItem value="tuesday">Tuesday</SelectItem>
+                                <SelectItem value="wednesday">Wednesday</SelectItem>
+                                <SelectItem value="thursday">Thursday</SelectItem>
+                                <SelectItem value="friday">Friday</SelectItem>
+                                <SelectItem value="saturday">Saturday</SelectItem>
+                                <SelectItem value="sunday">Sunday</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Time */}
+                      <div className="space-y-2">
+                        <Label htmlFor="schedule-time">Time</Label>
+                        <Select
+                          value={reportForm.scheduleTime}
+                          onValueChange={(value) => setReportForm({ ...reportForm, scheduleTime: value })}
+                        >
+                          <SelectTrigger id="schedule-time" data-testid="select-time">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="6:00 AM">6:00 AM</SelectItem>
+                            <SelectItem value="7:00 AM">7:00 AM</SelectItem>
+                            <SelectItem value="8:00 AM">8:00 AM</SelectItem>
+                            <SelectItem value="9:00 AM">9:00 AM</SelectItem>
+                            <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                            <SelectItem value="11:00 AM">11:00 AM</SelectItem>
+                            <SelectItem value="12:00 PM">12:00 PM</SelectItem>
+                            <SelectItem value="1:00 PM">1:00 PM</SelectItem>
+                            <SelectItem value="2:00 PM">2:00 PM</SelectItem>
+                            <SelectItem value="3:00 PM">3:00 PM</SelectItem>
+                            <SelectItem value="4:00 PM">4:00 PM</SelectItem>
+                            <SelectItem value="5:00 PM">5:00 PM</SelectItem>
+                            <SelectItem value="6:00 PM">6:00 PM</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Email Recipients */}
+                      <div className="space-y-2">
+                        <Label htmlFor="email-recipients">Email Recipients</Label>
+                        <Input
+                          id="email-recipients"
+                          value={reportForm.emailRecipients}
+                          onChange={(e) => setReportForm({ ...reportForm, emailRecipients: e.target.value })}
+                          placeholder="Enter email addresses (comma-separated)"
+                          data-testid="input-email-recipients"
+                        />
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          Reports will be automatically generated and sent to these email addresses
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

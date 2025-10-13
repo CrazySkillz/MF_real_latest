@@ -511,10 +511,6 @@ export default function LinkedInAnalytics() {
 
   // Handle edit report
   const handleEditReport = (report: any) => {
-    console.log('Editing report:', report);
-    console.log('Report configuration:', report.configuration);
-    console.log('Report type:', report.reportType);
-    
     setEditingReportId(report.id);
     
     // Extract email recipients from array to string
@@ -524,6 +520,10 @@ export default function LinkedInAnalytics() {
     
     // Check if scheduling is enabled
     const scheduleEnabled = report.scheduleFrequency !== null && report.scheduleFrequency !== undefined;
+    
+    // Determine the modal step based on report type FIRST
+    const modalStep = report.reportType === 'custom' ? 'custom' : 'standard';
+    setReportModalStep(modalStep);
     
     // Set report form with existing values
     setReportForm({
@@ -541,7 +541,6 @@ export default function LinkedInAnalytics() {
     
     // Set custom report config if it's a custom report
     if (report.reportType === 'custom' && report.configuration?.customReportConfig) {
-      console.log('Loading custom report config:', report.configuration.customReportConfig);
       setCustomReportConfig({
         coreMetrics: report.configuration.customReportConfig.coreMetrics || [],
         derivedMetrics: report.configuration.customReportConfig.derivedMetrics || [],
@@ -549,9 +548,6 @@ export default function LinkedInAnalytics() {
         benchmarks: report.configuration.customReportConfig.benchmarks || [],
         includeAdComparison: report.configuration.customReportConfig.includeAdComparison || false
       });
-      setReportModalStep('custom');
-    } else {
-      setReportModalStep('standard');
     }
     
     // Open the modal

@@ -1,20 +1,22 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, TrendingUp, TrendingDown, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, Upload, FileText, TrendingUp } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
+import { queryClient } from "@/lib/queryClient";
 
 export default function CustomIntegrationAnalytics() {
   const [, params] = useRoute("/campaigns/:id/custom-integration-analytics");
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const campaignId = params?.id;
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Fetch campaign details
   const { data: campaign } = useQuery({
@@ -28,47 +30,94 @@ export default function CustomIntegrationAnalytics() {
     enabled: !!campaignId,
   });
 
-  // Mock metrics - in production, these would be parsed from PDF documents
-  const mockMetrics = {
-    impressions: 12450,
-    impressionsTrend: 15.3,
-    reach: 9823,
-    reachTrend: 12.5,
-    clicks: 1876,
-    clicksTrend: 8.7,
-    engagements: 3421,
-    engagementsTrend: -2.4,
-    spend: 8750.00,
-    spendTrend: 5.2,
-    conversions: 342,
-    conversionsTrend: 18.9,
-    leads: 256,
-    leadsTrend: 14.3,
-    videoViews: 5430,
-    videoViewsTrend: 22.1,
-    viralImpressions: 1823,
-    viralImpressionsTrend: 31.2
+  // Fetch latest metrics from database
+  const { data: metricsData, isLoading: metricsLoading } = useQuery({
+    queryKey: ["/api/custom-integration", campaignId, "metrics"],
+    enabled: !!campaignId,
+  });
+
+  // PDF upload mutation
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('pdf', file);
+      
+      const response = await fetch(`/api/custom-integration/${campaignId}/upload-pdf`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upload PDF');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId, "metrics"] });
+      toast({
+        title: "PDF Processed Successfully",
+        description: "Metrics have been extracted and updated",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast({
+          title: "Invalid File",
+          description: "Please select a PDF file",
+          variant: "destructive",
+        });
+        return;
+      }
+      uploadMutation.mutate(file);
+    }
   };
 
-  const getTrendIcon = (trend: number) => {
-    if (trend > 0) return <TrendingUp className="w-4 h-4 text-green-500" />;
-    if (trend < 0) return <TrendingDown className="w-4 h-4 text-red-500" />;
-    return <Minus className="w-4 h-4 text-slate-400" />;
-  };
-
-  const getTrendColor = (trend: number) => {
-    if (trend > 0) return "text-green-600 dark:text-green-400";
-    if (trend < 0) return "text-red-600 dark:text-red-400";
-    return "text-slate-600 dark:text-slate-400";
+  // Use real metrics if available, otherwise show placeholder
+  const metrics = metricsData || {
+    impressions: 0,
+    reach: 0,
+    clicks: 0,
+    engagements: 0,
+    spend: "0",
+    conversions: 0,
+    leads: 0,
+    videoViews: 0,
+    viralImpressions: 0,
   };
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(num);
   };
 
-  const formatCurrency = (num: number) => {
+  const formatCurrency = (value: string | number) => {
+    const num = typeof value === 'string' ? parseFloat(value) : value;
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
   };
+
+  const hasMetrics = metricsData && (
+    metricsData.impressions > 0 ||
+    metricsData.reach > 0 ||
+    metricsData.clicks > 0 ||
+    metricsData.engagements > 0 ||
+    parseFloat(metricsData.spend) > 0 ||
+    metricsData.conversions > 0 ||
+    metricsData.leads > 0 ||
+    metricsData.videoViews > 0 ||
+    metricsData.viralImpressions > 0
+  );
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900">
@@ -115,219 +164,249 @@ export default function CustomIntegrationAnalytics() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Impressions */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          Impressions
-                        </CardTitle>
-                        <Eye className="w-4 h-4 text-slate-400" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatNumber(mockMetrics.impressions)}
-                      </div>
-                      <div className={`flex items-center gap-1 mt-1 text-sm ${getTrendColor(mockMetrics.impressionsTrend)}`}>
-                        {getTrendIcon(mockMetrics.impressionsTrend)}
-                        <span>{Math.abs(mockMetrics.impressionsTrend)}%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Reach */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          Reach
-                        </CardTitle>
-                        <Target className="w-4 h-4 text-slate-400" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatNumber(mockMetrics.reach)}
-                      </div>
-                      <div className={`flex items-center gap-1 mt-1 text-sm ${getTrendColor(mockMetrics.reachTrend)}`}>
-                        {getTrendIcon(mockMetrics.reachTrend)}
-                        <span>{Math.abs(mockMetrics.reachTrend)}%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Clicks */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          Clicks
-                        </CardTitle>
-                        <MousePointerClick className="w-4 h-4 text-slate-400" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatNumber(mockMetrics.clicks)}
-                      </div>
-                      <div className={`flex items-center gap-1 mt-1 text-sm ${getTrendColor(mockMetrics.clicksTrend)}`}>
-                        {getTrendIcon(mockMetrics.clicksTrend)}
-                        <span>{Math.abs(mockMetrics.clicksTrend)}%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Engagements */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          Engagements
-                        </CardTitle>
-                        <Target className="w-4 h-4 text-slate-400" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatNumber(mockMetrics.engagements)}
-                      </div>
-                      <div className={`flex items-center gap-1 mt-1 text-sm ${getTrendColor(mockMetrics.engagementsTrend)}`}>
-                        {getTrendIcon(mockMetrics.engagementsTrend)}
-                        <span>{Math.abs(mockMetrics.engagementsTrend)}%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Spend */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          Spend
-                        </CardTitle>
-                        <DollarSign className="w-4 h-4 text-slate-400" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatCurrency(mockMetrics.spend)}
-                      </div>
-                      <div className={`flex items-center gap-1 mt-1 text-sm ${getTrendColor(mockMetrics.spendTrend)}`}>
-                        {getTrendIcon(mockMetrics.spendTrend)}
-                        <span>{Math.abs(mockMetrics.spendTrend)}%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Conversions */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          Conversions
-                        </CardTitle>
-                        <Target className="w-4 h-4 text-slate-400" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatNumber(mockMetrics.conversions)}
-                      </div>
-                      <div className={`flex items-center gap-1 mt-1 text-sm ${getTrendColor(mockMetrics.conversionsTrend)}`}>
-                        {getTrendIcon(mockMetrics.conversionsTrend)}
-                        <span>{Math.abs(mockMetrics.conversionsTrend)}%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Leads */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          Leads
-                        </CardTitle>
-                        <Target className="w-4 h-4 text-slate-400" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatNumber(mockMetrics.leads)}
-                      </div>
-                      <div className={`flex items-center gap-1 mt-1 text-sm ${getTrendColor(mockMetrics.leadsTrend)}`}>
-                        {getTrendIcon(mockMetrics.leadsTrend)}
-                        <span>{Math.abs(mockMetrics.leadsTrend)}%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Video Views */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          Video Views
-                        </CardTitle>
-                        <Eye className="w-4 h-4 text-slate-400" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatNumber(mockMetrics.videoViews)}
-                      </div>
-                      <div className={`flex items-center gap-1 mt-1 text-sm ${getTrendColor(mockMetrics.videoViewsTrend)}`}>
-                        {getTrendIcon(mockMetrics.videoViewsTrend)}
-                        <span>{Math.abs(mockMetrics.videoViewsTrend)}%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Viral Impressions */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          Viral Impressions
-                        </CardTitle>
-                        <TrendingUp className="w-4 h-4 text-slate-400" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatNumber(mockMetrics.viralImpressions)}
-                      </div>
-                      <div className={`flex items-center gap-1 mt-1 text-sm ${getTrendColor(mockMetrics.viralImpressionsTrend)}`}>
-                        {getTrendIcon(mockMetrics.viralImpressionsTrend)}
-                        <span>{Math.abs(mockMetrics.viralImpressionsTrend)}%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Data Source Notice */}
-                <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
+                {/* Upload PDF Section */}
+                <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950">
                   <CardContent className="pt-6">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                        <Plus className="w-5 h-5 text-white" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">
+                            Upload PDF Report
+                          </h3>
+                          <p className="text-sm text-purple-700 dark:text-purple-300">
+                            Upload a PDF document containing your marketing metrics to automatically extract and display the data
+                          </p>
+                        </div>
                       </div>
                       <div>
-                        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                          Data Source: PDF Documents
-                        </h3>
-                        <p className="text-sm text-blue-700 dark:text-blue-300">
-                          Metrics are extracted from PDF documents sent to <strong>{customIntegration?.email}</strong>. 
-                          The system automatically processes incoming PDFs and updates the analytics dashboard.
-                        </p>
-                        <Badge className="mt-2 bg-blue-600 text-white">
-                          Last Updated: {new Date().toLocaleString()}
-                        </Badge>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileSelect}
+                          accept=".pdf"
+                          className="hidden"
+                        />
+                        <Button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadMutation.isPending}
+                          className="bg-purple-600 hover:bg-purple-700"
+                          data-testid="button-upload-pdf"
+                        >
+                          {uploadMutation.isPending ? (
+                            <>Processing...</>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4 mr-2" />
+                              Upload PDF
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
+
+                {!hasMetrics && !metricsLoading && (
+                  <Card className="border-slate-200 dark:border-slate-700">
+                    <CardContent className="pt-6">
+                      <div className="text-center py-12">
+                        <FileText className="w-16 h-16 mx-auto text-slate-400 mb-4" />
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                          No Metrics Available
+                        </h3>
+                        <p className="text-slate-600 dark:text-slate-400">
+                          Upload a PDF document to extract and display your marketing metrics
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {hasMetrics && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Impressions */}
+                      <Card data-testid="card-metric-impressions">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              Impressions
+                            </CardTitle>
+                            <Eye className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-impressions">
+                            {formatNumber(metrics.impressions)}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Reach */}
+                      <Card data-testid="card-metric-reach">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              Reach
+                            </CardTitle>
+                            <Target className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-reach">
+                            {formatNumber(metrics.reach)}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Clicks */}
+                      <Card data-testid="card-metric-clicks">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              Clicks
+                            </CardTitle>
+                            <MousePointerClick className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-clicks">
+                            {formatNumber(metrics.clicks)}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Engagements */}
+                      <Card data-testid="card-metric-engagements">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              Engagements
+                            </CardTitle>
+                            <Target className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-engagements">
+                            {formatNumber(metrics.engagements)}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Spend */}
+                      <Card data-testid="card-metric-spend">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              Spend
+                            </CardTitle>
+                            <DollarSign className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-spend">
+                            {formatCurrency(metrics.spend)}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Conversions */}
+                      <Card data-testid="card-metric-conversions">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              Conversions
+                            </CardTitle>
+                            <Target className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-conversions">
+                            {formatNumber(metrics.conversions)}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Leads */}
+                      <Card data-testid="card-metric-leads">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              Leads
+                            </CardTitle>
+                            <Target className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-leads">
+                            {formatNumber(metrics.leads)}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Video Views */}
+                      <Card data-testid="card-metric-video-views">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              Video Views
+                            </CardTitle>
+                            <Eye className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-video-views">
+                            {formatNumber(metrics.videoViews)}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Viral Impressions */}
+                      <Card data-testid="card-metric-viral-impressions">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              Viral Impressions
+                            </CardTitle>
+                            <TrendingUp className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-viral-impressions">
+                            {formatNumber(metrics.viralImpressions)}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Data Source Notice */}
+                    <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
+                            <Plus className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                              Data Source: PDF Documents
+                            </h3>
+                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                              Metrics are extracted from PDF documents you upload. The system automatically parses the PDF and updates the analytics dashboard.
+                            </p>
+                            {metricsData?.uploadedAt && (
+                              <Badge className="mt-2 bg-blue-600 text-white">
+                                Last Updated: {new Date(metricsData.uploadedAt).toLocaleString()}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
               </TabsContent>
 
               {/* KPIs Tab */}

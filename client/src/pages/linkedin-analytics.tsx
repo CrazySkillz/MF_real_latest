@@ -529,16 +529,21 @@ export default function LinkedInAnalytics() {
     const modalStep = report.reportType === 'custom' ? 'custom' : 'standard';
     setReportModalStep(modalStep);
     
+    // Parse configuration if it's a string
+    const config = typeof report.configuration === 'string' 
+      ? JSON.parse(report.configuration) 
+      : report.configuration || {};
+    
     // Set report form with existing values
     const formData = {
       name: report.name || '',
       description: report.description || '',
       reportType: report.reportType || '',
-      configuration: report.configuration || {},
+      configuration: config,
       scheduleEnabled: scheduleEnabled,
       scheduleFrequency: report.scheduleFrequency || 'weekly',
-      scheduleDayOfWeek: report.configuration?.scheduleDayOfWeek || 'monday',
-      scheduleTime: report.configuration?.scheduleTime || '9:00 AM',
+      scheduleDayOfWeek: config?.scheduleDayOfWeek || report.scheduleDayOfWeek || 'monday',
+      scheduleTime: config?.scheduleTime || report.scheduleTime || '9:00 AM',
       emailRecipients: emailRecipientsString,
       status: report.status || 'draft'
     };
@@ -546,13 +551,13 @@ export default function LinkedInAnalytics() {
     setReportForm(formData);
     
     // Set custom report config if it's a custom report
-    if (report.reportType === 'custom' && report.configuration?.customReportConfig) {
+    if (report.reportType === 'custom' && config?.customReportConfig) {
       setCustomReportConfig({
-        coreMetrics: report.configuration.customReportConfig.coreMetrics || [],
-        derivedMetrics: report.configuration.customReportConfig.derivedMetrics || [],
-        kpis: report.configuration.customReportConfig.kpis || [],
-        benchmarks: report.configuration.customReportConfig.benchmarks || [],
-        includeAdComparison: report.configuration.customReportConfig.includeAdComparison || false
+        coreMetrics: config.customReportConfig.coreMetrics || [],
+        derivedMetrics: config.customReportConfig.derivedMetrics || [],
+        kpis: config.customReportConfig.kpis || [],
+        benchmarks: config.customReportConfig.benchmarks || [],
+        includeAdComparison: config.customReportConfig.includeAdComparison || false
       });
     }
     

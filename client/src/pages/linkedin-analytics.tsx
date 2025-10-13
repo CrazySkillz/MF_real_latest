@@ -2975,7 +2975,7 @@ export default function LinkedInAnalytics() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="kpi-current">Current Value (Auto-populated)</Label>
+                  <Label htmlFor="kpi-current">Current Value</Label>
                   <Input
                     id="kpi-current"
                     type="text"

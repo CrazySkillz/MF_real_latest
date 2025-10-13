@@ -511,12 +511,18 @@ export default function LinkedInAnalytics() {
 
   // Handle edit report
   const handleEditReport = (report: any) => {
+    console.log('=== EDIT REPORT DEBUG ===');
+    console.log('Full report object:', report);
+    console.log('Email recipients:', report.emailRecipients);
+    console.log('Configuration:', report.configuration);
+    
     setEditingReportId(report.id);
     
     // Extract email recipients from array to string
     const emailRecipientsString = report.emailRecipients && Array.isArray(report.emailRecipients)
       ? report.emailRecipients.join(', ')
       : '';
+    console.log('Email recipients string:', emailRecipientsString);
     
     // Check if scheduling is enabled
     const scheduleEnabled = report.scheduleFrequency !== null && report.scheduleFrequency !== undefined;
@@ -526,7 +532,7 @@ export default function LinkedInAnalytics() {
     setReportModalStep(modalStep);
     
     // Set report form with existing values
-    setReportForm({
+    const formData = {
       name: report.name || '',
       description: report.description || '',
       reportType: report.reportType || '',
@@ -537,17 +543,21 @@ export default function LinkedInAnalytics() {
       scheduleTime: report.configuration?.scheduleTime || '9:00 AM',
       emailRecipients: emailRecipientsString,
       status: report.status || 'draft'
-    });
+    };
+    console.log('Setting form data:', formData);
+    setReportForm(formData);
     
     // Set custom report config if it's a custom report
     if (report.reportType === 'custom' && report.configuration?.customReportConfig) {
-      setCustomReportConfig({
+      const customConfig = {
         coreMetrics: report.configuration.customReportConfig.coreMetrics || [],
         derivedMetrics: report.configuration.customReportConfig.derivedMetrics || [],
         kpis: report.configuration.customReportConfig.kpis || [],
         benchmarks: report.configuration.customReportConfig.benchmarks || [],
         includeAdComparison: report.configuration.customReportConfig.includeAdComparison || false
-      });
+      };
+      console.log('Setting custom config:', customConfig);
+      setCustomReportConfig(customConfig);
     }
     
     // Open the modal

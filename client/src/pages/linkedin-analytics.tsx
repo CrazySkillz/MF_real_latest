@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -135,6 +135,33 @@ export default function LinkedInAnalytics() {
     benchmarks: [] as string[],
     includeAdComparison: false
   });
+
+  // Detect user's time zone
+  const [userTimeZone, setUserTimeZone] = useState('');
+  
+  useEffect(() => {
+    // Detect time zone from browser
+    const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    setUserTimeZone(detectedTimeZone);
+  }, []);
+
+  // Get formatted time zone display (e.g., "GMT-5" or "PST")
+  const getTimeZoneDisplay = () => {
+    if (!userTimeZone) return '';
+    
+    try {
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: userTimeZone,
+        timeZoneName: 'short'
+      });
+      const parts = formatter.formatToParts(now);
+      const timeZonePart = parts.find(part => part.type === 'timeZoneName');
+      return timeZonePart?.value || userTimeZone;
+    } catch (e) {
+      return userTimeZone;
+    }
+  };
 
   // Fetch campaign data
   const { data: campaignData, isLoading: campaignLoading } = useQuery({
@@ -3681,6 +3708,11 @@ export default function LinkedInAnalytics() {
                                 <SelectItem value="6:00 PM">6:00 PM</SelectItem>
                               </SelectContent>
                             </Select>
+                            {userTimeZone && (
+                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                                All times are in your time zone: {getTimeZoneDisplay()}
+                              </p>
+                            )}
                           </div>
 
                           {/* Email Recipients */}

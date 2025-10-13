@@ -5,8 +5,23 @@ import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, inse
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
+import multer from "multer";
+import { parsePDFMetrics } from "./services/pdf-parser";
 
-
+// Configure multer for PDF file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'));
+    }
+  },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Campaign routes
@@ -1839,6 +1854,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: "Failed to transfer custom integration" 
+      });
+    }
+  });
+
+  // Get latest metrics for a custom integration
+  app.get("/api/custom-integration/:campaignId/metrics", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const metrics = await storage.getLatestCustomIntegrationMetrics(campaignId);
+      
+      if (!metrics) {
+        return res.status(404).json({ message: "No metrics found for this campaign" });
+      }
+      
+      res.json(metrics);
+    } catch (error) {
+      console.error("Failed to fetch custom integration metrics:", error);
+      res.status(500).json({ message: "Failed to fetch metrics" });
+    }
+  });
+
+  // Upload and parse PDF for custom integration
+  app.post("/api/custom-integration/:campaignId/upload-pdf", upload.single('pdf'), async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).json({ 
+          success: false,
+          error: "No PDF file provided" 
+        });
+      }
+
+      console.log(`[PDF Upload] Processing PDF for campaign ${campaignId}, file: ${req.file.originalname}, size: ${req.file.size} bytes`);
+
+      // Parse the PDF to extract metrics
+      const parsedMetrics = await parsePDFMetrics(req.file.buffer);
+      console.log(`[PDF Upload] Parsed metrics:`, parsedMetrics);
+
+      // Store the metrics in the database
+      const metrics = await storage.createCustomIntegrationMetrics({
+        campaignId,
+        impressions: parsedMetrics.impressions,
+        reach: parsedMetrics.reach,
+        clicks: parsedMetrics.clicks,
+        engagements: parsedMetrics.engagements,
+        spend: parsedMetrics.spend.toString(),
+        conversions: parsedMetrics.conversions,
+        leads: parsedMetrics.leads,
+        videoViews: parsedMetrics.videoViews,
+        viralImpressions: parsedMetrics.viralImpressions,
+        pdfFileName: req.file.originalname,
+        emailSubject: null,
+        emailId: null,
+      });
+
+      console.log(`[PDF Upload] Metrics stored successfully:`, metrics.id);
+
+      res.json({
+        success: true,
+        message: "PDF processed successfully",
+        metrics: {
+          impressions: metrics.impressions,
+          reach: metrics.reach,
+          clicks: metrics.clicks,
+          engagements: metrics.engagements,
+          spend: parseFloat(metrics.spend),
+          conversions: metrics.conversions,
+          leads: metrics.leads,
+          videoViews: metrics.videoViews,
+          viralImpressions: metrics.viralImpressions,
+        },
+        uploadedAt: metrics.uploadedAt,
+      });
+    } catch (error) {
+      console.error("[PDF Upload] Error processing PDF:", error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to process PDF" 
       });
     }
   });

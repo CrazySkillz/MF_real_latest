@@ -161,17 +161,166 @@ export default function CustomIntegrationAnalytics() {
                           </div>
                         </div>
                         
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* IFTTT Setup Guide */}
+                {customIntegration?.webhookToken && (
+                  <Card className="border-slate-200 dark:border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded bg-blue-500 flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">IF</span>
+                        </div>
+                        IFTTT Setup Guide (Recommended - Easier)
+                      </CardTitle>
+                      <CardDescription>
+                        Follow these simple steps to automatically forward marketing report PDFs to your webhook
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {/* Step 1 */}
+                        <div className="flex gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                            1
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                              Create an IFTTT Account
+                            </h4>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              Go to <a href="https://ifttt.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">ifttt.com</a> and sign up for a free account
+                            </p>
+                            <div className="bg-slate-50 dark:bg-slate-800 rounded p-3 text-sm">
+                              <strong>💰 Cost:</strong> Free plan available, or $2.50/month for unlimited automations
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Step 2 */}
+                        <div className="flex gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                            2
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                              Create a New Applet
+                            </h4>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              Click "Create" button in the top right, then click "If This"
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Step 3 */}
+                        <div className="flex gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                            3
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                              Choose Email Trigger
+                            </h4>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              Search for "Email" and select the <strong>Email</strong> service
+                            </p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              Choose trigger: <strong>"Send IFTTT an email tagged"</strong>
+                            </p>
+                            <div className="bg-slate-50 dark:bg-slate-800 rounded p-3 text-sm space-y-2">
+                              <p><strong>Tag to use:</strong> <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">marketing</code></p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                You'll get a special IFTTT email address to forward your PDFs to (e.g., trigger@applet.ifttt.com)
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Step 4 */}
+                        <div className="flex gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                            4
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                              Add Webhook Action
+                            </h4>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              Click "Then That", search for "Webhooks", and select <strong>Webhooks</strong> service
+                            </p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              Choose action: <strong>"Make a web request"</strong>
+                            </p>
+                            <div className="bg-slate-50 dark:bg-slate-800 rounded p-3 text-sm space-y-3">
+                              <div>
+                                <strong>URL:</strong>
+                                <div className="mt-1 p-2 bg-white dark:bg-slate-900 rounded border border-slate-300 dark:border-slate-600 font-mono text-xs break-all">
+                                  {window.location.origin}/api/webhook/custom-integration/{customIntegration.webhookToken}
+                                </div>
+                              </div>
+                              <div>
+                                <strong>Method:</strong> <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">POST</code>
+                              </div>
+                              <div>
+                                <strong>Content Type:</strong> <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">multipart/form-data</code>
+                              </div>
+                              <div>
+                                <strong>Body:</strong>
+                                <div className="mt-1 p-2 bg-white dark:bg-slate-900 rounded border border-slate-300 dark:border-slate-600 font-mono text-xs">
+                                  pdf={'{{Attachment}}'}
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  ⚠️ Important: Use the "Attachment" ingredient from the dropdown
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Step 5 */}
+                        <div className="flex gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                            5
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                              Save and Test
+                            </h4>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              Click "Continue", give your applet a name (e.g., "Marketing Reports to PerformanceCore"), and click "Finish"
+                            </p>
+                            <div className="bg-green-50 dark:bg-green-950 rounded p-3 text-sm border border-green-200 dark:border-green-800">
+                              <strong className="text-green-900 dark:text-green-100">✅ Test it:</strong>
+                              <p className="text-green-700 dark:text-green-300 mt-1">
+                                Forward a marketing report PDF to your IFTTT trigger email with the tag "marketing" in the subject line. Your metrics should appear here within a few minutes!
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Pro Tips */}
                         <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
-                          <h4 className="font-semibold text-blue-900 dark:text-blue-100 text-sm mb-2">
-                            How to use with Zapier or IFTTT:
+                          <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4" />
+                            Pro Tips
                           </h4>
-                          <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-decimal list-inside">
-                            <li>Create a new automation (Zap/Applet)</li>
-                            <li>Set trigger: When email arrives with PDF attachment</li>
-                            <li>Add action: Send POST request to webhook URL above</li>
-                            <li>Map the PDF attachment to the 'pdf' field</li>
-                            <li>Save and activate - metrics will update automatically!</li>
-                          </ol>
+                          <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
+                            <li className="flex items-start gap-2">
+                              <span className="flex-shrink-0">📧</span>
+                              <span>Set up email forwarding rules in Gmail/Outlook to automatically forward reports from specific senders to your IFTTT email</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="flex-shrink-0">📱</span>
+                              <span>Download the IFTTT mobile app to manage and monitor your automations on the go</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="flex-shrink-0">⚡</span>
+                              <span>IFTTT usually processes emails within 1-5 minutes, so your dashboard updates quickly</span>
+                            </li>
+                          </ul>
                         </div>
                       </div>
                     </CardContent>

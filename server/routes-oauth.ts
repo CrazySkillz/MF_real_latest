@@ -7,6 +7,7 @@ import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import multer from "multer";
 import { parsePDFMetrics } from "./services/pdf-parser";
+import { nanoid } from "nanoid";
 
 // Configure multer for PDF file uploads
 const upload = multer({

@@ -560,8 +560,10 @@ export default function LinkedInAnalytics() {
       setCustomReportConfig(customConfig);
     }
     
-    // Open the modal
-    setIsReportModalOpen(true);
+    // Open the modal after a brief delay to ensure state updates complete
+    setTimeout(() => {
+      setIsReportModalOpen(true);
+    }, 0);
   };
 
   // Handle create report

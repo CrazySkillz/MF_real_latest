@@ -537,12 +537,14 @@ export default function LinkedInAnalytics() {
     
     // Set custom report config if it's a custom report
     if (report.reportType === 'custom' && report.configuration) {
+      // Access the nested customReportConfig object
+      const savedConfig = report.configuration.customReportConfig || report.configuration;
       setCustomReportConfig({
-        coreMetrics: report.configuration.coreMetrics || [],
-        derivedMetrics: report.configuration.derivedMetrics || [],
-        kpis: report.configuration.kpis || [],
-        benchmarks: report.configuration.benchmarks || [],
-        includeAdComparison: report.configuration.includeAdComparison || false
+        coreMetrics: savedConfig.coreMetrics || [],
+        derivedMetrics: savedConfig.derivedMetrics || [],
+        kpis: savedConfig.kpis || [],
+        benchmarks: savedConfig.benchmarks || [],
+        includeAdComparison: savedConfig.includeAdComparison || false
       });
       setReportModalStep('custom');
     } else {
@@ -599,12 +601,19 @@ export default function LinkedInAnalytics() {
         name: reportForm.name,
         description: reportForm.description || null,
         reportType: reportForm.reportType,
-        configuration: {
-          ...reportForm.configuration,
-          scheduleEnabled: reportForm.scheduleEnabled,
-          scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
-          scheduleTime: reportForm.scheduleTime
-        },
+        configuration: reportForm.reportType === 'custom' 
+          ? {
+              customReportConfig,
+              scheduleEnabled: reportForm.scheduleEnabled,
+              scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
+              scheduleTime: reportForm.scheduleTime
+            }
+          : {
+              ...reportForm.configuration,
+              scheduleEnabled: reportForm.scheduleEnabled,
+              scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
+              scheduleTime: reportForm.scheduleTime
+            },
         scheduleFrequency: reportForm.scheduleFrequency,
         emailRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
         status: reportForm.status || 'active'

@@ -265,15 +265,15 @@ export default function CustomIntegrationAnalytics() {
                                 <strong>Method:</strong> <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">POST</code>
                               </div>
                               <div>
-                                <strong>Content Type:</strong> <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">multipart/form-data</code>
+                                <strong>Content Type:</strong> <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">application/json</code>
                               </div>
                               <div>
                                 <strong>Body:</strong>
                                 <div className="mt-1 p-2 bg-white dark:bg-slate-900 rounded border border-slate-300 dark:border-slate-600 font-mono text-xs">
-                                  pdf={'{{Attachment}}'}
+                                  {'{"value1":"<<<Attachment URL>>>"}'} 
                                 </div>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  ⚠️ Important: Use the "Attachment" ingredient from the dropdown
+                                  ⚠️ Important: Click "Add ingredient" and select "Attachment URL" from the dropdown to insert the actual PDF link
                                 </p>
                               </div>
                             </div>

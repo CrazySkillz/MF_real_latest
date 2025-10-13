@@ -74,13 +74,17 @@ Preferred communication style: Simple, everyday language.
 - **Token Management**: Automatic refresh on expiry with seamless fallback
 
 ### Custom Integration (Webhook-Based)
-- **Implementation**: Automated PDF processing via webhook endpoints
+- **Implementation**: Automated PDF processing via webhook endpoints with dual-format support
 - **Authentication**: Unique webhook token per integration for secure access
-- **Webhook URL**: `/api/webhook/custom-integration/:token` accepts POST requests with PDF files
-- **Automation Services**: Compatible with Zapier, IFTTT, Make.com, and other webhook-supporting platforms
-- **Data Flow**: Email with PDF → Automation service → Webhook endpoint → PDF parsing → Metric extraction → Database storage → Dashboard update
+- **Webhook URL**: `/api/webhook/custom-integration/:token` accepts POST requests in two formats:
+  - **Direct Upload** (Zapier): multipart/form-data with PDF file in 'pdf' field
+  - **URL-Based** (IFTTT): JSON body with PDF URL in 'value1', 'pdfUrl', or 'pdf_url' field
+- **Automation Services**: Compatible with Zapier (file upload), IFTTT (URL-based), Make.com, and other webhook-supporting platforms
+- **Data Flow**: 
+  - Email with PDF → Automation service → Webhook endpoint → PDF download/upload → PDF parsing → Metric extraction → Database storage → Dashboard update
 - **Metrics Extraction**: Automatic parsing of 9 core metrics (Impressions, Reach, Clicks, Engagements, Spend, Conversions, Leads, Video Views, Viral Impressions) from PDF reports using pattern matching
 - **PDF Parser**: Uses pdf-parse library with regex pattern matching for flexible metric extraction
+- **IFTTT Integration**: Leverages IFTTT's email trigger "Attachment URL" ingredient to pass public PDF URLs to webhook for download and processing
 - **Setup**: Generate unique webhook token on connection → Copy webhook URL → Configure in automation service → Activate
 
 ### Future Enhancements

@@ -1952,14 +1952,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { token } = req.params;
       
       console.log(`[Webhook] Received request with token: ${token}`);
+      console.log(`[Webhook] Request body:`, req.body);
+      console.log(`[Webhook] Has file:`, !!req.file);
       
-      if (!req.file) {
-        return res.status(400).json({ 
-          success: false,
-          error: "No PDF file provided" 
-        });
-      }
-
       // Find the custom integration by webhook token
       const customIntegrations = await storage.getAllCustomIntegrations();
       const integration = customIntegrations.find(ci => ci.webhookToken === token);
@@ -1972,10 +1967,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`[Webhook] Processing PDF for campaign ${integration.campaignId}, file: ${req.file.originalname}, size: ${req.file.size} bytes`);
+      let pdfBuffer: Buffer;
+      let fileName: string;
+
+      // Check if PDF file was uploaded directly (Zapier/manual upload)
+      if (req.file) {
+        pdfBuffer = req.file.buffer;
+        fileName = req.file.originalname;
+        console.log(`[Webhook] Processing uploaded PDF for campaign ${integration.campaignId}, file: ${fileName}, size: ${req.file.size} bytes`);
+      } 
+      // Check if PDF URL was provided (IFTTT)
+      else if (req.body.pdfUrl || req.body.pdf_url || req.body.value1) {
+        const pdfUrl = req.body.pdfUrl || req.body.pdf_url || req.body.value1;
+        console.log(`[Webhook] Downloading PDF from URL: ${pdfUrl}`);
+        
+        try {
+          const response = await fetch(pdfUrl);
+          if (!response.ok) {
+            throw new Error(`Failed to download PDF: ${response.statusText}`);
+          }
+          
+          const arrayBuffer = await response.arrayBuffer();
+          pdfBuffer = Buffer.from(arrayBuffer);
+          fileName = pdfUrl.split('/').pop()?.split('?')[0] || 'downloaded.pdf';
+          
+          console.log(`[Webhook] Downloaded PDF for campaign ${integration.campaignId}, size: ${pdfBuffer.length} bytes`);
+        } catch (downloadError) {
+          console.error('[Webhook] PDF download error:', downloadError);
+          return res.status(400).json({ 
+            success: false,
+            error: "Failed to download PDF from URL" 
+          });
+        }
+      } 
+      else {
+        return res.status(400).json({ 
+          success: false,
+          error: "No PDF file or PDF URL provided. Send either a file upload or provide 'pdfUrl' in the request body." 
+        });
+      }
 
       // Parse the PDF to extract metrics
-      const parsedMetrics = await parsePDFMetrics(req.file.buffer);
+      const parsedMetrics = await parsePDFMetrics(pdfBuffer);
       console.log(`[Webhook] Parsed metrics:`, parsedMetrics);
 
       // Store the metrics in the database
@@ -1990,9 +2023,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         leads: parsedMetrics.leads,
         videoViews: parsedMetrics.videoViews,
         viralImpressions: parsedMetrics.viralImpressions,
-        pdfFileName: req.file.originalname,
-        emailSubject: req.body.subject || null, // Optional: can be sent by webhook service
-        emailId: req.body.emailId || null, // Optional: can be sent by webhook service
+        pdfFileName: fileName,
+        emailSubject: req.body.subject || req.body.value2 || null,
+        emailId: req.body.emailId || req.body.value3 || null,
       });
 
       console.log(`[Webhook] Metrics stored successfully:`, metrics.id);

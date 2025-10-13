@@ -32,7 +32,7 @@ Preferred communication style: Simple, everyday language.
 - **Development Storage**: In-memory storage
 
 ### Core Features
-- **Data Models**: Campaigns, Metrics, Integrations, Performance Data, LinkedIn Reports.
+- **Data Models**: Campaigns, Metrics, Integrations, Performance Data, LinkedIn Reports, Custom Integration Metrics.
 - **Frontend Components**: Dashboard, Integrations management, comprehensive UI components.
 - **Backend Services**: Abstracted storage interface, RESTful endpoints, Zod validation, centralized error handling.
 - **Data Flow**: Client requests via TanStack Query -> FastAPI handles validation -> Abstract storage interface -> PostgreSQL via Drizzle ORM -> Typed responses to frontend -> React Query manages UI updates.
@@ -42,6 +42,7 @@ Preferred communication style: Simple, everyday language.
 - **Auto-Refresh**: Configurable auto-refresh functionality for data.
 - **Error Handling**: Seamless fallback analytics data display and silent token management for uninterrupted user experience (e.g., for OAuth issues).
 - **LinkedIn Reports**: 5th tab in LinkedIn Analytics with support for creating, managing, and viewing reports. Report types include Overview, KPIs, Benchmarks, Ad Comparison, and Custom reports. Features include two-step creation modal (type selection → configuration), report listing with metadata, and foundation for download/email/scheduling capabilities.
+- **Custom Integration Webhooks**: Automated PDF processing via unique webhook URLs for integration with Zapier, IFTTT, and other automation services. Each custom integration receives a unique token-based webhook endpoint for secure, automated metric updates.
 
 ## External Dependencies
 
@@ -72,9 +73,20 @@ Preferred communication style: Simple, everyday language.
 - **Integration**: Real-time and historical metrics via GA4 API
 - **Token Management**: Automatic refresh on expiry with seamless fallback
 
+### Custom Integration (Webhook-Based)
+- **Implementation**: Automated PDF processing via webhook endpoints
+- **Authentication**: Unique webhook token per integration for secure access
+- **Webhook URL**: `/api/webhook/custom-integration/:token` accepts POST requests with PDF files
+- **Automation Services**: Compatible with Zapier, IFTTT, Make.com, and other webhook-supporting platforms
+- **Data Flow**: Email with PDF → Automation service → Webhook endpoint → PDF parsing → Metric extraction → Database storage → Dashboard update
+- **Metrics Extraction**: Automatic parsing of 9 core metrics (Impressions, Reach, Clicks, Engagements, Spend, Conversions, Leads, Video Views, Viral Impressions) from PDF reports using pattern matching
+- **PDF Parser**: Uses pdf-parse library with regex pattern matching for flexible metric extraction
+- **Setup**: Generate unique webhook token on connection → Copy webhook URL → Configure in automation service → Activate
+
 ### Future Enhancements
 - **Token Persistence**: Store OAuth tokens in database (currently in-memory)
 - **Token Refresh**: Implement refresh token flow for long-lived LinkedIn sessions
 - **Multi-Account Support**: Multiple LinkedIn connections per user
 - **Webhook Integration**: Real-time updates via LinkedIn webhooks
 - **Email Delivery**: Resend integration available for report email functionality (not yet implemented)
+- **Custom Integration PDF Templates**: Standardized PDF templates for consistent metric extraction

@@ -164,50 +164,68 @@ export default function CustomIntegrationAnalytics() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
-                {/* Upload PDF Section */}
-                <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-5 h-5 text-white" />
+                {/* Webhook Instructions */}
+                {customIntegration?.webhookToken && (
+                  <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950">
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">
+                              Webhook URL for Automated PDF Processing
+                            </h3>
+                            <p className="text-sm text-purple-700 dark:text-purple-300 mb-3">
+                              Use this webhook URL with automation services like Zapier or IFTTT to automatically process PDFs from your emails or other sources
+                            </p>
+                            <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                              <div className="flex items-center justify-between gap-3 mb-3">
+                                <code className="text-sm text-purple-900 dark:text-purple-100 break-all font-mono">
+                                  {window.location.origin}/api/webhook/custom-integration/{customIntegration.webhookToken}
+                                </code>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/api/webhook/custom-integration/${customIntegration.webhookToken}`);
+                                    toast({
+                                      title: "Copied!",
+                                      description: "Webhook URL copied to clipboard",
+                                    });
+                                  }}
+                                  className="flex-shrink-0"
+                                  data-testid="button-copy-webhook"
+                                >
+                                  Copy URL
+                                </Button>
+                              </div>
+                              <div className="text-xs text-purple-600 dark:text-purple-400 space-y-1">
+                                <p><strong>Method:</strong> POST</p>
+                                <p><strong>Field name:</strong> pdf</p>
+                                <p><strong>Accepts:</strong> PDF files</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">
-                            Upload PDF Report
-                          </h3>
-                          <p className="text-sm text-purple-700 dark:text-purple-300">
-                            Upload a PDF document containing your marketing metrics to automatically extract and display the data
-                          </p>
+                        
+                        <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+                          <h4 className="font-semibold text-blue-900 dark:text-blue-100 text-sm mb-2">
+                            How to use with Zapier or IFTTT:
+                          </h4>
+                          <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-decimal list-inside">
+                            <li>Create a new automation (Zap/Applet)</li>
+                            <li>Set trigger: When email arrives with PDF attachment</li>
+                            <li>Add action: Send POST request to webhook URL above</li>
+                            <li>Map the PDF attachment to the 'pdf' field</li>
+                            <li>Save and activate - metrics will update automatically!</li>
+                          </ol>
                         </div>
                       </div>
-                      <div>
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleFileSelect}
-                          accept=".pdf"
-                          className="hidden"
-                        />
-                        <Button
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploadMutation.isPending}
-                          className="bg-purple-600 hover:bg-purple-700"
-                          data-testid="button-upload-pdf"
-                        >
-                          {uploadMutation.isPending ? (
-                            <>Processing...</>
-                          ) : (
-                            <>
-                              <Upload className="w-4 h-4 mr-2" />
-                              Upload PDF
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {!hasMetrics && !metricsLoading && (
                   <Card className="border-slate-200 dark:border-slate-700">

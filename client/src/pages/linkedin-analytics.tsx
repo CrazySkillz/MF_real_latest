@@ -518,6 +518,80 @@ export default function LinkedInAnalytics() {
     });
   };
 
+  // Handle custom report creation/download
+  const handleCustomReport = () => {
+    if (reportForm.scheduleEnabled) {
+      // Convert email recipients string to array
+      const emailRecipientsArray = reportForm.emailRecipients
+        ? reportForm.emailRecipients.split(',').map(email => email.trim()).filter(email => email.length > 0)
+        : [];
+
+      // Save scheduled custom report to database
+      const reportData = {
+        campaignId: campaignId || null,
+        name: reportForm.name,
+        description: reportForm.description || null,
+        reportType: 'custom',
+        configuration: {
+          customReportConfig,
+          scheduleEnabled: reportForm.scheduleEnabled,
+          scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
+          scheduleTime: reportForm.scheduleTime
+        },
+        scheduleFrequency: reportForm.scheduleFrequency,
+        emailRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
+        status: 'active'
+      };
+      createReportMutation.mutate(reportData);
+    } else {
+      // Generate and download custom report immediately
+      handleDownloadCustomReport();
+    }
+  };
+
+  // Handle download custom report
+  const handleDownloadCustomReport = async () => {
+    const reportName = reportForm.name || 'Custom LinkedIn Report';
+    
+    // Dynamically import jsPDF
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF();
+    
+    // Generate Custom PDF
+    generateCustomPDF(doc);
+
+    // Download the PDF
+    doc.save(`${reportName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+    // Close modal and reset form
+    setIsReportModalOpen(false);
+    setReportModalStep('standard');
+    setReportForm({
+      name: '',
+      description: '',
+      reportType: '',
+      configuration: null,
+      scheduleEnabled: false,
+      scheduleFrequency: 'weekly',
+      scheduleDayOfWeek: 'monday',
+      scheduleTime: '9:00 AM',
+      emailRecipients: '',
+      status: 'draft'
+    });
+    setCustomReportConfig({
+      coreMetrics: [],
+      derivedMetrics: [],
+      kpis: [],
+      benchmarks: [],
+      includeAdComparison: false
+    });
+
+    toast({
+      title: "Report Downloaded",
+      description: "Your custom PDF report has been downloaded successfully.",
+    });
+  };
+
   // PDF Helper: Add header
   const addPDFHeader = (doc: any, title: string, subtitle: string) => {
     const { session, metrics } = (sessionData as any) || {};
@@ -833,6 +907,283 @@ export default function LinkedInAnalytics() {
       doc.text('No ad data available', 20, y);
     }
     
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
+  };
+
+  // Generate Custom PDF based on user selections
+  const generateCustomPDF = (doc: any) => {
+    const { session, aggregated } = (sessionData as any) || {};
+    
+    addPDFHeader(doc, reportForm.name, 'LinkedIn Metrics');
+    
+    let y = 70;
+    
+    // Helper function to get metric label
+    const getMetricLabel = (key: string): string => {
+      const labels: Record<string, string> = {
+        impressions: 'Impressions',
+        clicks: 'Clicks',
+        spend: 'Spend',
+        conversions: 'Conversions',
+        reach: 'Reach',
+        engagements: 'Engagements',
+        videoviews: 'Video Views',
+        leads: 'Leads',
+        revenue: 'Revenue',
+        ctr: 'CTR',
+        cpc: 'CPC',
+        cpm: 'CPM',
+        cvr: 'Conversion Rate',
+        cpa: 'CPA',
+        cpl: 'CPL',
+        er: 'Engagement Rate',
+        roi: 'ROI',
+        roas: 'ROAS'
+      };
+      return labels[key] || key;
+    };
+
+    // Helper function to format metric value
+    const formatMetricValue = (key: string, value: any): string => {
+      if (!value && value !== 0) return 'N/A';
+      
+      const percentageMetrics = ['ctr', 'cvr', 'er', 'roi'];
+      const currencyMetrics = ['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'revenue'];
+      
+      if (percentageMetrics.includes(key)) {
+        return `${parseFloat(value).toFixed(2)}%`;
+      } else if (currencyMetrics.includes(key)) {
+        return `$${parseFloat(value).toFixed(2)}`;
+      } else if (key === 'roas') {
+        return `${parseFloat(value).toFixed(2)}x`;
+      } else {
+        return parseFloat(value).toLocaleString();
+      }
+    };
+
+    // Overview Section - Core and Derived Metrics
+    const hasMetrics = customReportConfig.coreMetrics.length > 0 || customReportConfig.derivedMetrics.length > 0;
+    
+    if (hasMetrics) {
+      y = addPDFSection(doc, 'Overview', y, [54, 162, 235]);
+      
+      // Core Metrics
+      if (customReportConfig.coreMetrics.length > 0) {
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(50, 50, 50);
+        doc.text('Core Metrics', 20, y);
+        y += 10;
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        
+        customReportConfig.coreMetrics.forEach((metric, index) => {
+          if (y > 260) {
+            doc.addPage();
+            y = 20;
+          }
+          
+          const label = getMetricLabel(metric);
+          const value = aggregated?.[metric] || 0;
+          const formattedValue = formatMetricValue(metric, value);
+          
+          doc.text(`${label}: ${formattedValue}`, 25, y);
+          y += 8;
+        });
+        
+        y += 5;
+      }
+      
+      // Derived Metrics
+      if (customReportConfig.derivedMetrics.length > 0) {
+        if (y > 260) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(50, 50, 50);
+        doc.text('Derived Metrics', 20, y);
+        y += 10;
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        
+        customReportConfig.derivedMetrics.forEach((metric, index) => {
+          if (y > 260) {
+            doc.addPage();
+            y = 20;
+          }
+          
+          const label = getMetricLabel(metric);
+          const value = aggregated?.[metric] || 0;
+          const formattedValue = formatMetricValue(metric, value);
+          
+          doc.text(`${label}: ${formattedValue}`, 25, y);
+          y += 8;
+        });
+        
+        y += 10;
+      }
+    }
+
+    // KPIs Section
+    if (customReportConfig.kpis.length > 0 && kpisData && Array.isArray(kpisData)) {
+      if (y > 230) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      y = addPDFSection(doc, 'Key Performance Indicators', y, [16, 185, 129]);
+      
+      const selectedKPIs = kpisData.filter((kpi: any) => customReportConfig.kpis.includes(kpi.id));
+      
+      selectedKPIs.forEach((kpi: any) => {
+        if (y > 230) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        doc.setDrawColor(200, 200, 200);
+        doc.roundedRect(20, y - 5, 170, 35, 3, 3, 'S');
+        
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(50, 50, 50);
+        doc.text(kpi.name, 25, y + 2);
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        doc.text(`Metric: ${getMetricLabel(kpi.metric)}`, 25, y + 10);
+        
+        const currentValue = aggregated?.[kpi.metric] || 0;
+        const targetValue = kpi.targetValue || 0;
+        const progress = targetValue > 0 ? Math.min((currentValue / targetValue) * 100, 100) : 0;
+        
+        doc.text(`Current: ${formatMetricValue(kpi.metric, currentValue)}`, 25, y + 18);
+        doc.text(`Target: ${formatMetricValue(kpi.metric, targetValue)}`, 100, y + 18);
+        
+        const barWidth = 140;
+        const barHeight = 6;
+        const barX = 25;
+        const barY = y + 22;
+        
+        doc.setFillColor(230, 230, 230);
+        doc.roundedRect(barX, barY, barWidth, barHeight, 2, 2, 'F');
+        
+        if (progress > 0) {
+          const fillColor = progress >= 100 ? [16, 185, 129] : [59, 130, 246];
+          doc.setFillColor(...fillColor);
+          doc.roundedRect(barX, barY, (barWidth * progress) / 100, barHeight, 2, 2, 'F');
+          
+          doc.setFontSize(9);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(255, 255, 255);
+          const progressText = `${progress.toFixed(0)}%`;
+          const textWidth = doc.getTextWidth(progressText);
+          const textX = barX + ((barWidth * progress) / 100) / 2 - textWidth / 2;
+          doc.text(progressText, textX, barY + 4.5);
+        }
+        
+        y += 45;
+      });
+    }
+
+    // Benchmarks Section
+    if (customReportConfig.benchmarks.length > 0 && benchmarksData && Array.isArray(benchmarksData)) {
+      if (y > 200) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      y = addPDFSection(doc, 'Benchmarks', y, [139, 92, 246]);
+      
+      const selectedBenchmarks = benchmarksData.filter((benchmark: any) => customReportConfig.benchmarks.includes(benchmark.id));
+      
+      selectedBenchmarks.forEach((benchmark: any) => {
+        if (y > 200) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        doc.setDrawColor(200, 200, 200);
+        doc.roundedRect(20, y - 5, 170, 45, 3, 3, 'S');
+        
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(50, 50, 50);
+        doc.text(benchmark.name, 25, y + 2);
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text(benchmark.description || '', 25, y + 10, { maxWidth: 160 });
+        
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+        doc.text(`Metric: ${getMetricLabel(benchmark.metric)}`, 25, y + 20);
+        
+        const currentValue = aggregated?.[benchmark.metric] || 0;
+        const benchmarkValue = benchmark.benchmarkValue || 0;
+        
+        doc.text(`Performance: ${formatMetricValue(benchmark.metric, currentValue)}`, 25, y + 28);
+        doc.text(`Benchmark: ${formatMetricValue(benchmark.metric, benchmarkValue)}`, 100, y + 28);
+        
+        const diff = currentValue - benchmarkValue;
+        const status = diff >= 0 ? 'Above' : 'Below';
+        const statusColor = diff >= 0 ? [16, 185, 129] : [239, 68, 68];
+        
+        doc.setFillColor(...statusColor);
+        doc.roundedRect(25, y + 32, 35, 6, 2, 2, 'F');
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text(status, 42.5, y + 36.5, { align: 'center' });
+        
+        y += 55;
+      });
+    }
+
+    // Ad Comparison Section
+    if (customReportConfig.includeAdComparison && adsData && Array.isArray(adsData) && adsData.length > 0) {
+      if (y > 200) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      y = addPDFSection(doc, 'Ad Performance Comparison', y, [54, 162, 235]);
+      
+      adsData.forEach((ad: any, index: number) => {
+        if (y > 250) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        doc.setDrawColor(200, 200, 200);
+        doc.roundedRect(20, y - 5, 170, 42, 3, 3, 'S');
+        
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(50, 50, 50);
+        doc.text(`Ad #${index + 1}: ${ad.adName || ad.name || 'Unnamed Ad'}`, 25, y + 2);
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        doc.text(`Impressions: ${ad.impressions || 0}`, 25, y + 12);
+        doc.text(`Clicks: ${ad.clicks || 0}`, 100, y + 12);
+        doc.text(`CTR: ${ad.ctr || 0}%`, 25, y + 20);
+        doc.text(`Spend: $${ad.spend || 0}`, 100, y + 20);
+        doc.text(`Conversions: ${ad.conversions || 0}`, 25, y + 28);
+        
+        y += 50;
+      });
+    }
+
+    // Footer
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
@@ -3770,6 +4121,26 @@ export default function LinkedInAnalytics() {
                     onClick={handleCreateReport}
                     disabled={!reportForm.name || createReportMutation.isPending}
                     data-testid="button-create-report-submit"
+                    className="gap-2"
+                  >
+                    {createReportMutation.isPending ? (
+                      'Creating...'
+                    ) : reportForm.scheduleEnabled ? (
+                      'Schedule Report'
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Generate & Download Report
+                      </>
+                    )}
+                  </Button>
+                )}
+                
+                {reportModalStep === 'custom' && (
+                  <Button
+                    onClick={handleCustomReport}
+                    disabled={!reportForm.name || createReportMutation.isPending}
+                    data-testid="button-create-custom-report"
                     className="gap-2"
                   >
                     {createReportMutation.isPending ? (

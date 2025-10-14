@@ -74,7 +74,7 @@ function extractNumber(text: string): number {
  */
 export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
   try {
-    const data = await PDFParse(buffer);
+    const data = await new PDFParse(buffer);
     const text = data.text;
     
     const metrics: ParsedMetrics = {};

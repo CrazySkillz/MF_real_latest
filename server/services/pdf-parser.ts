@@ -83,6 +83,24 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
     console.log('[PDF Parser] Extracted text length:', text.length);
     console.log('[PDF Parser] First 200 chars:', text.substring(0, 200));
     
+    // Debug: Find all mentions of "rate" in the text
+    const rateMatches = text.match(/.*rate.*/gi);
+    if (rateMatches) {
+      console.log('[PDF Parser] Found rate-related lines:', rateMatches.slice(0, 10));
+    }
+    
+    // Debug: Find all mentions of "click" in the text
+    const clickMatches = text.match(/.*click.*/gi);
+    if (clickMatches) {
+      console.log('[PDF Parser] Found click-related lines:', clickMatches.slice(0, 10));
+    }
+    
+    // Debug: Find all mentions of "growth" in the text
+    const growthMatches = text.match(/.*growth.*/gi);
+    if (growthMatches) {
+      console.log('[PDF Parser] Found growth-related lines:', growthMatches);
+    }
+    
     const metrics: ParsedMetrics = {};
     
     // Define patterns for all metrics

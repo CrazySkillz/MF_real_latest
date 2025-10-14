@@ -82,10 +82,15 @@ Preferred communication style: Simple, everyday language.
 - **Automation Services**: Compatible with Zapier (file upload), IFTTT (URL-based), Make.com, and other webhook-supporting platforms
 - **Data Flow**: 
   - Email with PDF → Automation service → Webhook endpoint → PDF download/upload → PDF parsing → Metric extraction → Database storage → Dashboard update
-- **Metrics Extraction**: Automatic parsing of 9 core metrics (Impressions, Reach, Clicks, Engagements, Spend, Conversions, Leads, Video Views, Viral Impressions) from PDF reports using pattern matching
-- **PDF Parser**: Uses pdf-parse library with regex pattern matching for flexible metric extraction
+- **Metrics Extraction**: Automatic parsing of marketing metrics from PDF reports using pattern matching. Supports multiple formats:
+  - **Audience & Traffic** (GA4-style): Users (unique), Sessions, Pageviews, Avg. Session Duration, Pages/Session, Bounce Rate
+  - **Traffic Sources**: Organic Search, Direct/Branded, Email (Newsletters), Referral/Partners, Paid (Display/Search), Social (as percentages)
+  - **Email Performance**: Emails Delivered, Open Rate, Click-Through Rate, Click-to-Open, Hard Bounces, Spam Complaints, List Growth
+  - **Legacy Social Media**: Impressions, Reach, Clicks, Engagements, Spend, Conversions, Leads, Video Views, Viral Impressions
+- **PDF Parser**: Uses pdf-parse library with regex pattern matching for flexible metric extraction across table and inline formats
 - **IFTTT Integration**: Leverages IFTTT's email trigger "Attachment URL" ingredient to pass public PDF URLs to webhook for download and processing
 - **Setup**: Generate unique webhook token on connection → Copy webhook URL → Configure in automation service → Activate
+- **UI Display**: Metrics are conditionally displayed based on available data, with organized sections for each metric category
 
 ### Future Enhancements
 - **Token Persistence**: Store OAuth tokens in database (currently in-memory)

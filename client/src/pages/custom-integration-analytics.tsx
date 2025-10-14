@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp } from "lucide-react";
+import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 
@@ -37,38 +37,67 @@ export default function CustomIntegrationAnalytics() {
   });
 
   // Use real metrics if available, otherwise show placeholder
-  const metrics = metricsData || {
-    impressions: 0,
-    reach: 0,
-    clicks: 0,
-    engagements: 0,
-    spend: "0",
-    conversions: 0,
-    leads: 0,
-    videoViews: 0,
-    viralImpressions: 0,
-  };
+  const metrics = metricsData || {};
 
-  const formatNumber = (num: number) => {
+  const formatNumber = (num?: number | null) => {
+    if (!num && num !== 0) return 'N/A';
     return new Intl.NumberFormat('en-US').format(num);
   };
 
-  const formatCurrency = (value: string | number) => {
+  const formatCurrency = (value?: string | number | null) => {
+    if (!value) return 'N/A';
     const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return 'N/A';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
   };
 
-  const hasMetrics = metricsData && (
-    metricsData.impressions > 0 ||
-    metricsData.reach > 0 ||
-    metricsData.clicks > 0 ||
-    metricsData.engagements > 0 ||
-    parseFloat(metricsData.spend) > 0 ||
-    metricsData.conversions > 0 ||
-    metricsData.leads > 0 ||
-    metricsData.videoViews > 0 ||
-    metricsData.viralImpressions > 0
+  const formatPercent = (value?: string | number | null) => {
+    if (!value && value !== 0) return 'N/A';
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return 'N/A';
+    return `${num.toFixed(1)}%`;
+  };
+
+  const hasLegacyMetrics = metricsData && (
+    metricsData.impressions !== undefined ||
+    metricsData.reach !== undefined ||
+    metricsData.clicks !== undefined ||
+    metricsData.engagements !== undefined ||
+    metricsData.spend !== undefined ||
+    metricsData.conversions !== undefined ||
+    metricsData.leads !== undefined ||
+    metricsData.videoViews !== undefined ||
+    metricsData.viralImpressions !== undefined
   );
+
+  const hasAudienceMetrics = metricsData && (
+    metricsData.users !== undefined ||
+    metricsData.sessions !== undefined ||
+    metricsData.pageviews !== undefined
+  );
+
+  const isValidNumber = (value: any): boolean => {
+    if (value === undefined || value === null || value === '') return false;
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    return typeof num === 'number' && !Number.isNaN(num) && Number.isFinite(num);
+  };
+
+  const hasTrafficSources = metricsData && (
+    isValidNumber(metricsData.organicSearchShare) ||
+    isValidNumber(metricsData.directBrandedShare) ||
+    isValidNumber(metricsData.emailShare) ||
+    isValidNumber(metricsData.referralShare) ||
+    isValidNumber(metricsData.paidShare) ||
+    isValidNumber(metricsData.socialShare)
+  );
+
+  const hasEmailMetrics = metricsData && (
+    metricsData.emailsDelivered !== undefined ||
+    metricsData.openRate !== undefined ||
+    metricsData.clickThroughRate !== undefined
+  );
+
+  const hasMetrics = hasLegacyMetrics || hasAudienceMetrics || hasTrafficSources || hasEmailMetrics;
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900">
@@ -457,160 +486,552 @@ export default function CustomIntegrationAnalytics() {
 
                 {hasMetrics && (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Impressions */}
-                      <Card data-testid="card-metric-impressions">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                              Impressions
-                            </CardTitle>
-                            <Eye className="w-4 h-4 text-slate-400" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-impressions">
-                            {formatNumber(metrics.impressions)}
-                          </div>
-                        </CardContent>
-                      </Card>
+                    {/* Audience & Traffic Metrics (GA4 Style) */}
+                    {hasAudienceMetrics && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-5 h-5 text-blue-600" />
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                            Audience & Traffic
+                          </h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {metrics.users !== undefined && (
+                            <Card data-testid="card-metric-users">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Users (unique)
+                                  </CardTitle>
+                                  <Users className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-users">
+                                  {formatNumber(metrics.users)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
-                      {/* Reach */}
-                      <Card data-testid="card-metric-reach">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                              Reach
-                            </CardTitle>
-                            <Target className="w-4 h-4 text-slate-400" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-reach">
-                            {formatNumber(metrics.reach)}
-                          </div>
-                        </CardContent>
-                      </Card>
+                          {metrics.sessions !== undefined && (
+                            <Card data-testid="card-metric-sessions">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Sessions
+                                  </CardTitle>
+                                  <Activity className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-sessions">
+                                  {formatNumber(metrics.sessions)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
-                      {/* Clicks */}
-                      <Card data-testid="card-metric-clicks">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                              Clicks
-                            </CardTitle>
-                            <MousePointerClick className="w-4 h-4 text-slate-400" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-clicks">
-                            {formatNumber(metrics.clicks)}
-                          </div>
-                        </CardContent>
-                      </Card>
+                          {metrics.pageviews !== undefined && (
+                            <Card data-testid="card-metric-pageviews">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Pageviews
+                                  </CardTitle>
+                                  <FileSpreadsheet className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-pageviews">
+                                  {formatNumber(metrics.pageviews)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
-                      {/* Engagements */}
-                      <Card data-testid="card-metric-engagements">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                              Engagements
-                            </CardTitle>
-                            <Target className="w-4 h-4 text-slate-400" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-engagements">
-                            {formatNumber(metrics.engagements)}
-                          </div>
-                        </CardContent>
-                      </Card>
+                          {metrics.avgSessionDuration && (
+                            <Card data-testid="card-metric-avg-session-duration">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Avg. Session Duration
+                                  </CardTitle>
+                                  <Clock className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-avg-session-duration">
+                                  {metrics.avgSessionDuration}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
-                      {/* Spend */}
-                      <Card data-testid="card-metric-spend">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                              Spend
-                            </CardTitle>
-                            <DollarSign className="w-4 h-4 text-slate-400" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-spend">
-                            {formatCurrency(metrics.spend)}
-                          </div>
-                        </CardContent>
-                      </Card>
+                          {metrics.pagesPerSession && (
+                            <Card data-testid="card-metric-pages-per-session">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Pages / Session
+                                  </CardTitle>
+                                  <FileSpreadsheet className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-pages-per-session">
+                                  {typeof metrics.pagesPerSession === 'string' ? parseFloat(metrics.pagesPerSession).toFixed(2) : metrics.pagesPerSession.toFixed(2)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
-                      {/* Conversions */}
-                      <Card data-testid="card-metric-conversions">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                              Conversions
-                            </CardTitle>
-                            <Target className="w-4 h-4 text-slate-400" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-conversions">
-                            {formatNumber(metrics.conversions)}
-                          </div>
-                        </CardContent>
-                      </Card>
+                          {metrics.bounceRate && (
+                            <Card data-testid="card-metric-bounce-rate">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Bounce Rate
+                                  </CardTitle>
+                                  <TrendingDown className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-bounce-rate">
+                                  {formatPercent(metrics.bounceRate)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
-                      {/* Leads */}
-                      <Card data-testid="card-metric-leads">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                              Leads
-                            </CardTitle>
-                            <Target className="w-4 h-4 text-slate-400" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-leads">
-                            {formatNumber(metrics.leads)}
-                          </div>
-                        </CardContent>
-                      </Card>
+                    {/* Traffic Sources */}
+                    {hasTrafficSources && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <BarChart3 className="w-5 h-5 text-green-600" />
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                            Traffic Sources
+                          </h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {metrics.organicSearchShare && (
+                            <Card data-testid="card-metric-organic-search">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  Organic Search
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-organic-search">
+                                  {formatPercent(metrics.organicSearchShare)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
-                      {/* Video Views */}
-                      <Card data-testid="card-metric-video-views">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                              Video Views
-                            </CardTitle>
-                            <Eye className="w-4 h-4 text-slate-400" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-video-views">
-                            {formatNumber(metrics.videoViews)}
-                          </div>
-                        </CardContent>
-                      </Card>
+                          {metrics.directBrandedShare && (
+                            <Card data-testid="card-metric-direct-branded">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  Direct / Branded
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-direct-branded">
+                                  {formatPercent(metrics.directBrandedShare)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
-                      {/* Viral Impressions */}
-                      <Card data-testid="card-metric-viral-impressions">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                              Viral Impressions
-                            </CardTitle>
-                            <TrendingUp className="w-4 h-4 text-slate-400" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-viral-impressions">
-                            {formatNumber(metrics.viralImpressions)}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+                          {metrics.emailShare && (
+                            <Card data-testid="card-metric-email-source">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  Email (Newsletters)
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-email-source">
+                                  {formatPercent(metrics.emailShare)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {metrics.referralShare && (
+                            <Card data-testid="card-metric-referral">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  Referral / Partners
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-referral">
+                                  {formatPercent(metrics.referralShare)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {metrics.paidShare && (
+                            <Card data-testid="card-metric-paid">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  Paid (Display/Search)
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-paid">
+                                  {formatPercent(metrics.paidShare)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {metrics.socialShare && (
+                            <Card data-testid="card-metric-social">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  Social
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-social">
+                                  {formatPercent(metrics.socialShare)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Email Performance */}
+                    {hasEmailMetrics && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-5 h-5 text-purple-600" />
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                            Email & Newsletter Performance
+                          </h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          {metrics.emailsDelivered !== undefined && (
+                            <Card data-testid="card-metric-emails-delivered">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Emails Delivered
+                                  </CardTitle>
+                                  <Mail className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-emails-delivered">
+                                  {formatNumber(metrics.emailsDelivered)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {metrics.openRate && (
+                            <Card data-testid="card-metric-open-rate">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Open Rate
+                                  </CardTitle>
+                                  <Eye className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-open-rate">
+                                  {formatPercent(metrics.openRate)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {metrics.clickThroughRate && (
+                            <Card data-testid="card-metric-click-through-rate">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Click-Through Rate
+                                  </CardTitle>
+                                  <MousePointerClick className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-click-through-rate">
+                                  {formatPercent(metrics.clickThroughRate)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {metrics.clickToOpenRate && (
+                            <Card data-testid="card-metric-click-to-open-rate">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Click-to-Open
+                                  </CardTitle>
+                                  <Target className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-click-to-open-rate">
+                                  {formatPercent(metrics.clickToOpenRate)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {metrics.hardBounces && (
+                            <Card data-testid="card-metric-hard-bounces">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Hard Bounces
+                                  </CardTitle>
+                                  <TrendingDown className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-hard-bounces">
+                                  {formatPercent(metrics.hardBounces)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {metrics.spamComplaints && (
+                            <Card data-testid="card-metric-spam-complaints">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Spam Complaints
+                                  </CardTitle>
+                                  <TrendingDown className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-spam-complaints">
+                                  {formatPercent(metrics.spamComplaints)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {metrics.listGrowth !== undefined && (
+                            <Card data-testid="card-metric-list-growth">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    List Growth (Net)
+                                  </CardTitle>
+                                  <TrendingUp className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-list-growth">
+                                  +{formatNumber(metrics.listGrowth)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Legacy Social Media Metrics */}
+                    {hasLegacyMetrics && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="w-5 h-5 text-orange-600" />
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                            Social Media Performance
+                          </h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          {/* Impressions */}
+                          {metrics.impressions !== undefined && (
+                            <Card data-testid="card-metric-impressions">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Impressions
+                                  </CardTitle>
+                                  <Eye className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-impressions">
+                                  {formatNumber(metrics.impressions)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Reach */}
+                          {metrics.reach !== undefined && (
+                            <Card data-testid="card-metric-reach">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Reach
+                                  </CardTitle>
+                                  <Target className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-reach">
+                                  {formatNumber(metrics.reach)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Clicks */}
+                          {metrics.clicks !== undefined && (
+                            <Card data-testid="card-metric-clicks">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Clicks
+                                  </CardTitle>
+                                  <MousePointerClick className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-clicks">
+                                  {formatNumber(metrics.clicks)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Engagements */}
+                          {metrics.engagements !== undefined && (
+                            <Card data-testid="card-metric-engagements">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Engagements
+                                  </CardTitle>
+                                  <Target className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-engagements">
+                                  {formatNumber(metrics.engagements)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Spend */}
+                          {metrics.spend !== undefined && (
+                            <Card data-testid="card-metric-spend">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Spend
+                                  </CardTitle>
+                                  <DollarSign className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-spend">
+                                  {formatCurrency(metrics.spend)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Conversions */}
+                          {metrics.conversions !== undefined && (
+                            <Card data-testid="card-metric-conversions">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Conversions
+                                  </CardTitle>
+                                  <Target className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-conversions">
+                                  {formatNumber(metrics.conversions)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Leads */}
+                          {metrics.leads !== undefined && (
+                            <Card data-testid="card-metric-leads">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Leads
+                                  </CardTitle>
+                                  <Target className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-leads">
+                                  {formatNumber(metrics.leads)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Video Views */}
+                          {metrics.videoViews !== undefined && (
+                            <Card data-testid="card-metric-video-views">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Video Views
+                                  </CardTitle>
+                                  <Eye className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-video-views">
+                                  {formatNumber(metrics.videoViews)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Viral Impressions */}
+                          {metrics.viralImpressions !== undefined && (
+                            <Card data-testid="card-metric-viral-impressions">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Viral Impressions
+                                  </CardTitle>
+                                  <TrendingUp className="w-4 h-4 text-slate-400" />
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-viral-impressions">
+                                  {formatNumber(metrics.viralImpressions)}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Data Source Notice */}
                     <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">

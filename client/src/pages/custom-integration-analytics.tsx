@@ -241,199 +241,40 @@ export default function CustomIntegrationAnalytics() {
                   </Card>
                 )}
 
-                        {/* Step 3 */}
-                        <div className="flex gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
-                            3
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                              Configure Webhook (Copy & Paste These Values)
-                            </h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                              Click "Then That" → Search for <strong>"Webhooks"</strong> → Choose <strong>"Make a web request"</strong>
-                            </p>
-                            
-                            <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 border border-purple-200 dark:border-purple-800 space-y-4">
-                              {/* URL Field */}
-                              <div>
-                                <label className="text-sm font-semibold text-purple-900 dark:text-purple-100 block mb-2">
-                                  1. URL field - Paste this:
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <div className="flex-1 p-2 bg-white dark:bg-slate-900 rounded border border-purple-300 dark:border-purple-700 font-mono text-xs break-all">
-                                    {window.location.origin}/api/webhook/custom-integration/{customIntegration.webhookToken}
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(`${window.location.origin}/api/webhook/custom-integration/${customIntegration.webhookToken}`);
-                                      toast({
-                                        title: "Copied!",
-                                        description: "Webhook URL copied to clipboard",
-                                      });
-                                    }}
-                                  >
-                                    Copy
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {/* Method Field */}
-                              <div>
-                                <label className="text-sm font-semibold text-purple-900 dark:text-purple-100 block mb-2">
-                                  2. Method dropdown - Select:
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <code className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded border border-purple-300 dark:border-purple-700 font-mono">POST</code>
-                                </div>
-                              </div>
-
-                              {/* Content Type Field */}
-                              <div>
-                                <label className="text-sm font-semibold text-purple-900 dark:text-purple-100 block mb-2">
-                                  3. Content Type dropdown - Select:
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <code className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded border border-purple-300 dark:border-purple-700 font-mono">application/json</code>
-                                </div>
-                              </div>
-
-                              {/* Body Field - Most Important */}
-                              <div className="bg-yellow-50 dark:bg-yellow-950 rounded-lg p-3 border-2 border-yellow-400 dark:border-yellow-600">
-                                <label className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 block mb-2">
-                                  4. Body field - Type this template first:
-                                </label>
-                                <div className="flex items-center gap-2 mb-3">
-                                  <code className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-900 rounded border border-yellow-400 dark:border-yellow-600 font-mono text-sm">
-                                    {`{"value1":""}`}
-                                  </code>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText('{"value1":""}');
-                                      toast({
-                                        title: "Copied!",
-                                        description: "Body template copied. Now add Attachment URL ingredient.",
-                                      });
-                                    }}
-                                  >
-                                    Copy
-                                  </Button>
-                                </div>
-                                <div className="bg-yellow-100 dark:bg-yellow-900 rounded p-3 text-sm">
-                                  <p className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2">⚠️ Then click inside the quotes and:</p>
-                                  <ol className="text-yellow-800 dark:text-yellow-200 space-y-1 list-decimal list-inside">
-                                    <li>Click "Add ingredient" button</li>
-                                    <li>Select "<strong>Attachment URL</strong>" from dropdown</li>
-                                    <li>Final result: <code className="bg-white dark:bg-slate-800 px-2 py-0.5 rounded">{`{"value1":"{{AttachmentURL}}"}`}</code></li>
-                                  </ol>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Step 4 - Final Step */}
-                        <div className="flex gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">
-                            4
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                              Save & Start Using
-                            </h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                              Click "Continue" → Name it "Marketing Reports to PerformanceCore" → Click "Finish"
-                            </p>
-                            <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4 border border-green-200 dark:border-green-800 space-y-3">
-                              <div>
-                                <p className="font-semibold text-green-900 dark:text-green-100 mb-2">📧 How to use after setup:</p>
-                                <ol className="text-sm text-green-700 dark:text-green-300 space-y-2 list-decimal list-inside">
-                                  <li>When marketing PDF arrives in your regular email</li>
-                                  <li>Forward it to your IFTTT email (shown in IFTTT after setup)</li>
-                                  <li>Add "#marketing" in the subject line</li>
-                                  <li>Metrics appear here automatically in 1-5 minutes!</li>
-                                </ol>
-                              </div>
-                              <div className="bg-green-100 dark:bg-green-900 rounded p-3">
-                                <p className="text-sm font-semibold text-green-900 dark:text-green-100 mb-1">💡 Pro Tip:</p>
-                                <p className="text-sm text-green-800 dark:text-green-200">
-                                  Set up Gmail/Outlook auto-forwarding rules to automatically forward reports from specific senders (like reports@facebook.com) to your IFTTT email with #marketing tag. Then it's 100% automatic!
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Pro Tips */}
-                        <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
-                          <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4" />
-                            Pro Tips
-                          </h4>
-                          <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
-                            <li className="flex items-start gap-2">
-                              <span className="flex-shrink-0">📧</span>
-                              <span>Set up email forwarding rules in Gmail/Outlook to automatically forward reports from specific senders to your IFTTT email</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="flex-shrink-0">📱</span>
-                              <span>Download the IFTTT mobile app to manage and monitor your automations on the go</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="flex-shrink-0">⚡</span>
-                              <span>IFTTT usually processes emails within 1-5 minutes, so your dashboard updates quickly</span>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Alternative: Zapier Direct Email Integration */}
+                {/* How to Use */}
                 {customIntegration?.webhookToken && (
-                  <Card className="border-purple-200 dark:border-purple-700">
+                  <Card className="border-slate-200 dark:border-slate-700">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded bg-purple-500 flex items-center justify-center">
-                          <Zap className="w-4 h-4 text-white" />
+                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">2</span>
                         </div>
-                        Alternative: Zapier (Direct Email Integration - No Forwarding)
+                        How to Use
                       </CardTitle>
                       <CardDescription>
-                        Connect your Gmail or Outlook directly - PDFs are processed automatically without forwarding
+                        Start receiving automated insights from your PDF reports
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
-                          <p className="text-sm text-purple-900 dark:text-purple-100 mb-3">
-                            <strong>How it works:</strong> Zapier connects directly to your Gmail or Outlook inbox and watches for PDF attachments. When a PDF arrives, it automatically sends it to your webhook - no forwarding needed!
-                          </p>
-                          <div className="space-y-2">
-                            <p className="text-sm font-semibold text-purple-900 dark:text-purple-100">Quick Setup:</p>
-                            <ol className="text-sm text-purple-800 dark:text-purple-200 space-y-1 list-decimal list-inside">
-                              <li>Go to <a href="https://zapier.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">zapier.com</a> and create a free account</li>
-                              <li>Create a new Zap → Choose "Gmail" or "Outlook" as trigger</li>
-                              <li>Select "New Attachment" as the trigger event</li>
-                              <li>Connect your email account (one-time OAuth)</li>
-                              <li>Add filter: "Attachment extension contains pdf"</li>
-                              <li>Choose "Webhooks by Zapier" as action</li>
-                              <li>Select "POST" method and paste your webhook URL above</li>
-                              <li>Map the PDF file to the request</li>
-                            </ol>
-                          </div>
+                        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Once CloudMailin is set up:</h4>
+                          <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-2 list-decimal list-inside">
+                            <li>When you receive a marketing PDF report in your email, simply forward it to your CloudMailin email address</li>
+                            <li>The PDF is automatically processed and metrics appear in your dashboard within seconds</li>
+                            <li>View your metrics in the Overview, KPIs, and Benchmarks tabs</li>
+                          </ol>
                         </div>
-                        <Button
-                          onClick={() => window.open('https://zapier.com/app/editor', '_blank')}
-                          className="w-full bg-purple-600 hover:bg-purple-700"
-                        >
-                          Open Zapier to Start Setup →
-                        </Button>
+
+                        <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                          <h4 className="font-semibold text-green-900 dark:text-green-100 mb-3 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4" />
+                            Pro Tip: Automatic Forwarding
+                          </h4>
+                          <p className="text-sm text-green-700 dark:text-green-300">
+                            Set up email forwarding rules in Gmail or Outlook to automatically forward reports from specific senders (like reports@facebook.com or analytics@linkedin.com) to your CloudMailin address. Then it's 100% hands-free!
+                          </p>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

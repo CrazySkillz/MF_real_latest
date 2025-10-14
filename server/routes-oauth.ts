@@ -2085,6 +2085,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CloudMailin email receiving endpoint
+  app.post("/api/email/inbound/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      console.log(`[Email] Received email with token: ${token}`);
+      console.log(`[Email] From:`, req.body.envelope?.from);
+      console.log(`[Email] Subject:`, req.body.headers?.subject);
+      
+      // Find the custom integration by webhook token
+      const customIntegrations = await storage.getAllCustomIntegrations();
+      const integration = customIntegrations.find(ci => ci.webhookToken === token);
+      
+      if (!integration) {
+        console.log(`[Email] Invalid token: ${token}`);
+        return res.status(401).json({ 
+          success: false,
+          error: "Invalid email token" 
+        });
+      }
+
+      // Extract PDF attachment from CloudMailin format
+      const attachments = req.body.attachments;
+      if (!attachments || attachments.length === 0) {
+        return res.status(400).json({ 
+          success: false,
+          error: "No attachments found in email" 
+        });
+      }
+
+      // Find the first PDF attachment
+      const pdfAttachment = attachments.find((att: any) => 
+        att.content_type === 'application/pdf' || 
+        att.file_name?.toLowerCase().endsWith('.pdf')
+      );
+
+      if (!pdfAttachment) {
+        return res.status(400).json({ 
+          success: false,
+          error: "No PDF attachment found in email" 
+        });
+      }
+
+      let pdfBuffer: Buffer;
+      const fileName = pdfAttachment.file_name || 'email-attachment.pdf';
+
+      // Check if attachment has base64 content (embedded)
+      if (pdfAttachment.content) {
+        console.log(`[Email] Decoding base64 PDF: ${fileName}`);
+        pdfBuffer = Buffer.from(pdfAttachment.content, 'base64');
+      } 
+      // Check if attachment has URL (cloud storage)
+      else if (pdfAttachment.url) {
+        console.log(`[Email] Downloading PDF from cloud storage: ${pdfAttachment.url}`);
+        try {
+          const response = await fetch(pdfAttachment.url);
+          if (!response.ok) {
+            throw new Error(`Failed to download PDF: ${response.statusText}`);
+          }
+          const arrayBuffer = await response.arrayBuffer();
+          pdfBuffer = Buffer.from(arrayBuffer);
+        } catch (downloadError) {
+          console.error('[Email] PDF download error:', downloadError);
+          return res.status(400).json({ 
+            success: false,
+            error: "Failed to download PDF from cloud storage" 
+          });
+        }
+      } 
+      else {
+        return res.status(400).json({ 
+          success: false,
+          error: "PDF attachment has no content or URL" 
+        });
+      }
+
+      console.log(`[Email] Processing PDF for campaign ${integration.campaignId}, size: ${pdfBuffer.length} bytes`);
+
+      // Parse the PDF to extract metrics
+      const parsedMetrics = await parsePDFMetrics(pdfBuffer);
+      console.log(`[Email] Parsed metrics:`, parsedMetrics);
+
+      // Store the metrics in the database
+      const metrics = await storage.createCustomIntegrationMetrics({
+        campaignId: integration.campaignId,
+        // Legacy metrics
+        impressions: parsedMetrics.impressions,
+        reach: parsedMetrics.reach,
+        clicks: parsedMetrics.clicks,
+        engagements: parsedMetrics.engagements,
+        spend: parsedMetrics.spend?.toString(),
+        conversions: parsedMetrics.conversions,
+        leads: parsedMetrics.leads,
+        videoViews: parsedMetrics.videoViews,
+        viralImpressions: parsedMetrics.viralImpressions,
+        // Audience & Traffic metrics
+        users: parsedMetrics.users,
+        sessions: parsedMetrics.sessions,
+        pageviews: parsedMetrics.pageviews,
+        avgSessionDuration: parsedMetrics.avgSessionDuration,
+        pagesPerSession: parsedMetrics.pagesPerSession?.toString(),
+        bounceRate: parsedMetrics.bounceRate?.toString(),
+        // Traffic sources
+        organicSearchShare: parsedMetrics.organicSearchShare?.toString(),
+        directBrandedShare: parsedMetrics.directBrandedShare?.toString(),
+        emailShare: parsedMetrics.emailShare?.toString(),
+        referralShare: parsedMetrics.referralShare?.toString(),
+        paidShare: parsedMetrics.paidShare?.toString(),
+        socialShare: parsedMetrics.socialShare?.toString(),
+        // Email metrics
+        emailsDelivered: parsedMetrics.emailsDelivered,
+        openRate: parsedMetrics.openRate?.toString(),
+        clickThroughRate: parsedMetrics.clickThroughRate?.toString(),
+        clickToOpenRate: parsedMetrics.clickToOpenRate?.toString(),
+        hardBounces: parsedMetrics.hardBounces?.toString(),
+        spamComplaints: parsedMetrics.spamComplaints?.toString(),
+        listGrowth: parsedMetrics.listGrowth,
+        // Metadata
+        pdfFileName: fileName,
+        emailSubject: req.body.headers?.subject || null,
+        emailId: req.body.headers?.['message-id'] || null,
+      });
+
+      console.log(`[Email] Metrics stored successfully:`, metrics.id);
+
+      res.json({
+        success: true,
+        message: "Email PDF processed successfully",
+        campaignId: integration.campaignId,
+        metricsId: metrics.id,
+        metrics: parsedMetrics,
+        uploadedAt: metrics.uploadedAt,
+      });
+    } catch (error) {
+      console.error("[Email] Error processing PDF:", error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to process email PDF" 
+      });
+    }
+  });
+
   // LinkedIn API routes
   
   // POST /api/linkedin/connect - Manual token connection

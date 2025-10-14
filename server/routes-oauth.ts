@@ -1902,19 +1902,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedMetrics = await parsePDFMetrics(req.file.buffer);
       console.log(`[PDF Upload] Parsed metrics:`, parsedMetrics);
 
+      // Helper to filter out NaN values
+      const cleanMetric = (value: any) => (typeof value === 'number' && isNaN(value)) ? undefined : value;
+
       // Store the metrics in the database
       const metrics = await storage.createCustomIntegrationMetrics({
         campaignId,
         // Legacy metrics
-        impressions: parsedMetrics.impressions,
-        reach: parsedMetrics.reach,
-        clicks: parsedMetrics.clicks,
-        engagements: parsedMetrics.engagements,
+        impressions: cleanMetric(parsedMetrics.impressions),
+        reach: cleanMetric(parsedMetrics.reach),
+        clicks: cleanMetric(parsedMetrics.clicks),
+        engagements: cleanMetric(parsedMetrics.engagements),
         spend: parsedMetrics.spend?.toString(),
-        conversions: parsedMetrics.conversions,
-        leads: parsedMetrics.leads,
-        videoViews: parsedMetrics.videoViews,
-        viralImpressions: parsedMetrics.viralImpressions,
+        conversions: cleanMetric(parsedMetrics.conversions),
+        leads: cleanMetric(parsedMetrics.leads),
+        videoViews: cleanMetric(parsedMetrics.videoViews),
+        viralImpressions: cleanMetric(parsedMetrics.viralImpressions),
         // Audience & Traffic metrics
         users: parsedMetrics.users,
         sessions: parsedMetrics.sessions,
@@ -2025,19 +2028,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedMetrics = await parsePDFMetrics(pdfBuffer);
       console.log(`[Webhook] Parsed metrics:`, parsedMetrics);
 
+      // Helper to filter out NaN values
+      const cleanMetric = (value: any) => (typeof value === 'number' && isNaN(value)) ? undefined : value;
+
       // Store the metrics in the database
       const metrics = await storage.createCustomIntegrationMetrics({
         campaignId: integration.campaignId,
         // Legacy metrics
-        impressions: parsedMetrics.impressions,
-        reach: parsedMetrics.reach,
-        clicks: parsedMetrics.clicks,
-        engagements: parsedMetrics.engagements,
+        impressions: cleanMetric(parsedMetrics.impressions),
+        reach: cleanMetric(parsedMetrics.reach),
+        clicks: cleanMetric(parsedMetrics.clicks),
+        engagements: cleanMetric(parsedMetrics.engagements),
         spend: parsedMetrics.spend?.toString(),
-        conversions: parsedMetrics.conversions,
-        leads: parsedMetrics.leads,
-        videoViews: parsedMetrics.videoViews,
-        viralImpressions: parsedMetrics.viralImpressions,
+        conversions: cleanMetric(parsedMetrics.conversions),
+        leads: cleanMetric(parsedMetrics.leads),
+        videoViews: cleanMetric(parsedMetrics.videoViews),
+        viralImpressions: cleanMetric(parsedMetrics.viralImpressions),
         // Audience & Traffic metrics
         users: parsedMetrics.users,
         sessions: parsedMetrics.sessions,
@@ -2167,19 +2173,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedMetrics = await parsePDFMetrics(pdfBuffer);
       console.log(`[Email] Parsed metrics:`, parsedMetrics);
 
+      // Helper to filter out NaN values
+      const cleanMetric = (value: any) => (typeof value === 'number' && isNaN(value)) ? undefined : value;
+
       // Store the metrics in the database
       const metrics = await storage.createCustomIntegrationMetrics({
         campaignId: integration.campaignId,
         // Legacy metrics
-        impressions: parsedMetrics.impressions,
-        reach: parsedMetrics.reach,
-        clicks: parsedMetrics.clicks,
-        engagements: parsedMetrics.engagements,
+        impressions: cleanMetric(parsedMetrics.impressions),
+        reach: cleanMetric(parsedMetrics.reach),
+        clicks: cleanMetric(parsedMetrics.clicks),
+        engagements: cleanMetric(parsedMetrics.engagements),
         spend: parsedMetrics.spend?.toString(),
-        conversions: parsedMetrics.conversions,
-        leads: parsedMetrics.leads,
-        videoViews: parsedMetrics.videoViews,
-        viralImpressions: parsedMetrics.viralImpressions,
+        conversions: cleanMetric(parsedMetrics.conversions),
+        leads: cleanMetric(parsedMetrics.leads),
+        videoViews: cleanMetric(parsedMetrics.videoViews),
+        viralImpressions: cleanMetric(parsedMetrics.viralImpressions),
         // Audience & Traffic metrics
         users: parsedMetrics.users,
         sessions: parsedMetrics.sessions,

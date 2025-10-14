@@ -74,8 +74,12 @@ function extractNumber(text: string): number {
  */
 export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
   try {
-    const data = await new PDFParse(buffer);
-    const text = data.text;
+    const parser = new PDFParse(buffer);
+    const textResult = await parser.getText();
+    const text = textResult?.text || '';
+    
+    console.log('[PDF Parser] Extracted text length:', text.length);
+    console.log('[PDF Parser] First 200 chars:', text.substring(0, 200));
     
     const metrics: ParsedMetrics = {};
     

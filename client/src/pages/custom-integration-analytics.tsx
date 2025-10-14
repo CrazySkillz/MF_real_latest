@@ -64,18 +64,6 @@ export default function CustomIntegrationAnalytics() {
     return typeof num === 'number' && !Number.isNaN(num) && Number.isFinite(num);
   };
 
-  const hasLegacyMetrics = metricsData && (
-    isValidNumber(metricsData.impressions) ||
-    isValidNumber(metricsData.reach) ||
-    isValidNumber(metricsData.clicks) ||
-    isValidNumber(metricsData.engagements) ||
-    isValidNumber(metricsData.spend) ||
-    isValidNumber(metricsData.conversions) ||
-    isValidNumber(metricsData.leads) ||
-    isValidNumber(metricsData.videoViews) ||
-    isValidNumber(metricsData.viralImpressions)
-  );
-
   const hasAudienceMetrics = metricsData && (
     metricsData.users !== undefined ||
     metricsData.sessions !== undefined ||
@@ -97,7 +85,7 @@ export default function CustomIntegrationAnalytics() {
     metricsData.clickThroughRate !== undefined
   );
 
-  const hasMetrics = hasLegacyMetrics || hasAudienceMetrics || hasTrafficSources || hasEmailMetrics;
+  const hasMetrics = hasAudienceMetrics || hasTrafficSources || hasEmailMetrics;
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900">
@@ -625,190 +613,6 @@ export default function CustomIntegrationAnalytics() {
                               <CardContent>
                                 <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-list-growth">
                                   +{formatNumber(metrics.listGrowth)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Legacy Social Media Metrics */}
-                    {hasLegacyMetrics && (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <TrendingUp className="w-5 h-5 text-orange-600" />
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                            Social Media Performance
-                          </h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {/* Impressions */}
-                          {metrics.impressions !== undefined && (
-                            <Card data-testid="card-metric-impressions">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Impressions
-                                  </CardTitle>
-                                  <Eye className="w-4 h-4 text-slate-400" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-impressions">
-                                  {formatNumber(metrics.impressions)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Reach */}
-                          {metrics.reach !== undefined && (
-                            <Card data-testid="card-metric-reach">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Reach
-                                  </CardTitle>
-                                  <Target className="w-4 h-4 text-slate-400" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-reach">
-                                  {formatNumber(metrics.reach)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Clicks */}
-                          {metrics.clicks !== undefined && (
-                            <Card data-testid="card-metric-clicks">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Clicks
-                                  </CardTitle>
-                                  <MousePointerClick className="w-4 h-4 text-slate-400" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-clicks">
-                                  {formatNumber(metrics.clicks)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Engagements */}
-                          {metrics.engagements !== undefined && (
-                            <Card data-testid="card-metric-engagements">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Engagements
-                                  </CardTitle>
-                                  <Target className="w-4 h-4 text-slate-400" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-engagements">
-                                  {formatNumber(metrics.engagements)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Spend */}
-                          {metrics.spend !== undefined && (
-                            <Card data-testid="card-metric-spend">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Spend
-                                  </CardTitle>
-                                  <DollarSign className="w-4 h-4 text-slate-400" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-spend">
-                                  {formatCurrency(metrics.spend)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Conversions */}
-                          {metrics.conversions !== undefined && (
-                            <Card data-testid="card-metric-conversions">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Conversions
-                                  </CardTitle>
-                                  <Target className="w-4 h-4 text-slate-400" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-conversions">
-                                  {formatNumber(metrics.conversions)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Leads */}
-                          {metrics.leads !== undefined && (
-                            <Card data-testid="card-metric-leads">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Leads
-                                  </CardTitle>
-                                  <Target className="w-4 h-4 text-slate-400" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-leads">
-                                  {formatNumber(metrics.leads)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Video Views */}
-                          {metrics.videoViews !== undefined && (
-                            <Card data-testid="card-metric-video-views">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Video Views
-                                  </CardTitle>
-                                  <Eye className="w-4 h-4 text-slate-400" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-video-views">
-                                  {formatNumber(metrics.videoViews)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Viral Impressions */}
-                          {metrics.viralImpressions !== undefined && (
-                            <Card data-testid="card-metric-viral-impressions">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Viral Impressions
-                                  </CardTitle>
-                                  <TrendingUp className="w-4 h-4 text-slate-400" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-viral-impressions">
-                                  {formatNumber(metrics.viralImpressions)}
                                 </div>
                               </CardContent>
                             </Card>

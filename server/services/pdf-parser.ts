@@ -1,7 +1,6 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const { PDFParse } = require('pdf-parse');
-const pdfParse = PDFParse;
+const pdfParse = require('pdf-parse');
 
 export interface ParsedMetrics {
   // Legacy social media metrics

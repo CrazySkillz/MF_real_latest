@@ -817,29 +817,14 @@ export default function CustomIntegrationAnalytics() {
                       </div>
                     )}
 
-                    {/* Data Source Notice */}
-                    <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
-                      <CardContent className="pt-6">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                            <Plus className="w-5 h-5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                              Data Source: PDF Documents
-                            </h3>
-                            <p className="text-sm text-blue-700 dark:text-blue-300">
-                              Metrics are extracted from PDF documents you upload. The system automatically parses the PDF and updates the analytics dashboard.
-                            </p>
-                            {metricsData?.uploadedAt && (
-                              <Badge className="mt-2 bg-blue-600 text-white">
-                                Last Updated: {new Date(metricsData.uploadedAt).toLocaleString()}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {/* Last Updated Timestamp */}
+                    {metricsData?.uploadedAt && (
+                      <div className="flex justify-end">
+                        <Badge className="bg-blue-600 text-white">
+                          Last Updated: {new Date(metricsData.uploadedAt).toLocaleString()}
+                        </Badge>
+                      </div>
+                    )}
                   </>
                 )}
               </TabsContent>

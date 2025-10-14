@@ -59,15 +59,15 @@ export default function CustomIntegrationAnalytics() {
   };
 
   const hasLegacyMetrics = metricsData && (
-    metricsData.impressions !== undefined ||
-    metricsData.reach !== undefined ||
-    metricsData.clicks !== undefined ||
-    metricsData.engagements !== undefined ||
-    metricsData.spend !== undefined ||
-    metricsData.conversions !== undefined ||
-    metricsData.leads !== undefined ||
-    metricsData.videoViews !== undefined ||
-    metricsData.viralImpressions !== undefined
+    isValidNumber(metricsData.impressions) ||
+    isValidNumber(metricsData.reach) ||
+    isValidNumber(metricsData.clicks) ||
+    isValidNumber(metricsData.engagements) ||
+    isValidNumber(metricsData.spend) ||
+    isValidNumber(metricsData.conversions) ||
+    isValidNumber(metricsData.leads) ||
+    isValidNumber(metricsData.videoViews) ||
+    isValidNumber(metricsData.viralImpressions)
   );
 
   const hasAudienceMetrics = metricsData && (

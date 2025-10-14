@@ -92,4 +92,4 @@ args = "npm run dev"
 waitForPort = 5000
 
 [agent]
-integrations = ["javascript_anthropic==1.0.0"]
+integrations = ["javascript_anthropic:1.0.0", "outlook:1.0.0"]

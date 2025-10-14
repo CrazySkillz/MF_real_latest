@@ -58,6 +58,12 @@ export default function CustomIntegrationAnalytics() {
     return `${num.toFixed(1)}%`;
   };
 
+  const isValidNumber = (value: any): boolean => {
+    if (value === undefined || value === null || value === '') return false;
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    return typeof num === 'number' && !Number.isNaN(num) && Number.isFinite(num);
+  };
+
   const hasLegacyMetrics = metricsData && (
     isValidNumber(metricsData.impressions) ||
     isValidNumber(metricsData.reach) ||
@@ -75,12 +81,6 @@ export default function CustomIntegrationAnalytics() {
     metricsData.sessions !== undefined ||
     metricsData.pageviews !== undefined
   );
-
-  const isValidNumber = (value: any): boolean => {
-    if (value === undefined || value === null || value === '') return false;
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    return typeof num === 'number' && !Number.isNaN(num) && Number.isFinite(num);
-  };
 
   const hasTrafficSources = metricsData && (
     isValidNumber(metricsData.organicSearchShare) ||

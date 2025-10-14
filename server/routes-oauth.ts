@@ -1762,7 +1762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/custom-integration/connect", async (req, res) => {
     try {
       console.log("[Custom Integration] Received connection request:", req.body);
-      const { email, campaignId } = req.body;
+      const { email, campaignId, allowedEmailAddresses } = req.body;
       
       if (!email || !campaignId) {
         console.log("[Custom Integration] Missing email or campaignId");
@@ -1781,6 +1781,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Validate allowed email addresses if provided
+      let validatedEmailAddresses: string[] | undefined;
+      if (allowedEmailAddresses && allowedEmailAddresses.length > 0) {
+        validatedEmailAddresses = allowedEmailAddresses
+          .map((e: string) => e.trim())
+          .filter((e: string) => e.includes('@'));
+        
+        if (validatedEmailAddresses.length === 0) {
+          return res.status(400).json({ 
+            success: false,
+            error: "Invalid email addresses in whitelist" 
+          });
+        }
+        
+        console.log("[Custom Integration] Email whitelist configured:", validatedEmailAddresses);
+      }
+
       // Check if integration already exists
       const existing = await storage.getCustomIntegration(campaignId);
       
@@ -1788,11 +1805,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const webhookToken = existing?.webhookToken || nanoid(32);
       
       // Create or update the custom integration
-      console.log("[Custom Integration] Creating custom integration for:", { campaignId, email, webhookToken });
+      console.log("[Custom Integration] Creating custom integration for:", { campaignId, email, webhookToken, allowedEmailAddresses: validatedEmailAddresses });
       const customIntegration = await storage.createCustomIntegration({
         campaignId,
         email,
-        webhookToken
+        webhookToken,
+        allowedEmailAddresses: validatedEmailAddresses
       });
       console.log("[Custom Integration] Created successfully:", customIntegration);
 
@@ -2110,6 +2128,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: false,
           error: "Invalid email token" 
         });
+      }
+
+      // Validate email sender against whitelist (if configured)
+      const senderEmail = req.body.envelope?.from?.toLowerCase();
+      if (integration.allowedEmailAddresses && integration.allowedEmailAddresses.length > 0) {
+        const normalizedWhitelist = integration.allowedEmailAddresses.map(e => e.toLowerCase());
+        
+        if (!senderEmail || !normalizedWhitelist.includes(senderEmail)) {
+          console.log(`[Email] Rejected email from unauthorized sender: ${senderEmail}`);
+          console.log(`[Email] Allowed senders:`, integration.allowedEmailAddresses);
+          return res.status(403).json({ 
+            success: false,
+            error: "Email sender not authorized. Only whitelisted email addresses can send to this webhook." 
+          });
+        }
+        
+        console.log(`[Email] Email sender validated: ${senderEmail}`);
       }
 
       // Extract PDF attachment from CloudMailin format

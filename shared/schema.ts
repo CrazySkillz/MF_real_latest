@@ -167,6 +167,7 @@ export const customIntegrations = pgTable("custom_integrations", {
   campaignId: text("campaign_id").notNull(),
   email: text("email").notNull(),
   webhookToken: text("webhook_token").notNull(),
+  allowedEmailAddresses: text("allowed_email_addresses").array(), // Email whitelist for security
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

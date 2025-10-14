@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink } from "lucide-react";
+import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink, Shield } from "lucide-react";
 import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -112,6 +112,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const [ga4RefreshToken, setGA4RefreshToken] = useState<string>('');
   const [showCustomIntegrationModal, setShowCustomIntegrationModal] = useState(false);
   const [customIntegrationEmail, setCustomIntegrationEmail] = useState('');
+  const [allowedEmailAddresses, setAllowedEmailAddresses] = useState('');
   const { toast } = useToast();
 
   // Notify parent whenever connected platforms change
@@ -218,12 +219,19 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
     setIsConnecting(prev => ({ ...prev, 'custom-integration': true }));
     
     try {
+      // Parse allowed email addresses (comma-separated or newline-separated)
+      const emailList = allowedEmailAddresses
+        .split(/[,\n]/)
+        .map(e => e.trim())
+        .filter(e => e.length > 0);
+      
       const response = await fetch('/api/custom-integration/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId: 'temp-campaign-setup',
-          email: 'webhook@custom-integration.local' // Placeholder email
+          email: 'webhook@custom-integration.local', // Placeholder email
+          allowedEmailAddresses: emailList.length > 0 ? emailList : undefined
         })
       });
       
@@ -234,10 +242,15 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
         setSelectedPlatforms(prev => [...prev, 'custom-integration']);
         setShowCustomIntegrationModal(false);
         setCustomIntegrationEmail('');
+        setAllowedEmailAddresses('');
+        
+        const securityMsg = emailList.length > 0 
+          ? ` Only emails from ${emailList.length} whitelisted address${emailList.length !== 1 ? 'es' : ''} will be accepted.`
+          : '';
         
         toast({
           title: "Custom Integration Connected!",
-          description: `Successfully connected to ${customIntegrationEmail}`
+          description: `Successfully connected.${securityMsg}`
         });
       } else {
         toast({
@@ -523,12 +536,31 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 <li>Metrics appear automatically in your dashboard</li>
               </ol>
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                Email Whitelist (Optional - Recommended for Security)
+              </label>
+              <textarea
+                placeholder="Enter allowed email addresses (one per line or comma-separated)&#10;Example:&#10;marketing@company.com&#10;reports@agency.com"
+                value={allowedEmailAddresses}
+                onChange={(e) => setAllowedEmailAddresses(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                data-testid="input-email-whitelist"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Only emails from these addresses will be able to send data to your webhook. Leave empty to accept from any email (less secure).
+              </p>
+            </div>
+
             <div className="flex justify-end space-x-2">
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowCustomIntegrationModal(false);
                   setCustomIntegrationEmail('');
+                  setAllowedEmailAddresses('');
                 }}
                 data-testid="button-cancel"
               >

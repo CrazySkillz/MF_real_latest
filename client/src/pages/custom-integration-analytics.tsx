@@ -268,21 +268,6 @@ export default function CustomIntegrationAnalytics() {
                   </Card>
                 )}
 
-                {!hasMetrics && !metricsLoading && (
-                  <Card className="border-slate-200 dark:border-slate-700">
-                    <CardContent className="pt-6">
-                      <div className="text-center py-12">
-                        <FileText className="w-16 h-16 mx-auto text-slate-400 mb-4" />
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                          No Metrics Available
-                        </h3>
-                        <p className="text-slate-600 dark:text-slate-400">
-                          Upload a PDF document to extract and display your marketing metrics
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
 
                 {hasMetrics && (
                   <>

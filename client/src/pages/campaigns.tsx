@@ -215,15 +215,6 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   };
 
   const handleCustomIntegrationConnect = async () => {
-    if (!customIntegrationEmail || !customIntegrationEmail.includes('@')) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsConnecting(prev => ({ ...prev, 'custom-integration': true }));
     
     try {
@@ -232,7 +223,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId: 'temp-campaign-setup',
-          email: customIntegrationEmail
+          email: 'webhook@custom-integration.local' // Placeholder email
         })
       });
       
@@ -519,28 +510,18 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
           <DialogHeader>
             <DialogTitle>Connect Custom Integration</DialogTitle>
             <DialogDescription>
-              Enter an email address to connect and fetch PDF documents for your campaign analytics.
+              Generate a secure webhook URL to receive PDF reports via CloudMailin email forwarding.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="custom-email">Email Address</Label>
-              <Input
-                id="custom-email"
-                type="email"
-                placeholder="analytics@example.com"
-                value={customIntegrationEmail}
-                onChange={(e) => setCustomIntegrationEmail(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleCustomIntegrationConnect();
-                  }
-                }}
-                data-testid="input-custom-integration-email"
-              />
-              <p className="text-sm text-slate-500">
-                We'll use this email to fetch and read PDF documents for your campaign data.
-              </p>
+            <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+              <h4 className="font-semibold text-slate-900 dark:text-white mb-2">How it works:</h4>
+              <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-1 list-decimal list-inside">
+                <li>Click "Connect" to generate your unique webhook URL</li>
+                <li>Configure CloudMailin with this URL (instructions provided after connecting)</li>
+                <li>Forward PDF reports to your CloudMailin email address</li>
+                <li>Metrics appear automatically in your dashboard</li>
+              </ol>
             </div>
             <div className="flex justify-end space-x-2">
               <Button

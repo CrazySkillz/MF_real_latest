@@ -166,6 +166,52 @@ export default function CustomIntegrationAnalytics() {
                   </Card>
                 )}
 
+                {/* Quick Start Guide */}
+                {customIntegration?.webhookToken && (
+                  <Card className="border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-green-900 dark:text-green-100">
+                        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                          <span className="text-white font-bold">⚡</span>
+                        </div>
+                        Quick Start: Auto-Import Marketing PDFs (3 Minutes)
+                      </CardTitle>
+                      <CardDescription className="text-green-700 dark:text-green-300">
+                        Set up once, never manually upload again. PDFs sent to your email automatically appear here.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">What you need:</h4>
+                          <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
+                            <li className="flex items-start gap-2">
+                              <span className="text-green-600 dark:text-green-400 font-bold">1.</span>
+                              <span>IFTTT account (free) - <a href="https://ifttt.com/join" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Sign up here</a></span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-green-600 dark:text-green-400 font-bold">2.</span>
+                              <span>Your email where marketing reports arrive (any email provider works)</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-green-600 dark:text-green-400 font-bold">3.</span>
+                              <span>3 minutes to follow the steps below</span>
+                            </li>
+                          </ul>
+                        </div>
+
+                        <Button
+                          onClick={() => window.open('https://ifttt.com/create', '_blank')}
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                          data-testid="button-create-ifttt"
+                        >
+                          Open IFTTT to Start Setup →
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* IFTTT Setup Guide */}
                 {customIntegration?.webhookToken && (
                   <Card className="border-slate-200 dark:border-slate-700">
@@ -174,10 +220,10 @@ export default function CustomIntegrationAnalytics() {
                         <div className="w-8 h-8 rounded bg-blue-500 flex items-center justify-center">
                           <span className="text-white font-bold text-sm">IF</span>
                         </div>
-                        IFTTT Setup Guide (Recommended - Easier)
+                        Step-by-Step Setup Guide
                       </CardTitle>
                       <CardDescription>
-                        Follow these simple steps to automatically forward marketing report PDFs to your webhook
+                        Copy and paste these exact settings into IFTTT
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -207,11 +253,36 @@ export default function CustomIntegrationAnalytics() {
                           </div>
                           <div className="flex-1">
                             <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                              Create a New Applet
+                              Set Up Email Trigger (IFTTT will give you a special email address)
                             </h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                              Click "Create" button in the top right, then click "If This"
-                            </p>
+                            <div className="bg-slate-50 dark:bg-slate-800 rounded p-4 text-sm space-y-3">
+                              <div>
+                                <p className="text-slate-600 dark:text-slate-400 mb-2">Click "If This" → Search for <strong>"Email"</strong> → Select "Email" service</p>
+                                <p className="text-slate-600 dark:text-slate-400 mb-2">Choose: <strong>"Send IFTTT an email tagged"</strong></p>
+                              </div>
+                              <div className="bg-blue-50 dark:bg-blue-900 rounded p-3 border border-blue-200 dark:border-blue-700">
+                                <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">Tag to enter:</p>
+                                <div className="flex items-center gap-2">
+                                  <code className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded border border-blue-300 dark:border-blue-600 font-mono">marketing</code>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText('marketing');
+                                      toast({
+                                        title: "Copied!",
+                                        description: "Tag 'marketing' copied to clipboard",
+                                      });
+                                    }}
+                                  >
+                                    Copy
+                                  </Button>
+                                </div>
+                                <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                                  After setup, you'll get a special email like trigger@applet.ifttt.com to forward PDFs to
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
 
@@ -222,81 +293,122 @@ export default function CustomIntegrationAnalytics() {
                           </div>
                           <div className="flex-1">
                             <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                              Choose Email Trigger
+                              Configure Webhook (Copy & Paste These Values)
                             </h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                              Search for "Email" and select the <strong>Email</strong> service
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                              Click "Then That" → Search for <strong>"Webhooks"</strong> → Choose <strong>"Make a web request"</strong>
                             </p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                              Choose trigger: <strong>"Send IFTTT an email tagged"</strong>
-                            </p>
-                            <div className="bg-slate-50 dark:bg-slate-800 rounded p-3 text-sm space-y-2">
-                              <p><strong>Tag to use:</strong> <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">marketing</code></p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
-                                You'll get a special IFTTT email address to forward your PDFs to (e.g., trigger@applet.ifttt.com)
-                              </p>
+                            
+                            <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 border border-purple-200 dark:border-purple-800 space-y-4">
+                              {/* URL Field */}
+                              <div>
+                                <label className="text-sm font-semibold text-purple-900 dark:text-purple-100 block mb-2">
+                                  1. URL field - Paste this:
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 p-2 bg-white dark:bg-slate-900 rounded border border-purple-300 dark:border-purple-700 font-mono text-xs break-all">
+                                    {window.location.origin}/api/webhook/custom-integration/{customIntegration.webhookToken}
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(`${window.location.origin}/api/webhook/custom-integration/${customIntegration.webhookToken}`);
+                                      toast({
+                                        title: "Copied!",
+                                        description: "Webhook URL copied to clipboard",
+                                      });
+                                    }}
+                                  >
+                                    Copy
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* Method Field */}
+                              <div>
+                                <label className="text-sm font-semibold text-purple-900 dark:text-purple-100 block mb-2">
+                                  2. Method dropdown - Select:
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <code className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded border border-purple-300 dark:border-purple-700 font-mono">POST</code>
+                                </div>
+                              </div>
+
+                              {/* Content Type Field */}
+                              <div>
+                                <label className="text-sm font-semibold text-purple-900 dark:text-purple-100 block mb-2">
+                                  3. Content Type dropdown - Select:
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <code className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded border border-purple-300 dark:border-purple-700 font-mono">application/json</code>
+                                </div>
+                              </div>
+
+                              {/* Body Field - Most Important */}
+                              <div className="bg-yellow-50 dark:bg-yellow-950 rounded-lg p-3 border-2 border-yellow-400 dark:border-yellow-600">
+                                <label className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 block mb-2">
+                                  4. Body field - Type this template first:
+                                </label>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <code className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-900 rounded border border-yellow-400 dark:border-yellow-600 font-mono text-sm">
+                                    {`{"value1":""}`}
+                                  </code>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText('{"value1":""}');
+                                      toast({
+                                        title: "Copied!",
+                                        description: "Body template copied. Now add Attachment URL ingredient.",
+                                      });
+                                    }}
+                                  >
+                                    Copy
+                                  </Button>
+                                </div>
+                                <div className="bg-yellow-100 dark:bg-yellow-900 rounded p-3 text-sm">
+                                  <p className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2">⚠️ Then click inside the quotes and:</p>
+                                  <ol className="text-yellow-800 dark:text-yellow-200 space-y-1 list-decimal list-inside">
+                                    <li>Click "Add ingredient" button</li>
+                                    <li>Select "<strong>Attachment URL</strong>" from dropdown</li>
+                                    <li>Final result: <code className="bg-white dark:bg-slate-800 px-2 py-0.5 rounded">{`{"value1":"{{AttachmentURL}}"}`}</code></li>
+                                  </ol>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Step 4 */}
+                        {/* Step 4 - Final Step */}
                         <div className="flex gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">
                             4
                           </div>
                           <div className="flex-1">
                             <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                              Add Webhook Action
+                              Save & Start Using
                             </h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                              Click "Then That", search for "Webhooks", and select <strong>Webhooks</strong> service
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                              Click "Continue" → Name it "Marketing Reports to PerformanceCore" → Click "Finish"
                             </p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                              Choose action: <strong>"Make a web request"</strong>
-                            </p>
-                            <div className="bg-slate-50 dark:bg-slate-800 rounded p-3 text-sm space-y-3">
+                            <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4 border border-green-200 dark:border-green-800 space-y-3">
                               <div>
-                                <strong>URL:</strong>
-                                <div className="mt-1 p-2 bg-white dark:bg-slate-900 rounded border border-slate-300 dark:border-slate-600 font-mono text-xs break-all">
-                                  {window.location.origin}/api/webhook/custom-integration/{customIntegration.webhookToken}
-                                </div>
+                                <p className="font-semibold text-green-900 dark:text-green-100 mb-2">📧 How to use after setup:</p>
+                                <ol className="text-sm text-green-700 dark:text-green-300 space-y-2 list-decimal list-inside">
+                                  <li>When marketing PDF arrives in your regular email</li>
+                                  <li>Forward it to your IFTTT email (shown in IFTTT after setup)</li>
+                                  <li>Add "#marketing" in the subject line</li>
+                                  <li>Metrics appear here automatically in 1-5 minutes!</li>
+                                </ol>
                               </div>
-                              <div>
-                                <strong>Method:</strong> <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">POST</code>
-                              </div>
-                              <div>
-                                <strong>Content Type:</strong> <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">application/json</code>
-                              </div>
-                              <div>
-                                <strong>Body:</strong>
-                                <div className="mt-1 p-2 bg-white dark:bg-slate-900 rounded border border-slate-300 dark:border-slate-600 font-mono text-xs">
-                                  {'{"value1":"<<<Attachment URL>>>"}'} 
-                                </div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  ⚠️ Important: Click "Add ingredient" and select "Attachment URL" from the dropdown to insert the actual PDF link
+                              <div className="bg-green-100 dark:bg-green-900 rounded p-3">
+                                <p className="text-sm font-semibold text-green-900 dark:text-green-100 mb-1">💡 Pro Tip:</p>
+                                <p className="text-sm text-green-800 dark:text-green-200">
+                                  Set up Gmail/Outlook auto-forwarding rules to automatically forward reports from specific senders (like reports@facebook.com) to your IFTTT email with #marketing tag. Then it's 100% automatic!
                                 </p>
                               </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Step 5 */}
-                        <div className="flex gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
-                            5
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                              Save and Test
-                            </h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                              Click "Continue", give your applet a name (e.g., "Marketing Reports to PerformanceCore"), and click "Finish"
-                            </p>
-                            <div className="bg-green-50 dark:bg-green-950 rounded p-3 text-sm border border-green-200 dark:border-green-800">
-                              <strong className="text-green-900 dark:text-green-100">✅ Test it:</strong>
-                              <p className="text-green-700 dark:text-green-300 mt-1">
-                                Forward a marketing report PDF to your IFTTT trigger email with the tag "marketing" in the subject line. Your metrics should appear here within a few minutes!
-                              </p>
                             </div>
                           </div>
                         </div>

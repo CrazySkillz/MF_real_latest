@@ -212,11 +212,10 @@ export default function CustomIntegrationAnalytics() {
                     <CardContent>
                       <div className="space-y-4">
                         <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
-                          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Setup Steps:</h4>
+                          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Quick Setup (Takes 2 Minutes):</h4>
                           <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-3 list-decimal list-inside">
-                            <li>Create a free CloudMailin account at <a href="https://cloudmailin.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">cloudmailin.com</a></li>
-                            <li>Click "Create Address" to get your email address</li>
-                            <li>Set the webhook URL to:
+                            <li>Click the blue button below to create a free CloudMailin address</li>
+                            <li>On CloudMailin's website, set the webhook URL to:
                               <div className="mt-2 bg-white dark:bg-slate-900 rounded p-2 border border-slate-300 dark:border-slate-600">
                                 <code className="text-xs text-slate-900 dark:text-slate-100 break-all">
                                   {window.location.origin}/api/email/inbound/{customIntegration.webhookToken}
@@ -225,7 +224,7 @@ export default function CustomIntegrationAnalytics() {
                             </li>
                             <li>Select format: <strong>JSON (Normalized)</strong></li>
                             <li>Save and copy your CloudMailin email address</li>
-                            <li>Replace "your-domain.cloudmailin.net" above with your CloudMailin email address</li>
+                            <li>Replace "your-domain.cloudmailin.net" in the email address above with your actual CloudMailin address</li>
                           </ol>
                         </div>
 
@@ -234,7 +233,8 @@ export default function CustomIntegrationAnalytics() {
                           className="w-full bg-blue-600 hover:bg-blue-700"
                           data-testid="button-setup-cloudmailin"
                         >
-                          Set Up CloudMailin (Free) →
+                          <Mail className="w-4 h-4 mr-2" />
+                          Create CloudMailin Address (Free) →
                         </Button>
                       </div>
                     </CardContent>

@@ -906,6 +906,8 @@ export default function Campaigns() {
           const result = await response.json();
           if (result.success) {
             console.log('✅ Custom Integration transferred successfully to campaign:', (newCampaign as any).id);
+            // Invalidate query cache to show correct connection status
+            queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", (newCampaign as any).id] });
           } else {
             console.error('❌ Custom Integration transfer failed:', result.error);
           }

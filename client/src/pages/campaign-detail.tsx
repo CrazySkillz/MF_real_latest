@@ -1115,9 +1115,8 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
     queryFn: async () => {
       const response = await fetch(`/api/custom-integration/${campaignId}`);
-      if (!response.ok) return { connected: false };
-      const data = await response.json();
-      return { connected: true, email: data.email };
+      if (!response.ok) return null;
+      return response.json();
     },
   });
 
@@ -1278,7 +1277,7 @@ export default function CampaignDetail() {
     },
     {
       platform: "Custom Integration",
-      connected: !!customIntegration?.connected,
+      connected: !!customIntegration,
       impressions: 0,
       clicks: 0,
       conversions: 0,

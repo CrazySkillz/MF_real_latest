@@ -1,7 +1,6 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const pdfParseModule = require('pdf-parse');
-const pdfParse = pdfParseModule.default || pdfParseModule;
+const { PDFParse } = require('pdf-parse');
 
 export interface ParsedMetrics {
   // Legacy social media metrics
@@ -75,7 +74,7 @@ function extractNumber(text: string): number {
  */
 export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
   try {
-    const data = await pdfParse(buffer);
+    const data = await PDFParse(buffer);
     const text = data.text;
     
     const metrics: ParsedMetrics = {};

@@ -116,12 +116,12 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
       
       // Email performance metrics
       emailsDelivered: /(?:emails?\s*delivered|delivered)[:\s|]+([0-9,.KM]+)/i,
-      openRate: /open\s*rate[:\s|]+([0-9,.]+)%?/i,
-      clickThroughRate: /(?:click-through\s*rate|ctr)[:\s|]+([0-9,.]+)%?/i,
-      clickToOpenRate: /(?:click-to-open|ctor)[:\s|]+([0-9,.]+)%?/i,
+      openRate: /open\s*rate\s*(?:\(unique\))?[:\s|]+([0-9,.]+)%?/i,
+      clickThroughRate: /(?:click-through\s*rate|click\s*-\s*through\s*rate|ctr)\s*(?:\(ctr\))?[:\s|]+([0-9,.]+)%?/i,
+      clickToOpenRate: /(?:click-to-open|click\s*-\s*to\s*-\s*open|ctor)\s*(?:\(ctor\))?[:\s|]+([0-9,.]+)%?/i,
       hardBounces: /hard\s*bounces?[:\s|]+([0-9,.]+)%?/i,
       spamComplaints: /spam\s*complaints?[:\s|]+([0-9,.]+)%?/i,
-      listGrowth: /(?:list\s*growth|net\s*subscribers?)[:\s|]+\+?([0-9,.KM]+)/i,
+      listGrowth: /(?:list\s*growth\s*(?:\(net\))?|net\s*subscribers?)[:\s|]+\+?([0-9,.KM]+)/i,
     };
     
     // Extract each metric

@@ -174,16 +174,43 @@ export const customIntegrations = pgTable("custom_integrations", {
 export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
-  // Core Metrics (9 metrics from PDF)
-  impressions: integer("impressions").notNull().default(0),
-  reach: integer("reach").notNull().default(0),
-  clicks: integer("clicks").notNull().default(0),
-  engagements: integer("engagements").notNull().default(0),
-  spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default("0"),
-  conversions: integer("conversions").notNull().default(0),
-  leads: integer("leads").notNull().default(0),
-  videoViews: integer("video_views").notNull().default(0),
-  viralImpressions: integer("viral_impressions").notNull().default(0),
+  
+  // Legacy Social Media Metrics (kept for backward compatibility)
+  impressions: integer("impressions").default(0),
+  reach: integer("reach").default(0),
+  clicks: integer("clicks").default(0),
+  engagements: integer("engagements").default(0),
+  spend: decimal("spend", { precision: 10, scale: 2 }).default("0"),
+  conversions: integer("conversions").default(0),
+  leads: integer("leads").default(0),
+  videoViews: integer("video_views").default(0),
+  viralImpressions: integer("viral_impressions").default(0),
+  
+  // Audience & Traffic Metrics (GA4 style)
+  users: integer("users").default(0), // Unique browsers/devices
+  sessions: integer("sessions").default(0), // Total sessions
+  pageviews: integer("pageviews").default(0), // All pageviews
+  avgSessionDuration: text("avg_session_duration"), // Format: "00:02:38"
+  pagesPerSession: decimal("pages_per_session", { precision: 5, scale: 2 }).default("0"), // e.g., 2.05
+  bounceRate: decimal("bounce_rate", { precision: 5, scale: 2 }).default("0"), // Percentage
+  
+  // Traffic Sources (by channel, stored as percentages)
+  organicSearchShare: decimal("organic_search_share", { precision: 5, scale: 2 }).default("0"), // e.g., 39.00
+  directBrandedShare: decimal("direct_branded_share", { precision: 5, scale: 2 }).default("0"), // e.g., 26.00
+  emailShare: decimal("email_share", { precision: 5, scale: 2 }).default("0"), // e.g., 14.00
+  referralShare: decimal("referral_share", { precision: 5, scale: 2 }).default("0"), // e.g., 11.00
+  paidShare: decimal("paid_share", { precision: 5, scale: 2 }).default("0"), // e.g., 7.00
+  socialShare: decimal("social_share", { precision: 5, scale: 2 }).default("0"), // e.g., 3.00
+  
+  // Email & Newsletter Performance Metrics
+  emailsDelivered: integer("emails_delivered").default(0),
+  openRate: decimal("open_rate", { precision: 5, scale: 2 }).default("0"), // Percentage
+  clickThroughRate: decimal("click_through_rate", { precision: 5, scale: 2 }).default("0"), // CTR percentage
+  clickToOpenRate: decimal("click_to_open_rate", { precision: 5, scale: 2 }).default("0"), // CTOR percentage
+  hardBounces: decimal("hard_bounces", { precision: 5, scale: 2 }).default("0"), // Percentage
+  spamComplaints: decimal("spam_complaints", { precision: 5, scale: 2 }).default("0"), // Percentage
+  listGrowth: integer("list_growth").default(0), // Net new subscribers
+  
   // Metadata
   pdfFileName: text("pdf_file_name"),
   emailSubject: text("email_subject"),

@@ -1905,15 +1905,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store the metrics in the database
       const metrics = await storage.createCustomIntegrationMetrics({
         campaignId,
+        // Legacy metrics
         impressions: parsedMetrics.impressions,
         reach: parsedMetrics.reach,
         clicks: parsedMetrics.clicks,
         engagements: parsedMetrics.engagements,
-        spend: parsedMetrics.spend.toString(),
+        spend: parsedMetrics.spend?.toString(),
         conversions: parsedMetrics.conversions,
         leads: parsedMetrics.leads,
         videoViews: parsedMetrics.videoViews,
         viralImpressions: parsedMetrics.viralImpressions,
+        // Audience & Traffic metrics
+        users: parsedMetrics.users,
+        sessions: parsedMetrics.sessions,
+        pageviews: parsedMetrics.pageviews,
+        avgSessionDuration: parsedMetrics.avgSessionDuration,
+        pagesPerSession: parsedMetrics.pagesPerSession?.toString(),
+        bounceRate: parsedMetrics.bounceRate?.toString(),
+        // Traffic sources
+        organicSearchShare: parsedMetrics.organicSearchShare?.toString(),
+        directBrandedShare: parsedMetrics.directBrandedShare?.toString(),
+        emailShare: parsedMetrics.emailShare?.toString(),
+        referralShare: parsedMetrics.referralShare?.toString(),
+        paidShare: parsedMetrics.paidShare?.toString(),
+        socialShare: parsedMetrics.socialShare?.toString(),
+        // Email metrics
+        emailsDelivered: parsedMetrics.emailsDelivered,
+        openRate: parsedMetrics.openRate?.toString(),
+        clickThroughRate: parsedMetrics.clickThroughRate?.toString(),
+        clickToOpenRate: parsedMetrics.clickToOpenRate?.toString(),
+        hardBounces: parsedMetrics.hardBounces?.toString(),
+        spamComplaints: parsedMetrics.spamComplaints?.toString(),
+        listGrowth: parsedMetrics.listGrowth,
+        // Metadata
         pdfFileName: req.file.originalname,
         emailSubject: null,
         emailId: null,
@@ -1924,17 +1948,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         message: "PDF processed successfully",
-        metrics: {
-          impressions: metrics.impressions,
-          reach: metrics.reach,
-          clicks: metrics.clicks,
-          engagements: metrics.engagements,
-          spend: parseFloat(metrics.spend),
-          conversions: metrics.conversions,
-          leads: metrics.leads,
-          videoViews: metrics.videoViews,
-          viralImpressions: metrics.viralImpressions,
-        },
+        metrics: parsedMetrics,
         uploadedAt: metrics.uploadedAt,
       });
     } catch (error) {
@@ -2014,15 +2028,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store the metrics in the database
       const metrics = await storage.createCustomIntegrationMetrics({
         campaignId: integration.campaignId,
+        // Legacy metrics
         impressions: parsedMetrics.impressions,
         reach: parsedMetrics.reach,
         clicks: parsedMetrics.clicks,
         engagements: parsedMetrics.engagements,
-        spend: parsedMetrics.spend.toString(),
+        spend: parsedMetrics.spend?.toString(),
         conversions: parsedMetrics.conversions,
         leads: parsedMetrics.leads,
         videoViews: parsedMetrics.videoViews,
         viralImpressions: parsedMetrics.viralImpressions,
+        // Audience & Traffic metrics
+        users: parsedMetrics.users,
+        sessions: parsedMetrics.sessions,
+        pageviews: parsedMetrics.pageviews,
+        avgSessionDuration: parsedMetrics.avgSessionDuration,
+        pagesPerSession: parsedMetrics.pagesPerSession?.toString(),
+        bounceRate: parsedMetrics.bounceRate?.toString(),
+        // Traffic sources
+        organicSearchShare: parsedMetrics.organicSearchShare?.toString(),
+        directBrandedShare: parsedMetrics.directBrandedShare?.toString(),
+        emailShare: parsedMetrics.emailShare?.toString(),
+        referralShare: parsedMetrics.referralShare?.toString(),
+        paidShare: parsedMetrics.paidShare?.toString(),
+        socialShare: parsedMetrics.socialShare?.toString(),
+        // Email metrics
+        emailsDelivered: parsedMetrics.emailsDelivered,
+        openRate: parsedMetrics.openRate?.toString(),
+        clickThroughRate: parsedMetrics.clickThroughRate?.toString(),
+        clickToOpenRate: parsedMetrics.clickToOpenRate?.toString(),
+        hardBounces: parsedMetrics.hardBounces?.toString(),
+        spamComplaints: parsedMetrics.spamComplaints?.toString(),
+        listGrowth: parsedMetrics.listGrowth,
+        // Metadata
         pdfFileName: fileName,
         emailSubject: req.body.subject || req.body.value2 || null,
         emailId: req.body.emailId || req.body.value3 || null,
@@ -2035,6 +2073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "PDF processed successfully",
         campaignId: integration.campaignId,
         metricsId: metrics.id,
+        metrics: parsedMetrics,
         uploadedAt: metrics.uploadedAt,
       });
     } catch (error) {

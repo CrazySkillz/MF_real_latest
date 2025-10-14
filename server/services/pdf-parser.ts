@@ -4,15 +4,41 @@ const { PDFParse } = require('pdf-parse');
 const pdfParse = PDFParse;
 
 export interface ParsedMetrics {
-  impressions: number;
-  reach: number;
-  clicks: number;
-  engagements: number;
-  spend: number;
-  conversions: number;
-  leads: number;
-  videoViews: number;
-  viralImpressions: number;
+  // Legacy social media metrics
+  impressions?: number;
+  reach?: number;
+  clicks?: number;
+  engagements?: number;
+  spend?: number;
+  conversions?: number;
+  leads?: number;
+  videoViews?: number;
+  viralImpressions?: number;
+  
+  // Audience & Traffic metrics
+  users?: number;
+  sessions?: number;
+  pageviews?: number;
+  avgSessionDuration?: string;
+  pagesPerSession?: number;
+  bounceRate?: number;
+  
+  // Traffic sources (percentages)
+  organicSearchShare?: number;
+  directBrandedShare?: number;
+  emailShare?: number;
+  referralShare?: number;
+  paidShare?: number;
+  socialShare?: number;
+  
+  // Email performance metrics
+  emailsDelivered?: number;
+  openRate?: number;
+  clickThroughRate?: number;
+  clickToOpenRate?: number;
+  hardBounces?: number;
+  spamComplaints?: number;
+  listGrowth?: number;
 }
 
 /**
@@ -42,31 +68,21 @@ function extractNumber(text: string): number {
 
 /**
  * Parse PDF content to extract marketing metrics
- * Looks for common patterns like:
- * - "Impressions: 12,450"
- * - "Total Impressions 12450"
- * - "Impressions|12,450"
+ * Supports multiple formats:
+ * - Table format (GA4 style): "Users (unique) | 1,275,432"
+ * - Simple format: "Impressions: 12,450"
+ * - Inline format: "Impressions 12450"
  */
 export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
   try {
     const data = await pdfParse(buffer);
     const text = data.text;
     
-    // Patterns to search for each metric
-    const metrics: ParsedMetrics = {
-      impressions: 0,
-      reach: 0,
-      clicks: 0,
-      engagements: 0,
-      spend: 0,
-      conversions: 0,
-      leads: 0,
-      videoViews: 0,
-      viralImpressions: 0,
-    };
+    const metrics: ParsedMetrics = {};
     
-    // Define patterns for each metric
+    // Define patterns for all metrics
     const patterns = {
+      // Legacy social media metrics
       impressions: /impressions?[:\s|]+([0-9,.KM]+)/i,
       reach: /reach[:\s|]+([0-9,.KM]+)/i,
       clicks: /clicks?[:\s|]+([0-9,.KM]+)/i,
@@ -76,14 +92,57 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
       leads: /leads?[:\s|]+([0-9,.KM]+)/i,
       videoViews: /(?:video\s*views?|views?)[:\s|]+([0-9,.KM]+)/i,
       viralImpressions: /(?:viral\s*impressions?|organic\s*impressions?)[:\s|]+([0-9,.KM]+)/i,
+      
+      // Audience & Traffic metrics (GA4 style)
+      users: /(?:users?\s*\(unique\)|unique\s*users?)[:\s|]+([0-9,.KM]+)/i,
+      sessions: /sessions?[:\s|]+([0-9,.KM]+)/i,
+      pageviews: /pageviews?[:\s|]+([0-9,.KM]+)/i,
+      avgSessionDuration: /(?:avg\.?\s*session\s*duration|average\s*session\s*duration)[:\s|]+([0-9:]+)/i,
+      pagesPerSession: /(?:pages?\s*\/\s*session|pages?\s*per\s*session)[:\s|]+([0-9,.]+)/i,
+      bounceRate: /bounce\s*rate[:\s|]+([0-9,.]+)%?/i,
+      
+      // Traffic sources (percentages)
+      organicSearchShare: /organic\s*search[:\s|]+([0-9,.]+)%?/i,
+      directBrandedShare: /(?:direct\s*\/?\s*branded|direct)[:\s|]+([0-9,.]+)%?/i,
+      emailShare: /(?:email\s*\(newsletters?\)|email)[:\s|]+([0-9,.]+)%?/i,
+      referralShare: /(?:referral\s*\/?\s*partners?|referral)[:\s|]+([0-9,.]+)%?/i,
+      paidShare: /(?:paid\s*\(display\/search\)|paid)[:\s|]+([0-9,.]+)%?/i,
+      socialShare: /social[:\s|]+([0-9,.]+)%?/i,
+      
+      // Email performance metrics
+      emailsDelivered: /(?:emails?\s*delivered|delivered)[:\s|]+([0-9,.KM]+)/i,
+      openRate: /open\s*rate[:\s|]+([0-9,.]+)%?/i,
+      clickThroughRate: /(?:click-through\s*rate|ctr)[:\s|]+([0-9,.]+)%?/i,
+      clickToOpenRate: /(?:click-to-open|ctor)[:\s|]+([0-9,.]+)%?/i,
+      hardBounces: /hard\s*bounces?[:\s|]+([0-9,.]+)%?/i,
+      spamComplaints: /spam\s*complaints?[:\s|]+([0-9,.]+)%?/i,
+      listGrowth: /(?:list\s*growth|net\s*subscribers?)[:\s|]+\+?([0-9,.KM]+)/i,
     };
     
     // Extract each metric
     for (const [key, pattern] of Object.entries(patterns)) {
       const match = text.match(pattern);
       if (match && match[1]) {
-        metrics[key as keyof ParsedMetrics] = extractNumber(match[1]);
+        // Special handling for time duration
+        if (key === 'avgSessionDuration') {
+          metrics[key as keyof ParsedMetrics] = match[1]; // Keep as string "00:02:38"
+        } else {
+          metrics[key as keyof ParsedMetrics] = extractNumber(match[1]);
+        }
       }
+    }
+    
+    // Set defaults for backward compatibility if no metrics found
+    if (Object.keys(metrics).length === 0) {
+      metrics.impressions = 0;
+      metrics.reach = 0;
+      metrics.clicks = 0;
+      metrics.engagements = 0;
+      metrics.spend = 0;
+      metrics.conversions = 0;
+      metrics.leads = 0;
+      metrics.videoViews = 0;
+      metrics.viralImpressions = 0;
     }
     
     return metrics;

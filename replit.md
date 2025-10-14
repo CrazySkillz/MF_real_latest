@@ -91,6 +91,7 @@ Preferred communication style: Simple, everyday language.
 - **IFTTT Integration**: Leverages IFTTT's email trigger "Attachment URL" ingredient to pass public PDF URLs to webhook for download and processing
 - **Setup**: Generate unique webhook token on connection → Copy webhook URL → Configure in automation service → Activate
 - **UI Display**: Metrics are conditionally displayed based on available data, with organized sections for each metric category
+- **Validation Pattern**: Robust metric validation using `isValidNumber` helper that ensures sections only render when valid numeric data exists (including zero values), preventing display of empty sections with N/A cards. Handles undefined, null, empty strings, NaN, and Infinity edge cases from PDF parsing
 
 ### Future Enhancements
 - **Token Persistence**: Store OAuth tokens in database (currently in-memory)

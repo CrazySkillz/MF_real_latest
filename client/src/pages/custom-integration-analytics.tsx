@@ -1,20 +1,42 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown, Zap, Link2 } from "lucide-react";
+import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown, Zap, Link2, CheckCircle2, AlertCircle, Pencil, Trash2 } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function CustomIntegrationAnalytics() {
   const [, params] = useRoute("/campaigns/:id/custom-integration-analytics");
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const campaignId = params?.id;
+
+  // KPI state management
+  const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
+  const [editingKPI, setEditingKPI] = useState<any>(null);
+  const [kpiForm, setKpiForm] = useState({
+    name: '',
+    description: '',
+    metric: '',
+    targetValue: '',
+    currentValue: '',
+    unit: '',
+    priority: 'medium',
+    status: 'active',
+    category: ''
+  });
   
   // Fetch campaign details
   const { data: campaign } = useQuery({
@@ -36,8 +58,101 @@ export default function CustomIntegrationAnalytics() {
     enabled: !!campaignId,
   });
 
+  // Fetch platform-level KPIs for custom integration
+  const { data: kpisData, isLoading: kpisLoading } = useQuery({
+    queryKey: ['/api/platforms/custom-integration/kpis'],
+  });
+
   // Use real metrics if available, otherwise show placeholder
   const metrics = metricsData || {};
+
+  // Create KPI mutation
+  const createKpiMutation = useMutation({
+    mutationFn: async (kpiData: any) => {
+      const res = await apiRequest('POST', '/api/platforms/custom-integration/kpis', kpiData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis'] });
+      toast({
+        title: "KPI Created",
+        description: "Your KPI has been successfully created.",
+      });
+      setIsKPIModalOpen(false);
+      setKpiForm({
+        name: '',
+        description: '',
+        metric: '',
+        targetValue: '',
+        currentValue: '',
+        unit: '',
+        priority: 'medium',
+        status: 'active',
+        category: ''
+      });
+    },
+  });
+
+  // Update KPI mutation
+  const updateKpiMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest('PATCH', `/api/kpis/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis'] });
+      toast({
+        title: "KPI Updated",
+        description: "Your KPI has been successfully updated.",
+      });
+      setIsKPIModalOpen(false);
+      setEditingKPI(null);
+      setKpiForm({
+        name: '',
+        description: '',
+        metric: '',
+        targetValue: '',
+        currentValue: '',
+        unit: '',
+        priority: 'medium',
+        status: 'active',
+        category: ''
+      });
+    },
+  });
+
+  // Delete KPI mutation
+  const deleteKpiMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('DELETE', `/api/kpis/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis'] });
+      toast({
+        title: "KPI Deleted",
+        description: "The KPI has been successfully deleted.",
+      });
+    },
+  });
+
+  // Handle KPI form submission
+  const handleKPISubmit = () => {
+    if (editingKPI) {
+      updateKpiMutation.mutate({
+        id: editingKPI.id,
+        data: {
+          ...kpiForm,
+          platformType: 'custom-integration',
+        }
+      });
+    } else {
+      createKpiMutation.mutate({
+        ...kpiForm,
+        platformType: 'custom-integration',
+      });
+    }
+  };
 
   const formatNumber = (num?: number | null) => {
     if (!num && num !== 0) return 'N/A';
@@ -634,30 +749,255 @@ export default function CustomIntegrationAnalytics() {
               </TabsContent>
 
               {/* KPIs Tab */}
-              <TabsContent value="kpis" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Platform-Level KPIs</CardTitle>
-                    <CardDescription>
-                      Manage key performance indicators for Custom Integration
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-12">
-                      <Plus className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                        No KPIs Defined
-                      </h3>
-                      <p className="text-slate-600 dark:text-slate-400 mb-4">
-                        Create KPIs to track performance goals for your custom integration
-                      </p>
-                      <Button data-testid="button-create-kpi">
+              <TabsContent value="kpis" className="space-y-6" data-testid="content-kpis">
+                {kpisLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  </div>
+                ) : kpisData && (kpisData as any[]).length > 0 ? (
+                  <>
+                    {/* Header with Create Button */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Track and monitor your Custom Integration KPIs
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={() => setIsKPIModalOpen(true)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        data-testid="button-create-kpi-header"
+                      >
                         <Plus className="w-4 h-4 mr-2" />
                         Create KPI
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
+
+                    {/* KPI Summary Cards */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {(kpisData as any[]).length}
+                              </p>
+                            </div>
+                            <Target className="w-8 h-8 text-purple-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Active KPIs</p>
+                              <p className="text-2xl font-bold text-green-600">
+                                {(kpisData as any[]).filter((k: any) => k.status === 'active').length}
+                              </p>
+                            </div>
+                            <CheckCircle2 className="w-8 h-8 text-green-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">High Priority</p>
+                              <p className="text-2xl font-bold text-red-600">
+                                {(kpisData as any[]).filter((k: any) => k.priority === 'high').length}
+                              </p>
+                            </div>
+                            <AlertCircle className="w-8 h-8 text-red-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">In Progress</p>
+                              <p className="text-2xl font-bold text-purple-600">
+                                {(kpisData as any[]).filter((k: any) => k.status === 'active').length}
+                              </p>
+                            </div>
+                            <Clock className="w-8 h-8 text-purple-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* KPI Cards */}
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      {(kpisData as any[]).map((kpi: any) => (
+                        <Card key={kpi.id} data-testid={`kpi-card-${kpi.id}`}>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                                <CardDescription className="text-sm">
+                                  {kpi.description || 'No description provided'}
+                                </CardDescription>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={kpi.status === 'active' ? 'default' : 'secondary'}>
+                                  {kpi.status || 'active'}
+                                </Badge>
+                                {kpi.priority && (
+                                  <Badge variant="outline" className={
+                                    kpi.priority === 'high' ? 'text-red-600 border-red-300' :
+                                    kpi.priority === 'medium' ? 'text-yellow-600 border-yellow-300' :
+                                    'text-green-600 border-green-300'
+                                  }>
+                                    {kpi.priority}
+                                  </Badge>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="h-8 w-8 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
+                                  onClick={() => {
+                                    setEditingKPI(kpi);
+                                    setKpiForm({
+                                      name: kpi.name,
+                                      description: kpi.description || '',
+                                      metric: kpi.metric || '',
+                                      targetValue: kpi.targetValue || '',
+                                      currentValue: kpi.currentValue || '',
+                                      unit: kpi.unit || '',
+                                      priority: kpi.priority || 'medium',
+                                      status: kpi.status || 'active',
+                                      category: kpi.category || ''
+                                    });
+                                    setIsKPIModalOpen(true);
+                                  }}
+                                  data-testid={`button-edit-kpi-${kpi.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                      data-testid={`button-delete-kpi-${kpi.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete KPI</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete "{kpi.name}"? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteKpiMutation.mutate(kpi.id)}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                  Current
+                                </div>
+                                <div className="text-xl font-bold text-slate-900 dark:text-white">
+                                  {kpi.currentValue || '0'}{kpi.unit || ''}
+                                </div>
+                              </div>
+                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                  Target
+                                </div>
+                                <div className="text-xl font-bold text-slate-900 dark:text-white">
+                                  {kpi.targetValue || '0'}{kpi.unit || ''}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Progress Tracker */}
+                            {kpi.targetValue && kpi.currentValue && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-slate-600 dark:text-slate-400">Progress</span>
+                                  <span className="font-semibold text-slate-900 dark:text-white">
+                                    {Math.min(Math.round((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100), 100)}%
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                  <div 
+                                    className={`h-2.5 rounded-full transition-all ${
+                                      (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 1 
+                                        ? 'bg-green-500' 
+                                        : (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 0.7
+                                        ? 'bg-blue-500'
+                                        : 'bg-yellow-500'
+                                    }`}
+                                    style={{ 
+                                      width: `${Math.min((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100, 100)}%` 
+                                    }}
+                                  ></div>
+                                </div>
+                              </div>
+                            )}
+
+                            {kpi.category && (
+                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                                Category: <span className="font-medium">{kpi.category}</span>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Platform-Level KPIs</CardTitle>
+                      <CardDescription>
+                        Manage key performance indicators for Custom Integration
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-12">
+                        <Plus className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                          No KPIs Defined
+                        </h3>
+                        <p className="text-slate-600 dark:text-slate-400 mb-4">
+                          Create KPIs to track performance goals for your custom integration
+                        </p>
+                        <Button 
+                          onClick={() => setIsKPIModalOpen(true)}
+                          data-testid="button-create-kpi"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create KPI
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* Benchmarks Tab */}
@@ -717,6 +1057,219 @@ export default function CustomIntegrationAnalytics() {
           </div>
         </main>
       </div>
+
+      {/* KPI Modal */}
+      <Dialog open={isKPIModalOpen} onOpenChange={setIsKPIModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingKPI ? 'Edit KPI' : 'Create New KPI'}</DialogTitle>
+            <DialogDescription>
+              {editingKPI 
+                ? 'Update the KPI details below. The current value can be auto-populated from your metrics data.'
+                : 'Define a new KPI for your custom integration. You can select metrics from the Overview tab as current values.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-name">KPI Name *</Label>
+                <Input
+                  id="kpi-name"
+                  placeholder="e.g., Email Open Rate"
+                  value={kpiForm.name}
+                  onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
+                  data-testid="input-kpi-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-metric">Metric Source</Label>
+                <Select
+                  value={kpiForm.metric}
+                  onValueChange={(value) => {
+                    setKpiForm({ ...kpiForm, metric: value });
+                    // Auto-populate current value from metrics
+                    let currentValue = '';
+                    let unit = '';
+                    switch(value) {
+                      case 'users':
+                        currentValue = String(metricsData?.users || 0);
+                        break;
+                      case 'sessions':
+                        currentValue = String(metricsData?.sessions || 0);
+                        break;
+                      case 'pageviews':
+                        currentValue = String(metricsData?.pageviews || 0);
+                        break;
+                      case 'openRate':
+                        currentValue = String(metricsData?.openRate || 0);
+                        unit = '%';
+                        break;
+                      case 'clickThroughRate':
+                        currentValue = String(metricsData?.clickThroughRate || 0);
+                        unit = '%';
+                        break;
+                      case 'clickToOpen':
+                        currentValue = String(metricsData?.clickToOpen || 0);
+                        unit = '%';
+                        break;
+                      case 'listGrowth':
+                        currentValue = String(metricsData?.listGrowth || 0);
+                        break;
+                      case 'emailsDelivered':
+                        currentValue = String(metricsData?.emailsDelivered || 0);
+                        break;
+                    }
+                    setKpiForm({ ...kpiForm, metric: value, currentValue, unit });
+                  }}
+                >
+                  <SelectTrigger id="kpi-metric" data-testid="select-kpi-metric">
+                    <SelectValue placeholder="Select metric to track" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="users">Users (from metrics)</SelectItem>
+                    <SelectItem value="sessions">Sessions (from metrics)</SelectItem>
+                    <SelectItem value="pageviews">Pageviews (from metrics)</SelectItem>
+                    <SelectItem value="openRate">Email Open Rate (from metrics)</SelectItem>
+                    <SelectItem value="clickThroughRate">Email CTR (from metrics)</SelectItem>
+                    <SelectItem value="clickToOpen">Email CTOR (from metrics)</SelectItem>
+                    <SelectItem value="listGrowth">List Growth (from metrics)</SelectItem>
+                    <SelectItem value="emailsDelivered">Emails Delivered (from metrics)</SelectItem>
+                    <SelectItem value="custom">Custom Value</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="kpi-description">Description</Label>
+              <Textarea
+                id="kpi-description"
+                placeholder="Describe what this KPI measures and why it's important"
+                value={kpiForm.description}
+                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
+                rows={3}
+                data-testid="input-kpi-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-current">Current Value</Label>
+                <Input
+                  id="kpi-current"
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={kpiForm.currentValue}
+                  onChange={(e) => setKpiForm({ ...kpiForm, currentValue: e.target.value })}
+                  data-testid="input-kpi-current"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-target">Target Value *</Label>
+                <Input
+                  id="kpi-target"
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={kpiForm.targetValue}
+                  onChange={(e) => setKpiForm({ ...kpiForm, targetValue: e.target.value })}
+                  data-testid="input-kpi-target"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-unit">Unit</Label>
+                <Input
+                  id="kpi-unit"
+                  placeholder="%, $, etc."
+                  value={kpiForm.unit}
+                  onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
+                  data-testid="input-kpi-unit"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-priority">Priority</Label>
+                <Select
+                  value={kpiForm.priority}
+                  onValueChange={(value) => setKpiForm({ ...kpiForm, priority: value })}
+                >
+                  <SelectTrigger id="kpi-priority" data-testid="select-kpi-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="kpi-status">Status</Label>
+                <Select
+                  value={kpiForm.status}
+                  onValueChange={(value) => setKpiForm({ ...kpiForm, status: value })}
+                >
+                  <SelectTrigger id="kpi-status" data-testid="select-kpi-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="kpi-category">Category</Label>
+                <Input
+                  id="kpi-category"
+                  placeholder="e.g., Email, Traffic"
+                  value={kpiForm.category}
+                  onChange={(e) => setKpiForm({ ...kpiForm, category: e.target.value })}
+                  data-testid="input-kpi-category"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsKPIModalOpen(false);
+                  setEditingKPI(null);
+                  setKpiForm({
+                    name: '',
+                    description: '',
+                    metric: '',
+                    targetValue: '',
+                    currentValue: '',
+                    unit: '',
+                    priority: 'medium',
+                    status: 'active',
+                    category: ''
+                  });
+                }}
+                data-testid="button-kpi-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleKPISubmit}
+                disabled={!kpiForm.name || !kpiForm.targetValue}
+                className="bg-purple-600 hover:bg-purple-700"
+                data-testid="button-kpi-submit"
+              >
+                {editingKPI ? 'Update KPI' : 'Create KPI'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

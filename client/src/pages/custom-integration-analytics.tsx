@@ -216,15 +216,18 @@ export default function CustomIntegrationAnalytics() {
                           <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
                             <li className="flex items-start gap-2">
                               <span className="text-green-600 dark:text-green-400 font-bold">1.</span>
-                              <span>IFTTT account (free) - <a href="https://ifttt.com/join" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Sign up here</a></span>
+                              <span>Your email account where marketing PDF reports arrive (Gmail, Outlook, etc.)</span>
                             </li>
                             <li className="flex items-start gap-2">
                               <span className="text-green-600 dark:text-green-400 font-bold">2.</span>
-                              <span>Your email where marketing reports arrive (any email provider works)</span>
+                              <span>Choose one automation service (both have free plans):
+                                <br />• <strong>IFTTT</strong> - Simple forwarding (recommended for beginners)
+                                <br />• <strong>Zapier</strong> - Direct inbox connection (more advanced)
+                              </span>
                             </li>
                             <li className="flex items-start gap-2">
                               <span className="text-green-600 dark:text-green-400 font-bold">3.</span>
-                              <span>3 minutes to follow the steps below</span>
+                              <span>3-5 minutes to follow the setup steps below</span>
                             </li>
                           </ul>
                         </div>
@@ -282,7 +285,7 @@ export default function CustomIntegrationAnalytics() {
                           </div>
                           <div className="flex-1">
                             <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                              Set Up Email Trigger (IFTTT will give you a special email address)
+                              Set Up Email Trigger
                             </h4>
                             <div className="bg-slate-50 dark:bg-slate-800 rounded p-4 text-sm space-y-3">
                               <div>
@@ -308,7 +311,7 @@ export default function CustomIntegrationAnalytics() {
                                   </Button>
                                 </div>
                                 <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-                                  After setup, you'll get a special email like trigger@applet.ifttt.com to forward PDFs to
+                                  ✅ <strong>How it works:</strong> IFTTT gives you a special email address (like trigger@applet.ifttt.com). When you receive a marketing PDF report in your regular email (Gmail, Outlook, etc.), simply forward it to this IFTTT email address and it will automatically process the PDF!
                                 </p>
                               </div>
                             </div>
@@ -463,6 +466,51 @@ export default function CustomIntegrationAnalytics() {
                             </li>
                           </ul>
                         </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Alternative: Zapier Direct Email Integration */}
+                {customIntegration?.webhookToken && (
+                  <Card className="border-purple-200 dark:border-purple-700">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded bg-purple-500 flex items-center justify-center">
+                          <Zap className="w-4 h-4 text-white" />
+                        </div>
+                        Alternative: Zapier (Direct Email Integration - No Forwarding)
+                      </CardTitle>
+                      <CardDescription>
+                        Connect your Gmail or Outlook directly - PDFs are processed automatically without forwarding
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                          <p className="text-sm text-purple-900 dark:text-purple-100 mb-3">
+                            <strong>How it works:</strong> Zapier connects directly to your Gmail or Outlook inbox and watches for PDF attachments. When a PDF arrives, it automatically sends it to your webhook - no forwarding needed!
+                          </p>
+                          <div className="space-y-2">
+                            <p className="text-sm font-semibold text-purple-900 dark:text-purple-100">Quick Setup:</p>
+                            <ol className="text-sm text-purple-800 dark:text-purple-200 space-y-1 list-decimal list-inside">
+                              <li>Go to <a href="https://zapier.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">zapier.com</a> and create a free account</li>
+                              <li>Create a new Zap → Choose "Gmail" or "Outlook" as trigger</li>
+                              <li>Select "New Attachment" as the trigger event</li>
+                              <li>Connect your email account (one-time OAuth)</li>
+                              <li>Add filter: "Attachment extension contains pdf"</li>
+                              <li>Choose "Webhooks by Zapier" as action</li>
+                              <li>Select "POST" method and paste your webhook URL above</li>
+                              <li>Map the PDF file to the request</li>
+                            </ol>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => window.open('https://zapier.com/app/editor', '_blank')}
+                          className="w-full bg-purple-600 hover:bg-purple-700"
+                        >
+                          Open Zapier to Start Setup →
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>

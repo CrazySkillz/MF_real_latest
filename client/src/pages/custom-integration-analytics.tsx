@@ -492,6 +492,7 @@ export default function CustomIntegrationAnalytics() {
   // Handle Report form submission
   const handleGenerateReport = async () => {
     const reportName = reportForm.name || 'Custom Integration Report';
+    const reportType = reportForm.reportType || 'overview';
     
     // Dynamically import jsPDF
     const { jsPDF } = await import('jspdf');
@@ -502,22 +503,140 @@ export default function CustomIntegrationAnalytics() {
     
     let y = 70;
     
-    const hasAnyData = metrics && (
-      metrics.users ||
-      metrics.sessions ||
-      metrics.pageviews ||
-      metrics.impressions ||
-      metrics.reach ||
-      metrics.clicks ||
-      metrics.emailsDelivered ||
-      metrics.openRate
-    );
-    
-    if (!hasAnyData) {
-      doc.setTextColor(100, 100, 100);
-      doc.setFontSize(12);
-      doc.text('No metrics data available', 20, y);
+    // Handle different report types
+    if (reportType === 'benchmarks') {
+      // Benchmarks Report
+      const benchmarks = benchmarksData as any[] || [];
+      
+      if (benchmarks.length === 0) {
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(12);
+        doc.text('No benchmarks data available', 20, y);
+      } else {
+        doc.setTextColor(50, 50, 50);
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+        
+        y = addPDFSection(doc, 'Industry Benchmarks', y, [168, 85, 247]);
+        
+        benchmarks.forEach((benchmark: any, index: number) => {
+          if (y > 250) {
+            doc.addPage();
+            y = 20;
+          }
+          
+          doc.setFont(undefined, 'bold');
+          doc.text(benchmark.name || benchmark.metric, 20, y);
+          y += 6;
+          
+          doc.setFont(undefined, 'normal');
+          doc.setFontSize(10);
+          
+          if (benchmark.currentValue) {
+            doc.text(`Current: ${benchmark.currentValue}${benchmark.unit || ''}`, 25, y);
+            y += 5;
+          }
+          
+          if (benchmark.benchmarkValue) {
+            doc.text(`Benchmark: ${benchmark.benchmarkValue}${benchmark.unit || ''}`, 25, y);
+            y += 5;
+          }
+          
+          if (benchmark.industry) {
+            doc.text(`Industry: ${benchmark.industry}`, 25, y);
+            y += 5;
+          }
+          
+          if (benchmark.description) {
+            const lines = doc.splitTextToSize(benchmark.description, 160);
+            doc.setTextColor(100, 100, 100);
+            lines.forEach((line: string) => {
+              doc.text(line, 25, y);
+              y += 5;
+            });
+            doc.setTextColor(50, 50, 50);
+          }
+          
+          doc.setFontSize(11);
+          y += 8;
+        });
+      }
+    } else if (reportType === 'kpis') {
+      // KPIs Report
+      const kpis = kpisData as any[] || [];
+      
+      if (kpis.length === 0) {
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(12);
+        doc.text('No KPIs data available', 20, y);
+      } else {
+        doc.setTextColor(50, 50, 50);
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+        
+        y = addPDFSection(doc, 'Key Performance Indicators', y, [59, 130, 246]);
+        
+        kpis.forEach((kpi: any, index: number) => {
+          if (y > 250) {
+            doc.addPage();
+            y = 20;
+          }
+          
+          doc.setFont(undefined, 'bold');
+          doc.text(kpi.name, 20, y);
+          y += 6;
+          
+          doc.setFont(undefined, 'normal');
+          doc.setFontSize(10);
+          
+          if (kpi.currentValue) {
+            doc.text(`Current: ${kpi.currentValue}${kpi.unit || ''}`, 25, y);
+            y += 5;
+          }
+          
+          if (kpi.targetValue) {
+            doc.text(`Target: ${kpi.targetValue}${kpi.unit || ''}`, 25, y);
+            y += 5;
+          }
+          
+          if (kpi.targetDate) {
+            const dateStr = new Date(kpi.targetDate).toLocaleDateString();
+            doc.text(`Target Date: ${dateStr}`, 25, y);
+            y += 5;
+          }
+          
+          if (kpi.description) {
+            const lines = doc.splitTextToSize(kpi.description, 160);
+            doc.setTextColor(100, 100, 100);
+            lines.forEach((line: string) => {
+              doc.text(line, 25, y);
+              y += 5;
+            });
+            doc.setTextColor(50, 50, 50);
+          }
+          
+          doc.setFontSize(11);
+          y += 8;
+        });
+      }
     } else {
+      // Overview Report (default)
+      const hasAnyData = metrics && (
+        metrics.users ||
+        metrics.sessions ||
+        metrics.pageviews ||
+        metrics.impressions ||
+        metrics.reach ||
+        metrics.clicks ||
+        metrics.emailsDelivered ||
+        metrics.openRate
+      );
+      
+      if (!hasAnyData) {
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(12);
+        doc.text('No metrics data available', 20, y);
+      } else {
       doc.setTextColor(50, 50, 50);
       doc.setFontSize(11);
       doc.setFont(undefined, 'normal');
@@ -747,6 +866,7 @@ export default function CustomIntegrationAnalytics() {
           y += 8;
         }
         y += 10;
+      }
       }
     }
     

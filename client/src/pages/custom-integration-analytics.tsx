@@ -2044,7 +2044,7 @@ export default function CustomIntegrationAnalytics() {
                                   Your Performance
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
-                                  {benchmark.currentValue || '0'}{benchmark.unit || ''}
+                                  {formatNumber(benchmark.currentValue)}{benchmark.unit || ''}
                                 </div>
                               </div>
 
@@ -2053,7 +2053,7 @@ export default function CustomIntegrationAnalytics() {
                                   Benchmark Value
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
-                                  {benchmark.benchmarkValue || benchmark.targetValue || '0'}{benchmark.unit || ''}
+                                  {formatNumber(benchmark.benchmarkValue || benchmark.targetValue)}{benchmark.unit || ''}
                                 </div>
                               </div>
 

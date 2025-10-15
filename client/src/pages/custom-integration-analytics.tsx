@@ -34,8 +34,7 @@ export default function CustomIntegrationAnalytics() {
     currentValue: '',
     unit: '',
     priority: 'medium',
-    status: 'active',
-    category: ''
+    timeframe: 'monthly'
   });
   
   // Fetch campaign details
@@ -87,8 +86,7 @@ export default function CustomIntegrationAnalytics() {
         currentValue: '',
         unit: '',
         priority: 'medium',
-        status: 'active',
-        category: ''
+        timeframe: 'monthly'
       });
     },
   });
@@ -115,8 +113,7 @@ export default function CustomIntegrationAnalytics() {
         currentValue: '',
         unit: '',
         priority: 'medium',
-        status: 'active',
-        category: ''
+        timeframe: 'monthly'
       });
     },
   });
@@ -776,7 +773,7 @@ export default function CustomIntegrationAnalytics() {
                     </div>
 
                     {/* KPI Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       <Card>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
@@ -787,20 +784,6 @@ export default function CustomIntegrationAnalytics() {
                               </p>
                             </div>
                             <Target className="w-8 h-8 text-purple-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Active KPIs</p>
-                              <p className="text-2xl font-bold text-green-600">
-                                {(kpisData as any[]).filter((k: any) => k.status === 'active').length}
-                              </p>
-                            </div>
-                            <CheckCircle2 className="w-8 h-8 text-green-500" />
                           </div>
                         </CardContent>
                       </Card>
@@ -823,12 +806,12 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">In Progress</p>
-                              <p className="text-2xl font-bold text-purple-600">
-                                {(kpisData as any[]).filter((k: any) => k.status === 'active').length}
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Medium Priority</p>
+                              <p className="text-2xl font-bold text-yellow-600">
+                                {(kpisData as any[]).filter((k: any) => k.priority === 'medium').length}
                               </p>
                             </div>
-                            <Clock className="w-8 h-8 text-purple-500" />
+                            <TrendingUp className="w-8 h-8 text-yellow-500" />
                           </div>
                         </CardContent>
                       </Card>
@@ -847,9 +830,6 @@ export default function CustomIntegrationAnalytics() {
                                 </CardDescription>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge variant={kpi.status === 'active' ? 'default' : 'secondary'}>
-                                  {kpi.status || 'active'}
-                                </Badge>
                                 {kpi.priority && (
                                   <Badge variant="outline" className={
                                     kpi.priority === 'high' ? 'text-red-600 border-red-300' :
@@ -857,6 +837,11 @@ export default function CustomIntegrationAnalytics() {
                                     'text-green-600 border-green-300'
                                   }>
                                     {kpi.priority}
+                                  </Badge>
+                                )}
+                                {kpi.timeframe && (
+                                  <Badge variant="secondary" className="capitalize">
+                                    {kpi.timeframe}
                                   </Badge>
                                 )}
                                 <Button 
@@ -873,8 +858,7 @@ export default function CustomIntegrationAnalytics() {
                                       currentValue: kpi.currentValue || '',
                                       unit: kpi.unit || '',
                                       priority: kpi.priority || 'medium',
-                                      status: kpi.status || 'active',
-                                      category: kpi.category || ''
+                                      timeframe: kpi.timeframe || 'monthly'
                                     });
                                     setIsKPIModalOpen(true);
                                   }}
@@ -957,12 +941,6 @@ export default function CustomIntegrationAnalytics() {
                                     }}
                                   ></div>
                                 </div>
-                              </div>
-                            )}
-
-                            {kpi.category && (
-                              <div className="text-sm text-slate-600 dark:text-slate-400">
-                                Category: <span className="font-medium">{kpi.category}</span>
                               </div>
                             )}
                           </CardContent>
@@ -1189,7 +1167,7 @@ export default function CustomIntegrationAnalytics() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="kpi-priority">Priority</Label>
                 <Select
@@ -1208,31 +1186,25 @@ export default function CustomIntegrationAnalytics() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="kpi-status">Status</Label>
+                <Label htmlFor="kpi-timeframe">Timeframe</Label>
                 <Select
-                  value={kpiForm.status}
-                  onValueChange={(value) => setKpiForm({ ...kpiForm, status: value })}
+                  value={kpiForm.timeframe}
+                  onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
                 >
-                  <SelectTrigger id="kpi-status" data-testid="select-kpi-status">
+                  <SelectTrigger id="kpi-timeframe" data-testid="select-kpi-timeframe">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="paused">Paused</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="daily">Daily (24 hours)</SelectItem>
+                    <SelectItem value="weekly">Weekly (7 days)</SelectItem>
+                    <SelectItem value="monthly">Monthly (30 days)</SelectItem>
+                    <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
+                    <SelectItem value="yearly">Yearly (365 days)</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="kpi-category">Category</Label>
-                <Input
-                  id="kpi-category"
-                  placeholder="e.g., Email, Traffic"
-                  value={kpiForm.category}
-                  onChange={(e) => setKpiForm({ ...kpiForm, category: e.target.value })}
-                  data-testid="input-kpi-category"
-                />
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  How often to measure progress toward your target
+                </p>
               </div>
             </div>
 
@@ -1250,8 +1222,7 @@ export default function CustomIntegrationAnalytics() {
                     currentValue: '',
                     unit: '',
                     priority: 'medium',
-                    status: 'active',
-                    category: ''
+                    timeframe: 'monthly'
                   });
                 }}
                 data-testid="button-kpi-cancel"

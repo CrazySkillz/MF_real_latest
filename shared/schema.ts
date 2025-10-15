@@ -458,6 +458,7 @@ export const linkedinReports = pgTable("linkedin_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description"),
+  platformType: text("platform_type").notNull().default('linkedin'), // 'linkedin', 'custom-integration', etc.
   reportType: text("report_type").notNull(), // 'overview', 'kpis', 'benchmarks', 'ads', 'custom'
   configuration: text("configuration"), // JSON string for custom report elements
   // Schedule configuration

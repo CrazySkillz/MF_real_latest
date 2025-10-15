@@ -1051,6 +1051,7 @@ export class MemStorage implements IStorage {
       id,
       name: report.name,
       description: report.description || null,
+      platformType: (report as any).platformType || 'linkedin',
       reportType: report.reportType,
       configuration: report.configuration || null,
       scheduleEnabled: report.scheduleEnabled || false,
@@ -1091,9 +1092,10 @@ export class MemStorage implements IStorage {
 
   // Platform Reports methods
   async getPlatformReports(platformType: string): Promise<LinkedInReport[]> {
-    // For now, return all reports regardless of platform since we're using the same table
-    // In future, this should use a generic platform_reports table with platformType field
-    return this.getLinkedInReports();
+    // Filter reports by platformType
+    return Array.from(this.linkedinReports.values())
+      .filter(report => (report as any).platformType === platformType)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   async createPlatformReport(report: any): Promise<LinkedInReport> {
@@ -1949,9 +1951,11 @@ export class DatabaseStorage implements IStorage {
 
   // Platform Reports methods
   async getPlatformReports(platformType: string): Promise<LinkedInReport[]> {
-    // For now, return all reports regardless of platform since we're using the same table
-    // In future, this should use a generic platform_reports table with platformType field
-    return this.getLinkedInReports();
+    // Filter reports by platformType
+    return await db.select()
+      .from(linkedinReports)
+      .where(eq(linkedinReports.platformType, platformType))
+      .orderBy(linkedinReports.createdAt);
   }
 
   async createPlatformReport(report: any): Promise<LinkedInReport> {

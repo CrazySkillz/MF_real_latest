@@ -43,6 +43,7 @@ export default function CustomIntegrationAnalytics() {
   const [benchmarkForm, setBenchmarkForm] = useState({
     metric: '',
     name: '',
+    category: 'performance',
     benchmarkType: '',
     unit: '',
     benchmarkValue: '',
@@ -190,6 +191,7 @@ export default function CustomIntegrationAnalytics() {
       setBenchmarkForm({
         metric: '',
         name: '',
+        category: 'performance',
         benchmarkType: '',
         unit: '',
         benchmarkValue: '',
@@ -1246,6 +1248,7 @@ export default function CustomIntegrationAnalytics() {
                                     setBenchmarkForm({
                                       metric: benchmark.metric || '',
                                       name: benchmark.name || '',
+                                      category: benchmark.category || 'performance',
                                       benchmarkType: benchmark.benchmarkType || '',
                                       unit: benchmark.unit || '',
                                       benchmarkValue: benchmark.benchmarkValue || '',
@@ -1661,6 +1664,27 @@ export default function CustomIntegrationAnalytics() {
                   data-testid="input-benchmark-name"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-category">Category *</Label>
+                <Select
+                  value={benchmarkForm.category}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, category: value })}
+                >
+                  <SelectTrigger id="benchmark-category" data-testid="select-benchmark-category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="performance">Performance</SelectItem>
+                    <SelectItem value="engagement">Engagement</SelectItem>
+                    <SelectItem value="conversion">Conversion</SelectItem>
+                    <SelectItem value="traffic">Traffic</SelectItem>
+                    <SelectItem value="revenue">Revenue</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="benchmark-metric">Metric Source</Label>
                 <Select

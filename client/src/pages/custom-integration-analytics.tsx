@@ -499,14 +499,14 @@ export default function CustomIntegrationAnalytics() {
     let y = 70;
     
     const hasAnyData = metrics && (
-      isValidNumber(metrics.users) ||
-      isValidNumber(metrics.sessions) ||
-      isValidNumber(metrics.pageviews) ||
-      isValidNumber(metrics.impressions) ||
-      isValidNumber(metrics.reach) ||
-      isValidNumber(metrics.clicks) ||
-      isValidNumber(metrics.emailsDelivered) ||
-      isValidNumber(metrics.openRate)
+      metrics.users ||
+      metrics.sessions ||
+      metrics.pageviews ||
+      metrics.impressions ||
+      metrics.reach ||
+      metrics.clicks ||
+      metrics.emailsDelivered ||
+      metrics.openRate
     );
     
     if (!hasAnyData) {
@@ -519,19 +519,9 @@ export default function CustomIntegrationAnalytics() {
       doc.setFont(undefined, 'normal');
       
       // Audience & Traffic Section
-      const hasAudience = isValidNumber(metrics.users) || isValidNumber(metrics.sessions) || isValidNumber(metrics.pageviews);
-      if (hasAudience) {
+      if (metrics.users || metrics.sessions || metrics.pageviews) {
         y = addPDFSection(doc, 'Audience & Traffic', y, [59, 130, 246]);
         
-        // Test with hardcoded data first
-        doc.setTextColor(50, 50, 50);
-        doc.setFont(undefined, 'bold');
-        doc.text('Test Label:', 20, y);
-        doc.setFont(undefined, 'normal');
-        doc.text('Test Value 12345', 120, y);
-        y += 8;
-        
-        // Now try with actual metrics
         if (metrics.users) {
           doc.setFont(undefined, 'bold');
           doc.text('Users (unique):', 20, y);
@@ -539,14 +529,14 @@ export default function CustomIntegrationAnalytics() {
           doc.text(String(formatNumber(metrics.users)), 120, y);
           y += 8;
         }
-        if (isValidNumber(metrics.sessions)) {
+        if (metrics.sessions) {
           doc.setFont(undefined, 'bold');
           doc.text('Sessions:', 20, y);
           doc.setFont(undefined, 'normal');
           doc.text(String(formatNumber(metrics.sessions)), 120, y);
           y += 8;
         }
-        if (isValidNumber(metrics.pageviews)) {
+        if (metrics.pageviews) {
           doc.setFont(undefined, 'bold');
           doc.text('Pageviews:', 20, y);
           doc.setFont(undefined, 'normal');
@@ -557,25 +547,24 @@ export default function CustomIntegrationAnalytics() {
       }
       
       // Email Performance Section
-      const hasEmail = isValidNumber(metrics.emailsDelivered) || isValidNumber(metrics.openRate) || isValidNumber(metrics.clickThroughRate);
-      if (hasEmail) {
+      if (metrics.emailsDelivered || metrics.openRate || metrics.clickThroughRate) {
         y = addPDFSection(doc, 'Email Performance', y, [16, 185, 129]);
         
-        if (isValidNumber(metrics.emailsDelivered)) {
+        if (metrics.emailsDelivered) {
           doc.setFont(undefined, 'bold');
           doc.text('Emails Delivered:', 20, y);
           doc.setFont(undefined, 'normal');
           doc.text(String(formatNumber(metrics.emailsDelivered)), 120, y);
           y += 8;
         }
-        if (isValidNumber(metrics.openRate)) {
+        if (metrics.openRate) {
           doc.setFont(undefined, 'bold');
           doc.text('Open Rate:', 20, y);
           doc.setFont(undefined, 'normal');
           doc.text(String(metrics.openRate) + '%', 120, y);
           y += 8;
         }
-        if (isValidNumber(metrics.clickThroughRate)) {
+        if (metrics.clickThroughRate) {
           doc.setFont(undefined, 'bold');
           doc.text('Click-Through Rate:', 20, y);
           doc.setFont(undefined, 'normal');
@@ -586,32 +575,31 @@ export default function CustomIntegrationAnalytics() {
       }
       
       // Social Media Section
-      const hasSocial = isValidNumber(metrics.impressions) || isValidNumber(metrics.reach) || isValidNumber(metrics.clicks) || isValidNumber(metrics.engagements);
-      if (hasSocial) {
+      if (metrics.impressions || metrics.reach || metrics.clicks || metrics.engagements) {
         y = addPDFSection(doc, 'Social Media Metrics', y, [168, 85, 247]);
         
-        if (isValidNumber(metrics.impressions)) {
+        if (metrics.impressions) {
           doc.setFont(undefined, 'bold');
           doc.text('Impressions:', 20, y);
           doc.setFont(undefined, 'normal');
           doc.text(String(formatNumber(metrics.impressions)), 120, y);
           y += 8;
         }
-        if (isValidNumber(metrics.reach)) {
+        if (metrics.reach) {
           doc.setFont(undefined, 'bold');
           doc.text('Reach:', 20, y);
           doc.setFont(undefined, 'normal');
           doc.text(String(formatNumber(metrics.reach)), 120, y);
           y += 8;
         }
-        if (isValidNumber(metrics.clicks)) {
+        if (metrics.clicks) {
           doc.setFont(undefined, 'bold');
           doc.text('Clicks:', 20, y);
           doc.setFont(undefined, 'normal');
           doc.text(String(formatNumber(metrics.clicks)), 120, y);
           y += 8;
         }
-        if (isValidNumber(metrics.engagements)) {
+        if (metrics.engagements) {
           doc.setFont(undefined, 'bold');
           doc.text('Engagements:', 20, y);
           doc.setFont(undefined, 'normal');

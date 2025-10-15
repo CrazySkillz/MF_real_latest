@@ -573,50 +573,50 @@ export default function CustomIntegrationAnalytics() {
       }
       
       // Traffic Sources Section
-      if (metrics.organicSearch || metrics.directBranded || metrics.emailNewsletters || 
-          metrics.referralPartners || metrics.paidDisplaySearch || metrics.social) {
+      if (metrics.organicSearchShare || metrics.directBrandedShare || metrics.emailShare || 
+          metrics.referralShare || metrics.paidShare || metrics.socialShare) {
         y = addPDFSection(doc, 'Traffic Sources', y, [234, 179, 8]);
         
-        if (metrics.organicSearch) {
+        if (metrics.organicSearchShare) {
           doc.setFont(undefined, 'bold');
           doc.text('Organic Search:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(metrics.organicSearch + '%', 120, y);
+          doc.text(metrics.organicSearchShare + '%', 120, y);
           y += 8;
         }
-        if (metrics.directBranded) {
+        if (metrics.directBrandedShare) {
           doc.setFont(undefined, 'bold');
           doc.text('Direct/Branded:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(metrics.directBranded + '%', 120, y);
+          doc.text(metrics.directBrandedShare + '%', 120, y);
           y += 8;
         }
-        if (metrics.emailNewsletters) {
+        if (metrics.emailShare) {
           doc.setFont(undefined, 'bold');
           doc.text('Email (Newsletters):', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(metrics.emailNewsletters + '%', 120, y);
+          doc.text(metrics.emailShare + '%', 120, y);
           y += 8;
         }
-        if (metrics.referralPartners) {
+        if (metrics.referralShare) {
           doc.setFont(undefined, 'bold');
           doc.text('Referral/Partners:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(metrics.referralPartners + '%', 120, y);
+          doc.text(metrics.referralShare + '%', 120, y);
           y += 8;
         }
-        if (metrics.paidDisplaySearch) {
+        if (metrics.paidShare) {
           doc.setFont(undefined, 'bold');
           doc.text('Paid (Display/Search):', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(metrics.paidDisplaySearch + '%', 120, y);
+          doc.text(metrics.paidShare + '%', 120, y);
           y += 8;
         }
-        if (metrics.social) {
+        if (metrics.socialShare) {
           doc.setFont(undefined, 'bold');
           doc.text('Social:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(metrics.social + '%', 120, y);
+          doc.text(metrics.socialShare + '%', 120, y);
           y += 8;
         }
         y += 10;

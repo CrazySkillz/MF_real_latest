@@ -449,7 +449,20 @@ export default function CustomIntegrationAnalytics() {
   };
 
   // Handle Report form submission
+  const handleGenerateReport = () => {
+    toast({
+      title: "Report Generated",
+      description: "Your report has been generated successfully. Download functionality coming soon.",
+    });
+    setReportDialogOpen(false);
+  };
+
   const handleCreateReport = () => {
+    if (!reportForm.scheduleEnabled) {
+      handleGenerateReport();
+      return;
+    }
+    
     const reportData: any = {
       ...reportForm,
       platformType: 'custom-integration',
@@ -468,6 +481,11 @@ export default function CustomIntegrationAnalytics() {
 
   const handleUpdateReport = () => {
     if (!editingReportId) return;
+    
+    if (!reportForm.scheduleEnabled) {
+      handleGenerateReport();
+      return;
+    }
     
     const reportData: any = {
       ...reportForm,

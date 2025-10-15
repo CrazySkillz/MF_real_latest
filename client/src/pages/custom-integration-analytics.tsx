@@ -498,6 +498,11 @@ export default function CustomIntegrationAnalytics() {
     
     let y = 70;
     
+    console.log('PDF Generation - Full metrics object:', metrics);
+    console.log('PDF Generation - users:', metrics.users, 'isValid:', isValidNumber(metrics.users));
+    console.log('PDF Generation - sessions:', metrics.sessions, 'isValid:', isValidNumber(metrics.sessions));
+    console.log('PDF Generation - impressions:', metrics.impressions, 'isValid:', isValidNumber(metrics.impressions));
+    
     const hasAnyData = metrics && (
       isValidNumber(metrics.users) ||
       isValidNumber(metrics.sessions) ||
@@ -508,6 +513,8 @@ export default function CustomIntegrationAnalytics() {
       isValidNumber(metrics.emailsDelivered) ||
       isValidNumber(metrics.openRate)
     );
+    
+    console.log('PDF Generation - hasAnyData:', hasAnyData);
     
     if (!hasAnyData) {
       doc.setTextColor(100, 100, 100);

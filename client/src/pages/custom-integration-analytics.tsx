@@ -202,12 +202,20 @@ export default function CustomIntegrationAnalytics() {
         confidenceLevel: ''
       });
     },
+    onError: (error: any) => {
+      console.error('Benchmark creation error:', error);
+      toast({
+        title: "Error Creating Benchmark",
+        description: error?.message || "Failed to create benchmark. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Update Benchmark mutation
   const updateBenchmarkMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const res = await apiRequest('PATCH', `/api/benchmarks/${id}`, data);
+      const res = await apiRequest('PUT', `/api/platforms/custom-integration/benchmarks/${id}`, data);
       return res.json();
     },
     onSuccess: () => {
@@ -233,12 +241,20 @@ export default function CustomIntegrationAnalytics() {
         confidenceLevel: ''
       });
     },
+    onError: (error: any) => {
+      console.error('Benchmark update error:', error);
+      toast({
+        title: "Error Updating Benchmark",
+        description: error?.message || "Failed to update benchmark. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Delete Benchmark mutation
   const deleteBenchmarkMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await apiRequest('DELETE', `/api/benchmarks/${id}`);
+      const res = await apiRequest('DELETE', `/api/platforms/custom-integration/benchmarks/${id}`);
       return res.json();
     },
     onSuccess: () => {
@@ -246,6 +262,14 @@ export default function CustomIntegrationAnalytics() {
       toast({
         title: "Benchmark Deleted",
         description: "The benchmark has been successfully deleted.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Benchmark deletion error:', error);
+      toast({
+        title: "Error Deleting Benchmark",
+        description: error?.message || "Failed to delete benchmark. Please try again.",
+        variant: "destructive",
       });
     },
   });
@@ -1834,11 +1858,17 @@ export default function CustomIntegrationAnalytics() {
               </Button>
               <Button
                 onClick={handleBenchmarkSubmit}
-                disabled={!benchmarkForm.name || !benchmarkForm.benchmarkValue}
+                disabled={!benchmarkForm.name || !benchmarkForm.benchmarkValue || createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending}
                 className="bg-purple-600 hover:bg-purple-700"
                 data-testid="button-benchmark-submit"
               >
-                {editingBenchmark ? 'Update Benchmark' : 'Create Benchmark'}
+                {createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending ? (
+                  <>
+                    <span className="mr-2">Processing...</span>
+                  </>
+                ) : (
+                  editingBenchmark ? 'Update Benchmark' : 'Create Benchmark'
+                )}
               </Button>
             </div>
           </div>

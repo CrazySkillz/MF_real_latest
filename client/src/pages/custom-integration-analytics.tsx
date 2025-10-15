@@ -523,7 +523,7 @@ export default function CustomIntegrationAnalytics() {
       doc.setFont(undefined, 'normal');
       
       // Audience & Traffic Section
-      if (metrics.users || metrics.sessions || metrics.pageviews) {
+      if (metrics.users || metrics.sessions || metrics.pageviews || metrics.avgSessionDuration || metrics.pagesPerSession || metrics.bounceRate) {
         y = addPDFSection(doc, 'Audience & Traffic', y, [59, 130, 246]);
         
         if (metrics.users) {
@@ -545,6 +545,28 @@ export default function CustomIntegrationAnalytics() {
           doc.text('Pageviews:', 20, y);
           doc.setFont(undefined, 'normal');
           doc.text(formatNumber(metrics.pageviews), 120, y);
+          y += 8;
+        }
+        if (metrics.avgSessionDuration) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Avg. Session Duration:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(String(metrics.avgSessionDuration), 120, y);
+          y += 8;
+        }
+        if (metrics.pagesPerSession) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Pages / Session:', 20, y);
+          doc.setFont(undefined, 'normal');
+          const pagesValue = typeof metrics.pagesPerSession === 'string' ? parseFloat(metrics.pagesPerSession).toFixed(2) : metrics.pagesPerSession.toFixed(2);
+          doc.text(pagesValue, 120, y);
+          y += 8;
+        }
+        if (metrics.bounceRate) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Bounce Rate:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.bounceRate + '%', 120, y);
           y += 8;
         }
         y += 10;
@@ -601,7 +623,7 @@ export default function CustomIntegrationAnalytics() {
       }
       
       // Email Performance Section
-      if (metrics.emailsDelivered || metrics.openRate || metrics.clickThroughRate) {
+      if (metrics.emailsDelivered || metrics.openRate || metrics.clickThroughRate || metrics.clickToOpenRate || metrics.hardBounces || metrics.spamComplaints || metrics.listGrowth) {
         y = addPDFSection(doc, 'Email Performance', y, [16, 185, 129]);
         
         if (metrics.emailsDelivered) {
@@ -625,11 +647,39 @@ export default function CustomIntegrationAnalytics() {
           doc.text(metrics.clickThroughRate + '%', 120, y);
           y += 8;
         }
+        if (metrics.clickToOpenRate) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Click-to-Open Rate:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.clickToOpenRate + '%', 120, y);
+          y += 8;
+        }
+        if (metrics.hardBounces) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Hard Bounces:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.hardBounces + '%', 120, y);
+          y += 8;
+        }
+        if (metrics.spamComplaints) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Spam Complaints:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.spamComplaints + '%', 120, y);
+          y += 8;
+        }
+        if (metrics.listGrowth) {
+          doc.setFont(undefined, 'bold');
+          doc.text('List Growth:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.listGrowth), 120, y);
+          y += 8;
+        }
         y += 10;
       }
       
       // Social Media Section
-      if (metrics.impressions || metrics.reach || metrics.clicks || metrics.engagements) {
+      if (metrics.impressions || metrics.reach || metrics.clicks || metrics.engagements || metrics.spend || metrics.conversions || metrics.leads || metrics.videoViews || metrics.viralImpressions) {
         y = addPDFSection(doc, 'Social Media Metrics', y, [168, 85, 247]);
         
         if (metrics.impressions) {
@@ -658,6 +708,42 @@ export default function CustomIntegrationAnalytics() {
           doc.text('Engagements:', 20, y);
           doc.setFont(undefined, 'normal');
           doc.text(formatNumber(metrics.engagements), 120, y);
+          y += 8;
+        }
+        if (metrics.spend) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Spend:', 20, y);
+          doc.setFont(undefined, 'normal');
+          const spendValue = typeof metrics.spend === 'string' ? parseFloat(metrics.spend) : metrics.spend;
+          doc.text('$' + formatNumber(spendValue), 120, y);
+          y += 8;
+        }
+        if (metrics.conversions) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Conversions:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.conversions), 120, y);
+          y += 8;
+        }
+        if (metrics.leads) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Leads:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.leads), 120, y);
+          y += 8;
+        }
+        if (metrics.videoViews) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Video Views:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.videoViews), 120, y);
+          y += 8;
+        }
+        if (metrics.viralImpressions) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Viral Impressions:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.viralImpressions), 120, y);
           y += 8;
         }
         y += 10;

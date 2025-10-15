@@ -2730,6 +2730,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Platform Reports routes
+  // Get platform reports
+  app.get("/api/platforms/:platformType/reports", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      const reports = await storage.getPlatformReports(platformType);
+      res.json(reports);
+    } catch (error) {
+      console.error('Platform reports fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch platform reports" });
+    }
+  });
+
+  // Create platform report
+  app.post("/api/platforms/:platformType/reports", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      
+      const report = await storage.createPlatformReport({
+        ...req.body,
+        platformType
+      });
+      
+      res.status(201).json(report);
+    } catch (error) {
+      console.error('Platform report creation error:', error);
+      res.status(500).json({ message: "Failed to create platform report" });
+    }
+  });
+
+  // Update platform report
+  app.patch("/api/platforms/:platformType/reports/:reportId", async (req, res) => {
+    try {
+      const { reportId } = req.params;
+      
+      const report = await storage.updatePlatformReport(reportId, req.body);
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      res.json(report);
+    } catch (error) {
+      console.error('Platform report update error:', error);
+      res.status(500).json({ message: "Failed to update platform report" });
+    }
+  });
+
+  // Delete platform report
+  app.delete("/api/platforms/:platformType/reports/:reportId", async (req, res) => {
+    try {
+      const { reportId } = req.params;
+      
+      const deleted = await storage.deletePlatformReport(reportId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      res.json({ message: "Report deleted successfully", success: true });
+    } catch (error) {
+      console.error('Platform report deletion error:', error);
+      res.status(500).json({ message: "Failed to delete report" });
+    }
+  });
+
   // Get single benchmark
   app.get("/api/benchmarks/:id", async (req, res) => {
     try {

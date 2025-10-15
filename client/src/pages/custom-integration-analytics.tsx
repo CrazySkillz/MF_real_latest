@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown, Zap, Link2, CheckCircle2, AlertCircle, Pencil, Trash2, Award, Trophy } from "lucide-react";
+import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown, Zap, Link2, CheckCircle2, AlertCircle, Pencil, Trash2, Award, Trophy, Download, Settings } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function CustomIntegrationAnalytics() {
@@ -54,6 +55,29 @@ export default function CustomIntegrationAnalytics() {
     geographicLocation: '',
     period: 'monthly',
     confidenceLevel: ''
+  });
+
+  // Report state management
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
+  const [reportModalStep, setReportModalStep] = useState<'standard' | 'custom'>('standard');
+  const [reportForm, setReportForm] = useState({
+    name: '',
+    description: '',
+    reportType: '',
+    configuration: null as any,
+    scheduleEnabled: false,
+    scheduleFrequency: 'weekly',
+    scheduleDayOfWeek: 'monday',
+    scheduleTime: '9:00 AM',
+    emailRecipients: '',
+    status: 'draft'
+  });
+  const [customReportConfig, setCustomReportConfig] = useState({
+    coreMetrics: [] as string[],
+    derivedMetrics: [] as string[],
+    kpis: [] as string[],
+    benchmarks: [] as string[]
   });
   
   // Fetch campaign details
@@ -292,6 +316,162 @@ export default function CustomIntegrationAnalytics() {
         platformType: 'custom-integration',
       });
     }
+  };
+
+  // Fetch platform-level Reports for custom integration
+  const { data: reportsData, isLoading: reportsLoading } = useQuery({
+    queryKey: ['/api/platforms/custom-integration/reports'],
+  });
+
+  // Create Report mutation
+  const createReportMutation = useMutation({
+    mutationFn: async (reportData: any) => {
+      const res = await apiRequest('POST', '/api/platforms/custom-integration/reports', reportData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/reports'] });
+      toast({
+        title: "Report Created",
+        description: "Your report has been successfully created.",
+      });
+      setIsReportModalOpen(false);
+      setEditingReportId(null);
+      setReportForm({
+        name: '',
+        description: '',
+        reportType: '',
+        configuration: null,
+        scheduleEnabled: false,
+        scheduleFrequency: 'weekly',
+        scheduleDayOfWeek: 'monday',
+        scheduleTime: '9:00 AM',
+        emailRecipients: '',
+        status: 'draft'
+      });
+    },
+    onError: (error: any) => {
+      console.error('Report creation error:', error);
+      toast({
+        title: "Error Creating Report",
+        description: error?.message || "Failed to create report. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update Report mutation
+  const updateReportMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest('PATCH', `/api/platforms/custom-integration/reports/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/reports'] });
+      toast({
+        title: "Report Updated",
+        description: "Your report has been successfully updated.",
+      });
+      setIsReportModalOpen(false);
+      setEditingReportId(null);
+      setReportForm({
+        name: '',
+        description: '',
+        reportType: '',
+        configuration: null,
+        scheduleEnabled: false,
+        scheduleFrequency: 'weekly',
+        scheduleDayOfWeek: 'monday',
+        scheduleTime: '9:00 AM',
+        emailRecipients: '',
+        status: 'draft'
+      });
+    },
+    onError: (error: any) => {
+      console.error('Report update error:', error);
+      toast({
+        title: "Error Updating Report",
+        description: error?.message || "Failed to update report. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete Report mutation
+  const deleteReportMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('DELETE', `/api/platforms/custom-integration/reports/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/reports'] });
+      toast({
+        title: "Report Deleted",
+        description: "The report has been successfully deleted.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Report deletion error:', error);
+      toast({
+        title: "Error Deleting Report",
+        description: error?.message || "Failed to delete report. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle Report form submission
+  const handleCreateReport = () => {
+    const reportData: any = {
+      ...reportForm,
+      platformType: 'custom-integration',
+    };
+    
+    if (reportModalStep === 'custom') {
+      reportData.configuration = customReportConfig;
+    }
+    
+    createReportMutation.mutate(reportData);
+  };
+
+  const handleUpdateReport = () => {
+    if (!editingReportId) return;
+    
+    const reportData: any = {
+      ...reportForm,
+      platformType: 'custom-integration',
+    };
+    
+    if (reportModalStep === 'custom') {
+      reportData.configuration = customReportConfig;
+    }
+    
+    updateReportMutation.mutate({ id: editingReportId, data: reportData });
+  };
+
+  const handleEditReport = (report: any) => {
+    setEditingReportId(report.id);
+    setReportForm({
+      name: report.name,
+      description: report.description || '',
+      reportType: report.reportType,
+      configuration: report.configuration,
+      scheduleEnabled: !!report.scheduleFrequency,
+      scheduleFrequency: report.scheduleFrequency || 'weekly',
+      scheduleDayOfWeek: report.scheduleDayOfWeek || 'monday',
+      scheduleTime: report.scheduleTime || '9:00 AM',
+      emailRecipients: report.emailRecipients || '',
+      status: report.status || 'draft'
+    });
+    
+    if (report.reportType === 'custom' && report.configuration) {
+      setCustomReportConfig(report.configuration);
+      setReportModalStep('custom');
+    } else {
+      setReportModalStep('standard');
+    }
+    
+    setIsReportModalOpen(true);
   };
 
   const formatNumber = (num?: number | null) => {

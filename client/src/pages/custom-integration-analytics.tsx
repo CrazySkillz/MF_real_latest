@@ -574,11 +574,33 @@ export default function CustomIntegrationAnalytics() {
             y += 5;
           }
           
-          if (benchmark.source) {
+          // Source - always show with fallback
+          doc.setFont(undefined, 'bold');
+          doc.text('Source:', 25, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(benchmark.source || 'Custom Integration', 80, y);
+          y += 5;
+          
+          // Performance vs Benchmark comparison
+          if (benchmark.currentValue && benchmark.benchmarkValue) {
+            const current = parseFloat(benchmark.currentValue);
+            const benchmarkVal = parseFloat(benchmark.benchmarkValue);
+            const diff = current - benchmarkVal;
+            const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';
+            const isAbove = current > benchmarkVal;
+            
             doc.setFont(undefined, 'bold');
-            doc.text('Source:', 25, y);
+            doc.text('Performance vs Benchmark:', 25, y);
             doc.setFont(undefined, 'normal');
-            doc.text(benchmark.source, 80, y);
+            
+            if (isAbove) {
+              doc.setTextColor(22, 163, 74); // Green
+              doc.text(`${percentDiff}% Above - Outperforming!`, 80, y);
+            } else {
+              doc.setTextColor(220, 38, 38); // Red
+              doc.text(`${Math.abs(parseFloat(percentDiff))}% Below - Needs improvement`, 80, y);
+            }
+            doc.setTextColor(50, 50, 50); // Reset to dark
             y += 5;
           }
           

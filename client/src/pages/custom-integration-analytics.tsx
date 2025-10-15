@@ -482,6 +482,10 @@ export default function CustomIntegrationAnalytics() {
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
     doc.text(title, 20, y + 7);
+    // Reset text color to black for content
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
     return y + 15;
   };
 
@@ -519,27 +523,82 @@ export default function CustomIntegrationAnalytics() {
       doc.setFont(undefined, 'normal');
       
       // Audience & Traffic Section
-      y = addPDFSection(doc, 'Audience & Traffic', y, [59, 130, 246]);
+      if (metrics.users || metrics.sessions || metrics.pageviews) {
+        y = addPDFSection(doc, 'Audience & Traffic', y, [59, 130, 246]);
+        
+        if (metrics.users) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Users (unique):', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.users), 120, y);
+          y += 8;
+        }
+        if (metrics.sessions) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Sessions:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.sessions), 120, y);
+          y += 8;
+        }
+        if (metrics.pageviews) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Pageviews:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.pageviews), 120, y);
+          y += 8;
+        }
+        y += 10;
+      }
       
-      doc.setFont(undefined, 'bold');
-      doc.text('Users (unique):', 20, y);
-      doc.setFont(undefined, 'normal');
-      doc.text('1,275,432', 120, y);
-      y += 8;
-      
-      doc.setFont(undefined, 'bold');
-      doc.text('Sessions:', 20, y);
-      doc.setFont(undefined, 'normal');
-      doc.text('1,980,120', 120, y);
-      y += 8;
-      
-      doc.setFont(undefined, 'bold');
-      doc.text('Pageviews:', 20, y);
-      doc.setFont(undefined, 'normal');
-      doc.text('4,050,980', 120, y);
-      y += 8;
-      
-      y += 10;
+      // Traffic Sources Section
+      if (metrics.organicSearch || metrics.directBranded || metrics.emailNewsletters || 
+          metrics.referralPartners || metrics.paidDisplaySearch || metrics.social) {
+        y = addPDFSection(doc, 'Traffic Sources', y, [234, 179, 8]);
+        
+        if (metrics.organicSearch) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Organic Search:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.organicSearch + '%', 120, y);
+          y += 8;
+        }
+        if (metrics.directBranded) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Direct/Branded:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.directBranded + '%', 120, y);
+          y += 8;
+        }
+        if (metrics.emailNewsletters) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Email (Newsletters):', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.emailNewsletters + '%', 120, y);
+          y += 8;
+        }
+        if (metrics.referralPartners) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Referral/Partners:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.referralPartners + '%', 120, y);
+          y += 8;
+        }
+        if (metrics.paidDisplaySearch) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Paid (Display/Search):', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.paidDisplaySearch + '%', 120, y);
+          y += 8;
+        }
+        if (metrics.social) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Social:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.social + '%', 120, y);
+          y += 8;
+        }
+        y += 10;
+      }
       
       // Email Performance Section
       if (metrics.emailsDelivered || metrics.openRate || metrics.clickThroughRate) {
@@ -549,7 +608,7 @@ export default function CustomIntegrationAnalytics() {
           doc.setFont(undefined, 'bold');
           doc.text('Emails Delivered:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(metrics.emailsDelivered), 120, y);
+          doc.text(formatNumber(metrics.emailsDelivered), 120, y);
           y += 8;
         }
         if (metrics.openRate) {
@@ -569,41 +628,36 @@ export default function CustomIntegrationAnalytics() {
         y += 10;
       }
       
-      // Social Media Section (only show if has non-zero values)
-      const hasSocial = (metrics.impressions && metrics.impressions > 0) || 
-                         (metrics.reach && metrics.reach > 0) || 
-                         (metrics.clicks && metrics.clicks > 0) || 
-                         (metrics.engagements && metrics.engagements > 0);
-      
-      if (hasSocial) {
+      // Social Media Section
+      if (metrics.impressions || metrics.reach || metrics.clicks || metrics.engagements) {
         y = addPDFSection(doc, 'Social Media Metrics', y, [168, 85, 247]);
         
-        if (metrics.impressions && metrics.impressions > 0) {
+        if (metrics.impressions) {
           doc.setFont(undefined, 'bold');
           doc.text('Impressions:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(metrics.impressions), 120, y);
+          doc.text(formatNumber(metrics.impressions), 120, y);
           y += 8;
         }
-        if (metrics.reach && metrics.reach > 0) {
+        if (metrics.reach) {
           doc.setFont(undefined, 'bold');
           doc.text('Reach:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(metrics.reach), 120, y);
+          doc.text(formatNumber(metrics.reach), 120, y);
           y += 8;
         }
-        if (metrics.clicks && metrics.clicks > 0) {
+        if (metrics.clicks) {
           doc.setFont(undefined, 'bold');
           doc.text('Clicks:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(metrics.clicks), 120, y);
+          doc.text(formatNumber(metrics.clicks), 120, y);
           y += 8;
         }
-        if (metrics.engagements && metrics.engagements > 0) {
+        if (metrics.engagements) {
           doc.setFont(undefined, 'bold');
           doc.text('Engagements:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(metrics.engagements), 120, y);
+          doc.text(formatNumber(metrics.engagements), 120, y);
           y += 8;
         }
         y += 10;

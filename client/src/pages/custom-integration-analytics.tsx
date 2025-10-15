@@ -2246,6 +2246,546 @@ export default function CustomIntegrationAnalytics() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Report Modal */}
+      <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-purple-600" />
+              {editingReportId ? 'Edit Report' : 'Create New Report'}
+            </DialogTitle>
+            <DialogDescription>
+              {reportModalStep === 'standard' 
+                ? 'Choose a report type and configure scheduling options for Custom Integration analytics'
+                : 'Select the metrics, KPIs, and benchmarks to include in your custom report'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {reportModalStep === 'standard' && (
+              <div className="space-y-6">
+                {/* Report Type Selection */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Report Type</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Card 
+                      className={`cursor-pointer transition-all ${reportForm.reportType === 'overview' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+                      onClick={() => setReportForm({ ...reportForm, reportType: 'overview' })}
+                      data-testid="card-overview-report"
+                    >
+                      <CardContent className="pt-6">
+                        <h4 className="font-semibold mb-2">Overview Report</h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Comprehensive snapshot of all Custom Integration metrics
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card 
+                      className={`cursor-pointer transition-all ${reportForm.reportType === 'kpis' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+                      onClick={() => setReportForm({ ...reportForm, reportType: 'kpis' })}
+                      data-testid="card-kpis-report"
+                    >
+                      <CardContent className="pt-6">
+                        <h4 className="font-semibold mb-2">KPIs Report</h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Focus on key performance indicators and targets
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card 
+                      className={`cursor-pointer transition-all ${reportForm.reportType === 'benchmarks' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+                      onClick={() => setReportForm({ ...reportForm, reportType: 'benchmarks' })}
+                      data-testid="card-benchmarks-report"
+                    >
+                      <CardContent className="pt-6">
+                        <h4 className="font-semibold mb-2">Benchmarks Report</h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Compare performance against industry standards
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card 
+                      className={`cursor-pointer transition-all ${reportModalStep === 'custom' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+                      onClick={() => setReportModalStep('custom')}
+                      data-testid="card-custom-report"
+                    >
+                      <CardContent className="pt-6">
+                        <h4 className="font-semibold mb-2">Custom Report</h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Build your own report with selected metrics
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Report Configuration */}
+                {reportForm.reportType && reportForm.reportType !== 'custom' && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="space-y-2">
+                      <Label htmlFor="report-name">Report Name *</Label>
+                      <Input
+                        id="report-name"
+                        value={reportForm.name}
+                        onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
+                        placeholder="Enter report name"
+                        data-testid="input-report-name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="report-description">Description (Optional)</Label>
+                      <Textarea
+                        id="report-description"
+                        value={reportForm.description}
+                        onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                        placeholder="Add a description for this report"
+                        rows={3}
+                        data-testid="input-report-description"
+                      />
+                    </div>
+
+                    {/* Schedule Section */}
+                    <div className="space-y-4 pt-4 border-t">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="schedule-reports"
+                          checked={reportForm.scheduleEnabled}
+                          onCheckedChange={(checked) => {
+                            setReportForm({
+                              ...reportForm,
+                              scheduleEnabled: checked as boolean
+                            });
+                          }}
+                          data-testid="checkbox-schedule-reports"
+                        />
+                        <Label htmlFor="schedule-reports" className="text-base cursor-pointer font-semibold">
+                          Schedule Automatic Reports
+                        </Label>
+                      </div>
+
+                      {reportForm.scheduleEnabled && (
+                        <div className="space-y-4 pl-6">
+                          {/* Frequency */}
+                          <div className="space-y-2">
+                            <Label htmlFor="schedule-frequency">Frequency</Label>
+                            <Select
+                              value={reportForm.scheduleFrequency}
+                              onValueChange={(value) => setReportForm({ ...reportForm, scheduleFrequency: value })}
+                            >
+                              <SelectTrigger id="schedule-frequency" data-testid="select-frequency">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                                <SelectItem value="quarterly">Quarterly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Day of Week - Only for Weekly */}
+                          {reportForm.scheduleFrequency === 'weekly' && (
+                            <div className="space-y-2">
+                              <Label htmlFor="schedule-day">Day of Week</Label>
+                              <Select
+                                value={reportForm.scheduleDayOfWeek}
+                                onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfWeek: value })}
+                              >
+                                <SelectTrigger id="schedule-day" data-testid="select-day">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="monday">Monday</SelectItem>
+                                  <SelectItem value="tuesday">Tuesday</SelectItem>
+                                  <SelectItem value="wednesday">Wednesday</SelectItem>
+                                  <SelectItem value="thursday">Thursday</SelectItem>
+                                  <SelectItem value="friday">Friday</SelectItem>
+                                  <SelectItem value="saturday">Saturday</SelectItem>
+                                  <SelectItem value="sunday">Sunday</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {/* Time */}
+                          <div className="space-y-2">
+                            <Label htmlFor="schedule-time">Time</Label>
+                            <Select
+                              value={reportForm.scheduleTime}
+                              onValueChange={(value) => setReportForm({ ...reportForm, scheduleTime: value })}
+                            >
+                              <SelectTrigger id="schedule-time" data-testid="select-time">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="6:00 AM">6:00 AM</SelectItem>
+                                <SelectItem value="7:00 AM">7:00 AM</SelectItem>
+                                <SelectItem value="8:00 AM">8:00 AM</SelectItem>
+                                <SelectItem value="9:00 AM">9:00 AM</SelectItem>
+                                <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                                <SelectItem value="12:00 PM">12:00 PM</SelectItem>
+                                <SelectItem value="3:00 PM">3:00 PM</SelectItem>
+                                <SelectItem value="6:00 PM">6:00 PM</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Email Recipients */}
+                          <div className="space-y-2">
+                            <Label htmlFor="email-recipients">Email Recipients</Label>
+                            <Input
+                              id="email-recipients"
+                              value={reportForm.emailRecipients}
+                              onChange={(e) => setReportForm({ ...reportForm, emailRecipients: e.target.value })}
+                              placeholder="Enter email addresses (comma-separated)"
+                              data-testid="input-email-recipients"
+                            />
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              Reports will be automatically generated and sent to these email addresses
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Custom Report Configuration */}
+            {reportModalStep === 'custom' && (
+              <div className="space-y-6">
+                {/* Report Name and Description */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-report-name">Report Name *</Label>
+                    <Input
+                      id="custom-report-name"
+                      value={reportForm.name}
+                      onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
+                      placeholder="Enter report name"
+                      data-testid="input-custom-report-name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-report-description">Description (Optional)</Label>
+                    <Textarea
+                      id="custom-report-description"
+                      value={reportForm.description}
+                      onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                      placeholder="Add a description for this report"
+                      rows={2}
+                      data-testid="input-custom-report-description"
+                    />
+                  </div>
+                </div>
+
+                {/* Metrics Selection */}
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Select Metrics</h3>
+                  
+                  <div className="space-y-3 pl-4">
+                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Audience & Traffic Metrics</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {['users', 'sessions', 'pageviews'].map((metric) => {
+                        const labels: Record<string, string> = {
+                          users: 'Users',
+                          sessions: 'Sessions',
+                          pageviews: 'Pageviews'
+                        };
+                        return (
+                          <div key={metric} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`core-${metric}`}
+                              checked={customReportConfig.coreMetrics.includes(metric)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setCustomReportConfig({
+                                    ...customReportConfig,
+                                    coreMetrics: [...customReportConfig.coreMetrics, metric]
+                                  });
+                                } else {
+                                  setCustomReportConfig({
+                                    ...customReportConfig,
+                                    coreMetrics: customReportConfig.coreMetrics.filter(m => m !== metric)
+                                  });
+                                }
+                              }}
+                              data-testid={`checkbox-core-${metric}`}
+                            />
+                            <Label htmlFor={`core-${metric}`} className="text-sm cursor-pointer">
+                              {labels[metric]}
+                            </Label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pl-4">
+                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Email Performance Metrics</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen'].map((metric) => {
+                        const labels: Record<string, string> = {
+                          emailsDelivered: 'Emails Delivered',
+                          openRate: 'Open Rate',
+                          clickThroughRate: 'Click-Through Rate',
+                          clickToOpen: 'Click-to-Open'
+                        };
+                        return (
+                          <div key={metric} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`email-${metric}`}
+                              checked={customReportConfig.derivedMetrics.includes(metric)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setCustomReportConfig({
+                                    ...customReportConfig,
+                                    derivedMetrics: [...customReportConfig.derivedMetrics, metric]
+                                  });
+                                } else {
+                                  setCustomReportConfig({
+                                    ...customReportConfig,
+                                    derivedMetrics: customReportConfig.derivedMetrics.filter(m => m !== metric)
+                                  });
+                                }
+                              }}
+                              data-testid={`checkbox-email-${metric}`}
+                            />
+                            <Label htmlFor={`email-${metric}`} className="text-sm cursor-pointer">
+                              {labels[metric]}
+                            </Label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* KPIs Section */}
+                <div className="space-y-3 pt-4 border-t">
+                  <Label className="text-base">KPIs</Label>
+                  {kpisData && Array.isArray(kpisData) && kpisData.length > 0 ? (
+                    <div className="space-y-2 pl-4">
+                      {kpisData.map((kpi: any) => (
+                        <div key={kpi.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`kpi-${kpi.id}`}
+                            checked={customReportConfig.kpis.includes(kpi.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setCustomReportConfig({
+                                  ...customReportConfig,
+                                  kpis: [...customReportConfig.kpis, kpi.id]
+                                });
+                              } else {
+                                setCustomReportConfig({
+                                  ...customReportConfig,
+                                  kpis: customReportConfig.kpis.filter(id => id !== kpi.id)
+                                });
+                              }
+                            }}
+                            data-testid={`checkbox-kpi-${kpi.id}`}
+                          />
+                          <Label htmlFor={`kpi-${kpi.id}`} className="text-sm cursor-pointer">
+                            {kpi.name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 pl-4">No KPIs created yet</p>
+                  )}
+                </div>
+
+                {/* Benchmarks Section */}
+                <div className="space-y-3 pt-4 border-t">
+                  <Label className="text-base">Benchmarks</Label>
+                  {benchmarksData && Array.isArray(benchmarksData) && benchmarksData.length > 0 ? (
+                    <div className="space-y-2 pl-4">
+                      {benchmarksData.map((benchmark: any) => (
+                        <div key={benchmark.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`benchmark-${benchmark.id}`}
+                            checked={customReportConfig.benchmarks.includes(benchmark.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setCustomReportConfig({
+                                  ...customReportConfig,
+                                  benchmarks: [...customReportConfig.benchmarks, benchmark.id]
+                                });
+                              } else {
+                                setCustomReportConfig({
+                                  ...customReportConfig,
+                                  benchmarks: customReportConfig.benchmarks.filter(id => id !== benchmark.id)
+                                });
+                              }
+                            }}
+                            data-testid={`checkbox-benchmark-${benchmark.id}`}
+                          />
+                          <Label htmlFor={`benchmark-${benchmark.id}`} className="text-sm cursor-pointer">
+                            {benchmark.name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 pl-4">No benchmarks created yet</p>
+                  )}
+                </div>
+
+                {/* Schedule Section for Custom Reports */}
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="custom-schedule-reports"
+                      checked={reportForm.scheduleEnabled}
+                      onCheckedChange={(checked) => {
+                        setReportForm({
+                          ...reportForm,
+                          scheduleEnabled: checked as boolean
+                        });
+                      }}
+                      data-testid="checkbox-custom-schedule-reports"
+                    />
+                    <Label htmlFor="custom-schedule-reports" className="text-base cursor-pointer font-semibold">
+                      Schedule Automatic Reports
+                    </Label>
+                  </div>
+
+                  {reportForm.scheduleEnabled && (
+                    <div className="space-y-4 pl-6">
+                      {/* Frequency */}
+                      <div className="space-y-2">
+                        <Label htmlFor="custom-schedule-frequency">Frequency</Label>
+                        <Select
+                          value={reportForm.scheduleFrequency}
+                          onValueChange={(value) => setReportForm({ ...reportForm, scheduleFrequency: value })}
+                        >
+                          <SelectTrigger id="custom-schedule-frequency" data-testid="select-custom-frequency">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="quarterly">Quarterly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Email Recipients */}
+                      <div className="space-y-2">
+                        <Label htmlFor="custom-email-recipients">Email Recipients</Label>
+                        <Input
+                          id="custom-email-recipients"
+                          value={reportForm.emailRecipients}
+                          onChange={(e) => setReportForm({ ...reportForm, emailRecipients: e.target.value })}
+                          placeholder="Enter email addresses (comma-separated)"
+                          data-testid="input-custom-email-recipients"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between pt-6 border-t mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsReportModalOpen(false);
+                  setReportModalStep('standard');
+                  setEditingReportId(null);
+                  setReportForm({
+                    name: '',
+                    description: '',
+                    reportType: '',
+                    configuration: null,
+                    scheduleEnabled: false,
+                    scheduleFrequency: 'weekly',
+                    scheduleDayOfWeek: 'monday',
+                    scheduleTime: '9:00 AM',
+                    emailRecipients: '',
+                    status: 'draft'
+                  });
+                }}
+                data-testid="button-cancel-report"
+              >
+                Cancel
+              </Button>
+              
+              <div className="flex items-center gap-2">
+                {reportModalStep === 'custom' && (
+                  <Button
+                    variant="link"
+                    onClick={() => {
+                      setReportModalStep('standard');
+                      setReportForm({ ...reportForm, reportType: '' });
+                    }}
+                    data-testid="button-back-to-standard"
+                  >
+                    Back to Standard Reports
+                  </Button>
+                )}
+                
+                {reportForm.reportType && reportForm.reportType !== 'custom' && (
+                  <Button
+                    onClick={editingReportId ? handleUpdateReport : handleCreateReport}
+                    disabled={!reportForm.name || createReportMutation.isPending || updateReportMutation.isPending}
+                    data-testid={editingReportId ? "button-update-report" : "button-create-report-submit"}
+                    className="gap-2 bg-purple-600 hover:bg-purple-700"
+                  >
+                    {(createReportMutation.isPending || updateReportMutation.isPending) ? (
+                      editingReportId ? 'Updating...' : 'Creating...'
+                    ) : editingReportId ? (
+                      'Update Report'
+                    ) : reportForm.scheduleEnabled ? (
+                      'Schedule Report'
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Generate & Download Report
+                      </>
+                    )}
+                  </Button>
+                )}
+                
+                {reportModalStep === 'custom' && (
+                  <Button
+                    onClick={editingReportId ? handleUpdateReport : handleCreateReport}
+                    disabled={!reportForm.name || createReportMutation.isPending || updateReportMutation.isPending}
+                    data-testid={editingReportId ? "button-update-custom-report" : "button-create-custom-report"}
+                    className="gap-2 bg-purple-600 hover:bg-purple-700"
+                  >
+                    {(createReportMutation.isPending || updateReportMutation.isPending) ? (
+                      editingReportId ? 'Updating...' : 'Creating...'
+                    ) : editingReportId ? (
+                      'Update Report'
+                    ) : reportForm.scheduleEnabled ? (
+                      'Schedule Report'
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Generate & Download Report
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

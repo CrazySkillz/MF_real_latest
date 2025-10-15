@@ -498,6 +498,9 @@ export default function CustomIntegrationAnalytics() {
     
     let y = 70;
     
+    console.log('PDF Generation - metrics:', metrics);
+    console.log('PDF Generation - metrics keys:', Object.keys(metrics));
+    
     if (!metrics || Object.keys(metrics).length === 0) {
       doc.setTextColor(100, 100, 100);
       doc.setFontSize(12);

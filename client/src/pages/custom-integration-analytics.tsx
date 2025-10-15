@@ -518,21 +518,21 @@ export default function CustomIntegrationAnalytics() {
           doc.setFont(undefined, 'bold');
           doc.text('Users (unique):', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(formatNumber(metrics.users), 120, y);
+          doc.text(String(formatNumber(metrics.users)), 120, y);
           y += 8;
         }
         if (metrics.sessions !== undefined) {
           doc.setFont(undefined, 'bold');
           doc.text('Sessions:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(formatNumber(metrics.sessions), 120, y);
+          doc.text(String(formatNumber(metrics.sessions)), 120, y);
           y += 8;
         }
         if (metrics.pageviews !== undefined) {
           doc.setFont(undefined, 'bold');
           doc.text('Pageviews:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(formatNumber(metrics.pageviews), 120, y);
+          doc.text(String(formatNumber(metrics.pageviews)), 120, y);
           y += 8;
         }
         y += 10;
@@ -546,21 +546,21 @@ export default function CustomIntegrationAnalytics() {
           doc.setFont(undefined, 'bold');
           doc.text('Emails Delivered:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(formatNumber(metrics.emailsDelivered), 120, y);
+          doc.text(String(formatNumber(metrics.emailsDelivered)), 120, y);
           y += 8;
         }
         if (metrics.openRate !== undefined) {
           doc.setFont(undefined, 'bold');
           doc.text('Open Rate:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(metrics.openRate, 120, y);
+          doc.text(String(metrics.openRate || 'N/A'), 120, y);
           y += 8;
         }
         if (metrics.clickThroughRate !== undefined) {
           doc.setFont(undefined, 'bold');
           doc.text('Click-Through Rate:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(metrics.clickThroughRate, 120, y);
+          doc.text(String(metrics.clickThroughRate || 'N/A'), 120, y);
           y += 8;
         }
         y += 10;
@@ -574,28 +574,28 @@ export default function CustomIntegrationAnalytics() {
           doc.setFont(undefined, 'bold');
           doc.text('Impressions:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(formatNumber(metrics.impressions), 120, y);
+          doc.text(String(formatNumber(metrics.impressions)), 120, y);
           y += 8;
         }
         if (metrics.reach !== undefined) {
           doc.setFont(undefined, 'bold');
           doc.text('Reach:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(formatNumber(metrics.reach), 120, y);
+          doc.text(String(formatNumber(metrics.reach)), 120, y);
           y += 8;
         }
         if (metrics.clicks !== undefined) {
           doc.setFont(undefined, 'bold');
           doc.text('Clicks:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(formatNumber(metrics.clicks), 120, y);
+          doc.text(String(formatNumber(metrics.clicks)), 120, y);
           y += 8;
         }
         if (metrics.engagements !== undefined) {
           doc.setFont(undefined, 'bold');
           doc.text('Engagements:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(formatNumber(metrics.engagements), 120, y);
+          doc.text(String(formatNumber(metrics.engagements)), 120, y);
           y += 8;
         }
         y += 10;

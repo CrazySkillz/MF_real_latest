@@ -420,11 +420,43 @@ export default function CustomIntegrationAnalytics() {
     },
   });
 
+  // Helper to convert day of week string to number (0-6)
+  const dayOfWeekToNumber = (day: string): number | null => {
+    const mapping: { [key: string]: number } = {
+      'sunday': 0,
+      'monday': 1,
+      'tuesday': 2,
+      'wednesday': 3,
+      'thursday': 4,
+      'friday': 5,
+      'saturday': 6,
+    };
+    return mapping[day.toLowerCase()] ?? null;
+  };
+
+  // Helper to convert day of week number to string
+  const numberToDayOfWeek = (num: number | null): string => {
+    const mapping: { [key: number]: string } = {
+      0: 'sunday',
+      1: 'monday',
+      2: 'tuesday',
+      3: 'wednesday',
+      4: 'thursday',
+      5: 'friday',
+      6: 'saturday',
+    };
+    return num !== null ? (mapping[num] || 'monday') : 'monday';
+  };
+
   // Handle Report form submission
   const handleCreateReport = () => {
     const reportData: any = {
       ...reportForm,
       platformType: 'custom-integration',
+      scheduleDayOfWeek: reportForm.scheduleFrequency === 'weekly' 
+        ? dayOfWeekToNumber(reportForm.scheduleDayOfWeek) 
+        : null,
+      scheduleRecipients: reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map(e => e.trim()) : null,
     };
     
     if (reportModalStep === 'custom') {
@@ -440,6 +472,10 @@ export default function CustomIntegrationAnalytics() {
     const reportData: any = {
       ...reportForm,
       platformType: 'custom-integration',
+      scheduleDayOfWeek: reportForm.scheduleFrequency === 'weekly' 
+        ? dayOfWeekToNumber(reportForm.scheduleDayOfWeek) 
+        : null,
+      scheduleRecipients: reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map(e => e.trim()) : null,
     };
     
     if (reportModalStep === 'custom') {
@@ -458,9 +494,9 @@ export default function CustomIntegrationAnalytics() {
       configuration: report.configuration,
       scheduleEnabled: !!report.scheduleFrequency,
       scheduleFrequency: report.scheduleFrequency || 'weekly',
-      scheduleDayOfWeek: report.scheduleDayOfWeek || 'monday',
+      scheduleDayOfWeek: numberToDayOfWeek(report.scheduleDayOfWeek),
       scheduleTime: report.scheduleTime || '9:00 AM',
-      emailRecipients: report.emailRecipients || '',
+      emailRecipients: Array.isArray(report.scheduleRecipients) ? report.scheduleRecipients.join(', ') : '',
       status: report.status || 'draft'
     });
     

@@ -1586,29 +1586,180 @@ export default function CustomIntegrationAnalytics() {
 
               {/* Reports Tab */}
               <TabsContent value="reports" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Custom Integration Reports</CardTitle>
-                    <CardDescription>
-                      Schedule and manage automated reports
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-12">
-                      <Target className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                {/* Header with Create Button */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Reports</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Create, schedule, and manage analytics reports for Custom Integration
+                    </p>
+                  </div>
+                  <Button 
+                    data-testid="button-create-report" 
+                    className="gap-2 bg-purple-600 hover:bg-purple-700"
+                    onClick={() => {
+                      setEditingReportId(null);
+                      setReportModalStep('standard');
+                      setReportForm({
+                        name: '',
+                        description: '',
+                        reportType: '',
+                        configuration: null,
+                        scheduleEnabled: false,
+                        scheduleFrequency: 'weekly',
+                        scheduleDayOfWeek: 'monday',
+                        scheduleTime: '9:00 AM',
+                        emailRecipients: '',
+                        status: 'draft'
+                      });
+                      setCustomReportConfig({
+                        coreMetrics: [],
+                        derivedMetrics: [],
+                        kpis: [],
+                        benchmarks: []
+                      });
+                      setIsReportModalOpen(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create Report
+                  </Button>
+                </div>
+
+                {/* Reports List */}
+                {reportsLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  </div>
+                ) : reportsData && Array.isArray(reportsData) && reportsData.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4">
+                    {reportsData.map((report: any) => (
+                      <Card key={report.id} data-testid={`report-${report.id}`} className="border-purple-200 dark:border-purple-900">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+                                {report.name}
+                              </h3>
+                              {report.description && (
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                                  {report.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-4 text-sm">
+                                <Badge variant="outline" className="border-purple-300 text-purple-700 dark:border-purple-700 dark:text-purple-300">
+                                  {report.reportType}
+                                </Badge>
+                                {report.scheduleFrequency && (
+                                  <span className="text-slate-500 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {report.scheduleFrequency}
+                                  </span>
+                                )}
+                                <span className="text-slate-400">
+                                  Created {new Date(report.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                data-testid={`button-download-${report.id}`}
+                                className="border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/30"
+                              >
+                                <Download className="w-4 h-4 mr-1" />
+                                Download
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                data-testid={`button-edit-${report.id}`}
+                                onClick={() => handleEditReport(report)}
+                                className="hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    data-testid={`button-delete-${report.id}`}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Report</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{report.name}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteReportMutation.mutate(report.id)}
+                                      className="bg-red-600 hover:bg-red-700 text-white"
+                                      data-testid={`confirm-delete-${report.id}`}
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="border-purple-200 dark:border-purple-900">
+                    <CardContent className="py-12 text-center">
+                      <Target className="w-12 h-12 mx-auto text-purple-400 mb-4" />
                       <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
                         No Reports Created
                       </h3>
                       <p className="text-slate-600 dark:text-slate-400 mb-4">
                         Create automated reports to track your custom integration performance
                       </p>
-                      <Button data-testid="button-create-report">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Report
+                      <Button 
+                        onClick={() => {
+                          setEditingReportId(null);
+                          setReportModalStep('standard');
+                          setReportForm({
+                            name: '',
+                            description: '',
+                            reportType: '',
+                            configuration: null,
+                            scheduleEnabled: false,
+                            scheduleFrequency: 'weekly',
+                            scheduleDayOfWeek: 'monday',
+                            scheduleTime: '9:00 AM',
+                            emailRecipients: '',
+                            status: 'draft'
+                          });
+                          setCustomReportConfig({
+                            coreMetrics: [],
+                            derivedMetrics: [],
+                            kpis: [],
+                            benchmarks: []
+                          });
+                          setIsReportModalOpen(true);
+                        }}
+                        data-testid="button-create-first-report"
+                        className="gap-2 bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create Your First Report
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
             </Tabs>
           </div>

@@ -68,6 +68,12 @@ export interface IStorage {
   updateLinkedInReport(id: string, report: Partial<InsertLinkedInReport>): Promise<LinkedInReport | undefined>;
   deleteLinkedInReport(id: string): Promise<boolean>;
   
+  // Platform Reports
+  getPlatformReports(platformType: string): Promise<LinkedInReport[]>;
+  createPlatformReport(report: any): Promise<LinkedInReport>;
+  updatePlatformReport(id: string, report: any): Promise<LinkedInReport | undefined>;
+  deletePlatformReport(id: string): Promise<boolean>;
+  
   // Custom Integrations
   getCustomIntegration(campaignId: string): Promise<CustomIntegration | undefined>;
   getAllCustomIntegrations(): Promise<CustomIntegration[]>;
@@ -1083,6 +1089,31 @@ export class MemStorage implements IStorage {
     return this.linkedinReports.delete(id);
   }
 
+  // Platform Reports methods
+  async getPlatformReports(platformType: string): Promise<LinkedInReport[]> {
+    // For now, return LinkedIn reports only for LinkedIn platform
+    if (platformType === 'linkedin') {
+      return this.getLinkedInReports();
+    }
+    // Return empty array for other platforms for now
+    return [];
+  }
+
+  async createPlatformReport(report: any): Promise<LinkedInReport> {
+    // For now, use LinkedIn reports table for all platforms
+    return this.createLinkedInReport(report);
+  }
+
+  async updatePlatformReport(id: string, report: any): Promise<LinkedInReport | undefined> {
+    // For now, use LinkedIn reports table for all platforms
+    return this.updateLinkedInReport(id, report);
+  }
+
+  async deletePlatformReport(id: string): Promise<boolean> {
+    // For now, use LinkedIn reports table for all platforms
+    return this.deleteLinkedInReport(id);
+  }
+
   // Custom Integrations methods
   async getCustomIntegration(campaignId: string): Promise<CustomIntegration | undefined> {
     return Array.from(this.customIntegrations.values()).find(ci => ci.campaignId === campaignId);
@@ -1917,6 +1948,33 @@ export class DatabaseStorage implements IStorage {
       .delete(linkedinReports)
       .where(eq(linkedinReports.id, id));
     return true;
+  }
+
+  // Platform Reports methods
+  async getPlatformReports(platformType: string): Promise<LinkedInReport[]> {
+    // For now, return LinkedIn reports only for LinkedIn platform
+    // In future, this should use a generic platform_reports table with platformType field
+    if (platformType === 'linkedin') {
+      return this.getLinkedInReports();
+    }
+    // Return empty array for other platforms for now
+    return [];
+  }
+
+  async createPlatformReport(report: any): Promise<LinkedInReport> {
+    // For now, use LinkedIn reports table for all platforms
+    // In future, use a generic platform_reports table
+    return this.createLinkedInReport(report);
+  }
+
+  async updatePlatformReport(id: string, report: any): Promise<LinkedInReport | undefined> {
+    // For now, use LinkedIn reports table for all platforms
+    return this.updateLinkedInReport(id, report);
+  }
+
+  async deletePlatformReport(id: string): Promise<boolean> {
+    // For now, use LinkedIn reports table for all platforms
+    return this.deleteLinkedInReport(id);
   }
 
   // Custom Integrations methods

@@ -1480,6 +1480,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Platform-level Report routes
+  app.get("/api/platforms/:platformType/reports", async (req, res) => {
+    try {
+      const { platformType } = req.params;
+      const reports = await storage.getPlatformReports(platformType);
+      res.json(reports);
+    } catch (error) {
+      console.error('Failed to fetch platform reports:', error);
+      res.status(500).json({ message: "Failed to fetch reports" });
+    }
+  });
+
+  app.post("/api/platforms/:platformType/reports", async (req, res) => {
+    console.log('=== CREATE PLATFORM REPORT ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    try {
+      const { platformType } = req.params;
+      
+      const report = await storage.createPlatformReport({
+        ...req.body,
+        platformType
+      });
+      
+      console.log('Created platform report:', JSON.stringify(report, null, 2));
+      res.status(201).json(report);
+    } catch (error) {
+      console.error('Platform Report creation error:', error);
+      res.status(500).json({ message: "Failed to create platform report" });
+    }
+  });
+
+  app.patch("/api/platforms/:platformType/reports/:reportId", async (req, res) => {
+    console.log('=== UPDATE PLATFORM REPORT ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    try {
+      const { reportId } = req.params;
+      
+      const updated = await storage.updatePlatformReport(reportId, req.body);
+      if (!updated) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      console.log('Updated platform report:', JSON.stringify(updated, null, 2));
+      res.json(updated);
+    } catch (error) {
+      console.error('Platform Report update error:', error);
+      res.status(500).json({ message: "Failed to update platform report" });
+    }
+  });
+
+  app.delete("/api/platforms/:platformType/reports/:reportId", async (req, res) => {
+    console.log('=== DELETE PLATFORM REPORT ===');
+    console.log('Report ID:', req.params.reportId);
+    
+    try {
+      const { reportId } = req.params;
+      
+      const deleted = await storage.deletePlatformReport(reportId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      console.log(`Report ${reportId} successfully deleted`);
+      res.json({ message: "Report deleted successfully", success: true });
+    } catch (error) {
+      console.error('Platform Report deletion error:', error);
+      res.status(500).json({ message: "Failed to delete report" });
+    }
+  });
+
   app.post("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;

@@ -1091,12 +1091,9 @@ export class MemStorage implements IStorage {
 
   // Platform Reports methods
   async getPlatformReports(platformType: string): Promise<LinkedInReport[]> {
-    // For now, return LinkedIn reports only for LinkedIn platform
-    if (platformType === 'linkedin') {
-      return this.getLinkedInReports();
-    }
-    // Return empty array for other platforms for now
-    return [];
+    // For now, return all reports regardless of platform since we're using the same table
+    // In future, this should use a generic platform_reports table with platformType field
+    return this.getLinkedInReports();
   }
 
   async createPlatformReport(report: any): Promise<LinkedInReport> {
@@ -1952,13 +1949,9 @@ export class DatabaseStorage implements IStorage {
 
   // Platform Reports methods
   async getPlatformReports(platformType: string): Promise<LinkedInReport[]> {
-    // For now, return LinkedIn reports only for LinkedIn platform
+    // For now, return all reports regardless of platform since we're using the same table
     // In future, this should use a generic platform_reports table with platformType field
-    if (platformType === 'linkedin') {
-      return this.getLinkedInReports();
-    }
-    // Return empty array for other platforms for now
-    return [];
+    return this.getLinkedInReports();
   }
 
   async createPlatformReport(report: any): Promise<LinkedInReport> {

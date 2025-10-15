@@ -523,14 +523,16 @@ export default function CustomIntegrationAnalytics() {
       if (hasAudience) {
         y = addPDFSection(doc, 'Audience & Traffic', y, [59, 130, 246]);
         
-        // Debug: Add test data
+        // Test with hardcoded data first
+        doc.setTextColor(50, 50, 50);
         doc.setFont(undefined, 'bold');
-        doc.text('DEBUG - users value:', 20, y);
+        doc.text('Test Label:', 20, y);
         doc.setFont(undefined, 'normal');
-        doc.text(String(metrics.users), 120, y);
+        doc.text('Test Value 12345', 120, y);
         y += 8;
         
-        if (isValidNumber(metrics.users)) {
+        // Now try with actual metrics
+        if (metrics.users) {
           doc.setFont(undefined, 'bold');
           doc.text('Users (unique):', 20, y);
           doc.setFont(undefined, 'normal');

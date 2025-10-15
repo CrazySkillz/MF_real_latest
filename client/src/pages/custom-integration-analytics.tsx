@@ -454,7 +454,7 @@ export default function CustomIntegrationAnalytics() {
       title: "Report Generated",
       description: "Your report has been generated successfully. Download functionality coming soon.",
     });
-    setReportDialogOpen(false);
+    setIsReportModalOpen(false);
   };
 
   const handleCreateReport = () => {

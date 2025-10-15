@@ -526,21 +526,24 @@ export default function CustomIntegrationAnalytics() {
           doc.setFont(undefined, 'bold');
           doc.text('Users (unique):', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(formatNumber(metrics.users)), 120, y);
+          const usersValue = String(metrics.users);
+          doc.text(usersValue, 120, y);
           y += 8;
         }
         if (metrics.sessions) {
           doc.setFont(undefined, 'bold');
           doc.text('Sessions:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(formatNumber(metrics.sessions)), 120, y);
+          const sessionsValue = String(metrics.sessions);
+          doc.text(sessionsValue, 120, y);
           y += 8;
         }
         if (metrics.pageviews) {
           doc.setFont(undefined, 'bold');
           doc.text('Pageviews:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(formatNumber(metrics.pageviews)), 120, y);
+          const pageviewsValue = String(metrics.pageviews);
+          doc.text(pageviewsValue, 120, y);
           y += 8;
         }
         y += 10;
@@ -554,56 +557,61 @@ export default function CustomIntegrationAnalytics() {
           doc.setFont(undefined, 'bold');
           doc.text('Emails Delivered:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(formatNumber(metrics.emailsDelivered)), 120, y);
+          doc.text(String(metrics.emailsDelivered), 120, y);
           y += 8;
         }
         if (metrics.openRate) {
           doc.setFont(undefined, 'bold');
           doc.text('Open Rate:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(metrics.openRate) + '%', 120, y);
+          doc.text(metrics.openRate + '%', 120, y);
           y += 8;
         }
         if (metrics.clickThroughRate) {
           doc.setFont(undefined, 'bold');
           doc.text('Click-Through Rate:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(metrics.clickThroughRate) + '%', 120, y);
+          doc.text(metrics.clickThroughRate + '%', 120, y);
           y += 8;
         }
         y += 10;
       }
       
-      // Social Media Section
-      if (metrics.impressions || metrics.reach || metrics.clicks || metrics.engagements) {
+      // Social Media Section (only show if has non-zero values)
+      const hasSocial = (metrics.impressions && metrics.impressions > 0) || 
+                         (metrics.reach && metrics.reach > 0) || 
+                         (metrics.clicks && metrics.clicks > 0) || 
+                         (metrics.engagements && metrics.engagements > 0);
+      
+      if (hasSocial) {
         y = addPDFSection(doc, 'Social Media Metrics', y, [168, 85, 247]);
         
-        if (metrics.impressions) {
+        if (metrics.impressions && metrics.impressions > 0) {
           doc.setFont(undefined, 'bold');
           doc.text('Impressions:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(formatNumber(metrics.impressions)), 120, y);
+          doc.text(String(metrics.impressions), 120, y);
           y += 8;
         }
-        if (metrics.reach) {
+        if (metrics.reach && metrics.reach > 0) {
           doc.setFont(undefined, 'bold');
           doc.text('Reach:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(formatNumber(metrics.reach)), 120, y);
+          doc.text(String(metrics.reach), 120, y);
           y += 8;
         }
-        if (metrics.clicks) {
+        if (metrics.clicks && metrics.clicks > 0) {
           doc.setFont(undefined, 'bold');
           doc.text('Clicks:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(formatNumber(metrics.clicks)), 120, y);
+          doc.text(String(metrics.clicks), 120, y);
           y += 8;
         }
-        if (metrics.engagements) {
+        if (metrics.engagements && metrics.engagements > 0) {
           doc.setFont(undefined, 'bold');
           doc.text('Engagements:', 20, y);
           doc.setFont(undefined, 'normal');
-          doc.text(String(formatNumber(metrics.engagements)), 120, y);
+          doc.text(String(metrics.engagements), 120, y);
           y += 8;
         }
         y += 10;

@@ -448,71 +448,163 @@ export default function CustomIntegrationAnalytics() {
     return num !== null ? (mapping[num] || 'monday') : 'monday';
   };
 
-  // Handle Report form submission
-  const handleGenerateReport = () => {
-    // Generate report content based on type
-    let reportContent = '';
-    const reportName = reportForm.name || 'Custom Integration Report';
-    const dateStr = new Date().toLocaleDateString();
+  // PDF Helper Functions
+  const addPDFHeader = (doc: any, title: string, subtitle: string) => {
+    // Custom Integration brand color header (purple/blue gradient)
+    doc.setFillColor(99, 102, 241); // Indigo-500
+    doc.rect(0, 0, 210, 40, 'F');
     
-    if (reportModalStep === 'type') {
-      // Standard report types
-      if (reportForm.reportType === 'overview') {
-        reportContent = `${reportName}\nGenerated: ${dateStr}\n\n`;
-        reportContent += `=== OVERVIEW REPORT ===\n\n`;
-        if (metrics) {
-          reportContent += `Audience & Traffic:\n`;
-          if (metrics.users) reportContent += `- Users: ${formatNumber(metrics.users)}\n`;
-          if (metrics.sessions) reportContent += `- Sessions: ${formatNumber(metrics.sessions)}\n`;
-          if (metrics.pageviews) reportContent += `- Pageviews: ${formatNumber(metrics.pageviews)}\n`;
-          reportContent += `\n`;
-          
-          if (metrics.impressions || metrics.reach || metrics.clicks) {
-            reportContent += `Social Media:\n`;
-            if (metrics.impressions) reportContent += `- Impressions: ${formatNumber(metrics.impressions)}\n`;
-            if (metrics.reach) reportContent += `- Reach: ${formatNumber(metrics.reach)}\n`;
-            if (metrics.clicks) reportContent += `- Clicks: ${formatNumber(metrics.clicks)}\n`;
-          }
+    // Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont(undefined, 'bold');
+    doc.text(title, 20, 20);
+    
+    // Subtitle
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text(subtitle, 20, 30);
+    
+    // Date
+    doc.setFontSize(10);
+    const dateStr = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    doc.text(`Generated: ${dateStr}`, 20, 50);
+  };
+
+  const addPDFSection = (doc: any, title: string, y: number, color: number[] = [99, 102, 241]) => {
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.rect(15, y, 180, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text(title, 20, y + 7);
+    return y + 15;
+  };
+
+  // Handle Report form submission
+  const handleGenerateReport = async () => {
+    const reportName = reportForm.name || 'Custom Integration Report';
+    
+    // Dynamically import jsPDF
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF();
+    
+    // Add header
+    addPDFHeader(doc, reportName, 'Custom Integration Analytics');
+    
+    let y = 70;
+    
+    if (!metrics || Object.keys(metrics).length === 0) {
+      doc.setTextColor(100, 100, 100);
+      doc.setFontSize(12);
+      doc.text('No metrics data available', 20, y);
+    } else {
+      doc.setTextColor(50, 50, 50);
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      
+      // Audience & Traffic Section
+      if (metrics.users !== undefined || metrics.sessions !== undefined || metrics.pageviews !== undefined) {
+        y = addPDFSection(doc, 'Audience & Traffic', y, [59, 130, 246]);
+        
+        if (metrics.users !== undefined) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Users (unique):', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.users), 120, y);
+          y += 8;
         }
-      } else if (reportForm.reportType === 'kpis') {
-        reportContent = `${reportName}\nGenerated: ${dateStr}\n\n`;
-        reportContent += `=== KEY PERFORMANCE INDICATORS ===\n\n`;
-        if (metrics) {
-          if (metrics.ctr) reportContent += `CTR: ${metrics.ctr}\n`;
-          if (metrics.engagementRate) reportContent += `Engagement Rate: ${metrics.engagementRate}\n`;
-          if (metrics.conversionRate) reportContent += `Conversion Rate: ${metrics.conversionRate}\n`;
+        if (metrics.sessions !== undefined) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Sessions:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.sessions), 120, y);
+          y += 8;
         }
-      } else if (reportForm.reportType === 'benchmarks') {
-        reportContent = `${reportName}\nGenerated: ${dateStr}\n\n`;
-        reportContent += `=== BENCHMARK ANALYSIS ===\n\n`;
-        reportContent += `Performance metrics compared to industry standards.\n`;
+        if (metrics.pageviews !== undefined) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Pageviews:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.pageviews), 120, y);
+          y += 8;
+        }
+        y += 10;
       }
-    } else if (reportModalStep === 'custom') {
-      // Custom report
-      reportContent = `${reportName}\nGenerated: ${dateStr}\n\n`;
-      reportContent += `=== CUSTOM REPORT ===\n\n`;
-      if (customReportConfig.metrics && customReportConfig.metrics.length > 0) {
-        reportContent += `Metrics: ${customReportConfig.metrics.join(', ')}\n`;
+      
+      // Email Performance Section
+      if (metrics.emailsDelivered !== undefined || metrics.openRate !== undefined) {
+        y = addPDFSection(doc, 'Email Performance', y, [16, 185, 129]);
+        
+        if (metrics.emailsDelivered !== undefined) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Emails Delivered:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.emailsDelivered), 120, y);
+          y += 8;
+        }
+        if (metrics.openRate !== undefined) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Open Rate:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.openRate, 120, y);
+          y += 8;
+        }
+        if (metrics.clickThroughRate !== undefined) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Click-Through Rate:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(metrics.clickThroughRate, 120, y);
+          y += 8;
+        }
+        y += 10;
       }
-      if (customReportConfig.dateRange) {
-        reportContent += `Date Range: ${customReportConfig.dateRange}\n`;
+      
+      // Social Media Section
+      if (metrics.impressions !== undefined || metrics.reach !== undefined || metrics.clicks !== undefined) {
+        y = addPDFSection(doc, 'Social Media Metrics', y, [168, 85, 247]);
+        
+        if (metrics.impressions !== undefined) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Impressions:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.impressions), 120, y);
+          y += 8;
+        }
+        if (metrics.reach !== undefined) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Reach:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.reach), 120, y);
+          y += 8;
+        }
+        if (metrics.clicks !== undefined) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Clicks:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.clicks), 120, y);
+          y += 8;
+        }
+        if (metrics.engagements !== undefined) {
+          doc.setFont(undefined, 'bold');
+          doc.text('Engagements:', 20, y);
+          doc.setFont(undefined, 'normal');
+          doc.text(formatNumber(metrics.engagements), 120, y);
+          y += 8;
+        }
+        y += 10;
       }
     }
     
-    // Create and download the file
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${reportName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    // Download the PDF
+    doc.save(`${reportName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
     
     toast({
       title: "Report Downloaded",
-      description: "Your report has been generated and downloaded successfully.",
+      description: "Your PDF report has been generated and downloaded successfully.",
     });
     setIsReportModalOpen(false);
   };

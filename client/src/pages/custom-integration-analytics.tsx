@@ -1816,7 +1816,7 @@ export default function CustomIntegrationAnalytics() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="benchmark-period">Period</Label>
                 <Select
@@ -1850,6 +1850,23 @@ export default function CustomIntegrationAnalytics() {
                     <SelectItem value="competitor">Competitor</SelectItem>
                     <SelectItem value="internal">Internal Target</SelectItem>
                     <SelectItem value="best-in-class">Best in Class</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-confidence">Confidence Level</Label>
+                <Select
+                  value={benchmarkForm.confidenceLevel}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, confidenceLevel: value })}
+                >
+                  <SelectTrigger id="benchmark-confidence" data-testid="select-benchmark-confidence">
+                    <SelectValue placeholder="Select confidence" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

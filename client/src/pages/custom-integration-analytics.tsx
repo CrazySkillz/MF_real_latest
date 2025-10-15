@@ -2424,11 +2424,15 @@ export default function CustomIntegrationAnalytics() {
                 <Label htmlFor="kpi-current">Current Value</Label>
                 <Input
                   id="kpi-current"
-                  type="number"
-                  step="0.01"
+                  type="text"
                   placeholder="0"
-                  value={kpiForm.currentValue}
-                  onChange={(e) => setKpiForm({ ...kpiForm, currentValue: e.target.value })}
+                  value={kpiForm.currentValue ? parseFloat(kpiForm.currentValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setKpiForm({ ...kpiForm, currentValue: value });
+                    }
+                  }}
                   data-testid="input-kpi-current"
                 />
               </div>
@@ -2436,11 +2440,15 @@ export default function CustomIntegrationAnalytics() {
                 <Label htmlFor="kpi-target">Target Value *</Label>
                 <Input
                   id="kpi-target"
-                  type="number"
-                  step="0.01"
+                  type="text"
                   placeholder="0"
-                  value={kpiForm.targetValue}
-                  onChange={(e) => setKpiForm({ ...kpiForm, targetValue: e.target.value })}
+                  value={kpiForm.targetValue ? parseFloat(kpiForm.targetValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setKpiForm({ ...kpiForm, targetValue: value });
+                    }
+                  }}
                   data-testid="input-kpi-target"
                 />
               </div>
@@ -2651,11 +2659,15 @@ export default function CustomIntegrationAnalytics() {
                 <Label htmlFor="benchmark-current">Current Value</Label>
                 <Input
                   id="benchmark-current"
-                  type="number"
-                  step="0.01"
+                  type="text"
                   placeholder="0"
-                  value={benchmarkForm.currentValue}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, currentValue: e.target.value })}
+                  value={benchmarkForm.currentValue ? parseFloat(benchmarkForm.currentValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setBenchmarkForm({ ...benchmarkForm, currentValue: value });
+                    }
+                  }}
                   data-testid="input-benchmark-current"
                 />
               </div>
@@ -2663,11 +2675,15 @@ export default function CustomIntegrationAnalytics() {
                 <Label htmlFor="benchmark-value">Benchmark Value *</Label>
                 <Input
                   id="benchmark-value"
-                  type="number"
-                  step="0.01"
+                  type="text"
                   placeholder="0"
-                  value={benchmarkForm.benchmarkValue}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, benchmarkValue: e.target.value })}
+                  value={benchmarkForm.benchmarkValue ? parseFloat(benchmarkForm.benchmarkValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setBenchmarkForm({ ...benchmarkForm, benchmarkValue: value });
+                    }
+                  }}
                   data-testid="input-benchmark-value"
                 />
               </div>

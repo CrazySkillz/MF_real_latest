@@ -526,27 +526,14 @@ export default function CustomIntegrationAnalytics() {
           }
           
           doc.setFont(undefined, 'bold');
+          doc.setFontSize(12);
           doc.text(benchmark.name || benchmark.metric, 20, y);
           y += 6;
           
           doc.setFont(undefined, 'normal');
           doc.setFontSize(10);
           
-          if (benchmark.currentValue) {
-            doc.text(`Current: ${benchmark.currentValue}${benchmark.unit || ''}`, 25, y);
-            y += 5;
-          }
-          
-          if (benchmark.benchmarkValue) {
-            doc.text(`Benchmark: ${benchmark.benchmarkValue}${benchmark.unit || ''}`, 25, y);
-            y += 5;
-          }
-          
-          if (benchmark.industry) {
-            doc.text(`Industry: ${benchmark.industry}`, 25, y);
-            y += 5;
-          }
-          
+          // Description
           if (benchmark.description) {
             const lines = doc.splitTextToSize(benchmark.description, 160);
             doc.setTextColor(100, 100, 100);
@@ -555,10 +542,81 @@ export default function CustomIntegrationAnalytics() {
               y += 5;
             });
             doc.setTextColor(50, 50, 50);
+            y += 2;
+          }
+          
+          // Metadata (industry, period, category)
+          const metadata: string[] = [];
+          if (benchmark.industry) metadata.push(benchmark.industry);
+          if (benchmark.period) metadata.push(benchmark.period);
+          if (benchmark.category) metadata.push(benchmark.category);
+          if (metadata.length > 0) {
+            doc.setTextColor(120, 120, 120);
+            doc.text(metadata.join(' • '), 25, y);
+            doc.setTextColor(50, 50, 50);
+            y += 6;
+          }
+          
+          // Performance Values
+          if (benchmark.currentValue) {
+            doc.setFont(undefined, 'bold');
+            doc.text('Your Performance:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(`${benchmark.currentValue}${benchmark.unit || ''}`, 80, y);
+            y += 5;
+          }
+          
+          if (benchmark.benchmarkValue) {
+            doc.setFont(undefined, 'bold');
+            doc.text('Benchmark Value:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(`${benchmark.benchmarkValue}${benchmark.unit || ''}`, 80, y);
+            y += 5;
+          }
+          
+          if (benchmark.source) {
+            doc.setFont(undefined, 'bold');
+            doc.text('Source:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(benchmark.source, 80, y);
+            y += 5;
+          }
+          
+          if (benchmark.benchmarkType) {
+            doc.setFont(undefined, 'bold');
+            doc.text('Type:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(benchmark.benchmarkType, 80, y);
+            y += 5;
+          }
+          
+          if (benchmark.geoLocation || benchmark.geographicLocation) {
+            doc.setFont(undefined, 'bold');
+            doc.text('Location:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(benchmark.geoLocation || benchmark.geographicLocation, 80, y);
+            y += 5;
+          }
+          
+          if (benchmark.confidenceLevel) {
+            doc.setFont(undefined, 'bold');
+            doc.text('Confidence:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(benchmark.confidenceLevel, 80, y);
+            y += 5;
+          }
+          
+          // Status
+          if (benchmark.isActive !== undefined) {
+            doc.setFont(undefined, 'bold');
+            doc.text('Status:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(benchmark.isActive ? 'Active' : 'Inactive', 80, y);
+            y += 5;
           }
           
           doc.setFontSize(11);
-          y += 8;
+          y += 10;
         });
       }
     } else if (reportType === 'kpis') {

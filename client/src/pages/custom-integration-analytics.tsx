@@ -1478,8 +1478,24 @@ export default function CustomIntegrationAnalytics() {
       return;
     }
     
-    // Generate and download the PDF directly with the report data
-    await handleGenerateReport(report);
+    // Parse configuration if it's a JSON string
+    let reportWithParsedConfig = { ...report };
+    if (report.configuration && typeof report.configuration === 'string') {
+      try {
+        reportWithParsedConfig.configuration = JSON.parse(report.configuration);
+      } catch (e) {
+        console.error('Failed to parse report configuration for download:', e);
+        toast({
+          title: "Cannot Download Report",
+          description: "Report configuration is invalid. Please edit and save the report again.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // Generate and download the PDF directly with the parsed report data
+    await handleGenerateReport(reportWithParsedConfig);
   };
 
   const handleEditReport = (report: any) => {

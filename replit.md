@@ -36,7 +36,8 @@ Preferred communication style: Simple, everyday language.
 - **Frontend Components**: Dashboard, Integrations management, comprehensive UI components.
 - **Backend Services**: Abstracted storage interface, RESTful endpoints, Zod validation, centralized error handling.
 - **Data Flow**: Client requests via TanStack Query -> FastAPI handles validation -> Abstract storage interface -> PostgreSQL via Drizzle ORM -> Typed responses to frontend -> React Query manages UI updates.
-- **KPI Management**: Campaign and platform-level KPI tracking with time-based analysis (daily, weekly, monthly, quarterly), rolling averages, trend detection, and target date functionality.
+- **KPI Management**: Campaign and platform-level KPI tracking with time-based analysis (daily, weekly, monthly, quarterly), rolling averages, trend detection, and target date functionality. **Email Alerts**: KPIs support configurable threshold-based email alerts with condition settings (below, above, equals), allowing users to receive notifications when metrics cross specified thresholds.
+- **Benchmark Alerts**: Benchmarks include email alert functionality with threshold monitoring, enabling users to be notified when performance deviates from industry standards or internal targets.
 - **Geographic Analytics**: Interactive world map visualization with country, region, and city breakdown, integrated with GA4 data.
 - **Dynamic Platform Detection**: Identifies connected services during campaign creation.
 - **Auto-Refresh**: Configurable auto-refresh functionality for data.
@@ -93,10 +94,49 @@ Preferred communication style: Simple, everyday language.
 - **UI Display**: Metrics are conditionally displayed based on available data, with organized sections for each metric category
 - **Validation Pattern**: Robust metric validation using `isValidNumber` helper that ensures sections only render when valid numeric data exists (including zero values), preventing display of empty sections with N/A cards. Handles undefined, null, empty strings, NaN, and Infinity edge cases from PDF parsing
 
+## Email Alert System
+
+### Implementation
+- **Alert Configuration**: KPIs and Benchmarks support threshold-based email alerts configurable through the UI
+- **UI Controls**: Checkbox to enable alerts, threshold value, alert condition (below/above/equals), email recipients (comma-separated)
+- **Monitoring Service**: Server-side alert monitoring service (`alert-monitoring.ts`) checks KPI/Benchmark values against thresholds
+- **Email Service**: Flexible email service (`email-service.ts`) supporting multiple providers (SendGrid, Mailgun, SMTP) via nodemailer
+- **Throttling**: Built-in 24-hour throttling to prevent alert spam (configurable)
+- **API Endpoints**: 
+  - `POST /api/alerts/check` - Manually trigger alert checks (can be called by cron jobs)
+  - `GET /api/alerts/status` - Get alert configuration status
+
+### Email Configuration
+Set environment variables based on your email provider:
+
+**SendGrid:**
+- `EMAIL_PROVIDER=sendgrid`
+- `SENDGRID_API_KEY` or `EMAIL_SERVICE_API_KEY`
+- `EMAIL_FROM_ADDRESS`
+
+**Mailgun:**
+- `EMAIL_PROVIDER=mailgun`
+- `MAILGUN_SMTP_USER`, `MAILGUN_SMTP_PASS` or `EMAIL_SERVICE_API_KEY`
+- `EMAIL_FROM_ADDRESS`
+
+**SMTP (Gmail, etc.):**
+- `EMAIL_PROVIDER=smtp`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` or `EMAIL_SERVICE_API_KEY`
+- `EMAIL_FROM_ADDRESS`
+
+### Alert Workflow
+1. User creates KPI/Benchmark with alert settings (threshold, condition, email recipients)
+2. Background job calls `/api/alerts/check` periodically (can use cron/scheduler)
+3. Monitoring service checks all enabled alerts
+4. If threshold is breached, email is sent via configured provider
+5. Last alert timestamp is updated to prevent spam
+
 ### Future Enhancements
 - **Token Persistence**: Store OAuth tokens in database (currently in-memory)
 - **Token Refresh**: Implement refresh token flow for long-lived LinkedIn sessions
 - **Multi-Account Support**: Multiple LinkedIn connections per user
 - **Webhook Integration**: Real-time updates via LinkedIn webhooks
-- **Email Delivery**: Resend integration available for report email functionality (not yet implemented)
+- **Scheduled Reports Email**: Integration with alert system for automated report delivery
 - **Custom Integration PDF Templates**: Standardized PDF templates for consistent metric extraction
+- **Alert Frequency Options**: Immediate, hourly, daily, weekly alert frequency controls
+- **Slack/Teams Integration**: Additional notification channels beyond email

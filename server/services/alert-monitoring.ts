@@ -53,16 +53,11 @@ class AlertMonitoringService {
   // Check all KPIs for alerts
   async checkKPIAlerts(): Promise<number> {
     try {
-      // Query all KPIs with alerts enabled and email notifications enabled
+      // Query all KPIs with alerts enabled
       const kpisToCheck = await db
         .select()
         .from(kpis)
-        .where(
-          and(
-            eq(kpis.alertsEnabled, true),
-            eq(kpis.emailNotifications, true)
-          )
-        );
+        .where(eq(kpis.alertsEnabled, true));
 
       let alertsSent = 0;
 
@@ -133,16 +128,11 @@ class AlertMonitoringService {
   // Check all Benchmarks for alerts
   async checkBenchmarkAlerts(): Promise<number> {
     try {
-      // Query all Benchmarks with alerts enabled and email notifications enabled
+      // Query all Benchmarks with alerts enabled
       const benchmarksToCheck = await db
         .select()
         .from(benchmarks)
-        .where(
-          and(
-            eq(benchmarks.alertsEnabled, true),
-            eq(benchmarks.emailNotifications, true)
-          )
-        );
+        .where(eq(benchmarks.alertsEnabled, true));
 
       let alertsSent = 0;
 

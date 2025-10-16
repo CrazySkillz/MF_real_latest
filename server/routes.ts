@@ -2591,6 +2591,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Alert Monitoring Endpoint - Run alert checks
+  app.post("/api/alerts/check", async (req, res) => {
+    try {
+      // Import the alert monitoring service
+      const { alertMonitoringService } = await import("./services/alert-monitoring.js");
+      
+      // Run alert checks
+      const results = await alertMonitoringService.runAlertChecks();
+      
+      res.json({
+        success: true,
+        message: "Alert checks completed",
+        results
+      });
+    } catch (error) {
+      console.error('Alert check error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to run alert checks",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get alert status/configuration (for admin/dashboard)
+  app.get("/api/alerts/status", async (req, res) => {
+    try {
+      const { db } = await import("./db/index.js");
+      const { kpis, benchmarks } = await import("../shared/schema.js");
+      const { eq, and } = await import("drizzle-orm");
+      
+      // Count KPIs and Benchmarks with alerts enabled
+      const kpisWithAlerts = await db
+        .select()
+        .from(kpis)
+        .where(eq(kpis.alertsEnabled, true));
+      
+      const benchmarksWithAlerts = await db
+        .select()
+        .from(benchmarks)
+        .where(eq(benchmarks.alertsEnabled, true));
+      
+      res.json({
+        kpiAlertsEnabled: kpisWithAlerts.length,
+        benchmarkAlertsEnabled: benchmarksWithAlerts.length,
+        totalAlertsEnabled: kpisWithAlerts.length + benchmarksWithAlerts.length,
+        emailConfigured: !!(process.env.EMAIL_SERVICE_API_KEY || process.env.SMTP_PASS),
+      });
+    } catch (error) {
+      console.error('Alert status error:', error);
+      res.status(500).json({ message: "Failed to get alert status" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

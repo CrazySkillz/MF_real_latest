@@ -2842,7 +2842,7 @@ export default function CustomIntegrationAnalytics() {
               <div className="space-y-2">
                 <Label htmlFor="kpi-metric">Metric Source</Label>
                 <Select
-                  value={kpiForm.metric}
+                  value={kpiForm.metric || undefined}
                   onValueChange={(value) => {
                     setKpiForm({ ...kpiForm, metric: value });
                     // Auto-populate current value from metrics
@@ -3153,7 +3153,7 @@ export default function CustomIntegrationAnalytics() {
               <div className="space-y-2">
                 <Label htmlFor="benchmark-metric">Metric Source</Label>
                 <Select
-                  value={benchmarkForm.metric}
+                  value={benchmarkForm.metric || undefined}
                   onValueChange={(value) => {
                     setBenchmarkForm({ ...benchmarkForm, metric: value });
                     // Auto-populate current value from metrics

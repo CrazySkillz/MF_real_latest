@@ -2072,7 +2072,24 @@ export default function CustomIntegrationAnalytics() {
                         </p>
                       </div>
                       <Button 
-                        onClick={() => setIsKPIModalOpen(true)}
+                        onClick={() => {
+                          setEditingKPI(null);
+                          setKpiForm({
+                            name: '',
+                            description: '',
+                            metric: '',
+                            targetValue: '',
+                            currentValue: '',
+                            unit: '',
+                            priority: 'medium',
+                            timeframe: 'monthly',
+                            alertsEnabled: false,
+                            alertThreshold: '',
+                            alertCondition: 'below',
+                            emailRecipients: ''
+                          });
+                          setIsKPIModalOpen(true);
+                        }}
                         className="bg-purple-600 hover:bg-purple-700 text-white"
                         data-testid="button-create-kpi-header"
                       >
@@ -2167,7 +2184,11 @@ export default function CustomIntegrationAnalytics() {
                                       currentValue: kpi.currentValue || '',
                                       unit: kpi.unit || '',
                                       priority: kpi.priority || 'medium',
-                                      timeframe: kpi.timeframe || 'monthly'
+                                      timeframe: kpi.timeframe || 'monthly',
+                                      alertsEnabled: kpi.alertsEnabled || false,
+                                      alertThreshold: kpi.alertThreshold || '',
+                                      alertCondition: kpi.alertCondition || 'below',
+                                      emailRecipients: kpi.emailRecipients || ''
                                     });
                                     setIsKPIModalOpen(true);
                                   }}
@@ -2275,7 +2296,24 @@ export default function CustomIntegrationAnalytics() {
                           Create KPIs to track performance goals for your custom integration
                         </p>
                         <Button 
-                          onClick={() => setIsKPIModalOpen(true)}
+                          onClick={() => {
+                            setEditingKPI(null);
+                            setKpiForm({
+                              name: '',
+                              description: '',
+                              metric: '',
+                              targetValue: '',
+                              currentValue: '',
+                              unit: '',
+                              priority: 'medium',
+                              timeframe: 'monthly',
+                              alertsEnabled: false,
+                              alertThreshold: '',
+                              alertCondition: 'below',
+                              emailRecipients: ''
+                            });
+                            setIsKPIModalOpen(true);
+                          }}
                           data-testid="button-create-kpi"
                         >
                           <Plus className="w-4 h-4 mr-2" />
@@ -2298,7 +2336,29 @@ export default function CustomIntegrationAnalytics() {
                     </p>
                   </div>
                   <Button 
-                    onClick={() => setIsBenchmarkModalOpen(true)}
+                    onClick={() => {
+                      setEditingBenchmark(null);
+                      setBenchmarkForm({
+                        metric: '',
+                        name: '',
+                        category: 'performance',
+                        benchmarkType: '',
+                        unit: '',
+                        benchmarkValue: '',
+                        currentValue: '',
+                        industry: '',
+                        description: '',
+                        source: '',
+                        geographicLocation: '',
+                        period: 'monthly',
+                        confidenceLevel: '',
+                        alertsEnabled: false,
+                        alertThreshold: '',
+                        alertCondition: 'below',
+                        emailRecipients: ''
+                      });
+                      setIsBenchmarkModalOpen(true);
+                    }}
                     className="bg-purple-600 hover:bg-purple-700 text-white"
                     data-testid="button-create-benchmark"
                   >
@@ -2424,7 +2484,11 @@ export default function CustomIntegrationAnalytics() {
                                       source: benchmark.source || '',
                                       geographicLocation: benchmark.geoLocation || '',
                                       period: benchmark.period || 'monthly',
-                                      confidenceLevel: benchmark.confidenceLevel || ''
+                                      confidenceLevel: benchmark.confidenceLevel || '',
+                                      alertsEnabled: benchmark.alertsEnabled || false,
+                                      alertThreshold: benchmark.alertThreshold || '',
+                                      alertCondition: benchmark.alertCondition || 'below',
+                                      emailRecipients: benchmark.emailRecipients || ''
                                     });
                                     setIsBenchmarkModalOpen(true);
                                   }}

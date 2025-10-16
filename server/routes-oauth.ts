@@ -2505,13 +2505,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       
-      // Convert numeric values to strings for decimal fields
+      // Convert empty strings to null for numeric fields
       const requestData = {
         ...req.body,
         platformType: platformType,
         campaignId: null,
-        targetValue: req.body.targetValue?.toString() || "0",
-        currentValue: req.body.currentValue?.toString() || "0",
+        targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
+        currentValue: req.body.currentValue === '' ? null : req.body.currentValue,
+        alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
         timeframe: req.body.timeframe || "monthly",
         trackingPeriod: req.body.trackingPeriod || 30,
         rollingAverage: req.body.rollingAverage || "7day",
@@ -2658,11 +2659,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       
-      const validatedData = insertBenchmarkSchema.parse({
+      // Convert empty strings to null for numeric fields
+      const cleanedData = {
         ...req.body,
         platformType: platformType,
-        campaignId: null
-      });
+        campaignId: null,
+        alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
+        benchmarkValue: req.body.benchmarkValue === '' ? null : req.body.benchmarkValue,
+        currentValue: req.body.currentValue === '' ? null : req.body.currentValue
+      };
+      
+      const validatedData = insertBenchmarkSchema.parse(cleanedData);
       
       // Calculate initial variance if current value exists
       if (validatedData.currentValue && validatedData.benchmarkValue) {

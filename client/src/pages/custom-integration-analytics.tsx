@@ -19,6 +19,49 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
+// Helper function to calculate expected progress based on timeframe
+function calculateExpectedProgress(timeframe: string): number {
+  const now = new Date();
+  
+  switch(timeframe) {
+    case 'daily': {
+      // Calculate progress through the current day (0-100%)
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      return ((hours * 60 + minutes) / (24 * 60)) * 100;
+    }
+    case 'weekly': {
+      // Calculate progress through the current week (0-100%)
+      const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+      const hours = now.getHours();
+      return ((dayOfWeek * 24 + hours) / (7 * 24)) * 100;
+    }
+    case 'monthly': {
+      // Calculate progress through the current month (0-100%)
+      const dayOfMonth = now.getDate();
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      return (dayOfMonth / daysInMonth) * 100;
+    }
+    case 'quarterly': {
+      // Calculate progress through the current quarter (0-100%)
+      const month = now.getMonth(); // 0-11
+      const quarterStartMonth = Math.floor(month / 3) * 3;
+      const daysSinceQuarterStart = Math.floor((now.getTime() - new Date(now.getFullYear(), quarterStartMonth, 1).getTime()) / (1000 * 60 * 60 * 24));
+      return (daysSinceQuarterStart / 90) * 100;
+    }
+    case 'yearly': {
+      // Calculate progress through the current year (0-100%)
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const daysSinceYearStart = Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+      const isLeapYear = (now.getFullYear() % 4 === 0 && now.getFullYear() % 100 !== 0) || (now.getFullYear() % 400 === 0);
+      const daysInYear = isLeapYear ? 366 : 365;
+      return (daysSinceYearStart / daysInYear) * 100;
+    }
+    default:
+      return 100; // Default to 100% if timeframe is unknown
+  }
+}
+
 export default function CustomIntegrationAnalytics() {
   const [, params] = useRoute("/campaigns/:id/custom-integration-analytics");
   const [location, setLocation] = useLocation();
@@ -2345,30 +2388,83 @@ export default function CustomIntegrationAnalytics() {
                             </div>
                             
                             {/* Progress Tracker */}
-                            {kpi.targetValue && kpi.currentValue && (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-slate-600 dark:text-slate-400">Progress</span>
-                                  <span className="font-semibold text-slate-900 dark:text-white">
-                                    {Math.min(Math.round((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100), 100)}%
-                                  </span>
+                            {kpi.targetValue && kpi.currentValue && (() => {
+                              const actualProgress = Math.min((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100, 100);
+                              const expectedProgress = calculateExpectedProgress(kpi.timeframe || 'monthly');
+                              const isOnTrack = actualProgress >= expectedProgress;
+                              const isAhead = actualProgress >= expectedProgress + 10;
+                              const isBehind = actualProgress < expectedProgress - 10;
+                              
+                              return (
+                                <div className="space-y-3">
+                                  {/* Actual Progress */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-slate-600 dark:text-slate-400">Actual Progress</span>
+                                        {isAhead && <TrendingUp className="w-4 h-4 text-green-600" />}
+                                        {isBehind && <TrendingDown className="w-4 h-4 text-red-600" />}
+                                      </div>
+                                      <span className="font-semibold text-slate-900 dark:text-white">
+                                        {Math.round(actualProgress)}%
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                      <div 
+                                        className={`h-2.5 rounded-full transition-all ${
+                                          actualProgress >= 100 
+                                            ? 'bg-green-500' 
+                                            : isAhead
+                                            ? 'bg-green-500'
+                                            : isOnTrack && !isBehind
+                                            ? 'bg-blue-500'
+                                            : 'bg-yellow-500'
+                                        }`}
+                                        style={{ width: `${Math.round(actualProgress)}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Expected Progress based on Timeframe */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-slate-500 dark:text-slate-500 text-xs">
+                                        Expected ({kpi.timeframe || 'monthly'})
+                                      </span>
+                                      <span className="text-xs text-slate-500 dark:text-slate-500">
+                                        {Math.round(expectedProgress)}%
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
+                                      <div 
+                                        className="h-1.5 rounded-full bg-slate-400 dark:bg-slate-500"
+                                        style={{ width: `${Math.round(expectedProgress)}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Status Indicator */}
+                                  <div className={`text-xs px-2 py-1 rounded-md inline-flex items-center gap-1 ${
+                                    isAhead 
+                                      ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
+                                      : isBehind
+                                      ? 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
+                                      : 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400'
+                                  }`}>
+                                    {isAhead && <CheckCircle2 className="w-3 h-3" />}
+                                    {isBehind && <AlertCircle className="w-3 h-3" />}
+                                    {!isAhead && !isBehind && <Activity className="w-3 h-3" />}
+                                    <span>
+                                      {isAhead 
+                                        ? 'Ahead of schedule' 
+                                        : isBehind 
+                                        ? 'Behind schedule'
+                                        : 'On track'}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
-                                  <div 
-                                    className={`h-2.5 rounded-full transition-all ${
-                                      (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 1 
-                                        ? 'bg-green-500' 
-                                        : (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 0.7
-                                        ? 'bg-blue-500'
-                                        : 'bg-yellow-500'
-                                    }`}
-                                    style={{ 
-                                      width: `${Math.min((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100, 100)}%` 
-                                    }}
-                                  ></div>
-                                </div>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </CardContent>
                         </Card>
                       ))}

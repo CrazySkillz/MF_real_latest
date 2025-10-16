@@ -3432,50 +3432,6 @@ export default function CustomIntegrationAnalytics() {
                       })}
                     </div>
                   </div>
-
-                  <div className="space-y-3 pl-4">
-                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Social Media Metrics</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {['impressions', 'reach', 'clicks', 'engagements', 'spend', 'conversions', 'leads', 'videoViews', 'viralImpressions'].map((metric) => {
-                        const labels: Record<string, string> = {
-                          impressions: 'Impressions',
-                          reach: 'Reach',
-                          clicks: 'Clicks',
-                          engagements: 'Engagements',
-                          spend: 'Spend',
-                          conversions: 'Conversions',
-                          leads: 'Leads',
-                          videoViews: 'Video Views',
-                          viralImpressions: 'Viral Impressions'
-                        };
-                        return (
-                          <div key={metric} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`social-${metric}`}
-                              checked={customReportConfig.derivedMetrics.includes(metric)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setCustomReportConfig({
-                                    ...customReportConfig,
-                                    derivedMetrics: [...customReportConfig.derivedMetrics, metric]
-                                  });
-                                } else {
-                                  setCustomReportConfig({
-                                    ...customReportConfig,
-                                    derivedMetrics: customReportConfig.derivedMetrics.filter(m => m !== metric)
-                                  });
-                                }
-                              }}
-                              data-testid={`checkbox-social-${metric}`}
-                            />
-                            <Label htmlFor={`social-${metric}`} className="text-sm cursor-pointer">
-                              {labels[metric]}
-                            </Label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </div>
 
                 {/* KPIs Section */}

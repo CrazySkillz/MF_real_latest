@@ -641,6 +641,196 @@ export default function CustomIntegrationAnalytics() {
           y += 10;
         });
       }
+    } else if (reportType === 'custom') {
+      // Custom Report - filter based on customReportConfig
+      const config = customReportConfig;
+      doc.setTextColor(50, 50, 50);
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      
+      // Core Metrics (Audience & Traffic)
+      const hasSelectedCoreMetrics = config.coreMetrics && config.coreMetrics.length > 0;
+      if (hasSelectedCoreMetrics && metrics) {
+        y = addPDFSection(doc, 'Selected Metrics', y, [59, 130, 246]);
+        
+        config.coreMetrics.forEach((metric: string) => {
+          if (y > 250) {
+            doc.addPage();
+            y = 20;
+          }
+          
+          const metricLabels: Record<string, string> = {
+            users: 'Users (unique)',
+            sessions: 'Sessions',
+            pageviews: 'Pageviews',
+            avgSessionDuration: 'Avg. Session Duration',
+            pagesPerSession: 'Pages / Session',
+            bounceRate: 'Bounce Rate'
+          };
+          
+          if (metrics[metric]) {
+            doc.setFont(undefined, 'bold');
+            doc.text(metricLabels[metric] + ':', 20, y);
+            doc.setFont(undefined, 'normal');
+            if (metric === 'avgSessionDuration') {
+              doc.text(String(metrics[metric]), 120, y);
+            } else if (metric === 'pagesPerSession') {
+              const value = typeof metrics[metric] === 'string' ? parseFloat(metrics[metric]).toFixed(2) : metrics[metric].toFixed(2);
+              doc.text(value, 120, y);
+            } else if (metric === 'bounceRate') {
+              doc.text(formatPercent(metrics[metric]), 120, y);
+            } else {
+              doc.text(formatNumber(metrics[metric]), 120, y);
+            }
+            y += 8;
+          }
+        });
+        y += 5;
+      }
+      
+      // Derived Metrics (Traffic Sources, Email, Social)
+      const hasSelectedDerivedMetrics = config.derivedMetrics && config.derivedMetrics.length > 0;
+      if (hasSelectedDerivedMetrics && metrics) {
+        config.derivedMetrics.forEach((metric: string) => {
+          if (y > 250) {
+            doc.addPage();
+            y = 20;
+          }
+          
+          const metricLabels: Record<string, string> = {
+            organicSearchShare: 'Organic Search',
+            directBrandedShare: 'Direct/Branded',
+            emailShare: 'Email (Newsletters)',
+            referralShare: 'Referral/Partners',
+            paidShare: 'Paid (Display/Search)',
+            socialShare: 'Social',
+            emailsDelivered: 'Emails Delivered',
+            openRate: 'Open Rate',
+            clickThroughRate: 'Click-Through Rate',
+            clickToOpen: 'Click-to-Open',
+            hardBounces: 'Hard Bounces',
+            spamComplaints: 'Spam Complaints',
+            listGrowth: 'List Growth',
+            impressions: 'Impressions',
+            reach: 'Reach',
+            clicks: 'Clicks',
+            engagements: 'Engagements',
+            spend: 'Spend',
+            conversions: 'Conversions',
+            leads: 'Leads',
+            videoViews: 'Video Views',
+            viralImpressions: 'Viral Impressions'
+          };
+          
+          if (metrics[metric] !== undefined && metrics[metric] !== null) {
+            doc.setFont(undefined, 'bold');
+            doc.text(metricLabels[metric] + ':', 20, y);
+            doc.setFont(undefined, 'normal');
+            
+            // Format based on metric type
+            if (metric.includes('Share')) {
+              doc.text(formatPercent(metrics[metric]), 120, y);
+            } else if (metric.includes('Rate') || metric.includes('Open') || metric.includes('clickToOpen')) {
+              doc.text(formatPercent(metrics[metric]), 120, y);
+            } else if (metric === 'spend') {
+              const spendValue = typeof metrics[metric] === 'string' ? parseFloat(metrics[metric]) : metrics[metric];
+              doc.text('$' + formatNumber(spendValue), 120, y);
+            } else {
+              doc.text(formatNumber(metrics[metric]), 120, y);
+            }
+            y += 8;
+          }
+        });
+        y += 5;
+      }
+      
+      // Selected KPIs
+      if (config.kpis && config.kpis.length > 0 && kpisData) {
+        const selectedKPIs = (kpisData as any[]).filter(kpi => config.kpis.includes(kpi.id));
+        
+        if (selectedKPIs.length > 0) {
+          y = addPDFSection(doc, 'Selected KPIs', y, [59, 130, 246]);
+          doc.setTextColor(50, 50, 50);
+          
+          selectedKPIs.forEach((kpi: any) => {
+            if (y > 230) {
+              doc.addPage();
+              y = 20;
+            }
+            
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(12);
+            doc.text(kpi.name, 20, y);
+            y += 6;
+            
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(10);
+            
+            if (kpi.currentValue) {
+              doc.setFont(undefined, 'bold');
+              doc.text('Current:', 25, y);
+              doc.setFont(undefined, 'normal');
+              doc.text(`${formatNumber(kpi.currentValue)}${kpi.unit || ''}`, 50, y);
+              y += 5;
+            }
+            
+            if (kpi.targetValue) {
+              doc.setFont(undefined, 'bold');
+              doc.text('Target:', 25, y);
+              doc.setFont(undefined, 'normal');
+              doc.text(`${formatNumber(kpi.targetValue)}${kpi.unit || ''}`, 50, y);
+              y += 5;
+            }
+            
+            doc.setFontSize(11);
+            y += 8;
+          });
+        }
+      }
+      
+      // Selected Benchmarks
+      if (config.benchmarks && config.benchmarks.length > 0 && benchmarksData) {
+        const selectedBenchmarks = (benchmarksData as any[]).filter(b => config.benchmarks.includes(b.id));
+        
+        if (selectedBenchmarks.length > 0) {
+          y = addPDFSection(doc, 'Selected Benchmarks', y, [168, 85, 247]);
+          doc.setTextColor(50, 50, 50);
+          
+          selectedBenchmarks.forEach((benchmark: any) => {
+            if (y > 250) {
+              doc.addPage();
+              y = 20;
+            }
+            
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(12);
+            doc.text(benchmark.name || benchmark.metric, 20, y);
+            y += 6;
+            
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(10);
+            
+            if (benchmark.currentValue) {
+              doc.setFont(undefined, 'bold');
+              doc.text('Your Performance:', 25, y);
+              doc.setFont(undefined, 'normal');
+              doc.text(`${formatNumber(benchmark.currentValue)}${benchmark.unit || ''}`, 80, y);
+              y += 5;
+            }
+            
+            if (benchmark.benchmarkValue) {
+              doc.setFont(undefined, 'bold');
+              doc.text('Benchmark Value:', 25, y);
+              doc.setFont(undefined, 'normal');
+              doc.text(`${formatNumber(benchmark.benchmarkValue)}${benchmark.unit || ''}`, 80, y);
+              y += 5;
+            }
+            
+            doc.setFontSize(11);
+            y += 8;
+          });
+        }
+      }
     } else if (reportType === 'kpis') {
       // KPIs Report
       const kpis = kpisData as any[] || [];

@@ -236,8 +236,10 @@ export const kpis = pgTable("kpis", {
   targetDate: timestamp("target_date"), // Optional target completion date
   // Alert and notification settings
   alertThreshold: decimal("alert_threshold", { precision: 10, scale: 2 }), // Percentage below target to trigger alert (e.g., 80 = alert when 80% below target)
+  alertCondition: text("alert_condition").default("below"), // 'below', 'above', 'equals'
   alertsEnabled: boolean("alerts_enabled").notNull().default(true),
   emailNotifications: boolean("email_notifications").notNull().default(false),
+  emailRecipients: text("email_recipients"), // Comma-separated email addresses
   slackNotifications: boolean("slack_notifications").notNull().default(false),
   alertFrequency: text("alert_frequency").notNull().default("daily"), // 'immediate', 'daily', 'weekly'
   lastAlertSent: timestamp("last_alert_sent"),
@@ -292,6 +294,14 @@ export const benchmarks = pgTable("benchmarks", {
   status: text("status").notNull().default("active"), // 'active', 'archived', 'draft'
   variance: decimal("variance", { precision: 10, scale: 2 }), // % difference from benchmark (positive = above benchmark)
   confidenceLevel: text("confidence_level").default("medium"), // 'low', 'medium', 'high'
+  // Alert and notification settings
+  alertThreshold: decimal("alert_threshold", { precision: 10, scale: 2 }), // Threshold value to trigger alert
+  alertCondition: text("alert_condition").default("below"), // 'below', 'above', 'equals'
+  alertsEnabled: boolean("alerts_enabled").notNull().default(false),
+  emailNotifications: boolean("email_notifications").notNull().default(false),
+  emailRecipients: text("email_recipients"), // Comma-separated email addresses
+  alertFrequency: text("alert_frequency").notNull().default("daily"), // 'immediate', 'daily', 'weekly'
+  lastAlertSent: timestamp("last_alert_sent"),
   lastUpdated: timestamp("last_updated").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),

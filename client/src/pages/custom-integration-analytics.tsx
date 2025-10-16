@@ -1787,7 +1787,7 @@ export default function CustomIntegrationAnalytics() {
                                   Current
                                 </div>
                                 <div className="text-xl font-bold text-slate-900 dark:text-white">
-                                  {kpi.currentValue || '0'}{kpi.unit || ''}
+                                  {formatNumber(kpi.currentValue)}{kpi.unit || ''}
                                 </div>
                               </div>
                               <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -1795,7 +1795,7 @@ export default function CustomIntegrationAnalytics() {
                                   Target
                                 </div>
                                 <div className="text-xl font-bold text-slate-900 dark:text-white">
-                                  {kpi.targetValue || '0'}{kpi.unit || ''}
+                                  {formatNumber(kpi.targetValue)}{kpi.unit || ''}
                                 </div>
                               </div>
                             </div>

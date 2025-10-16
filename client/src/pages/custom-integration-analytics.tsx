@@ -177,7 +177,7 @@ export default function CustomIntegrationAnalytics() {
   // Update KPI mutation
   const updateKpiMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const res = await apiRequest('PATCH', `/api/kpis/${id}`, data);
+      const res = await apiRequest('PATCH', `/api/platforms/custom-integration/kpis/${id}`, data);
       return res.json();
     },
     onSuccess: () => {
@@ -204,7 +204,7 @@ export default function CustomIntegrationAnalytics() {
   // Delete KPI mutation
   const deleteKpiMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await apiRequest('DELETE', `/api/kpis/${id}`);
+      const res = await apiRequest('DELETE', `/api/platforms/custom-integration/kpis/${id}`);
       return res.json();
     },
     onSuccess: () => {

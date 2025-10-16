@@ -38,6 +38,7 @@ function Router() {
       <Route path="/campaigns/:id/google-sheets-data" component={GoogleSheetsData} />
       <Route path="/campaigns/:id/linkedin-analytics" component={LinkedInAnalytics} />
       <Route path="/campaigns/:id/custom-integration-analytics" component={CustomIntegrationAnalytics} />
+      <Route path="/integrations/:id/analytics" component={CustomIntegrationAnalytics} />
       <Route path="/campaigns/:id/kpis" component={KPIs} />
       <Route path="/platforms/:platformType/kpis" component={PlatformKPIs} />
       <Route path="/linkedin-analytics" component={LinkedInAnalytics} />

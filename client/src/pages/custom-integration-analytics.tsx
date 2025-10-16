@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,6 +79,33 @@ export default function CustomIntegrationAnalytics() {
     kpis: [] as string[],
     benchmarks: [] as string[]
   });
+  
+  // Detect user's time zone
+  const [userTimeZone, setUserTimeZone] = useState('');
+  
+  useEffect(() => {
+    // Detect time zone from browser
+    const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    setUserTimeZone(detectedTimeZone);
+  }, []);
+
+  // Get formatted time zone display (e.g., "GMT-5" or "PST")
+  const getTimeZoneDisplay = () => {
+    if (!userTimeZone) return '';
+    
+    try {
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: userTimeZone,
+        timeZoneName: 'short'
+      });
+      const parts = formatter.formatToParts(now);
+      const timeZonePart = parts.find(part => part.type === 'timeZoneName');
+      return timeZonePart?.value || userTimeZone;
+    } catch (e) {
+      return userTimeZone;
+    }
+  };
   
   // Fetch campaign details
   const { data: campaign } = useQuery({
@@ -3399,11 +3426,21 @@ export default function CustomIntegrationAnalytics() {
                                 <SelectItem value="8:00 AM">8:00 AM</SelectItem>
                                 <SelectItem value="9:00 AM">9:00 AM</SelectItem>
                                 <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                                <SelectItem value="11:00 AM">11:00 AM</SelectItem>
                                 <SelectItem value="12:00 PM">12:00 PM</SelectItem>
+                                <SelectItem value="1:00 PM">1:00 PM</SelectItem>
+                                <SelectItem value="2:00 PM">2:00 PM</SelectItem>
                                 <SelectItem value="3:00 PM">3:00 PM</SelectItem>
+                                <SelectItem value="4:00 PM">4:00 PM</SelectItem>
+                                <SelectItem value="5:00 PM">5:00 PM</SelectItem>
                                 <SelectItem value="6:00 PM">6:00 PM</SelectItem>
                               </SelectContent>
                             </Select>
+                            {userTimeZone && (
+                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                                All times are in your time zone: {getTimeZoneDisplay()}
+                              </p>
+                            )}
                           </div>
 
                           {/* Email Recipients */}
@@ -3696,6 +3733,39 @@ export default function CustomIntegrationAnalytics() {
                             <SelectItem value="quarterly">Quarterly</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      {/* Time */}
+                      <div className="space-y-2">
+                        <Label htmlFor="custom-schedule-time">Time</Label>
+                        <Select
+                          value={reportForm.scheduleTime}
+                          onValueChange={(value) => setReportForm({ ...reportForm, scheduleTime: value })}
+                        >
+                          <SelectTrigger id="custom-schedule-time" data-testid="select-custom-time">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="6:00 AM">6:00 AM</SelectItem>
+                            <SelectItem value="7:00 AM">7:00 AM</SelectItem>
+                            <SelectItem value="8:00 AM">8:00 AM</SelectItem>
+                            <SelectItem value="9:00 AM">9:00 AM</SelectItem>
+                            <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                            <SelectItem value="11:00 AM">11:00 AM</SelectItem>
+                            <SelectItem value="12:00 PM">12:00 PM</SelectItem>
+                            <SelectItem value="1:00 PM">1:00 PM</SelectItem>
+                            <SelectItem value="2:00 PM">2:00 PM</SelectItem>
+                            <SelectItem value="3:00 PM">3:00 PM</SelectItem>
+                            <SelectItem value="4:00 PM">4:00 PM</SelectItem>
+                            <SelectItem value="5:00 PM">5:00 PM</SelectItem>
+                            <SelectItem value="6:00 PM">6:00 PM</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {userTimeZone && (
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            All times are in your time zone: {getTimeZoneDisplay()}
+                          </p>
+                        )}
                       </div>
 
                       {/* Email Recipients */}

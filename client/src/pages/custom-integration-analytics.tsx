@@ -31,6 +31,7 @@ export default function CustomIntegrationAnalytics() {
   const [kpiForm, setKpiForm] = useState({
     name: '',
     description: '',
+    category: 'performance',
     metric: '',
     targetValue: '',
     currentValue: '',
@@ -165,12 +166,17 @@ export default function CustomIntegrationAnalytics() {
       setKpiForm({
         name: '',
         description: '',
+        category: 'performance',
         metric: '',
         targetValue: '',
         currentValue: '',
         unit: '',
         priority: 'medium',
-        timeframe: 'monthly'
+        timeframe: 'monthly',
+        alertsEnabled: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        emailRecipients: ''
       });
     },
   });
@@ -192,12 +198,17 @@ export default function CustomIntegrationAnalytics() {
       setKpiForm({
         name: '',
         description: '',
+        category: 'performance',
         metric: '',
         targetValue: '',
         currentValue: '',
         unit: '',
         priority: 'medium',
-        timeframe: 'monthly'
+        timeframe: 'monthly',
+        alertsEnabled: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        emailRecipients: ''
       });
     },
   });
@@ -2160,6 +2171,7 @@ export default function CustomIntegrationAnalytics() {
                           setKpiForm({
                             name: '',
                             description: '',
+                            category: 'performance',
                             metric: '',
                             targetValue: '',
                             currentValue: '',
@@ -2262,6 +2274,7 @@ export default function CustomIntegrationAnalytics() {
                                     setKpiForm({
                                       name: kpi.name,
                                       description: kpi.description || '',
+                                      category: kpi.category || 'performance',
                                       metric: kpi.metric || '',
                                       targetValue: kpi.targetValue || '',
                                       currentValue: kpi.currentValue || '',
@@ -2384,6 +2397,7 @@ export default function CustomIntegrationAnalytics() {
                             setKpiForm({
                               name: '',
                               description: '',
+                              category: 'performance',
                               metric: '',
                               targetValue: '',
                               currentValue: '',

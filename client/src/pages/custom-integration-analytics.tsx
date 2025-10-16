@@ -758,14 +758,46 @@ export default function CustomIntegrationAnalytics() {
               y = 20;
             }
             
+            // KPI Name
             doc.setFont(undefined, 'bold');
             doc.setFontSize(12);
             doc.text(kpi.name, 20, y);
             y += 6;
             
+            // Description
+            if (kpi.description) {
+              doc.setFont(undefined, 'normal');
+              doc.setFontSize(9);
+              doc.setTextColor(100, 100, 100);
+              const lines = doc.splitTextToSize(kpi.description, 170);
+              lines.forEach((line: string) => {
+                doc.text(line, 20, y);
+                y += 4;
+              });
+              doc.setTextColor(50, 50, 50);
+              y += 2;
+            }
+            
+            // Priority and Timeframe badges
+            if (kpi.priority || kpi.timeframe) {
+              doc.setFontSize(9);
+              let badgeText = '';
+              if (kpi.priority) {
+                badgeText += `Priority: ${kpi.priority}`;
+              }
+              if (kpi.timeframe) {
+                badgeText += (badgeText ? ' | ' : '') + `Timeframe: ${kpi.timeframe}`;
+              }
+              doc.setTextColor(100, 100, 100);
+              doc.text(badgeText, 20, y);
+              doc.setTextColor(50, 50, 50);
+              y += 6;
+            }
+            
             doc.setFont(undefined, 'normal');
             doc.setFontSize(10);
             
+            // Current and Target values with formatting
             if (kpi.currentValue) {
               doc.setFont(undefined, 'bold');
               doc.text('Current:', 25, y);
@@ -779,6 +811,35 @@ export default function CustomIntegrationAnalytics() {
               doc.text('Target:', 25, y);
               doc.setFont(undefined, 'normal');
               doc.text(`${formatNumber(kpi.targetValue)}${kpi.unit || ''}`, 50, y);
+              y += 5;
+            }
+            
+            // Progress percentage
+            if (kpi.currentValue && kpi.targetValue) {
+              const progress = Math.min(Math.round((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100), 100);
+              doc.setFont(undefined, 'bold');
+              doc.text('Progress:', 25, y);
+              doc.setFont(undefined, 'normal');
+              
+              // Color-code the progress
+              if (progress >= 100) {
+                doc.setTextColor(22, 163, 74); // Green
+              } else if (progress >= 70) {
+                doc.setTextColor(59, 130, 246); // Blue
+              } else {
+                doc.setTextColor(234, 179, 8); // Yellow
+              }
+              doc.text(`${progress}%`, 50, y);
+              doc.setTextColor(50, 50, 50); // Reset to dark
+              y += 5;
+            }
+            
+            if (kpi.targetDate) {
+              const dateStr = new Date(kpi.targetDate).toLocaleDateString();
+              doc.setFont(undefined, 'bold');
+              doc.text('Target Date:', 25, y);
+              doc.setFont(undefined, 'normal');
+              doc.text(dateStr, 60, y);
               y += 5;
             }
             
@@ -810,6 +871,31 @@ export default function CustomIntegrationAnalytics() {
             doc.setFont(undefined, 'normal');
             doc.setFontSize(10);
             
+            // Description
+            if (benchmark.description) {
+              const lines = doc.splitTextToSize(benchmark.description, 160);
+              doc.setTextColor(100, 100, 100);
+              lines.forEach((line: string) => {
+                doc.text(line, 25, y);
+                y += 5;
+              });
+              doc.setTextColor(50, 50, 50);
+              y += 2;
+            }
+            
+            // Metadata (industry, period, category)
+            const metadata: string[] = [];
+            if (benchmark.industry) metadata.push(benchmark.industry);
+            if (benchmark.period) metadata.push(benchmark.period);
+            if (benchmark.category) metadata.push(benchmark.category);
+            if (metadata.length > 0) {
+              doc.setTextColor(120, 120, 120);
+              doc.text(metadata.join(' • '), 25, y);
+              doc.setTextColor(50, 50, 50);
+              y += 6;
+            }
+            
+            // Performance Values
             if (benchmark.currentValue) {
               doc.setFont(undefined, 'bold');
               doc.text('Your Performance:', 25, y);
@@ -826,8 +912,71 @@ export default function CustomIntegrationAnalytics() {
               y += 5;
             }
             
+            // Source - always show with fallback
+            doc.setFont(undefined, 'bold');
+            doc.text('Source:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(benchmark.source || 'Custom Integration', 80, y);
+            y += 5;
+            
+            // Performance vs Benchmark comparison
+            if (benchmark.currentValue && benchmark.benchmarkValue) {
+              const current = parseFloat(benchmark.currentValue);
+              const benchmarkVal = parseFloat(benchmark.benchmarkValue);
+              const diff = current - benchmarkVal;
+              const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';
+              const isAbove = current > benchmarkVal;
+              
+              doc.setFont(undefined, 'bold');
+              doc.text('Performance vs Benchmark:', 25, y);
+              doc.setFont(undefined, 'normal');
+              
+              if (isAbove) {
+                doc.setTextColor(22, 163, 74); // Green
+                doc.text(`${percentDiff}% Above - Outperforming!`, 80, y);
+              } else {
+                doc.setTextColor(220, 38, 38); // Red
+                doc.text(`${Math.abs(parseFloat(percentDiff))}% Below - Needs improvement`, 80, y);
+              }
+              doc.setTextColor(50, 50, 50); // Reset to dark
+              y += 5;
+            }
+            
+            if (benchmark.benchmarkType) {
+              doc.setFont(undefined, 'bold');
+              doc.text('Type:', 25, y);
+              doc.setFont(undefined, 'normal');
+              doc.text(benchmark.benchmarkType, 80, y);
+              y += 5;
+            }
+            
+            if (benchmark.geoLocation || benchmark.geographicLocation) {
+              doc.setFont(undefined, 'bold');
+              doc.text('Location:', 25, y);
+              doc.setFont(undefined, 'normal');
+              doc.text(benchmark.geoLocation || benchmark.geographicLocation, 80, y);
+              y += 5;
+            }
+            
+            if (benchmark.confidenceLevel) {
+              doc.setFont(undefined, 'bold');
+              doc.text('Confidence:', 25, y);
+              doc.setFont(undefined, 'normal');
+              doc.text(benchmark.confidenceLevel, 80, y);
+              y += 5;
+            }
+            
+            // Status
+            if (benchmark.isActive !== undefined) {
+              doc.setFont(undefined, 'bold');
+              doc.text('Status:', 25, y);
+              doc.setFont(undefined, 'normal');
+              doc.text(benchmark.isActive ? 'Active' : 'Inactive', 80, y);
+              y += 5;
+            }
+            
             doc.setFontSize(11);
-            y += 8;
+            y += 10;
           });
         }
       }

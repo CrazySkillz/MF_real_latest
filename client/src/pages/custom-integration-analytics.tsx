@@ -1498,12 +1498,23 @@ export default function CustomIntegrationAnalytics() {
     });
     
     if (report.reportType === 'custom') {
-      // Ensure customReportConfig has default structure even if configuration is missing
+      // Parse configuration if it's a JSON string
+      let config = report.configuration;
+      if (typeof config === 'string') {
+        try {
+          config = JSON.parse(config);
+        } catch (e) {
+          console.error('Failed to parse report configuration:', e);
+          config = null;
+        }
+      }
+      
+      // Ensure customReportConfig has default structure
       setCustomReportConfig({
-        coreMetrics: report.configuration?.coreMetrics || [],
-        derivedMetrics: report.configuration?.derivedMetrics || [],
-        kpis: report.configuration?.kpis || [],
-        benchmarks: report.configuration?.benchmarks || []
+        coreMetrics: config?.coreMetrics || [],
+        derivedMetrics: config?.derivedMetrics || [],
+        kpis: config?.kpis || [],
+        benchmarks: config?.benchmarks || []
       });
       setReportModalStep('custom');
     } else {

@@ -525,9 +525,9 @@ export default function CustomIntegrationAnalytics() {
   };
 
   // Handle Report form submission
-  const handleGenerateReport = async () => {
-    const reportName = reportForm.name || 'Custom Integration Report';
-    const reportType = reportForm.reportType || 'overview';
+  const handleGenerateReport = async (overrideReport?: any) => {
+    const reportName = overrideReport?.name || reportForm.name || 'Custom Integration Report';
+    const reportType = overrideReport?.reportType || reportForm.reportType || 'overview';
     
     // Dynamically import jsPDF
     const { jsPDF } = await import('jspdf');
@@ -677,8 +677,8 @@ export default function CustomIntegrationAnalytics() {
         });
       }
     } else if (reportType === 'custom') {
-      // Custom Report - filter based on customReportConfig
-      const config = customReportConfig;
+      // Custom Report - filter based on customReportConfig or override configuration
+      const config = overrideReport?.configuration || customReportConfig;
       doc.setTextColor(50, 50, 50);
       doc.setFontSize(11);
       doc.setFont(undefined, 'normal');
@@ -1388,6 +1388,23 @@ export default function CustomIntegrationAnalytics() {
   };
 
   const handleCreateReport = () => {
+    // Validate custom reports have configuration
+    if (reportForm.reportType === 'custom') {
+      const hasConfig = customReportConfig.coreMetrics.length > 0 || 
+                       customReportConfig.derivedMetrics.length > 0 || 
+                       customReportConfig.kpis.length > 0 || 
+                       customReportConfig.benchmarks.length > 0;
+      
+      if (!hasConfig) {
+        toast({
+          title: "Configuration Required",
+          description: "Please select at least one metric, KPI, or benchmark for your custom report.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     if (!reportForm.scheduleEnabled) {
       handleGenerateReport();
       return;
@@ -1412,6 +1429,23 @@ export default function CustomIntegrationAnalytics() {
   const handleUpdateReport = () => {
     if (!editingReportId) return;
     
+    // Validate custom reports have configuration
+    if (reportForm.reportType === 'custom') {
+      const hasConfig = customReportConfig.coreMetrics.length > 0 || 
+                       customReportConfig.derivedMetrics.length > 0 || 
+                       customReportConfig.kpis.length > 0 || 
+                       customReportConfig.benchmarks.length > 0;
+      
+      if (!hasConfig) {
+        toast({
+          title: "Configuration Required",
+          description: "Please select at least one metric, KPI, or benchmark for your custom report.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     if (!reportForm.scheduleEnabled) {
       handleGenerateReport();
       return;
@@ -1431,6 +1465,21 @@ export default function CustomIntegrationAnalytics() {
     }
     
     updateReportMutation.mutate({ id: editingReportId, data: reportData });
+  };
+
+  const handleDownloadReport = async (report: any) => {
+    // For custom reports, ensure configuration exists
+    if (report.reportType === 'custom' && !report.configuration) {
+      toast({
+        title: "Cannot Download Report",
+        description: "This custom report has no configuration. Please edit and save it with metrics selected.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Generate and download the PDF directly with the report data
+    await handleGenerateReport(report);
   };
 
   const handleEditReport = (report: any) => {
@@ -2716,6 +2765,7 @@ export default function CustomIntegrationAnalytics() {
                               <Button 
                                 variant="outline" 
                                 size="sm" 
+                                onClick={() => handleDownloadReport(report)}
                                 data-testid={`button-download-${report.id}`}
                                 className="border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/30"
                               >

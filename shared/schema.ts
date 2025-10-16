@@ -224,6 +224,7 @@ export const kpis = pgTable("kpis", {
   campaignId: text("campaign_id"), // Optional - null for platform-level KPIs
   platformType: text("platform_type"), // 'google_analytics', 'google_sheets', 'facebook', 'linkedin', etc.
   name: text("name").notNull(), // 'ROI', 'LTV', 'CAC', 'CTR', 'CPA', 'ROAS'
+  metric: text("metric"), // Metric source: 'users', 'sessions', 'pageviews', 'bounceRate', etc.
   targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
   currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"),
   unit: text("unit").notNull(), // '%', '$', 'ratio', etc.
@@ -282,6 +283,7 @@ export const benchmarks = pgTable("benchmarks", {
   platformType: text("platform_type").notNull(), // 'google_analytics', 'google_sheets', 'facebook', 'linkedin', etc.
   category: text("category").notNull(), // 'engagement', 'conversion', 'traffic', 'revenue', 'performance'
   name: text("name").notNull(), // 'Industry Average CTR', 'Competitor Conversion Rate', etc.
+  metric: text("metric"), // Metric source: 'users', 'sessions', 'pageviews', 'bounceRate', etc.
   description: text("description"),
   benchmarkValue: decimal("benchmark_value", { precision: 10, scale: 2 }).notNull(),
   currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"),

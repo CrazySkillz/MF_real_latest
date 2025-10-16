@@ -3122,11 +3122,14 @@ export default function CustomIntegrationAnalytics() {
                   <div className="space-y-3 pl-4">
                     <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Audience & Traffic Metrics</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {['users', 'sessions', 'pageviews'].map((metric) => {
+                      {['users', 'sessions', 'pageviews', 'avgSessionDuration', 'pagesPerSession', 'bounceRate'].map((metric) => {
                         const labels: Record<string, string> = {
                           users: 'Users',
                           sessions: 'Sessions',
-                          pageviews: 'Pageviews'
+                          pageviews: 'Pageviews',
+                          avgSessionDuration: 'Avg. Session Duration',
+                          pagesPerSession: 'Pages/Session',
+                          bounceRate: 'Bounce Rate'
                         };
                         return (
                           <div key={metric} className="flex items-center space-x-2">
@@ -3158,14 +3161,58 @@ export default function CustomIntegrationAnalytics() {
                   </div>
 
                   <div className="space-y-3 pl-4">
+                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Traffic Sources</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {['organicSearchShare', 'directBrandedShare', 'emailShare', 'referralShare', 'paidShare', 'socialShare'].map((metric) => {
+                        const labels: Record<string, string> = {
+                          organicSearchShare: 'Organic Search',
+                          directBrandedShare: 'Direct/Branded',
+                          emailShare: 'Email',
+                          referralShare: 'Referral/Partners',
+                          paidShare: 'Paid',
+                          socialShare: 'Social'
+                        };
+                        return (
+                          <div key={metric} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`traffic-${metric}`}
+                              checked={customReportConfig.derivedMetrics.includes(metric)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setCustomReportConfig({
+                                    ...customReportConfig,
+                                    derivedMetrics: [...customReportConfig.derivedMetrics, metric]
+                                  });
+                                } else {
+                                  setCustomReportConfig({
+                                    ...customReportConfig,
+                                    derivedMetrics: customReportConfig.derivedMetrics.filter(m => m !== metric)
+                                  });
+                                }
+                              }}
+                              data-testid={`checkbox-traffic-${metric}`}
+                            />
+                            <Label htmlFor={`traffic-${metric}`} className="text-sm cursor-pointer">
+                              {labels[metric]}
+                            </Label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pl-4">
                     <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Email Performance Metrics</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen'].map((metric) => {
+                      {['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen', 'hardBounces', 'spamComplaints', 'listGrowth'].map((metric) => {
                         const labels: Record<string, string> = {
                           emailsDelivered: 'Emails Delivered',
                           openRate: 'Open Rate',
                           clickThroughRate: 'Click-Through Rate',
-                          clickToOpen: 'Click-to-Open'
+                          clickToOpen: 'Click-to-Open',
+                          hardBounces: 'Hard Bounces',
+                          spamComplaints: 'Spam Complaints',
+                          listGrowth: 'List Growth'
                         };
                         return (
                           <div key={metric} className="flex items-center space-x-2">
@@ -3188,6 +3235,50 @@ export default function CustomIntegrationAnalytics() {
                               data-testid={`checkbox-email-${metric}`}
                             />
                             <Label htmlFor={`email-${metric}`} className="text-sm cursor-pointer">
+                              {labels[metric]}
+                            </Label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pl-4">
+                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Social Media Metrics</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {['impressions', 'reach', 'clicks', 'engagements', 'spend', 'conversions', 'leads', 'videoViews', 'viralImpressions'].map((metric) => {
+                        const labels: Record<string, string> = {
+                          impressions: 'Impressions',
+                          reach: 'Reach',
+                          clicks: 'Clicks',
+                          engagements: 'Engagements',
+                          spend: 'Spend',
+                          conversions: 'Conversions',
+                          leads: 'Leads',
+                          videoViews: 'Video Views',
+                          viralImpressions: 'Viral Impressions'
+                        };
+                        return (
+                          <div key={metric} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`social-${metric}`}
+                              checked={customReportConfig.derivedMetrics.includes(metric)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setCustomReportConfig({
+                                    ...customReportConfig,
+                                    derivedMetrics: [...customReportConfig.derivedMetrics, metric]
+                                  });
+                                } else {
+                                  setCustomReportConfig({
+                                    ...customReportConfig,
+                                    derivedMetrics: customReportConfig.derivedMetrics.filter(m => m !== metric)
+                                  });
+                                }
+                              }}
+                              data-testid={`checkbox-social-${metric}`}
+                            />
+                            <Label htmlFor={`social-${metric}`} className="text-sm cursor-pointer">
                               {labels[metric]}
                             </Label>
                           </div>

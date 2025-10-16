@@ -564,6 +564,7 @@ export const insertKPISchema = createInsertSchema(kpis).pick({
   campaignId: true,
   platformType: true,
   name: true,
+  metric: true,
   targetValue: true,
   currentValue: true,
   unit: true,
@@ -575,7 +576,9 @@ export const insertKPISchema = createInsertSchema(kpis).pick({
   rollingAverage: true,
   targetDate: true,
   alertThreshold: true,
+  alertCondition: true,
   alertsEnabled: true,
+  emailRecipients: true,
   emailNotifications: true,
   slackNotifications: true,
   alertFrequency: true,
@@ -606,6 +609,7 @@ export const insertBenchmarkSchema = createInsertSchema(benchmarks).pick({
   platformType: true,
   category: true,
   name: true,
+  metric: true,
   description: true,
   benchmarkValue: true,
   currentValue: true,
@@ -618,6 +622,10 @@ export const insertBenchmarkSchema = createInsertSchema(benchmarks).pick({
   status: true,
   variance: true,
   confidenceLevel: true,
+  alertThreshold: true,
+  alertCondition: true,
+  alertsEnabled: true,
+  emailRecipients: true,
 });
 
 export const insertBenchmarkHistorySchema = createInsertSchema(benchmarkHistory).pick({

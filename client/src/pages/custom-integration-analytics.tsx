@@ -35,7 +35,11 @@ export default function CustomIntegrationAnalytics() {
     currentValue: '',
     unit: '',
     priority: 'medium',
-    timeframe: 'monthly'
+    timeframe: 'monthly',
+    alertsEnabled: false,
+    alertThreshold: '',
+    alertCondition: 'below',
+    emailRecipients: ''
   });
 
   // Benchmark state management
@@ -54,7 +58,11 @@ export default function CustomIntegrationAnalytics() {
     source: '',
     geographicLocation: '',
     period: 'monthly',
-    confidenceLevel: ''
+    confidenceLevel: '',
+    alertsEnabled: false,
+    alertThreshold: '',
+    alertCondition: 'below',
+    emailRecipients: ''
   });
 
   // Report state management
@@ -2924,6 +2932,78 @@ export default function CustomIntegrationAnalytics() {
               </div>
             </div>
 
+            {/* Alert Settings Section */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="kpi-alerts-enabled"
+                  checked={kpiForm.alertsEnabled}
+                  onCheckedChange={(checked) => setKpiForm({ ...kpiForm, alertsEnabled: checked as boolean })}
+                  data-testid="checkbox-kpi-alerts"
+                />
+                <Label htmlFor="kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                  Enable Email Alerts
+                </Label>
+              </div>
+
+              {kpiForm.alertsEnabled && (
+                <div className="space-y-4 pl-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="kpi-alert-threshold">Alert Threshold *</Label>
+                      <Input
+                        id="kpi-alert-threshold"
+                        type="text"
+                        placeholder="e.g., 80"
+                        value={kpiForm.alertThreshold}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/,/g, '');
+                          if (value === '' || !isNaN(parseFloat(value))) {
+                            setKpiForm({ ...kpiForm, alertThreshold: value });
+                          }
+                        }}
+                        data-testid="input-kpi-alert-threshold"
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Value at which to trigger the alert
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="kpi-alert-condition">Alert When</Label>
+                      <Select
+                        value={kpiForm.alertCondition}
+                        onValueChange={(value) => setKpiForm({ ...kpiForm, alertCondition: value })}
+                      >
+                        <SelectTrigger id="kpi-alert-condition" data-testid="select-kpi-alert-condition">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="below">Value Goes Below</SelectItem>
+                          <SelectItem value="above">Value Goes Above</SelectItem>
+                          <SelectItem value="equals">Value Equals</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="kpi-email-recipients">Email Recipients *</Label>
+                    <Input
+                      id="kpi-email-recipients"
+                      type="text"
+                      placeholder="email1@example.com, email2@example.com"
+                      value={kpiForm.emailRecipients}
+                      onChange={(e) => setKpiForm({ ...kpiForm, emailRecipients: e.target.value })}
+                      data-testid="input-kpi-email-recipients"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Comma-separated email addresses for alert notifications
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end gap-2 pt-4">
               <Button
                 variant="outline"
@@ -2938,7 +3018,11 @@ export default function CustomIntegrationAnalytics() {
                     currentValue: '',
                     unit: '',
                     priority: 'medium',
-                    timeframe: 'monthly'
+                    timeframe: 'monthly',
+                    alertsEnabled: false,
+                    alertThreshold: '',
+                    alertCondition: 'below',
+                    emailRecipients: ''
                   });
                 }}
                 data-testid="button-kpi-cancel"
@@ -3197,6 +3281,78 @@ export default function CustomIntegrationAnalytics() {
               </div>
             </div>
 
+            {/* Alert Settings Section */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="benchmark-alerts-enabled"
+                  checked={benchmarkForm.alertsEnabled}
+                  onCheckedChange={(checked) => setBenchmarkForm({ ...benchmarkForm, alertsEnabled: checked as boolean })}
+                  data-testid="checkbox-benchmark-alerts"
+                />
+                <Label htmlFor="benchmark-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                  Enable Email Alerts
+                </Label>
+              </div>
+
+              {benchmarkForm.alertsEnabled && (
+                <div className="space-y-4 pl-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="benchmark-alert-threshold">Alert Threshold *</Label>
+                      <Input
+                        id="benchmark-alert-threshold"
+                        type="text"
+                        placeholder="e.g., 80"
+                        value={benchmarkForm.alertThreshold}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/,/g, '');
+                          if (value === '' || !isNaN(parseFloat(value))) {
+                            setBenchmarkForm({ ...benchmarkForm, alertThreshold: value });
+                          }
+                        }}
+                        data-testid="input-benchmark-alert-threshold"
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Value at which to trigger the alert
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="benchmark-alert-condition">Alert When</Label>
+                      <Select
+                        value={benchmarkForm.alertCondition}
+                        onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, alertCondition: value })}
+                      >
+                        <SelectTrigger id="benchmark-alert-condition" data-testid="select-benchmark-alert-condition">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="below">Value Goes Below</SelectItem>
+                          <SelectItem value="above">Value Goes Above</SelectItem>
+                          <SelectItem value="equals">Value Equals</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="benchmark-email-recipients">Email Recipients *</Label>
+                    <Input
+                      id="benchmark-email-recipients"
+                      type="text"
+                      placeholder="email1@example.com, email2@example.com"
+                      value={benchmarkForm.emailRecipients}
+                      onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
+                      data-testid="input-benchmark-email-recipients"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Comma-separated email addresses for alert notifications
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end gap-2 pt-4">
               <Button
                 variant="outline"
@@ -3215,7 +3371,11 @@ export default function CustomIntegrationAnalytics() {
                     source: '',
                     geographicLocation: '',
                     period: 'monthly',
-                    confidenceLevel: ''
+                    confidenceLevel: '',
+                    alertsEnabled: false,
+                    alertThreshold: '',
+                    alertCondition: 'below',
+                    emailRecipients: ''
                   });
                 }}
                 data-testid="button-benchmark-cancel"

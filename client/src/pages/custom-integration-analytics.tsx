@@ -2458,7 +2458,7 @@ export default function CustomIntegrationAnalytics() {
                 ) : benchmarksData && (benchmarksData as any[]).length > 0 ? (
                   <>
                     {/* Benchmark Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       <Card>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
@@ -2469,20 +2469,6 @@ export default function CustomIntegrationAnalytics() {
                               </p>
                             </div>
                             <Award className="w-8 h-8 text-purple-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Active</p>
-                              <p className="text-2xl font-bold text-green-600">
-                                {(benchmarksData as any[]).filter((b: any) => b.isActive).length}
-                              </p>
-                            </div>
-                            <CheckCircle2 className="w-8 h-8 text-green-500" />
                           </div>
                         </CardContent>
                       </Card>

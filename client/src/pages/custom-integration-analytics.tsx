@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function CustomIntegrationAnalytics() {
@@ -3805,201 +3806,231 @@ export default function CustomIntegrationAnalytics() {
                 <div className="space-y-4 pt-4 border-t">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Select Metrics</h3>
                   
-                  <div className="space-y-3 pl-4">
-                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Audience & Traffic Metrics</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {['users', 'sessions', 'pageviews', 'avgSessionDuration', 'pagesPerSession', 'bounceRate'].map((metric) => {
-                        const labels: Record<string, string> = {
-                          users: 'Users',
-                          sessions: 'Sessions',
-                          pageviews: 'Pageviews',
-                          avgSessionDuration: 'Avg. Session Duration',
-                          pagesPerSession: 'Pages/Session',
-                          bounceRate: 'Bounce Rate'
-                        };
-                        return (
-                          <div key={metric} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`core-${metric}`}
-                              checked={customReportConfig.coreMetrics.includes(metric)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setCustomReportConfig({
-                                    ...customReportConfig,
-                                    coreMetrics: [...customReportConfig.coreMetrics, metric]
-                                  });
-                                } else {
-                                  setCustomReportConfig({
-                                    ...customReportConfig,
-                                    coreMetrics: customReportConfig.coreMetrics.filter(m => m !== metric)
-                                  });
-                                }
-                              }}
-                              data-testid={`checkbox-core-${metric}`}
-                            />
-                            <Label htmlFor={`core-${metric}`} className="text-sm cursor-pointer">
-                              {labels[metric]}
-                            </Label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <Accordion type="multiple" className="w-full">
+                    {/* Audience & Traffic Metrics */}
+                    <AccordionItem value="audience-traffic">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Audience & Traffic Metrics
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          {['users', 'sessions', 'pageviews', 'avgSessionDuration', 'pagesPerSession', 'bounceRate'].map((metric) => {
+                            const labels: Record<string, string> = {
+                              users: 'Users',
+                              sessions: 'Sessions',
+                              pageviews: 'Pageviews',
+                              avgSessionDuration: 'Avg. Session Duration',
+                              pagesPerSession: 'Pages/Session',
+                              bounceRate: 'Bounce Rate'
+                            };
+                            return (
+                              <div key={metric} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`core-${metric}`}
+                                  checked={customReportConfig.coreMetrics.includes(metric)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setCustomReportConfig({
+                                        ...customReportConfig,
+                                        coreMetrics: [...customReportConfig.coreMetrics, metric]
+                                      });
+                                    } else {
+                                      setCustomReportConfig({
+                                        ...customReportConfig,
+                                        coreMetrics: customReportConfig.coreMetrics.filter(m => m !== metric)
+                                      });
+                                    }
+                                  }}
+                                  data-testid={`checkbox-core-${metric}`}
+                                />
+                                <Label htmlFor={`core-${metric}`} className="text-sm cursor-pointer">
+                                  {labels[metric]}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
 
-                  <div className="space-y-3 pl-4">
-                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Traffic Sources</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {['organicSearchShare', 'directBrandedShare', 'emailShare', 'referralShare', 'paidShare', 'socialShare'].map((metric) => {
-                        const labels: Record<string, string> = {
-                          organicSearchShare: 'Organic Search',
-                          directBrandedShare: 'Direct/Branded',
-                          emailShare: 'Email',
-                          referralShare: 'Referral/Partners',
-                          paidShare: 'Paid',
-                          socialShare: 'Social'
-                        };
-                        return (
-                          <div key={metric} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`traffic-${metric}`}
-                              checked={customReportConfig.derivedMetrics.includes(metric)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setCustomReportConfig({
-                                    ...customReportConfig,
-                                    derivedMetrics: [...customReportConfig.derivedMetrics, metric]
-                                  });
-                                } else {
-                                  setCustomReportConfig({
-                                    ...customReportConfig,
-                                    derivedMetrics: customReportConfig.derivedMetrics.filter(m => m !== metric)
-                                  });
-                                }
-                              }}
-                              data-testid={`checkbox-traffic-${metric}`}
-                            />
-                            <Label htmlFor={`traffic-${metric}`} className="text-sm cursor-pointer">
-                              {labels[metric]}
-                            </Label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    {/* Traffic Sources */}
+                    <AccordionItem value="traffic-sources">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Traffic Sources
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          {['organicSearchShare', 'directBrandedShare', 'emailShare', 'referralShare', 'paidShare', 'socialShare'].map((metric) => {
+                            const labels: Record<string, string> = {
+                              organicSearchShare: 'Organic Search',
+                              directBrandedShare: 'Direct/Branded',
+                              emailShare: 'Email',
+                              referralShare: 'Referral/Partners',
+                              paidShare: 'Paid',
+                              socialShare: 'Social'
+                            };
+                            return (
+                              <div key={metric} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`traffic-${metric}`}
+                                  checked={customReportConfig.derivedMetrics.includes(metric)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setCustomReportConfig({
+                                        ...customReportConfig,
+                                        derivedMetrics: [...customReportConfig.derivedMetrics, metric]
+                                      });
+                                    } else {
+                                      setCustomReportConfig({
+                                        ...customReportConfig,
+                                        derivedMetrics: customReportConfig.derivedMetrics.filter(m => m !== metric)
+                                      });
+                                    }
+                                  }}
+                                  data-testid={`checkbox-traffic-${metric}`}
+                                />
+                                <Label htmlFor={`traffic-${metric}`} className="text-sm cursor-pointer">
+                                  {labels[metric]}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
 
-                  <div className="space-y-3 pl-4">
-                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Email Performance Metrics</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen', 'hardBounces', 'spamComplaints', 'listGrowth'].map((metric) => {
-                        const labels: Record<string, string> = {
-                          emailsDelivered: 'Emails Delivered',
-                          openRate: 'Open Rate',
-                          clickThroughRate: 'Click-Through Rate',
-                          clickToOpen: 'Click-to-Open',
-                          hardBounces: 'Hard Bounces',
-                          spamComplaints: 'Spam Complaints',
-                          listGrowth: 'List Growth'
-                        };
-                        return (
-                          <div key={metric} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`email-${metric}`}
-                              checked={customReportConfig.derivedMetrics.includes(metric)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setCustomReportConfig({
-                                    ...customReportConfig,
-                                    derivedMetrics: [...customReportConfig.derivedMetrics, metric]
-                                  });
-                                } else {
-                                  setCustomReportConfig({
-                                    ...customReportConfig,
-                                    derivedMetrics: customReportConfig.derivedMetrics.filter(m => m !== metric)
-                                  });
-                                }
-                              }}
-                              data-testid={`checkbox-email-${metric}`}
-                            />
-                            <Label htmlFor={`email-${metric}`} className="text-sm cursor-pointer">
-                              {labels[metric]}
-                            </Label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    {/* Email Performance Metrics */}
+                    <AccordionItem value="email-performance">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Email Performance Metrics
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          {['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen', 'hardBounces', 'spamComplaints', 'listGrowth'].map((metric) => {
+                            const labels: Record<string, string> = {
+                              emailsDelivered: 'Emails Delivered',
+                              openRate: 'Open Rate',
+                              clickThroughRate: 'Click-Through Rate',
+                              clickToOpen: 'Click-to-Open',
+                              hardBounces: 'Hard Bounces',
+                              spamComplaints: 'Spam Complaints',
+                              listGrowth: 'List Growth'
+                            };
+                            return (
+                              <div key={metric} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`email-${metric}`}
+                                  checked={customReportConfig.derivedMetrics.includes(metric)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setCustomReportConfig({
+                                        ...customReportConfig,
+                                        derivedMetrics: [...customReportConfig.derivedMetrics, metric]
+                                      });
+                                    } else {
+                                      setCustomReportConfig({
+                                        ...customReportConfig,
+                                        derivedMetrics: customReportConfig.derivedMetrics.filter(m => m !== metric)
+                                      });
+                                    }
+                                  }}
+                                  data-testid={`checkbox-email-${metric}`}
+                                />
+                                <Label htmlFor={`email-${metric}`} className="text-sm cursor-pointer">
+                                  {labels[metric]}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
 
-                {/* KPIs Section */}
+                {/* KPIs and Benchmarks Section */}
                 <div className="space-y-3 pt-4 border-t">
-                  <Label className="text-base">KPIs</Label>
-                  {kpisData && Array.isArray(kpisData) && kpisData.length > 0 ? (
-                    <div className="space-y-2 pl-4">
-                      {kpisData.map((kpi: any) => (
-                        <div key={kpi.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`kpi-${kpi.id}`}
-                            checked={customReportConfig.kpis.includes(kpi.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setCustomReportConfig({
-                                  ...customReportConfig,
-                                  kpis: [...customReportConfig.kpis, kpi.id]
-                                });
-                              } else {
-                                setCustomReportConfig({
-                                  ...customReportConfig,
-                                  kpis: customReportConfig.kpis.filter(id => id !== kpi.id)
-                                });
-                              }
-                            }}
-                            data-testid={`checkbox-kpi-${kpi.id}`}
-                          />
-                          <Label htmlFor={`kpi-${kpi.id}`} className="text-sm cursor-pointer">
-                            {kpi.name}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500 pl-4">No KPIs created yet</p>
-                  )}
-                </div>
+                  <Accordion type="multiple" className="w-full">
+                    {/* KPIs */}
+                    <AccordionItem value="kpis">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        KPIs
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        {kpisData && Array.isArray(kpisData) && kpisData.length > 0 ? (
+                          <div className="space-y-2 pt-2">
+                            {kpisData.map((kpi: any) => (
+                              <div key={kpi.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`kpi-${kpi.id}`}
+                                  checked={customReportConfig.kpis.includes(kpi.id)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setCustomReportConfig({
+                                        ...customReportConfig,
+                                        kpis: [...customReportConfig.kpis, kpi.id]
+                                      });
+                                    } else {
+                                      setCustomReportConfig({
+                                        ...customReportConfig,
+                                        kpis: customReportConfig.kpis.filter(id => id !== kpi.id)
+                                      });
+                                    }
+                                  }}
+                                  data-testid={`checkbox-kpi-${kpi.id}`}
+                                />
+                                <Label htmlFor={`kpi-${kpi.id}`} className="text-sm cursor-pointer">
+                                  {kpi.name}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-500 pt-2">No KPIs created yet</p>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
 
-                {/* Benchmarks Section */}
-                <div className="space-y-3 pt-4 border-t">
-                  <Label className="text-base">Benchmarks</Label>
-                  {benchmarksData && Array.isArray(benchmarksData) && benchmarksData.length > 0 ? (
-                    <div className="space-y-2 pl-4">
-                      {benchmarksData.map((benchmark: any) => (
-                        <div key={benchmark.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`benchmark-${benchmark.id}`}
-                            checked={customReportConfig.benchmarks.includes(benchmark.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setCustomReportConfig({
-                                  ...customReportConfig,
-                                  benchmarks: [...customReportConfig.benchmarks, benchmark.id]
-                                });
-                              } else {
-                                setCustomReportConfig({
-                                  ...customReportConfig,
-                                  benchmarks: customReportConfig.benchmarks.filter(id => id !== benchmark.id)
-                                });
-                              }
-                            }}
-                            data-testid={`checkbox-benchmark-${benchmark.id}`}
-                          />
-                          <Label htmlFor={`benchmark-${benchmark.id}`} className="text-sm cursor-pointer">
-                            {benchmark.name}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500 pl-4">No benchmarks created yet</p>
-                  )}
+                    {/* Benchmarks */}
+                    <AccordionItem value="benchmarks">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Benchmarks
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        {benchmarksData && Array.isArray(benchmarksData) && benchmarksData.length > 0 ? (
+                          <div className="space-y-2 pt-2">
+                            {benchmarksData.map((benchmark: any) => (
+                              <div key={benchmark.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`benchmark-${benchmark.id}`}
+                                  checked={customReportConfig.benchmarks.includes(benchmark.id)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setCustomReportConfig({
+                                        ...customReportConfig,
+                                        benchmarks: [...customReportConfig.benchmarks, benchmark.id]
+                                      });
+                                    } else {
+                                      setCustomReportConfig({
+                                        ...customReportConfig,
+                                        benchmarks: customReportConfig.benchmarks.filter(id => id !== benchmark.id)
+                                      });
+                                    }
+                                  }}
+                                  data-testid={`checkbox-benchmark-${benchmark.id}`}
+                                />
+                                <Label htmlFor={`benchmark-${benchmark.id}`} className="text-sm cursor-pointer">
+                                  {benchmark.name}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-500 pt-2">No benchmarks created yet</p>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
 
                 {/* Schedule Section for Custom Reports */}

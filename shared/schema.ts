@@ -223,6 +223,7 @@ export const kpis = pgTable("kpis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id"), // Optional - null for platform-level KPIs
   platformType: text("platform_type"), // 'google_analytics', 'google_sheets', 'facebook', 'linkedin', etc.
+  category: text("category").notNull().default("performance"), // 'engagement', 'conversion', 'traffic', 'revenue', 'performance'
   name: text("name").notNull(), // 'ROI', 'LTV', 'CAC', 'CTR', 'CPA', 'ROAS'
   metric: text("metric"), // Metric source: 'users', 'sessions', 'pageviews', 'bounceRate', etc.
   targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
@@ -563,6 +564,7 @@ export const insertLinkedInConnectionSchema = createInsertSchema(linkedinConnect
 export const insertKPISchema = createInsertSchema(kpis).pick({
   campaignId: true,
   platformType: true,
+  category: true,
   name: true,
   metric: true,
   targetValue: true,

@@ -1326,11 +1326,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       
-      const validatedKPI = insertKPISchema.parse({
+      // Convert empty strings to null for numeric fields
+      const cleanedData = {
         ...req.body,
         platformType: platformType,
-        campaignId: null
-      });
+        campaignId: null,
+        alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
+        targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
+        currentValue: req.body.currentValue === '' ? null : req.body.currentValue
+      };
+      
+      const validatedKPI = insertKPISchema.parse(cleanedData);
       
       const kpi = await storage.createKPI(validatedKPI);
       res.json(kpi);
@@ -1374,7 +1380,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { kpiId } = req.params;
       
-      const validatedKPI = insertKPISchema.partial().parse(req.body);
+      // Convert empty strings to null for numeric fields
+      const cleanedData = { ...req.body };
+      if (cleanedData.alertThreshold === '') cleanedData.alertThreshold = null;
+      if (cleanedData.targetValue === '') cleanedData.targetValue = null;
+      if (cleanedData.currentValue === '') cleanedData.currentValue = null;
+      
+      const validatedKPI = insertKPISchema.partial().parse(cleanedData);
       
       const kpi = await storage.updateKPI(kpiId, validatedKPI);
       if (!kpi) {
@@ -1411,11 +1423,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       
-      const validatedBenchmark = insertBenchmarkSchema.parse({
+      // Convert empty strings to null for numeric fields
+      const cleanedData = {
         ...req.body,
         platformType: platformType,
-        campaignId: null
-      });
+        campaignId: null,
+        alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
+        benchmarkValue: req.body.benchmarkValue === '' ? null : req.body.benchmarkValue,
+        currentValue: req.body.currentValue === '' ? null : req.body.currentValue
+      };
+      
+      const validatedBenchmark = insertBenchmarkSchema.parse(cleanedData);
       
       console.log('Validated benchmark:', JSON.stringify(validatedBenchmark, null, 2));
       
@@ -1440,7 +1458,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { benchmarkId } = req.params;
       
-      const validatedBenchmark = insertBenchmarkSchema.partial().parse(req.body);
+      // Convert empty strings to null for numeric fields
+      const cleanedData = { ...req.body };
+      if (cleanedData.alertThreshold === '') cleanedData.alertThreshold = null;
+      if (cleanedData.benchmarkValue === '') cleanedData.benchmarkValue = null;
+      if (cleanedData.currentValue === '') cleanedData.currentValue = null;
+      
+      const validatedBenchmark = insertBenchmarkSchema.partial().parse(cleanedData);
       console.log('Validated benchmark update:', JSON.stringify(validatedBenchmark, null, 2));
       
       const benchmark = await storage.updateBenchmark(benchmarkId, validatedBenchmark);

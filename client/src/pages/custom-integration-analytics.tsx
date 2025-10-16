@@ -655,44 +655,97 @@ export default function CustomIntegrationAnalytics() {
         doc.setFont(undefined, 'normal');
         
         y = addPDFSection(doc, 'Key Performance Indicators', y, [59, 130, 246]);
+        doc.setTextColor(50, 50, 50); // Reset to dark after section header
         
         kpis.forEach((kpi: any, index: number) => {
-          if (y > 250) {
+          if (y > 230) {
             doc.addPage();
             y = 20;
           }
           
+          // KPI Name
           doc.setFont(undefined, 'bold');
+          doc.setFontSize(12);
           doc.text(kpi.name, 20, y);
           y += 6;
+          
+          // Description
+          if (kpi.description) {
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(100, 100, 100);
+            const lines = doc.splitTextToSize(kpi.description, 170);
+            lines.forEach((line: string) => {
+              doc.text(line, 20, y);
+              y += 4;
+            });
+            doc.setTextColor(50, 50, 50);
+            y += 2;
+          }
+          
+          // Priority and Timeframe badges
+          if (kpi.priority || kpi.timeframe) {
+            doc.setFontSize(9);
+            let badgeText = '';
+            if (kpi.priority) {
+              badgeText += `Priority: ${kpi.priority}`;
+            }
+            if (kpi.timeframe) {
+              badgeText += (badgeText ? ' | ' : '') + `Timeframe: ${kpi.timeframe}`;
+            }
+            doc.setTextColor(100, 100, 100);
+            doc.text(badgeText, 20, y);
+            doc.setTextColor(50, 50, 50);
+            y += 6;
+          }
           
           doc.setFont(undefined, 'normal');
           doc.setFontSize(10);
           
+          // Current and Target values with formatting
           if (kpi.currentValue) {
-            doc.text(`Current: ${kpi.currentValue}${kpi.unit || ''}`, 25, y);
+            doc.setFont(undefined, 'bold');
+            doc.text('Current:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(`${formatNumber(kpi.currentValue)}${kpi.unit || ''}`, 50, y);
             y += 5;
           }
           
           if (kpi.targetValue) {
-            doc.text(`Target: ${kpi.targetValue}${kpi.unit || ''}`, 25, y);
+            doc.setFont(undefined, 'bold');
+            doc.text('Target:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(`${formatNumber(kpi.targetValue)}${kpi.unit || ''}`, 50, y);
+            y += 5;
+          }
+          
+          // Progress percentage
+          if (kpi.currentValue && kpi.targetValue) {
+            const progress = Math.min(Math.round((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100), 100);
+            doc.setFont(undefined, 'bold');
+            doc.text('Progress:', 25, y);
+            doc.setFont(undefined, 'normal');
+            
+            // Color-code the progress
+            if (progress >= 100) {
+              doc.setTextColor(22, 163, 74); // Green
+            } else if (progress >= 70) {
+              doc.setTextColor(59, 130, 246); // Blue
+            } else {
+              doc.setTextColor(234, 179, 8); // Yellow
+            }
+            doc.text(`${progress}%`, 50, y);
+            doc.setTextColor(50, 50, 50); // Reset to dark
             y += 5;
           }
           
           if (kpi.targetDate) {
             const dateStr = new Date(kpi.targetDate).toLocaleDateString();
-            doc.text(`Target Date: ${dateStr}`, 25, y);
+            doc.setFont(undefined, 'bold');
+            doc.text('Target Date:', 25, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(dateStr, 60, y);
             y += 5;
-          }
-          
-          if (kpi.description) {
-            const lines = doc.splitTextToSize(kpi.description, 160);
-            doc.setTextColor(100, 100, 100);
-            lines.forEach((line: string) => {
-              doc.text(line, 25, y);
-              y += 5;
-            });
-            doc.setTextColor(50, 50, 50);
           }
           
           doc.setFontSize(11);

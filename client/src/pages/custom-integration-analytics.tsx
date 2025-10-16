@@ -2737,47 +2737,110 @@ export default function CustomIntegrationAnalytics() {
                               </div>
                             </div>
                             
-                            {/* Performance Comparison */}
-                            {benchmark.currentValue && benchmark.benchmarkValue && (
-                              <div className="mt-4 flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Performance vs Benchmark:
-                                  </span>
-                                  {(() => {
-                                    const current = parseFloat(benchmark.currentValue);
-                                    const benchmarkVal = parseFloat(benchmark.benchmarkValue || benchmark.targetValue);
-                                    const diff = current - benchmarkVal;
-                                    const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';
-                                    const isAbove = current > benchmarkVal;
+                            {/* Progress Tracker with Timeframe */}
+                            {benchmark.currentValue && benchmark.benchmarkValue && (() => {
+                              const actualProgress = Math.min((parseFloat(benchmark.currentValue) / parseFloat(benchmark.benchmarkValue)) * 100, 100);
+                              const expectedProgress = calculateExpectedProgress(benchmark.period || 'monthly');
+                              const isOnTrack = actualProgress >= expectedProgress;
+                              const isAhead = actualProgress >= expectedProgress + 10;
+                              const isBehind = actualProgress < expectedProgress - 10;
+                              
+                              // Calculate comparison to benchmark
+                              const current = parseFloat(benchmark.currentValue);
+                              const benchmarkVal = parseFloat(benchmark.benchmarkValue);
+                              const diff = current - benchmarkVal;
+                              const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';
+                              const isAbove = current > benchmarkVal;
+                              
+                              return (
+                                <div className="mt-4 space-y-3">
+                                  {/* Actual Progress */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-slate-600 dark:text-slate-400">Progress to Benchmark</span>
+                                        {isAhead && <TrendingUp className="w-4 h-4 text-green-600" />}
+                                        {isBehind && <TrendingDown className="w-4 h-4 text-red-600" />}
+                                      </div>
+                                      <span className="font-semibold text-slate-900 dark:text-white">
+                                        {Math.round(actualProgress)}%
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                      <div 
+                                        className={`h-2.5 rounded-full transition-all ${
+                                          actualProgress >= 100 
+                                            ? 'bg-green-500' 
+                                            : isAhead
+                                            ? 'bg-green-500'
+                                            : isOnTrack && !isBehind
+                                            ? 'bg-blue-500'
+                                            : 'bg-yellow-500'
+                                        }`}
+                                        style={{ width: `${Math.round(actualProgress)}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Expected Progress based on Period */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-slate-500 dark:text-slate-500 text-xs">
+                                        Expected ({benchmark.period || 'monthly'})
+                                      </span>
+                                      <span className="text-xs text-slate-500 dark:text-slate-500">
+                                        {Math.round(expectedProgress)}%
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
+                                      <div 
+                                        className="h-1.5 rounded-full bg-slate-400 dark:bg-slate-500"
+                                        style={{ width: `${Math.round(expectedProgress)}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Status and Comparison */}
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <div className={`text-xs px-2 py-1 rounded-md inline-flex items-center gap-1 ${
+                                      isAhead 
+                                        ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
+                                        : isBehind
+                                        ? 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
+                                        : 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400'
+                                    }`}>
+                                      {isAhead && <CheckCircle2 className="w-3 h-3" />}
+                                      {isBehind && <AlertCircle className="w-3 h-3" />}
+                                      {!isAhead && !isBehind && <Activity className="w-3 h-3" />}
+                                      <span>
+                                        {isAhead 
+                                          ? 'Ahead of schedule' 
+                                          : isBehind 
+                                          ? 'Behind schedule'
+                                          : 'On track'}
+                                      </span>
+                                    </div>
                                     
-                                    return (
-                                      <>
-                                        <Badge 
-                                          variant={isAbove ? "default" : "secondary"}
-                                          className={isAbove ? "bg-green-600" : "bg-red-600"}
-                                        >
-                                          {isAbove ? (
-                                            <>
-                                              <TrendingUp className="w-3 h-3 mr-1" />
-                                              {percentDiff}% Above
-                                            </>
-                                          ) : (
-                                            <>
-                                              <TrendingDown className="w-3 h-3 mr-1" />
-                                              {Math.abs(parseFloat(percentDiff))}% Below
-                                            </>
-                                          )}
-                                        </Badge>
-                                        <span className="text-xs text-slate-500">
-                                          {isAbove ? '🎉 Outperforming!' : '⚠️ Needs improvement'}
-                                        </span>
-                                      </>
-                                    );
-                                  })()}
+                                    <Badge 
+                                      variant={isAbove ? "default" : "secondary"}
+                                      className={isAbove ? "bg-green-600 text-white" : "bg-red-600 text-white"}
+                                    >
+                                      {isAbove ? (
+                                        <>
+                                          <TrendingUp className="w-3 h-3 mr-1" />
+                                          {percentDiff}% Above Benchmark
+                                        </>
+                                      ) : (
+                                        <>
+                                          <TrendingDown className="w-3 h-3 mr-1" />
+                                          {Math.abs(parseFloat(percentDiff))}% Below Benchmark
+                                        </>
+                                      )}
+                                    </Badge>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </CardContent>
                         </Card>
                       ))}

@@ -1497,8 +1497,14 @@ export default function CustomIntegrationAnalytics() {
       status: report.status || 'draft'
     });
     
-    if (report.reportType === 'custom' && report.configuration) {
-      setCustomReportConfig(report.configuration);
+    if (report.reportType === 'custom') {
+      // Ensure customReportConfig has default structure even if configuration is missing
+      setCustomReportConfig({
+        coreMetrics: report.configuration?.coreMetrics || [],
+        derivedMetrics: report.configuration?.derivedMetrics || [],
+        kpis: report.configuration?.kpis || [],
+        benchmarks: report.configuration?.benchmarks || []
+      });
       setReportModalStep('custom');
     } else {
       setReportModalStep('standard');

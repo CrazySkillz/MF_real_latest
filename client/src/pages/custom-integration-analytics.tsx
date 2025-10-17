@@ -2464,7 +2464,7 @@ export default function CustomIntegrationAnalytics() {
                             })()}
                           </CardContent>
                         </Card>
-                        );
+                      );
                       })}
                     </div>
                   </>

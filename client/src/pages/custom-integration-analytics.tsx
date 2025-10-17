@@ -2329,7 +2329,7 @@ export default function CustomIntegrationAnalytics() {
                                       name: kpi.name,
                                       description: kpi.description || '',
                                       category: kpi.category || 'performance',
-                                      metric: kpi.metric || '',
+                                      metric: kpi.metricSource || '',
                                       targetValue: kpi.targetValue || '',
                                       currentValue: kpi.currentValue || '',
                                       unit: kpi.unit || '',

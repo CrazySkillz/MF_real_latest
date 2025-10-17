@@ -184,6 +184,8 @@ export default function CustomIntegrationAnalytics() {
   // Fetch platform-level KPIs for custom integration
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
     queryKey: ['/api/platforms/custom-integration/kpis'],
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache
   });
 
   // Fetch platform-level Benchmarks for custom integration
@@ -237,9 +239,17 @@ export default function CustomIntegrationAnalytics() {
       console.log('Response data:', result);
       return result;
     },
-    onSuccess: () => {
-      console.log('KPI update successful!');
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis'] });
+    onSuccess: async () => {
+      console.log('KPI update successful! Invalidating cache and refetching...');
+      // Remove from cache and force refetch
+      await queryClient.invalidateQueries({ 
+        queryKey: ['/api/platforms/custom-integration/kpis'],
+        refetchType: 'all' 
+      });
+      await queryClient.refetchQueries({ 
+        queryKey: ['/api/platforms/custom-integration/kpis']
+      });
+      console.log('Cache invalidated and refetch complete');
       toast({
         title: "KPI Updated",
         description: "Your KPI has been successfully updated.",

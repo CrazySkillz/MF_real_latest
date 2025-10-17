@@ -2325,11 +2325,15 @@ export default function CustomIntegrationAnalytics() {
                                   className="h-8 w-8 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
                                   onClick={() => {
                                     setEditingKPI(kpi);
-                                    setKpiForm({
+                                    console.log('=== EDITING KPI ===');
+                                    console.log('Full KPI object:', kpi);
+                                    console.log('kpi.metric value:', kpi.metric);
+                                    console.log('kpi.metric type:', typeof kpi.metric);
+                                    const formData = {
                                       name: kpi.name,
                                       description: kpi.description || '',
                                       category: kpi.category || 'performance',
-                                      metric: kpi.metricSource || '',
+                                      metric: kpi.metric || '',
                                       targetValue: kpi.targetValue || '',
                                       currentValue: kpi.currentValue || '',
                                       unit: kpi.unit || '',
@@ -2339,7 +2343,10 @@ export default function CustomIntegrationAnalytics() {
                                       alertThreshold: kpi.alertThreshold || '',
                                       alertCondition: kpi.alertCondition || 'below',
                                       emailRecipients: kpi.emailRecipients || ''
-                                    });
+                                    };
+                                    console.log('Setting kpiForm to:', formData);
+                                    console.log('kpiForm.metric will be:', formData.metric);
+                                    setKpiForm(formData);
                                     setIsKPIModalOpen(true);
                                   }}
                                   data-testid={`button-edit-kpi-${kpi.id}`}

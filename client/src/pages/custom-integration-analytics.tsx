@@ -2642,9 +2642,6 @@ export default function CustomIntegrationAnalytics() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge variant={benchmark.isActive ? 'default' : 'secondary'}>
-                                  {benchmark.isActive ? 'Active' : 'Inactive'}
-                                </Badge>
                                 <Button
                                   size="sm"
                                   variant="ghost"

@@ -3067,7 +3067,7 @@ export default function CustomIntegrationAnalytics() {
               <div className="space-y-2">
                 <Label htmlFor="kpi-metric">Metric Source</Label>
                 <Select
-                  value={kpiForm.metric || undefined}
+                  value={kpiForm.metric && kpiForm.metric !== '' ? kpiForm.metric : undefined}
                   onValueChange={(value) => {
                     setKpiForm({ ...kpiForm, metric: value });
                     // Auto-populate current value from metrics

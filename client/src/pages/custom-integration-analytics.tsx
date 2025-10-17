@@ -2436,24 +2436,6 @@ export default function CustomIntegrationAnalytics() {
                                     </div>
                                   </div>
 
-                                  {/* Expected Progress based on Timeframe */}
-                                  <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-sm">
-                                      <span className="text-slate-500 dark:text-slate-500 text-xs">
-                                        Expected ({kpi.timeframe || 'monthly'})
-                                      </span>
-                                      <span className="text-xs text-slate-500 dark:text-slate-500">
-                                        {Math.round(expectedProgress)}%
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
-                                      <div 
-                                        className="h-1.5 rounded-full bg-slate-400 dark:bg-slate-500"
-                                        style={{ width: `${Math.round(expectedProgress)}%` }}
-                                      ></div>
-                                    </div>
-                                  </div>
-
                                   {/* Timeframe Indicator */}
                                   <div className="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1">
                                     <Clock className="w-3 h-3" />

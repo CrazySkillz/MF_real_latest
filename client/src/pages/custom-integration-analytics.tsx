@@ -676,8 +676,8 @@ export default function CustomIntegrationAnalytics() {
             const current = parseFloat(benchmark.currentValue);
             const benchmarkVal = parseFloat(benchmark.benchmarkValue);
             const diff = current - benchmarkVal;
-            const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';
-            const isAbove = current > benchmarkVal;
+            const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100) : 0;
+            const isAbove = current >= benchmarkVal;
             
             doc.setFont(undefined, 'bold');
             doc.text('Performance vs Benchmark:', 25, y);
@@ -685,10 +685,10 @@ export default function CustomIntegrationAnalytics() {
             
             if (isAbove) {
               doc.setTextColor(22, 163, 74); // Green
-              doc.text(`${percentDiff}% Above - Outperforming!`, 80, y);
+              doc.text(`${percentDiff.toFixed(2)}% Above - Outperforming!`, 80, y);
             } else {
               doc.setTextColor(220, 38, 38); // Red
-              doc.text(`${Math.abs(parseFloat(percentDiff))}% Below - Needs improvement`, 80, y);
+              doc.text(`${Math.abs(percentDiff).toFixed(2)}% Below - Needs improvement`, 80, y);
             }
             doc.setTextColor(50, 50, 50); // Reset to dark
             y += 5;
@@ -1005,8 +1005,8 @@ export default function CustomIntegrationAnalytics() {
               const current = parseFloat(benchmark.currentValue);
               const benchmarkVal = parseFloat(benchmark.benchmarkValue);
               const diff = current - benchmarkVal;
-              const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';
-              const isAbove = current > benchmarkVal;
+              const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100) : 0;
+              const isAbove = current >= benchmarkVal;
               
               doc.setFont(undefined, 'bold');
               doc.text('Performance vs Benchmark:', 25, y);
@@ -1014,10 +1014,10 @@ export default function CustomIntegrationAnalytics() {
               
               if (isAbove) {
                 doc.setTextColor(22, 163, 74); // Green
-                doc.text(`${percentDiff}% Above - Outperforming!`, 80, y);
+                doc.text(`${percentDiff.toFixed(2)}% Above - Outperforming!`, 80, y);
               } else {
                 doc.setTextColor(220, 38, 38); // Red
-                doc.text(`${Math.abs(parseFloat(percentDiff))}% Below - Needs improvement`, 80, y);
+                doc.text(`${Math.abs(percentDiff).toFixed(2)}% Below - Needs improvement`, 80, y);
               }
               doc.setTextColor(50, 50, 50); // Reset to dark
               y += 5;

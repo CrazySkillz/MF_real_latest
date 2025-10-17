@@ -2536,6 +2536,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.patch("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
+    console.log('=== PATCH KPI ENDPOINT ===');
+    console.log('KPI ID:', req.params.kpiId);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     try {
       const { kpiId } = req.params;
       
@@ -2550,16 +2554,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         targetDate: req.body.targetDate ? new Date(req.body.targetDate) : req.body.targetDate === null ? null : undefined
       };
       
+      console.log('Update data after processing:', JSON.stringify(updateData, null, 2));
+      
       const updatedKPI = await storage.updateKPI(kpiId, updateData);
       
+      console.log('Updated KPI result:', updatedKPI ? 'Found' : 'Not found');
+      
       if (!updatedKPI) {
+        console.log('KPI not found, returning 404');
         return res.status(404).json({ message: "KPI not found" });
       }
       
+      console.log('Returning updated KPI');
       res.json(updatedKPI);
     } catch (error) {
       console.error('Platform KPI update error:', error);
       if (error instanceof z.ZodError) {
+        console.error('Zod validation errors:', error.errors);
         res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
       } else {
         res.status(500).json({ message: "Failed to update platform KPI" });

@@ -718,15 +718,6 @@ export default function CustomIntegrationAnalytics() {
             y += 5;
           }
           
-          // Status
-          if (benchmark.isActive !== undefined) {
-            doc.setFont(undefined, 'bold');
-            doc.text('Status:', 25, y);
-            doc.setFont(undefined, 'normal');
-            doc.text(benchmark.isActive ? 'Active' : 'Inactive', 80, y);
-            y += 5;
-          }
-          
           doc.setFontSize(11);
           y += 10;
         });
@@ -1053,15 +1044,6 @@ export default function CustomIntegrationAnalytics() {
               doc.text('Confidence:', 25, y);
               doc.setFont(undefined, 'normal');
               doc.text(benchmark.confidenceLevel, 80, y);
-              y += 5;
-            }
-            
-            // Status
-            if (benchmark.isActive !== undefined) {
-              doc.setFont(undefined, 'bold');
-              doc.text('Status:', 25, y);
-              doc.setFont(undefined, 'normal');
-              doc.text(benchmark.isActive ? 'Active' : 'Inactive', 80, y);
               y += 5;
             }
             

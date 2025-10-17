@@ -2373,9 +2373,10 @@ export default function CustomIntegrationAnalytics() {
                             {kpi.targetValue && kpi.currentValue && (() => {
                               const actualProgress = Math.min((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100, 100);
                               const expectedProgress = calculateExpectedProgress(kpi.timeframe || 'monthly');
-                              const isOnTrack = actualProgress >= expectedProgress;
-                              const isAhead = actualProgress >= expectedProgress + 10;
+                              // Only show "ahead" when target is exceeded
+                              const isAhead = actualProgress >= 100;
                               const isBehind = actualProgress < expectedProgress - 10;
+                              const isOnTrack = !isAhead && !isBehind;
                               
                               return (
                                 <div className="space-y-3">

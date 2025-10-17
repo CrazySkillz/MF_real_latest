@@ -1654,9 +1654,6 @@ export default function CustomIntegrationAnalytics() {
                   <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
                     Custom Integration Analytics
                   </h1>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    {campaign?.name} • Connected to {customIntegration?.email}
-                  </p>
                 </div>
               </div>
             </div>

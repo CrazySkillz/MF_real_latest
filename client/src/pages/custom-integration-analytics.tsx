@@ -228,10 +228,17 @@ export default function CustomIntegrationAnalytics() {
   // Update KPI mutation
   const updateKpiMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      console.log('=== UPDATE KPI MUTATION ===');
+      console.log('KPI ID:', id);
+      console.log('Data to send:', data);
       const res = await apiRequest('PATCH', `/api/platforms/custom-integration/kpis/${id}`, data);
-      return res.json();
+      console.log('Response status:', res.status);
+      const result = await res.json();
+      console.log('Response data:', result);
+      return result;
     },
     onSuccess: () => {
+      console.log('KPI update successful!');
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis'] });
       toast({
         title: "KPI Updated",
@@ -253,6 +260,15 @@ export default function CustomIntegrationAnalytics() {
         alertThreshold: '',
         alertCondition: 'below',
         emailRecipients: ''
+      });
+    },
+    onError: (error: any) => {
+      console.error('=== KPI UPDATE ERROR ===');
+      console.error('Error:', error);
+      toast({
+        title: "Error Updating KPI",
+        description: error?.message || "Failed to update KPI. Please try again.",
+        variant: "destructive",
       });
     },
   });

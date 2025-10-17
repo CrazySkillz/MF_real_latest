@@ -2340,11 +2340,15 @@ export default function CustomIntegrationAnalytics() {
                                   size="icon"
                                   className="h-8 w-8 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
                                   onClick={() => {
-                                    setEditingKPI(kpi);
-                                    console.log('=== EDITING KPI ===');
+                                    console.log('=== EDITING KPI (NEW DATA) ===');
                                     console.log('Full KPI object:', kpi);
                                     console.log('kpi.metric value:', kpi.metric);
                                     console.log('kpi.metric type:', typeof kpi.metric);
+                                    console.log('kpi.metric === null?', kpi.metric === null);
+                                    console.log('kpi.metric === ""?', kpi.metric === '');
+                                    console.log('kpi.metric || "":', kpi.metric || '');
+                                    
+                                    setEditingKPI(kpi);
                                     const formData = {
                                       name: kpi.name,
                                       description: kpi.description || '',
@@ -2361,7 +2365,8 @@ export default function CustomIntegrationAnalytics() {
                                       emailRecipients: kpi.emailRecipients || ''
                                     };
                                     console.log('Setting kpiForm to:', formData);
-                                    console.log('kpiForm.metric will be:', formData.metric);
+                                    console.log('formData.metric:', formData.metric);
+                                    console.log('Will Select show value?', formData.metric && formData.metric !== '' ? formData.metric : 'NO - undefined');
                                     setKpiForm(formData);
                                     setIsKPIModalOpen(true);
                                   }}

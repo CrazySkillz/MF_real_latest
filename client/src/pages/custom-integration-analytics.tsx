@@ -2262,7 +2262,44 @@ export default function CustomIntegrationAnalytics() {
 
                     {/* KPI Cards */}
                     <div className="grid gap-6 lg:grid-cols-2">
-                      {(kpisData as any[]).map((kpi: any) => (
+                      {(kpisData as any[]).map((kpi: any) => {
+                        // Calculate status
+                        const actualProgress = kpi.targetValue && kpi.currentValue 
+                          ? Math.min((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100, 100)
+                          : 0;
+                        const expectedProgress = calculateExpectedProgress(kpi.timeframe || 'monthly');
+                        const isAhead = actualProgress >= 100;
+                        const isBehind = actualProgress < expectedProgress - 10;
+                        
+                        const status = isAhead ? 'Exceeding' : isBehind ? 'Behind' : 'On Track';
+                        
+                        const getStatusColor = (status: string) => {
+                          switch (status) {
+                            case 'Exceeding':
+                              return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+                            case 'On Track':
+                              return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+                            case 'Behind':
+                              return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+                            default:
+                              return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+                          }
+                        };
+                        
+                        const getPriorityColor = (priority: string) => {
+                          switch (priority) {
+                            case 'high':
+                              return 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-300';
+                            case 'medium':
+                              return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-300';
+                            case 'low':
+                              return 'text-green-600 bg-green-100 dark:bg-green-900 dark:text-green-300';
+                            default:
+                              return 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300';
+                          }
+                        };
+                        
+                        return (
                         <Card key={kpi.id} data-testid={`kpi-card-${kpi.id}`}>
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
@@ -2273,18 +2310,12 @@ export default function CustomIntegrationAnalytics() {
                                 </CardDescription>
                               </div>
                               <div className="flex items-center gap-2">
+                                <Badge className={getStatusColor(status)}>
+                                  {status}
+                                </Badge>
                                 {kpi.priority && (
-                                  <Badge variant="outline" className={
-                                    kpi.priority === 'high' ? 'text-red-600 border-red-300' :
-                                    kpi.priority === 'medium' ? 'text-yellow-600 border-yellow-300' :
-                                    'text-green-600 border-green-300'
-                                  }>
-                                    {kpi.priority}
-                                  </Badge>
-                                )}
-                                {kpi.timeframe && (
-                                  <Badge variant="secondary" className="capitalize">
-                                    {kpi.timeframe}
+                                  <Badge variant="outline" className={getPriorityColor(kpi.priority)}>
+                                    {kpi.priority.charAt(0).toUpperCase() + kpi.priority.slice(1)}
                                   </Badge>
                                 )}
                                 <Button 
@@ -2423,31 +2454,18 @@ export default function CustomIntegrationAnalytics() {
                                     </div>
                                   </div>
 
-                                  {/* Status Indicator */}
-                                  <div className={`text-xs px-2 py-1 rounded-md inline-flex items-center gap-1 ${
-                                    isAhead 
-                                      ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
-                                      : isBehind
-                                      ? 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
-                                      : 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400'
-                                  }`}>
-                                    {isAhead && <CheckCircle2 className="w-3 h-3" />}
-                                    {isBehind && <AlertCircle className="w-3 h-3" />}
-                                    {!isAhead && !isBehind && <Activity className="w-3 h-3" />}
-                                    <span>
-                                      {isAhead 
-                                        ? 'Ahead of schedule' 
-                                        : isBehind 
-                                        ? 'Behind schedule'
-                                        : 'On track'}
-                                    </span>
+                                  {/* Timeframe Indicator */}
+                                  <div className="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    <span className="capitalize">{kpi.timeframe || 'Monthly'} • Updated 30 minutes ago</span>
                                   </div>
                                 </div>
                               );
                             })()}
                           </CardContent>
                         </Card>
-                      ))}
+                        );
+                      })}
                     </div>
                   </>
                 ) : (

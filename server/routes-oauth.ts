@@ -2505,14 +2505,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       
-      // Convert empty strings to null for numeric fields
+      // Convert empty strings to null for numeric and optional text fields
       const requestData = {
         ...req.body,
         platformType: platformType,
         campaignId: null,
+        metric: req.body.metric === '' ? null : req.body.metric,
         targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
         currentValue: req.body.currentValue === '' ? null : req.body.currentValue,
         alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
+        emailRecipients: req.body.emailRecipients === '' ? null : req.body.emailRecipients,
         timeframe: req.body.timeframe || "monthly",
         trackingPeriod: req.body.trackingPeriod || 30,
         rollingAverage: req.body.rollingAverage || "7day",
@@ -2529,6 +2531,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
       } else {
         res.status(500).json({ message: "Failed to create platform KPI" });
+      }
+    }
+  });
+
+  app.patch("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      
+      // Convert empty strings to null for numeric and optional text fields
+      const updateData = {
+        ...req.body,
+        metric: req.body.metric === '' ? null : req.body.metric,
+        targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
+        currentValue: req.body.currentValue === '' ? null : req.body.currentValue,
+        alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
+        emailRecipients: req.body.emailRecipients === '' ? null : req.body.emailRecipients,
+        targetDate: req.body.targetDate ? new Date(req.body.targetDate) : req.body.targetDate === null ? null : undefined
+      };
+      
+      const updatedKPI = await storage.updateKPI(kpiId, updateData);
+      
+      if (!updatedKPI) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
+      
+      res.json(updatedKPI);
+    } catch (error) {
+      console.error('Platform KPI update error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update platform KPI" });
       }
     }
   });

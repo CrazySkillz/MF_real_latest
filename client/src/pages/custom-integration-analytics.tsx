@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatTimeAgo } from "@/lib/utils";
 
 // Helper function to calculate expected progress based on timeframe
 function calculateExpectedProgress(timeframe: string): number {
@@ -2439,7 +2440,9 @@ export default function CustomIntegrationAnalytics() {
                                   {/* Timeframe Indicator */}
                                   <div className="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
-                                    <span className="capitalize">{kpi.timeframe || 'Monthly'} • Updated 30 minutes ago</span>
+                                    <span className="capitalize">
+                                      {kpi.timeframe || 'Monthly'} • Updated {kpi.updatedAt ? formatTimeAgo(kpi.updatedAt) : 'recently'}
+                                    </span>
                                   </div>
                                 </div>
                               );

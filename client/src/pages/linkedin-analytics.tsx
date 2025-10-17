@@ -2095,38 +2095,43 @@ export default function LinkedInAnalytics() {
                             </div>
                             
                             {/* Progress Tracker */}
-                            {kpi.targetValue && kpi.currentValue && (
+                            {kpi.targetValue && kpi.currentValue && (() => {
+                              const actualProgress = (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100;
+                              const progressBarWidth = Math.min(actualProgress, 100);
+                              const progressRatio = parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue);
+                              
+                              return (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="text-slate-600 dark:text-slate-400">Progress</span>
                                   <span className="font-semibold text-slate-900 dark:text-white">
-                                    {Math.min(Math.round((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100), 100)}%
+                                    {Math.round(actualProgress)}%
                                   </span>
                                 </div>
                                 <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
                                   <div 
                                     className={`h-2.5 rounded-full transition-all ${
-                                      (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 1 
+                                      progressRatio >= 1 
                                         ? 'bg-green-500' 
-                                        : (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 0.7
+                                        : progressRatio >= 0.7
                                         ? 'bg-blue-500'
-                                        : (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 0.4
+                                        : progressRatio >= 0.4
                                         ? 'bg-yellow-500'
                                         : 'bg-red-500'
                                     }`}
-                                    style={{ width: `${Math.min((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100, 100)}%` }}
+                                    style={{ width: `${Math.round(progressBarWidth)}%` }}
                                   />
                                 </div>
                                 <div className="flex items-center gap-2 text-xs">
-                                  {(parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 1 ? (
+                                  {progressRatio >= 1 ? (
                                     <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
                                       <CheckCircle2 className="w-3 h-3" /> Target achieved!
                                     </span>
-                                  ) : (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 0.7 ? (
+                                  ) : progressRatio >= 0.7 ? (
                                     <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1">
                                       <TrendingUp className="w-3 h-3" /> On track
                                     </span>
-                                  ) : (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) >= 0.4 ? (
+                                  ) : progressRatio >= 0.4 ? (
                                     <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
                                       <AlertCircle className="w-3 h-3" /> Needs attention
                                     </span>
@@ -2137,7 +2142,8 @@ export default function LinkedInAnalytics() {
                                   )}
                                 </div>
                               </div>
-                            )}
+                              );
+                            })()}
                             
                             {kpi.category && (
                               <div className="text-sm text-slate-600 dark:text-slate-400">

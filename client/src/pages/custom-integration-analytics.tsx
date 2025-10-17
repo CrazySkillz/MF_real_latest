@@ -2400,7 +2400,8 @@ export default function CustomIntegrationAnalytics() {
                             
                             {/* Progress Tracker */}
                             {kpi.targetValue && kpi.currentValue && (() => {
-                              const actualProgress = Math.min((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100, 100);
+                              const actualProgress = (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100;
+                              const progressBarWidth = Math.min(actualProgress, 100);
                               const expectedProgress = calculateExpectedProgress(kpi.timeframe || 'monthly');
                               // Only show "ahead" when target is exceeded
                               const isAhead = actualProgress >= 100;
@@ -2432,7 +2433,7 @@ export default function CustomIntegrationAnalytics() {
                                             ? 'bg-blue-500'
                                             : 'bg-yellow-500'
                                         }`}
-                                        style={{ width: `${Math.round(actualProgress)}%` }}
+                                        style={{ width: `${Math.round(progressBarWidth)}%` }}
                                       ></div>
                                     </div>
                                   </div>

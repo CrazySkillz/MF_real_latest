@@ -3173,28 +3173,7 @@ export default function CustomIntegrationAnalytics() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="kpi-category">Category</Label>
-                <Select
-                  value={kpiForm.category}
-                  onValueChange={(value) => setKpiForm({ ...kpiForm, category: value })}
-                >
-                  <SelectTrigger id="kpi-category" data-testid="select-kpi-category">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="performance">Performance</SelectItem>
-                    <SelectItem value="engagement">Engagement</SelectItem>
-                    <SelectItem value="conversion">Conversion</SelectItem>
-                    <SelectItem value="revenue">Revenue</SelectItem>
-                    <SelectItem value="quality">Quality</SelectItem>
-                    <SelectItem value="efficiency">Efficiency</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="kpi-priority">Priority</Label>
                 <Select

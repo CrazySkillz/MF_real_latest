@@ -2558,36 +2558,62 @@ export default function CustomIntegrationAnalytics() {
                       Compare your performance against industry benchmarks
                     </p>
                   </div>
-                  <Button 
-                    onClick={() => {
-                      setEditingBenchmark(null);
-                      setBenchmarkForm({
-                        metric: '',
-                        name: '',
-                        category: 'performance',
-                        benchmarkType: '',
-                        unit: '',
-                        benchmarkValue: '',
-                        currentValue: '',
-                        industry: '',
-                        description: '',
-                        source: '',
-                        geographicLocation: '',
-                        period: 'monthly',
-                        confidenceLevel: '',
-                        alertsEnabled: false,
-                        alertThreshold: '',
-                        alertCondition: 'below',
-                        emailRecipients: ''
-                      });
-                      setIsBenchmarkModalOpen(true);
-                    }}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                    data-testid="button-create-benchmark"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Benchmark
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setEditingReportId(null);
+                        setReportForm({
+                          name: '',
+                          description: '',
+                          reportType: 'benchmarks',
+                          configuration: null,
+                          scheduleEnabled: false,
+                          scheduleFrequency: 'weekly',
+                          scheduleDayOfWeek: 'monday',
+                          scheduleTime: '9:00 AM',
+                          emailRecipients: '',
+                          status: 'draft'
+                        });
+                        setIsReportModalOpen(true);
+                      }}
+                      className="border-slate-300 dark:border-slate-700"
+                      data-testid="button-export-benchmarks-report"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Export Benchmarks Report
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setEditingBenchmark(null);
+                        setBenchmarkForm({
+                          metric: '',
+                          name: '',
+                          category: 'performance',
+                          benchmarkType: '',
+                          unit: '',
+                          benchmarkValue: '',
+                          currentValue: '',
+                          industry: '',
+                          description: '',
+                          source: '',
+                          geographicLocation: '',
+                          period: 'monthly',
+                          confidenceLevel: '',
+                          alertsEnabled: false,
+                          alertThreshold: '',
+                          alertCondition: 'below',
+                          emailRecipients: ''
+                        });
+                        setIsBenchmarkModalOpen(true);
+                      }}
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                      data-testid="button-create-benchmark"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Benchmark
+                    </Button>
+                  </div>
                 </div>
 
                 {benchmarksLoading ? (

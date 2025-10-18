@@ -2328,7 +2328,7 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Exceeding Target</p>
                               <p className="text-2xl font-bold text-green-600">
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
@@ -2346,7 +2346,7 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">On Target</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Meeting Target</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
@@ -2689,12 +2689,12 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Exceeding Target</p>
                               <p className="text-2xl font-bold text-green-600">
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return current > benchmark;
+                                  return current > benchmark * 1.05;
                                 }).length}
                               </p>
                             </div>
@@ -2707,12 +2707,12 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">On Target</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Meeting Target</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return current === benchmark;
+                                  return current >= benchmark * 0.95 && current <= benchmark * 1.05;
                                 }).length}
                               </p>
                             </div>
@@ -2730,7 +2730,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return current < benchmark;
+                                  return current < benchmark * 0.95;
                                 }).length}
                               </p>
                             </div>

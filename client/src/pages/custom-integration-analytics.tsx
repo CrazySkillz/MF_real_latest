@@ -2661,7 +2661,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return current > benchmark * 1.05;
+                                  return current > benchmark;
                                 }).length}
                               </p>
                             </div>
@@ -2679,7 +2679,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return current >= benchmark * 0.95 && current <= benchmark * 1.05;
+                                  return current === benchmark;
                                 }).length}
                               </p>
                             </div>
@@ -2697,7 +2697,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return current < benchmark * 0.95;
+                                  return current < benchmark;
                                 }).length}
                               </p>
                             </div>

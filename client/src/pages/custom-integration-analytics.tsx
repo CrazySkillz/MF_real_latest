@@ -2637,7 +2637,7 @@ export default function CustomIntegrationAnalytics() {
                 ) : benchmarksData && (benchmarksData as any[]).length > 0 ? (
                   <>
                     {/* Benchmark Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <Card>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
@@ -2658,9 +2658,11 @@ export default function CustomIntegrationAnalytics() {
                             <div>
                               <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
                               <p className="text-2xl font-bold text-green-600">
-                                {(benchmarksData as any[]).filter((b: any) => 
-                                  parseFloat(b.currentValue || '0') >= parseFloat(b.benchmarkValue || '0')
-                                ).length}
+                                {(benchmarksData as any[]).filter((b: any) => {
+                                  const current = parseFloat(b.currentValue || '0');
+                                  const benchmark = parseFloat(b.benchmarkValue || '0');
+                                  return current > benchmark * 1.05;
+                                }).length}
                               </p>
                             </div>
                             <TrendingUp className="w-8 h-8 text-green-500" />
@@ -2672,11 +2674,31 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">On Target</p>
+                              <p className="text-2xl font-bold text-amber-600">
+                                {(benchmarksData as any[]).filter((b: any) => {
+                                  const current = parseFloat(b.currentValue || '0');
+                                  const benchmark = parseFloat(b.benchmarkValue || '0');
+                                  return current >= benchmark * 0.95 && current <= benchmark * 1.05;
+                                }).length}
+                              </p>
+                            </div>
+                            <Target className="w-8 h-8 text-amber-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
                               <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
                               <p className="text-2xl font-bold text-red-600">
-                                {(benchmarksData as any[]).filter((b: any) => 
-                                  parseFloat(b.currentValue || '0') < parseFloat(b.benchmarkValue || '0')
-                                ).length}
+                                {(benchmarksData as any[]).filter((b: any) => {
+                                  const current = parseFloat(b.currentValue || '0');
+                                  const benchmark = parseFloat(b.benchmarkValue || '0');
+                                  return current < benchmark * 0.95;
+                                }).length}
                               </p>
                             </div>
                             <TrendingDown className="w-8 h-8 text-red-500" />

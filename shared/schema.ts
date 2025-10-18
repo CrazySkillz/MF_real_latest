@@ -290,6 +290,7 @@ export const benchmarks = pgTable("benchmarks", {
   currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"),
   unit: text("unit").notNull(), // '%', '$', 'ratio', 'count', etc.
   benchmarkType: text("benchmark_type").notNull().default("industry"), // 'industry', 'competitor', 'historical', 'goal'
+  competitorName: text("competitor_name"), // Name of competitor (when benchmarkType is 'competitor')
   source: text("source"), // 'Google Analytics Benchmarks', 'Facebook Industry Reports', 'Internal Historical Data'
   industry: text("industry"), // 'E-commerce', 'SaaS', 'Healthcare', etc.
   geoLocation: text("geo_location"), // 'Global', 'US', 'Europe', etc.
@@ -617,6 +618,7 @@ export const insertBenchmarkSchema = createInsertSchema(benchmarks).pick({
   currentValue: true,
   unit: true,
   benchmarkType: true,
+  competitorName: true,
   source: true,
   industry: true,
   geoLocation: true,

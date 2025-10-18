@@ -96,6 +96,7 @@ export default function CustomIntegrationAnalytics() {
     name: '',
     category: 'performance',
     benchmarkType: '',
+    competitorName: '',
     unit: '',
     benchmarkValue: '',
     currentValue: '',
@@ -362,6 +363,7 @@ export default function CustomIntegrationAnalytics() {
         name: '',
         category: 'performance',
         benchmarkType: '',
+        competitorName: '',
         unit: '',
         benchmarkValue: '',
         currentValue: '',
@@ -370,7 +372,11 @@ export default function CustomIntegrationAnalytics() {
         source: '',
         geographicLocation: '',
         period: 'monthly',
-        confidenceLevel: ''
+        confidenceLevel: '',
+        alertsEnabled: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        emailRecipients: ''
       });
     },
     onError: (error: any) => {
@@ -400,7 +406,9 @@ export default function CustomIntegrationAnalytics() {
       setBenchmarkForm({
         metric: '',
         name: '',
+        category: 'performance',
         benchmarkType: '',
+        competitorName: '',
         unit: '',
         benchmarkValue: '',
         currentValue: '',
@@ -409,7 +417,11 @@ export default function CustomIntegrationAnalytics() {
         source: '',
         geographicLocation: '',
         period: 'monthly',
-        confidenceLevel: ''
+        confidenceLevel: '',
+        alertsEnabled: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        emailRecipients: ''
       });
     },
     onError: (error: any) => {
@@ -2591,6 +2603,7 @@ export default function CustomIntegrationAnalytics() {
                           name: '',
                           category: 'performance',
                           benchmarkType: '',
+                          competitorName: '',
                           unit: '',
                           benchmarkValue: '',
                           currentValue: '',
@@ -2721,6 +2734,7 @@ export default function CustomIntegrationAnalytics() {
                                       name: benchmark.name || '',
                                       category: benchmark.category || 'performance',
                                       benchmarkType: benchmark.benchmarkType || '',
+                                      competitorName: benchmark.competitorName || '',
                                       unit: benchmark.unit || '',
                                       benchmarkValue: benchmark.benchmarkValue || '',
                                       currentValue: benchmark.currentValue || '',
@@ -3443,35 +3457,15 @@ export default function CustomIntegrationAnalytics() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-name">Benchmark Name *</Label>
-                <Input
-                  id="benchmark-name"
-                  placeholder="e.g., Email Open Rate Benchmark"
-                  value={benchmarkForm.name}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
-                  data-testid="input-benchmark-name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-category">Category *</Label>
-                <Select
-                  value={benchmarkForm.category}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, category: value })}
-                >
-                  <SelectTrigger id="benchmark-category" data-testid="select-benchmark-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="performance">Performance</SelectItem>
-                    <SelectItem value="engagement">Engagement</SelectItem>
-                    <SelectItem value="conversion">Conversion</SelectItem>
-                    <SelectItem value="traffic">Traffic</SelectItem>
-                    <SelectItem value="revenue">Revenue</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-name">Benchmark Name *</Label>
+              <Input
+                id="benchmark-name"
+                placeholder="e.g., Email Open Rate Benchmark"
+                value={benchmarkForm.name}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
+                data-testid="input-benchmark-name"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -3670,6 +3664,20 @@ export default function CustomIntegrationAnalytics() {
               </div>
             </div>
 
+            {/* Competitor Name - Conditional */}
+            {benchmarkForm.benchmarkType === 'competitor' && (
+              <div className="space-y-2">
+                <Label htmlFor="competitor-name">Competitor Name *</Label>
+                <Input
+                  id="competitor-name"
+                  placeholder="e.g., Acme Corp, Competitor X"
+                  value={benchmarkForm.competitorName}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, competitorName: e.target.value })}
+                  data-testid="input-competitor-name"
+                />
+              </div>
+            )}
+
             {/* Alert Settings Section */}
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center space-x-2">
@@ -3751,7 +3759,9 @@ export default function CustomIntegrationAnalytics() {
                   setBenchmarkForm({
                     metric: '',
                     name: '',
+                    category: 'performance',
                     benchmarkType: '',
+                    competitorName: '',
                     unit: '',
                     benchmarkValue: '',
                     currentValue: '',

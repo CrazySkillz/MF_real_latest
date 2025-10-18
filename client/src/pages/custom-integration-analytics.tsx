@@ -2391,7 +2391,14 @@ export default function CustomIntegrationAnalytics() {
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                                  {kpi.metric && (
+                                    <Badge variant="outline" className="text-xs font-normal">
+                                      Metric: {kpi.metric}
+                                    </Badge>
+                                  )}
+                                </div>
                                 <CardDescription className="text-sm">
                                   {kpi.description || 'No description provided'}
                                 </CardDescription>

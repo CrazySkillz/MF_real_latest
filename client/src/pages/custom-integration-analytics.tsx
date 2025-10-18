@@ -2333,7 +2333,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
                                   const target = parseFloat(k.targetValue || '0');
-                                  return current > target;
+                                  return current > target * 1.05;
                                 }).length}
                               </p>
                             </div>
@@ -2351,7 +2351,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
                                   const target = parseFloat(k.targetValue || '0');
-                                  return current === target;
+                                  return current >= target * 0.95 && current <= target * 1.05;
                                 }).length}
                               </p>
                             </div>
@@ -2369,7 +2369,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
                                   const target = parseFloat(k.targetValue || '0');
-                                  return current < target;
+                                  return current < target * 0.95;
                                 }).length}
                               </p>
                             </div>

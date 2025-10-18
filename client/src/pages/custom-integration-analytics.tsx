@@ -2528,6 +2528,14 @@ export default function CustomIntegrationAnalytics() {
                                       ></div>
                                     </div>
                                   </div>
+
+                                  {/* Timeframe Indicator */}
+                                  <div className="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    <span className="capitalize">
+                                      {kpi.timeframe || 'Monthly'}
+                                    </span>
+                                  </div>
                                 </div>
                               );
                             })()}

@@ -2309,7 +2309,7 @@ export default function CustomIntegrationAnalytics() {
                     </div>
 
                     {/* KPI Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <Card>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
@@ -2328,12 +2328,16 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">High Priority</p>
-                              <p className="text-2xl font-bold text-red-600">
-                                {(kpisData as any[]).filter((k: any) => k.priority === 'high').length}
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                              <p className="text-2xl font-bold text-green-600">
+                                {(kpisData as any[]).filter((k: any) => {
+                                  const current = parseFloat(k.currentValue || '0');
+                                  const target = parseFloat(k.targetValue || '0');
+                                  return current > target;
+                                }).length}
                               </p>
                             </div>
-                            <AlertCircle className="w-8 h-8 text-red-500" />
+                            <TrendingUp className="w-8 h-8 text-green-500" />
                           </div>
                         </CardContent>
                       </Card>
@@ -2342,12 +2346,34 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Medium Priority</p>
-                              <p className="text-2xl font-bold text-yellow-600">
-                                {(kpisData as any[]).filter((k: any) => k.priority === 'medium').length}
+                              <p className="text-sm text-slate-600 dark:text-slate-400">On Target</p>
+                              <p className="text-2xl font-bold text-amber-600">
+                                {(kpisData as any[]).filter((k: any) => {
+                                  const current = parseFloat(k.currentValue || '0');
+                                  const target = parseFloat(k.targetValue || '0');
+                                  return current === target;
+                                }).length}
                               </p>
                             </div>
-                            <TrendingUp className="w-8 h-8 text-yellow-500" />
+                            <Target className="w-8 h-8 text-amber-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
+                              <p className="text-2xl font-bold text-red-600">
+                                {(kpisData as any[]).filter((k: any) => {
+                                  const current = parseFloat(k.currentValue || '0');
+                                  const target = parseFloat(k.targetValue || '0');
+                                  return current < target;
+                                }).length}
+                              </p>
+                            </div>
+                            <TrendingDown className="w-8 h-8 text-red-500" />
                           </div>
                         </CardContent>
                       </Card>
@@ -2501,14 +2527,6 @@ export default function CustomIntegrationAnalytics() {
                                         style={{ width: `${Math.round(progressBarWidth)}%` }}
                                       ></div>
                                     </div>
-                                  </div>
-
-                                  {/* Timeframe Indicator */}
-                                  <div className="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    <span className="capitalize">
-                                      {kpi.timeframe || 'Monthly'} • Updated {kpi.updatedAt ? formatTimeAgo(kpi.updatedAt) : 'recently'}
-                                    </span>
                                   </div>
                                 </div>
                               );

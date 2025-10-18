@@ -2683,32 +2683,6 @@ export default function CustomIntegrationAnalytics() {
                           </div>
                         </CardContent>
                       </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Improvement</p>
-                              <p className="text-2xl font-bold text-blue-600">
-                                {(() => {
-                                  const improvements = (benchmarksData as any[])
-                                    .filter((b: any) => b.currentValue && b.benchmarkValue)
-                                    .map((b: any) => {
-                                      const current = parseFloat(b.currentValue);
-                                      const benchmark = parseFloat(b.benchmarkValue);
-                                      return benchmark > 0 ? ((current - benchmark) / benchmark) * 100 : 0;
-                                    });
-                                  const avgImprovement = improvements.length > 0
-                                    ? improvements.reduce((sum, val) => sum + val, 0) / improvements.length
-                                    : 0;
-                                  return `${avgImprovement >= 0 ? '+' : ''}${avgImprovement.toFixed(1)}%`;
-                                })()}
-                              </p>
-                            </div>
-                            <BarChart3 className="w-8 h-8 text-blue-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
                     </div>
 
                     {/* Benchmark Cards */}

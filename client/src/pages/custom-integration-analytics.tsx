@@ -2242,32 +2242,58 @@ export default function CustomIntegrationAnalytics() {
                           Track and monitor your Custom Integration KPIs
                         </p>
                       </div>
-                      <Button 
-                        onClick={() => {
-                          setEditingKPI(null);
-                          setKpiForm({
-                            name: '',
-                            description: '',
-                            category: 'performance',
-                            metric: '',
-                            targetValue: '',
-                            currentValue: '',
-                            unit: '',
-                            priority: 'medium',
-                            timeframe: 'monthly',
-                            alertsEnabled: false,
-                            alertThreshold: '',
-                            alertCondition: 'below',
-                            emailRecipients: ''
-                          });
-                          setIsKPIModalOpen(true);
-                        }}
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
-                        data-testid="button-create-kpi-header"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create KPI
-                      </Button>
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          variant="outline"
+                          onClick={() => {
+                            setEditingReportId(null);
+                            setReportForm({
+                              name: '',
+                              description: '',
+                              reportType: 'kpis',
+                              configuration: null,
+                              scheduleEnabled: false,
+                              scheduleFrequency: 'weekly',
+                              scheduleDayOfWeek: 'monday',
+                              scheduleTime: '9:00 AM',
+                              emailRecipients: '',
+                              status: 'draft'
+                            });
+                            setIsReportModalOpen(true);
+                          }}
+                          className="border-slate-300 dark:border-slate-700"
+                          data-testid="button-export-kpi-report"
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          Export KPI Report
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            setEditingKPI(null);
+                            setKpiForm({
+                              name: '',
+                              description: '',
+                              category: 'performance',
+                              metric: '',
+                              targetValue: '',
+                              currentValue: '',
+                              unit: '',
+                              priority: 'medium',
+                              timeframe: 'monthly',
+                              alertsEnabled: false,
+                              alertThreshold: '',
+                              alertCondition: 'below',
+                              emailRecipients: ''
+                            });
+                            setIsKPIModalOpen(true);
+                          }}
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          data-testid="button-create-kpi-header"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create KPI
+                        </Button>
+                      </div>
                     </div>
 
                     {/* KPI Summary Cards */}

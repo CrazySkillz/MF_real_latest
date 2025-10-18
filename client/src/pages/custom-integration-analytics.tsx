@@ -145,11 +145,7 @@ export default function CustomIntegrationAnalytics() {
 
   // Sync kpiForm when editingKPI changes
   useEffect(() => {
-    if (editingKPI && !isKPIModalOpen) {
-      console.log('=== SYNCING KPI FORM (useEffect) ===');
-      console.log('editingKPI:', editingKPI);
-      console.log('editingKPI.metric:', editingKPI.metric);
-      
+    if (editingKPI) {
       const formData = {
         name: editingKPI.name,
         description: editingKPI.description || '',
@@ -166,17 +162,14 @@ export default function CustomIntegrationAnalytics() {
         emailRecipients: editingKPI.emailRecipients || ''
       };
       
-      console.log('Setting formData:', formData);
-      console.log('formData.metric:', formData.metric);
       setKpiForm(formData);
       
-      // Open modal after form is set
-      setTimeout(() => {
-        console.log('Opening modal...');
-        setIsKPIModalOpen(true);
-      }, 0);
+      // Open modal if not already open
+      if (!isKPIModalOpen) {
+        setTimeout(() => setIsKPIModalOpen(true), 0);
+      }
     }
-  }, [editingKPI, isKPIModalOpen]);
+  }, [editingKPI]);
 
   // Get formatted time zone display (e.g., "GMT-5" or "PST")
   const getTimeZoneDisplay = () => {
@@ -2384,12 +2377,7 @@ export default function CustomIntegrationAnalytics() {
                                   variant="ghost" 
                                   size="icon"
                                   className="h-8 w-8 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
-                                  onClick={() => {
-                                    console.log('=== EDIT BUTTON CLICKED ===');
-                                    console.log('KPI:', kpi.name);
-                                    console.log('KPI metric:', kpi.metric);
-                                    setEditingKPI(kpi);
-                                  }}
+                                  onClick={() => setEditingKPI(kpi)}
                                   data-testid={`button-edit-kpi-${kpi.id}`}
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -3128,18 +3116,10 @@ export default function CustomIntegrationAnalytics() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="kpi-metric">Metric Source</Label>
-                {(() => {
-                  console.log('=== SELECT RENDER ===');
-                  console.log('kpiForm.metric:', kpiForm.metric);
-                  console.log('value prop:', kpiForm.metric || '');
-                  return null;
-                })()}
                 <Select
                   key={`metric-select-${editingKPI?.id || 'new'}-${kpiForm.metric}`}
                   value={kpiForm.metric || ''}
                   onValueChange={(value) => {
-                    console.log('=== SELECT VALUE CHANGED ===');
-                    console.log('New value:', value);
                     setKpiForm({ ...kpiForm, metric: value });
                     // Auto-populate current value from metrics
                     let currentValue = '';

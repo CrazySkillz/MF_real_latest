@@ -2675,14 +2675,27 @@ export default function CustomIntegrationAnalytics() {
                           <CardContent className="p-6">
                             <div className="flex items-start justify-between mb-4">
                               <div>
-                                <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
-                                  {benchmark.name}
-                                </h3>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
+                                    {benchmark.name}
+                                  </h3>
+                                  {benchmark.metric && (
+                                    <Badge variant="outline" className="text-xs font-normal">
+                                      Metric: {benchmark.metric}
+                                    </Badge>
+                                  )}
+                                </div>
                                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                                   {benchmark.description || 'No description provided'}
                                 </p>
                                 <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
-                                  {benchmark.industry && <span>{benchmark.industry}</span>}
+                                  {benchmark.benchmarkType && <span>Type: {benchmark.benchmarkType}</span>}
+                                  {benchmark.industry && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{benchmark.industry}</span>
+                                    </>
+                                  )}
                                   {benchmark.period && (
                                     <>
                                       <span>•</span>

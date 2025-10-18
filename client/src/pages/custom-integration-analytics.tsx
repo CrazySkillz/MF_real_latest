@@ -2382,16 +2382,26 @@ export default function CustomIntegrationAnalytics() {
                     {/* KPI Cards */}
                     <div className="grid gap-6 lg:grid-cols-2">
                       {(kpisData as any[]).map((kpi: any) => {
-                        // Calculate status - simple comparison of current vs target
+                        // Calculate status using industry-standard 120% threshold
                         const currentVal = kpi.currentValue ? parseFloat(kpi.currentValue) : 0;
                         const targetVal = kpi.targetValue ? parseFloat(kpi.targetValue) : 0;
                         
-                        const status = currentVal >= targetVal ? 'Outperforming' : 'Underperforming';
+                        // Determine status based on percentage of target
+                        let status = 'Underperforming';
+                        if (targetVal > 0) {
+                          if (currentVal >= targetVal * 1.2) {
+                            status = 'Exceeding Target';
+                          } else if (currentVal >= targetVal) {
+                            status = 'Meeting Target';
+                          }
+                        }
                         
                         const getStatusColor = (status: string) => {
                           switch (status) {
-                            case 'Outperforming':
+                            case 'Exceeding Target':
                               return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+                            case 'Meeting Target':
+                              return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300';
                             case 'Underperforming':
                               return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
                             default:
@@ -2889,11 +2899,10 @@ export default function CustomIntegrationAnalytics() {
                               const diff = current - benchmarkVal;
                               const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100) : 0;
                               
-                              // Status determination based on benchmark comparison
-                              const isMeetingBenchmark = current >= benchmarkVal;
-                              const isExceeding = percentDiff > 5; // More than 5% above
-                              const isClose = !isMeetingBenchmark && percentDiff >= -5; // Within 5% below
-                              const isBelowBenchmark = percentDiff < -5; // More than 5% below
+                              // Status determination based on industry-standard 120% threshold
+                              const isExceeding = current >= benchmarkVal * 1.2; // 120% or more
+                              const isMeetingBenchmark = current >= benchmarkVal && current < benchmarkVal * 1.2; // 100-119%
+                              const isBelowBenchmark = current < benchmarkVal; // Below 100%
                               
                               // Display values with appropriate precision
                               const displayProgress = progressTowardBenchmark >= 100 
@@ -2907,7 +2916,7 @@ export default function CustomIntegrationAnalytics() {
                                     <div className="flex items-center justify-between text-sm">
                                       <div className="flex items-center gap-2">
                                         <span className="text-slate-600 dark:text-slate-400">Progress to Benchmark</span>
-                                        {isMeetingBenchmark && <TrendingUp className="w-4 h-4 text-green-600" />}
+                                        {(isExceeding || isMeetingBenchmark) && <TrendingUp className="w-4 h-4 text-green-600" />}
                                         {isBelowBenchmark && <TrendingDown className="w-4 h-4 text-red-600" />}
                                       </div>
                                       <span className="font-semibold text-slate-900 dark:text-white">
@@ -2917,10 +2926,10 @@ export default function CustomIntegrationAnalytics() {
                                     <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
                                       <div 
                                         className={`h-2.5 rounded-full transition-all ${
-                                          isMeetingBenchmark
-                                            ? 'bg-green-500' 
-                                            : isClose
-                                            ? 'bg-yellow-500'
+                                          isExceeding
+                                            ? 'bg-green-500'
+                                            : isMeetingBenchmark
+                                            ? 'bg-amber-500'
                                             : 'bg-red-500'
                                         }`}
                                         style={{ width: `${Math.min(progressTowardBenchmark, 100)}%` }}
@@ -2934,31 +2943,26 @@ export default function CustomIntegrationAnalytics() {
                                       isExceeding
                                         ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
                                         : isMeetingBenchmark
-                                        ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400'
-                                        : isClose
-                                        ? 'bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-400'
+                                        ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
                                         : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
                                     }`}>
                                       {isExceeding && <CheckCircle2 className="w-3 h-3" />}
-                                      {isMeetingBenchmark && !isExceeding && <CheckCircle2 className="w-3 h-3" />}
-                                      {isClose && <Activity className="w-3 h-3" />}
+                                      {isMeetingBenchmark && <CheckCircle2 className="w-3 h-3" />}
                                       {isBelowBenchmark && <AlertCircle className="w-3 h-3" />}
                                       <span>
                                         {isExceeding
-                                          ? 'Exceeding Benchmark' 
+                                          ? 'Exceeding Target' 
                                           : isMeetingBenchmark
-                                          ? 'Meeting Benchmark'
-                                          : isClose
-                                          ? 'Close to Benchmark'
-                                          : 'Below Benchmark'}
+                                          ? 'Meeting Target'
+                                          : 'Below Target'}
                                       </span>
                                     </div>
                                     
                                     <Badge 
-                                      variant={isMeetingBenchmark ? "default" : "secondary"}
-                                      className={isMeetingBenchmark ? "bg-green-600 text-white" : "bg-red-600 text-white"}
+                                      variant={isExceeding || isMeetingBenchmark ? "default" : "secondary"}
+                                      className={isExceeding ? "bg-green-600 text-white" : isMeetingBenchmark ? "bg-amber-600 text-white" : "bg-red-600 text-white"}
                                     >
-                                      {isMeetingBenchmark ? (
+                                      {current >= benchmarkVal ? (
                                         <>
                                           <TrendingUp className="w-3 h-3 mr-1" />
                                           {percentDiff.toFixed(2)}% Above Benchmark

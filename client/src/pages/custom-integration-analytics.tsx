@@ -2363,7 +2363,7 @@ export default function CustomIntegrationAnalytics() {
                                       name: kpi.name,
                                       description: kpi.description || '',
                                       category: kpi.category || 'performance',
-                                      metric: kpi.metric || '',
+                                      metric: kpi.metric ?? '', // Use nullish coalescing - keeps empty string, converts null to ''
                                       targetValue: kpi.targetValue || '',
                                       currentValue: kpi.currentValue || '',
                                       unit: kpi.unit || '',
@@ -2374,9 +2374,9 @@ export default function CustomIntegrationAnalytics() {
                                       alertCondition: kpi.alertCondition || 'below',
                                       emailRecipients: kpi.emailRecipients || ''
                                     };
-                                    console.log('Setting kpiForm to:', formData);
+                                    console.log('=== SETTING FORM DATA ===');
                                     console.log('formData.metric:', formData.metric);
-                                    console.log('Will Select show value?', formData.metric && formData.metric !== '' ? formData.metric : 'NO - undefined');
+                                    console.log('typeof formData.metric:', typeof formData.metric);
                                     setKpiForm(formData);
                                     setIsKPIModalOpen(true);
                                   }}
@@ -3098,7 +3098,8 @@ export default function CustomIntegrationAnalytics() {
               <div className="space-y-2">
                 <Label htmlFor="kpi-metric">Metric Source</Label>
                 <Select
-                  value={kpiForm.metric && kpiForm.metric !== '' ? kpiForm.metric : undefined}
+                  key={`metric-select-${editingKPI?.id || 'new'}-${kpiForm.metric}`}
+                  value={kpiForm.metric || ''}
                   onValueChange={(value) => {
                     setKpiForm({ ...kpiForm, metric: value });
                     // Auto-populate current value from metrics

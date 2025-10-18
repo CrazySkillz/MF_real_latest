@@ -2333,7 +2333,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
                                   const target = parseFloat(k.targetValue || '0');
-                                  return current > target;
+                                  return target > 0 && current >= target * 1.2;
                                 }).length}
                               </p>
                             </div>
@@ -2351,7 +2351,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
                                   const target = parseFloat(k.targetValue || '0');
-                                  return current === target;
+                                  return target > 0 && current >= target && current < target * 1.2;
                                 }).length}
                               </p>
                             </div>
@@ -2369,7 +2369,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
                                   const target = parseFloat(k.targetValue || '0');
-                                  return current < target;
+                                  return target > 0 && current < target;
                                 }).length}
                               </p>
                             </div>
@@ -2694,7 +2694,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return current > benchmark;
+                                  return benchmark > 0 && current >= benchmark * 1.2;
                                 }).length}
                               </p>
                             </div>
@@ -2712,7 +2712,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return current === benchmark;
+                                  return benchmark > 0 && current >= benchmark && current < benchmark * 1.2;
                                 }).length}
                               </p>
                             </div>
@@ -2730,7 +2730,7 @@ export default function CustomIntegrationAnalytics() {
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return current < benchmark;
+                                  return benchmark > 0 && current < benchmark;
                                 }).length}
                               </p>
                             </div>

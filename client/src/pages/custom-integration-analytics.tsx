@@ -2656,12 +2656,14 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Categories</p>
-                              <p className="text-2xl font-bold text-purple-600">
-                                {new Set((benchmarksData as any[]).map((b: any) => b.category)).size}
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                              <p className="text-2xl font-bold text-green-600">
+                                {(benchmarksData as any[]).filter((b: any) => 
+                                  parseFloat(b.currentValue || '0') >= parseFloat(b.benchmarkValue || '0')
+                                ).length}
                               </p>
                             </div>
-                            <BarChart3 className="w-8 h-8 text-purple-500" />
+                            <TrendingUp className="w-8 h-8 text-green-500" />
                           </div>
                         </CardContent>
                       </Card>
@@ -2670,12 +2672,40 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Industries</p>
-                              <p className="text-2xl font-bold text-blue-600">
-                                {new Set((benchmarksData as any[]).map((b: any) => b.industry)).size}
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
+                              <p className="text-2xl font-bold text-red-600">
+                                {(benchmarksData as any[]).filter((b: any) => 
+                                  parseFloat(b.currentValue || '0') < parseFloat(b.benchmarkValue || '0')
+                                ).length}
                               </p>
                             </div>
-                            <Trophy className="w-8 h-8 text-blue-500" />
+                            <TrendingDown className="w-8 h-8 text-red-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Improvement</p>
+                              <p className="text-2xl font-bold text-blue-600">
+                                {(() => {
+                                  const improvements = (benchmarksData as any[])
+                                    .filter((b: any) => b.currentValue && b.benchmarkValue)
+                                    .map((b: any) => {
+                                      const current = parseFloat(b.currentValue);
+                                      const benchmark = parseFloat(b.benchmarkValue);
+                                      return benchmark > 0 ? ((current - benchmark) / benchmark) * 100 : 0;
+                                    });
+                                  const avgImprovement = improvements.length > 0
+                                    ? improvements.reduce((sum, val) => sum + val, 0) / improvements.length
+                                    : 0;
+                                  return `${avgImprovement >= 0 ? '+' : ''}${avgImprovement.toFixed(1)}%`;
+                                })()}
+                              </p>
+                            </div>
+                            <BarChart3 className="w-8 h-8 text-blue-500" />
                           </div>
                         </CardContent>
                       </Card>

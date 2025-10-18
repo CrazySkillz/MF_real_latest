@@ -2318,23 +2318,17 @@ export default function CustomIntegrationAnalytics() {
                     {/* KPI Cards */}
                     <div className="grid gap-6 lg:grid-cols-2">
                       {(kpisData as any[]).map((kpi: any) => {
-                        // Calculate status
-                        const actualProgress = kpi.targetValue && kpi.currentValue 
-                          ? Math.min((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100, 100)
-                          : 0;
-                        const expectedProgress = calculateExpectedProgress(kpi.timeframe || 'monthly');
-                        const isAhead = actualProgress >= 100;
-                        const isBehind = actualProgress < expectedProgress - 10;
+                        // Calculate status - simple comparison of current vs target
+                        const currentVal = kpi.currentValue ? parseFloat(kpi.currentValue) : 0;
+                        const targetVal = kpi.targetValue ? parseFloat(kpi.targetValue) : 0;
                         
-                        const status = isAhead ? 'Exceeding' : isBehind ? 'Behind' : 'On Track';
+                        const status = currentVal >= targetVal ? 'Outperforming' : 'Underperforming';
                         
                         const getStatusColor = (status: string) => {
                           switch (status) {
-                            case 'Exceeding':
+                            case 'Outperforming':
                               return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-                            case 'On Track':
-                              return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-                            case 'Behind':
+                            case 'Underperforming':
                               return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
                             default:
                               return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
@@ -2438,21 +2432,17 @@ export default function CustomIntegrationAnalytics() {
                             {kpi.targetValue && kpi.currentValue && (() => {
                               const actualProgress = (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100;
                               const progressBarWidth = Math.min(actualProgress, 100);
-                              const expectedProgress = calculateExpectedProgress(kpi.timeframe || 'monthly');
-                              // Only show "ahead" when target is exceeded
-                              const isAhead = actualProgress >= 100;
-                              const isBehind = actualProgress < expectedProgress - 10;
-                              const isOnTrack = !isAhead && !isBehind;
+                              const isOutperforming = actualProgress >= 100;
                               
                               return (
                                 <div className="space-y-3">
-                                  {/* Actual Progress */}
+                                  {/* Progress to Target */}
                                   <div className="space-y-2">
                                     <div className="flex items-center justify-between text-sm">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-slate-600 dark:text-slate-400">Actual Progress</span>
-                                        {isAhead && <TrendingUp className="w-4 h-4 text-green-600" />}
-                                        {isBehind && <TrendingDown className="w-4 h-4 text-red-600" />}
+                                        <span className="text-slate-600 dark:text-slate-400">Progress to Target</span>
+                                        {isOutperforming && <TrendingUp className="w-4 h-4 text-green-600" />}
+                                        {!isOutperforming && actualProgress > 0 && <Activity className="w-4 h-4 text-blue-600" />}
                                       </div>
                                       <span className="font-semibold text-slate-900 dark:text-white">
                                         {Math.round(actualProgress)}%
@@ -2461,13 +2451,7 @@ export default function CustomIntegrationAnalytics() {
                                     <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
                                       <div 
                                         className={`h-2.5 rounded-full transition-all ${
-                                          actualProgress >= 100 
-                                            ? 'bg-green-500' 
-                                            : isAhead
-                                            ? 'bg-green-500'
-                                            : isOnTrack && !isBehind
-                                            ? 'bg-blue-500'
-                                            : 'bg-yellow-500'
+                                          isOutperforming ? 'bg-green-500' : 'bg-blue-500'
                                         }`}
                                         style={{ width: `${Math.round(progressBarWidth)}%` }}
                                       ></div>

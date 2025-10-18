@@ -143,6 +143,41 @@ export default function CustomIntegrationAnalytics() {
     setUserTimeZone(detectedTimeZone);
   }, []);
 
+  // Sync kpiForm when editingKPI changes
+  useEffect(() => {
+    if (editingKPI && !isKPIModalOpen) {
+      console.log('=== SYNCING KPI FORM (useEffect) ===');
+      console.log('editingKPI:', editingKPI);
+      console.log('editingKPI.metric:', editingKPI.metric);
+      
+      const formData = {
+        name: editingKPI.name,
+        description: editingKPI.description || '',
+        category: editingKPI.category || 'performance',
+        metric: editingKPI.metric || '',
+        targetValue: editingKPI.targetValue || '',
+        currentValue: editingKPI.currentValue || '',
+        unit: editingKPI.unit || '',
+        priority: editingKPI.priority || 'medium',
+        timeframe: editingKPI.timeframe || 'monthly',
+        alertsEnabled: editingKPI.alertsEnabled || false,
+        alertThreshold: editingKPI.alertThreshold || '',
+        alertCondition: editingKPI.alertCondition || 'below',
+        emailRecipients: editingKPI.emailRecipients || ''
+      };
+      
+      console.log('Setting formData:', formData);
+      console.log('formData.metric:', formData.metric);
+      setKpiForm(formData);
+      
+      // Open modal after form is set
+      setTimeout(() => {
+        console.log('Opening modal...');
+        setIsKPIModalOpen(true);
+      }, 0);
+    }
+  }, [editingKPI, isKPIModalOpen]);
+
   // Get formatted time zone display (e.g., "GMT-5" or "PST")
   const getTimeZoneDisplay = () => {
     if (!userTimeZone) return '';
@@ -2350,35 +2385,10 @@ export default function CustomIntegrationAnalytics() {
                                   size="icon"
                                   className="h-8 w-8 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
                                   onClick={() => {
-                                    console.log('=== EDITING KPI (NEW DATA) ===');
-                                    console.log('Full KPI object:', kpi);
-                                    console.log('kpi.metric value:', kpi.metric);
-                                    console.log('kpi.metric type:', typeof kpi.metric);
-                                    console.log('kpi.metric === null?', kpi.metric === null);
-                                    console.log('kpi.metric === ""?', kpi.metric === '');
-                                    console.log('kpi.metric || "":', kpi.metric || '');
-                                    
+                                    console.log('=== EDIT BUTTON CLICKED ===');
+                                    console.log('KPI:', kpi.name);
+                                    console.log('KPI metric:', kpi.metric);
                                     setEditingKPI(kpi);
-                                    const formData = {
-                                      name: kpi.name,
-                                      description: kpi.description || '',
-                                      category: kpi.category || 'performance',
-                                      metric: kpi.metric ?? '', // Use nullish coalescing - keeps empty string, converts null to ''
-                                      targetValue: kpi.targetValue || '',
-                                      currentValue: kpi.currentValue || '',
-                                      unit: kpi.unit || '',
-                                      priority: kpi.priority || 'medium',
-                                      timeframe: kpi.timeframe || 'monthly',
-                                      alertsEnabled: kpi.alertsEnabled || false,
-                                      alertThreshold: kpi.alertThreshold || '',
-                                      alertCondition: kpi.alertCondition || 'below',
-                                      emailRecipients: kpi.emailRecipients || ''
-                                    };
-                                    console.log('=== SETTING FORM DATA ===');
-                                    console.log('formData.metric:', formData.metric);
-                                    console.log('typeof formData.metric:', typeof formData.metric);
-                                    setKpiForm(formData);
-                                    setIsKPIModalOpen(true);
                                   }}
                                   data-testid={`button-edit-kpi-${kpi.id}`}
                                 >
@@ -3073,7 +3083,28 @@ export default function CustomIntegrationAnalytics() {
       </div>
 
       {/* KPI Modal */}
-      <Dialog open={isKPIModalOpen} onOpenChange={setIsKPIModalOpen}>
+      <Dialog open={isKPIModalOpen} onOpenChange={(open) => {
+        setIsKPIModalOpen(open);
+        if (!open) {
+          // Reset editing state when modal closes
+          setEditingKPI(null);
+          setKpiForm({
+            name: '',
+            description: '',
+            category: 'performance',
+            metric: '',
+            targetValue: '',
+            currentValue: '',
+            unit: '',
+            priority: 'medium',
+            timeframe: 'monthly',
+            alertsEnabled: false,
+            alertThreshold: '',
+            alertCondition: 'below',
+            emailRecipients: ''
+          });
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingKPI ? 'Edit KPI' : 'Create New KPI'}</DialogTitle>
@@ -3097,10 +3128,18 @@ export default function CustomIntegrationAnalytics() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="kpi-metric">Metric Source</Label>
+                {(() => {
+                  console.log('=== SELECT RENDER ===');
+                  console.log('kpiForm.metric:', kpiForm.metric);
+                  console.log('value prop:', kpiForm.metric || '');
+                  return null;
+                })()}
                 <Select
                   key={`metric-select-${editingKPI?.id || 'new'}-${kpiForm.metric}`}
                   value={kpiForm.metric || ''}
                   onValueChange={(value) => {
+                    console.log('=== SELECT VALUE CHANGED ===');
+                    console.log('New value:', value);
                     setKpiForm({ ...kpiForm, metric: value });
                     // Auto-populate current value from metrics
                     let currentValue = '';

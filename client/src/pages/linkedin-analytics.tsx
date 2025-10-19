@@ -4602,6 +4602,36 @@ export default function LinkedInAnalytics() {
                         )}
                       </AccordionContent>
                     </AccordionItem>
+
+                    {/* Ad Comparison */}
+                    <AccordionItem value="ad-comparison">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Ad Comparison
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 pt-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="include-ad-comparison"
+                              checked={customReportConfig.includeAdComparison}
+                              onCheckedChange={(checked) => {
+                                setCustomReportConfig({
+                                  ...customReportConfig,
+                                  includeAdComparison: checked as boolean
+                                });
+                              }}
+                              data-testid="checkbox-ad-comparison"
+                            />
+                            <Label htmlFor="include-ad-comparison" className="text-sm cursor-pointer">
+                              Include side-by-side ad performance comparison
+                            </Label>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 pl-6">
+                            Compare performance metrics across all ads in your LinkedIn campaigns
+                          </p>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
                   </Accordion>
                 </div>
 

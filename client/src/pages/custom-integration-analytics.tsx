@@ -359,12 +359,14 @@ export default function CustomIntegrationAnalytics() {
         data: {
           ...kpiForm,
           platformType: 'custom-integration',
+          campaignId: campaignId,
         }
       });
     } else {
       createKpiMutation.mutate({
         ...kpiForm,
         platformType: 'custom-integration',
+        campaignId: campaignId,
       });
     }
   };
@@ -489,12 +491,14 @@ export default function CustomIntegrationAnalytics() {
         data: {
           ...benchmarkForm,
           platformType: 'custom-integration',
+          campaignId: campaignId,
         }
       });
     } else {
       createBenchmarkMutation.mutate({
         ...benchmarkForm,
         platformType: 'custom-integration',
+        campaignId: campaignId,
       });
     }
   };
@@ -1549,6 +1553,7 @@ export default function CustomIntegrationAnalytics() {
     const reportData: any = {
       ...reportForm,
       platformType: 'custom-integration',
+      campaignId: campaignId,
       scheduleDayOfWeek: reportForm.scheduleFrequency === 'weekly' 
         ? dayOfWeekToNumber(reportForm.scheduleDayOfWeek) 
         : null,
@@ -1590,6 +1595,7 @@ export default function CustomIntegrationAnalytics() {
     const reportData: any = {
       ...reportForm,
       platformType: 'custom-integration',
+      campaignId: campaignId,
       scheduleDayOfWeek: reportForm.scheduleFrequency === 'weekly' 
         ? dayOfWeekToNumber(reportForm.scheduleDayOfWeek) 
         : null,

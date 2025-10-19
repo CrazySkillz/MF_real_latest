@@ -254,12 +254,23 @@ export default function CustomIntegrationAnalytics() {
       const res = await apiRequest('POST', '/api/platforms/custom-integration/kpis', kpiData);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis', campaignId] });
-      toast({
-        title: "KPI Created",
-        description: "Your KPI has been successfully created.",
-      });
+      
+      // DEBUGGING: Show debug info
+      if (data.__debug) {
+        console.log('[KPI Created] Debug Info:', data.__debug);
+        toast({
+          title: "KPI Created - DEBUG",
+          description: `Received: ${data.__debug.receivedCampaignId} (${data.__debug.receivedCampaignIdType}), Saved: ${data.__debug.savedCampaignId}`,
+        });
+      } else {
+        toast({
+          title: "KPI Created",
+          description: "Your KPI has been successfully created.",
+        });
+      }
+      
       setIsKPIModalOpen(false);
       setKpiForm({
         name: '',

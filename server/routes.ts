@@ -1328,6 +1328,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       
+      console.log('[POST KPI] Request body:', JSON.stringify(req.body, null, 2));
+      console.log('[POST KPI] campaignId from body:', req.body.campaignId);
+      
       // Convert empty strings to null for numeric fields
       const cleanedData = {
         ...req.body,
@@ -1338,9 +1341,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentValue: req.body.currentValue === '' ? null : req.body.currentValue
       };
       
+      console.log('[POST KPI] Cleaned campaignId:', cleanedData.campaignId);
+      
       const validatedKPI = insertKPISchema.parse(cleanedData);
       
+      console.log('[POST KPI] Validated KPI campaignId:', validatedKPI.campaignId);
+      
       const kpi = await storage.createKPI(validatedKPI);
+      
+      console.log('[POST KPI] Created KPI with campaignId:', kpi.campaignId);
+      
       res.json(kpi);
     } catch (error) {
       console.error('Platform KPI creation error:', error);

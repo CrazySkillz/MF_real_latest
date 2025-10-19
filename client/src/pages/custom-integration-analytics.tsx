@@ -215,9 +215,13 @@ export default function CustomIntegrationAnalytics() {
     queryKey: ['/api/platforms/custom-integration/kpis', campaignId],
     queryFn: async () => {
       const url = `/api/platforms/custom-integration/kpis?campaignId=${campaignId}`;
+      console.log('[KPIs Query] Custom queryFn executing! URL:', url);
+      console.log('[KPIs Query] CampaignId:', campaignId);
       const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch KPIs');
-      return res.json();
+      const data = await res.json();
+      console.log('[KPIs Query] Response:', data);
+      return data;
     },
     enabled: !!campaignId,
     staleTime: 0,

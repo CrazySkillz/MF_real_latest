@@ -2658,15 +2658,6 @@ export default function CustomIntegrationAnalytics() {
                     </div>
 
                     <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Target className="w-5 h-5 text-purple-600" />
-                          Custom Integration KPIs
-                        </CardTitle>
-                        <CardDescription>
-                          Compare your performance against industry benchmarks
-                        </CardDescription>
-                      </CardHeader>
                       <CardContent>
                         <div className="text-center py-12">
                           <p className="text-slate-600 dark:text-slate-400 mb-4">

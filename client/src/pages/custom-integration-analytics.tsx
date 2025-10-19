@@ -248,7 +248,15 @@ export default function CustomIntegrationAnalytics() {
 
   // Fetch platform-level KPIs for custom integration filtered by campaignId
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
-    queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`],
+    queryKey: ['/api/platforms/custom-integration/kpis', { campaignId }],
+    queryFn: async () => {
+      if (!campaignId) throw new Error('Campaign ID not available');
+      const res = await fetch(`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`, {
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error('Failed to fetch KPIs');
+      return res.json();
+    },
     enabled: !!campaignId,
     staleTime: 0,
     gcTime: 0,
@@ -281,7 +289,7 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis', { campaignId }] });
       
       // DEBUGGING: Show debug info
       if (data.__debug) {
@@ -332,11 +340,11 @@ export default function CustomIntegrationAnalytics() {
       console.log('KPI update successful! Invalidating cache and refetching...');
       // Remove from cache and force refetch
       await queryClient.invalidateQueries({ 
-        queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`],
+        queryKey: ['/api/platforms/custom-integration/kpis', { campaignId }],
         refetchType: 'all' 
       });
       await queryClient.refetchQueries({ 
-        queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`]
+        queryKey: ['/api/platforms/custom-integration/kpis', { campaignId }]
       });
       console.log('Cache invalidated and refetch complete');
       toast({
@@ -379,7 +387,7 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis', { campaignId }] });
       toast({
         title: "KPI Deleted",
         description: "The KPI has been successfully deleted.",

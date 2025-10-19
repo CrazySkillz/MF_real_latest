@@ -117,7 +117,12 @@ export default function LinkedInAnalytics() {
     source: '',
     geographicLocation: '',
     period: 'monthly',
-    confidenceLevel: ''
+    confidenceLevel: '',
+    competitorName: '',
+    alertsEnabled: false,
+    alertThreshold: '',
+    alertCondition: 'below',
+    emailRecipients: ''
   });
 
   // Report Form State
@@ -2448,7 +2453,12 @@ export default function LinkedInAnalytics() {
                                       source: benchmark.source || '',
                                       geographicLocation: benchmark.geoLocation || '',
                                       period: benchmark.period || 'monthly',
-                                      confidenceLevel: benchmark.confidenceLevel || ''
+                                      confidenceLevel: benchmark.confidenceLevel || '',
+                                      competitorName: benchmark.competitorName || '',
+                                      alertsEnabled: benchmark.alertsEnabled || false,
+                                      alertThreshold: benchmark.alertThreshold || '',
+                                      alertCondition: benchmark.alertCondition || 'below',
+                                      emailRecipients: benchmark.emailRecipients || ''
                                     });
                                     setIsBenchmarkModalOpen(true);
                                   }}
@@ -3326,6 +3336,403 @@ export default function LinkedInAnalytics() {
                 {editingKPI ? 'Update KPI' : 'Create KPI'}
               </Button>
             </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Benchmark Modal */}
+      <Dialog open={isBenchmarkModalOpen} onOpenChange={setIsBenchmarkModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingBenchmark ? 'Edit Benchmark' : 'Create New Benchmark'}</DialogTitle>
+            <DialogDescription>
+              {editingBenchmark 
+                ? 'Update the benchmark details below. The current value can be auto-populated from your LinkedIn metrics data.'
+                : 'Define a new benchmark for your LinkedIn campaigns. You can select metrics from the Overview tab as current values.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-name">Benchmark Name *</Label>
+              <Input
+                id="benchmark-name"
+                placeholder="e.g., LinkedIn CTR Benchmark"
+                value={benchmarkForm.name}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
+                data-testid="input-benchmark-name"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-metric">Metric Source</Label>
+                <Select
+                  value={benchmarkForm.metric || undefined}
+                  onValueChange={(value) => {
+                    setBenchmarkForm({ ...benchmarkForm, metric: value });
+                    // Auto-populate current value from aggregated LinkedIn metrics
+                    let currentValue = '';
+                    let unit = '';
+                    if (aggregated) {
+                      switch(value) {
+                        case 'impressions':
+                          currentValue = String(aggregated.totalImpressions || 0);
+                          break;
+                        case 'reach':
+                          currentValue = String(aggregated.totalReach || 0);
+                          break;
+                        case 'clicks':
+                          currentValue = String(aggregated.totalClicks || 0);
+                          break;
+                        case 'engagements':
+                          currentValue = String(aggregated.totalEngagements || 0);
+                          break;
+                        case 'spend':
+                          currentValue = String(aggregated.totalSpend || 0);
+                          unit = '$';
+                          break;
+                        case 'conversions':
+                          currentValue = String(aggregated.totalConversions || 0);
+                          break;
+                        case 'leads':
+                          currentValue = String(aggregated.totalLeads || 0);
+                          break;
+                        case 'videoViews':
+                          currentValue = String(aggregated.totalVideoViews || 0);
+                          break;
+                        case 'viralImpressions':
+                          currentValue = String(aggregated.totalViralImpressions || 0);
+                          break;
+                        case 'ctr':
+                          currentValue = String(aggregated.ctr || 0);
+                          unit = '%';
+                          break;
+                        case 'cpc':
+                          currentValue = String(aggregated.cpc || 0);
+                          unit = '$';
+                          break;
+                        case 'cpm':
+                          currentValue = String(aggregated.cpm || 0);
+                          unit = '$';
+                          break;
+                        case 'cvr':
+                          currentValue = String(aggregated.cvr || 0);
+                          unit = '%';
+                          break;
+                        case 'cpa':
+                          currentValue = String(aggregated.cpa || 0);
+                          unit = '$';
+                          break;
+                        case 'cpl':
+                          currentValue = String(aggregated.cpl || 0);
+                          unit = '$';
+                          break;
+                        case 'er':
+                          currentValue = String(aggregated.er || 0);
+                          unit = '%';
+                          break;
+                        case 'roi':
+                          currentValue = String(aggregated.roi || 0);
+                          unit = '%';
+                          break;
+                        case 'roas':
+                          currentValue = String(aggregated.roas || 0);
+                          unit = 'x';
+                          break;
+                      }
+                    }
+                    setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue, unit });
+                  }}
+                >
+                  <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
+                    <SelectValue placeholder="Select metric to benchmark" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="impressions">Impressions (from LinkedIn)</SelectItem>
+                    <SelectItem value="reach">Reach (from LinkedIn)</SelectItem>
+                    <SelectItem value="clicks">Clicks (from LinkedIn)</SelectItem>
+                    <SelectItem value="engagements">Engagements (from LinkedIn)</SelectItem>
+                    <SelectItem value="spend">Spend (from LinkedIn)</SelectItem>
+                    <SelectItem value="conversions">Conversions (from LinkedIn)</SelectItem>
+                    <SelectItem value="leads">Leads (from LinkedIn)</SelectItem>
+                    <SelectItem value="videoViews">Video Views (from LinkedIn)</SelectItem>
+                    <SelectItem value="viralImpressions">Viral Impressions (from LinkedIn)</SelectItem>
+                    <SelectItem value="ctr">Click-Through Rate (from LinkedIn)</SelectItem>
+                    <SelectItem value="cpc">Cost Per Click (from LinkedIn)</SelectItem>
+                    <SelectItem value="cpm">Cost Per Mille (from LinkedIn)</SelectItem>
+                    <SelectItem value="cvr">Conversion Rate (from LinkedIn)</SelectItem>
+                    <SelectItem value="cpa">Cost Per Acquisition (from LinkedIn)</SelectItem>
+                    <SelectItem value="cpl">Cost Per Lead (from LinkedIn)</SelectItem>
+                    <SelectItem value="er">Engagement Rate (from LinkedIn)</SelectItem>
+                    <SelectItem value="roi">Return on Investment (from LinkedIn)</SelectItem>
+                    <SelectItem value="roas">Return on Ad Spend (from LinkedIn)</SelectItem>
+                    <SelectItem value="custom">Custom Value</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-description">Description</Label>
+              <Textarea
+                id="benchmark-description"
+                placeholder="Describe this benchmark and why it's important"
+                value={benchmarkForm.description}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, description: e.target.value })}
+                rows={3}
+                data-testid="input-benchmark-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-current">Current Value</Label>
+                <Input
+                  id="benchmark-current"
+                  type="text"
+                  placeholder="0"
+                  value={benchmarkForm.currentValue ? parseFloat(benchmarkForm.currentValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setBenchmarkForm({ ...benchmarkForm, currentValue: value });
+                    }
+                  }}
+                  data-testid="input-benchmark-current"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-value">Benchmark Value *</Label>
+                <Input
+                  id="benchmark-value"
+                  type="text"
+                  placeholder="0"
+                  value={benchmarkForm.benchmarkValue ? parseFloat(benchmarkForm.benchmarkValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setBenchmarkForm({ ...benchmarkForm, benchmarkValue: value });
+                    }
+                  }}
+                  data-testid="input-benchmark-value"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-unit">Unit</Label>
+                <Input
+                  id="benchmark-unit"
+                  placeholder="%, $, etc."
+                  value={benchmarkForm.unit}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, unit: e.target.value })}
+                  data-testid="input-benchmark-unit"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-industry">Industry</Label>
+                <Input
+                  id="benchmark-industry"
+                  placeholder="e.g., SaaS, E-commerce"
+                  value={benchmarkForm.industry}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, industry: e.target.value })}
+                  data-testid="input-benchmark-industry"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-source">Source</Label>
+                <Input
+                  id="benchmark-source"
+                  placeholder="e.g., Industry Report, LinkedIn"
+                  value={benchmarkForm.source}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, source: e.target.value })}
+                  data-testid="input-benchmark-source"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-period">Period</Label>
+                <Select
+                  value={benchmarkForm.period}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, period: value })}
+                >
+                  <SelectTrigger id="benchmark-period" data-testid="select-benchmark-period">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-type">Benchmark Type</Label>
+                <Select
+                  value={benchmarkForm.benchmarkType}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, benchmarkType: value })}
+                >
+                  <SelectTrigger id="benchmark-type" data-testid="select-benchmark-type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="industry">Industry Average</SelectItem>
+                    <SelectItem value="competitor">Competitor</SelectItem>
+                    <SelectItem value="internal">Internal Target</SelectItem>
+                    <SelectItem value="best-in-class">Best in Class</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-confidence">Confidence Level</Label>
+                <Select
+                  value={benchmarkForm.confidenceLevel}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, confidenceLevel: value })}
+                >
+                  <SelectTrigger id="benchmark-confidence" data-testid="select-benchmark-confidence">
+                    <SelectValue placeholder="Select confidence" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Competitor Name - Conditional */}
+            {benchmarkForm.benchmarkType === 'competitor' && (
+              <div className="space-y-2">
+                <Label htmlFor="competitor-name">Competitor Name *</Label>
+                <Input
+                  id="competitor-name"
+                  placeholder="e.g., Acme Corp, Competitor X"
+                  value={benchmarkForm.competitorName}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, competitorName: e.target.value })}
+                  data-testid="input-competitor-name"
+                />
+              </div>
+            )}
+
+            {/* Email Alerts Section */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="benchmark-alerts-enabled"
+                  checked={benchmarkForm.alertsEnabled}
+                  onCheckedChange={(checked) => setBenchmarkForm({ ...benchmarkForm, alertsEnabled: checked as boolean })}
+                  data-testid="checkbox-benchmark-alerts"
+                />
+                <Label htmlFor="benchmark-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                  Enable Email Alerts
+                </Label>
+              </div>
+
+              {benchmarkForm.alertsEnabled && (
+                <div className="space-y-4 pl-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="benchmark-alert-threshold">Alert Threshold *</Label>
+                      <Input
+                        id="benchmark-alert-threshold"
+                        type="text"
+                        placeholder="e.g., 80"
+                        value={benchmarkForm.alertThreshold}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/,/g, '');
+                          if (value === '' || !isNaN(parseFloat(value))) {
+                            setBenchmarkForm({ ...benchmarkForm, alertThreshold: value });
+                          }
+                        }}
+                        data-testid="input-benchmark-alert-threshold"
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Value at which to trigger the alert
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="benchmark-alert-condition">Alert When</Label>
+                      <Select
+                        value={benchmarkForm.alertCondition}
+                        onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, alertCondition: value })}
+                      >
+                        <SelectTrigger id="benchmark-alert-condition" data-testid="select-benchmark-alert-condition">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="below">Value Goes Below</SelectItem>
+                          <SelectItem value="above">Value Goes Above</SelectItem>
+                          <SelectItem value="equals">Value Equals</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="benchmark-email-recipients">Email Recipients *</Label>
+                    <Input
+                      id="benchmark-email-recipients"
+                      type="text"
+                      placeholder="email1@example.com, email2@example.com"
+                      value={benchmarkForm.emailRecipients}
+                      onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
+                      data-testid="input-benchmark-email-recipients"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Comma-separated email addresses for alert notifications
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsBenchmarkModalOpen(false);
+                  setEditingBenchmark(null);
+                  setBenchmarkForm({
+                    metric: '',
+                    name: '',
+                    benchmarkType: '',
+                    unit: '',
+                    benchmarkValue: '',
+                    currentValue: '',
+                    industry: '',
+                    description: '',
+                    source: '',
+                    geographicLocation: '',
+                    period: 'monthly',
+                    confidenceLevel: '',
+                    competitorName: '',
+                    alertsEnabled: false,
+                    alertThreshold: '',
+                    alertCondition: 'below',
+                    emailRecipients: ''
+                  });
+                }}
+                data-testid="button-benchmark-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateBenchmark}
+                disabled={!benchmarkForm.name || !benchmarkForm.benchmarkValue}
+                className="bg-blue-600 hover:bg-blue-700"
+                data-testid="button-benchmark-submit"
+              >
+                {editingBenchmark ? 'Update Benchmark' : 'Create Benchmark'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -97,7 +97,8 @@ export default function LinkedInAnalytics() {
     status: 'active',
     category: '',
     timeframe: 'monthly',
-    trackingPeriod: '30'
+    trackingPeriod: '30',
+    emailNotifications: false
   });
 
   // Benchmark Form State
@@ -222,7 +223,8 @@ export default function LinkedInAnalytics() {
         status: 'active',
         category: '',
         timeframe: 'monthly',
-        trackingPeriod: '30'
+        trackingPeriod: '30',
+        emailNotifications: false
       });
     },
     onError: (error: any) => {
@@ -281,7 +283,8 @@ export default function LinkedInAnalytics() {
         status: 'active',
         category: '',
         timeframe: 'monthly',
-        trackingPeriod: '30'
+        trackingPeriod: '30',
+        emailNotifications: false
       });
     },
     onError: (error: any) => {
@@ -307,7 +310,8 @@ export default function LinkedInAnalytics() {
       status: 'active',
       category: '',
       timeframe: 'monthly',
-      trackingPeriod: '30'
+      trackingPeriod: '30',
+      emailNotifications: false
     });
     setModalStep('configuration');
   };
@@ -2105,7 +2109,8 @@ export default function LinkedInAnalytics() {
                                       status: kpi.status || 'active',
                                       category: kpi.category || '',
                                       timeframe: kpi.timeframe || 'monthly',
-                                      trackingPeriod: kpi.trackingPeriod?.toString() || '30'
+                                      trackingPeriod: kpi.trackingPeriod?.toString() || '30',
+                                      emailNotifications: kpi.emailNotifications || false
                                     });
                                     setIsKPIModalOpen(true);
                                   }}
@@ -2984,560 +2989,268 @@ export default function LinkedInAnalytics() {
             status: 'active',
             category: '',
             timeframe: 'monthly',
-            trackingPeriod: '30'
+            trackingPeriod: '30',
+            emailNotifications: false
           });
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              {editingKPI ? 'Edit LinkedIn KPI' : 'Create LinkedIn KPI'}
-            </DialogTitle>
-            <DialogDescription className="mt-1">
+            <DialogTitle>{editingKPI ? 'Edit KPI' : 'Create New KPI'}</DialogTitle>
+            <DialogDescription>
               {editingKPI 
-                ? 'Update your key performance indicator settings'
-                : 'Set up a key performance indicator to track your LinkedIn campaign success'
-              }
+                ? 'Update the KPI details below. The current value can be auto-populated from your LinkedIn metrics data.'
+                : 'Define a new KPI for your LinkedIn campaign. You can select metrics from the selected campaign as current values.'}
             </DialogDescription>
           </DialogHeader>
-
-          {modalStep === 'templates' && !editingKPI ? (
-            <div className="space-y-4 py-4">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Choose a template or create custom KPI:
-              </h3>
-
-              {/* Template Options */}
-              <div className="space-y-3">
-                {LINKEDIN_KPI_TEMPLATES.map((template, index) => (
-                  <div
-                    key={index}
-                    className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
-                    data-testid={`kpi-template-${index}`}
-                    onClick={() => handleTemplateSelect(template)}
-                  >
-                    <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
-                      {template.name}
-                    </h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                      {template.description}
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-500">
-                      Target: <span className="font-medium text-blue-600 dark:text-blue-400">{template.targetValue}{template.unit}</span>
-                    </p>
-                  </div>
-                ))}
-
-                {/* Create Custom KPI Option */}
-                <div
-                  className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
-                  data-testid="kpi-template-custom"
-                  onClick={() => {
-                    setKpiForm({
-                      name: '',
-                      unit: '',
-                      description: '',
-                      metric: '',
-                      targetValue: '',
-                      currentValue: '',
-                      priority: 'high',
-                      status: 'active',
-                      category: '',
-                      timeframe: 'monthly',
-                      trackingPeriod: '30'
-                    });
-                    setModalStep('configuration');
-                  }}
-                >
-                  <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
-                    Create Custom KPI
-                  </h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Build your own KPI from scratch
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4 py-4">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  KPI Configuration
-                </h3>
-              </div>
-
-              {/* KPI Form */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="kpi-metric">Select Metric</Label>
-                <Select
+                <Label htmlFor="kpi-name">KPI Name *</Label>
+                <Input
+                  id="kpi-name"
+                  placeholder="e.g., LinkedIn CTR Target"
                   value={kpiForm.name}
+                  onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
+                  data-testid="input-kpi-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-metric">Metric Source</Label>
+                <Select
+                  value={kpiForm.metric || ''}
                   onValueChange={(value) => {
-                    // Get metric details
-                    const metricDetails = (() => {
-                      const key = value.toLowerCase();
-                      if (!aggregated) return { value: '', unit: '' };
-                      
-                      // Core metrics
-                      if (key === 'impressions') return { value: aggregated.totalImpressions?.toString() || '0', unit: '' };
-                      if (key === 'reach') return { value: aggregated.totalReach?.toString() || '0', unit: '' };
-                      if (key === 'clicks') return { value: aggregated.totalClicks?.toString() || '0', unit: '' };
-                      if (key === 'engagements') return { value: aggregated.totalEngagements?.toString() || '0', unit: '' };
-                      if (key === 'spend') return { value: aggregated.totalSpend?.toString() || '0', unit: '$' };
-                      if (key === 'conversions') return { value: aggregated.totalConversions?.toString() || '0', unit: '' };
-                      if (key === 'leads') return { value: aggregated.totalLeads?.toString() || '0', unit: '' };
-                      if (key === 'video views') return { value: aggregated.totalVideoViews?.toString() || '0', unit: '' };
-                      if (key === 'viral impressions') return { value: aggregated.totalViralImpressions?.toString() || '0', unit: '' };
-                      
-                      // Derived metrics
-                      if (key === 'ctr') return { value: aggregated.ctr?.toString() || '0', unit: '%' };
-                      if (key === 'cpc') return { value: aggregated.cpc?.toString() || '0', unit: '$' };
-                      if (key === 'cpm') return { value: aggregated.cpm?.toString() || '0', unit: '$' };
-                      if (key === 'cvr') return { value: aggregated.cvr?.toString() || '0', unit: '%' };
-                      if (key === 'cpa') return { value: aggregated.cpa?.toString() || '0', unit: '$' };
-                      if (key === 'cpl') return { value: aggregated.cpl?.toString() || '0', unit: '$' };
-                      if (key === 'er') return { value: aggregated.er?.toString() || '0', unit: '%' };
-                      if (key === 'roi') return { value: aggregated.roi?.toString() || '0', unit: '%' };
-                      if (key === 'roas') return { value: aggregated.roas?.toString() || '0', unit: 'x' };
-                      
-                      return { value: '0', unit: '' };
-                    })();
-                    
-                    setKpiForm({ 
-                      ...kpiForm, 
-                      name: value,
-                      currentValue: metricDetails.value,
-                      unit: metricDetails.unit
-                    });
+                    // Auto-populate current value from LinkedIn aggregated metrics
+                    let currentValue = '';
+                    let unit = '';
+                    if (aggregated) {
+                      switch(value) {
+                        case 'impressions':
+                          currentValue = String(aggregated.totalImpressions || 0);
+                          break;
+                        case 'reach':
+                          currentValue = String(aggregated.totalReach || 0);
+                          break;
+                        case 'clicks':
+                          currentValue = String(aggregated.totalClicks || 0);
+                          break;
+                        case 'engagements':
+                          currentValue = String(aggregated.totalEngagements || 0);
+                          break;
+                        case 'spend':
+                          currentValue = String(aggregated.totalSpend || 0);
+                          unit = '$';
+                          break;
+                        case 'conversions':
+                          currentValue = String(aggregated.totalConversions || 0);
+                          break;
+                        case 'leads':
+                          currentValue = String(aggregated.totalLeads || 0);
+                          break;
+                        case 'videoViews':
+                          currentValue = String(aggregated.totalVideoViews || 0);
+                          break;
+                        case 'viralImpressions':
+                          currentValue = String(aggregated.totalViralImpressions || 0);
+                          break;
+                        case 'ctr':
+                          currentValue = String(aggregated.ctr || 0);
+                          unit = '%';
+                          break;
+                        case 'cpc':
+                          currentValue = String(aggregated.cpc || 0);
+                          unit = '$';
+                          break;
+                        case 'cpm':
+                          currentValue = String(aggregated.cpm || 0);
+                          unit = '$';
+                          break;
+                        case 'cvr':
+                          currentValue = String(aggregated.cvr || 0);
+                          unit = '%';
+                          break;
+                        case 'cpa':
+                          currentValue = String(aggregated.cpa || 0);
+                          unit = '$';
+                          break;
+                        case 'cpl':
+                          currentValue = String(aggregated.cpl || 0);
+                          unit = '$';
+                          break;
+                        case 'er':
+                          currentValue = String(aggregated.er || 0);
+                          unit = '%';
+                          break;
+                        case 'roi':
+                          currentValue = String(aggregated.roi || 0);
+                          unit = '%';
+                          break;
+                        case 'roas':
+                          currentValue = String(aggregated.roas || 0);
+                          unit = 'x';
+                          break;
+                      }
+                    }
+                    setKpiForm({ ...kpiForm, metric: value, currentValue, unit });
                   }}
                 >
                   <SelectTrigger id="kpi-metric" data-testid="select-kpi-metric">
-                    <SelectValue placeholder="Choose a metric" />
+                    <SelectValue placeholder="Select metric to track" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Impressions">Impressions</SelectItem>
-                    <SelectItem value="Reach">Reach</SelectItem>
-                    <SelectItem value="Clicks">Clicks</SelectItem>
-                    <SelectItem value="Engagements">Engagements</SelectItem>
-                    <SelectItem value="Spend">Spend</SelectItem>
-                    <SelectItem value="Conversions">Conversions</SelectItem>
-                    <SelectItem value="Leads">Leads</SelectItem>
-                    <SelectItem value="Video Views">Video Views</SelectItem>
-                    <SelectItem value="Viral Impressions">Viral Impressions</SelectItem>
-                    <SelectItem value="CTR">CTR (Click-Through Rate)</SelectItem>
-                    <SelectItem value="CPC">CPC (Cost Per Click)</SelectItem>
-                    <SelectItem value="CPM">CPM (Cost Per Mille)</SelectItem>
-                    <SelectItem value="CVR">CVR (Conversion Rate)</SelectItem>
-                    <SelectItem value="CPA">CPA (Cost Per Acquisition)</SelectItem>
-                    <SelectItem value="CPL">CPL (Cost Per Lead)</SelectItem>
-                    <SelectItem value="ER">ER (Engagement Rate)</SelectItem>
-                    <SelectItem value="ROI">ROI (Return on Investment)</SelectItem>
-                    <SelectItem value="ROAS">ROAS (Return on Ad Spend)</SelectItem>
+                    <SelectItem value="impressions">Impressions (from metrics)</SelectItem>
+                    <SelectItem value="reach">Reach (from metrics)</SelectItem>
+                    <SelectItem value="clicks">Clicks (from metrics)</SelectItem>
+                    <SelectItem value="engagements">Engagements (from metrics)</SelectItem>
+                    <SelectItem value="spend">Spend (from metrics)</SelectItem>
+                    <SelectItem value="conversions">Conversions (from metrics)</SelectItem>
+                    <SelectItem value="leads">Leads (from metrics)</SelectItem>
+                    <SelectItem value="videoViews">Video Views (from metrics)</SelectItem>
+                    <SelectItem value="viralImpressions">Viral Impressions (from metrics)</SelectItem>
+                    <SelectItem value="ctr">CTR - Click-Through Rate (from metrics)</SelectItem>
+                    <SelectItem value="cpc">CPC - Cost Per Click (from metrics)</SelectItem>
+                    <SelectItem value="cpm">CPM - Cost Per Mille (from metrics)</SelectItem>
+                    <SelectItem value="cvr">CVR - Conversion Rate (from metrics)</SelectItem>
+                    <SelectItem value="cpa">CPA - Cost Per Acquisition (from metrics)</SelectItem>
+                    <SelectItem value="cpl">CPL - Cost Per Lead (from metrics)</SelectItem>
+                    <SelectItem value="er">ER - Engagement Rate (from metrics)</SelectItem>
+                    <SelectItem value="roi">ROI - Return on Investment (from metrics)</SelectItem>
+                    <SelectItem value="roas">ROAS - Return on Ad Spend (from metrics)</SelectItem>
+                    <SelectItem value="custom">Custom Value</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="kpi-description">Description</Label>
+              <Textarea
+                id="kpi-description"
+                placeholder="Describe what this KPI measures and why it's important"
+                value={kpiForm.description}
+                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
+                rows={3}
+                data-testid="input-kpi-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="kpi-description">Description</Label>
-                <Textarea
-                  id="kpi-description"
-                  value={kpiForm.description}
-                  onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
-                  placeholder="Enter description"
-                  rows={3}
-                  data-testid="input-kpi-description"
+                <Label htmlFor="kpi-current">Current Value</Label>
+                <Input
+                  id="kpi-current"
+                  type="text"
+                  placeholder="0"
+                  value={kpiForm.currentValue ? parseFloat(kpiForm.currentValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setKpiForm({ ...kpiForm, currentValue: value });
+                    }
+                  }}
+                  data-testid="input-kpi-current"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-target">Target Value *</Label>
+                <Input
+                  id="kpi-target"
+                  type="text"
+                  placeholder="0"
+                  value={kpiForm.targetValue ? parseFloat(kpiForm.targetValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setKpiForm({ ...kpiForm, targetValue: value });
+                    }
+                  }}
+                  data-testid="input-kpi-target"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-unit">Unit</Label>
+                <Input
+                  id="kpi-unit"
+                  placeholder="%, $, etc."
+                  value={kpiForm.unit}
+                  onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
+                  data-testid="input-kpi-unit"
+                />
+              </div>
+            </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="kpi-target">Target Value</Label>
-                  <Input
-                    id="kpi-target"
-                    type="number"
-                    step="0.01"
-                    value={kpiForm.targetValue}
-                    onChange={(e) => setKpiForm({ ...kpiForm, targetValue: e.target.value })}
-                    placeholder="2.5"
-                    data-testid="input-kpi-target"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="kpi-current">Current Value</Label>
-                  <Input
-                    id="kpi-current"
-                    type="text"
-                    value={kpiForm.currentValue ? `${kpiForm.currentValue}${kpiForm.unit}` : 'Select a metric first'}
-                    readOnly
-                    className="bg-slate-100 dark:bg-slate-800 cursor-not-allowed"
-                    data-testid="input-kpi-current"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="kpi-priority">Priority</Label>
-                  <Select
-                    value={kpiForm.priority}
-                    onValueChange={(value) => setKpiForm({ ...kpiForm, priority: value })}
-                  >
-                    <SelectTrigger id="kpi-priority" data-testid="select-kpi-priority">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-priority">Priority</Label>
+                <Select
+                  value={kpiForm.priority}
+                  onValueChange={(value) => setKpiForm({ ...kpiForm, priority: value })}
+                >
+                  <SelectTrigger id="kpi-priority" data-testid="select-kpi-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="kpi-timeframe">Timeframe</Label>
                 <Select
                   value={kpiForm.timeframe}
-                  onValueChange={(value) => {
-                    const trackingPeriodMap: Record<string, string> = {
-                      'daily': '1',
-                      'weekly': '7',
-                      'monthly': '30',
-                      'quarterly': '90'
-                    };
-                    setKpiForm({ 
-                      ...kpiForm, 
-                      timeframe: value,
-                      trackingPeriod: trackingPeriodMap[value] || '30'
-                    });
-                  }}
+                  onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
                 >
                   <SelectTrigger id="kpi-timeframe" data-testid="select-kpi-timeframe">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily">Daily (1 day)</SelectItem>
+                    <SelectItem value="daily">Daily (24 hours)</SelectItem>
                     <SelectItem value="weekly">Weekly (7 days)</SelectItem>
                     <SelectItem value="monthly">Monthly (30 days)</SelectItem>
                     <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
+                    <SelectItem value="yearly">Yearly (365 days)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   How often to measure progress toward your target
                 </p>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsKPIModalOpen(false)}
-                  data-testid="button-cancel-kpi"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateKPI}
-                  disabled={(editingKPI ? updateKpiMutation.isPending : createKpiMutation.isPending) || !kpiForm.name || !kpiForm.targetValue}
-                  className="bg-blue-600 hover:bg-blue-700"
-                  data-testid={editingKPI ? "button-update-kpi" : "button-create-kpi"}
-                >
-                  {editingKPI 
-                    ? (updateKpiMutation.isPending ? 'Updating...' : 'Update KPI')
-                    : (createKpiMutation.isPending ? 'Creating...' : 'Create KPI')
-                  }
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Create/Edit LinkedIn Benchmark Modal */}
-      <Dialog open={isBenchmarkModalOpen} onOpenChange={(open) => {
-        setIsBenchmarkModalOpen(open);
-        if (!open) {
-          setEditingBenchmark(null);
-          setBenchmarkForm({
-            metric: '',
-            name: '',
-            benchmarkType: '',
-            unit: '',
-            benchmarkValue: '',
-            currentValue: '',
-            industry: '',
-            description: '',
-            source: '',
-            geographicLocation: '',
-            period: 'monthly',
-            confidenceLevel: ''
-          });
-        }
-      }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              {editingBenchmark ? 'Edit LinkedIn Benchmark' : 'Create LinkedIn Benchmark'}
-            </DialogTitle>
-            <DialogDescription className="mt-1">
-              {editingBenchmark 
-                ? 'Update your benchmark to reflect new standards or goals' 
-                : 'Set up a benchmark to compare your LinkedIn performance against industry standards'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Benchmark Form */}
-            <div className="space-y-2">
-              <Label htmlFor="benchmark-metric">Select Metric</Label>
-              <Select
-                value={benchmarkForm.metric}
-                onValueChange={(value) => {
-                  // Get metric details
-                  const metricDetails = (() => {
-                    const key = value.toLowerCase();
-                    if (!aggregated) return { value: '', unit: '', name: value };
-                    
-                    // Core metrics
-                    if (key === 'impressions') return { value: aggregated.totalImpressions?.toString() || '0', unit: '', name: 'Impressions' };
-                    if (key === 'reach') return { value: aggregated.totalReach?.toString() || '0', unit: '', name: 'Reach' };
-                    if (key === 'clicks') return { value: aggregated.totalClicks?.toString() || '0', unit: '', name: 'Clicks' };
-                    if (key === 'engagements') return { value: aggregated.totalEngagements?.toString() || '0', unit: '', name: 'Engagements' };
-                    if (key === 'spend') return { value: aggregated.totalSpend?.toString() || '0', unit: '$', name: 'Spend' };
-                    if (key === 'conversions') return { value: aggregated.totalConversions?.toString() || '0', unit: '', name: 'Conversions' };
-                    if (key === 'leads') return { value: aggregated.totalLeads?.toString() || '0', unit: '', name: 'Leads' };
-                    if (key === 'video views') return { value: aggregated.totalVideoViews?.toString() || '0', unit: '', name: 'Video Views' };
-                    if (key === 'viral impressions') return { value: aggregated.totalViralImpressions?.toString() || '0', unit: '', name: 'Viral Impressions' };
-                    
-                    // Derived metrics
-                    if (key === 'ctr') return { value: aggregated.ctr?.toFixed(2) || '0', unit: '%', name: 'CTR' };
-                    if (key === 'cpc') return { value: aggregated.cpc?.toFixed(2) || '0', unit: '$', name: 'CPC' };
-                    if (key === 'cpm') return { value: aggregated.cpm?.toFixed(2) || '0', unit: '$', name: 'CPM' };
-                    if (key === 'cvr') return { value: aggregated.conversionRate?.toFixed(2) || '0', unit: '%', name: 'CVR' };
-                    if (key === 'cpa') return { value: aggregated.cpa?.toFixed(2) || '0', unit: '$', name: 'CPA' };
-                    if (key === 'cpl') return { value: aggregated.cpl?.toFixed(2) || '0', unit: '$', name: 'CPL' };
-                    if (key === 'er') return { value: aggregated.engagementRate?.toFixed(2) || '0', unit: '%', name: 'ER' };
-                    if (key === 'roi') return { value: aggregated.roi?.toFixed(2) || '0', unit: '%', name: 'ROI' };
-                    if (key === 'roas') return { value: aggregated.roas?.toFixed(2) || '0', unit: 'x', name: 'ROAS' };
-                    
-                    return { value: '', unit: '', name: value };
-                  })();
-                  
-                  setBenchmarkForm({ 
-                    ...benchmarkForm, 
-                    metric: value,
-                    name: `${metricDetails.name} Benchmark`,
-                    unit: metricDetails.unit,
-                    currentValue: metricDetails.value
-                  });
-                }}
-              >
-                <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
-                  <SelectValue placeholder="Choose a metric" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Impressions">Impressions</SelectItem>
-                  <SelectItem value="Reach">Reach</SelectItem>
-                  <SelectItem value="Clicks">Clicks</SelectItem>
-                  <SelectItem value="Engagements">Engagements</SelectItem>
-                  <SelectItem value="Spend">Spend</SelectItem>
-                  <SelectItem value="Conversions">Conversions</SelectItem>
-                  <SelectItem value="Leads">Leads</SelectItem>
-                  <SelectItem value="Video Views">Video Views</SelectItem>
-                  <SelectItem value="Viral Impressions">Viral Impressions</SelectItem>
-                  <SelectItem value="CTR">CTR (Click-Through Rate)</SelectItem>
-                  <SelectItem value="CPC">CPC (Cost Per Click)</SelectItem>
-                  <SelectItem value="CPM">CPM (Cost Per Mille)</SelectItem>
-                  <SelectItem value="CVR">CVR (Conversion Rate)</SelectItem>
-                  <SelectItem value="CPA">CPA (Cost Per Acquisition)</SelectItem>
-                  <SelectItem value="CPL">CPL (Cost Per Lead)</SelectItem>
-                  <SelectItem value="ER">ER (Engagement Rate)</SelectItem>
-                  <SelectItem value="ROI">ROI (Return on Investment)</SelectItem>
-                  <SelectItem value="ROAS">ROAS (Return on Ad Spend)</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="benchmark-name">Benchmark Name</Label>
-              <Input
-                id="benchmark-name"
-                value={benchmarkForm.name}
-                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
-                placeholder="e.g., LinkedIn CTR Benchmark"
-                data-testid="input-benchmark-name"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-type">Benchmark Type</Label>
-                <Select
-                  value={benchmarkForm.benchmarkType}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, benchmarkType: value })}
-                >
-                  <SelectTrigger id="benchmark-type" data-testid="select-benchmark-type">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="industry_average">Industry Average</SelectItem>
-                    <SelectItem value="competitor">Competitor</SelectItem>
-                    <SelectItem value="historical">Historical</SelectItem>
-                    <SelectItem value="target">Target</SelectItem>
-                    <SelectItem value="best_practice">Best Practice</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-unit">Unit (Auto-populated)</Label>
-                <Input
-                  id="benchmark-unit"
-                  type="text"
-                  value={benchmarkForm.unit}
-                  readOnly
-                  className="bg-slate-100 dark:bg-slate-800 cursor-not-allowed"
-                  placeholder="Select a metric first"
-                  data-testid="input-benchmark-unit"
+            {/* Alert Settings Section */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="kpi-alerts-enabled"
+                  checked={kpiForm.emailNotifications}
+                  onCheckedChange={(checked) => setKpiForm({ ...kpiForm, emailNotifications: checked as boolean })}
+                  data-testid="checkbox-kpi-alerts"
                 />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-current">Current Value</Label>
-                <Input
-                  id="benchmark-current"
-                  type="text"
-                  value={benchmarkForm.currentValue ? `${benchmarkForm.currentValue}${benchmarkForm.unit}` : 'Select a metric first'}
-                  readOnly
-                  className="bg-slate-100 dark:bg-slate-800 cursor-not-allowed"
-                  data-testid="input-benchmark-current"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-value">
-                  {getBenchmarkValueLabel(benchmarkForm.benchmarkType)}
+                <Label htmlFor="kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                  Enable Email Alerts
                 </Label>
-                <Input
-                  id="benchmark-value"
-                  type="number"
-                  step="0.01"
-                  value={benchmarkForm.benchmarkValue}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, benchmarkValue: e.target.value })}
-                  placeholder="e.g., 2.5"
-                  data-testid="input-benchmark-value"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-industry">
-                  {getContextFieldLabel(benchmarkForm.benchmarkType)}
-                </Label>
-                <Input
-                  id="benchmark-industry"
-                  value={benchmarkForm.industry}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, industry: e.target.value })}
-                  placeholder={getContextFieldPlaceholder(benchmarkForm.benchmarkType)}
-                  data-testid="input-benchmark-industry"
-                />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="benchmark-description">Description</Label>
-              <Textarea
-                id="benchmark-description"
-                value={benchmarkForm.description}
-                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, description: e.target.value })}
-                placeholder="Describe this benchmark and its source"
-                rows={3}
-                data-testid="input-benchmark-description"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-source">Source</Label>
-                <Input
-                  id="benchmark-source"
-                  value={benchmarkForm.source}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, source: e.target.value })}
-                  placeholder="e.g., LinkedIn Marketing Solutions"
-                  data-testid="input-benchmark-source"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-location">Geographic Location</Label>
-                <Input
-                  id="benchmark-location"
-                  value={benchmarkForm.geographicLocation}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, geographicLocation: e.target.value })}
-                  placeholder="e.g., Global, US, Europe"
-                  data-testid="input-benchmark-location"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-period">Period</Label>
-                <Select
-                  value={benchmarkForm.period}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, period: value })}
-                >
-                  <SelectTrigger id="benchmark-period" data-testid="select-benchmark-period">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-confidence">Confidence Level</Label>
-                <Input
-                  id="benchmark-confidence"
-                  value={benchmarkForm.confidenceLevel}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, confidenceLevel: e.target.value })}
-                  placeholder="e.g., 95%, High, Medium"
-                  data-testid="input-benchmark-confidence"
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => setIsBenchmarkModalOpen(false)}
-                data-testid="button-cancel-benchmark"
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsKPIModalOpen(false)}
+                data-testid="button-cancel-kpi"
               >
                 Cancel
               </Button>
-              <Button
-                onClick={handleCreateBenchmark}
-                disabled={
-                  (editingBenchmark ? updateBenchmarkMutation.isPending : createBenchmarkMutation.isPending) || 
-                  !benchmarkForm.name || 
-                  !benchmarkForm.benchmarkValue
-                }
-                className="bg-blue-600 hover:bg-blue-700"
-                data-testid={editingBenchmark ? "button-update-benchmark-submit" : "button-create-benchmark-submit"}
+              <Button 
+                onClick={handleCreateKPI}
+                className="bg-purple-600 hover:bg-purple-700"
+                data-testid="button-create-kpi"
               >
-                {editingBenchmark 
-                  ? (updateBenchmarkMutation.isPending ? 'Updating...' : 'Update Benchmark')
-                  : (createBenchmarkMutation.isPending ? 'Creating...' : 'Create Benchmark')
-                }
+                {editingKPI ? 'Update KPI' : 'Create KPI'}
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>

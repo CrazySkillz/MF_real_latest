@@ -2594,22 +2594,40 @@ export default function CustomIntegrationAnalytics() {
                     </div>
                   </>
                 ) : (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Platform-Level KPIs</CardTitle>
-                      <CardDescription>
-                        Manage key performance indicators for Custom Integration
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-12">
-                        <Plus className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                          No KPIs Defined
-                        </h3>
-                        <p className="text-slate-600 dark:text-slate-400 mb-4">
-                          Create KPIs to track performance goals for your custom integration
+                  <>
+                    {/* Header with Create Button */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Track and monitor your Custom Integration KPIs
                         </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          variant="outline"
+                          onClick={() => {
+                            setEditingReportId(null);
+                            setReportForm({
+                              name: '',
+                              description: '',
+                              reportType: 'kpis',
+                              configuration: null,
+                              scheduleEnabled: false,
+                              scheduleFrequency: 'weekly',
+                              scheduleDayOfWeek: 'monday',
+                              scheduleTime: '9:00 AM',
+                              emailRecipients: '',
+                              status: 'draft'
+                            });
+                            setIsReportModalOpen(true);
+                          }}
+                          className="border-slate-300 dark:border-slate-700"
+                          data-testid="button-export-kpi-report"
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          Export KPI Report
+                        </Button>
                         <Button 
                           onClick={() => {
                             setEditingKPI(null);
@@ -2631,14 +2649,59 @@ export default function CustomIntegrationAnalytics() {
                             setIsKPIModalOpen(true);
                           }}
                           className="bg-purple-600 hover:bg-purple-700 text-white"
-                          data-testid="button-create-kpi"
+                          data-testid="button-create-kpi-header"
                         >
                           <Plus className="w-4 h-4 mr-2" />
                           Create KPI
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Target className="w-5 h-5 text-purple-600" />
+                          Custom Integration KPIs
+                        </CardTitle>
+                        <CardDescription>
+                          Compare your performance against industry benchmarks
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-center py-12">
+                          <p className="text-slate-600 dark:text-slate-400 mb-4">
+                            No KPIs have been created yet.
+                          </p>
+                          <Button 
+                            onClick={() => {
+                              setEditingKPI(null);
+                              setKpiForm({
+                                name: '',
+                                description: '',
+                                category: 'performance',
+                                metric: '',
+                                targetValue: '',
+                                currentValue: '',
+                                unit: '',
+                                priority: 'medium',
+                                timeframe: 'monthly',
+                                alertsEnabled: false,
+                                alertThreshold: '',
+                                alertCondition: 'below',
+                                emailRecipients: ''
+                              });
+                              setIsKPIModalOpen(true);
+                            }}
+                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            data-testid="button-create-kpi"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create KPI
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
                 )}
               </TabsContent>
 

@@ -2710,7 +2710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cleanedData = {
         ...req.body,
         platformType: platformType,
-        campaignId: null,
+        campaignId: req.body.campaignId || null, // Preserve campaignId from request
         alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
         benchmarkValue: req.body.benchmarkValue === '' ? null : req.body.benchmarkValue,
         currentValue: req.body.currentValue === '' ? null : req.body.currentValue

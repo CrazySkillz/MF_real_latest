@@ -390,7 +390,19 @@ export default function CustomIntegrationAnalytics() {
   // Handle KPI form submission
   const handleKPISubmit = () => {
     console.log('[KPI Submit] campaignId value:', campaignId);
+    console.log('[KPI Submit] integrationData:', integrationData);
+    console.log('[KPI Submit] matchCampaignRoute:', matchCampaignRoute);
+    console.log('[KPI Submit] matchIntegrationRoute:', matchIntegrationRoute);
     console.log('[KPI Submit] kpiForm:', kpiForm);
+    
+    if (!campaignId) {
+      toast({
+        title: "Error",
+        description: "Campaign ID not available. Please wait for the page to fully load.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (editingKPI) {
       const updateData = {

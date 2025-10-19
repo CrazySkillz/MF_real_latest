@@ -1225,21 +1225,6 @@ export default function Campaigns() {
                             Budget: {formatCurrency(campaign.budget)}
                           </div>
                           <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                toggleCampaignStatus(campaign);
-                              }}
-                              disabled={toggleCampaignStatusMutation.isPending}
-                            >
-                              {campaign.status === "active" ? (
-                                <Pause className="w-4 h-4" />
-                              ) : (
-                                <Play className="w-4 h-4" />
-                              )}
-                            </Button>
                             <Button 
                               variant="ghost" 
                               size="sm"

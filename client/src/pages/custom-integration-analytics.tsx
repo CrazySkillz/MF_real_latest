@@ -352,21 +352,28 @@ export default function CustomIntegrationAnalytics() {
 
   // Handle KPI form submission
   const handleKPISubmit = () => {
+    console.log('[KPI Submit] campaignId value:', campaignId);
+    console.log('[KPI Submit] kpiForm:', kpiForm);
+    
     if (editingKPI) {
-      updateKpiMutation.mutate({
+      const updateData = {
         id: editingKPI.id,
         data: {
           ...kpiForm,
           platformType: 'custom-integration',
           campaignId: campaignId,
         }
-      });
+      };
+      console.log('[KPI Submit] Update data:', updateData);
+      updateKpiMutation.mutate(updateData);
     } else {
-      createKpiMutation.mutate({
+      const createData = {
         ...kpiForm,
         platformType: 'custom-integration',
         campaignId: campaignId,
-      });
+      };
+      console.log('[KPI Submit] Create data:', createData);
+      createKpiMutation.mutate(createData);
     }
   };
 

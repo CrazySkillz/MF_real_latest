@@ -1228,7 +1228,8 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const kpi: KPI = {
       id,
-      campaignId: kpiData.campaignId || null,
+      // Keep campaignId exactly as provided - don't transform undefined to null
+      campaignId: kpiData.campaignId !== undefined ? kpiData.campaignId : null,
       platformType: kpiData.platformType || null,
       name: kpiData.name,
       targetValue: kpiData.targetValue,

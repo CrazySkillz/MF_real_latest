@@ -2510,7 +2510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestData = {
         ...req.body,
         platformType: platformType,
-        campaignId: null,
+        campaignId: req.body.campaignId || null, // Preserve campaignId from request
         metric: req.body.metric === '' ? null : req.body.metric,
         targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
         currentValue: req.body.currentValue === '' ? null : req.body.currentValue,

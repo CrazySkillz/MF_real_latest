@@ -247,19 +247,13 @@ export default function CustomIntegrationAnalytics() {
   });
 
   // Fetch platform-level KPIs for custom integration filtered by campaignId
+  const kpiQueryKey = campaignId ? `/api/platforms/custom-integration/kpis?campaignId=${campaignId}` : null;
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
-    queryKey: ['/api/platforms/custom-integration/kpis', { campaignId }],
-    queryFn: async () => {
-      if (!campaignId) throw new Error('Campaign ID not available');
-      const res = await fetch(`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`, {
-        credentials: 'include'
-      });
-      if (!res.ok) throw new Error('Failed to fetch KPIs');
-      return res.json();
-    },
-    enabled: !!campaignId,
+    queryKey: [kpiQueryKey],
+    enabled: !!kpiQueryKey,
     staleTime: 0,
     gcTime: 0,
+    refetchOnMount: true,
   });
 
   // Fetch platform-level Benchmarks for custom integration filtered by campaignId
@@ -289,7 +283,10 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis', { campaignId }] });
+      const invalidateKey = campaignId ? `/api/platforms/custom-integration/kpis?campaignId=${campaignId}` : null;
+      if (invalidateKey) {
+        queryClient.invalidateQueries({ queryKey: [invalidateKey] });
+      }
       
       // DEBUGGING: Show debug info
       if (data.__debug) {
@@ -338,14 +335,17 @@ export default function CustomIntegrationAnalytics() {
     },
     onSuccess: async () => {
       console.log('KPI update successful! Invalidating cache and refetching...');
-      // Remove from cache and force refetch
-      await queryClient.invalidateQueries({ 
-        queryKey: ['/api/platforms/custom-integration/kpis', { campaignId }],
-        refetchType: 'all' 
-      });
-      await queryClient.refetchQueries({ 
-        queryKey: ['/api/platforms/custom-integration/kpis', { campaignId }]
-      });
+      const invalidateKey = campaignId ? `/api/platforms/custom-integration/kpis?campaignId=${campaignId}` : null;
+      if (invalidateKey) {
+        // Remove from cache and force refetch
+        await queryClient.invalidateQueries({ 
+          queryKey: [invalidateKey],
+          refetchType: 'all' 
+        });
+        await queryClient.refetchQueries({ 
+          queryKey: [invalidateKey]
+        });
+      }
       console.log('Cache invalidated and refetch complete');
       toast({
         title: "KPI Updated",
@@ -387,7 +387,10 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis', { campaignId }] });
+      const invalidateKey = campaignId ? `/api/platforms/custom-integration/kpis?campaignId=${campaignId}` : null;
+      if (invalidateKey) {
+        queryClient.invalidateQueries({ queryKey: [invalidateKey] });
+      }
       toast({
         title: "KPI Deleted",
         description: "The KPI has been successfully deleted.",

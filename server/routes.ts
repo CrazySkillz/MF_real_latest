@@ -1329,6 +1329,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { platformType } = req.params;
       const { campaignId } = req.query;
       
+      console.log('[GET KPIs] Full URL:', req.url);
+      console.log('[GET KPIs] Query params:', req.query);
+      console.log('[GET KPIs] campaignId:', campaignId);
+      
       const kpis = await storage.getPlatformKPIs(platformType, campaignId as string | undefined);
       res.json(kpis);
     } catch (error) {
@@ -1341,11 +1345,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       
-      // Convert empty strings to null for numeric fields
+      // EXPLICIT campaignId preservation
       const cleanedData = {
         ...req.body,
         platformType: platformType,
-        campaignId: req.body.campaignId || null,
+        campaignId: req.body.campaignId, // Explicitly include campaignId
         alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
         targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
         currentValue: req.body.currentValue === '' ? null : req.body.currentValue
@@ -1354,19 +1358,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedKPI = insertKPISchema.parse(cleanedData);
       const kpi = await storage.createKPI(validatedKPI);
       
-      // DEBUGGING: Include debug info in response
-      const response = {
+      // DEBUG: Return debug info in response
+      res.json({
         ...kpi,
         __debug: {
           receivedCampaignId: req.body.campaignId,
-          receivedCampaignIdType: typeof req.body.campaignId,
           cleanedCampaignId: cleanedData.campaignId,
           validatedCampaignId: validatedKPI.campaignId,
           savedCampaignId: kpi.campaignId
         }
-      };
-      
-      res.json(response);
+      });
     } catch (error) {
       console.error('Platform KPI creation error:', error);
       res.status(500).json({ message: "Failed to create platform KPI" });

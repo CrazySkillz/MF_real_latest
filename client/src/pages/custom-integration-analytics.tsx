@@ -214,11 +214,15 @@ export default function CustomIntegrationAnalytics() {
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
     queryKey: ['/api/platforms/custom-integration/kpis', campaignId],
     queryFn: async () => {
-      const res = await fetch(`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`, {
+      const url = `/api/platforms/custom-integration/kpis?campaignId=${campaignId}`;
+      console.log('[KPIs Query] Fetching with URL:', url);
+      const res = await fetch(url, {
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to fetch KPIs');
-      return res.json();
+      const data = await res.json();
+      console.log('[KPIs Query] Response data:', data);
+      return data;
     },
     enabled: !!campaignId,
     staleTime: 0, // Always fetch fresh data
@@ -229,11 +233,15 @@ export default function CustomIntegrationAnalytics() {
   const { data: benchmarksData, isLoading: benchmarksLoading } = useQuery({
     queryKey: ['/api/platforms/custom-integration/benchmarks', campaignId],
     queryFn: async () => {
-      const res = await fetch(`/api/platforms/custom-integration/benchmarks?campaignId=${campaignId}`, {
+      const url = `/api/platforms/custom-integration/benchmarks?campaignId=${campaignId}`;
+      console.log('[Benchmarks Query] Fetching with URL:', url);
+      const res = await fetch(url, {
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to fetch benchmarks');
-      return res.json();
+      const data = await res.json();
+      console.log('[Benchmarks Query] Response data:', data);
+      return data;
     },
     enabled: !!campaignId,
   });

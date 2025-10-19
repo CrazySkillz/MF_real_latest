@@ -3643,7 +3643,7 @@ export default function CustomIntegrationAnalytics() {
               </Button>
               <Button
                 onClick={handleKPISubmit}
-                disabled={!kpiForm.name || !kpiForm.targetValue}
+                disabled={!kpiForm.name || !kpiForm.targetValue || !campaignId}
                 className="bg-purple-600 hover:bg-purple-700"
                 data-testid="button-kpi-submit"
               >
@@ -3992,7 +3992,7 @@ export default function CustomIntegrationAnalytics() {
               </Button>
               <Button
                 onClick={handleBenchmarkSubmit}
-                disabled={!benchmarkForm.name || !benchmarkForm.benchmarkValue || createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending}
+                disabled={!benchmarkForm.name || !benchmarkForm.benchmarkValue || !campaignId || createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending}
                 className="bg-purple-600 hover:bg-purple-700"
                 data-testid="button-benchmark-submit"
               >

@@ -2630,6 +2630,7 @@ export default function CustomIntegrationAnalytics() {
                             });
                             setIsKPIModalOpen(true);
                           }}
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
                           data-testid="button-create-kpi"
                         >
                           <Plus className="w-4 h-4 mr-2" />

@@ -98,7 +98,10 @@ export default function LinkedInAnalytics() {
     category: '',
     timeframe: 'monthly',
     trackingPeriod: '30',
-    emailNotifications: false
+    emailNotifications: false,
+    alertThreshold: '',
+    alertCondition: 'below',
+    emailRecipients: ''
   });
 
   // Benchmark Form State
@@ -224,7 +227,10 @@ export default function LinkedInAnalytics() {
         category: '',
         timeframe: 'monthly',
         trackingPeriod: '30',
-        emailNotifications: false
+        emailNotifications: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        emailRecipients: ''
       });
     },
     onError: (error: any) => {
@@ -284,7 +290,10 @@ export default function LinkedInAnalytics() {
         category: '',
         timeframe: 'monthly',
         trackingPeriod: '30',
-        emailNotifications: false
+        emailNotifications: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        emailRecipients: ''
       });
     },
     onError: (error: any) => {
@@ -311,7 +320,10 @@ export default function LinkedInAnalytics() {
       category: '',
       timeframe: 'monthly',
       trackingPeriod: '30',
-      emailNotifications: false
+      emailNotifications: false,
+      alertThreshold: '',
+      alertCondition: 'below',
+      emailRecipients: ''
     });
     setModalStep('configuration');
   };
@@ -2110,7 +2122,10 @@ export default function LinkedInAnalytics() {
                                       category: kpi.category || '',
                                       timeframe: kpi.timeframe || 'monthly',
                                       trackingPeriod: kpi.trackingPeriod?.toString() || '30',
-                                      emailNotifications: kpi.emailNotifications || false
+                                      emailNotifications: kpi.emailNotifications || false,
+                                      alertThreshold: kpi.alertThreshold || '',
+                                      alertCondition: kpi.alertCondition || 'below',
+                                      emailRecipients: kpi.emailRecipients || ''
                                     });
                                     setIsKPIModalOpen(true);
                                   }}
@@ -2990,7 +3005,10 @@ export default function LinkedInAnalytics() {
             category: '',
             timeframe: 'monthly',
             trackingPeriod: '30',
-            emailNotifications: false
+            emailNotifications: false,
+            alertThreshold: '',
+            alertCondition: 'below',
+            emailRecipients: ''
           });
         }
       }}>
@@ -3233,6 +3251,63 @@ export default function LinkedInAnalytics() {
                   Enable Email Alerts
                 </Label>
               </div>
+
+              {kpiForm.emailNotifications && (
+                <div className="space-y-4 pl-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="kpi-alert-threshold">Alert Threshold *</Label>
+                      <Input
+                        id="kpi-alert-threshold"
+                        type="text"
+                        placeholder="e.g., 80"
+                        value={kpiForm.alertThreshold}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/,/g, '');
+                          if (value === '' || !isNaN(parseFloat(value))) {
+                            setKpiForm({ ...kpiForm, alertThreshold: value });
+                          }
+                        }}
+                        data-testid="input-kpi-alert-threshold"
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Value at which to trigger the alert
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="kpi-alert-condition">Alert When</Label>
+                      <Select
+                        value={kpiForm.alertCondition}
+                        onValueChange={(value) => setKpiForm({ ...kpiForm, alertCondition: value })}
+                      >
+                        <SelectTrigger id="kpi-alert-condition" data-testid="select-kpi-alert-condition">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="below">Value Goes Below</SelectItem>
+                          <SelectItem value="above">Value Goes Above</SelectItem>
+                          <SelectItem value="equals">Value Equals</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="kpi-email-recipients">Email Recipients *</Label>
+                    <Input
+                      id="kpi-email-recipients"
+                      type="text"
+                      placeholder="email1@example.com, email2@example.com"
+                      value={kpiForm.emailRecipients}
+                      onChange={(e) => setKpiForm({ ...kpiForm, emailRecipients: e.target.value })}
+                      data-testid="input-kpi-email-recipients"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Comma-separated email addresses for alert notifications
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <DialogFooter>

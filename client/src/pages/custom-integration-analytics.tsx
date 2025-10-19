@@ -210,16 +210,18 @@ export default function CustomIntegrationAnalytics() {
     enabled: !!campaignId,
   });
 
-  // Fetch platform-level KPIs for custom integration
+  // Fetch platform-level KPIs for custom integration filtered by campaignId
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
-    queryKey: ['/api/platforms/custom-integration/kpis'],
+    queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`],
+    enabled: !!campaignId,
     staleTime: 0, // Always fetch fresh data
     gcTime: 0, // Don't cache
   });
 
-  // Fetch platform-level Benchmarks for custom integration
+  // Fetch platform-level Benchmarks for custom integration filtered by campaignId
   const { data: benchmarksData, isLoading: benchmarksLoading } = useQuery({
-    queryKey: ['/api/platforms/custom-integration/benchmarks'],
+    queryKey: [`/api/platforms/custom-integration/benchmarks?campaignId=${campaignId}`],
+    enabled: !!campaignId,
   });
 
   // Use real metrics if available, otherwise show placeholder
@@ -232,7 +234,7 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`] });
       toast({
         title: "KPI Created",
         description: "Your KPI has been successfully created.",
@@ -272,11 +274,11 @@ export default function CustomIntegrationAnalytics() {
       console.log('KPI update successful! Invalidating cache and refetching...');
       // Remove from cache and force refetch
       await queryClient.invalidateQueries({ 
-        queryKey: ['/api/platforms/custom-integration/kpis'],
+        queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`],
         refetchType: 'all' 
       });
       await queryClient.refetchQueries({ 
-        queryKey: ['/api/platforms/custom-integration/kpis']
+        queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`]
       });
       console.log('Cache invalidated and refetch complete');
       toast({
@@ -319,7 +321,7 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/kpis'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`] });
       toast({
         title: "KPI Deleted",
         description: "The KPI has been successfully deleted.",
@@ -352,7 +354,7 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/benchmarks?campaignId=${campaignId}`] });
       toast({
         title: "Benchmark Created",
         description: "Your benchmark has been successfully created.",
@@ -396,7 +398,7 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/benchmarks?campaignId=${campaignId}`] });
       toast({
         title: "Benchmark Updated",
         description: "Your benchmark has been successfully updated.",
@@ -441,7 +443,7 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/benchmarks?campaignId=${campaignId}`] });
       toast({
         title: "Benchmark Deleted",
         description: "The benchmark has been successfully deleted.",
@@ -475,9 +477,10 @@ export default function CustomIntegrationAnalytics() {
     }
   };
 
-  // Fetch platform-level Reports for custom integration
+  // Fetch platform-level Reports for custom integration filtered by campaignId
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
-    queryKey: ['/api/platforms/custom-integration/reports'],
+    queryKey: [`/api/platforms/custom-integration/reports?campaignId=${campaignId}`],
+    enabled: !!campaignId,
   });
 
   // Create Report mutation
@@ -487,7 +490,7 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/reports'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/reports?campaignId=${campaignId}`] });
       toast({
         title: "Report Created",
         description: "Your report has been successfully created.",
@@ -524,7 +527,7 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/reports'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/reports?campaignId=${campaignId}`] });
       toast({
         title: "Report Updated",
         description: "Your report has been successfully updated.",
@@ -561,7 +564,7 @@ export default function CustomIntegrationAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/custom-integration/reports'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/reports?campaignId=${campaignId}`] });
       toast({
         title: "Report Deleted",
         description: "The report has been successfully deleted.",

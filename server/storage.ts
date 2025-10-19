@@ -69,7 +69,7 @@ export interface IStorage {
   deleteLinkedInReport(id: string): Promise<boolean>;
   
   // Platform Reports
-  getPlatformReports(platformType: string): Promise<LinkedInReport[]>;
+  getPlatformReports(platformType: string, campaignId?: string): Promise<LinkedInReport[]>;
   createPlatformReport(report: any): Promise<LinkedInReport>;
   updatePlatformReport(id: string, report: any): Promise<LinkedInReport | undefined>;
   deletePlatformReport(id: string): Promise<boolean>;
@@ -87,7 +87,7 @@ export interface IStorage {
   
   // KPIs
   getCampaignKPIs(campaignId: string): Promise<KPI[]>;
-  getPlatformKPIs(platformType: string): Promise<KPI[]>;
+  getPlatformKPIs(platformType: string, campaignId?: string): Promise<KPI[]>;
   getKPI(id: string): Promise<KPI | undefined>;
   createKPI(kpi: InsertKPI): Promise<KPI>;
   updateKPI(id: string, kpi: Partial<InsertKPI>): Promise<KPI | undefined>;
@@ -116,7 +116,7 @@ export interface IStorage {
 
   // Benchmarks
   getCampaignBenchmarks(campaignId: string): Promise<Benchmark[]>;
-  getPlatformBenchmarks(platformType: string): Promise<Benchmark[]>;
+  getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<Benchmark[]>;
   getBenchmark(id: string): Promise<Benchmark | undefined>;
   createBenchmark(benchmark: InsertBenchmark): Promise<Benchmark>;
   updateBenchmark(id: string, benchmark: Partial<InsertBenchmark>): Promise<Benchmark | undefined>;
@@ -1091,10 +1091,18 @@ export class MemStorage implements IStorage {
   }
 
   // Platform Reports methods
-  async getPlatformReports(platformType: string): Promise<LinkedInReport[]> {
-    // Filter reports by platformType
+  async getPlatformReports(platformType: string, campaignId?: string): Promise<LinkedInReport[]> {
+    // Filter reports by platformType and optionally by campaignId
     return Array.from(this.linkedinReports.values())
-      .filter(report => (report as any).platformType === platformType)
+      .filter(report => {
+        const matches = (report as any).platformType === platformType;
+        if (!matches) return false;
+        if (campaignId) {
+          return (report as any).campaignId === campaignId;
+        } else {
+          return !(report as any).campaignId; // Platform-level only
+        }
+      })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
@@ -1196,8 +1204,15 @@ export class MemStorage implements IStorage {
     return Array.from(this.kpis.values()).filter(kpi => kpi.campaignId === campaignId);
   }
 
-  async getPlatformKPIs(platformType: string): Promise<KPI[]> {
-    return Array.from(this.kpis.values()).filter(kpi => kpi.platformType === platformType && !kpi.campaignId);
+  async getPlatformKPIs(platformType: string, campaignId?: string): Promise<KPI[]> {
+    return Array.from(this.kpis.values()).filter(kpi => {
+      if (kpi.platformType !== platformType) return false;
+      if (campaignId) {
+        return kpi.campaignId === campaignId;
+      } else {
+        return !kpi.campaignId; // Platform-level only
+      }
+    });
   }
 
   async getKPI(id: string): Promise<KPI | undefined> {
@@ -1950,12 +1965,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Platform Reports methods
-  async getPlatformReports(platformType: string): Promise<LinkedInReport[]> {
-    // Filter reports by platformType
-    return await db.select()
-      .from(linkedinReports)
-      .where(eq(linkedinReports.platformType, platformType))
-      .orderBy(linkedinReports.createdAt);
+  async getPlatformReports(platformType: string, campaignId?: string): Promise<LinkedInReport[]> {
+    // Filter reports by platformType and optionally by campaignId
+    if (campaignId) {
+      return await db.select()
+        .from(linkedinReports)
+        .where(and(eq(linkedinReports.platformType, platformType), eq(linkedinReports.campaignId, campaignId)))
+        .orderBy(linkedinReports.createdAt);
+    } else {
+      return await db.select()
+        .from(linkedinReports)
+        .where(and(eq(linkedinReports.platformType, platformType), isNull(linkedinReports.campaignId)))
+        .orderBy(linkedinReports.createdAt);
+    }
   }
 
   async createPlatformReport(report: any): Promise<LinkedInReport> {
@@ -2047,8 +2069,14 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(kpis).where(eq(kpis.campaignId, campaignId));
   }
 
-  async getPlatformKPIs(platformType: string): Promise<KPI[]> {
-    return db.select().from(kpis).where(and(eq(kpis.platformType, platformType), isNull(kpis.campaignId)));
+  async getPlatformKPIs(platformType: string, campaignId?: string): Promise<KPI[]> {
+    if (campaignId) {
+      // Filter by specific campaign
+      return db.select().from(kpis).where(and(eq(kpis.platformType, platformType), eq(kpis.campaignId, campaignId)));
+    } else {
+      // Platform-level KPIs (no campaign association)
+      return db.select().from(kpis).where(and(eq(kpis.platformType, platformType), isNull(kpis.campaignId)));
+    }
   }
 
   async getKPI(id: string): Promise<KPI | undefined> {
@@ -2220,10 +2248,18 @@ export class DatabaseStorage implements IStorage {
       .orderBy(benchmarks.category, benchmarks.name);
   }
 
-  async getPlatformBenchmarks(platformType: string): Promise<Benchmark[]> {
-    return db.select().from(benchmarks)
-      .where(and(eq(benchmarks.platformType, platformType), isNull(benchmarks.campaignId)))
-      .orderBy(benchmarks.category, benchmarks.name);
+  async getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<Benchmark[]> {
+    if (campaignId) {
+      // Filter by specific campaign
+      return db.select().from(benchmarks)
+        .where(and(eq(benchmarks.platformType, platformType), eq(benchmarks.campaignId, campaignId)))
+        .orderBy(benchmarks.category, benchmarks.name);
+    } else {
+      // Platform-level Benchmarks (no campaign association)
+      return db.select().from(benchmarks)
+        .where(and(eq(benchmarks.platformType, platformType), isNull(benchmarks.campaignId)))
+        .orderBy(benchmarks.category, benchmarks.name);
+    }
   }
 
   async getBenchmark(id: string): Promise<Benchmark | undefined> {

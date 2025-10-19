@@ -1314,7 +1314,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/platforms/:platformType/kpis", async (req, res) => {
     try {
       const { platformType } = req.params;
-      const kpis = await storage.getPlatformKPIs(platformType);
+      const { campaignId } = req.query;
+      
+      const kpis = await storage.getPlatformKPIs(platformType, campaignId as string | undefined);
       res.json(kpis);
     } catch (error) {
       console.error('Platform KPI fetch error:', error);
@@ -1408,7 +1410,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/platforms/:platformType/benchmarks", async (req, res) => {
     try {
       const { platformType } = req.params;
-      const benchmarks = await storage.getPlatformBenchmarks(platformType);
+      const { campaignId } = req.query;
+      
+      const benchmarks = await storage.getPlatformBenchmarks(platformType, campaignId as string | undefined);
       res.json(benchmarks);
     } catch (error) {
       console.error('Platform Benchmark fetch error:', error);
@@ -1508,7 +1512,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/platforms/:platformType/reports", async (req, res) => {
     try {
       const { platformType } = req.params;
-      const reports = await storage.getPlatformReports(platformType);
+      const { campaignId } = req.query;
+      
+      const reports = await storage.getPlatformReports(platformType, campaignId as string | undefined);
       res.json(reports);
     } catch (error) {
       console.error('Failed to fetch platform reports:', error);

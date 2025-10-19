@@ -183,9 +183,15 @@ export default function LinkedInAnalytics() {
     enabled: !!sessionId,
   });
 
-  // Fetch LinkedIn reports
+  // Fetch LinkedIn reports filtered by campaignId
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
-    queryKey: ['/api/linkedin/reports'],
+    queryKey: ['/api/platforms/linkedin/reports', campaignId],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/linkedin/reports?campaignId=${campaignId}`);
+      if (!response.ok) throw new Error('Failed to fetch reports');
+      return response.json();
+    },
+    enabled: !!campaignId,
   });
 
   // Create KPI mutation
@@ -195,7 +201,7 @@ export default function LinkedInAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId] });
       toast({
         title: "KPI Created",
         description: "Your LinkedIn KPI has been created successfully.",
@@ -229,7 +235,7 @@ export default function LinkedInAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId] });
       toast({
         title: "KPI Deleted",
         description: "The KPI has been deleted successfully.",
@@ -251,7 +257,7 @@ export default function LinkedInAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId] });
       toast({
         title: "KPI Updated",
         description: "Your LinkedIn KPI has been updated successfully.",
@@ -304,7 +310,7 @@ export default function LinkedInAnalytics() {
   const handleCreateKPI = () => {
     const kpiData = {
       // platformType is extracted from URL by backend, don't send it
-      // campaignId is null for platform-level KPIs
+      campaignId: campaignId, // Include campaignId for data isolation
       name: kpiForm.name,
       targetValue: kpiForm.targetValue,
       currentValue: kpiForm.currentValue || '0',
@@ -335,7 +341,7 @@ export default function LinkedInAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
       toast({
         title: "Benchmark Created",
         description: "Your LinkedIn benchmark has been created successfully.",
@@ -372,7 +378,7 @@ export default function LinkedInAnalytics() {
       return res.json();
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
       toast({
         title: "Benchmark Updated",
         description: "Your LinkedIn benchmark has been updated successfully.",
@@ -407,6 +413,7 @@ export default function LinkedInAnalytics() {
   const handleCreateBenchmark = () => {
     const derivedCategory = getCategoryFromMetric(benchmarkForm.metric);
     const benchmarkData = {
+      campaignId: campaignId, // Include campaignId for data isolation
       name: benchmarkForm.name,
       category: derivedCategory,
       benchmarkType: benchmarkForm.benchmarkType,
@@ -436,7 +443,7 @@ export default function LinkedInAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/linkedin/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/reports', campaignId] });
       toast({
         title: "Report Created",
         description: "Your LinkedIn report has been created successfully.",
@@ -472,7 +479,7 @@ export default function LinkedInAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/linkedin/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/reports', campaignId] });
       toast({
         title: "Report Deleted",
         description: "The report has been deleted successfully.",
@@ -494,7 +501,7 @@ export default function LinkedInAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/linkedin/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/reports', campaignId] });
       toast({
         title: "Report Updated",
         description: "Your report has been updated successfully.",
@@ -1426,14 +1433,26 @@ export default function LinkedInAnalytics() {
     }
   };
 
-  // Fetch platform-level LinkedIn KPIs
+  // Fetch platform-level LinkedIn KPIs filtered by campaignId
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
-    queryKey: ['/api/platforms/linkedin/kpis'],
+    queryKey: ['/api/platforms/linkedin/kpis', campaignId],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/linkedin/kpis?campaignId=${campaignId}`);
+      if (!response.ok) throw new Error('Failed to fetch KPIs');
+      return response.json();
+    },
+    enabled: !!campaignId,
   });
 
-  // Fetch platform-level LinkedIn Benchmarks
-  const { data: benchmarksData, isLoading: benchmarksLoading } = useQuery({
-    queryKey: ['/api/platforms/linkedin/benchmarks'],
+  // Fetch platform-level LinkedIn Benchmarks filtered by campaignId
+  const { data: benchmarksData, isLoading: benchmarksLoading} = useQuery({
+    queryKey: ['/api/platforms/linkedin/benchmarks', campaignId],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/linkedin/benchmarks?campaignId=${campaignId}`);
+      if (!response.ok) throw new Error('Failed to fetch benchmarks');
+      return response.json();
+    },
+    enabled: !!campaignId,
   });
 
   const formatNumber = (num: number | string) => {

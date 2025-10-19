@@ -1328,29 +1328,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       
-      console.log('[POST KPI] Request body:', JSON.stringify(req.body, null, 2));
-      console.log('[POST KPI] campaignId from body:', req.body.campaignId);
+      // DEBUGGING: Check what campaignId we received
+      if (!req.body.campaignId) {
+        // Return error with debug info if campaignId is missing
+        return res.status(400).json({ 
+          error: "MISSING_CAMPAIGN_ID",
+          message: "campaignId is required",
+          receivedBody: req.body,
+          campaignIdValue: req.body.campaignId,
+          campaignIdType: typeof req.body.campaignId
+        });
+      }
       
       // Convert empty strings to null for numeric fields
       const cleanedData = {
         ...req.body,
         platformType: platformType,
-        campaignId: req.body.campaignId || null,
+        campaignId: req.body.campaignId,
         alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
         targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
         currentValue: req.body.currentValue === '' ? null : req.body.currentValue
       };
       
-      console.log('[POST KPI] Cleaned campaignId:', cleanedData.campaignId);
-      
       const validatedKPI = insertKPISchema.parse(cleanedData);
-      
-      console.log('[POST KPI] Validated KPI campaignId:', validatedKPI.campaignId);
-      
       const kpi = await storage.createKPI(validatedKPI);
-      
-      console.log('[POST KPI] Created KPI with campaignId:', kpi.campaignId);
-      
       res.json(kpi);
     } catch (error) {
       console.error('Platform KPI creation error:', error);

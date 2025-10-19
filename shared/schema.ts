@@ -470,6 +470,7 @@ export const attributionInsights = pgTable("attribution_insights", {
 
 export const linkedinReports = pgTable("linkedin_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id"), // Optional - null for platform-level reports
   name: text("name").notNull(),
   description: text("description"),
   platformType: text("platform_type").notNull().default('linkedin'), // 'linkedin', 'custom-integration', etc.
@@ -484,6 +485,7 @@ export const linkedinReports = pgTable("linkedin_reports", {
   scheduleRecipients: text("schedule_recipients").array(), // Email addresses
   lastSentAt: timestamp("last_sent_at"),
   nextScheduledAt: timestamp("next_scheduled_at"),
+  status: text("status").notNull().default("active"), // 'active', 'archived', 'draft'
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -642,8 +644,10 @@ export const insertBenchmarkHistorySchema = createInsertSchema(benchmarkHistory)
 });
 
 export const insertLinkedInReportSchema = createInsertSchema(linkedinReports).pick({
+  campaignId: true,
   name: true,
   description: true,
+  platformType: true,
   reportType: true,
   configuration: true,
   scheduleEnabled: true,
@@ -652,6 +656,7 @@ export const insertLinkedInReportSchema = createInsertSchema(linkedinReports).pi
   scheduleDayOfMonth: true,
   scheduleTime: true,
   scheduleRecipients: true,
+  status: true,
 });
 
 export const insertNotificationSchema = createInsertSchema(notifications).pick({

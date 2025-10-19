@@ -88,7 +88,7 @@ export default function CustomIntegrationAnalytics() {
       console.log('[Integration Query] Fetched integration data:', data);
       return data;
     },
-    enabled: !!integrationId && matchIntegrationRoute === true,
+    enabled: !!integrationId,
     staleTime: 0,
   });
   

@@ -392,7 +392,12 @@ export default function LinkedInAnalytics() {
         source: '',
         geographicLocation: '',
         period: 'monthly',
-        confidenceLevel: ''
+        confidenceLevel: '',
+        competitorName: '',
+        alertsEnabled: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        emailRecipients: ''
       });
     },
     onError: (error: any) => {
@@ -430,7 +435,12 @@ export default function LinkedInAnalytics() {
         source: '',
         geographicLocation: '',
         period: 'monthly',
-        confidenceLevel: ''
+        confidenceLevel: '',
+        competitorName: '',
+        alertsEnabled: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        emailRecipients: ''
       });
     },
     onError: (error: any) => {
@@ -459,6 +469,11 @@ export default function LinkedInAnalytics() {
       geoLocation: benchmarkForm.geographicLocation,
       period: benchmarkForm.period,
       confidenceLevel: benchmarkForm.confidenceLevel,
+      competitorName: benchmarkForm.competitorName,
+      alertsEnabled: benchmarkForm.alertsEnabled,
+      alertThreshold: benchmarkForm.alertThreshold,
+      alertCondition: benchmarkForm.alertCondition,
+      emailRecipients: benchmarkForm.emailRecipients,
       status: 'active'
     };
     

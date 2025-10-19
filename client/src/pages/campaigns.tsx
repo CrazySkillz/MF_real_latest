@@ -512,7 +512,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 <div className="text-sm text-slate-500">Connect your own data source or API</div>
               </div>
             </div>
-            <ExternalLink className="w-5 h-5 text-slate-400" />
+            <CheckCircle className="w-5 h-5 text-green-500" />
           </div>
         </div>
       </div>

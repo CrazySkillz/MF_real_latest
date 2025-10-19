@@ -90,9 +90,12 @@ export default function LinkedInAnalytics() {
     name: '',
     unit: '',
     description: '',
+    metric: '',
     targetValue: '',
     currentValue: '',
     priority: 'high',
+    status: 'active',
+    category: '',
     timeframe: 'monthly',
     trackingPeriod: '30'
   });
@@ -212,9 +215,12 @@ export default function LinkedInAnalytics() {
         name: '',
         unit: '',
         description: '',
+        metric: '',
         targetValue: '',
         currentValue: '',
         priority: 'high',
+        status: 'active',
+        category: '',
         timeframe: 'monthly',
         trackingPeriod: '30'
       });
@@ -268,9 +274,12 @@ export default function LinkedInAnalytics() {
         name: '',
         unit: '',
         description: '',
+        metric: '',
         targetValue: '',
         currentValue: '',
         priority: 'high',
+        status: 'active',
+        category: '',
         timeframe: 'monthly',
         trackingPeriod: '30'
       });
@@ -291,9 +300,12 @@ export default function LinkedInAnalytics() {
       name: template.name,
       unit: template.unit,
       description: template.description,
+      metric: '',
       targetValue: template.targetValue,
       currentValue: '',
       priority: 'high',
+      status: 'active',
+      category: '',
       timeframe: 'monthly',
       trackingPeriod: '30'
     });
@@ -2091,7 +2103,9 @@ export default function LinkedInAnalytics() {
                                       unit: kpi.unit || '',
                                       priority: kpi.priority || 'medium',
                                       status: kpi.status || 'active',
-                                      category: kpi.category || ''
+                                      category: kpi.category || '',
+                                      timeframe: kpi.timeframe || 'monthly',
+                                      trackingPeriod: kpi.trackingPeriod?.toString() || '30'
                                     });
                                     setIsKPIModalOpen(true);
                                   }}
@@ -2963,9 +2977,12 @@ export default function LinkedInAnalytics() {
             name: '',
             unit: '',
             description: '',
+            metric: '',
             targetValue: '',
             currentValue: '',
             priority: 'high',
+            status: 'active',
+            category: '',
             timeframe: 'monthly',
             trackingPeriod: '30'
           });
@@ -3020,9 +3037,12 @@ export default function LinkedInAnalytics() {
                       name: '',
                       unit: '',
                       description: '',
+                      metric: '',
                       targetValue: '',
                       currentValue: '',
                       priority: 'high',
+                      status: 'active',
+                      category: '',
                       timeframe: 'monthly',
                       trackingPeriod: '30'
                     });
@@ -3040,20 +3060,11 @@ export default function LinkedInAnalytics() {
             </div>
           ) : (
             <div className="space-y-4 py-4">
-              {/* Header with back button */}
+              {/* Header */}
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                   KPI Configuration
                 </h3>
-                <Button
-                  variant="ghost"
-                  onClick={handleBackToTemplates}
-                  className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                  data-testid="button-back-to-templates"
-                >
-                  <ChevronRight className="w-4 h-4 mr-1 rotate-180" />
-                  Back to Templates
-                </Button>
               </div>
 
               {/* KPI Form */}

@@ -64,10 +64,46 @@ function calculateExpectedProgress(timeframe: string): number {
 }
 
 export default function CustomIntegrationAnalytics() {
-  const [, params] = useRoute("/campaigns/:id/custom-integration-analytics");
+  const [matchCampaignRoute, campaignParams] = useRoute("/campaigns/:id/custom-integration-analytics");
+  const [matchIntegrationRoute, integrationParams] = useRoute("/integrations/:id/analytics");
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
-  const campaignId = params?.id;
+  
+  // Determine if we're on the campaign route or integration route
+  const integrationId = integrationParams?.id;
+  
+  // Fetch integration data to get the campaign_id when accessed via integration route
+  const { data: integrationData, isLoading: integrationLoading } = useQuery({
+    queryKey: ["/api/custom-integration-by-id", integrationId],
+    queryFn: async () => {
+      console.log('[Integration Query] Fetching integration ID:', integrationId);
+      const res = await fetch(`/api/custom-integration-by-id/${integrationId}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        console.error('[Integration Query] Failed:', res.status, res.statusText);
+        throw new Error('Failed to fetch integration');
+      }
+      const data = await res.json();
+      console.log('[Integration Query] Fetched integration data:', data);
+      return data;
+    },
+    enabled: !!integrationId && matchIntegrationRoute === true,
+    staleTime: 0,
+  });
+  
+  // Get campaign ID from either route
+  // For campaign route, use ID directly. For integration route, use campaign_id from integration data
+  const campaignId = matchCampaignRoute ? campaignParams?.id : integrationData?.campaign_id;
+  
+  console.log('[Route Debug] matchCampaignRoute:', matchCampaignRoute);
+  console.log('[Route Debug] matchIntegrationRoute:', matchIntegrationRoute);
+  console.log('[Route Debug] campaignParams:', campaignParams);
+  console.log('[Route Debug] integrationParams:', integrationParams);
+  console.log('[Route Debug] integrationId:', integrationId);
+  console.log('[Route Debug] integrationData:', integrationData);
+  console.log('[Route Debug] integrationLoading:', integrationLoading);
+  console.log('[Route Debug] campaignId:', campaignId);
 
   // KPI state management
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);

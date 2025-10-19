@@ -348,6 +348,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // More specific route must come first!
+  app.get("/api/custom-integration-by-id/:integrationId", async (req, res) => {
+    try {
+      const customIntegration = await storage.getCustomIntegrationById(req.params.integrationId);
+      if (!customIntegration) {
+        return res.status(404).json({ message: "Custom integration not found" });
+      }
+      res.json(customIntegration);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch custom integration" });
+    }
+  });
+
   app.get("/api/custom-integration/:campaignId", async (req, res) => {
     try {
       const customIntegration = await storage.getCustomIntegration(req.params.campaignId);

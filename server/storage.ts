@@ -76,6 +76,7 @@ export interface IStorage {
   
   // Custom Integrations
   getCustomIntegration(campaignId: string): Promise<CustomIntegration | undefined>;
+  getCustomIntegrationById(integrationId: string): Promise<CustomIntegration | undefined>;
   getAllCustomIntegrations(): Promise<CustomIntegration[]>;
   createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration>;
   deleteCustomIntegration(campaignId: string): Promise<boolean>;
@@ -1126,6 +1127,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.customIntegrations.values()).find(ci => ci.campaignId === campaignId);
   }
 
+  async getCustomIntegrationById(integrationId: string): Promise<CustomIntegration | undefined> {
+    return this.customIntegrations.get(integrationId);
+  }
+
   async getAllCustomIntegrations(): Promise<CustomIntegration[]> {
     return Array.from(this.customIntegrations.values());
   }
@@ -2001,6 +2006,13 @@ export class DatabaseStorage implements IStorage {
     const [integration] = await db.select()
       .from(customIntegrations)
       .where(eq(customIntegrations.campaignId, campaignId));
+    return integration || undefined;
+  }
+
+  async getCustomIntegrationById(integrationId: string): Promise<CustomIntegration | undefined> {
+    const [integration] = await db.select()
+      .from(customIntegrations)
+      .where(eq(customIntegrations.id, integrationId));
     return integration || undefined;
   }
 

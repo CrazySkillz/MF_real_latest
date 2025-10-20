@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useRoute } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -69,12 +71,97 @@ interface Benchmark {
 
 // Campaign KPIs Component
 function CampaignKPIs({ campaign }: { campaign: Campaign }) {
-  const { data: kpis = [], isLoading } = useQuery({
+  const { toast } = useToast();
+  const { data: kpis = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaign.id}/kpis`],
     enabled: !!campaign.id,
   });
 
+  // Fetch metrics from all connected platforms
+  const { data: customIntegration } = useQuery<any>({
+    queryKey: [`/api/custom-integration/${campaign.id}`],
+    enabled: !!campaign.id,
+  });
+
+  const { data: linkedinMetrics } = useQuery<any>({
+    queryKey: [`/api/linkedin/metrics/${campaign.id}`],
+    enabled: !!campaign.id,
+  });
+
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [kpiForm, setKpiForm] = useState({
+    name: '',
+    description: '',
+    metric: '',
+    currentValue: '',
+    targetValue: '',
+    unit: '',
+    category: '',
+    timeframe: 'Monthly',
+    targetDate: '',
+    alertEnabled: false,
+    alertThreshold: '',
+    alertCondition: 'below' as 'below' | 'above' | 'equals',
+    alertEmails: '',
+  });
+
+  const createKpiMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest('POST', `/api/campaigns/${campaign.id}/kpis`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
+      setShowCreateDialog(false);
+      setKpiForm({
+        name: '',
+        description: '',
+        metric: '',
+        currentValue: '',
+        targetValue: '',
+        unit: '',
+        category: '',
+        timeframe: 'Monthly',
+        targetDate: '',
+        alertEnabled: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        alertEmails: '',
+      });
+      toast({
+        title: "Success",
+        description: "KPI created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create KPI",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateKPI = () => {
+    if (!kpiForm.name || !kpiForm.targetValue) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in required fields (Name, Target Value)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createKpiMutation.mutate({
+      campaignId: campaign.id,
+      platformType: null, // Campaign-level KPI
+      ...kpiForm,
+      currentValue: parseFloat(kpiForm.currentValue) || 0,
+      targetValue: parseFloat(kpiForm.targetValue),
+      alertThreshold: kpiForm.alertEnabled ? parseFloat(kpiForm.alertThreshold) : null,
+      alertEmails: kpiForm.alertEnabled && kpiForm.alertEmails ? kpiForm.alertEmails.split(',').map(e => e.trim()) : null,
+    });
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -328,6 +415,316 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </div>
         </>
       )}
+
+      {/* Create KPI Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Campaign KPI</DialogTitle>
+            <DialogDescription>
+              Create a KPI tracked across all connected platforms for this campaign. Select metrics from LinkedIn, Custom Integration, or enter custom values.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-name">KPI Name *</Label>
+                <Input
+                  id="kpi-name"
+                  placeholder="e.g., Overall Campaign CTR"
+                  value={kpiForm.name}
+                  onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
+                  data-testid="input-campaign-kpi-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-metric">Metric Source (Optional)</Label>
+                <Select
+                  value={kpiForm.metric || ''}
+                  onValueChange={(value) => {
+                    setKpiForm({ ...kpiForm, metric: value });
+                    // Auto-populate from connected platforms
+                    let currentValue = '';
+                    let unit = '';
+                    let category = '';
+                    
+                    // Custom Integration metrics
+                    if (customIntegration?.metrics) {
+                      switch(value) {
+                        case 'ci-users':
+                          currentValue = String(customIntegration.metrics.users || 0);
+                          category = 'Engagement';
+                          break;
+                        case 'ci-sessions':
+                          currentValue = String(customIntegration.metrics.sessions || 0);
+                          category = 'Engagement';
+                          break;
+                        case 'ci-pageviews':
+                          currentValue = String(customIntegration.metrics.pageviews || 0);
+                          category = 'Engagement';
+                          break;
+                        case 'ci-openRate':
+                          currentValue = String(customIntegration.metrics.openRate || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'ci-clickThroughRate':
+                          currentValue = String(customIntegration.metrics.clickThroughRate || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'ci-clickToOpen':
+                          currentValue = String(customIntegration.metrics.clickToOpen || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'ci-emailsDelivered':
+                          currentValue = String(customIntegration.metrics.emailsDelivered || 0);
+                          category = 'Performance';
+                          break;
+                      }
+                    }
+                    
+                    // LinkedIn metrics
+                    if (linkedinMetrics) {
+                      switch(value) {
+                        case 'li-impressions':
+                          currentValue = String(linkedinMetrics.impressions || 0);
+                          category = 'Performance';
+                          break;
+                        case 'li-clicks':
+                          currentValue = String(linkedinMetrics.clicks || 0);
+                          category = 'Engagement';
+                          break;
+                        case 'li-conversions':
+                          currentValue = String(linkedinMetrics.conversions || 0);
+                          category = 'Conversion';
+                          break;
+                        case 'li-spend':
+                          currentValue = String(linkedinMetrics.spend || 0);
+                          unit = '$';
+                          category = 'Cost Efficiency';
+                          break;
+                        case 'li-ctr':
+                          currentValue = String(linkedinMetrics.ctr || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'li-cpc':
+                          currentValue = String(linkedinMetrics.cpc || 0);
+                          unit = '$';
+                          category = 'Cost Efficiency';
+                          break;
+                      }
+                    }
+                    
+                    setKpiForm({ ...kpiForm, metric: value, currentValue, unit, category });
+                  }}
+                >
+                  <SelectTrigger id="kpi-metric" data-testid="select-campaign-kpi-metric">
+                    <SelectValue placeholder="Select metric or enter custom" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customIntegration?.connected && (
+                      <>
+                        <SelectItem value="ci-users">📧 Custom Integration - Users</SelectItem>
+                        <SelectItem value="ci-sessions">📧 Custom Integration - Sessions</SelectItem>
+                        <SelectItem value="ci-pageviews">📧 Custom Integration - Pageviews</SelectItem>
+                        <SelectItem value="ci-openRate">📧 Custom Integration - Open Rate</SelectItem>
+                        <SelectItem value="ci-clickThroughRate">📧 Custom Integration - CTR</SelectItem>
+                        <SelectItem value="ci-clickToOpen">📧 Custom Integration - CTOR</SelectItem>
+                        <SelectItem value="ci-emailsDelivered">📧 Custom Integration - Emails Delivered</SelectItem>
+                      </>
+                    )}
+                    {linkedinMetrics && (
+                      <>
+                        <SelectItem value="li-impressions">🔗 LinkedIn - Impressions</SelectItem>
+                        <SelectItem value="li-clicks">🔗 LinkedIn - Clicks</SelectItem>
+                        <SelectItem value="li-conversions">🔗 LinkedIn - Conversions</SelectItem>
+                        <SelectItem value="li-spend">🔗 LinkedIn - Spend</SelectItem>
+                        <SelectItem value="li-ctr">🔗 LinkedIn - CTR</SelectItem>
+                        <SelectItem value="li-cpc">🔗 LinkedIn - CPC</SelectItem>
+                      </>
+                    )}
+                    <SelectItem value="custom">✏️ Custom Value</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="kpi-description">Description</Label>
+              <Textarea
+                id="kpi-description"
+                placeholder="Describe what this KPI measures and why it's important"
+                value={kpiForm.description}
+                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
+                rows={3}
+                data-testid="input-campaign-kpi-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-current">Current Value</Label>
+                <Input
+                  id="kpi-current"
+                  type="text"
+                  placeholder="0"
+                  value={kpiForm.currentValue}
+                  onChange={(e) => setKpiForm({ ...kpiForm, currentValue: e.target.value })}
+                  data-testid="input-campaign-kpi-current"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-target">Target Value *</Label>
+                <Input
+                  id="kpi-target"
+                  type="text"
+                  placeholder="0"
+                  value={kpiForm.targetValue}
+                  onChange={(e) => setKpiForm({ ...kpiForm, targetValue: e.target.value })}
+                  data-testid="input-campaign-kpi-target"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-unit">Unit</Label>
+                <Input
+                  id="kpi-unit"
+                  placeholder="%, $, etc."
+                  value={kpiForm.unit}
+                  onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
+                  data-testid="input-campaign-kpi-unit"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-category">Category</Label>
+                <Select
+                  value={kpiForm.category}
+                  onValueChange={(value) => setKpiForm({ ...kpiForm, category: value })}
+                >
+                  <SelectTrigger id="kpi-category" data-testid="select-campaign-kpi-category">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Performance">Performance</SelectItem>
+                    <SelectItem value="Engagement">Engagement</SelectItem>
+                    <SelectItem value="Conversion">Conversion</SelectItem>
+                    <SelectItem value="Cost Efficiency">Cost Efficiency</SelectItem>
+                    <SelectItem value="Revenue">Revenue</SelectItem>
+                    <SelectItem value="Brand">Brand</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-timeframe">Timeframe</Label>
+                <Select
+                  value={kpiForm.timeframe}
+                  onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
+                >
+                  <SelectTrigger id="kpi-timeframe" data-testid="select-campaign-kpi-timeframe">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Daily">Daily</SelectItem>
+                    <SelectItem value="Weekly">Weekly</SelectItem>
+                    <SelectItem value="Monthly">Monthly</SelectItem>
+                    <SelectItem value="Quarterly">Quarterly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-target-date">Target Date (Optional)</Label>
+                <Input
+                  id="kpi-target-date"
+                  type="date"
+                  value={kpiForm.targetDate}
+                  onChange={(e) => setKpiForm({ ...kpiForm, targetDate: e.target.value })}
+                  data-testid="input-campaign-kpi-target-date"
+                />
+              </div>
+            </div>
+
+            {/* Email Alerts Section */}
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="alert-enabled"
+                  checked={kpiForm.alertEnabled}
+                  onChange={(e) => setKpiForm({ ...kpiForm, alertEnabled: e.target.checked })}
+                  className="rounded"
+                  data-testid="checkbox-campaign-kpi-alert-enabled"
+                />
+                <Label htmlFor="alert-enabled" className="font-medium">
+                  Enable Email Alerts
+                </Label>
+              </div>
+
+              {kpiForm.alertEnabled && (
+                <div className="grid grid-cols-3 gap-4 pl-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="alert-threshold">Alert Threshold</Label>
+                    <Input
+                      id="alert-threshold"
+                      type="text"
+                      placeholder="e.g., 50"
+                      value={kpiForm.alertThreshold}
+                      onChange={(e) => setKpiForm({ ...kpiForm, alertThreshold: e.target.value })}
+                      data-testid="input-campaign-kpi-alert-threshold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="alert-condition">Condition</Label>
+                    <Select
+                      value={kpiForm.alertCondition}
+                      onValueChange={(value: 'below' | 'above' | 'equals') => 
+                        setKpiForm({ ...kpiForm, alertCondition: value })
+                      }
+                    >
+                      <SelectTrigger id="alert-condition" data-testid="select-campaign-kpi-alert-condition">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="below">Below</SelectItem>
+                        <SelectItem value="above">Above</SelectItem>
+                        <SelectItem value="equals">Equals</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 col-span-3">
+                    <Label htmlFor="alert-emails">Email Recipients (comma-separated)</Label>
+                    <Input
+                      id="alert-emails"
+                      type="text"
+                      placeholder="email1@example.com, email2@example.com"
+                      value={kpiForm.alertEmails}
+                      onChange={(e) => setKpiForm({ ...kpiForm, alertEmails: e.target.value })}
+                      data-testid="input-campaign-kpi-alert-emails"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-6">
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)} data-testid="button-campaign-kpi-cancel">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateKPI} 
+              disabled={createKpiMutation.isPending}
+              data-testid="button-campaign-kpi-create"
+            >
+              {createKpiMutation.isPending ? 'Creating...' : 'Create KPI'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

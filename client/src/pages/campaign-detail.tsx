@@ -158,66 +158,83 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         </div>
       </div>
 
-      {/* KPI Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Empty State */}
+      {kpis.length === 0 ? (
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpis.length}</p>
-              </div>
-              <Target className="w-8 h-8 text-blue-500" />
+          <CardContent>
+            <div className="text-center py-12">
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                No KPIs have been created yet.
+              </p>
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create KPI
+              </Button>
             </div>
           </CardContent>
         </Card>
+      ) : (
+        <>
+          {/* KPI Summary Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpis.length}</p>
+                  </div>
+                  <Target className="w-8 h-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Exceeding Target</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {kpis.filter(k => k.status === 'Exceeding').length}
-                </p>
-              </div>
-              <CheckCircle2 className="w-8 h-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Exceeding Target</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {kpis.filter(k => k.status === 'Exceeding').length}
+                    </p>
+                  </div>
+                  <CheckCircle2 className="w-8 h-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {kpis.filter(k => k.status === 'On Track').length}
-                </p>
-              </div>
-              <Clock className="w-8 h-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {kpis.filter(k => k.status === 'On Track').length}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {Math.round(kpis.reduce((sum, k) => sum + k.progress, 0) / kpis.length)}%
-                </p>
-              </div>
-              <BarChart3 className="w-8 h-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                      {Math.round(kpis.reduce((sum, k) => sum + k.progress, 0) / kpis.length)}%
+                    </p>
+                  </div>
+                  <BarChart3 className="w-8 h-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* KPIs Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {kpis.map((kpi) => (
+          {/* KPIs Grid */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {kpis.map((kpi) => (
           <Card key={kpi.id}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -294,21 +311,23 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             </CardContent>
           </Card>
         ))}
-      </div>
+          </div>
 
-      {/* Quick Actions */}
-      <div className="flex items-center justify-center space-x-4 pt-6">
-        <Link href={`/campaigns/${campaign.id}/kpis`}>
-          <Button variant="outline" size="lg">
-            <Settings className="w-5 h-5 mr-2" />
-            Advanced KPI Management
-          </Button>
-        </Link>
-        <Button variant="outline" size="lg">
-          <FileText className="w-5 h-5 mr-2" />
-          Export KPI Report
-        </Button>
-      </div>
+          {/* Quick Actions */}
+          <div className="flex items-center justify-center space-x-4 pt-6">
+            <Link href={`/campaigns/${campaign.id}/kpis`}>
+              <Button variant="outline" size="lg">
+                <Settings className="w-5 h-5 mr-2" />
+                Advanced KPI Management
+              </Button>
+            </Link>
+            <Button variant="outline" size="lg">
+              <FileText className="w-5 h-5 mr-2" />
+              Export KPI Report
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

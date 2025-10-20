@@ -69,104 +69,10 @@ interface Benchmark {
 
 // Campaign KPIs Component
 function CampaignKPIs({ campaign }: { campaign: Campaign }) {
-  const [kpis, setKpis] = useState([
-    {
-      id: '1',
-      name: 'Cost Per Acquisition (CPA)',
-      description: 'Average cost to acquire a new customer',
-      currentValue: '$16.95',
-      targetValue: '$25.00',
-      unit: '$',
-      category: 'Cost Efficiency',
-      status: 'Exceeding',
-      priority: 'High',
-      progress: 68,
-      trend: 'improving',
-      trendValue: '+32.2%',
-      lastUpdated: '2 hours ago',
-      timeframe: 'Monthly'
-    },
-    {
-      id: '2', 
-      name: 'Return on Ad Spend (ROAS)',
-      description: 'Revenue generated per dollar spent on advertising',
-      currentValue: '4.85x',
-      targetValue: '4.0x',
-      unit: 'x',
-      category: 'Revenue',
-      status: 'Exceeding',
-      priority: 'High',
-      progress: 121,
-      trend: 'improving',
-      trendValue: '+21.3%',
-      lastUpdated: '1 hour ago',
-      timeframe: 'Weekly'
-    },
-    {
-      id: '3',
-      name: 'Click-Through Rate (CTR)',
-      description: 'Percentage of users who click on ad after viewing',
-      currentValue: '2.58%',
-      targetValue: '2.35%',
-      unit: '%',
-      category: 'Engagement',
-      status: 'Exceeding',
-      priority: 'Medium',
-      progress: 110,
-      trend: 'stable',
-      trendValue: '+9.8%',
-      lastUpdated: '30 minutes ago',
-      timeframe: 'Daily'
-    },
-    {
-      id: '4',
-      name: 'Conversion Rate',
-      description: 'Percentage of clicks that result in conversions',
-      currentValue: '3.47%',
-      targetValue: '3.20%',
-      unit: '%',
-      category: 'Performance',
-      status: 'Exceeding',
-      priority: 'High',
-      progress: 108,
-      trend: 'improving',
-      trendValue: '+8.4%',
-      lastUpdated: '45 minutes ago',
-      timeframe: 'Weekly'
-    },
-    {
-      id: '5',
-      name: 'Customer Lifetime Value (CLV)',
-      description: 'Predicted revenue from customer relationship',
-      currentValue: '$485',
-      targetValue: '$400',
-      unit: '$',
-      category: 'Revenue',
-      status: 'Exceeding',
-      priority: 'Medium',
-      progress: 121,
-      trend: 'improving',
-      trendValue: '+21.3%',
-      lastUpdated: '1 day ago',
-      timeframe: 'Monthly'
-    },
-    {
-      id: '6',
-      name: 'Brand Awareness Lift',
-      description: 'Increase in brand recognition due to campaign',
-      currentValue: '18%',
-      targetValue: '15%',
-      unit: '%',
-      category: 'Brand',
-      status: 'Exceeding',
-      priority: 'Low',
-      progress: 120,
-      trend: 'stable',
-      trendValue: '+3.0%',
-      lastUpdated: '2 days ago',
-      timeframe: 'Quarterly'
-    }
-  ]);
+  const { data: kpis = [], isLoading } = useQuery({
+    queryKey: [`/api/campaigns/${campaign.id}/kpis`],
+    enabled: !!campaign.id,
+  });
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 

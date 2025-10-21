@@ -96,6 +96,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   });
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [metricSearchQuery, setMetricSearchQuery] = useState('');
   const [kpiForm, setKpiForm] = useState({
     name: '',
     description: '',
@@ -120,6 +121,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
       setShowCreateDialog(false);
+      setMetricSearchQuery(''); // Reset search query
       setKpiForm({
         name: '',
         description: '',
@@ -410,7 +412,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       )}
 
       {/* Create KPI Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) setMetricSearchQuery(''); // Reset search on close
+      }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Campaign KPI</DialogTitle>
@@ -419,6 +424,20 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Metric Search */}
+            <div className="space-y-2">
+              <Label htmlFor="metric-search">Search Metrics</Label>
+              <Input
+                id="metric-search"
+                type="text"
+                placeholder="Type to filter metrics (e.g., CTR, impressions, email...)"
+                value={metricSearchQuery}
+                onChange={(e) => setMetricSearchQuery(e.target.value)}
+                data-testid="input-metric-search"
+                className="w-full"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="kpi-name">KPI Name *</Label>
@@ -634,75 +653,150 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <SelectValue placeholder="Select metric or enter custom" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[400px]">
-                    {linkedinMetrics && Object.keys(linkedinMetrics).length > 0 && (
-                      <>
-                        <SelectGroup>
-                          <SelectLabel>🔗 LinkedIn - Core Metrics</SelectLabel>
-                          <SelectItem value="li-impressions">Impressions</SelectItem>
-                          <SelectItem value="li-reach">Reach</SelectItem>
-                          <SelectItem value="li-clicks">Clicks</SelectItem>
-                          <SelectItem value="li-engagements">Engagements</SelectItem>
-                          <SelectItem value="li-spend">Spend</SelectItem>
-                          <SelectItem value="li-conversions">Conversions</SelectItem>
-                          <SelectItem value="li-leads">Leads</SelectItem>
-                          <SelectItem value="li-videoViews">Video Views</SelectItem>
-                          <SelectItem value="li-viralImpressions">Viral Impressions</SelectItem>
-                        </SelectGroup>
-                        <SelectSeparator />
-                        <SelectGroup>
-                          <SelectLabel>🔗 LinkedIn - Derived Metrics</SelectLabel>
-                          <SelectItem value="li-ctr">CTR (Click-Through Rate)</SelectItem>
-                          <SelectItem value="li-cpc">CPC (Cost Per Click)</SelectItem>
-                          <SelectItem value="li-cpm">CPM (Cost Per Mille)</SelectItem>
-                          <SelectItem value="li-cvr">CVR (Conversion Rate)</SelectItem>
-                          <SelectItem value="li-cpa">CPA (Cost Per Acquisition)</SelectItem>
-                          <SelectItem value="li-cpl">CPL (Cost Per Lead)</SelectItem>
-                          <SelectItem value="li-er">ER (Engagement Rate)</SelectItem>
-                          <SelectItem value="li-roi">ROI (Return on Investment)</SelectItem>
-                          <SelectItem value="li-roas">ROAS (Return on Ad Spend)</SelectItem>
-                        </SelectGroup>
-                        <SelectSeparator />
-                      </>
-                    )}
-                    {customIntegration?.connectedAt && customIntegration?.metrics && (
-                      <>
-                        <SelectGroup>
-                          <SelectLabel>📊 Custom Integration - Audience & Traffic</SelectLabel>
-                          <SelectItem value="ci-users">Users (Unique)</SelectItem>
-                          <SelectItem value="ci-sessions">Sessions</SelectItem>
-                          <SelectItem value="ci-pageviews">Pageviews</SelectItem>
-                          <SelectItem value="ci-avgSessionDuration">Avg. Session Duration</SelectItem>
-                          <SelectItem value="ci-pagesPerSession">Pages / Session</SelectItem>
-                          <SelectItem value="ci-bounceRate">Bounce Rate</SelectItem>
-                        </SelectGroup>
-                        <SelectSeparator />
-                        <SelectGroup>
-                          <SelectLabel>📊 Custom Integration - Traffic Sources</SelectLabel>
-                          <SelectItem value="ci-organicSearch">Organic Search</SelectItem>
-                          <SelectItem value="ci-directBranded">Direct / Branded</SelectItem>
-                          <SelectItem value="ci-email">Email (Newsletters)</SelectItem>
-                          <SelectItem value="ci-referral">Referral / Partners</SelectItem>
-                          <SelectItem value="ci-paid">Paid (Display/Search)</SelectItem>
-                          <SelectItem value="ci-social">Social</SelectItem>
-                        </SelectGroup>
-                        <SelectSeparator />
-                        <SelectGroup>
-                          <SelectLabel>📊 Custom Integration - Email Performance</SelectLabel>
-                          <SelectItem value="ci-emailsDelivered">Emails Delivered</SelectItem>
-                          <SelectItem value="ci-openRate">Open Rate</SelectItem>
-                          <SelectItem value="ci-clickThroughRate">Click-Through Rate</SelectItem>
-                          <SelectItem value="ci-clickToOpen">Click-to-Open</SelectItem>
-                          <SelectItem value="ci-hardBounces">Hard Bounces</SelectItem>
-                          <SelectItem value="ci-spamComplaints">Spam Complaints</SelectItem>
-                          <SelectItem value="ci-listGrowth">List Growth (Net)</SelectItem>
-                        </SelectGroup>
-                        <SelectSeparator />
-                      </>
-                    )}
-                    <SelectGroup>
-                      <SelectLabel>✏️ Manual Entry</SelectLabel>
-                      <SelectItem value="custom">Custom Value</SelectItem>
-                    </SelectGroup>
+                    {(() => {
+                      const query = metricSearchQuery.toLowerCase();
+                      const matchesSearch = (text: string) => text.toLowerCase().includes(query);
+                      
+                      // LinkedIn Core Metrics
+                      const linkedinCoreMetrics = [
+                        { value: 'li-impressions', label: 'Impressions' },
+                        { value: 'li-reach', label: 'Reach' },
+                        { value: 'li-clicks', label: 'Clicks' },
+                        { value: 'li-engagements', label: 'Engagements' },
+                        { value: 'li-spend', label: 'Spend' },
+                        { value: 'li-conversions', label: 'Conversions' },
+                        { value: 'li-leads', label: 'Leads' },
+                        { value: 'li-videoViews', label: 'Video Views' },
+                        { value: 'li-viralImpressions', label: 'Viral Impressions' },
+                      ].filter(m => matchesSearch(m.label) || matchesSearch('linkedin'));
+                      
+                      // LinkedIn Derived Metrics
+                      const linkedinDerivedMetrics = [
+                        { value: 'li-ctr', label: 'CTR (Click-Through Rate)' },
+                        { value: 'li-cpc', label: 'CPC (Cost Per Click)' },
+                        { value: 'li-cpm', label: 'CPM (Cost Per Mille)' },
+                        { value: 'li-cvr', label: 'CVR (Conversion Rate)' },
+                        { value: 'li-cpa', label: 'CPA (Cost Per Acquisition)' },
+                        { value: 'li-cpl', label: 'CPL (Cost Per Lead)' },
+                        { value: 'li-er', label: 'ER (Engagement Rate)' },
+                        { value: 'li-roi', label: 'ROI (Return on Investment)' },
+                        { value: 'li-roas', label: 'ROAS (Return on Ad Spend)' },
+                      ].filter(m => matchesSearch(m.label) || matchesSearch('linkedin'));
+                      
+                      // Custom Integration - Audience & Traffic
+                      const ciAudienceMetrics = [
+                        { value: 'ci-users', label: 'Users (Unique)' },
+                        { value: 'ci-sessions', label: 'Sessions' },
+                        { value: 'ci-pageviews', label: 'Pageviews' },
+                        { value: 'ci-avgSessionDuration', label: 'Avg. Session Duration' },
+                        { value: 'ci-pagesPerSession', label: 'Pages / Session' },
+                        { value: 'ci-bounceRate', label: 'Bounce Rate' },
+                      ].filter(m => matchesSearch(m.label) || matchesSearch('custom') || matchesSearch('audience') || matchesSearch('traffic'));
+                      
+                      // Custom Integration - Traffic Sources
+                      const ciTrafficMetrics = [
+                        { value: 'ci-organicSearch', label: 'Organic Search' },
+                        { value: 'ci-directBranded', label: 'Direct / Branded' },
+                        { value: 'ci-email', label: 'Email (Newsletters)' },
+                        { value: 'ci-referral', label: 'Referral / Partners' },
+                        { value: 'ci-paid', label: 'Paid (Display/Search)' },
+                        { value: 'ci-social', label: 'Social' },
+                      ].filter(m => matchesSearch(m.label) || matchesSearch('custom') || matchesSearch('traffic') || matchesSearch('source'));
+                      
+                      // Custom Integration - Email Performance
+                      const ciEmailMetrics = [
+                        { value: 'ci-emailsDelivered', label: 'Emails Delivered' },
+                        { value: 'ci-openRate', label: 'Open Rate' },
+                        { value: 'ci-clickThroughRate', label: 'Click-Through Rate' },
+                        { value: 'ci-clickToOpen', label: 'Click-to-Open' },
+                        { value: 'ci-hardBounces', label: 'Hard Bounces' },
+                        { value: 'ci-spamComplaints', label: 'Spam Complaints' },
+                        { value: 'ci-listGrowth', label: 'List Growth (Net)' },
+                      ].filter(m => matchesSearch(m.label) || matchesSearch('custom') || matchesSearch('email'));
+                      
+                      // Check if any results exist
+                      const hasResults = linkedinCoreMetrics.length > 0 || 
+                                        linkedinDerivedMetrics.length > 0 || 
+                                        ciAudienceMetrics.length > 0 || 
+                                        ciTrafficMetrics.length > 0 || 
+                                        ciEmailMetrics.length > 0 ||
+                                        matchesSearch('custom') || 
+                                        matchesSearch('manual') || 
+                                        !query;
+                      
+                      return (
+                        <>
+                          {linkedinMetrics && Object.keys(linkedinMetrics).length > 0 && linkedinCoreMetrics.length > 0 && (
+                            <>
+                              <SelectGroup>
+                                <SelectLabel>🔗 LinkedIn - Core Metrics</SelectLabel>
+                                {linkedinCoreMetrics.map(m => (
+                                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                              <SelectSeparator />
+                            </>
+                          )}
+                          {linkedinMetrics && Object.keys(linkedinMetrics).length > 0 && linkedinDerivedMetrics.length > 0 && (
+                            <>
+                              <SelectGroup>
+                                <SelectLabel>🔗 LinkedIn - Derived Metrics</SelectLabel>
+                                {linkedinDerivedMetrics.map(m => (
+                                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                              <SelectSeparator />
+                            </>
+                          )}
+                          {customIntegration?.connectedAt && customIntegration?.metrics && ciAudienceMetrics.length > 0 && (
+                            <>
+                              <SelectGroup>
+                                <SelectLabel>📊 Custom Integration - Audience & Traffic</SelectLabel>
+                                {ciAudienceMetrics.map(m => (
+                                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                              <SelectSeparator />
+                            </>
+                          )}
+                          {customIntegration?.connectedAt && customIntegration?.metrics && ciTrafficMetrics.length > 0 && (
+                            <>
+                              <SelectGroup>
+                                <SelectLabel>📊 Custom Integration - Traffic Sources</SelectLabel>
+                                {ciTrafficMetrics.map(m => (
+                                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                              <SelectSeparator />
+                            </>
+                          )}
+                          {customIntegration?.connectedAt && customIntegration?.metrics && ciEmailMetrics.length > 0 && (
+                            <>
+                              <SelectGroup>
+                                <SelectLabel>📊 Custom Integration - Email Performance</SelectLabel>
+                                {ciEmailMetrics.map(m => (
+                                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                              <SelectSeparator />
+                            </>
+                          )}
+                          {matchesSearch('custom') || matchesSearch('manual') || !query ? (
+                            <SelectGroup>
+                              <SelectLabel>✏️ Manual Entry</SelectLabel>
+                              <SelectItem value="custom">Custom Value</SelectItem>
+                            </SelectGroup>
+                          ) : null}
+                          
+                          {/* Empty state when no results */}
+                          {!hasResults && query && (
+                            <div className="px-3 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                              No metrics match "{query}". Try a different search term.
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </SelectContent>
                 </Select>
               </div>
@@ -868,7 +962,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </div>
 
           <div className="flex justify-end space-x-3 mt-6">
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)} data-testid="button-campaign-kpi-cancel">
+            <Button variant="outline" onClick={() => {
+              setShowCreateDialog(false);
+              setMetricSearchQuery(''); // Reset search on cancel
+            }} data-testid="button-campaign-kpi-cancel">
               Cancel
             </Button>
             <Button 

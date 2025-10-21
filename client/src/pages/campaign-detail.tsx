@@ -394,7 +394,27 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       )}
 
       {/* Create KPI Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) {
+          // Reset form when closing the dialog
+          setKpiForm({
+            name: '',
+            description: '',
+            metric: '',
+            currentValue: '',
+            targetValue: '',
+            unit: '',
+            category: '',
+            timeframe: 'Monthly',
+            targetDate: '',
+            alertEnabled: false,
+            alertThreshold: '',
+            alertCondition: 'below',
+            alertEmails: '',
+          });
+        }
+      }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Campaign KPI</DialogTitle>
@@ -415,7 +435,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="kpi-metric">Aggregated Metric (Optional)</Label>
+                <Label htmlFor="kpi-metric">Aggregated Metric</Label>
                 <Select
                   value={kpiForm.metric || ''}
                   onValueChange={(value) => {
@@ -439,34 +459,34 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       case 'total-impressions':
                         const liImpressions = parseNum(liMetrics.impressions);
                         const ciPageviews = parseNum(ciMetrics.pageviews);
-                        currentValue = String(liImpressions + ciPageviews);
+                        currentValue = formatNumber(liImpressions + ciPageviews);
                         category = 'Performance';
                         break;
                       case 'total-clicks':
                         const liClicks = parseNum(liMetrics.clicks);
-                        currentValue = String(liClicks);
+                        currentValue = formatNumber(liClicks);
                         category = 'Engagement';
                         break;
                       case 'total-conversions':
                         const liConversions = parseNum(liMetrics.conversions);
-                        currentValue = String(liConversions);
+                        currentValue = formatNumber(liConversions);
                         category = 'Performance';
                         break;
                       case 'total-leads':
                         const liLeads = parseNum(liMetrics.leads);
-                        currentValue = String(liLeads);
+                        currentValue = formatNumber(liLeads);
                         category = 'Performance';
                         break;
                       case 'total-spend':
                         const liSpend = parseNum(liMetrics.spend);
-                        currentValue = String(liSpend);
+                        currentValue = formatNumber(liSpend);
                         unit = '$';
                         category = 'Cost Efficiency';
                         break;
                       case 'total-engagements':
                         const liEngagements = parseNum(liMetrics.engagements);
                         const ciSessions = parseNum(ciMetrics.sessions);
-                        currentValue = String(liEngagements + ciSessions);
+                        currentValue = formatNumber(liEngagements + ciSessions);
                         category = 'Engagement';
                         break;
                       
@@ -474,53 +494,53 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       case 'overall-ctr':
                         const totalClicks = parseNum(liMetrics.clicks);
                         const totalImpressions = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
-                        currentValue = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0';
+                        currentValue = formatNumber(totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0);
                         unit = '%';
                         category = 'Performance';
                         break;
                       case 'blended-cpc':
                         const totalSpend = parseNum(liMetrics.spend);
                         const clicks = parseNum(liMetrics.clicks);
-                        currentValue = clicks > 0 ? (totalSpend / clicks).toFixed(2) : '0';
+                        currentValue = formatNumber(clicks > 0 ? totalSpend / clicks : 0);
                         unit = '$';
                         category = 'Cost Efficiency';
                         break;
                       case 'blended-cpm':
                         const spendForCpm = parseNum(liMetrics.spend);
                         const impressionsForCpm = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
-                        currentValue = impressionsForCpm > 0 ? ((spendForCpm / impressionsForCpm) * 1000).toFixed(2) : '0';
+                        currentValue = formatNumber(impressionsForCpm > 0 ? (spendForCpm / impressionsForCpm) * 1000 : 0);
                         unit = '$';
                         category = 'Cost Efficiency';
                         break;
                       case 'campaign-cvr':
                         const conversions = parseNum(liMetrics.conversions);
                         const clicksForCvr = parseNum(liMetrics.clicks);
-                        currentValue = clicksForCvr > 0 ? ((conversions / clicksForCvr) * 100).toFixed(2) : '0';
+                        currentValue = formatNumber(clicksForCvr > 0 ? (conversions / clicksForCvr) * 100 : 0);
                         unit = '%';
                         category = 'Performance';
                         break;
                       case 'campaign-cpa':
                         const spendForCpa = parseNum(liMetrics.spend);
                         const conversionsForCpa = parseNum(liMetrics.conversions);
-                        currentValue = conversionsForCpa > 0 ? (spendForCpa / conversionsForCpa).toFixed(2) : '0';
+                        currentValue = formatNumber(conversionsForCpa > 0 ? spendForCpa / conversionsForCpa : 0);
                         unit = '$';
                         category = 'Cost Efficiency';
                         break;
                       case 'campaign-cpl':
                         const spendForCpl = parseNum(liMetrics.spend);
                         const leadsForCpl = parseNum(liMetrics.leads);
-                        currentValue = leadsForCpl > 0 ? (spendForCpl / leadsForCpl).toFixed(2) : '0';
+                        currentValue = formatNumber(leadsForCpl > 0 ? spendForCpl / leadsForCpl : 0);
                         unit = '$';
                         category = 'Cost Efficiency';
                         break;
                       
                       // Audience & Engagement (from Custom Integration)
                       case 'total-users':
-                        currentValue = String(parseNum(ciMetrics.users));
+                        currentValue = formatNumber(parseNum(ciMetrics.users));
                         category = 'Engagement';
                         break;
                       case 'total-sessions':
-                        currentValue = String(parseNum(ciMetrics.sessions));
+                        currentValue = formatNumber(parseNum(ciMetrics.sessions));
                         category = 'Engagement';
                         break;
                     }

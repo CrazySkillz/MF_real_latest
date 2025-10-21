@@ -252,6 +252,15 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   };
 
   const handleUpdateKPI = () => {
+    if (!editingKPI) {
+      toast({
+        title: "Error",
+        description: "No KPI selected for editing",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!kpiForm.name || !kpiForm.targetValue) {
       toast({
         title: "Validation Error",

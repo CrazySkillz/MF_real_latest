@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -525,28 +525,39 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <SelectValue placeholder="Select metric or enter custom" />
                   </SelectTrigger>
                   <SelectContent>
-                    {customIntegration?.connectedAt && customIntegration?.metrics && (
-                      <>
-                        <SelectItem value="ci-users">📧 Custom Integration - Users</SelectItem>
-                        <SelectItem value="ci-sessions">📧 Custom Integration - Sessions</SelectItem>
-                        <SelectItem value="ci-pageviews">📧 Custom Integration - Pageviews</SelectItem>
-                        <SelectItem value="ci-openRate">📧 Custom Integration - Open Rate</SelectItem>
-                        <SelectItem value="ci-clickThroughRate">📧 Custom Integration - CTR</SelectItem>
-                        <SelectItem value="ci-clickToOpen">📧 Custom Integration - CTOR</SelectItem>
-                        <SelectItem value="ci-emailsDelivered">📧 Custom Integration - Emails Delivered</SelectItem>
-                      </>
-                    )}
                     {linkedinMetrics && Object.keys(linkedinMetrics).length > 0 && (
                       <>
-                        <SelectItem value="li-impressions">🔗 LinkedIn - Impressions</SelectItem>
-                        <SelectItem value="li-clicks">🔗 LinkedIn - Clicks</SelectItem>
-                        <SelectItem value="li-conversions">🔗 LinkedIn - Conversions</SelectItem>
-                        <SelectItem value="li-spend">🔗 LinkedIn - Spend</SelectItem>
-                        <SelectItem value="li-ctr">🔗 LinkedIn - CTR</SelectItem>
-                        <SelectItem value="li-cpc">🔗 LinkedIn - CPC</SelectItem>
+                        <SelectGroup>
+                          <SelectLabel>🔗 LinkedIn Metrics</SelectLabel>
+                          <SelectItem value="li-impressions">Impressions</SelectItem>
+                          <SelectItem value="li-clicks">Clicks</SelectItem>
+                          <SelectItem value="li-conversions">Conversions</SelectItem>
+                          <SelectItem value="li-spend">Spend</SelectItem>
+                          <SelectItem value="li-ctr">CTR</SelectItem>
+                          <SelectItem value="li-cpc">CPC</SelectItem>
+                        </SelectGroup>
+                        <SelectSeparator />
                       </>
                     )}
-                    <SelectItem value="custom">✏️ Custom Value</SelectItem>
+                    {customIntegration?.connectedAt && customIntegration?.metrics && (
+                      <>
+                        <SelectGroup>
+                          <SelectLabel>📧 Custom Integration Metrics</SelectLabel>
+                          <SelectItem value="ci-users">Users</SelectItem>
+                          <SelectItem value="ci-sessions">Sessions</SelectItem>
+                          <SelectItem value="ci-pageviews">Pageviews</SelectItem>
+                          <SelectItem value="ci-openRate">Open Rate</SelectItem>
+                          <SelectItem value="ci-clickThroughRate">Click-Through Rate</SelectItem>
+                          <SelectItem value="ci-clickToOpen">Click-to-Open Rate</SelectItem>
+                          <SelectItem value="ci-emailsDelivered">Emails Delivered</SelectItem>
+                        </SelectGroup>
+                        <SelectSeparator />
+                      </>
+                    )}
+                    <SelectGroup>
+                      <SelectLabel>✏️ Manual Entry</SelectLabel>
+                      <SelectItem value="custom">Custom Value</SelectItem>
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>

@@ -762,7 +762,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               />
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="kpi-current">Current Value</Label>
                 <Input
@@ -794,25 +794,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
                   data-testid="input-campaign-kpi-unit"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="kpi-category">Category</Label>
-                <Select
-                  value={kpiForm.category}
-                  onValueChange={(value) => setKpiForm({ ...kpiForm, category: value })}
-                >
-                  <SelectTrigger id="kpi-category" data-testid="select-campaign-kpi-category">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Performance">Performance</SelectItem>
-                    <SelectItem value="Engagement">Engagement</SelectItem>
-                    <SelectItem value="Conversion">Conversion</SelectItem>
-                    <SelectItem value="Cost Efficiency">Cost Efficiency</SelectItem>
-                    <SelectItem value="Revenue">Revenue</SelectItem>
-                    <SelectItem value="Brand">Brand</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
 

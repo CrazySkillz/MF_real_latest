@@ -420,14 +420,18 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="kpi-metric">Metric Source (Optional)</Label>
+                <Label htmlFor="kpi-metric">Aggregated Metric (Optional)</Label>
                 <Select
                   value={kpiForm.metric || ''}
                   onValueChange={(value) => {
-                    // Auto-populate from connected platforms (store raw numbers, not formatted)
+                    // Auto-populate with aggregated data across ALL platforms
                     let currentValue = '';
                     let unit = '';
                     let category = '';
+                    
+                    // Aggregate data from LinkedIn and Custom Integration
+                    const liMetrics = linkedinMetrics || {};
+                    const ciMetrics = customIntegration?.metrics || {};
                     
                     // Custom Integration metrics
                     if (customIntegration?.metrics) {

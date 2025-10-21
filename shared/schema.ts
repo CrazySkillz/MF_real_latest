@@ -222,12 +222,18 @@ export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
 export const kpis = pgTable("kpis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id"), // Optional - null for platform-level KPIs
-  platformType: text("platform_type"), // 'google_analytics', 'google_sheets', 'facebook', 'linkedin', etc.
+  platformType: text("platform_type"), // 'google_analytics', 'google_sheets', 'facebook', 'linkedin', 'custom_integration', etc.
   category: text("category").notNull().default("performance"), // 'engagement', 'conversion', 'traffic', 'revenue', 'performance'
   name: text("name").notNull(), // 'ROI', 'LTV', 'CAC', 'CTR', 'CPA', 'ROAS'
   metric: text("metric"), // Metric source: 'users', 'sessions', 'pageviews', 'bounceRate', etc.
+  // Live-sync data binding fields
+  sourceType: text("source_type").default("manual"), // 'aggregated', 'platform', 'manual'
+  metricKey: text("metric_key"), // API metric key: 'clicks', 'ctr', 'spend', 'users', etc.
+  aggregationMethod: text("aggregation_method"), // 'sum', 'avg', 'weighted_avg' for aggregated KPIs
+  // Values
   targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
-  currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"),
+  currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"), // Computed at read-time for bound KPIs, manual for sourceType=manual
+  lastComputedValue: decimal("last_computed_value", { precision: 10, scale: 2 }), // Snapshot for reports/exports
   unit: text("unit").notNull(), // '%', '$', 'ratio', etc.
   description: text("description"),
   priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'critical'

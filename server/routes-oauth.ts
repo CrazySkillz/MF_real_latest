@@ -1836,7 +1836,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!customIntegration) {
         return res.status(404).json({ message: "Custom integration not found" });
       }
-      res.json(customIntegration);
+      
+      // Include latest metrics for KPI creation dropdown
+      const metrics = await storage.getLatestCustomIntegrationMetrics(req.params.campaignId);
+      
+      res.json({
+        ...customIntegration,
+        metrics: metrics || null
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch custom integration" });
     }
@@ -3855,6 +3862,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('LinkedIn import sessions fetch error:', error);
       res.status(500).json({ message: "Failed to fetch import sessions" });
+    }
+  });
+
+  // Get aggregated LinkedIn metrics for a campaign (for KPI creation)
+  app.get("/api/linkedin/metrics/:campaignId", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      
+      // Get the latest import session for this campaign
+      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+      if (!sessions || sessions.length === 0) {
+        return res.json(null);
+      }
+      
+      // Get the most recent session
+      const latestSession = sessions.sort((a: any, b: any) => 
+        new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
+      )[0];
+      
+      // Get metrics for this session
+      const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
+      
+      // Aggregate metrics
+      const aggregated: Record<string, number> = {};
+      const selectedMetrics = Array.from(new Set(metrics.map((m: any) => m.metricKey)));
+      
+      selectedMetrics.forEach((metricKey: string) => {
+        const total = metrics
+          .filter((m: any) => m.metricKey === metricKey)
+          .reduce((sum: number, m: any) => sum + parseFloat(m.metricValue || '0'), 0);
+        aggregated[metricKey] = parseFloat(total.toFixed(2));
+      });
+      
+      // Calculate derived metrics
+      const impressions = aggregated.impressions || 0;
+      const clicks = aggregated.clicks || 0;
+      const spend = aggregated.spend || 0;
+      const conversions = aggregated.conversions || 0;
+      
+      // CTR: (Clicks / Impressions) * 100
+      if (impressions > 0) {
+        aggregated.ctr = parseFloat(((clicks / impressions) * 100).toFixed(2));
+      }
+      
+      // CPC: Spend / Clicks
+      if (clicks > 0) {
+        aggregated.cpc = parseFloat((spend / clicks).toFixed(2));
+      }
+      
+      res.json(aggregated);
+    } catch (error) {
+      console.error('LinkedIn metrics fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch LinkedIn metrics" });
     }
   });
 

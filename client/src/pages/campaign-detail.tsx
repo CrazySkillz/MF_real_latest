@@ -525,7 +525,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <SelectValue placeholder="Select metric or enter custom" />
                   </SelectTrigger>
                   <SelectContent>
-                    {customIntegration?.connected && (
+                    {customIntegration?.connectedAt && customIntegration?.metrics && (
                       <>
                         <SelectItem value="ci-users">📧 Custom Integration - Users</SelectItem>
                         <SelectItem value="ci-sessions">📧 Custom Integration - Sessions</SelectItem>
@@ -536,7 +536,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         <SelectItem value="ci-emailsDelivered">📧 Custom Integration - Emails Delivered</SelectItem>
                       </>
                     )}
-                    {linkedinMetrics && (
+                    {linkedinMetrics && Object.keys(linkedinMetrics).length > 0 && (
                       <>
                         <SelectItem value="li-impressions">🔗 LinkedIn - Impressions</SelectItem>
                         <SelectItem value="li-clicks">🔗 LinkedIn - Clicks</SelectItem>

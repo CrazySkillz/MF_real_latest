@@ -157,10 +157,17 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
-      toast({ title: "KPI deleted successfully" });
+      toast({
+        title: "KPI Deleted",
+        description: "The KPI has been successfully deleted.",
+      });
     },
-    onError: () => {
-      toast({ title: "Failed to delete KPI", variant: "destructive" });
+    onError: (error: any) => {
+      toast({
+        title: "Failed to delete KPI",
+        description: error.message || "An error occurred while deleting the KPI.",
+        variant: "destructive",
+      });
     },
   });
 

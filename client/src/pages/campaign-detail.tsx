@@ -69,6 +69,13 @@ interface Benchmark {
   createdAt: Date;
 }
 
+// Helper function to format numbers with commas
+const formatNumber = (value: number | string): string => {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '0';
+  return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+};
+
 // Campaign KPIs Component
 function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const { toast } = useToast();
@@ -452,34 +459,34 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     if (customIntegration?.metrics) {
                       switch(value) {
                         case 'ci-users':
-                          currentValue = String(customIntegration.metrics.users || 0);
+                          currentValue = formatNumber(customIntegration.metrics.users || 0);
                           category = 'Engagement';
                           break;
                         case 'ci-sessions':
-                          currentValue = String(customIntegration.metrics.sessions || 0);
+                          currentValue = formatNumber(customIntegration.metrics.sessions || 0);
                           category = 'Engagement';
                           break;
                         case 'ci-pageviews':
-                          currentValue = String(customIntegration.metrics.pageviews || 0);
+                          currentValue = formatNumber(customIntegration.metrics.pageviews || 0);
                           category = 'Engagement';
                           break;
                         case 'ci-openRate':
-                          currentValue = String(customIntegration.metrics.openRate || 0);
+                          currentValue = formatNumber(customIntegration.metrics.openRate || 0);
                           unit = '%';
                           category = 'Performance';
                           break;
                         case 'ci-clickThroughRate':
-                          currentValue = String(customIntegration.metrics.clickThroughRate || 0);
+                          currentValue = formatNumber(customIntegration.metrics.clickThroughRate || 0);
                           unit = '%';
                           category = 'Performance';
                           break;
                         case 'ci-clickToOpen':
-                          currentValue = String(customIntegration.metrics.clickToOpen || 0);
+                          currentValue = formatNumber(customIntegration.metrics.clickToOpen || 0);
                           unit = '%';
                           category = 'Performance';
                           break;
                         case 'ci-emailsDelivered':
-                          currentValue = String(customIntegration.metrics.emailsDelivered || 0);
+                          currentValue = formatNumber(customIntegration.metrics.emailsDelivered || 0);
                           category = 'Performance';
                           break;
                       }
@@ -489,29 +496,29 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     if (linkedinMetrics) {
                       switch(value) {
                         case 'li-impressions':
-                          currentValue = String(linkedinMetrics.impressions || 0);
+                          currentValue = formatNumber(linkedinMetrics.impressions || 0);
                           category = 'Performance';
                           break;
                         case 'li-clicks':
-                          currentValue = String(linkedinMetrics.clicks || 0);
+                          currentValue = formatNumber(linkedinMetrics.clicks || 0);
                           category = 'Engagement';
                           break;
                         case 'li-conversions':
-                          currentValue = String(linkedinMetrics.conversions || 0);
+                          currentValue = formatNumber(linkedinMetrics.conversions || 0);
                           category = 'Conversion';
                           break;
                         case 'li-spend':
-                          currentValue = String(linkedinMetrics.spend || 0);
+                          currentValue = formatNumber(linkedinMetrics.spend || 0);
                           unit = '$';
                           category = 'Cost Efficiency';
                           break;
                         case 'li-ctr':
-                          currentValue = String(linkedinMetrics.ctr || 0);
+                          currentValue = formatNumber(linkedinMetrics.ctr || 0);
                           unit = '%';
                           category = 'Performance';
                           break;
                         case 'li-cpc':
-                          currentValue = String(linkedinMetrics.cpc || 0);
+                          currentValue = formatNumber(linkedinMetrics.cpc || 0);
                           unit = '$';
                           category = 'Cost Efficiency';
                           break;

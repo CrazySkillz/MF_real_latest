@@ -435,8 +435,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <Select
                   value={kpiForm.metric || ''}
                   onValueChange={(value) => {
-                    setKpiForm({ ...kpiForm, metric: value });
-                    // Auto-populate from connected platforms
+                    // Auto-populate from connected platforms (store raw numbers, not formatted)
                     let currentValue = '';
                     let unit = '';
                     let category = '';
@@ -444,35 +443,95 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     // Custom Integration metrics
                     if (customIntegration?.metrics) {
                       switch(value) {
+                        // Audience & Traffic
                         case 'ci-users':
-                          currentValue = formatNumber(customIntegration.metrics.users || 0);
+                          currentValue = String(customIntegration.metrics.users || 0);
                           category = 'Engagement';
                           break;
                         case 'ci-sessions':
-                          currentValue = formatNumber(customIntegration.metrics.sessions || 0);
+                          currentValue = String(customIntegration.metrics.sessions || 0);
                           category = 'Engagement';
                           break;
                         case 'ci-pageviews':
-                          currentValue = formatNumber(customIntegration.metrics.pageviews || 0);
+                          currentValue = String(customIntegration.metrics.pageviews || 0);
                           category = 'Engagement';
                           break;
+                        case 'ci-avgSessionDuration':
+                          currentValue = String(customIntegration.metrics.avgSessionDuration || 0);
+                          category = 'Engagement';
+                          break;
+                        case 'ci-pagesPerSession':
+                          currentValue = String(customIntegration.metrics.pagesPerSession || 0);
+                          category = 'Engagement';
+                          break;
+                        case 'ci-bounceRate':
+                          currentValue = String(customIntegration.metrics.bounceRate || 0);
+                          unit = '%';
+                          category = 'Engagement';
+                          break;
+                        // Traffic Sources
+                        case 'ci-organicSearch':
+                          currentValue = String(customIntegration.metrics.organicSearchShare || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'ci-directBranded':
+                          currentValue = String(customIntegration.metrics.directBrandedShare || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'ci-email':
+                          currentValue = String(customIntegration.metrics.emailShare || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'ci-referral':
+                          currentValue = String(customIntegration.metrics.referralShare || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'ci-paid':
+                          currentValue = String(customIntegration.metrics.paidShare || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'ci-social':
+                          currentValue = String(customIntegration.metrics.socialShare || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        // Email Performance
+                        case 'ci-emailsDelivered':
+                          currentValue = String(customIntegration.metrics.emailsDelivered || 0);
+                          category = 'Performance';
+                          break;
                         case 'ci-openRate':
-                          currentValue = formatNumber(customIntegration.metrics.openRate || 0);
+                          currentValue = String(customIntegration.metrics.openRate || 0);
                           unit = '%';
                           category = 'Performance';
                           break;
                         case 'ci-clickThroughRate':
-                          currentValue = formatNumber(customIntegration.metrics.clickThroughRate || 0);
+                          currentValue = String(customIntegration.metrics.clickThroughRate || 0);
                           unit = '%';
                           category = 'Performance';
                           break;
                         case 'ci-clickToOpen':
-                          currentValue = formatNumber(customIntegration.metrics.clickToOpen || 0);
+                          currentValue = String(customIntegration.metrics.clickToOpenRate || 0);
                           unit = '%';
                           category = 'Performance';
                           break;
-                        case 'ci-emailsDelivered':
-                          currentValue = formatNumber(customIntegration.metrics.emailsDelivered || 0);
+                        case 'ci-hardBounces':
+                          currentValue = String(customIntegration.metrics.hardBounces || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'ci-spamComplaints':
+                          currentValue = String(customIntegration.metrics.spamComplaints || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'ci-listGrowth':
+                          currentValue = String(customIntegration.metrics.listGrowth || 0);
                           category = 'Performance';
                           break;
                       }
@@ -481,32 +540,89 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     // LinkedIn metrics
                     if (linkedinMetrics) {
                       switch(value) {
+                        // Core Metrics
                         case 'li-impressions':
-                          currentValue = formatNumber(linkedinMetrics.impressions || 0);
+                          currentValue = String(linkedinMetrics.impressions || 0);
+                          category = 'Performance';
+                          break;
+                        case 'li-reach':
+                          currentValue = String(linkedinMetrics.reach || 0);
                           category = 'Performance';
                           break;
                         case 'li-clicks':
-                          currentValue = formatNumber(linkedinMetrics.clicks || 0);
+                          currentValue = String(linkedinMetrics.clicks || 0);
                           category = 'Engagement';
                           break;
-                        case 'li-conversions':
-                          currentValue = formatNumber(linkedinMetrics.conversions || 0);
-                          category = 'Conversion';
+                        case 'li-engagements':
+                          currentValue = String(linkedinMetrics.engagements || 0);
+                          category = 'Engagement';
                           break;
                         case 'li-spend':
-                          currentValue = formatNumber(linkedinMetrics.spend || 0);
+                          currentValue = String(linkedinMetrics.spend || 0);
                           unit = '$';
                           category = 'Cost Efficiency';
                           break;
+                        case 'li-conversions':
+                          currentValue = String(linkedinMetrics.conversions || 0);
+                          category = 'Performance';
+                          break;
+                        case 'li-leads':
+                          currentValue = String(linkedinMetrics.leads || 0);
+                          category = 'Performance';
+                          break;
+                        case 'li-videoViews':
+                          currentValue = String(linkedinMetrics.videoViews || 0);
+                          category = 'Engagement';
+                          break;
+                        case 'li-viralImpressions':
+                          currentValue = String(linkedinMetrics.viralImpressions || 0);
+                          category = 'Performance';
+                          break;
+                        // Derived Metrics
                         case 'li-ctr':
-                          currentValue = formatNumber(linkedinMetrics.ctr || 0);
+                          currentValue = String(linkedinMetrics.ctr || 0);
                           unit = '%';
                           category = 'Performance';
                           break;
                         case 'li-cpc':
-                          currentValue = formatNumber(linkedinMetrics.cpc || 0);
+                          currentValue = String(linkedinMetrics.cpc || 0);
                           unit = '$';
                           category = 'Cost Efficiency';
+                          break;
+                        case 'li-cpm':
+                          currentValue = String(linkedinMetrics.cpm || 0);
+                          unit = '$';
+                          category = 'Cost Efficiency';
+                          break;
+                        case 'li-cvr':
+                          currentValue = String(linkedinMetrics.cvr || 0);
+                          unit = '%';
+                          category = 'Performance';
+                          break;
+                        case 'li-cpa':
+                          currentValue = String(linkedinMetrics.cpa || 0);
+                          unit = '$';
+                          category = 'Cost Efficiency';
+                          break;
+                        case 'li-cpl':
+                          currentValue = String(linkedinMetrics.cpl || 0);
+                          unit = '$';
+                          category = 'Cost Efficiency';
+                          break;
+                        case 'li-er':
+                          currentValue = String(linkedinMetrics.er || 0);
+                          unit = '%';
+                          category = 'Engagement';
+                          break;
+                        case 'li-roi':
+                          currentValue = String(linkedinMetrics.roi || 0);
+                          unit = '%';
+                          category = 'Revenue';
+                          break;
+                        case 'li-roas':
+                          currentValue = String(linkedinMetrics.roas || 0);
+                          unit = '%';
+                          category = 'Revenue';
                           break;
                       }
                     }
@@ -517,17 +633,33 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <SelectTrigger id="kpi-metric" data-testid="select-campaign-kpi-metric">
                     <SelectValue placeholder="Select metric or enter custom" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[400px]">
                     {linkedinMetrics && Object.keys(linkedinMetrics).length > 0 && (
                       <>
                         <SelectGroup>
-                          <SelectLabel>🔗 LinkedIn Metrics</SelectLabel>
+                          <SelectLabel>🔗 LinkedIn - Core Metrics</SelectLabel>
                           <SelectItem value="li-impressions">Impressions</SelectItem>
+                          <SelectItem value="li-reach">Reach</SelectItem>
                           <SelectItem value="li-clicks">Clicks</SelectItem>
-                          <SelectItem value="li-conversions">Conversions</SelectItem>
+                          <SelectItem value="li-engagements">Engagements</SelectItem>
                           <SelectItem value="li-spend">Spend</SelectItem>
-                          <SelectItem value="li-ctr">CTR</SelectItem>
-                          <SelectItem value="li-cpc">CPC</SelectItem>
+                          <SelectItem value="li-conversions">Conversions</SelectItem>
+                          <SelectItem value="li-leads">Leads</SelectItem>
+                          <SelectItem value="li-videoViews">Video Views</SelectItem>
+                          <SelectItem value="li-viralImpressions">Viral Impressions</SelectItem>
+                        </SelectGroup>
+                        <SelectSeparator />
+                        <SelectGroup>
+                          <SelectLabel>🔗 LinkedIn - Derived Metrics</SelectLabel>
+                          <SelectItem value="li-ctr">CTR (Click-Through Rate)</SelectItem>
+                          <SelectItem value="li-cpc">CPC (Cost Per Click)</SelectItem>
+                          <SelectItem value="li-cpm">CPM (Cost Per Mille)</SelectItem>
+                          <SelectItem value="li-cvr">CVR (Conversion Rate)</SelectItem>
+                          <SelectItem value="li-cpa">CPA (Cost Per Acquisition)</SelectItem>
+                          <SelectItem value="li-cpl">CPL (Cost Per Lead)</SelectItem>
+                          <SelectItem value="li-er">ER (Engagement Rate)</SelectItem>
+                          <SelectItem value="li-roi">ROI (Return on Investment)</SelectItem>
+                          <SelectItem value="li-roas">ROAS (Return on Ad Spend)</SelectItem>
                         </SelectGroup>
                         <SelectSeparator />
                       </>
@@ -535,14 +667,34 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     {customIntegration?.connectedAt && customIntegration?.metrics && (
                       <>
                         <SelectGroup>
-                          <SelectLabel>📧 Custom Integration Metrics</SelectLabel>
-                          <SelectItem value="ci-users">Users</SelectItem>
+                          <SelectLabel>📊 Custom Integration - Audience & Traffic</SelectLabel>
+                          <SelectItem value="ci-users">Users (Unique)</SelectItem>
                           <SelectItem value="ci-sessions">Sessions</SelectItem>
                           <SelectItem value="ci-pageviews">Pageviews</SelectItem>
+                          <SelectItem value="ci-avgSessionDuration">Avg. Session Duration</SelectItem>
+                          <SelectItem value="ci-pagesPerSession">Pages / Session</SelectItem>
+                          <SelectItem value="ci-bounceRate">Bounce Rate</SelectItem>
+                        </SelectGroup>
+                        <SelectSeparator />
+                        <SelectGroup>
+                          <SelectLabel>📊 Custom Integration - Traffic Sources</SelectLabel>
+                          <SelectItem value="ci-organicSearch">Organic Search</SelectItem>
+                          <SelectItem value="ci-directBranded">Direct / Branded</SelectItem>
+                          <SelectItem value="ci-email">Email (Newsletters)</SelectItem>
+                          <SelectItem value="ci-referral">Referral / Partners</SelectItem>
+                          <SelectItem value="ci-paid">Paid (Display/Search)</SelectItem>
+                          <SelectItem value="ci-social">Social</SelectItem>
+                        </SelectGroup>
+                        <SelectSeparator />
+                        <SelectGroup>
+                          <SelectLabel>📊 Custom Integration - Email Performance</SelectLabel>
+                          <SelectItem value="ci-emailsDelivered">Emails Delivered</SelectItem>
                           <SelectItem value="ci-openRate">Open Rate</SelectItem>
                           <SelectItem value="ci-clickThroughRate">Click-Through Rate</SelectItem>
-                          <SelectItem value="ci-clickToOpen">Click-to-Open Rate</SelectItem>
-                          <SelectItem value="ci-emailsDelivered">Emails Delivered</SelectItem>
+                          <SelectItem value="ci-clickToOpen">Click-to-Open</SelectItem>
+                          <SelectItem value="ci-hardBounces">Hard Bounces</SelectItem>
+                          <SelectItem value="ci-spamComplaints">Spam Complaints</SelectItem>
+                          <SelectItem value="ci-listGrowth">List Growth (Net)</SelectItem>
                         </SelectGroup>
                         <SelectSeparator />
                       </>

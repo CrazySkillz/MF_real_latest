@@ -241,15 +241,13 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Link href={`/campaigns/${campaign.id}/kpis`}>
-            <Button variant="outline">
-              <Settings className="w-4 h-4 mr-2" />
-              Manage KPIs
-            </Button>
-          </Link>
+          <Button variant="outline">
+            <FileText className="w-4 h-4 mr-2" />
+            Export KPIs Report
+          </Button>
           <Button onClick={() => setShowCreateDialog(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            Add KPI
+            Create KPI
           </Button>
         </div>
       </div>

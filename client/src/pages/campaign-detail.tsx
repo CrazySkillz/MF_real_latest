@@ -428,85 +428,99 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     const liMetrics = linkedinMetrics || {};
                     const ciMetrics = customIntegration?.metrics || {};
                     
+                    // Helper to safely parse numbers
+                    const parseNum = (val: any): number => {
+                      const num = typeof val === 'string' ? parseFloat(val) : val;
+                      return isNaN(num) ? 0 : num;
+                    };
+                    
                     switch(value) {
-                      // Core Aggregated Metrics (sum across platforms)
+                      // Core Aggregated Metrics (sum across ALL platforms)
                       case 'total-impressions':
-                        currentValue = String((liMetrics.impressions || 0) + (ciMetrics.pageviews || 0));
+                        const liImpressions = parseNum(liMetrics.impressions);
+                        const ciPageviews = parseNum(ciMetrics.pageviews);
+                        currentValue = String(liImpressions + ciPageviews);
                         category = 'Performance';
                         break;
                       case 'total-clicks':
-                        currentValue = String((liMetrics.clicks || 0));
+                        const liClicks = parseNum(liMetrics.clicks);
+                        currentValue = String(liClicks);
                         category = 'Engagement';
                         break;
                       case 'total-conversions':
-                        currentValue = String((liMetrics.conversions || 0));
+                        const liConversions = parseNum(liMetrics.conversions);
+                        currentValue = String(liConversions);
                         category = 'Performance';
                         break;
                       case 'total-leads':
-                        currentValue = String((liMetrics.leads || 0));
+                        const liLeads = parseNum(liMetrics.leads);
+                        currentValue = String(liLeads);
                         category = 'Performance';
                         break;
                       case 'total-spend':
-                        currentValue = String((liMetrics.spend || 0));
+                        const liSpend = parseNum(liMetrics.spend);
+                        currentValue = String(liSpend);
                         unit = '$';
                         category = 'Cost Efficiency';
                         break;
                       case 'total-engagements':
-                        currentValue = String((liMetrics.engagements || 0));
+                        const liEngagements = parseNum(liMetrics.engagements);
+                        const ciSessions = parseNum(ciMetrics.sessions);
+                        currentValue = String(liEngagements + ciSessions);
                         category = 'Engagement';
                         break;
                       
-                      // Calculated Blended Metrics
+                      // Calculated Blended Metrics (using aggregated totals)
                       case 'overall-ctr':
-                        const totalClicks = (liMetrics.clicks || 0);
-                        const totalImpressions = (liMetrics.impressions || 0) + (ciMetrics.pageviews || 0);
-                        currentValue = totalImpressions > 0 ? String(((totalClicks / totalImpressions) * 100).toFixed(2)) : '0';
+                        const totalClicks = parseNum(liMetrics.clicks);
+                        const totalImpressions = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
+                        currentValue = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0';
                         unit = '%';
                         category = 'Performance';
                         break;
                       case 'blended-cpc':
-                        const spend = (liMetrics.spend || 0);
-                        const clicks = (liMetrics.clicks || 0);
-                        currentValue = clicks > 0 ? String((spend / clicks).toFixed(2)) : '0';
+                        const totalSpend = parseNum(liMetrics.spend);
+                        const clicks = parseNum(liMetrics.clicks);
+                        currentValue = clicks > 0 ? (totalSpend / clicks).toFixed(2) : '0';
                         unit = '$';
                         category = 'Cost Efficiency';
                         break;
                       case 'blended-cpm':
-                        const totalSpend = (liMetrics.spend || 0);
-                        const impressions = (liMetrics.impressions || 0) + (ciMetrics.pageviews || 0);
-                        currentValue = impressions > 0 ? String(((totalSpend / impressions) * 1000).toFixed(2)) : '0';
+                        const spendForCpm = parseNum(liMetrics.spend);
+                        const impressionsForCpm = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
+                        currentValue = impressionsForCpm > 0 ? ((spendForCpm / impressionsForCpm) * 1000).toFixed(2) : '0';
                         unit = '$';
                         category = 'Cost Efficiency';
                         break;
                       case 'campaign-cvr':
-                        const conversions = (liMetrics.conversions || 0);
-                        const totalClicksForCvr = (liMetrics.clicks || 0);
-                        currentValue = totalClicksForCvr > 0 ? String(((conversions / totalClicksForCvr) * 100).toFixed(2)) : '0';
+                        const conversions = parseNum(liMetrics.conversions);
+                        const clicksForCvr = parseNum(liMetrics.clicks);
+                        currentValue = clicksForCvr > 0 ? ((conversions / clicksForCvr) * 100).toFixed(2) : '0';
                         unit = '%';
                         category = 'Performance';
                         break;
                       case 'campaign-cpa':
-                        const totalSpendForCpa = (liMetrics.spend || 0);
-                        const totalConversions = (liMetrics.conversions || 0);
-                        currentValue = totalConversions > 0 ? String((totalSpendForCpa / totalConversions).toFixed(2)) : '0';
+                        const spendForCpa = parseNum(liMetrics.spend);
+                        const conversionsForCpa = parseNum(liMetrics.conversions);
+                        currentValue = conversionsForCpa > 0 ? (spendForCpa / conversionsForCpa).toFixed(2) : '0';
                         unit = '$';
                         category = 'Cost Efficiency';
                         break;
                       case 'campaign-cpl':
-                        const totalSpendForCpl = (liMetrics.spend || 0);
-                        const totalLeads = (liMetrics.leads || 0);
-                        currentValue = totalLeads > 0 ? String((totalSpendForCpl / totalLeads).toFixed(2)) : '0';
+                        const spendForCpl = parseNum(liMetrics.spend);
+                        const leadsForCpl = parseNum(liMetrics.leads);
+                        currentValue = leadsForCpl > 0 ? (spendForCpl / leadsForCpl).toFixed(2) : '0';
                         unit = '$';
                         category = 'Cost Efficiency';
                         break;
                       
                       // Audience & Engagement (from Custom Integration)
                       case 'total-users':
-                        currentValue = String(ciMetrics.users || 0);
+                        currentValue = String(parseNum(ciMetrics.users));
                         category = 'Engagement';
                         break;
                       case 'total-sessions':
-                        currentValue = String(ciMetrics.sessions || 0);
+                        currentValue = String(parseNum(ciMetrics.sessions));
                         category = 'Engagement';
                         break;
                     }

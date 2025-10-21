@@ -392,20 +392,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </Card>
         ))}
           </div>
-
-          {/* Quick Actions */}
-          <div className="flex items-center justify-center space-x-4 pt-6">
-            <Link href={`/campaigns/${campaign.id}/kpis`}>
-              <Button variant="outline" size="lg">
-                <Settings className="w-5 h-5 mr-2" />
-                Advanced KPI Management
-              </Button>
-            </Link>
-            <Button variant="outline" size="lg">
-              <FileText className="w-5 h-5 mr-2" />
-              Export KPI Report
-            </Button>
-          </div>
         </>
       )}
 

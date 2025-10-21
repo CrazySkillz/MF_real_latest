@@ -735,105 +735,193 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
 // Campaign Benchmarks Component
 function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
-  const [benchmarks, setBenchmarks] = useState<Benchmark[]>([
-    {
-      id: '1',
-      name: 'Industry CTR Benchmark',
-      description: 'Click-through rate compared to industry average',
-      targetValue: 2.35,
-      currentValue: 2.84,
-      unit: '%',
-      category: 'Performance',
-      industry: 'Marketing & Advertising',
-      period: 'Monthly',
-      status: 'above',
-      improvement: 20.9,
-      createdAt: new Date('2025-01-01')
-    },
-    {
-      id: '2',
-      name: 'Conversion Rate Standard',
-      description: 'Conversion rate vs. industry benchmark',
-      targetValue: 3.2,
-      currentValue: 4.68,
-      unit: '%',
-      category: 'Conversion',
-      industry: 'E-commerce',
-      period: 'Quarterly',
-      status: 'above',
-      improvement: 46.3,
-      createdAt: new Date('2025-01-05')
-    },
-    {
-      id: '3',
-      name: 'Cost Per Acquisition',
-      description: 'CPA compared to industry standards',
-      targetValue: 25.00,
-      currentValue: 18.50,
-      unit: '$',
-      category: 'Cost',
-      industry: 'SaaS',
-      period: 'Monthly',
-      status: 'above',
-      improvement: 26.0,
-      createdAt: new Date('2025-01-10')
-    },
-    {
-      id: '4',
-      name: 'Return on Ad Spend',
-      description: 'ROAS vs. recommended benchmark',
-      targetValue: 4.0,
-      currentValue: 5.8,
-      unit: 'x',
-      category: 'Revenue',
-      industry: 'Multi-platform',
-      period: 'Weekly',
-      status: 'above',
-      improvement: 45.0,
-      createdAt: new Date('2025-01-15')
-    }
-  ]);
-
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newBenchmark, setNewBenchmark] = useState({
-    name: '',
-    description: '',
-    targetValue: '',
-    unit: '%',
-    category: 'Performance',
-    industry: 'Marketing & Advertising',
-    period: 'Monthly'
+  const { toast } = useToast();
+  
+  // Fetch campaign-level benchmarks
+  const { data: benchmarks = [], isLoading } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaign.id}/benchmarks`],
+    enabled: !!campaign.id,
   });
 
-  const handleCreateBenchmark = () => {
-    if (!newBenchmark.name || !newBenchmark.targetValue) return;
+  // Fetch aggregated metrics from all connected platforms
+  const { data: customIntegration } = useQuery<any>({
+    queryKey: [`/api/custom-integration/${campaign.id}`],
+    enabled: !!campaign.id,
+  });
 
-    const benchmark: Benchmark = {
-      id: Date.now().toString(),
-      name: newBenchmark.name,
-      description: newBenchmark.description,
-      targetValue: parseFloat(newBenchmark.targetValue),
-      currentValue: 0, // Will be updated with actual data
-      unit: newBenchmark.unit,
-      category: newBenchmark.category,
-      industry: newBenchmark.industry,
-      period: newBenchmark.period,
-      status: 'below',
-      improvement: 0,
-      createdAt: new Date()
+  const { data: linkedinMetrics } = useQuery<any>({
+    queryKey: [`/api/linkedin/metrics/${campaign.id}`],
+    enabled: !!campaign.id,
+  });
+
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
+  const [benchmarkForm, setBenchmarkForm] = useState({
+    metric: '',
+    name: '',
+    category: 'performance',
+    benchmarkType: 'industry',
+    competitorName: '',
+    unit: '',
+    benchmarkValue: '',
+    currentValue: '',
+    industry: '',
+    description: '',
+    source: '',
+    geographicLocation: '',
+    period: 'monthly',
+    confidenceLevel: '',
+    alertsEnabled: false,
+    alertThreshold: '',
+    alertCondition: 'below' as 'below' | 'above' | 'equals',
+    emailRecipients: ''
+  });
+
+  // Create Benchmark mutation
+  const createBenchmarkMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest('POST', `/api/campaigns/${campaign.id}/benchmarks`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/benchmarks`] });
+      toast({
+        title: "Benchmark Created",
+        description: "Your benchmark has been successfully created.",
+      });
+      setShowCreateDialog(false);
+      setEditingBenchmark(null);
+      resetBenchmarkForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error Creating Benchmark",
+        description: error?.message || "Failed to create benchmark.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update Benchmark mutation
+  const updateBenchmarkMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest('PATCH', `/api/campaigns/${campaign.id}/benchmarks/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/benchmarks`] });
+      toast({
+        title: "Benchmark Updated",
+        description: "Your benchmark has been successfully updated.",
+      });
+      setShowCreateDialog(false);
+      setEditingBenchmark(null);
+      resetBenchmarkForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error Updating Benchmark",
+        description: error?.message || "Failed to update benchmark.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete Benchmark mutation
+  const deleteBenchmarkMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('DELETE', `/api/campaigns/${campaign.id}/benchmarks/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/benchmarks`] });
+      toast({
+        title: "Benchmark Deleted",
+        description: "Your benchmark has been successfully deleted.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error Deleting Benchmark",
+        description: error?.message || "Failed to delete benchmark.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetBenchmarkForm = () => {
+    setBenchmarkForm({
+      metric: '',
+      name: '',
+      category: 'performance',
+      benchmarkType: 'industry',
+      competitorName: '',
+      unit: '',
+      benchmarkValue: '',
+      currentValue: '',
+      industry: '',
+      description: '',
+      source: '',
+      geographicLocation: '',
+      period: 'monthly',
+      confidenceLevel: '',
+      alertsEnabled: false,
+      alertThreshold: '',
+      alertCondition: 'below',
+      emailRecipients: ''
+    });
+  };
+
+  const handleBenchmarkSubmit = () => {
+    if (!benchmarkForm.name || !benchmarkForm.benchmarkValue) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in required fields (Name, Benchmark Value)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const benchmarkData = {
+      campaignId: campaign.id,
+      platformType: null, // Campaign-level benchmark
+      ...benchmarkForm,
+      benchmarkValue: parseFloat(benchmarkForm.benchmarkValue),
+      currentValue: benchmarkForm.currentValue ? parseFloat(benchmarkForm.currentValue) : 0,
+      alertThreshold: benchmarkForm.alertsEnabled ? parseFloat(benchmarkForm.alertThreshold) : null,
+      emailRecipients: benchmarkForm.alertsEnabled && benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map(e => e.trim()) : null,
     };
 
-    setBenchmarks(prev => [...prev, benchmark]);
-    setShowCreateDialog(false);
-    setNewBenchmark({
-      name: '',
-      description: '',
-      targetValue: '',
-      unit: '%',
-      category: 'Performance',
-      industry: 'Marketing & Advertising',
-      period: 'Monthly'
+    if (editingBenchmark) {
+      updateBenchmarkMutation.mutate({ id: editingBenchmark.id, data: benchmarkData });
+    } else {
+      createBenchmarkMutation.mutate(benchmarkData);
+    }
+  };
+
+  const handleEditBenchmark = (benchmark: any) => {
+    setEditingBenchmark(benchmark);
+    setBenchmarkForm({
+      metric: benchmark.metric || '',
+      name: benchmark.name || '',
+      category: benchmark.category || 'performance',
+      benchmarkType: benchmark.benchmarkType || 'industry',
+      competitorName: benchmark.competitorName || '',
+      unit: benchmark.unit || '',
+      benchmarkValue: String(benchmark.benchmarkValue || ''),
+      currentValue: String(benchmark.currentValue || ''),
+      industry: benchmark.industry || '',
+      description: benchmark.description || '',
+      source: benchmark.source || '',
+      geographicLocation: benchmark.geoLocation || '',
+      period: benchmark.period || 'monthly',
+      confidenceLevel: benchmark.confidenceLevel || '',
+      alertsEnabled: benchmark.alertsEnabled || false,
+      alertThreshold: String(benchmark.alertThreshold || ''),
+      alertCondition: benchmark.alertCondition || 'below',
+      emailRecipients: benchmark.emailRecipients || ''
     });
+    setShowCreateDialog(true);
   };
 
   const getStatusIcon = (status: string) => {
@@ -877,6 +965,46 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
   };
 
+  // Calculate benchmark status based on current vs benchmark value
+  const getBenchmarkStatus = (currentValue: number, benchmarkValue: number): 'above' | 'below' | 'meeting' => {
+    const diff = Math.abs(currentValue - benchmarkValue);
+    const tolerance = benchmarkValue * 0.05; // 5% tolerance
+    
+    if (diff <= tolerance) return 'meeting';
+    return currentValue > benchmarkValue ? 'above' : 'below';
+  };
+
+  const calculateImprovement = (currentValue: number, benchmarkValue: number): number => {
+    if (benchmarkValue === 0) return 0;
+    return ((currentValue - benchmarkValue) / benchmarkValue) * 100;
+  };
+
+  // Calculate summary stats
+  const aboveTargetCount = benchmarks.filter(b => {
+    const status = getBenchmarkStatus(b.currentValue || 0, b.benchmarkValue || 0);
+    return status === 'above';
+  }).length;
+
+  const belowTargetCount = benchmarks.filter(b => {
+    const status = getBenchmarkStatus(b.currentValue || 0, b.benchmarkValue || 0);
+    return status === 'below';
+  }).length;
+
+  const avgImprovement = benchmarks.length > 0
+    ? benchmarks.reduce((sum, b) => sum + calculateImprovement(b.currentValue || 0, b.benchmarkValue || 0), 0) / benchmarks.length
+    : 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading benchmarks...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -887,72 +1015,88 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
             Track and compare your campaign performance against industry standards
           </p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} className="flex items-center space-x-2">
+        <Button 
+          onClick={() => {
+            setEditingBenchmark(null);
+            resetBenchmarkForm();
+            setShowCreateDialog(true);
+          }} 
+          className="flex items-center space-x-2"
+          data-testid="button-create-benchmark"
+        >
           <Plus className="w-4 h-4" />
           <span>Add Benchmark</span>
         </Button>
       </div>
 
-      {/* Benchmark Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarks.length}</p>
-              </div>
-              <Award className="w-8 h-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
+      {benchmarks.length > 0 ? (
+        <>
+          {/* Benchmark Summary Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-total-benchmarks">
+                      {benchmarks.length}
+                    </p>
+                  </div>
+                  <Award className="w-8 h-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {benchmarks.filter(b => b.status === 'above').length}
-                </p>
-              </div>
-              <CheckCircle2 className="w-8 h-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                    <p className="text-2xl font-bold text-green-600" data-testid="text-above-target">
+                      {aboveTargetCount}
+                    </p>
+                  </div>
+                  <CheckCircle2 className="w-8 h-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {benchmarks.filter(b => b.status === 'below').length}
-                </p>
-              </div>
-              <AlertCircle className="w-8 h-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
+                    <p className="text-2xl font-bold text-red-600" data-testid="text-below-target">
+                      {belowTargetCount}
+                    </p>
+                  </div>
+                  <AlertCircle className="w-8 h-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Improvement</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {(benchmarks.reduce((sum, b) => sum + b.improvement, 0) / benchmarks.length).toFixed(1)}%
-                </p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Improvement</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-avg-improvement">
+                      {avgImprovement.toFixed(1)}%
+                    </p>
+                  </div>
+                  <TrendingUp className="w-8 h-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* Benchmarks List */}
-      <div className="space-y-4">
-        {benchmarks.map((benchmark) => (
+          {/* Benchmarks List */}
+          <div className="space-y-4">
+            {benchmarks.map((benchmark) => {
+              const status = getBenchmarkStatus(benchmark.currentValue || 0, benchmark.benchmarkValue || 0);
+              const improvement = calculateImprovement(benchmark.currentValue || 0, benchmark.benchmarkValue || 0);
+              
+              return (
           <Card key={benchmark.id}>
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
@@ -974,14 +1118,29 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 </div>
                 
                 <div className="flex items-center space-x-3">
-                  <Badge className={getStatusColor(benchmark.status)}>
-                    {benchmark.status === 'above' ? 'Above Target' : 
-                     benchmark.status === 'below' ? 'Below Target' : 'Meeting Target'}
+                  <Badge className={getStatusColor(status)} data-testid={`badge-status-${benchmark.id}`}>
+                    {status === 'above' ? 'Above Target' : 
+                     status === 'below' ? 'Below Target' : 'Meeting Target'}
                   </Badge>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleEditBenchmark(benchmark)}
+                    data-testid={`button-edit-${benchmark.id}`}
+                  >
                     <Edit2 className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-red-600">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to delete the benchmark "${benchmark.name}"?`)) {
+                        deleteBenchmarkMutation.mutate(benchmark.id);
+                      }
+                    }}
+                    data-testid={`button-delete-${benchmark.id}`}
+                  >
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -990,151 +1149,385 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <div className="mt-4 grid gap-4 md:grid-cols-4">
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current Value</div>
-                  <div className="text-lg font-bold text-slate-900 dark:text-white">
-                    {benchmark.currentValue}{benchmark.unit}
+                  <div className="text-lg font-bold text-slate-900 dark:text-white" data-testid={`text-current-${benchmark.id}`}>
+                    {benchmark.currentValue || 0}{benchmark.unit}
                   </div>
                 </div>
                 
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Target Value</div>
-                  <div className="text-lg font-bold text-slate-900 dark:text-white">
-                    {benchmark.targetValue}{benchmark.unit}
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Benchmark Value</div>
+                  <div className="text-lg font-bold text-slate-900 dark:text-white" data-testid={`text-benchmark-${benchmark.id}`}>
+                    {benchmark.benchmarkValue || 0}{benchmark.unit}
                   </div>
                 </div>
                 
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Improvement</div>
-                  <div className={`text-lg font-bold ${benchmark.improvement > 0 ? 'text-green-600' : benchmark.improvement < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}`}>
-                    {benchmark.improvement > 0 ? '+' : ''}{benchmark.improvement}%
+                  <div className={`text-lg font-bold ${improvement > 0 ? 'text-green-600' : improvement < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}`} data-testid={`text-improvement-${benchmark.id}`}>
+                    {improvement > 0 ? '+' : ''}{improvement.toFixed(1)}%
                   </div>
                 </div>
                 
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Status</div>
                   <div className="flex items-center space-x-2">
-                    {getStatusIcon(benchmark.status)}
-                    <span className="text-sm font-medium text-slate-900 dark:text-white capitalize">
-                      {benchmark.status}
+                    {getStatusIcon(status)}
+                    <span className="text-sm font-medium text-slate-900 dark:text-white capitalize" data-testid={`text-status-${benchmark.id}`}>
+                      {status}
                     </span>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-12">
+          <Award className="w-16 h-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+            No Benchmarks Yet
+          </h3>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
+            Create your first benchmark to start tracking performance against industry standards
+          </p>
+          <Button 
+            onClick={() => {
+              setEditingBenchmark(null);
+              resetBenchmarkForm();
+              setShowCreateDialog(true);
+            }}
+            data-testid="button-create-first-benchmark"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create First Benchmark
+          </Button>
+        </div>
+      )}
 
-      {/* Create Benchmark Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-md">
+      {/* Create/Edit Benchmark Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) {
+          setEditingBenchmark(null);
+          resetBenchmarkForm();
+        }
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Benchmark</DialogTitle>
+            <DialogTitle>{editingBenchmark ? 'Edit Benchmark' : 'Create New Benchmark'}</DialogTitle>
             <DialogDescription>
-              Add a new benchmark to track your campaign performance
+              {editingBenchmark 
+                ? 'Update the benchmark details below. Select a metric to auto-populate the current value.'
+                : 'Define a new benchmark for your campaign. You can select metrics from connected platforms or enter custom values.'}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="benchmark-name">Benchmark Name</Label>
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-name">Benchmark Name *</Label>
               <Input
                 id="benchmark-name"
-                placeholder="e.g., Industry CTR Benchmark"
-                value={newBenchmark.name}
-                onChange={(e) => setNewBenchmark(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Email Open Rate Benchmark"
+                value={benchmarkForm.name}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
+                data-testid="input-benchmark-name"
               />
             </div>
-            
-            <div>
-              <Label htmlFor="benchmark-description">Description</Label>
-              <Textarea
-                id="benchmark-description"
-                placeholder="Brief description of this benchmark"
-                value={newBenchmark.description}
-                onChange={(e) => setNewBenchmark(prev => ({ ...prev, description: e.target.value }))}
-                rows={2}
-              />
-            </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="target-value">Target Value</Label>
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-metric">Metric Source (Optional)</Label>
+                <Select
+                  value={benchmarkForm.metric || ''}
+                  onValueChange={(value) => {
+                    // Auto-populate current value from connected platforms (store raw numbers, not formatted)
+                    let currentValue = '';
+                    let unit = '';
+                    
+                    // Custom Integration metrics
+                    if (customIntegration?.metrics) {
+                      switch(value) {
+                        case 'users':
+                          currentValue = String(customIntegration.metrics.users || 0);
+                          break;
+                        case 'sessions':
+                          currentValue = String(customIntegration.metrics.sessions || 0);
+                          break;
+                        case 'pageviews':
+                          currentValue = String(customIntegration.metrics.pageviews || 0);
+                          break;
+                        case 'openRate':
+                          currentValue = String(customIntegration.metrics.openRate || 0);
+                          unit = '%';
+                          break;
+                        case 'clickThroughRate':
+                          currentValue = String(customIntegration.metrics.clickThroughRate || 0);
+                          unit = '%';
+                          break;
+                      }
+                    }
+                    
+                    // LinkedIn metrics
+                    if (linkedinMetrics) {
+                      switch(value) {
+                        case 'li-impressions':
+                          currentValue = String(linkedinMetrics.impressions || 0);
+                          break;
+                        case 'li-clicks':
+                          currentValue = String(linkedinMetrics.clicks || 0);
+                          break;
+                        case 'li-spend':
+                          currentValue = String(linkedinMetrics.spend || 0);
+                          unit = '$';
+                          break;
+                        case 'li-ctr':
+                          currentValue = String(linkedinMetrics.ctr || 0);
+                          unit = '%';
+                          break;
+                        case 'li-cpc':
+                          currentValue = String(linkedinMetrics.cpc || 0);
+                          unit = '$';
+                          break;
+                      }
+                    }
+                    
+                    setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue, unit: unit || benchmarkForm.unit });
+                  }}
+                >
+                  <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
+                    <SelectValue placeholder="Select metric or leave empty for custom" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {linkedinMetrics && Object.keys(linkedinMetrics).length > 0 && (
+                      <>
+                        <SelectGroup>
+                          <SelectLabel>🔗 LinkedIn Metrics</SelectLabel>
+                          <SelectItem value="li-impressions">Impressions</SelectItem>
+                          <SelectItem value="li-clicks">Clicks</SelectItem>
+                          <SelectItem value="li-spend">Spend</SelectItem>
+                          <SelectItem value="li-ctr">CTR</SelectItem>
+                          <SelectItem value="li-cpc">CPC</SelectItem>
+                        </SelectGroup>
+                        <SelectSeparator />
+                      </>
+                    )}
+                    {customIntegration?.connectedAt && customIntegration?.metrics && (
+                      <>
+                        <SelectGroup>
+                          <SelectLabel>📧 Custom Integration Metrics</SelectLabel>
+                          <SelectItem value="users">Users</SelectItem>
+                          <SelectItem value="sessions">Sessions</SelectItem>
+                          <SelectItem value="pageviews">Pageviews</SelectItem>
+                          <SelectItem value="openRate">Open Rate</SelectItem>
+                          <SelectItem value="clickThroughRate">Click-Through Rate</SelectItem>
+                        </SelectGroup>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-type">Benchmark Type</Label>
+                <Select
+                  value={benchmarkForm.benchmarkType}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, benchmarkType: value })}
+                >
+                  <SelectTrigger id="benchmark-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="industry">Industry Average</SelectItem>
+                    <SelectItem value="competitor">Competitor</SelectItem>
+                    <SelectItem value="historical">Historical</SelectItem>
+                    <SelectItem value="goal">Internal Goal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Describe what this benchmark represents"
+                value={benchmarkForm.description}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, description: e.target.value })}
+                rows={2}
+                data-testid="input-benchmark-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="current-value">Current Value</Label>
                 <Input
-                  id="target-value"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={newBenchmark.targetValue}
-                  onChange={(e) => setNewBenchmark(prev => ({ ...prev, targetValue: e.target.value }))}
+                  id="current-value"
+                  placeholder="0"
+                  value={benchmarkForm.currentValue}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, currentValue: e.target.value })}
+                  data-testid="input-benchmark-current"
                 />
               </div>
-              
-              <div>
+
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-value">Benchmark Value *</Label>
+                <Input
+                  id="benchmark-value"
+                  placeholder="0"
+                  value={benchmarkForm.benchmarkValue}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, benchmarkValue: e.target.value })}
+                  data-testid="input-benchmark-value"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="unit">Unit</Label>
-                <Select value={newBenchmark.unit} onValueChange={(value) => setNewBenchmark(prev => ({ ...prev, unit: value }))}>
-                  <SelectTrigger>
-                    <SelectValue />
+                <Select
+                  value={benchmarkForm.unit}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, unit: value })}
+                >
+                  <SelectTrigger id="unit">
+                    <SelectValue placeholder="Select unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="%">Percentage (%)</SelectItem>
-                    <SelectItem value="$">Currency ($)</SelectItem>
-                    <SelectItem value="x">Multiplier (x)</SelectItem>
+                    <SelectItem value="%">%</SelectItem>
+                    <SelectItem value="$">$</SelectItem>
                     <SelectItem value="count">Count</SelectItem>
+                    <SelectItem value="ratio">Ratio</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+
+              <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
-                <Select value={newBenchmark.category} onValueChange={(value) => setNewBenchmark(prev => ({ ...prev, category: value }))}>
-                  <SelectTrigger>
+                <Select
+                  value={benchmarkForm.category}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, category: value })}
+                >
+                  <SelectTrigger id="category">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Performance">Performance</SelectItem>
-                    <SelectItem value="Conversion">Conversion</SelectItem>
-                    <SelectItem value="Cost">Cost</SelectItem>
-                    <SelectItem value="Revenue">Revenue</SelectItem>
-                    <SelectItem value="Engagement">Engagement</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="period">Period</Label>
-                <Select value={newBenchmark.period} onValueChange={(value) => setNewBenchmark(prev => ({ ...prev, period: value }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Daily">Daily</SelectItem>
-                    <SelectItem value="Weekly">Weekly</SelectItem>
-                    <SelectItem value="Monthly">Monthly</SelectItem>
-                    <SelectItem value="Quarterly">Quarterly</SelectItem>
+                    <SelectItem value="performance">Performance</SelectItem>
+                    <SelectItem value="engagement">Engagement</SelectItem>
+                    <SelectItem value="conversion">Conversion</SelectItem>
+                    <SelectItem value="traffic">Traffic</SelectItem>
+                    <SelectItem value="revenue">Revenue</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            
-            <div>
-              <Label htmlFor="industry">Industry</Label>
-              <Input
-                id="industry"
-                placeholder="e.g., Marketing & Advertising"
-                value={newBenchmark.industry}
-                onChange={(e) => setNewBenchmark(prev => ({ ...prev, industry: e.target.value }))}
-              />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="industry">Industry</Label>
+                <Input
+                  id="industry"
+                  placeholder="e.g., E-commerce"
+                  value={benchmarkForm.industry}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, industry: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="period">Period</Label>
+                <Select
+                  value={benchmarkForm.period}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, period: value })}
+                >
+                  <SelectTrigger id="period">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Email Alert Settings */}
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="alert-enabled"
+                  checked={benchmarkForm.alertsEnabled}
+                  onCheckedChange={(checked) => setBenchmarkForm({ ...benchmarkForm, alertsEnabled: checked as boolean })}
+                  data-testid="checkbox-benchmark-alert"
+                />
+                <Label htmlFor="alert-enabled" className="text-sm font-medium">
+                  Enable Email Alerts
+                </Label>
+              </div>
+
+              {benchmarkForm.alertsEnabled && (
+                <div className="grid grid-cols-3 gap-4 pl-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="alert-threshold">Alert Threshold</Label>
+                    <Input
+                      id="alert-threshold"
+                      type="number"
+                      step="0.01"
+                      placeholder="0"
+                      value={benchmarkForm.alertThreshold}
+                      onChange={(e) => setBenchmarkForm({ ...benchmarkForm, alertThreshold: e.target.value })}
+                      data-testid="input-benchmark-alert-threshold"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="alert-condition">Condition</Label>
+                    <Select
+                      value={benchmarkForm.alertCondition}
+                      onValueChange={(value: any) => setBenchmarkForm({ ...benchmarkForm, alertCondition: value })}
+                    >
+                      <SelectTrigger id="alert-condition">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="below">Below</SelectItem>
+                        <SelectItem value="above">Above</SelectItem>
+                        <SelectItem value="equals">Equals</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="alert-emails">Email Recipients</Label>
+                    <Input
+                      id="alert-emails"
+                      placeholder="email1@example.com, email2@example.com"
+                      value={benchmarkForm.emailRecipients}
+                      onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
+                      data-testid="input-benchmark-alert-emails"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+          <div className="flex justify-end space-x-3 mt-6">
+            <Button variant="outline" onClick={() => {
+              setShowCreateDialog(false);
+              setEditingBenchmark(null);
+              resetBenchmarkForm();
+            }} data-testid="button-benchmark-cancel">
               Cancel
             </Button>
-            <Button onClick={handleCreateBenchmark}>
-              Create Benchmark
+            <Button 
+              onClick={handleBenchmarkSubmit} 
+              disabled={createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending}
+              data-testid="button-benchmark-submit"
+            >
+              {editingBenchmark ? 'Update Benchmark' : 'Create Benchmark'}
             </Button>
           </div>
         </DialogContent>

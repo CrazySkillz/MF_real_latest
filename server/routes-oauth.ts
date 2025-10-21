@@ -2646,6 +2646,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/campaigns/:id/kpis/:kpiId", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      
+      // Convert numeric values to strings for decimal fields
+      const updateData: any = {
+        ...req.body,
+      };
+      
+      if (req.body.targetValue !== undefined) {
+        updateData.targetValue = req.body.targetValue?.toString();
+      }
+      if (req.body.currentValue !== undefined) {
+        updateData.currentValue = req.body.currentValue?.toString();
+      }
+      if (req.body.alertThreshold !== undefined) {
+        updateData.alertThreshold = req.body.alertThreshold?.toString();
+      }
+      if (req.body.targetDate) {
+        updateData.targetDate = new Date(req.body.targetDate);
+      }
+      
+      const kpi = await storage.updateKPI(kpiId, updateData);
+      if (!kpi) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
+      res.json(kpi);
+    } catch (error) {
+      console.error('KPI update error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update KPI" });
+      }
+    }
+  });
+
+  app.delete("/api/campaigns/:id/kpis/:kpiId", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      
+      const deleted = await storage.deleteKPI(kpiId);
+      if (!deleted) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
+      
+      res.json({ message: "KPI deleted successfully", success: true });
+    } catch (error) {
+      console.error('KPI deletion error:', error);
+      res.status(500).json({ message: "Failed to delete KPI" });
+    }
+  });
+
   // Get KPI analytics
   app.get("/api/kpis/:id/analytics", async (req, res) => {
     try {

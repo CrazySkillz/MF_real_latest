@@ -96,6 +96,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   });
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingKPI, setEditingKPI] = useState<any>(null);
   const [kpiForm, setKpiForm] = useState({
     name: '',
     description: '',
@@ -149,6 +151,65 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     },
   });
 
+  const deleteKpiMutation = useMutation({
+    mutationFn: async (kpiId: string) => {
+      await apiRequest('DELETE', `/api/campaigns/${campaign.id}/kpis/${kpiId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
+      toast({
+        title: "Success",
+        description: "KPI deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete KPI",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateKpiMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const { id, ...updateData } = data;
+      const res = await apiRequest('PATCH', `/api/campaigns/${campaign.id}/kpis/${id}`, updateData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
+      setShowEditDialog(false);
+      setEditingKPI(null);
+      setKpiForm({
+        name: '',
+        description: '',
+        metric: '',
+        currentValue: '',
+        targetValue: '',
+        unit: '',
+        category: '',
+        timeframe: 'Monthly',
+        targetDate: '',
+        alertEnabled: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        alertEmails: '',
+      });
+      toast({
+        title: "Success",
+        description: "KPI updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update KPI",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateKPI = () => {
     if (!kpiForm.name || !kpiForm.targetValue) {
       toast({
@@ -168,6 +229,55 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       alertThreshold: kpiForm.alertEnabled ? parseFloat(kpiForm.alertThreshold) : null,
       alertEmails: kpiForm.alertEnabled && kpiForm.alertEmails ? kpiForm.alertEmails.split(',').map(e => e.trim()) : null,
     });
+  };
+
+  const handleEditKPI = (kpi: any) => {
+    setEditingKPI(kpi);
+    setKpiForm({
+      name: kpi.name,
+      description: kpi.description || '',
+      metric: kpi.metric || '',
+      currentValue: kpi.currentValue?.toString() || '',
+      targetValue: kpi.targetValue?.toString() || '',
+      unit: kpi.unit || '',
+      category: kpi.category || '',
+      timeframe: kpi.timeframe || 'Monthly',
+      targetDate: kpi.targetDate ? new Date(kpi.targetDate).toISOString().split('T')[0] : '',
+      alertEnabled: kpi.emailNotifications || false,
+      alertThreshold: kpi.alertThreshold?.toString() || '',
+      alertCondition: kpi.alertCondition || 'below',
+      alertEmails: kpi.emailRecipients || '',
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateKPI = () => {
+    if (!kpiForm.name || !kpiForm.targetValue) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in required fields (Name, Target Value)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateKpiMutation.mutate({
+      id: editingKPI.id,
+      campaignId: campaign.id,
+      platformType: null,
+      ...kpiForm,
+      currentValue: parseFloat(kpiForm.currentValue) || 0,
+      targetValue: parseFloat(kpiForm.targetValue),
+      alertThreshold: kpiForm.alertEnabled ? parseFloat(kpiForm.alertThreshold) : null,
+      emailRecipients: kpiForm.alertEnabled && kpiForm.alertEmails ? kpiForm.alertEmails : null,
+      emailNotifications: kpiForm.alertEnabled,
+    });
+  };
+
+  const handleDeleteKPI = (kpiId: string, kpiName: string) => {
+    if (confirm(`Are you sure you want to delete "${kpiName}"? This action cannot be undone.`)) {
+      deleteKpiMutation.mutate(kpiId);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -312,7 +422,13 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
           {/* KPIs Grid */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {kpis.map((kpi) => (
+            {kpis.map((kpi) => {
+              // Calculate progress percentage correctly
+              const current = parseFloat(kpi.currentValue) || 0;
+              const target = parseFloat(kpi.targetValue) || 1;
+              const progressPercent = Math.round((current / target) * 100);
+              
+              return (
           <Card key={kpi.id}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -328,12 +444,22 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Badge className={getStatusColor(kpi.status)}>
-                    {kpi.status}
-                  </Badge>
-                  <Badge variant="outline" className={getPriorityColor(kpi.priority)}>
-                    {kpi.priority}
-                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditKPI(kpi)}
+                    data-testid={`button-edit-kpi-${kpi.id}`}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteKPI(kpi.id, kpi.name)}
+                    data-testid={`button-delete-kpi-${kpi.id}`}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -358,37 +484,36 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600 dark:text-slate-400">Progress</span>
-                  <span className="font-medium">{kpi.progress}%</span>
+                  <span className="font-medium">{progressPercent}%</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                   <div 
                     className={`h-2 rounded-full transition-all ${
-                      kpi.progress >= 100 ? 'bg-green-600' : 
-                      kpi.progress >= 80 ? 'bg-blue-600' :
-                      kpi.progress >= 60 ? 'bg-yellow-600' : 'bg-red-600'
+                      progressPercent >= 100 ? 'bg-green-600' : 
+                      progressPercent >= 80 ? 'bg-blue-600' :
+                      progressPercent >= 60 ? 'bg-yellow-600' : 'bg-red-600'
                     }`}
-                    style={{ width: `${Math.min(kpi.progress, 100)}%` }}
+                    style={{ width: `${Math.min(progressPercent, 100)}%` }}
                   />
                 </div>
               </div>
 
               {/* Trend and Metadata */}
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center space-x-2">
-                  {getTrendIcon(kpi.trend)}
-                  <span className="text-slate-600 dark:text-slate-400">
-                    {kpi.trendValue} trend
-                  </span>
-                </div>
                 <div className="flex items-center space-x-4 text-xs text-slate-500">
                   <span>{kpi.timeframe}</span>
-                  <span>•</span>
-                  <span>Updated {kpi.lastUpdated}</span>
+                  {kpi.updatedAt && (
+                    <>
+                      <span>•</span>
+                      <span>Updated {new Date(kpi.updatedAt).toLocaleDateString()}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
-        ))}
+              );
+            })}
           </div>
         </>
       )}
@@ -742,6 +867,214 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               data-testid="button-campaign-kpi-create"
             >
               {createKpiMutation.isPending ? 'Creating...' : 'Create KPI'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit KPI Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={(open) => {
+        setShowEditDialog(open);
+        if (!open) {
+          setEditingKPI(null);
+          setKpiForm({
+            name: '',
+            description: '',
+            metric: '',
+            currentValue: '',
+            targetValue: '',
+            unit: '',
+            category: '',
+            timeframe: 'Monthly',
+            targetDate: '',
+            alertEnabled: false,
+            alertThreshold: '',
+            alertCondition: 'below',
+            alertEmails: '',
+          });
+        }
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Campaign KPI</DialogTitle>
+            <DialogDescription>
+              Update the KPI settings and targets for this campaign metric.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-kpi-name">KPI Name *</Label>
+                <Input
+                  id="edit-kpi-name"
+                  placeholder="e.g., Overall Campaign CTR"
+                  value={kpiForm.name}
+                  onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
+                  data-testid="input-edit-campaign-kpi-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-kpi-category">Category</Label>
+                <Input
+                  id="edit-kpi-category"
+                  placeholder="e.g., Performance"
+                  value={kpiForm.category}
+                  onChange={(e) => setKpiForm({ ...kpiForm, category: e.target.value })}
+                  data-testid="input-edit-campaign-kpi-category"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-kpi-description">Description</Label>
+              <Textarea
+                id="edit-kpi-description"
+                placeholder="Describe what this KPI measures and why it's important"
+                value={kpiForm.description}
+                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
+                rows={3}
+                data-testid="input-edit-campaign-kpi-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-kpi-current">Current Value</Label>
+                <Input
+                  id="edit-kpi-current"
+                  type="text"
+                  placeholder="0"
+                  value={kpiForm.currentValue}
+                  onChange={(e) => setKpiForm({ ...kpiForm, currentValue: e.target.value })}
+                  data-testid="input-edit-campaign-kpi-current"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-kpi-target">Target Value *</Label>
+                <Input
+                  id="edit-kpi-target"
+                  type="text"
+                  placeholder="0"
+                  value={kpiForm.targetValue}
+                  onChange={(e) => setKpiForm({ ...kpiForm, targetValue: e.target.value })}
+                  data-testid="input-edit-campaign-kpi-target"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-kpi-unit">Unit</Label>
+                <Input
+                  id="edit-kpi-unit"
+                  placeholder="%, $, etc."
+                  value={kpiForm.unit}
+                  onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
+                  data-testid="input-edit-campaign-kpi-unit"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-kpi-timeframe">Timeframe</Label>
+                <Select
+                  value={kpiForm.timeframe}
+                  onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
+                >
+                  <SelectTrigger id="edit-kpi-timeframe" data-testid="select-edit-campaign-kpi-timeframe">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Daily">Daily</SelectItem>
+                    <SelectItem value="Weekly">Weekly</SelectItem>
+                    <SelectItem value="Monthly">Monthly</SelectItem>
+                    <SelectItem value="Quarterly">Quarterly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-kpi-target-date">Target Date (Optional)</Label>
+                <Input
+                  id="edit-kpi-target-date"
+                  type="date"
+                  value={kpiForm.targetDate}
+                  onChange={(e) => setKpiForm({ ...kpiForm, targetDate: e.target.value })}
+                  data-testid="input-edit-campaign-kpi-target-date"
+                />
+              </div>
+            </div>
+
+            {/* Email Alerts Section */}
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="edit-alert-enabled"
+                  checked={kpiForm.alertEnabled}
+                  onChange={(e) => setKpiForm({ ...kpiForm, alertEnabled: e.target.checked })}
+                  className="rounded"
+                  data-testid="checkbox-edit-campaign-kpi-alert-enabled"
+                />
+                <Label htmlFor="edit-alert-enabled" className="font-medium">
+                  Enable Email Alerts
+                </Label>
+              </div>
+
+              {kpiForm.alertEnabled && (
+                <div className="grid grid-cols-3 gap-4 pl-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-alert-threshold">Alert Threshold</Label>
+                    <Input
+                      id="edit-alert-threshold"
+                      type="text"
+                      placeholder="e.g., 50"
+                      value={kpiForm.alertThreshold}
+                      onChange={(e) => setKpiForm({ ...kpiForm, alertThreshold: e.target.value })}
+                      data-testid="input-edit-campaign-kpi-alert-threshold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-alert-condition">Condition</Label>
+                    <Select
+                      value={kpiForm.alertCondition}
+                      onValueChange={(value: 'below' | 'above' | 'equals') => 
+                        setKpiForm({ ...kpiForm, alertCondition: value })
+                      }
+                    >
+                      <SelectTrigger id="edit-alert-condition" data-testid="select-edit-campaign-kpi-alert-condition">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="below">Below</SelectItem>
+                        <SelectItem value="above">Above</SelectItem>
+                        <SelectItem value="equals">Equals</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 col-span-3">
+                    <Label htmlFor="edit-alert-emails">Email Recipients (comma-separated)</Label>
+                    <Input
+                      id="edit-alert-emails"
+                      type="text"
+                      placeholder="email1@example.com, email2@example.com"
+                      value={kpiForm.alertEmails}
+                      onChange={(e) => setKpiForm({ ...kpiForm, alertEmails: e.target.value })}
+                      data-testid="input-edit-campaign-kpi-alert-emails"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-6">
+            <Button variant="outline" onClick={() => setShowEditDialog(false)} data-testid="button-edit-campaign-kpi-cancel">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateKPI} 
+              disabled={updateKpiMutation.isPending}
+              data-testid="button-edit-campaign-kpi-save"
+            >
+              {updateKpiMutation.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </DialogContent>

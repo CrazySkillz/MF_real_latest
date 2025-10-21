@@ -911,27 +911,156 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-kpi-name">KPI Name *</Label>
-                <Input
-                  id="edit-kpi-name"
-                  placeholder="e.g., Overall Campaign CTR"
-                  value={kpiForm.name}
-                  onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
-                  data-testid="input-edit-campaign-kpi-name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-kpi-category">Category</Label>
-                <Input
-                  id="edit-kpi-category"
-                  placeholder="e.g., Performance"
-                  value={kpiForm.category}
-                  onChange={(e) => setKpiForm({ ...kpiForm, category: e.target.value })}
-                  data-testid="input-edit-campaign-kpi-category"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-kpi-name">KPI Name *</Label>
+              <Input
+                id="edit-kpi-name"
+                placeholder="e.g., Overall Campaign CTR"
+                value={kpiForm.name}
+                onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
+                data-testid="input-edit-campaign-kpi-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-kpi-metric">Aggregated Metric</Label>
+              <Select
+                value={kpiForm.metric}
+                onValueChange={(value) => {
+                  let currentValue = '';
+                  let unit = '';
+                  let category = '';
+                  
+                  const liMetrics = linkedinMetrics || {};
+                  const ciMetrics = customIntegration?.metrics || {};
+                  
+                  const parseNum = (val: any): number => {
+                    const num = typeof val === 'string' ? parseFloat(val) : val;
+                    return isNaN(num) ? 0 : num;
+                  };
+                  
+                  switch(value) {
+                    case 'total-impressions':
+                      const liImpressions = parseNum(liMetrics.impressions);
+                      const ciPageviews = parseNum(ciMetrics.pageviews);
+                      currentValue = formatNumber(liImpressions + ciPageviews);
+                      category = 'Performance';
+                      break;
+                    case 'total-clicks':
+                      const liClicks = parseNum(liMetrics.clicks);
+                      currentValue = formatNumber(liClicks);
+                      category = 'Engagement';
+                      break;
+                    case 'total-conversions':
+                      const liConversions = parseNum(liMetrics.conversions);
+                      currentValue = formatNumber(liConversions);
+                      category = 'Performance';
+                      break;
+                    case 'total-leads':
+                      const liLeads = parseNum(liMetrics.leads);
+                      currentValue = formatNumber(liLeads);
+                      category = 'Performance';
+                      break;
+                    case 'total-spend':
+                      const liSpend = parseNum(liMetrics.spend);
+                      currentValue = formatNumber(liSpend);
+                      unit = '$';
+                      category = 'Cost Efficiency';
+                      break;
+                    case 'total-engagements':
+                      const liEngagements = parseNum(liMetrics.engagements);
+                      const ciSessions = parseNum(ciMetrics.sessions);
+                      currentValue = formatNumber(liEngagements + ciSessions);
+                      category = 'Engagement';
+                      break;
+                    case 'overall-ctr':
+                      const totalClicks = parseNum(liMetrics.clicks);
+                      const totalImpressions = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
+                      currentValue = formatNumber(totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0);
+                      unit = '%';
+                      category = 'Performance';
+                      break;
+                    case 'blended-cpc':
+                      const totalSpend = parseNum(liMetrics.spend);
+                      const clicks = parseNum(liMetrics.clicks);
+                      currentValue = formatNumber(clicks > 0 ? totalSpend / clicks : 0);
+                      unit = '$';
+                      category = 'Cost Efficiency';
+                      break;
+                    case 'blended-cpm':
+                      const spendForCpm = parseNum(liMetrics.spend);
+                      const impressionsForCpm = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
+                      currentValue = formatNumber(impressionsForCpm > 0 ? (spendForCpm / impressionsForCpm) * 1000 : 0);
+                      unit = '$';
+                      category = 'Cost Efficiency';
+                      break;
+                    case 'campaign-cvr':
+                      const conversions = parseNum(liMetrics.conversions);
+                      const clicksForCvr = parseNum(liMetrics.clicks);
+                      currentValue = formatNumber(clicksForCvr > 0 ? (conversions / clicksForCvr) * 100 : 0);
+                      unit = '%';
+                      category = 'Performance';
+                      break;
+                    case 'campaign-cpa':
+                      const spendForCpa = parseNum(liMetrics.spend);
+                      const conversionsForCpa = parseNum(liMetrics.conversions);
+                      currentValue = formatNumber(conversionsForCpa > 0 ? spendForCpa / conversionsForCpa : 0);
+                      unit = '$';
+                      category = 'Cost Efficiency';
+                      break;
+                    case 'campaign-cpl':
+                      const spendForCpl = parseNum(liMetrics.spend);
+                      const leadsForCpl = parseNum(liMetrics.leads);
+                      currentValue = formatNumber(leadsForCpl > 0 ? spendForCpl / leadsForCpl : 0);
+                      unit = '$';
+                      category = 'Cost Efficiency';
+                      break;
+                    case 'total-users':
+                      currentValue = formatNumber(parseNum(ciMetrics.users));
+                      category = 'Engagement';
+                      break;
+                    case 'total-sessions':
+                      currentValue = formatNumber(parseNum(ciMetrics.sessions));
+                      category = 'Engagement';
+                      break;
+                  }
+                  
+                  setKpiForm({ ...kpiForm, metric: value, currentValue, unit, category });
+                }}
+              >
+                <SelectTrigger id="edit-kpi-metric" data-testid="select-edit-campaign-kpi-metric">
+                  <SelectValue placeholder="Select metric or enter custom" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[400px]">
+                  <SelectGroup>
+                    <SelectLabel>📊 Core Campaign Metrics</SelectLabel>
+                    <SelectItem value="total-impressions">Total Impressions</SelectItem>
+                    <SelectItem value="total-clicks">Total Clicks</SelectItem>
+                    <SelectItem value="total-conversions">Total Conversions</SelectItem>
+                    <SelectItem value="total-leads">Total Leads</SelectItem>
+                    <SelectItem value="total-spend">Total Spend</SelectItem>
+                    <SelectItem value="total-engagements">Total Engagements</SelectItem>
+                  </SelectGroup>
+                  <SelectSeparator />
+                  
+                  <SelectGroup>
+                    <SelectLabel>📈 Blended Performance Metrics</SelectLabel>
+                    <SelectItem value="overall-ctr">Overall CTR (Click-Through Rate)</SelectItem>
+                    <SelectItem value="blended-cpc">Blended CPC (Cost Per Click)</SelectItem>
+                    <SelectItem value="blended-cpm">Blended CPM (Cost Per Mille)</SelectItem>
+                    <SelectItem value="campaign-cvr">Campaign CVR (Conversion Rate)</SelectItem>
+                    <SelectItem value="campaign-cpa">Campaign CPA (Cost Per Acquisition)</SelectItem>
+                    <SelectItem value="campaign-cpl">Campaign CPL (Cost Per Lead)</SelectItem>
+                  </SelectGroup>
+                  <SelectSeparator />
+                  
+                  <SelectGroup>
+                    <SelectLabel>👥 Audience Metrics</SelectLabel>
+                    <SelectItem value="total-users">Total Users</SelectItem>
+                    <SelectItem value="total-sessions">Total Sessions</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

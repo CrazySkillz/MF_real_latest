@@ -36,7 +36,15 @@ Preferred communication style: Simple, everyday language.
 - **Frontend Components**: Dashboard, Integrations management, comprehensive UI components.
 - **Backend Services**: Abstracted storage interface, RESTful endpoints, Zod validation, centralized error handling.
 - **Data Flow**: Client requests via TanStack Query -> FastAPI handles validation -> Abstract storage interface -> PostgreSQL via Drizzle ORM -> Typed responses to frontend -> React Query manages UI updates.
-- **KPI Management**: Campaign and platform-level KPI tracking with time-based analysis (daily, weekly, monthly, quarterly), rolling averages, trend detection, and target date functionality. **Email Alerts**: KPIs support configurable threshold-based email alerts with condition settings (below, above, equals), allowing users to receive notifications when metrics cross specified thresholds.
+- **KPI Management**: Two-tier analytics architecture following marketing industry best practices:
+  - **Campaign-Level KPIs**: Aggregated cross-platform metrics showing unified campaign performance. Metrics automatically sum data from all connected sources (LinkedIn, Custom Integration, etc.) to provide total campaign view. Features three categories:
+    - *Core Campaign Metrics*: Raw aggregated totals (Total Impressions = LinkedIn Impressions + CI Pageviews, Total Engagements = LinkedIn Engagements + CI Sessions, Total Clicks, Total Conversions, Total Leads, Total Spend)
+    - *Blended Performance Metrics*: Calculated ratios using aggregated data (Overall CTR, Blended CPC/CPM, Campaign CVR/CPA/CPL)
+    - *Audience Metrics*: Web analytics (Total Users, Total Sessions from Custom Integration)
+  - **Platform-Level KPIs**: Channel-specific metrics for optimization (LinkedIn CTR, Email Open Rate, etc.) available in individual platform analytics pages
+  - **Technical Implementation**: Numeric coercion via parseNum helper prevents string concatenation bugs, handles missing data gracefully (defaults to 0), division-by-zero protection in calculated metrics, scalable for future data sources
+  - **Time-Based Analysis**: Daily, weekly, monthly, quarterly tracking with rolling averages, trend detection, and target date functionality
+  - **Email Alerts**: Configurable threshold-based alerts with condition settings (below, above, equals) for notifications when metrics cross thresholds
 - **Benchmark Alerts**: Benchmarks include email alert functionality with threshold monitoring, enabling users to be notified when performance deviates from industry standards or internal targets.
 - **Geographic Analytics**: Interactive world map visualization with country, region, and city breakdown, integrated with GA4 data.
 - **Dynamic Platform Detection**: Identifies connected services during campaign creation.

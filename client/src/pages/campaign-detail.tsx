@@ -96,7 +96,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   });
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
   const [kpiForm, setKpiForm] = useState({
     name: '',
     description: '',
@@ -121,7 +120,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
       setShowCreateDialog(false);
-      setExpandedPlatform(null); // Reset expanded platform
       setKpiForm({
         name: '',
         description: '',
@@ -396,15 +394,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       )}
 
       {/* Create KPI Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={(open) => {
-        setShowCreateDialog(open);
-        if (!open) setExpandedPlatform(null); // Reset expanded platform on close
-      }}>
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Campaign KPI</DialogTitle>
             <DialogDescription>
-              Create a KPI tracked across all connected platforms for this campaign. Select metrics from LinkedIn, Custom Integration, or enter custom values.
+              Create a KPI with aggregated metrics from all connected platforms. Track overall campaign performance with cross-platform totals and blended performance metrics.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -433,191 +428,87 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     const liMetrics = linkedinMetrics || {};
                     const ciMetrics = customIntegration?.metrics || {};
                     
-                    // Custom Integration metrics
-                    if (customIntegration?.metrics) {
-                      switch(value) {
-                        // Audience & Traffic
-                        case 'ci-users':
-                          currentValue = String(customIntegration.metrics.users || 0);
-                          category = 'Engagement';
-                          break;
-                        case 'ci-sessions':
-                          currentValue = String(customIntegration.metrics.sessions || 0);
-                          category = 'Engagement';
-                          break;
-                        case 'ci-pageviews':
-                          currentValue = String(customIntegration.metrics.pageviews || 0);
-                          category = 'Engagement';
-                          break;
-                        case 'ci-avgSessionDuration':
-                          currentValue = String(customIntegration.metrics.avgSessionDuration || 0);
-                          category = 'Engagement';
-                          break;
-                        case 'ci-pagesPerSession':
-                          currentValue = String(customIntegration.metrics.pagesPerSession || 0);
-                          category = 'Engagement';
-                          break;
-                        case 'ci-bounceRate':
-                          currentValue = String(customIntegration.metrics.bounceRate || 0);
-                          unit = '%';
-                          category = 'Engagement';
-                          break;
-                        // Traffic Sources
-                        case 'ci-organicSearch':
-                          currentValue = String(customIntegration.metrics.organicSearchShare || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'ci-directBranded':
-                          currentValue = String(customIntegration.metrics.directBrandedShare || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'ci-email':
-                          currentValue = String(customIntegration.metrics.emailShare || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'ci-referral':
-                          currentValue = String(customIntegration.metrics.referralShare || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'ci-paid':
-                          currentValue = String(customIntegration.metrics.paidShare || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'ci-social':
-                          currentValue = String(customIntegration.metrics.socialShare || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        // Email Performance
-                        case 'ci-emailsDelivered':
-                          currentValue = String(customIntegration.metrics.emailsDelivered || 0);
-                          category = 'Performance';
-                          break;
-                        case 'ci-openRate':
-                          currentValue = String(customIntegration.metrics.openRate || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'ci-clickThroughRate':
-                          currentValue = String(customIntegration.metrics.clickThroughRate || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'ci-clickToOpen':
-                          currentValue = String(customIntegration.metrics.clickToOpenRate || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'ci-hardBounces':
-                          currentValue = String(customIntegration.metrics.hardBounces || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'ci-spamComplaints':
-                          currentValue = String(customIntegration.metrics.spamComplaints || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'ci-listGrowth':
-                          currentValue = String(customIntegration.metrics.listGrowth || 0);
-                          category = 'Performance';
-                          break;
-                      }
-                    }
-                    
-                    // LinkedIn metrics
-                    if (linkedinMetrics) {
-                      switch(value) {
-                        // Core Metrics
-                        case 'li-impressions':
-                          currentValue = String(linkedinMetrics.impressions || 0);
-                          category = 'Performance';
-                          break;
-                        case 'li-reach':
-                          currentValue = String(linkedinMetrics.reach || 0);
-                          category = 'Performance';
-                          break;
-                        case 'li-clicks':
-                          currentValue = String(linkedinMetrics.clicks || 0);
-                          category = 'Engagement';
-                          break;
-                        case 'li-engagements':
-                          currentValue = String(linkedinMetrics.engagements || 0);
-                          category = 'Engagement';
-                          break;
-                        case 'li-spend':
-                          currentValue = String(linkedinMetrics.spend || 0);
-                          unit = '$';
-                          category = 'Cost Efficiency';
-                          break;
-                        case 'li-conversions':
-                          currentValue = String(linkedinMetrics.conversions || 0);
-                          category = 'Performance';
-                          break;
-                        case 'li-leads':
-                          currentValue = String(linkedinMetrics.leads || 0);
-                          category = 'Performance';
-                          break;
-                        case 'li-videoViews':
-                          currentValue = String(linkedinMetrics.videoViews || 0);
-                          category = 'Engagement';
-                          break;
-                        case 'li-viralImpressions':
-                          currentValue = String(linkedinMetrics.viralImpressions || 0);
-                          category = 'Performance';
-                          break;
-                        // Derived Metrics
-                        case 'li-ctr':
-                          currentValue = String(linkedinMetrics.ctr || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'li-cpc':
-                          currentValue = String(linkedinMetrics.cpc || 0);
-                          unit = '$';
-                          category = 'Cost Efficiency';
-                          break;
-                        case 'li-cpm':
-                          currentValue = String(linkedinMetrics.cpm || 0);
-                          unit = '$';
-                          category = 'Cost Efficiency';
-                          break;
-                        case 'li-cvr':
-                          currentValue = String(linkedinMetrics.cvr || 0);
-                          unit = '%';
-                          category = 'Performance';
-                          break;
-                        case 'li-cpa':
-                          currentValue = String(linkedinMetrics.cpa || 0);
-                          unit = '$';
-                          category = 'Cost Efficiency';
-                          break;
-                        case 'li-cpl':
-                          currentValue = String(linkedinMetrics.cpl || 0);
-                          unit = '$';
-                          category = 'Cost Efficiency';
-                          break;
-                        case 'li-er':
-                          currentValue = String(linkedinMetrics.er || 0);
-                          unit = '%';
-                          category = 'Engagement';
-                          break;
-                        case 'li-roi':
-                          currentValue = String(linkedinMetrics.roi || 0);
-                          unit = '%';
-                          category = 'Revenue';
-                          break;
-                        case 'li-roas':
-                          currentValue = String(linkedinMetrics.roas || 0);
-                          unit = '%';
-                          category = 'Revenue';
-                          break;
-                      }
+                    switch(value) {
+                      // Core Aggregated Metrics (sum across platforms)
+                      case 'total-impressions':
+                        currentValue = String((liMetrics.impressions || 0) + (ciMetrics.pageviews || 0));
+                        category = 'Performance';
+                        break;
+                      case 'total-clicks':
+                        currentValue = String((liMetrics.clicks || 0));
+                        category = 'Engagement';
+                        break;
+                      case 'total-conversions':
+                        currentValue = String((liMetrics.conversions || 0));
+                        category = 'Performance';
+                        break;
+                      case 'total-leads':
+                        currentValue = String((liMetrics.leads || 0));
+                        category = 'Performance';
+                        break;
+                      case 'total-spend':
+                        currentValue = String((liMetrics.spend || 0));
+                        unit = '$';
+                        category = 'Cost Efficiency';
+                        break;
+                      case 'total-engagements':
+                        currentValue = String((liMetrics.engagements || 0));
+                        category = 'Engagement';
+                        break;
+                      
+                      // Calculated Blended Metrics
+                      case 'overall-ctr':
+                        const totalClicks = (liMetrics.clicks || 0);
+                        const totalImpressions = (liMetrics.impressions || 0) + (ciMetrics.pageviews || 0);
+                        currentValue = totalImpressions > 0 ? String(((totalClicks / totalImpressions) * 100).toFixed(2)) : '0';
+                        unit = '%';
+                        category = 'Performance';
+                        break;
+                      case 'blended-cpc':
+                        const spend = (liMetrics.spend || 0);
+                        const clicks = (liMetrics.clicks || 0);
+                        currentValue = clicks > 0 ? String((spend / clicks).toFixed(2)) : '0';
+                        unit = '$';
+                        category = 'Cost Efficiency';
+                        break;
+                      case 'blended-cpm':
+                        const totalSpend = (liMetrics.spend || 0);
+                        const impressions = (liMetrics.impressions || 0) + (ciMetrics.pageviews || 0);
+                        currentValue = impressions > 0 ? String(((totalSpend / impressions) * 1000).toFixed(2)) : '0';
+                        unit = '$';
+                        category = 'Cost Efficiency';
+                        break;
+                      case 'campaign-cvr':
+                        const conversions = (liMetrics.conversions || 0);
+                        const totalClicksForCvr = (liMetrics.clicks || 0);
+                        currentValue = totalClicksForCvr > 0 ? String(((conversions / totalClicksForCvr) * 100).toFixed(2)) : '0';
+                        unit = '%';
+                        category = 'Performance';
+                        break;
+                      case 'campaign-cpa':
+                        const totalSpendForCpa = (liMetrics.spend || 0);
+                        const totalConversions = (liMetrics.conversions || 0);
+                        currentValue = totalConversions > 0 ? String((totalSpendForCpa / totalConversions).toFixed(2)) : '0';
+                        unit = '$';
+                        category = 'Cost Efficiency';
+                        break;
+                      case 'campaign-cpl':
+                        const totalSpendForCpl = (liMetrics.spend || 0);
+                        const totalLeads = (liMetrics.leads || 0);
+                        currentValue = totalLeads > 0 ? String((totalSpendForCpl / totalLeads).toFixed(2)) : '0';
+                        unit = '$';
+                        category = 'Cost Efficiency';
+                        break;
+                      
+                      // Audience & Engagement (from Custom Integration)
+                      case 'total-users':
+                        currentValue = String(ciMetrics.users || 0);
+                        category = 'Engagement';
+                        break;
+                      case 'total-sessions':
+                        currentValue = String(ciMetrics.sessions || 0);
+                        category = 'Engagement';
+                        break;
                     }
                     
                     setKpiForm({ ...kpiForm, metric: value, currentValue, unit, category });
@@ -627,112 +518,41 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <SelectValue placeholder="Select metric or enter custom" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[400px]">
-                    {/* LinkedIn Platform */}
-                    {linkedinMetrics && Object.keys(linkedinMetrics).length > 0 && (
-                      <>
-                        {expandedPlatform === 'linkedin' ? (
-                          <>
-                            <div className="px-2 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700" onClick={() => setExpandedPlatform(null)}>
-                              🔗 LinkedIn ▼
-                            </div>
-                            <SelectGroup>
-                              <SelectLabel>Core Metrics</SelectLabel>
-                              <SelectItem value="li-impressions">Impressions</SelectItem>
-                              <SelectItem value="li-reach">Reach</SelectItem>
-                              <SelectItem value="li-clicks">Clicks</SelectItem>
-                              <SelectItem value="li-engagements">Engagements</SelectItem>
-                              <SelectItem value="li-spend">Spend</SelectItem>
-                              <SelectItem value="li-conversions">Conversions</SelectItem>
-                              <SelectItem value="li-leads">Leads</SelectItem>
-                              <SelectItem value="li-videoViews">Video Views</SelectItem>
-                              <SelectItem value="li-viralImpressions">Viral Impressions</SelectItem>
-                            </SelectGroup>
-                            <SelectSeparator />
-                            <SelectGroup>
-                              <SelectLabel>Derived Metrics</SelectLabel>
-                              <SelectItem value="li-ctr">CTR (Click-Through Rate)</SelectItem>
-                              <SelectItem value="li-cpc">CPC (Cost Per Click)</SelectItem>
-                              <SelectItem value="li-cpm">CPM (Cost Per Mille)</SelectItem>
-                              <SelectItem value="li-cvr">CVR (Conversion Rate)</SelectItem>
-                              <SelectItem value="li-cpa">CPA (Cost Per Acquisition)</SelectItem>
-                              <SelectItem value="li-cpl">CPL (Cost Per Lead)</SelectItem>
-                              <SelectItem value="li-er">ER (Engagement Rate)</SelectItem>
-                              <SelectItem value="li-roi">ROI (Return on Investment)</SelectItem>
-                              <SelectItem value="li-roas">ROAS (Return on Ad Spend)</SelectItem>
-                            </SelectGroup>
-                            <SelectSeparator />
-                          </>
-                        ) : (
-                          <div className="px-2 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setExpandedPlatform('linkedin')}>
-                            🔗 LinkedIn ▶
-                          </div>
-                        )}
-                      </>
-                    )}
+                    {/* Aggregated Campaign Metrics - Always visible */}
+                    <SelectGroup>
+                      <SelectLabel>📊 Core Campaign Metrics</SelectLabel>
+                      <SelectItem value="total-impressions">Total Impressions</SelectItem>
+                      <SelectItem value="total-clicks">Total Clicks</SelectItem>
+                      <SelectItem value="total-conversions">Total Conversions</SelectItem>
+                      <SelectItem value="total-leads">Total Leads</SelectItem>
+                      <SelectItem value="total-spend">Total Spend</SelectItem>
+                      <SelectItem value="total-engagements">Total Engagements</SelectItem>
+                    </SelectGroup>
+                    <SelectSeparator />
                     
-                    {/* Custom Integration Platform */}
-                    {customIntegration?.connectedAt && customIntegration?.metrics && (
-                      <>
-                        {expandedPlatform === 'custom' ? (
-                          <>
-                            <div className="px-2 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700" onClick={() => setExpandedPlatform(null)}>
-                              📊 Custom Integration ▼
-                            </div>
-                            <SelectGroup>
-                              <SelectLabel>Audience & Traffic</SelectLabel>
-                              <SelectItem value="ci-users">Users (Unique)</SelectItem>
-                              <SelectItem value="ci-sessions">Sessions</SelectItem>
-                              <SelectItem value="ci-pageviews">Pageviews</SelectItem>
-                              <SelectItem value="ci-avgSessionDuration">Avg. Session Duration</SelectItem>
-                              <SelectItem value="ci-pagesPerSession">Pages / Session</SelectItem>
-                              <SelectItem value="ci-bounceRate">Bounce Rate</SelectItem>
-                            </SelectGroup>
-                            <SelectSeparator />
-                            <SelectGroup>
-                              <SelectLabel>Traffic Sources</SelectLabel>
-                              <SelectItem value="ci-organicSearch">Organic Search</SelectItem>
-                              <SelectItem value="ci-directBranded">Direct / Branded</SelectItem>
-                              <SelectItem value="ci-email">Email (Newsletters)</SelectItem>
-                              <SelectItem value="ci-referral">Referral / Partners</SelectItem>
-                              <SelectItem value="ci-paid">Paid (Display/Search)</SelectItem>
-                              <SelectItem value="ci-social">Social</SelectItem>
-                            </SelectGroup>
-                            <SelectSeparator />
-                            <SelectGroup>
-                              <SelectLabel>Email Performance</SelectLabel>
-                              <SelectItem value="ci-emailsDelivered">Emails Delivered</SelectItem>
-                              <SelectItem value="ci-openRate">Open Rate</SelectItem>
-                              <SelectItem value="ci-clickThroughRate">Click-Through Rate</SelectItem>
-                              <SelectItem value="ci-clickToOpen">Click-to-Open</SelectItem>
-                              <SelectItem value="ci-hardBounces">Hard Bounces</SelectItem>
-                              <SelectItem value="ci-spamComplaints">Spam Complaints</SelectItem>
-                              <SelectItem value="ci-listGrowth">List Growth (Net)</SelectItem>
-                            </SelectGroup>
-                            <SelectSeparator />
-                          </>
-                        ) : (
-                          <div className="px-2 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setExpandedPlatform('custom')}>
-                            📊 Custom Integration ▶
-                          </div>
-                        )}
-                      </>
-                    )}
+                    <SelectGroup>
+                      <SelectLabel>📈 Blended Performance Metrics</SelectLabel>
+                      <SelectItem value="overall-ctr">Overall CTR (Click-Through Rate)</SelectItem>
+                      <SelectItem value="blended-cpc">Blended CPC (Cost Per Click)</SelectItem>
+                      <SelectItem value="blended-cpm">Blended CPM (Cost Per Mille)</SelectItem>
+                      <SelectItem value="campaign-cvr">Campaign CVR (Conversion Rate)</SelectItem>
+                      <SelectItem value="campaign-cpa">Campaign CPA (Cost Per Acquisition)</SelectItem>
+                      <SelectItem value="campaign-cpl">Campaign CPL (Cost Per Lead)</SelectItem>
+                    </SelectGroup>
+                    <SelectSeparator />
                     
-                    {/* Manual Entry Platform */}
-                    {expandedPlatform === 'manual' ? (
-                      <>
-                        <div className="px-2 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700" onClick={() => setExpandedPlatform(null)}>
-                          ✏️ Manual Entry ▼
-                        </div>
-                        <SelectGroup>
-                          <SelectItem value="custom">Custom Value</SelectItem>
-                        </SelectGroup>
-                      </>
-                    ) : (
-                      <div className="px-2 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setExpandedPlatform('manual')}>
-                        ✏️ Manual Entry ▶
-                      </div>
-                    )}
+                    <SelectGroup>
+                      <SelectLabel>👥 Audience Metrics</SelectLabel>
+                      <SelectItem value="total-users">Total Users</SelectItem>
+                      <SelectItem value="total-sessions">Total Sessions</SelectItem>
+                    </SelectGroup>
+                    <SelectSeparator />
+                    
+                    {/* Manual Entry */}
+                    <SelectGroup>
+                      <SelectLabel>✏️ Manual Entry</SelectLabel>
+                      <SelectItem value="custom">Custom Value</SelectItem>
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
@@ -879,10 +699,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </div>
 
           <div className="flex justify-end space-x-3 mt-6">
-            <Button variant="outline" onClick={() => {
-              setShowCreateDialog(false);
-              setExpandedPlatform(null); // Reset expanded platform on cancel
-            }} data-testid="button-campaign-kpi-cancel">
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)} data-testid="button-campaign-kpi-cancel">
               Cancel
             </Button>
             <Button 

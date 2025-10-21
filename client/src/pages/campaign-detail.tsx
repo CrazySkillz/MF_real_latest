@@ -310,20 +310,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 </div>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                      {Math.round(kpis.reduce((sum, k) => sum + k.progress, 0) / kpis.length)}%
-                    </p>
-                  </div>
-                  <BarChart3 className="w-8 h-8 text-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* KPIs Grid */}

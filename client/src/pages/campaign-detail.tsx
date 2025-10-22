@@ -717,7 +717,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                           data-testid={`badge-metric-${kpi.id}`}
                         >
                           <BarChart3 className="w-3 h-3 mr-1" />
-                          {kpi.metric}
+                          Metric: {kpi.metric}
                         </Badge>
                       </div>
                     )}

@@ -624,8 +624,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-kpis-on-track">
                       {kpis.filter(k => {
-                        const current = parseFloat(k.currentValue) || 0;
-                        const target = parseFloat(k.targetValue) || 1;
+                        // Parse values as floats (decimal fields come from DB as strings)
+                        const currentStr = typeof k.currentValue === 'string' ? k.currentValue.replace(/,/g, '') : String(k.currentValue);
+                        const targetStr = typeof k.targetValue === 'string' ? k.targetValue.replace(/,/g, '') : String(k.targetValue);
+                        const current = parseFloat(currentStr) || 0;
+                        const target = parseFloat(targetStr) || 1;
                         const progress = (current / target) * 100;
                         return progress >= 100;
                       }).length}
@@ -643,8 +646,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
                     <p className="text-2xl font-bold text-red-600" data-testid="text-kpis-below-target">
                       {kpis.filter(k => {
-                        const current = parseFloat(k.currentValue) || 0;
-                        const target = parseFloat(k.targetValue) || 1;
+                        // Parse values as floats (decimal fields come from DB as strings)
+                        const currentStr = typeof k.currentValue === 'string' ? k.currentValue.replace(/,/g, '') : String(k.currentValue);
+                        const targetStr = typeof k.targetValue === 'string' ? k.targetValue.replace(/,/g, '') : String(k.targetValue);
+                        const current = parseFloat(currentStr) || 0;
+                        const target = parseFloat(targetStr) || 1;
                         const progress = (current / target) * 100;
                         return progress < 100;
                       }).length}
@@ -664,9 +670,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       {kpis.length > 0
                         ? (
                             kpis.reduce((sum, k) => {
-                              const current = parseFloat(k.currentValue) || 0;
-                              const target = parseFloat(k.targetValue) || 1;
-                              const progress = (current / target) * 100;
+                              // Parse values as floats (decimal fields come from DB as strings)
+                              const currentStr = typeof k.currentValue === 'string' ? k.currentValue.replace(/,/g, '') : String(k.currentValue);
+                              const targetStr = typeof k.targetValue === 'string' ? k.targetValue.replace(/,/g, '') : String(k.targetValue);
+                              const current = parseFloat(currentStr) || 0;
+                              const target = parseFloat(targetStr) || 1;
+                              const progress = target > 0 ? (current / target) * 100 : 0;
                               return sum + progress;
                             }, 0) / kpis.length
                           ).toFixed(1)

@@ -2699,6 +2699,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Campaign-level Benchmark routes
+  app.get("/api/campaigns/:id/benchmarks", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const benchmarks = await storage.getCampaignBenchmarks(id);
+      res.json(benchmarks);
+    } catch (error) {
+      console.error('Campaign Benchmark fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch campaign benchmarks" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/benchmarks", async (req, res) => {
+    console.log('=== CREATE CAMPAIGN BENCHMARK ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    try {
+      const { id } = req.params;
+      
+      // Convert empty strings to null for numeric fields
+      const cleanedData = {
+        ...req.body,
+        campaignId: id,
+        platformType: 'campaign', // Campaign-level benchmark (not platform-specific)
+        category: req.body.category || 'performance', // Default category
+        alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
+        benchmarkValue: req.body.benchmarkValue === '' ? null : req.body.benchmarkValue,
+        currentValue: req.body.currentValue === '' ? null : req.body.currentValue
+      };
+      
+      const validatedBenchmark = insertBenchmarkSchema.parse(cleanedData);
+      
+      console.log('Validated benchmark:', JSON.stringify(validatedBenchmark, null, 2));
+      
+      const benchmark = await storage.createBenchmark(validatedBenchmark);
+      console.log('Created benchmark:', JSON.stringify(benchmark, null, 2));
+      
+      res.json(benchmark);
+    } catch (error) {
+      console.error('Campaign Benchmark creation error:', error);
+      if (error instanceof z.ZodError) {
+        console.error('Zod validation errors:', JSON.stringify(error.errors, null, 2));
+        return res.status(400).json({ message: "Invalid benchmark data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create campaign benchmark" });
+    }
+  });
+
+  app.patch("/api/campaigns/:campaignId/benchmarks/:benchmarkId", async (req, res) => {
+    console.log('=== UPDATE CAMPAIGN BENCHMARK ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    try {
+      const { benchmarkId } = req.params;
+      
+      // Convert empty strings to null for numeric fields
+      const cleanedData = { ...req.body };
+      if (cleanedData.alertThreshold === '') cleanedData.alertThreshold = null;
+      if (cleanedData.benchmarkValue === '') cleanedData.benchmarkValue = null;
+      if (cleanedData.currentValue === '') cleanedData.currentValue = null;
+      
+      const validatedBenchmark = insertBenchmarkSchema.partial().parse(cleanedData);
+      console.log('Validated benchmark update:', JSON.stringify(validatedBenchmark, null, 2));
+      
+      const benchmark = await storage.updateBenchmark(benchmarkId, validatedBenchmark);
+      if (!benchmark) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      
+      console.log('Updated benchmark:', JSON.stringify(benchmark, null, 2));
+      res.json(benchmark);
+    } catch (error) {
+      console.error('Campaign Benchmark update error:', error);
+      if (error instanceof z.ZodError) {
+        console.error('Zod validation errors:', JSON.stringify(error.errors, null, 2));
+        return res.status(400).json({ message: "Invalid benchmark data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update campaign benchmark" });
+    }
+  });
+
+  app.delete("/api/campaigns/:campaignId/benchmarks/:benchmarkId", async (req, res) => {
+    console.log('=== DELETE CAMPAIGN BENCHMARK ===');
+    console.log('Benchmark ID:', req.params.benchmarkId);
+    
+    try {
+      const { benchmarkId } = req.params;
+      
+      const deleted = await storage.deleteBenchmark(benchmarkId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      
+      console.log(`Benchmark ${benchmarkId} successfully deleted`);
+      res.json({ message: "Benchmark deleted successfully", success: true });
+    } catch (error) {
+      console.error('Campaign Benchmark deletion error:', error);
+      res.status(500).json({ message: "Failed to delete benchmark" });
+    }
+  });
+
   // Get KPI analytics
   app.get("/api/kpis/:id/analytics", async (req, res) => {
     try {

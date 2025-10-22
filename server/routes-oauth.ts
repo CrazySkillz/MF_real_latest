@@ -2718,15 +2718,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       
-      // Convert empty strings to null for numeric fields
+      // Convert numeric values to strings for decimal fields
       const cleanedData = {
         ...req.body,
         campaignId: id,
         platformType: 'campaign', // Campaign-level benchmark (not platform-specific)
         category: req.body.category || 'performance', // Default category
-        alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
-        benchmarkValue: req.body.benchmarkValue === '' ? null : req.body.benchmarkValue,
-        currentValue: req.body.currentValue === '' ? null : req.body.currentValue
+        alertThreshold: req.body.alertThreshold ? String(req.body.alertThreshold) : null,
+        benchmarkValue: req.body.benchmarkValue !== undefined && req.body.benchmarkValue !== '' ? String(req.body.benchmarkValue) : null,
+        currentValue: req.body.currentValue !== undefined && req.body.currentValue !== '' ? String(req.body.currentValue) : null
       };
       
       const validatedBenchmark = insertBenchmarkSchema.parse(cleanedData);
@@ -2754,11 +2754,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { benchmarkId } = req.params;
       
-      // Convert empty strings to null for numeric fields
+      // Convert numeric values to strings for decimal fields
       const cleanedData = { ...req.body };
-      if (cleanedData.alertThreshold === '') cleanedData.alertThreshold = null;
-      if (cleanedData.benchmarkValue === '') cleanedData.benchmarkValue = null;
-      if (cleanedData.currentValue === '') cleanedData.currentValue = null;
+      if (cleanedData.alertThreshold !== undefined) {
+        cleanedData.alertThreshold = cleanedData.alertThreshold ? String(cleanedData.alertThreshold) : null;
+      }
+      if (cleanedData.benchmarkValue !== undefined) {
+        cleanedData.benchmarkValue = cleanedData.benchmarkValue !== '' ? String(cleanedData.benchmarkValue) : null;
+      }
+      if (cleanedData.currentValue !== undefined) {
+        cleanedData.currentValue = cleanedData.currentValue !== '' ? String(cleanedData.currentValue) : null;
+      }
       
       const validatedBenchmark = insertBenchmarkSchema.partial().parse(cleanedData);
       console.log('Validated benchmark update:', JSON.stringify(validatedBenchmark, null, 2));

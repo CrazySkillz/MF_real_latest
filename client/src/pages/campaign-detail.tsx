@@ -704,11 +704,23 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
                     {getCategoryIcon(kpi.category)}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-lg">{kpi.name}</CardTitle>
                     <CardDescription className="text-sm">
                       {kpi.description}
                     </CardDescription>
+                    {kpi.metric && (
+                      <div className="mt-2">
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs font-normal bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                          data-testid={`badge-metric-${kpi.id}`}
+                        >
+                          <BarChart3 className="w-3 h-3 mr-1" />
+                          {kpi.metric}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">

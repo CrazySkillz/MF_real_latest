@@ -52,6 +52,13 @@ Preferred communication style: Simple, everyday language.
 - **Error Handling**: Seamless fallback analytics data display and silent token management for uninterrupted user experience (e.g., for OAuth issues).
 - **LinkedIn Reports**: 5th tab in LinkedIn Analytics with support for creating, managing, and viewing reports. Report types include Overview, KPIs, Benchmarks, Ad Comparison, and Custom reports. Features include two-step creation modal (type selection → configuration), report listing with metadata, and foundation for download/email/scheduling capabilities.
 - **Custom Integration Webhooks**: Automated PDF processing via unique webhook URLs for integration with Zapier, IFTTT, and other automation services. Each custom integration receives a unique token-based webhook endpoint for secure, automated metric updates.
+- **KPI Report Scheduling & Export**: Campaign-level KPI reports with PDF export and automated email delivery:
+  - **PDF Export**: One-click PDF generation of all campaign KPIs with formatted metrics, progress calculations, and professional layout using jsPDF
+  - **Automated Scheduling**: Configure email reports with daily, weekly, monthly, or quarterly frequency
+  - **Email Delivery**: Send scheduled reports to multiple recipients (comma-separated email list)
+  - **Reports Management**: View and manage all scheduled reports with frequency and recipient information
+  - **Backend Implementation**: RESTful API endpoints for CRUD operations on scheduled reports, database schema for report configuration storage
+  - **UI Integration**: Export and Schedule buttons in KPIs tab header, modal dialog for scheduling configuration, reports list section showing active schedules
 
 ## External Dependencies
 

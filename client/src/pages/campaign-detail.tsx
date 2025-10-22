@@ -2150,14 +2150,13 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="benchmark-metric">Aggregated Metric (Optional)</Label>
+                <Label htmlFor="benchmark-metric">Aggregated Metric</Label>
                 <Select
                   value={benchmarkForm.metric || ''}
                   onValueChange={(value) => {
                     // Auto-populate current value with aggregated data across ALL platforms
                     let currentValue = '';
                     let unit = '';
-                    let category = '';
                     
                     // Aggregate data from LinkedIn and Custom Integration
                     const liMetrics = linkedinMetrics || {};
@@ -2174,93 +2173,79 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       case 'total-impressions':
                         const liImpressions = parseNum(liMetrics.impressions);
                         const ciPageviews = parseNum(ciMetrics.pageviews);
-                        currentValue = String(liImpressions + ciPageviews);
-                        category = 'Performance';
+                        currentValue = formatNumber(liImpressions + ciPageviews);
                         break;
                       case 'total-clicks':
                         const liClicks = parseNum(liMetrics.clicks);
-                        currentValue = String(liClicks);
-                        category = 'Engagement';
+                        currentValue = formatNumber(liClicks);
                         break;
                       case 'total-conversions':
                         const liConversions = parseNum(liMetrics.conversions);
-                        currentValue = String(liConversions);
-                        category = 'Performance';
+                        currentValue = formatNumber(liConversions);
                         break;
                       case 'total-leads':
                         const liLeads = parseNum(liMetrics.leads);
-                        currentValue = String(liLeads);
-                        category = 'Performance';
+                        currentValue = formatNumber(liLeads);
                         break;
                       case 'total-spend':
                         const liSpend = parseNum(liMetrics.spend);
-                        currentValue = String(liSpend);
+                        currentValue = formatNumber(liSpend);
                         unit = '$';
-                        category = 'Cost';
                         break;
                       case 'total-engagements':
                         const liEngagements = parseNum(liMetrics.engagements);
                         const ciSessions = parseNum(ciMetrics.sessions);
-                        currentValue = String(liEngagements + ciSessions);
-                        category = 'Engagement';
+                        currentValue = formatNumber(liEngagements + ciSessions);
                         break;
                       
                       // Calculated Blended Metrics (using aggregated totals)
                       case 'overall-ctr':
                         const totalClicks = parseNum(liMetrics.clicks);
                         const totalImpressions = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
-                        currentValue = String(totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0);
+                        currentValue = formatNumber(totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0);
                         unit = '%';
-                        category = 'Performance';
                         break;
                       case 'blended-cpc':
                         const totalSpend = parseNum(liMetrics.spend);
                         const clicks = parseNum(liMetrics.clicks);
-                        currentValue = String(clicks > 0 ? totalSpend / clicks : 0);
+                        currentValue = formatNumber(clicks > 0 ? totalSpend / clicks : 0);
                         unit = '$';
-                        category = 'Cost';
                         break;
                       case 'blended-cpm':
                         const spendForCpm = parseNum(liMetrics.spend);
                         const impressionsForCpm = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
-                        currentValue = String(impressionsForCpm > 0 ? (spendForCpm / impressionsForCpm) * 1000 : 0);
+                        currentValue = formatNumber(impressionsForCpm > 0 ? (spendForCpm / impressionsForCpm) * 1000 : 0);
                         unit = '$';
-                        category = 'Cost';
                         break;
                       case 'campaign-cvr':
                         const conversions = parseNum(liMetrics.conversions);
                         const clicksForCvr = parseNum(liMetrics.clicks);
-                        currentValue = String(clicksForCvr > 0 ? (conversions / clicksForCvr) * 100 : 0);
+                        currentValue = formatNumber(clicksForCvr > 0 ? (conversions / clicksForCvr) * 100 : 0);
                         unit = '%';
-                        category = 'Conversion';
                         break;
                       case 'campaign-cpa':
                         const spendForCpa = parseNum(liMetrics.spend);
                         const conversionsForCpa = parseNum(liMetrics.conversions);
-                        currentValue = String(conversionsForCpa > 0 ? spendForCpa / conversionsForCpa : 0);
+                        currentValue = formatNumber(conversionsForCpa > 0 ? spendForCpa / conversionsForCpa : 0);
                         unit = '$';
-                        category = 'Cost';
                         break;
                       case 'campaign-cpl':
                         const spendForCpl = parseNum(liMetrics.spend);
                         const leadsForCpl = parseNum(liMetrics.leads);
-                        currentValue = String(leadsForCpl > 0 ? spendForCpl / leadsForCpl : 0);
+                        currentValue = formatNumber(leadsForCpl > 0 ? spendForCpl / leadsForCpl : 0);
                         unit = '$';
-                        category = 'Cost';
                         break;
                       
                       // Audience & Engagement (from Custom Integration)
                       case 'total-users':
-                        currentValue = String(parseNum(ciMetrics.users));
-                        category = 'Engagement';
+                        currentValue = formatNumber(parseNum(ciMetrics.users));
                         break;
                       case 'total-sessions':
-                        currentValue = String(parseNum(ciMetrics.sessions));
-                        category = 'Engagement';
+                        currentValue = formatNumber(parseNum(ciMetrics.sessions));
                         break;
                     }
                     
-                    setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue, unit: unit || benchmarkForm.unit, category: category || benchmarkForm.category });
+                    setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue, unit: unit || benchmarkForm.unit });
                   }}
                 >
                   <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
@@ -2328,7 +2313,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               />
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="current-value">Current Value</Label>
                 <Input
@@ -2365,25 +2350,6 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     <SelectItem value="$">$</SelectItem>
                     <SelectItem value="count">Count</SelectItem>
                     <SelectItem value="ratio">Ratio</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={benchmarkForm.category}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, category: value })}
-                >
-                  <SelectTrigger id="category">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="performance">Performance</SelectItem>
-                    <SelectItem value="engagement">Engagement</SelectItem>
-                    <SelectItem value="conversion">Conversion</SelectItem>
-                    <SelectItem value="traffic">Traffic</SelectItem>
-                    <SelectItem value="revenue">Revenue</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

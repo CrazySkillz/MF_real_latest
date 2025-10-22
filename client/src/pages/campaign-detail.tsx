@@ -2109,7 +2109,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
             data-testid="button-create-benchmark"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Benchmark</span>
+            <span>Create Benchmark</span>
           </Button>
         </div>
       </div>

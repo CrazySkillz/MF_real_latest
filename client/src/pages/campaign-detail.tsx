@@ -99,8 +99,6 @@ function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
     },
   });
 
-  if (isLoading || reports.length === 0) return null;
-
   const formatScheduleDetails = (report: any) => {
     const parts = [];
     
@@ -128,8 +126,41 @@ function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
     return parts.join(' ');
   };
 
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-slate-600 dark:text-slate-400">
+            Loading scheduled reports...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (reports.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-12">
+          <div className="text-center">
+            <Calendar className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+              No Scheduled Reports Created
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              Schedule automated KPI reports from the KPIs tab to have them delivered to your inbox on a regular basis.
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-500">
+              Scheduled reports will appear here once created.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div className="mt-8">
+    <div>
       <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
         Scheduled Reports
       </h3>

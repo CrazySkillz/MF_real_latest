@@ -496,6 +496,26 @@ export const linkedinReports = pgTable("linkedin_reports", {
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const kpiReports = pgTable("kpi_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(), // Campaign for which KPIs are being reported
+  name: text("name").notNull(),
+  description: text("description"),
+  reportType: text("report_type").notNull().default('kpis'), // 'kpis', 'benchmarks', 'combined'
+  // Schedule configuration
+  scheduleEnabled: boolean("schedule_enabled").notNull().default(false),
+  scheduleFrequency: text("schedule_frequency"), // 'daily', 'weekly', 'monthly', 'quarterly'
+  scheduleDayOfWeek: integer("schedule_day_of_week"), // 0-6 for weekly (0 = Sunday)
+  scheduleDayOfMonth: integer("schedule_day_of_month"), // 1-31 for monthly
+  scheduleTime: text("schedule_time"), // HH:MM format (24-hour)
+  scheduleRecipients: text("schedule_recipients").array(), // Email addresses
+  lastSentAt: timestamp("last_sent_at"),
+  nextScheduledAt: timestamp("next_scheduled_at"),
+  status: text("status").notNull().default("active"), // 'active', 'paused', 'archived'
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   name: true,
   clientWebsite: true,
@@ -656,6 +676,20 @@ export const insertLinkedInReportSchema = createInsertSchema(linkedinReports).pi
   platformType: true,
   reportType: true,
   configuration: true,
+  scheduleEnabled: true,
+  scheduleFrequency: true,
+  scheduleDayOfWeek: true,
+  scheduleDayOfMonth: true,
+  scheduleTime: true,
+  scheduleRecipients: true,
+  status: true,
+});
+
+export const insertKPIReportSchema = createInsertSchema(kpiReports).pick({
+  campaignId: true,
+  name: true,
+  description: true,
+  reportType: true,
   scheduleEnabled: true,
   scheduleFrequency: true,
   scheduleDayOfWeek: true,

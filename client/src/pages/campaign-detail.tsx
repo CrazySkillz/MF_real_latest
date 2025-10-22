@@ -2104,22 +2104,16 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 const current = parseFloat(benchmark.currentValue);
                 const benchmarkVal = parseFloat(benchmark.benchmarkValue);
                 
-                // Progress: percentage of benchmark achieved (no Math.min cap, use precision)
+                // Progress: percentage of benchmark achieved (show actual value, not capped)
                 const progressTowardBenchmark = (current / benchmarkVal) * 100;
                 
                 // Performance comparison
                 const diff = current - benchmarkVal;
                 const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100) : 0;
                 
-                // Status determination based on industry-standard 120% threshold
-                const isExceeding = current >= benchmarkVal * 1.2; // 120% or more
-                const isMeetingBenchmark = current >= benchmarkVal && current < benchmarkVal * 1.2; // 100-119%
+                // Status determination: Above benchmark = green, Below = red
+                const isAboveBenchmark = current >= benchmarkVal; // 100% or more
                 const isBelowBenchmark = current < benchmarkVal; // Below 100%
-                
-                // Display values with appropriate precision
-                const displayProgress = progressTowardBenchmark >= 100 
-                  ? '100' 
-                  : progressTowardBenchmark.toFixed(2);
                 
                 return (
                   <div className="mt-4 space-y-3">
@@ -2128,21 +2122,17 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
                           <span className="text-slate-600 dark:text-slate-400">Progress to Benchmark</span>
-                          {(isExceeding || isMeetingBenchmark) && <TrendingUp className="w-4 h-4 text-green-600" />}
+                          {isAboveBenchmark && <TrendingUp className="w-4 h-4 text-green-600" />}
                           {isBelowBenchmark && <TrendingDown className="w-4 h-4 text-red-600" />}
                         </div>
                         <span className="font-semibold text-slate-900 dark:text-white">
-                          {displayProgress}%
+                          {progressTowardBenchmark.toFixed(2)}%
                         </span>
                       </div>
                       <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
                         <div 
                           className={`h-2.5 rounded-full transition-all ${
-                            isExceeding
-                              ? 'bg-green-500'
-                              : isMeetingBenchmark
-                              ? 'bg-amber-500'
-                              : 'bg-red-500'
+                            isAboveBenchmark ? 'bg-green-500' : 'bg-red-500'
                           }`}
                           style={{ width: `${Math.min(progressTowardBenchmark, 100)}%` }}
                         ></div>
@@ -2152,27 +2142,20 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     {/* Benchmark Status and Comparison */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className={`text-xs px-2 py-1 rounded-md inline-flex items-center gap-1 ${
-                        isExceeding
+                        isAboveBenchmark
                           ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
-                          : isMeetingBenchmark
-                          ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
                           : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
                       }`}>
-                        {isExceeding && <CheckCircle2 className="w-3 h-3" />}
-                        {isMeetingBenchmark && <CheckCircle2 className="w-3 h-3" />}
+                        {isAboveBenchmark && <CheckCircle2 className="w-3 h-3" />}
                         {isBelowBenchmark && <AlertCircle className="w-3 h-3" />}
                         <span>
-                          {isExceeding
-                            ? 'Exceeding Target' 
-                            : isMeetingBenchmark
-                            ? 'Meeting Target'
-                            : 'Below Target'}
+                          {isAboveBenchmark ? 'Meeting Target' : 'Below Target'}
                         </span>
                       </div>
                       
                       <Badge 
-                        variant={isExceeding || isMeetingBenchmark ? "default" : "secondary"}
-                        className={isExceeding ? "bg-green-600 text-white" : isMeetingBenchmark ? "bg-amber-600 text-white" : "bg-red-600 text-white"}
+                        variant={isAboveBenchmark ? "default" : "secondary"}
+                        className={isAboveBenchmark ? "bg-green-600 text-white" : "bg-red-600 text-white"}
                         data-testid={`badge-status-${benchmark.id}`}
                       >
                         {current >= benchmarkVal ? (

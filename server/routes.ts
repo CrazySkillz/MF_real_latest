@@ -1676,7 +1676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/campaigns/:campaignId/benchmarks/:benchmarkId", async (req, res) => {
+  app.patch("/api/campaigns/:campaignId/benchmarks/:benchmarkId", async (req, res) => {
     console.log('=== UPDATE CAMPAIGN BENCHMARK ===');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
     

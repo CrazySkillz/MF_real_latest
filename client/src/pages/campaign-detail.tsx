@@ -148,7 +148,7 @@ function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
               No Scheduled Reports Created
             </h3>
             <p className="text-slate-600 dark:text-slate-400 mb-4">
-              Schedule automated KPI reports from the KPIs tab to have them delivered to your inbox on a regular basis.
+              Schedule automated reports to have them delivered to your inbox on a regular basis.
             </p>
             <p className="text-sm text-slate-500 dark:text-slate-500">
               Scheduled reports will appear here once created.

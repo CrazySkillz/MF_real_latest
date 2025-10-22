@@ -2182,19 +2182,24 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
-                      {benchmark.name}
-                    </h3>
-                    {benchmark.metric && (
-                      <Badge variant="outline" className="text-xs font-normal">
-                        Metric: {benchmark.metric}
-                      </Badge>
-                    )}
-                  </div>
+                  <h3 className="font-semibold text-slate-900 dark:text-white text-lg mb-1">
+                    {benchmark.name}
+                  </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                     {benchmark.description || 'No description provided'}
                   </p>
+                  {benchmark.metric && (
+                    <div className="mt-2">
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs font-normal bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                        data-testid={`badge-benchmark-metric-${benchmark.id}`}
+                      >
+                        <BarChart3 className="w-3 h-3 mr-1" />
+                        Metric: {benchmark.metric}
+                      </Badge>
+                    </div>
+                  )}
                   <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
                     {benchmark.benchmarkType && <span>Type: {benchmark.benchmarkType}</span>}
                     {benchmark.industry && (

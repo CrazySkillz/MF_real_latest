@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, TrendingDown, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2, Pencil } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -2003,48 +2003,60 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
           {/* Benchmarks List */}
           <div className="space-y-4">
-            {benchmarks.map((benchmark) => {
-              const status = getBenchmarkStatus(benchmark.currentValue || 0, benchmark.benchmarkValue || 0);
-              const improvement = calculateImprovement(benchmark.currentValue || 0, benchmark.benchmarkValue || 0);
-              
-              return (
-          <Card key={benchmark.id}>
+            {benchmarks.map((benchmark) => (
+          <Card key={benchmark.id} data-testid={`benchmark-card-${benchmark.id}`}>
             <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-3">
-                  <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                    {getCategoryIcon(benchmark.category)}
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
+                      {benchmark.name}
+                    </h3>
+                    {benchmark.metric && (
+                      <Badge variant="outline" className="text-xs font-normal">
+                        Metric: {benchmark.metric}
+                      </Badge>
+                    )}
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">{benchmark.description}</p>
-                    <div className="flex items-center space-x-4 text-xs text-slate-500">
-                      <span>{benchmark.industry}</span>
-                      <span>•</span>
-                      <span>{benchmark.period}</span>
-                      <span>•</span>
-                      <span>Created {format(benchmark.createdAt, 'MMM dd, yyyy')}</span>
-                    </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    {benchmark.description || 'No description provided'}
+                  </p>
+                  <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
+                    {benchmark.benchmarkType && <span>Type: {benchmark.benchmarkType}</span>}
+                    {benchmark.industry && (
+                      <>
+                        <span>•</span>
+                        <span>{benchmark.industry}</span>
+                      </>
+                    )}
+                    {benchmark.period && (
+                      <>
+                        <span>•</span>
+                        <span>{benchmark.period}</span>
+                      </>
+                    )}
+                    {benchmark.category && (
+                      <>
+                        <span>•</span>
+                        <span>{benchmark.category}</span>
+                      </>
+                    )}
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-3">
-                  <Badge className={getStatusColor(status)} data-testid={`badge-status-${benchmark.id}`}>
-                    {status === 'above' ? 'Above Target' : 
-                     status === 'below' ? 'Below Target' : 'Meeting Target'}
-                  </Badge>
-                  <Button 
-                    variant="ghost" 
+                <div className="flex items-center gap-2">
+                  <Button
                     size="sm"
+                    variant="ghost"
                     onClick={() => handleEditBenchmark(benchmark)}
                     data-testid={`button-edit-${benchmark.id}`}
+                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Pencil className="w-4 h-4" />
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="text-red-600 hover:text-red-700"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                     onClick={() => {
                       if (confirm(`Are you sure you want to delete the benchmark "${benchmark.name}"?`)) {
                         deleteBenchmarkMutation.mutate(benchmark.id);
@@ -2057,42 +2069,131 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current Value</div>
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    Your Performance
+                  </div>
                   <div className="text-lg font-bold text-slate-900 dark:text-white" data-testid={`text-current-${benchmark.id}`}>
-                    {benchmark.currentValue || 0}{benchmark.unit}
+                    {formatNumber(benchmark.currentValue)}{benchmark.unit || ''}
                   </div>
                 </div>
-                
+
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Benchmark Value</div>
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    Benchmark Value
+                  </div>
                   <div className="text-lg font-bold text-slate-900 dark:text-white" data-testid={`text-benchmark-${benchmark.id}`}>
-                    {benchmark.benchmarkValue || 0}{benchmark.unit}
+                    {formatNumber(benchmark.benchmarkValue)}{benchmark.unit || ''}
                   </div>
                 </div>
-                
+
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Improvement</div>
-                  <div className={`text-lg font-bold ${improvement > 0 ? 'text-green-600' : improvement < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}`} data-testid={`text-improvement-${benchmark.id}`}>
-                    {improvement > 0 ? '+' : ''}{improvement.toFixed(1)}%
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    Source
                   </div>
-                </div>
-                
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Status</div>
-                  <div className="flex items-center space-x-2">
-                    {getStatusIcon(status)}
-                    <span className="text-sm font-medium text-slate-900 dark:text-white capitalize" data-testid={`text-status-${benchmark.id}`}>
-                      {status}
-                    </span>
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">
+                    {benchmark.source || 'Market Data'}
                   </div>
                 </div>
               </div>
+              
+              {/* Progress Tracker - Benchmark Comparison */}
+              {benchmark.currentValue && benchmark.benchmarkValue && (() => {
+                // Calculate accurate progress and comparison
+                const current = parseFloat(benchmark.currentValue);
+                const benchmarkVal = parseFloat(benchmark.benchmarkValue);
+                
+                // Progress: percentage of benchmark achieved (no Math.min cap, use precision)
+                const progressTowardBenchmark = (current / benchmarkVal) * 100;
+                
+                // Performance comparison
+                const diff = current - benchmarkVal;
+                const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100) : 0;
+                
+                // Status determination based on industry-standard 120% threshold
+                const isExceeding = current >= benchmarkVal * 1.2; // 120% or more
+                const isMeetingBenchmark = current >= benchmarkVal && current < benchmarkVal * 1.2; // 100-119%
+                const isBelowBenchmark = current < benchmarkVal; // Below 100%
+                
+                // Display values with appropriate precision
+                const displayProgress = progressTowardBenchmark >= 100 
+                  ? '100' 
+                  : progressTowardBenchmark.toFixed(2);
+                
+                return (
+                  <div className="mt-4 space-y-3">
+                    {/* Progress to Benchmark */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-600 dark:text-slate-400">Progress to Benchmark</span>
+                          {(isExceeding || isMeetingBenchmark) && <TrendingUp className="w-4 h-4 text-green-600" />}
+                          {isBelowBenchmark && <TrendingDown className="w-4 h-4 text-red-600" />}
+                        </div>
+                        <span className="font-semibold text-slate-900 dark:text-white">
+                          {displayProgress}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                        <div 
+                          className={`h-2.5 rounded-full transition-all ${
+                            isExceeding
+                              ? 'bg-green-500'
+                              : isMeetingBenchmark
+                              ? 'bg-amber-500'
+                              : 'bg-red-500'
+                          }`}
+                          style={{ width: `${Math.min(progressTowardBenchmark, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Benchmark Status and Comparison */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className={`text-xs px-2 py-1 rounded-md inline-flex items-center gap-1 ${
+                        isExceeding
+                          ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
+                          : isMeetingBenchmark
+                          ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
+                          : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
+                      }`}>
+                        {isExceeding && <CheckCircle2 className="w-3 h-3" />}
+                        {isMeetingBenchmark && <CheckCircle2 className="w-3 h-3" />}
+                        {isBelowBenchmark && <AlertCircle className="w-3 h-3" />}
+                        <span>
+                          {isExceeding
+                            ? 'Exceeding Target' 
+                            : isMeetingBenchmark
+                            ? 'Meeting Target'
+                            : 'Below Target'}
+                        </span>
+                      </div>
+                      
+                      <Badge 
+                        variant={isExceeding || isMeetingBenchmark ? "default" : "secondary"}
+                        className={isExceeding ? "bg-green-600 text-white" : isMeetingBenchmark ? "bg-amber-600 text-white" : "bg-red-600 text-white"}
+                        data-testid={`badge-status-${benchmark.id}`}
+                      >
+                        {current >= benchmarkVal ? (
+                          <>
+                            <TrendingUp className="w-3 h-3 mr-1" />
+                            {percentDiff.toFixed(2)}% Above Benchmark
+                          </>
+                        ) : (
+                          <>
+                            <TrendingDown className="w-3 h-3 mr-1" />
+                            {Math.abs(percentDiff).toFixed(2)}% Below Benchmark
+                          </>
+                        )}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
-              );
-            })}
+            ))}
           </div>
         </>
       ) : (

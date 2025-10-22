@@ -1885,24 +1885,32 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     return currentValue > benchmarkValue ? 'above' : 'below';
   };
 
-  const calculateImprovement = (currentValue: number, benchmarkValue: number): number => {
-    if (benchmarkValue === 0) return 0;
-    return ((currentValue - benchmarkValue) / benchmarkValue) * 100;
+  const calculateImprovement = (currentValue: string | number, benchmarkValue: string | number): number => {
+    // Parse values as floats (decimal fields come from DB as strings)
+    const current = typeof currentValue === 'string' ? parseFloat(currentValue.replace(/,/g, '')) : currentValue;
+    const benchmark = typeof benchmarkValue === 'string' ? parseFloat(benchmarkValue.replace(/,/g, '')) : benchmarkValue;
+    
+    if (isNaN(current) || isNaN(benchmark) || benchmark === 0) return 0;
+    return ((current - benchmark) / benchmark) * 100;
   };
 
   // Calculate summary stats
   const aboveTargetCount = benchmarks.filter(b => {
-    const status = getBenchmarkStatus(b.currentValue || 0, b.benchmarkValue || 0);
+    const current = parseFloat((b.currentValue as string)?.replace(/,/g, '') || '0');
+    const benchmark = parseFloat((b.benchmarkValue as string)?.replace(/,/g, '') || '0');
+    const status = getBenchmarkStatus(current, benchmark);
     return status === 'above';
   }).length;
 
   const belowTargetCount = benchmarks.filter(b => {
-    const status = getBenchmarkStatus(b.currentValue || 0, b.benchmarkValue || 0);
+    const current = parseFloat((b.currentValue as string)?.replace(/,/g, '') || '0');
+    const benchmark = parseFloat((b.benchmarkValue as string)?.replace(/,/g, '') || '0');
+    const status = getBenchmarkStatus(current, benchmark);
     return status === 'below';
   }).length;
 
   const avgImprovement = benchmarks.length > 0
-    ? benchmarks.reduce((sum, b) => sum + calculateImprovement(b.currentValue || 0, b.benchmarkValue || 0), 0) / benchmarks.length
+    ? benchmarks.reduce((sum, b) => sum + calculateImprovement(b.currentValue || '0', b.benchmarkValue || '0'), 0) / benchmarks.length
     : 0;
 
   if (isLoading) {

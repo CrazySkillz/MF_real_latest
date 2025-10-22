@@ -2150,93 +2150,149 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="benchmark-metric">Metric Source (Optional)</Label>
+                <Label htmlFor="benchmark-metric">Aggregated Metric (Optional)</Label>
                 <Select
                   value={benchmarkForm.metric || ''}
                   onValueChange={(value) => {
-                    // Auto-populate current value from connected platforms (store raw numbers, not formatted)
+                    // Auto-populate current value with aggregated data across ALL platforms
                     let currentValue = '';
                     let unit = '';
+                    let category = '';
                     
-                    // Custom Integration metrics
-                    if (customIntegration?.metrics) {
-                      switch(value) {
-                        case 'users':
-                          currentValue = String(customIntegration.metrics.users || 0);
-                          break;
-                        case 'sessions':
-                          currentValue = String(customIntegration.metrics.sessions || 0);
-                          break;
-                        case 'pageviews':
-                          currentValue = String(customIntegration.metrics.pageviews || 0);
-                          break;
-                        case 'openRate':
-                          currentValue = String(customIntegration.metrics.openRate || 0);
-                          unit = '%';
-                          break;
-                        case 'clickThroughRate':
-                          currentValue = String(customIntegration.metrics.clickThroughRate || 0);
-                          unit = '%';
-                          break;
-                      }
+                    // Aggregate data from LinkedIn and Custom Integration
+                    const liMetrics = linkedinMetrics || {};
+                    const ciMetrics = customIntegration?.metrics || {};
+                    
+                    // Helper to safely parse numbers
+                    const parseNum = (val: any): number => {
+                      const num = typeof val === 'string' ? parseFloat(val) : val;
+                      return isNaN(num) ? 0 : num;
+                    };
+                    
+                    switch(value) {
+                      // Core Aggregated Metrics (sum across ALL platforms)
+                      case 'total-impressions':
+                        const liImpressions = parseNum(liMetrics.impressions);
+                        const ciPageviews = parseNum(ciMetrics.pageviews);
+                        currentValue = String(liImpressions + ciPageviews);
+                        category = 'Performance';
+                        break;
+                      case 'total-clicks':
+                        const liClicks = parseNum(liMetrics.clicks);
+                        currentValue = String(liClicks);
+                        category = 'Engagement';
+                        break;
+                      case 'total-conversions':
+                        const liConversions = parseNum(liMetrics.conversions);
+                        currentValue = String(liConversions);
+                        category = 'Performance';
+                        break;
+                      case 'total-leads':
+                        const liLeads = parseNum(liMetrics.leads);
+                        currentValue = String(liLeads);
+                        category = 'Performance';
+                        break;
+                      case 'total-spend':
+                        const liSpend = parseNum(liMetrics.spend);
+                        currentValue = String(liSpend);
+                        unit = '$';
+                        category = 'Cost';
+                        break;
+                      case 'total-engagements':
+                        const liEngagements = parseNum(liMetrics.engagements);
+                        const ciSessions = parseNum(ciMetrics.sessions);
+                        currentValue = String(liEngagements + ciSessions);
+                        category = 'Engagement';
+                        break;
+                      
+                      // Calculated Blended Metrics (using aggregated totals)
+                      case 'overall-ctr':
+                        const totalClicks = parseNum(liMetrics.clicks);
+                        const totalImpressions = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
+                        currentValue = String(totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0);
+                        unit = '%';
+                        category = 'Performance';
+                        break;
+                      case 'blended-cpc':
+                        const totalSpend = parseNum(liMetrics.spend);
+                        const clicks = parseNum(liMetrics.clicks);
+                        currentValue = String(clicks > 0 ? totalSpend / clicks : 0);
+                        unit = '$';
+                        category = 'Cost';
+                        break;
+                      case 'blended-cpm':
+                        const spendForCpm = parseNum(liMetrics.spend);
+                        const impressionsForCpm = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
+                        currentValue = String(impressionsForCpm > 0 ? (spendForCpm / impressionsForCpm) * 1000 : 0);
+                        unit = '$';
+                        category = 'Cost';
+                        break;
+                      case 'campaign-cvr':
+                        const conversions = parseNum(liMetrics.conversions);
+                        const clicksForCvr = parseNum(liMetrics.clicks);
+                        currentValue = String(clicksForCvr > 0 ? (conversions / clicksForCvr) * 100 : 0);
+                        unit = '%';
+                        category = 'Conversion';
+                        break;
+                      case 'campaign-cpa':
+                        const spendForCpa = parseNum(liMetrics.spend);
+                        const conversionsForCpa = parseNum(liMetrics.conversions);
+                        currentValue = String(conversionsForCpa > 0 ? spendForCpa / conversionsForCpa : 0);
+                        unit = '$';
+                        category = 'Cost';
+                        break;
+                      case 'campaign-cpl':
+                        const spendForCpl = parseNum(liMetrics.spend);
+                        const leadsForCpl = parseNum(liMetrics.leads);
+                        currentValue = String(leadsForCpl > 0 ? spendForCpl / leadsForCpl : 0);
+                        unit = '$';
+                        category = 'Cost';
+                        break;
+                      
+                      // Audience & Engagement (from Custom Integration)
+                      case 'total-users':
+                        currentValue = String(parseNum(ciMetrics.users));
+                        category = 'Engagement';
+                        break;
+                      case 'total-sessions':
+                        currentValue = String(parseNum(ciMetrics.sessions));
+                        category = 'Engagement';
+                        break;
                     }
                     
-                    // LinkedIn metrics
-                    if (linkedinMetrics) {
-                      switch(value) {
-                        case 'li-impressions':
-                          currentValue = String(linkedinMetrics.impressions || 0);
-                          break;
-                        case 'li-clicks':
-                          currentValue = String(linkedinMetrics.clicks || 0);
-                          break;
-                        case 'li-spend':
-                          currentValue = String(linkedinMetrics.spend || 0);
-                          unit = '$';
-                          break;
-                        case 'li-ctr':
-                          currentValue = String(linkedinMetrics.ctr || 0);
-                          unit = '%';
-                          break;
-                        case 'li-cpc':
-                          currentValue = String(linkedinMetrics.cpc || 0);
-                          unit = '$';
-                          break;
-                      }
-                    }
-                    
-                    setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue, unit: unit || benchmarkForm.unit });
+                    setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue, unit: unit || benchmarkForm.unit, category: category || benchmarkForm.category });
                   }}
                 >
                   <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
                     <SelectValue placeholder="Select metric or leave empty for custom" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {linkedinMetrics && Object.keys(linkedinMetrics).length > 0 && (
-                      <>
-                        <SelectGroup>
-                          <SelectLabel>🔗 LinkedIn Metrics</SelectLabel>
-                          <SelectItem value="li-impressions">Impressions</SelectItem>
-                          <SelectItem value="li-clicks">Clicks</SelectItem>
-                          <SelectItem value="li-spend">Spend</SelectItem>
-                          <SelectItem value="li-ctr">CTR</SelectItem>
-                          <SelectItem value="li-cpc">CPC</SelectItem>
-                        </SelectGroup>
-                        <SelectSeparator />
-                      </>
-                    )}
-                    {customIntegration?.connectedAt && customIntegration?.metrics && (
-                      <>
-                        <SelectGroup>
-                          <SelectLabel>📧 Custom Integration Metrics</SelectLabel>
-                          <SelectItem value="users">Users</SelectItem>
-                          <SelectItem value="sessions">Sessions</SelectItem>
-                          <SelectItem value="pageviews">Pageviews</SelectItem>
-                          <SelectItem value="openRate">Open Rate</SelectItem>
-                          <SelectItem value="clickThroughRate">Click-Through Rate</SelectItem>
-                        </SelectGroup>
-                      </>
-                    )}
+                  <SelectContent className="max-h-[400px]">
+                    {/* Aggregated Campaign Metrics - Always visible */}
+                    <SelectGroup>
+                      <SelectLabel>📊 Core Campaign Metrics</SelectLabel>
+                      <SelectItem value="total-impressions">Total Impressions</SelectItem>
+                      <SelectItem value="total-clicks">Total Clicks</SelectItem>
+                      <SelectItem value="total-conversions">Total Conversions</SelectItem>
+                      <SelectItem value="total-leads">Total Leads</SelectItem>
+                      <SelectItem value="total-spend">Total Spend</SelectItem>
+                      <SelectItem value="total-engagements">Total Engagements</SelectItem>
+                    </SelectGroup>
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <SelectLabel>📈 Blended Performance Metrics</SelectLabel>
+                      <SelectItem value="overall-ctr">Overall CTR</SelectItem>
+                      <SelectItem value="blended-cpc">Blended CPC</SelectItem>
+                      <SelectItem value="blended-cpm">Blended CPM</SelectItem>
+                      <SelectItem value="campaign-cvr">Campaign CVR</SelectItem>
+                      <SelectItem value="campaign-cpa">Campaign CPA</SelectItem>
+                      <SelectItem value="campaign-cpl">Campaign CPL</SelectItem>
+                    </SelectGroup>
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <SelectLabel>👥 Audience Metrics</SelectLabel>
+                      <SelectItem value="total-users">Total Users</SelectItem>
+                      <SelectItem value="total-sessions">Total Sessions</SelectItem>
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>

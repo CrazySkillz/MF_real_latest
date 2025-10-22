@@ -101,6 +101,33 @@ function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
 
   if (isLoading || reports.length === 0) return null;
 
+  const formatScheduleDetails = (report: any) => {
+    const parts = [];
+    
+    // Frequency
+    if (report.scheduleFrequency) {
+      parts.push(report.scheduleFrequency.charAt(0).toUpperCase() + report.scheduleFrequency.slice(1));
+    }
+    
+    // Day of week for weekly
+    if (report.scheduleFrequency === 'weekly' && report.scheduleDayOfWeek !== null) {
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      parts.push(`on ${days[report.scheduleDayOfWeek]}`);
+    }
+    
+    // Day of month for monthly/quarterly
+    if ((report.scheduleFrequency === 'monthly' || report.scheduleFrequency === 'quarterly') && report.scheduleDayOfMonth) {
+      parts.push(`on day ${report.scheduleDayOfMonth}`);
+    }
+    
+    // Time
+    if (report.scheduleTime) {
+      parts.push(`at ${report.scheduleTime}`);
+    }
+    
+    return parts.join(' ');
+  };
+
   return (
     <div className="mt-8">
       <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
@@ -117,10 +144,12 @@ function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
                     {report.name || 'KPI Report'}
                   </div>
                   <div className="text-sm text-slate-500 dark:text-slate-400">
-                    {report.scheduleFrequency?.charAt(0).toUpperCase() + report.scheduleFrequency?.slice(1)} • 
+                    {formatScheduleDetails(report)}
+                  </div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500">
                     {report.scheduleRecipients && Array.isArray(report.scheduleRecipients) 
-                      ? ` ${report.scheduleRecipients.length} recipient(s)` 
-                      : ' No recipients'}
+                      ? `${report.scheduleRecipients.length} recipient(s): ${report.scheduleRecipients.slice(0, 2).join(', ')}${report.scheduleRecipients.length > 2 ? '...' : ''}` 
+                      : 'No recipients'}
                   </div>
                 </div>
               </div>
@@ -167,6 +196,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const [scheduleForm, setScheduleForm] = useState({
     frequency: 'monthly',
     recipients: '',
+    timeOfDay: '09:00',
+    dayOfWeek: 'monday',
+    dayOfMonth: '1',
   });
   const [kpiForm, setKpiForm] = useState({
     name: '',
@@ -386,7 +418,13 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     },
     onSuccess: () => {
       setShowExportDialog(false);
-      setScheduleForm({ frequency: 'monthly', recipients: '' });
+      setScheduleForm({ 
+        frequency: 'monthly', 
+        recipients: '', 
+        timeOfDay: '09:00',
+        dayOfWeek: 'monday',
+        dayOfMonth: '1',
+      });
       setExportMode('download');
       toast({
         title: "Success",
@@ -412,11 +450,25 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       return;
     }
 
+    // Convert day of week string to number (0 = Sunday, 1 = Monday, etc.)
+    const dayOfWeekMap: { [key: string]: number } = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
+    };
+
     scheduleReportMutation.mutate({
       name: `${campaign.name} - Scheduled KPI Report`,
       scheduleEnabled: true,
       scheduleFrequency: scheduleForm.frequency,
       scheduleRecipients: scheduleForm.recipients.split(',').map(e => e.trim()),
+      scheduleTime: scheduleForm.timeOfDay,
+      scheduleDayOfWeek: scheduleForm.frequency === 'weekly' ? dayOfWeekMap[scheduleForm.dayOfWeek] : null,
+      scheduleDayOfMonth: (scheduleForm.frequency === 'monthly' || scheduleForm.frequency === 'quarterly') ? parseInt(scheduleForm.dayOfMonth) : null,
     });
   };
 
@@ -1378,7 +1430,13 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         setShowExportDialog(open);
         if (!open) {
           setExportMode('download');
-          setScheduleForm({ frequency: 'monthly', recipients: '' });
+          setScheduleForm({ 
+            frequency: 'monthly', 
+            recipients: '', 
+            timeOfDay: '09:00',
+            dayOfWeek: 'monday',
+            dayOfMonth: '1',
+          });
         }
       }}>
         <DialogContent className="max-w-md">
@@ -1463,6 +1521,61 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       <SelectItem value="quarterly">Quarterly</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="schedule-time">Time of Day</Label>
+                    <Input
+                      id="schedule-time"
+                      type="time"
+                      value={scheduleForm.timeOfDay}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, timeOfDay: e.target.value })}
+                      data-testid="input-schedule-time"
+                    />
+                  </div>
+
+                  {scheduleForm.frequency === 'weekly' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="schedule-day-week">Day of Week</Label>
+                      <Select 
+                        value={scheduleForm.dayOfWeek}
+                        onValueChange={(value) => setScheduleForm({ ...scheduleForm, dayOfWeek: value })}
+                      >
+                        <SelectTrigger id="schedule-day-week" data-testid="select-schedule-day-week">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monday">Monday</SelectItem>
+                          <SelectItem value="tuesday">Tuesday</SelectItem>
+                          <SelectItem value="wednesday">Wednesday</SelectItem>
+                          <SelectItem value="thursday">Thursday</SelectItem>
+                          <SelectItem value="friday">Friday</SelectItem>
+                          <SelectItem value="saturday">Saturday</SelectItem>
+                          <SelectItem value="sunday">Sunday</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {(scheduleForm.frequency === 'monthly' || scheduleForm.frequency === 'quarterly') && (
+                    <div className="space-y-2">
+                      <Label htmlFor="schedule-day-month">Day of Month</Label>
+                      <Select 
+                        value={scheduleForm.dayOfMonth}
+                        onValueChange={(value) => setScheduleForm({ ...scheduleForm, dayOfMonth: value })}
+                      >
+                        <SelectTrigger id="schedule-day-month" data-testid="select-schedule-day-month">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                            <SelectItem key={day} value={day.toString()}>{day}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">

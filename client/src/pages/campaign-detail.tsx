@@ -2421,7 +2421,25 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   id="current-value"
                   placeholder="0"
                   value={benchmarkForm.currentValue}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, currentValue: e.target.value })}
+                  onChange={(e) => {
+                    // Only allow numbers and decimals, then format with commas
+                    let value = e.target.value.replace(/[^\d.]/g, '');
+                    
+                    // Prevent multiple decimal points
+                    const parts = value.split('.');
+                    if (parts.length > 2) {
+                      value = parts[0] + '.' + parts.slice(1).join('');
+                    }
+                    
+                    // Format with commas
+                    if (value) {
+                      const [intPart, decPart] = value.split('.');
+                      const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                      value = decPart !== undefined ? `${formattedInt}.${decPart}` : formattedInt;
+                    }
+                    
+                    setBenchmarkForm({ ...benchmarkForm, currentValue: value });
+                  }}
                   data-testid="input-benchmark-current"
                 />
               </div>
@@ -2432,7 +2450,25 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   id="benchmark-value"
                   placeholder="0"
                   value={benchmarkForm.benchmarkValue}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, benchmarkValue: e.target.value })}
+                  onChange={(e) => {
+                    // Only allow numbers and decimals - no letters
+                    let value = e.target.value.replace(/[^\d.]/g, '');
+                    
+                    // Prevent multiple decimal points
+                    const parts = value.split('.');
+                    if (parts.length > 2) {
+                      value = parts[0] + '.' + parts.slice(1).join('');
+                    }
+                    
+                    // Format with commas
+                    if (value) {
+                      const [intPart, decPart] = value.split('.');
+                      const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                      value = decPart !== undefined ? `${formattedInt}.${decPart}` : formattedInt;
+                    }
+                    
+                    setBenchmarkForm({ ...benchmarkForm, benchmarkValue: value });
+                  }}
                   data-testid="input-benchmark-value"
                 />
               </div>

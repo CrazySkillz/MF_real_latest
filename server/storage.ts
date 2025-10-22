@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type KPIReport, type InsertKPIReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, kpiReports, customIntegrations, customIntegrationMetrics, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull, desc } from "drizzle-orm";
@@ -127,6 +127,13 @@ export interface IStorage {
   getBenchmarkHistory(benchmarkId: string): Promise<BenchmarkHistory[]>;
   recordBenchmarkHistory(history: InsertBenchmarkHistory): Promise<BenchmarkHistory>;
 
+  // KPI Reports
+  getCampaignKPIReports(campaignId: string): Promise<KPIReport[]>;
+  getKPIReport(id: string): Promise<KPIReport | undefined>;
+  createKPIReport(report: InsertKPIReport): Promise<KPIReport>;
+  updateKPIReport(id: string, report: Partial<InsertKPIReport>): Promise<KPIReport | undefined>;
+  deleteKPIReport(id: string): Promise<boolean>;
+
   // Notifications
   getNotifications(): Promise<Notification[]>;
   getNotification(id: string): Promise<Notification | undefined>;
@@ -235,6 +242,7 @@ export class MemStorage implements IStorage {
   private linkedinImportMetrics: Map<string, LinkedInImportMetric>;
   private linkedinAdPerformance: Map<string, LinkedInAdPerformance>;
   private linkedinReports: Map<string, LinkedInReport>;
+  private kpiReports: Map<string, KPIReport>;
   private customIntegrations: Map<string, CustomIntegration>;
   private customIntegrationMetrics: Map<string, CustomIntegrationMetrics>;
   private kpis: Map<string, KPI>;
@@ -265,6 +273,7 @@ export class MemStorage implements IStorage {
     this.linkedinImportMetrics = new Map();
     this.linkedinAdPerformance = new Map();
     this.linkedinReports = new Map();
+    this.kpiReports = new Map();
     this.customIntegrations = new Map();
     this.customIntegrationMetrics = new Map();
     this.kpis = new Map();
@@ -2359,6 +2368,42 @@ export class DatabaseStorage implements IStorage {
       performanceTrend,
       lastPerformanceRating
     };
+  }
+
+  // KPI Report methods
+  async getCampaignKPIReports(campaignId: string): Promise<KPIReport[]> {
+    return db.select().from(kpiReports)
+      .where(eq(kpiReports.campaignId, campaignId))
+      .orderBy(desc(kpiReports.createdAt));
+  }
+
+  async getKPIReport(id: string): Promise<KPIReport | undefined> {
+    const [report] = await db.select().from(kpiReports).where(eq(kpiReports.id, id));
+    return report || undefined;
+  }
+
+  async createKPIReport(reportData: InsertKPIReport): Promise<KPIReport> {
+    const [report] = await db
+      .insert(kpiReports)
+      .values(reportData)
+      .returning();
+    return report;
+  }
+
+  async updateKPIReport(id: string, updateData: Partial<InsertKPIReport>): Promise<KPIReport | undefined> {
+    const [report] = await db
+      .update(kpiReports)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(kpiReports.id, id))
+      .returning();
+    return report || undefined;
+  }
+
+  async deleteKPIReport(id: string): Promise<boolean> {
+    const result = await db
+      .delete(kpiReports)
+      .where(eq(kpiReports.id, id));
+    return (result.rowCount || 0) > 0;
   }
 
   // Notification methods

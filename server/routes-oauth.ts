@@ -2735,6 +2735,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // KPI Report routes
+  app.get("/api/campaigns/:id/kpi-reports", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const reports = await storage.getCampaignKPIReports(id);
+      res.json(reports);
+    } catch (error) {
+      console.error('KPI reports fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch KPI reports" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/kpi-reports", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const report = await storage.createKPIReport({ ...req.body, campaignId: id });
+      res.json(report);
+    } catch (error) {
+      console.error('KPI report creation error:', error);
+      res.status(500).json({ message: "Failed to create KPI report" });
+    }
+  });
+
+  app.patch("/api/campaigns/:id/kpi-reports/:reportId", async (req, res) => {
+    try {
+      const { reportId } = req.params;
+      const report = await storage.updateKPIReport(reportId, req.body);
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      res.json(report);
+    } catch (error) {
+      console.error('KPI report update error:', error);
+      res.status(500).json({ message: "Failed to update KPI report" });
+    }
+  });
+
+  app.delete("/api/campaigns/:id/kpi-reports/:reportId", async (req, res) => {
+    try {
+      const { reportId } = req.params;
+      const deleted = await storage.deleteKPIReport(reportId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      res.json({ message: "Report deleted successfully" });
+    } catch (error) {
+      console.error('KPI report deletion error:', error);
+      res.status(500).json({ message: "Failed to delete KPI report" });
+    }
+  });
+
   // Benchmark routes
   // Get campaign benchmarks
   app.get("/api/campaigns/:campaignId/benchmarks", async (req, res) => {

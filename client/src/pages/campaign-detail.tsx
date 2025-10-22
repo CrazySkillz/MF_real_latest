@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SiGoogle, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
 import { format } from "date-fns";
 import { reportStorage } from "@/lib/reportStorage";
-import { exportCampaignKPIsToPDF } from "@/lib/pdfExport";
+import { exportCampaignKPIsToPDF, exportCampaignBenchmarksToPDF } from "@/lib/pdfExport";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
@@ -1710,7 +1710,16 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
   });
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportMode, setExportMode] = useState<'download' | 'schedule'>('download');
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
+  const [scheduleForm, setScheduleForm] = useState({
+    frequency: 'monthly',
+    recipients: '',
+    timeOfDay: '09:00',
+    dayOfWeek: 'monday',
+    dayOfMonth: '1',
+  });
   const [benchmarkForm, setBenchmarkForm] = useState({
     metric: '',
     name: '',
@@ -1803,6 +1812,97 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       });
     },
   });
+
+  // Schedule Benchmark Report mutation
+  const scheduleBenchmarkReportMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest('POST', `/api/campaigns/${campaign.id}/benchmark-reports`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setShowExportDialog(false);
+      setScheduleForm({ 
+        frequency: 'monthly', 
+        recipients: '', 
+        timeOfDay: '09:00',
+        dayOfWeek: 'monday',
+        dayOfMonth: '1',
+      });
+      setExportMode('download');
+      toast({
+        title: "Success",
+        description: "Benchmark report scheduled successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to schedule benchmark report",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleExportBenchmarkReport = () => {
+    if (exportMode === 'download') {
+      exportCampaignBenchmarksToPDF({
+        id: campaign.id,
+        name: campaign.name,
+        benchmarks: benchmarks.map((benchmark: any) => ({
+          id: benchmark.id,
+          name: benchmark.name,
+          metric: benchmark.metric || 'N/A',
+          currentValue: benchmark.currentValue?.toString() || '0',
+          benchmarkValue: benchmark.benchmarkValue?.toString() || '0',
+          unit: benchmark.unit || '',
+          category: benchmark.category || '',
+          benchmarkType: benchmark.benchmarkType || 'industry',
+          source: benchmark.source || '',
+          industry: benchmark.industry || '',
+        })),
+        exportDate: new Date(),
+      });
+      setShowExportDialog(false);
+      toast({
+        title: "Success",
+        description: "Benchmark report exported successfully",
+      });
+    } else {
+      handleScheduleBenchmarkReport();
+    }
+  };
+
+  const handleScheduleBenchmarkReport = () => {
+    if (!scheduleForm.recipients) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide at least one email recipient",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Convert day of week string to number (0 = Sunday, 1 = Monday, etc.)
+    const dayOfWeekMap: { [key: string]: number } = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
+    };
+
+    scheduleBenchmarkReportMutation.mutate({
+      name: `${campaign.name} - Scheduled Benchmark Report`,
+      scheduleEnabled: true,
+      scheduleFrequency: scheduleForm.frequency,
+      scheduleRecipients: scheduleForm.recipients.split(',').map(e => e.trim()),
+      scheduleTime: scheduleForm.timeOfDay,
+      scheduleDayOfWeek: scheduleForm.frequency === 'weekly' ? dayOfWeekMap[scheduleForm.dayOfWeek] : null,
+      scheduleDayOfMonth: (scheduleForm.frequency === 'monthly' || scheduleForm.frequency === 'quarterly') ? parseInt(scheduleForm.dayOfMonth) : null,
+    });
+  };
 
   const resetBenchmarkForm = () => {
     setBenchmarkForm({
@@ -1978,18 +2078,28 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
             Track and compare your campaign performance against industry standards
           </p>
         </div>
-        <Button 
-          onClick={() => {
-            setEditingBenchmark(null);
-            resetBenchmarkForm();
-            setShowCreateDialog(true);
-          }} 
-          className="flex items-center space-x-2"
-          data-testid="button-create-benchmark"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Benchmark</span>
-        </Button>
+        <div className="flex items-center space-x-3">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowExportDialog(true)} 
+            data-testid="button-export-benchmarks-report"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Export Benchmarks Report
+          </Button>
+          <Button 
+            onClick={() => {
+              setEditingBenchmark(null);
+              resetBenchmarkForm();
+              setShowCreateDialog(true);
+            }} 
+            className="flex items-center space-x-2"
+            data-testid="button-create-benchmark"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Benchmark</span>
+          </Button>
+        </div>
       </div>
 
       {benchmarks.length > 0 ? (
@@ -2633,6 +2743,200 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               data-testid="button-benchmark-submit"
             >
               {editingBenchmark ? 'Update Benchmark' : 'Create Benchmark'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Benchmarks Report Dialog */}
+      <Dialog open={showExportDialog} onOpenChange={(open) => {
+        setShowExportDialog(open);
+        if (!open) {
+          setExportMode('download');
+          setScheduleForm({ 
+            frequency: 'monthly', 
+            recipients: '', 
+            timeOfDay: '09:00',
+            dayOfWeek: 'monday',
+            dayOfMonth: '1',
+          });
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export Benchmarks Report</DialogTitle>
+            <DialogDescription>
+              Generate and download your benchmark report or schedule automated email delivery
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Export Mode Selection */}
+            <div className="space-y-3">
+              <Label>Report Action</Label>
+              <div className="space-y-2">
+                <div 
+                  className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                    exportMode === 'download' 
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+                  onClick={() => setExportMode('download')}
+                  data-testid="option-download-benchmark-report"
+                >
+                  <Checkbox 
+                    checked={exportMode === 'download'}
+                    onCheckedChange={() => setExportMode('download')}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <Download className="w-4 h-4" />
+                      <span className="font-medium">Download Report Now</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Generate and download PDF report immediately
+                    </p>
+                  </div>
+                </div>
+
+                <div 
+                  className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                    exportMode === 'schedule' 
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+                  onClick={() => setExportMode('schedule')}
+                  data-testid="option-schedule-benchmark-report"
+                >
+                  <Checkbox 
+                    checked={exportMode === 'schedule'}
+                    onCheckedChange={() => setExportMode('schedule')}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4" />
+                      <span className="font-medium">Schedule Automated Reports</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Set up recurring email delivery
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Schedule Options (only shown when schedule mode is selected) */}
+            {exportMode === 'schedule' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="benchmark-schedule-frequency">Frequency</Label>
+                  <Select 
+                    value={scheduleForm.frequency}
+                    onValueChange={(value) => setScheduleForm({ ...scheduleForm, frequency: value })}
+                  >
+                    <SelectTrigger id="benchmark-schedule-frequency" data-testid="select-benchmark-schedule-frequency">
+                      <SelectValue placeholder="Select frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="benchmark-schedule-time">Time of Day</Label>
+                    <Input
+                      id="benchmark-schedule-time"
+                      type="time"
+                      value={scheduleForm.timeOfDay}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, timeOfDay: e.target.value })}
+                      data-testid="input-benchmark-schedule-time"
+                    />
+                  </div>
+
+                  {scheduleForm.frequency === 'weekly' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="benchmark-schedule-day-week">Day of Week</Label>
+                      <Select 
+                        value={scheduleForm.dayOfWeek}
+                        onValueChange={(value) => setScheduleForm({ ...scheduleForm, dayOfWeek: value })}
+                      >
+                        <SelectTrigger id="benchmark-schedule-day-week" data-testid="select-benchmark-schedule-day-week">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monday">Monday</SelectItem>
+                          <SelectItem value="tuesday">Tuesday</SelectItem>
+                          <SelectItem value="wednesday">Wednesday</SelectItem>
+                          <SelectItem value="thursday">Thursday</SelectItem>
+                          <SelectItem value="friday">Friday</SelectItem>
+                          <SelectItem value="saturday">Saturday</SelectItem>
+                          <SelectItem value="sunday">Sunday</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {(scheduleForm.frequency === 'monthly' || scheduleForm.frequency === 'quarterly') && (
+                    <div className="space-y-2">
+                      <Label htmlFor="benchmark-schedule-day-month">Day of Month</Label>
+                      <Select 
+                        value={scheduleForm.dayOfMonth}
+                        onValueChange={(value) => setScheduleForm({ ...scheduleForm, dayOfMonth: value })}
+                      >
+                        <SelectTrigger id="benchmark-schedule-day-month" data-testid="select-benchmark-schedule-day-month">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                            <SelectItem key={day} value={day.toString()}>{day}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="benchmark-schedule-recipients">Email Recipients</Label>
+                  <Input
+                    id="benchmark-schedule-recipients"
+                    type="text"
+                    placeholder="email1@example.com, email2@example.com"
+                    value={scheduleForm.recipients}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, recipients: e.target.value })}
+                    data-testid="input-benchmark-schedule-recipients"
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Separate multiple emails with commas
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowExportDialog(false)}
+              data-testid="button-benchmark-export-cancel"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleExportBenchmarkReport}
+              disabled={scheduleBenchmarkReportMutation.isPending}
+              data-testid="button-benchmark-export-confirm"
+            >
+              {exportMode === 'download' 
+                ? 'Download Report' 
+                : scheduleBenchmarkReportMutation.isPending 
+                  ? 'Scheduling...' 
+                  : 'Schedule Report'}
             </Button>
           </div>
         </DialogContent>

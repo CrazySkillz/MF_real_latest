@@ -621,8 +621,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
-                    <p className="text-2xl font-bold text-green-600" data-testid="text-kpis-on-track">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                    <p className="text-2xl font-bold text-green-600" data-testid="text-kpis-above-target">
                       {kpis.filter(k => {
                         // Parse values as floats (decimal fields come from DB as strings)
                         const currentStr = typeof k.currentValue === 'string' ? k.currentValue.replace(/,/g, '') : String(k.currentValue);

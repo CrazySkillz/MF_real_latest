@@ -161,7 +161,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportMode, setExportMode] = useState<'download' | 'schedule'>('download');
   const [editingKPI, setEditingKPI] = useState<any>(null);
   const [scheduleForm, setScheduleForm] = useState({
     frequency: 'monthly',
@@ -352,25 +353,30 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     });
   };
 
-  const handleExportPDF = () => {
-    exportCampaignKPIsToPDF({
-      id: campaign.id,
-      name: campaign.name,
-      kpis: kpis.map((kpi: any) => ({
-        id: kpi.id,
-        name: kpi.name,
-        aggregatedMetric: kpi.metric || 'N/A',
-        currentValue: kpi.currentValue?.toString() || '0',
-        targetValue: kpi.targetValue?.toString() || '0',
-        frequency: kpi.timeframe,
-        targetDate: kpi.targetDate,
-      })),
-      exportDate: new Date(),
-    });
-    toast({
-      title: "Success",
-      description: "KPI report exported successfully",
-    });
+  const handleExportReport = () => {
+    if (exportMode === 'download') {
+      exportCampaignKPIsToPDF({
+        id: campaign.id,
+        name: campaign.name,
+        kpis: kpis.map((kpi: any) => ({
+          id: kpi.id,
+          name: kpi.name,
+          aggregatedMetric: kpi.metric || 'N/A',
+          currentValue: kpi.currentValue?.toString() || '0',
+          targetValue: kpi.targetValue?.toString() || '0',
+          frequency: kpi.timeframe,
+          targetDate: kpi.targetDate,
+        })),
+        exportDate: new Date(),
+      });
+      setShowExportDialog(false);
+      toast({
+        title: "Success",
+        description: "KPI report exported successfully",
+      });
+    } else {
+      handleScheduleReport();
+    }
   };
 
   const scheduleReportMutation = useMutation({
@@ -379,8 +385,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       return res.json();
     },
     onSuccess: () => {
-      setShowScheduleDialog(false);
+      setShowExportDialog(false);
       setScheduleForm({ frequency: 'monthly', recipients: '' });
+      setExportMode('download');
       toast({
         title: "Success",
         description: "Report scheduled successfully",
@@ -483,13 +490,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={handleExportPDF} data-testid="button-export-kpi-pdf">
-            <Download className="w-4 h-4 mr-2" />
-            Export PDF
-          </Button>
-          <Button variant="outline" onClick={() => setShowScheduleDialog(true)} data-testid="button-schedule-report">
-            <Calendar className="w-4 h-4 mr-2" />
-            Schedule Report
+          <Button variant="outline" onClick={() => setShowExportDialog(true)} data-testid="button-export-kpis-report">
+            <FileText className="w-4 h-4 mr-2" />
+            Export KPIs Report
           </Button>
           <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-kpi">
             <Plus className="w-4 h-4 mr-2" />
@@ -1370,65 +1373,134 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         </DialogContent>
       </Dialog>
 
-      {/* Schedule Report Dialog */}
-      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+      {/* Export KPIs Report Dialog */}
+      <Dialog open={showExportDialog} onOpenChange={(open) => {
+        setShowExportDialog(open);
+        if (!open) {
+          setExportMode('download');
+          setScheduleForm({ frequency: 'monthly', recipients: '' });
+        }
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Schedule KPI Report</DialogTitle>
+            <DialogTitle>Export KPIs Report</DialogTitle>
             <DialogDescription>
-              Set up automated email delivery of this campaign's KPI report
+              Generate and download your KPI report or schedule automated email delivery
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="schedule-frequency">Frequency</Label>
-              <Select 
-                value={scheduleForm.frequency}
-                onValueChange={(value) => setScheduleForm({ ...scheduleForm, frequency: value })}
-              >
-                <SelectTrigger id="schedule-frequency" data-testid="select-schedule-frequency">
-                  <SelectValue placeholder="Select frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Export Mode Selection */}
+            <div className="space-y-3">
+              <Label>Report Action</Label>
+              <div className="space-y-2">
+                <div 
+                  className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                    exportMode === 'download' 
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+                  onClick={() => setExportMode('download')}
+                  data-testid="option-download-report"
+                >
+                  <Checkbox 
+                    checked={exportMode === 'download'}
+                    onCheckedChange={() => setExportMode('download')}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <Download className="w-4 h-4" />
+                      <span className="font-medium">Download Report Now</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Generate and download PDF report immediately
+                    </p>
+                  </div>
+                </div>
+
+                <div 
+                  className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                    exportMode === 'schedule' 
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+                  onClick={() => setExportMode('schedule')}
+                  data-testid="option-schedule-report"
+                >
+                  <Checkbox 
+                    checked={exportMode === 'schedule'}
+                    onCheckedChange={() => setExportMode('schedule')}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4" />
+                      <span className="font-medium">Schedule Automated Reports</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Set up recurring email delivery
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="schedule-recipients">Email Recipients</Label>
-              <Input
-                id="schedule-recipients"
-                type="text"
-                placeholder="email1@example.com, email2@example.com"
-                value={scheduleForm.recipients}
-                onChange={(e) => setScheduleForm({ ...scheduleForm, recipients: e.target.value })}
-                data-testid="input-schedule-recipients"
-              />
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Separate multiple emails with commas
-              </p>
-            </div>
+            {/* Schedule Options (only shown when schedule mode is selected) */}
+            {exportMode === 'schedule' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="schedule-frequency">Frequency</Label>
+                  <Select 
+                    value={scheduleForm.frequency}
+                    onValueChange={(value) => setScheduleForm({ ...scheduleForm, frequency: value })}
+                  >
+                    <SelectTrigger id="schedule-frequency" data-testid="select-schedule-frequency">
+                      <SelectValue placeholder="Select frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="schedule-recipients">Email Recipients</Label>
+                  <Input
+                    id="schedule-recipients"
+                    type="text"
+                    placeholder="email1@example.com, email2@example.com"
+                    value={scheduleForm.recipients}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, recipients: e.target.value })}
+                    data-testid="input-schedule-recipients"
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Separate multiple emails with commas
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex justify-end space-x-3 mt-6">
             <Button 
               variant="outline" 
-              onClick={() => setShowScheduleDialog(false)}
-              data-testid="button-schedule-cancel"
+              onClick={() => setShowExportDialog(false)}
+              data-testid="button-export-cancel"
             >
               Cancel
             </Button>
             <Button 
-              onClick={handleScheduleReport}
+              onClick={handleExportReport}
               disabled={scheduleReportMutation.isPending}
-              data-testid="button-schedule-save"
+              data-testid="button-export-confirm"
             >
-              {scheduleReportMutation.isPending ? 'Scheduling...' : 'Schedule Report'}
+              {exportMode === 'download' 
+                ? 'Download Report' 
+                : scheduleReportMutation.isPending 
+                  ? 'Scheduling...' 
+                  : 'Schedule Report'}
             </Button>
           </div>
         </DialogContent>

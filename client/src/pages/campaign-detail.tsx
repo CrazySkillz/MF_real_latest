@@ -4316,9 +4316,9 @@ export default function CampaignDetail() {
             <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
-              <TabsTrigger value="ab-testing">A/B Testing</TabsTrigger>
-              <TabsTrigger value="attribution">Attribution</TabsTrigger>
               <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
+              <TabsTrigger value="attribution">Attribution</TabsTrigger>
+              <TabsTrigger value="ab-testing">A/B Tests</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
             </TabsList>

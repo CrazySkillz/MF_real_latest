@@ -601,16 +601,18 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         </Card>
       ) : (
         <>
-          {/* KPI Summary Cards */}
+          {/* KPI Summary Panel */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpis.length}</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-total-kpis">
+                      {kpis.length}
+                    </p>
                   </div>
-                  <Target className="w-8 h-8 text-blue-500" />
+                  <Award className="w-8 h-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
@@ -619,9 +621,14 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Exceeding Target</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {kpis.filter(k => k.status === 'Exceeding').length}
+                    <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                    <p className="text-2xl font-bold text-green-600" data-testid="text-kpis-on-track">
+                      {kpis.filter(k => {
+                        const current = parseFloat(k.currentValue) || 0;
+                        const target = parseFloat(k.targetValue) || 1;
+                        const progress = (current / target) * 100;
+                        return progress >= 100;
+                      }).length}
                     </p>
                   </div>
                   <CheckCircle2 className="w-8 h-8 text-green-500" />
@@ -633,12 +640,40 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {kpis.filter(k => k.status === 'On Track').length}
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
+                    <p className="text-2xl font-bold text-red-600" data-testid="text-kpis-below-target">
+                      {kpis.filter(k => {
+                        const current = parseFloat(k.currentValue) || 0;
+                        const target = parseFloat(k.targetValue) || 1;
+                        const progress = (current / target) * 100;
+                        return progress < 100;
+                      }).length}
                     </p>
                   </div>
-                  <Clock className="w-8 h-8 text-blue-500" />
+                  <AlertCircle className="w-8 h-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-avg-progress">
+                      {kpis.length > 0
+                        ? (
+                            kpis.reduce((sum, k) => {
+                              const current = parseFloat(k.currentValue) || 0;
+                              const target = parseFloat(k.targetValue) || 1;
+                              const progress = (current / target) * 100;
+                              return sum + progress;
+                            }, 0) / kpis.length
+                          ).toFixed(1)
+                        : '0.0'}%
+                    </p>
+                  </div>
+                  <TrendingUp className="w-8 h-8 text-purple-500" />
                 </div>
               </CardContent>
             </Card>

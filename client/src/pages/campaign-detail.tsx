@@ -715,12 +715,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center space-x-4 text-xs text-slate-500">
                   <span>{kpi.timeframe}</span>
-                  {kpi.updatedAt && (
-                    <>
-                      <span>•</span>
-                      <span>Updated {new Date(kpi.updatedAt).toLocaleDateString()}</span>
-                    </>
-                  )}
                 </div>
               </div>
             </CardContent>

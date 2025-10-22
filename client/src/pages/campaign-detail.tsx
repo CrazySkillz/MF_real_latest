@@ -731,9 +731,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         </>
       )}
 
-      {/* Scheduled Reports Section */}
-      <ScheduledReportsSection campaignId={campaign.id} />
-
       {/* Create KPI Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => {
         setShowCreateDialog(open);
@@ -3776,12 +3773,13 @@ export default function CampaignDetail() {
 
           {/* Tabs Navigation */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
               <TabsTrigger value="ab-testing">A/B Testing</TabsTrigger>
               <TabsTrigger value="attribution">Attribution</TabsTrigger>
               <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
+              <TabsTrigger value="reports">Reports</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
             </TabsList>
 
@@ -4042,6 +4040,10 @@ export default function CampaignDetail() {
 
             <TabsContent value="benchmarks" className="space-y-6">
               <CampaignBenchmarks campaign={campaign} />
+            </TabsContent>
+
+            <TabsContent value="reports" className="space-y-6">
+              <ScheduledReportsSection campaignId={campaign.id} />
             </TabsContent>
 
             <TabsContent value="insights" className="space-y-6">

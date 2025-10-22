@@ -22,6 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SiGoogle, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
 import { format } from "date-fns";
 import { reportStorage } from "@/lib/reportStorage";
+import { exportCampaignKPIsToPDF } from "@/lib/pdfExport";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
@@ -77,6 +78,68 @@ const formatNumber = (value: number | string): string => {
   return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
 };
 
+// Scheduled Reports Section Component
+function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
+  const { toast } = useToast();
+  const { data: reports = [], isLoading } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaignId}/kpi-reports`],
+    enabled: !!campaignId,
+  });
+
+  const deleteReportMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      await apiRequest('DELETE', `/api/campaigns/${campaignId}/kpi-reports/${reportId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpi-reports`] });
+      toast({
+        title: "Report Deleted",
+        description: "Scheduled report has been removed.",
+      });
+    },
+  });
+
+  if (isLoading || reports.length === 0) return null;
+
+  return (
+    <div className="mt-8">
+      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+        Scheduled Reports
+      </h3>
+      <div className="grid gap-4">
+        {reports.map((report) => (
+          <Card key={report.id}>
+            <CardContent className="flex items-center justify-between p-4">
+              <div className="flex items-center space-x-4">
+                <Calendar className="w-5 h-5 text-slate-500" />
+                <div>
+                  <div className="font-medium text-slate-900 dark:text-white">
+                    {report.name || 'KPI Report'}
+                  </div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                    {report.scheduleFrequency?.charAt(0).toUpperCase() + report.scheduleFrequency?.slice(1)} • 
+                    {report.scheduleRecipients && Array.isArray(report.scheduleRecipients) 
+                      ? ` ${report.scheduleRecipients.length} recipient(s)` 
+                      : ' No recipients'}
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteReportMutation.mutate(report.id)}
+                data-testid={`button-delete-report-${report.id}`}
+              >
+                <Trash2 className="w-4 h-4 text-red-600" />
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Campaign KPIs Component
 function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const { toast } = useToast();
@@ -98,7 +161,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [editingKPI, setEditingKPI] = useState<any>(null);
+  const [scheduleForm, setScheduleForm] = useState({
+    frequency: 'monthly',
+    recipients: '',
+  });
   const [kpiForm, setKpiForm] = useState({
     name: '',
     description: '',
@@ -284,6 +352,67 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     });
   };
 
+  const handleExportPDF = () => {
+    exportCampaignKPIsToPDF({
+      id: campaign.id,
+      name: campaign.name,
+      kpis: kpis.map((kpi: any) => ({
+        id: kpi.id,
+        name: kpi.name,
+        aggregatedMetric: kpi.metric || 'N/A',
+        currentValue: kpi.currentValue?.toString() || '0',
+        targetValue: kpi.targetValue?.toString() || '0',
+        frequency: kpi.timeframe,
+        targetDate: kpi.targetDate,
+      })),
+      exportDate: new Date(),
+    });
+    toast({
+      title: "Success",
+      description: "KPI report exported successfully",
+    });
+  };
+
+  const scheduleReportMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest('POST', `/api/campaigns/${campaign.id}/kpi-reports`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setShowScheduleDialog(false);
+      setScheduleForm({ frequency: 'monthly', recipients: '' });
+      toast({
+        title: "Success",
+        description: "Report scheduled successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to schedule report",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleScheduleReport = () => {
+    if (!scheduleForm.recipients) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide at least one email recipient",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    scheduleReportMutation.mutate({
+      name: `${campaign.name} - Scheduled KPI Report`,
+      scheduleEnabled: true,
+      scheduleFrequency: scheduleForm.frequency,
+      scheduleRecipients: scheduleForm.recipients.split(',').map(e => e.trim()),
+    });
+  };
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -354,11 +483,15 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="outline">
-            <FileText className="w-4 h-4 mr-2" />
-            Export KPIs Report
+          <Button variant="outline" onClick={handleExportPDF} data-testid="button-export-kpi-pdf">
+            <Download className="w-4 h-4 mr-2" />
+            Export PDF
           </Button>
-          <Button onClick={() => setShowCreateDialog(true)}>
+          <Button variant="outline" onClick={() => setShowScheduleDialog(true)} data-testid="button-schedule-report">
+            <Calendar className="w-4 h-4 mr-2" />
+            Schedule Report
+          </Button>
+          <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-kpi">
             <Plus className="w-4 h-4 mr-2" />
             Create KPI
           </Button>
@@ -542,6 +675,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </div>
         </>
       )}
+
+      {/* Scheduled Reports Section */}
+      <ScheduledReportsSection campaignId={campaign.id} />
 
       {/* Create KPI Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => {
@@ -1229,6 +1365,70 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               data-testid="button-edit-campaign-kpi-save"
             >
               {updateKpiMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule Report Dialog */}
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule KPI Report</DialogTitle>
+            <DialogDescription>
+              Set up automated email delivery of this campaign's KPI report
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="schedule-frequency">Frequency</Label>
+              <Select 
+                value={scheduleForm.frequency}
+                onValueChange={(value) => setScheduleForm({ ...scheduleForm, frequency: value })}
+              >
+                <SelectTrigger id="schedule-frequency" data-testid="select-schedule-frequency">
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="schedule-recipients">Email Recipients</Label>
+              <Input
+                id="schedule-recipients"
+                type="text"
+                placeholder="email1@example.com, email2@example.com"
+                value={scheduleForm.recipients}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, recipients: e.target.value })}
+                data-testid="input-schedule-recipients"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Separate multiple emails with commas
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowScheduleDialog(false)}
+              data-testid="button-schedule-cancel"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleScheduleReport}
+              disabled={scheduleReportMutation.isPending}
+              data-testid="button-schedule-save"
+            >
+              {scheduleReportMutation.isPending ? 'Scheduling...' : 'Schedule Report'}
             </Button>
           </div>
         </DialogContent>

@@ -328,6 +328,22 @@ export const benchmarkHistory = pgTable("benchmark_history", {
   notes: text("notes"),
 });
 
+export const metricSnapshots = pgTable("metric_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  // Aggregated cross-platform metrics
+  totalImpressions: integer("total_impressions").notNull().default(0),
+  totalEngagements: integer("total_engagements").notNull().default(0),
+  totalClicks: integer("total_clicks").notNull().default(0),
+  totalConversions: integer("total_conversions").notNull().default(0),
+  totalLeads: integer("total_leads").notNull().default(0),
+  totalSpend: decimal("total_spend", { precision: 10, scale: 2 }).notNull().default("0"),
+  // Metadata
+  snapshotType: text("snapshot_type").notNull().default("automatic"), // 'automatic', 'manual'
+  recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  notes: text("notes"),
+});
+
 export const abTests = pgTable("ab_tests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
@@ -669,6 +685,18 @@ export const insertBenchmarkHistorySchema = createInsertSchema(benchmarkHistory)
   notes: true,
 });
 
+export const insertMetricSnapshotSchema = createInsertSchema(metricSnapshots).pick({
+  campaignId: true,
+  totalImpressions: true,
+  totalEngagements: true,
+  totalClicks: true,
+  totalConversions: true,
+  totalLeads: true,
+  totalSpend: true,
+  snapshotType: true,
+  notes: true,
+});
+
 export const insertLinkedInReportSchema = createInsertSchema(linkedinReports).pick({
   campaignId: true,
   name: true,
@@ -915,6 +943,8 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type BenchmarkHistory = typeof benchmarkHistory.$inferSelect;
 export type InsertBenchmarkHistory = z.infer<typeof insertBenchmarkHistorySchema>;
+export type MetricSnapshot = typeof metricSnapshots.$inferSelect;
+export type InsertMetricSnapshot = z.infer<typeof insertMetricSnapshotSchema>;
 export type ABTest = typeof abTests.$inferSelect;
 export type InsertABTest = z.infer<typeof insertABTestSchema>;
 export type ABTestVariant = typeof abTestVariants.$inferSelect;

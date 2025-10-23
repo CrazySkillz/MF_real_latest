@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertKPISchema, insertKPIProgressSchema, insertNotificationSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, insertBenchmarkSchema, insertCustomIntegrationSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertKPISchema, insertKPIProgressSchema, insertNotificationSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, insertBenchmarkSchema, insertCustomIntegrationSchema, insertMetricSnapshotSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -1726,6 +1726,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Campaign Benchmark deletion error:', error);
       res.status(500).json({ message: "Failed to delete benchmark" });
+    }
+  });
+
+  // Metric Snapshot routes
+  app.post("/api/campaigns/:id/snapshots", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const validatedSnapshot = insertMetricSnapshotSchema.parse({
+        ...req.body,
+        campaignId: id
+      });
+      
+      const snapshot = await storage.createMetricSnapshot(validatedSnapshot);
+      res.json(snapshot);
+    } catch (error) {
+      console.error('Metric snapshot creation error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid snapshot data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create metric snapshot" });
+      }
+    }
+  });
+
+  app.get("/api/campaigns/:id/snapshots/comparison", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { type } = req.query;
+      
+      if (!type || !['yesterday', 'last_week', 'last_month'].includes(type as string)) {
+        return res.status(400).json({ message: "Invalid comparison type. Use: yesterday, last_week, or last_month" });
+      }
+      
+      const comparisonData = await storage.getComparisonData(id, type as 'yesterday' | 'last_week' | 'last_month');
+      res.json(comparisonData);
+    } catch (error) {
+      console.error('Comparison data fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch comparison data" });
     }
   });
 

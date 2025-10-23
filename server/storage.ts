@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type KPIReport, type InsertKPIReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, kpiReports, customIntegrations, customIntegrationMetrics, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull, desc } from "drizzle-orm";
@@ -127,8 +127,17 @@ export interface IStorage {
   getBenchmarkHistory(benchmarkId: string): Promise<BenchmarkHistory[]>;
   recordBenchmarkHistory(history: InsertBenchmarkHistory): Promise<BenchmarkHistory>;
 
+  // Metric Snapshots
+  getCampaignSnapshots(campaignId: string): Promise<MetricSnapshot[]>;
+  getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined>;
+  createMetricSnapshot(snapshot: InsertMetricSnapshot): Promise<MetricSnapshot>;
+  getComparisonData(campaignId: string, comparisonType: 'yesterday' | 'last_week' | 'last_month'): Promise<{
+    current: MetricSnapshot | null;
+    previous: MetricSnapshot | null;
+  }>;
+
   // KPI Reports
-  getCampaignKPIReports(campaignId: string): Promise<KPIReport[]>;
+  getCampaignKPIReports(campaignId: string): Promise<any[]>;
   getKPIReport(id: string): Promise<KPIReport | undefined>;
   createKPIReport(report: InsertKPIReport): Promise<KPIReport>;
   updateKPIReport(id: string, report: Partial<InsertKPIReport>): Promise<KPIReport | undefined>;
@@ -2325,6 +2334,78 @@ export class DatabaseStorage implements IStorage {
       .values(historyData)
       .returning();
     return history;
+  }
+
+  // Metric Snapshot methods
+  async getCampaignSnapshots(campaignId: string): Promise<MetricSnapshot[]> {
+    return db.select().from(metricSnapshots)
+      .where(eq(metricSnapshots.campaignId, campaignId))
+      .orderBy(desc(metricSnapshots.recordedAt));
+  }
+
+  async getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined> {
+    const [snapshot] = await db.select().from(metricSnapshots)
+      .where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        eq(metricSnapshots.recordedAt, date)
+      ))
+      .limit(1);
+    return snapshot || undefined;
+  }
+
+  async createMetricSnapshot(snapshotData: InsertMetricSnapshot): Promise<MetricSnapshot> {
+    const [snapshot] = await db
+      .insert(metricSnapshots)
+      .values(snapshotData)
+      .returning();
+    return snapshot;
+  }
+
+  async getComparisonData(
+    campaignId: string,
+    comparisonType: 'yesterday' | 'last_week' | 'last_month'
+  ): Promise<{ current: MetricSnapshot | null; previous: MetricSnapshot | null }> {
+    const now = new Date();
+    let targetDate: Date;
+
+    switch (comparisonType) {
+      case 'yesterday':
+        targetDate = new Date(now);
+        targetDate.setDate(now.getDate() - 1);
+        targetDate.setHours(23, 59, 59, 999); // End of yesterday
+        break;
+      case 'last_week':
+        targetDate = new Date(now);
+        targetDate.setDate(now.getDate() - 7);
+        targetDate.setHours(23, 59, 59, 999); // End of that day
+        break;
+      case 'last_month':
+        targetDate = new Date(now);
+        targetDate.setMonth(now.getMonth() - 1);
+        targetDate.setHours(23, 59, 59, 999); // End of that day
+        break;
+    }
+
+    // Get the most recent snapshot (current)
+    const [currentSnapshot] = await db.select().from(metricSnapshots)
+      .where(eq(metricSnapshots.campaignId, campaignId))
+      .orderBy(desc(metricSnapshots.recordedAt))
+      .limit(1);
+
+    // Get the most recent snapshot on or before the target date (previous)
+    // Uses SQL to efficiently find the closest snapshot without loading all records
+    const [previousSnapshot] = await db.select().from(metricSnapshots)
+      .where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        sql`${metricSnapshots.recordedAt} <= ${targetDate}`
+      ))
+      .orderBy(desc(metricSnapshots.recordedAt))
+      .limit(1);
+
+    return {
+      current: currentSnapshot || null,
+      previous: previousSnapshot || null
+    };
   }
 
   async getBenchmarkAnalytics(benchmarkId: string): Promise<{

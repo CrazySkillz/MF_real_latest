@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign } from "lucide-react";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SiLinkedin } from "react-icons/si";
 
 interface Campaign {
@@ -19,6 +21,7 @@ interface Campaign {
 export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
   const campaignId = params?.id;
+  const [comparisonType, setComparisonType] = useState<'yesterday' | 'last_week' | 'last_month'>('yesterday');
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -46,6 +49,15 @@ export default function CampaignPerformanceSummary() {
   // Fetch Custom Integration data
   const { data: customIntegration } = useQuery<any>({
     queryKey: [`/api/custom-integration/${campaignId}`],
+    enabled: !!campaignId,
+  });
+
+  // Fetch comparison data
+  const { data: comparisonData } = useQuery<{
+    current: any | null;
+    previous: any | null;
+  }>({
+    queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison`, comparisonType],
     enabled: !!campaignId,
   });
 
@@ -175,66 +187,51 @@ export default function CampaignPerformanceSummary() {
     return "Maintain current performance - all metrics on track";
   };
 
-  // Calculate what's changed (using localStorage for demo)
+  // Calculate what's changed based on API comparison data
   const getChanges = () => {
-    try {
-      const snapshotKey = `campaign_snapshot_${campaignId}`;
-      const snapshot = localStorage.getItem(snapshotKey);
-      
-      if (!snapshot) {
-        // Store initial snapshot
-        const newSnapshot = {
-          timestamp: new Date().toISOString(),
-          impressions: totalImpressions,
-          engagements: totalEngagements,
-          clicks: totalClicks,
-          conversions: totalConversions
-        };
-        localStorage.setItem(snapshotKey, JSON.stringify(newSnapshot));
-        return { changes: [], timestamp: new Date().toISOString() };
-      }
-
-      const prev = JSON.parse(snapshot);
-      const changes = [];
-
-      const impChange = totalImpressions - parseNum(prev.impressions);
-      const engChange = totalEngagements - parseNum(prev.engagements);
-      const clickChange = totalClicks - parseNum(prev.clicks);
-      const convChange = totalConversions - parseNum(prev.conversions);
-
-      if (Math.abs(impChange) > 0) {
-        changes.push({
-          metric: "Total Impressions",
-          change: impChange,
-          direction: impChange > 0 ? "up" : "down"
-        });
-      }
-      if (Math.abs(engChange) > 0) {
-        changes.push({
-          metric: "Total Engagements",
-          change: engChange,
-          direction: engChange > 0 ? "up" : "down"
-        });
-      }
-      if (Math.abs(clickChange) > 0) {
-        changes.push({
-          metric: "Total Clicks",
-          change: clickChange,
-          direction: clickChange > 0 ? "up" : "down"
-        });
-      }
-      if (Math.abs(convChange) > 0) {
-        changes.push({
-          metric: "Total Conversions",
-          change: convChange,
-          direction: convChange > 0 ? "up" : "down"
-        });
-      }
-
-      return { changes: changes.slice(0, 4), timestamp: prev.timestamp };
-    } catch {
-      return { changes: [], timestamp: new Date().toISOString() };
+    if (!comparisonData?.previous || !comparisonData?.current) {
+      return { changes: [], timestamp: null };
     }
+
+    const prev = comparisonData.previous;
+    const curr = comparisonData.current;
+    const changes = [];
+
+    const impChange = parseNum(curr.totalImpressions) - parseNum(prev.totalImpressions);
+    const engChange = parseNum(curr.totalEngagements) - parseNum(prev.totalEngagements);
+    const clickChange = parseNum(curr.totalClicks) - parseNum(prev.totalClicks);
+    const convChange = parseNum(curr.totalConversions) - parseNum(prev.totalConversions);
+
+    if (Math.abs(impChange) > 0) {
+      changes.push({
+        metric: "Total Impressions",
+        change: impChange,
+        direction: impChange > 0 ? "up" : "down"
+      });
+    }
+    if (Math.abs(engChange) > 0) {
+      changes.push({
+        metric: "Total Engagements",
+        change: engChange,
+        direction: engChange > 0 ? "up" : "down"
+      });
+    }
+    if (Math.abs(clickChange) > 0) {
+      changes.push({
+        metric: "Total Clicks",
+        change: clickChange,
+        direction: clickChange > 0 ? "up" : "down"
+      });
+    }
+    if (Math.abs(convChange) > 0) {
+      changes.push({
+        metric: "Total Conversions",
+        change: convChange,
+        direction: convChange > 0 ? "up" : "down"
+      });
+    }
+
+    return { changes: changes.slice(0, 4), timestamp: prev.recordedAt };
   };
 
   const changeData = getChanges();
@@ -435,20 +432,41 @@ export default function CampaignPerformanceSummary() {
             <TabsContent value="changes" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <TrendingUp className="w-5 h-5" />
-                    <span>What's Changed</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Since last snapshot: {new Date(snapshotTimestamp).toLocaleString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric', 
-                      year: 'numeric', 
-                      hour: 'numeric', 
-                      minute: '2-digit',
-                      hour12: true 
-                    })}
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center space-x-2">
+                        <TrendingUp className="w-5 h-5" />
+                        <span>What's Changed</span>
+                      </CardTitle>
+                      <CardDescription className="mt-1.5">
+                        {snapshotTimestamp ? (
+                          <>Compare to: {new Date(snapshotTimestamp).toLocaleString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: 'numeric', 
+                            hour: 'numeric', 
+                            minute: '2-digit',
+                            hour12: true 
+                          })}</>
+                        ) : (
+                          <>No historical data available yet</>
+                        )}
+                      </CardDescription>
+                    </div>
+                    <Select 
+                      value={comparisonType} 
+                      onValueChange={(value) => setComparisonType(value as 'yesterday' | 'last_week' | 'last_month')}
+                    >
+                      <SelectTrigger className="w-[180px]" data-testid="select-comparison">
+                        <SelectValue placeholder="Select timeframe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yesterday" data-testid="option-yesterday">vs. Yesterday</SelectItem>
+                        <SelectItem value="last_week" data-testid="option-last-week">vs. Last Week</SelectItem>
+                        <SelectItem value="last_month" data-testid="option-last-month">vs. Last Month</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {changes.length === 0 ? (

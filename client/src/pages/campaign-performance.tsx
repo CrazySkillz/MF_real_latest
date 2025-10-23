@@ -118,13 +118,22 @@ export default function CampaignPerformanceSummary() {
   const totalLeads = linkedinLeads;
   const totalSpend = linkedinSpend;
 
-  // Calculate campaign health score
+  // Calculate campaign health score (including both KPIs and Benchmarks)
   const kpisAboveTarget = kpis.filter(kpi => {
     const current = parseNum(kpi.currentValue);
     const target = parseNum(kpi.targetValue);
     return current >= target;
   }).length;
-  const healthScore = kpis.length > 0 ? Math.round((kpisAboveTarget / kpis.length) * 100) : 0;
+  
+  const benchmarksAboveTarget = benchmarks.filter(benchmark => {
+    const current = parseNum(benchmark.currentValue);
+    const industry = parseNum(benchmark.industryAverage);
+    return current >= industry;
+  }).length;
+  
+  const totalMetrics = kpis.length + benchmarks.length;
+  const totalAboveTarget = kpisAboveTarget + benchmarksAboveTarget;
+  const healthScore = totalMetrics > 0 ? Math.round((totalAboveTarget / totalMetrics) * 100) : 0;
 
   const getHealthStatus = () => {
     if (healthScore >= 80) return { label: "Excellent", color: "bg-green-500", icon: CheckCircle2 };
@@ -174,14 +183,15 @@ export default function CampaignPerformanceSummary() {
       
       if (!snapshot) {
         // Store initial snapshot
-        localStorage.setItem(snapshotKey, JSON.stringify({
+        const newSnapshot = {
           timestamp: new Date().toISOString(),
           impressions: totalImpressions,
           engagements: totalEngagements,
           clicks: totalClicks,
           conversions: totalConversions
-        }));
-        return [];
+        };
+        localStorage.setItem(snapshotKey, JSON.stringify(newSnapshot));
+        return { changes: [], timestamp: new Date().toISOString() };
       }
 
       const prev = JSON.parse(snapshot);
@@ -206,14 +216,30 @@ export default function CampaignPerformanceSummary() {
           direction: engChange > 0 ? "up" : "down"
         });
       }
+      if (Math.abs(clickChange) > 0) {
+        changes.push({
+          metric: "Total Clicks",
+          change: clickChange,
+          direction: clickChange > 0 ? "up" : "down"
+        });
+      }
+      if (Math.abs(convChange) > 0) {
+        changes.push({
+          metric: "Total Conversions",
+          change: convChange,
+          direction: convChange > 0 ? "up" : "down"
+        });
+      }
 
-      return changes.slice(0, 3);
+      return { changes: changes.slice(0, 4), timestamp: prev.timestamp };
     } catch {
-      return [];
+      return { changes: [], timestamp: new Date().toISOString() };
     }
   };
 
-  const changes = getChanges();
+  const changeData = getChanges();
+  const changes = changeData.changes;
+  const snapshotTimestamp = changeData.timestamp;
 
   // Data source status
   const dataSources = [
@@ -278,7 +304,10 @@ export default function CampaignPerformanceSummary() {
                     <div>
                       <div className="text-2xl font-bold text-slate-900 dark:text-white">{healthStatus.label}</div>
                       <div className="text-sm text-slate-600 dark:text-slate-400">
-                        {kpisAboveTarget} of {kpis.length} KPIs above target
+                        {totalAboveTarget} of {totalMetrics} metrics above target
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        {kpisAboveTarget}/{kpis.length} KPIs • {benchmarksAboveTarget}/{benchmarks.length} Benchmarks
                       </div>
                     </div>
                   </div>
@@ -363,6 +392,14 @@ export default function CampaignPerformanceSummary() {
                     <Badge variant="default">{kpisAboveTarget} of {kpis.length}</Badge>
                   </div>
                   <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Benchmarks Above Target</span>
+                    <Badge variant="default">{benchmarksAboveTarget} of {benchmarks.length}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Total Metrics Above Target</span>
+                    <Badge variant="default">{totalAboveTarget} of {totalMetrics}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Status</span>
                     <Badge className={healthStatus.color}>{healthStatus.label}</Badge>
                   </div>
@@ -402,23 +439,37 @@ export default function CampaignPerformanceSummary() {
                     <TrendingUp className="w-5 h-5" />
                     <span>What's Changed</span>
                   </CardTitle>
-                  <CardDescription>Since last snapshot</CardDescription>
+                  <CardDescription>
+                    Since last snapshot: {new Date(snapshotTimestamp).toLocaleString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric', 
+                      year: 'numeric', 
+                      hour: 'numeric', 
+                      minute: '2-digit',
+                      hour12: true 
+                    })}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {changes.length === 0 ? (
-                    <p className="text-sm text-slate-600 dark:text-slate-400">No changes detected yet</p>
+                    <div className="text-center py-8">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">No changes detected yet</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500">
+                        Initial snapshot captured. Changes will appear here when metrics update.
+                      </p>
+                    </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {changes.map((change, idx) => (
-                        <div key={idx} className="flex items-center justify-between">
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{change.metric}</span>
                           <div className="flex items-center space-x-2">
                             {change.direction === "up" ? (
-                              <TrendingUp className="w-4 h-4 text-green-600" />
+                              <TrendingUp className="w-5 h-5 text-green-600" />
                             ) : (
-                              <TrendingDown className="w-4 h-4 text-red-600" />
+                              <TrendingDown className="w-5 h-5 text-red-600" />
                             )}
-                            <span className={`text-sm font-semibold ${change.direction === "up" ? "text-green-600" : "text-red-600"}`}>
+                            <span className={`text-base font-bold ${change.direction === "up" ? "text-green-600" : "text-red-600"}`}>
                               {change.direction === "up" ? "+" : ""}{change.change.toLocaleString()}
                             </span>
                           </div>

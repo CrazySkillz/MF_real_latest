@@ -14,99 +14,6 @@ import { format } from "date-fns";
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 
-// Platform performance comparison data
-const platformMetrics = [
-  {
-    platform: 'Google Analytics',
-    impressions: 15420000,
-    clicks: 182500,
-    conversions: 8430,
-    spend: 47500,
-    ctr: 1.18,
-    cpc: 0.26,
-    conversionRate: 4.62,
-    roas: 3.8,
-    qualityScore: 8.5,
-    reach: 1200000,
-    engagement: 4.2,
-    color: '#4285f4'
-  },
-  {
-    platform: 'Google Sheets',
-    impressions: 8900000,
-    clicks: 125600,
-    conversions: 4920,
-    spend: 32100,
-    ctr: 1.41,
-    cpc: 0.26,
-    conversionRate: 3.92,
-    roas: 4.1,
-    qualityScore: 7.8,
-    reach: 850000,
-    engagement: 3.9,
-    color: '#0f9d58'
-  },
-  {
-    platform: 'Facebook Ads',
-    impressions: 12300000,
-    clicks: 98400,
-    conversions: 3150,
-    spend: 28900,
-    ctr: 0.80,
-    cpc: 0.29,
-    conversionRate: 3.20,
-    roas: 2.9,
-    qualityScore: 6.9,
-    reach: 920000,
-    engagement: 5.1,
-    color: '#1877f2'
-  },
-  {
-    platform: 'LinkedIn Ads',
-    impressions: 2400000,
-    clicks: 45600,
-    conversions: 1830,
-    spend: 18200,
-    ctr: 1.90,
-    cpc: 0.40,
-    conversionRate: 4.01,
-    roas: 3.2,
-    qualityScore: 8.1,
-    reach: 180000,
-    engagement: 2.8,
-    color: '#0077b5'
-  }
-];
-
-// Performance trend data over time
-const generateTrendData = () => {
-  const data = [];
-  for (let i = 30; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    data.push({
-      date: format(date, 'MMM dd'),
-      'Google Analytics': Math.floor(Math.random() * 1000) + 800,
-      'Google Sheets': Math.floor(Math.random() * 600) + 400,
-      'Facebook Ads': Math.floor(Math.random() * 800) + 500,
-      'LinkedIn Ads': Math.floor(Math.random() * 300) + 200,
-    });
-  }
-  return data;
-};
-
-const trendData = generateTrendData();
-
-// Radar chart data for platform comparison
-const radarData = [
-  { metric: 'CTR', 'Google Analytics': 85, 'Google Sheets': 92, 'Facebook Ads': 65, 'LinkedIn Ads': 88 },
-  { metric: 'CPC Efficiency', 'Google Analytics': 90, 'Google Sheets': 88, 'Facebook Ads': 75, 'LinkedIn Ads': 70 },
-  { metric: 'Conversion Rate', 'Google Analytics': 88, 'Google Sheets': 82, 'Facebook Ads': 72, 'LinkedIn Ads': 85 },
-  { metric: 'ROAS', 'Google Analytics': 86, 'Google Sheets': 90, 'Facebook Ads': 68, 'LinkedIn Ads': 75 },
-  { metric: 'Quality Score', 'Google Analytics': 85, 'Google Sheets': 78, 'Facebook Ads': 69, 'LinkedIn Ads': 81 },
-  { metric: 'Reach', 'Google Analytics': 95, 'Google Sheets': 70, 'Facebook Ads': 80, 'LinkedIn Ads': 45 }
-];
-
 
 export default function PlatformComparison() {
   const { id: campaignId } = useParams();
@@ -376,94 +283,70 @@ export default function PlatformComparison() {
                 </Card>
               )}
 
-              {/* Platform Performance Comparison Chart */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <GitCompare className="w-5 h-5" />
-                    <span>Platform Performance Trends</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={trendData}>
-                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                        <XAxis dataKey="date" className="text-xs" />
-                        <YAxis className="text-xs" />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'var(--background)', 
-                            border: '1px solid var(--border)',
-                            borderRadius: '6px' 
-                          }} 
-                        />
-                        <Line type="monotone" dataKey="Google Analytics" stroke="#4285f4" strokeWidth={2} />
-                        <Line type="monotone" dataKey="Google Sheets" stroke="#0f9d58" strokeWidth={2} />
-                        <Line type="monotone" dataKey="Facebook Ads" stroke="#1877f2" strokeWidth={2} />
-                        <Line type="monotone" dataKey="LinkedIn Ads" stroke="#0077b5" strokeWidth={2} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Quick Comparison Metrics */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Best CTR Performance</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">LinkedIn Ads</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">1.90% average CTR</p>
-                      </div>
-                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                        <ArrowUp className="w-3 h-3 mr-1" />
-                        Best
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+              {realPlatformMetrics.length > 0 && (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {bestCTR && (
+                    <Card data-testid="overview-best-ctr">
+                      <CardHeader>
+                        <CardTitle className="text-sm">Best CTR Performance</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bestCTR.platform}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestCTR.ctr.toFixed(2)}% average CTR</p>
+                          </div>
+                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                            <ArrowUp className="w-3 h-3 mr-1" />
+                            Best
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Lowest CPC</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">Google Analytics</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">$0.26 average CPC</p>
-                      </div>
-                      <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                        <ArrowDown className="w-3 h-3 mr-1" />
-                        Efficient
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+                  {bestCPC && (
+                    <Card data-testid="overview-lowest-cpc">
+                      <CardHeader>
+                        <CardTitle className="text-sm">Lowest CPC</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bestCPC.platform}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{formatCurrency(bestCPC.cpc)} average CPC</p>
+                          </div>
+                          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                            <ArrowDown className="w-3 h-3 mr-1" />
+                            Efficient
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Highest ROAS</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">Google Sheets</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">4.1x return on ad spend</p>
-                      </div>
-                      <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
-                        <ArrowUp className="w-3 h-3 mr-1" />
-                        Top ROI
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  {bestROAS && (
+                    <Card data-testid="overview-highest-roas">
+                      <CardHeader>
+                        <CardTitle className="text-sm">Highest ROAS</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bestROAS.platform}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestROAS.roas.toFixed(1)}x return on ad spend</p>
+                          </div>
+                          <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                            <ArrowUp className="w-3 h-3 mr-1" />
+                            Top ROI
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )}
             </TabsContent>
 
             {/* Performance Metrics Tab */}

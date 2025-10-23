@@ -1734,12 +1734,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       
+      // Calculate current metrics from all connected platforms
+      const linkedinMetrics = await storage.getLinkedInMetrics(id);
+      const customIntegrationData = await storage.getCustomIntegrationData(id);
+      
+      const parseNum = (val: any): number => {
+        if (val === null || val === undefined || val === '') return 0;
+        const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+        return isNaN(num) || !isFinite(num) ? 0 : num;
+      };
+      
+      // Aggregate metrics from all sources
+      const totalImpressions = parseNum(linkedinMetrics?.impressions) + parseNum(customIntegrationData?.impressions);
+      const totalEngagements = parseNum(linkedinMetrics?.engagements) + parseNum(customIntegrationData?.engagements);
+      const totalClicks = parseNum(linkedinMetrics?.clicks) + parseNum(customIntegrationData?.clicks);
+      const totalConversions = parseNum(linkedinMetrics?.conversions) + parseNum(customIntegrationData?.conversions);
+      const totalSpend = parseNum(linkedinMetrics?.spend) + parseNum(customIntegrationData?.spend);
+      
       const validatedSnapshot = insertMetricSnapshotSchema.parse({
-        ...req.body,
-        campaignId: id
+        campaignId: id,
+        totalImpressions,
+        totalEngagements,
+        totalClicks,
+        totalConversions,
+        totalSpend
       });
       
       const snapshot = await storage.createMetricSnapshot(validatedSnapshot);
+      console.log(`Snapshot created for campaign ${id}:`, snapshot);
       res.json(snapshot);
     } catch (error) {
       console.error('Metric snapshot creation error:', error);

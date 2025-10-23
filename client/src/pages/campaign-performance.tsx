@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Camera } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SiLinkedin } from "react-icons/si";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface Campaign {
   id: string;
@@ -22,6 +24,7 @@ export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
   const campaignId = params?.id;
   const [comparisonType, setComparisonType] = useState<'yesterday' | 'last_week' | 'last_month'>('yesterday');
+  const { toast } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -59,6 +62,31 @@ export default function CampaignPerformanceSummary() {
   }>({
     queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison`, comparisonType],
     enabled: !!campaignId,
+  });
+
+  // Mutation to create a metric snapshot (metrics are automatically calculated by backend)
+  const createSnapshotMutation = useMutation({
+    mutationFn: async () => {
+      if (!campaignId) throw new Error("Campaign ID is required");
+      return apiRequest(`/api/campaigns/${campaignId}/snapshots`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison`] });
+      toast({
+        title: "Snapshot Created",
+        description: "Metric snapshot has been saved successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create snapshot. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   if (campaignLoading) {
@@ -271,6 +299,15 @@ export default function CampaignPerformanceSummary() {
                   </p>
                 </div>
               </div>
+              <Button 
+                onClick={() => createSnapshotMutation.mutate()}
+                disabled={createSnapshotMutation.isPending}
+                data-testid="button-create-snapshot"
+                size="sm"
+              >
+                <Camera className="w-4 h-4 mr-2" />
+                {createSnapshotMutation.isPending ? "Creating..." : "Create Snapshot"}
+              </Button>
             </div>
           </div>
 

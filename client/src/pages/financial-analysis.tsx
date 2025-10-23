@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity } from "lucide-react";
@@ -8,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Campaign {
   id: string;
@@ -19,10 +21,28 @@ interface Campaign {
 export default function FinancialAnalysis() {
   const [, params] = useRoute("/campaigns/:id/financial");
   const campaignId = params?.id;
+  const [comparisonPeriod, setComparisonPeriod] = useState<string>("7d");
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
+  });
+
+  // Get historical snapshot for comparison
+  const { data: historicalSnapshot } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "snapshots", "historical", comparisonPeriod],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const daysAgo = comparisonPeriod === "1d" ? 1 : comparisonPeriod === "7d" ? 7 : 30;
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - daysAgo);
+      
+      const response = await fetch(`/api/campaigns/${campaignId}/snapshots?date=${targetDate.toISOString()}`);
+      if (!response.ok) return null;
+      const snapshots = await response.json();
+      
+      return snapshots.length > 0 ? snapshots[0] : null;
+    },
   });
 
   // Get LinkedIn metrics
@@ -177,6 +197,30 @@ export default function FinancialAnalysis() {
   const roas = totalSpend > 0 ? estimatedRevenue / totalSpend : 0;
   const roi = totalSpend > 0 ? ((estimatedRevenue - totalSpend) / totalSpend) * 100 : 0;
 
+  // Calculate comparison metrics
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const renderTrendIndicator = (change: number) => {
+    if (Math.abs(change) < 0.01) return null;
+    const isPositive = change > 0;
+    return (
+      <div className={`flex items-center text-xs ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+        {isPositive ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+        {Math.abs(change).toFixed(1)}%
+      </div>
+    );
+  };
+
+  const historicalMetrics = historicalSnapshot ? {
+    spend: historicalSnapshot.totalSpend || 0,
+    revenue: (historicalSnapshot.totalConversions || 0) * estimatedAOV,
+    roas: historicalSnapshot.totalSpend > 0 ? ((historicalSnapshot.totalConversions || 0) * estimatedAOV) / historicalSnapshot.totalSpend : 0,
+    roi: historicalSnapshot.totalSpend > 0 ? (((historicalSnapshot.totalConversions || 0) * estimatedAOV - historicalSnapshot.totalSpend) / historicalSnapshot.totalSpend) * 100 : 0,
+  } : null;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <Navigation />
@@ -217,16 +261,41 @@ export default function FinancialAnalysis() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
+              {/* Time-Based Comparison Selector */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Activity className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                      <span className="text-sm font-medium">Compare with:</span>
+                    </div>
+                    <Select value={comparisonPeriod} onValueChange={setComparisonPeriod}>
+                      <SelectTrigger className="w-[180px]" data-testid="select-comparison-period">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1d" data-testid="option-yesterday">Yesterday</SelectItem>
+                        <SelectItem value="7d" data-testid="option-last-week">Last 7 Days</SelectItem>
+                        <SelectItem value="30d" data-testid="option-last-month">Last 30 Days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Key Financial Metrics */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatCurrency(totalSpend)}
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {formatCurrency(totalSpend)}
+                          </p>
+                          {historicalMetrics && renderTrendIndicator(calculateChange(totalSpend, historicalMetrics.spend))}
+                        </div>
                       </div>
                       <DollarSign className="w-8 h-8 text-red-500" />
                     </div>
@@ -236,11 +305,14 @@ export default function FinancialAnalysis() {
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Estimated Revenue</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatCurrency(estimatedRevenue)}
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {formatCurrency(estimatedRevenue)}
+                          </p>
+                          {historicalMetrics && renderTrendIndicator(calculateChange(estimatedRevenue, historicalMetrics.revenue))}
+                        </div>
                       </div>
                       <TrendingUp className="w-8 h-8 text-green-500" />
                     </div>
@@ -250,11 +322,14 @@ export default function FinancialAnalysis() {
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {roas.toFixed(2)}x
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {roas.toFixed(2)}x
+                          </p>
+                          {historicalMetrics && renderTrendIndicator(calculateChange(roas, historicalMetrics.roas))}
+                        </div>
                       </div>
                       <Calculator className="w-8 h-8 text-blue-500" />
                     </div>
@@ -264,11 +339,14 @@ export default function FinancialAnalysis() {
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
-                        <p className={`text-2xl font-bold ${roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatPercentage(roi)}
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className={`text-2xl font-bold ${roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatPercentage(roi)}
+                          </p>
+                          {historicalMetrics && renderTrendIndicator(calculateChange(roi, historicalMetrics.roi))}
+                        </div>
                       </div>
                       {roi >= 0 ? (
                         <TrendingUp className="w-8 h-8 text-green-500" />

@@ -127,6 +127,7 @@ export default function PlatformComparison() {
       const linkedInConvRate = linkedInClicks > 0 ? (linkedInConversions / linkedInClicks) * 100 : 0;
       const linkedInRevenue = linkedInConversions * estimatedAOV;
       const linkedInROAS = linkedInSpend > 0 ? linkedInRevenue / linkedInSpend : 0;
+      const linkedInROI = linkedInSpend > 0 ? ((linkedInRevenue - linkedInSpend) / linkedInSpend) * 100 : 0;
 
       platforms.push({
         platform: 'LinkedIn Ads',
@@ -138,6 +139,7 @@ export default function PlatformComparison() {
         cpc: linkedInCPC,
         conversionRate: linkedInConvRate,
         roas: linkedInROAS,
+        roi: linkedInROI,
         qualityScore: 0,
         reach: linkedInData.reach || 0,
         engagement: linkedInData.engagements || 0,
@@ -156,6 +158,7 @@ export default function PlatformComparison() {
       const customConvRate = customClicks > 0 ? (customConversions / customClicks) * 100 : 0;
       const customRevenue = customConversions * estimatedAOV;
       const customROAS = customSpend > 0 ? customRevenue / customSpend : 0;
+      const customROI = customSpend > 0 ? ((customRevenue - customSpend) / customSpend) * 100 : 0;
 
       platforms.push({
         platform: 'Custom Integration',
@@ -167,6 +170,7 @@ export default function PlatformComparison() {
         cpc: customCPC,
         conversionRate: customConvRate,
         roas: customROAS,
+        roi: customROI,
         qualityScore: 0,
         reach: customIntegrationData.metrics.reach || 0,
         engagement: customIntegrationData.metrics.engagements || 0,
@@ -189,7 +193,7 @@ export default function PlatformComparison() {
   }));
 
   // Generate performance rankings
-  const getBestPerformer = (metric: 'roas' | 'conversions' | 'ctr' | 'cpc' | 'conversionRate') => {
+  const getBestPerformer = (metric: 'roas' | 'roi' | 'conversions' | 'ctr' | 'cpc' | 'conversionRate') => {
     if (realPlatformMetrics.length === 0) return null;
     return realPlatformMetrics.reduce((best, current) => {
       if (metric === 'cpc') {
@@ -204,6 +208,7 @@ export default function PlatformComparison() {
   };
 
   const bestROAS = getBestPerformer('roas');
+  const bestROI = getBestPerformer('roi');
   const bestConversions = getBestPerformer('conversions');
   const bestCTR = getBestPerformer('ctr');
   const bestCPC = getBestPerformer('cpc');

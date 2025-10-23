@@ -25,6 +25,18 @@ export default function FinancialAnalysis() {
     enabled: !!campaignId,
   });
 
+  // Get LinkedIn metrics
+  const { data: linkedInData } = useQuery({
+    queryKey: ["/api/linkedin/metrics", campaignId],
+    enabled: !!campaignId,
+  });
+
+  // Get Custom Integration data
+  const { data: customIntegrationData } = useQuery({
+    queryKey: ["/api/custom-integration", campaignId],
+    enabled: !!campaignId,
+  });
+
   // Get Google Sheets financial data
   const { data: sheetsData } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
@@ -46,14 +58,6 @@ export default function FinancialAnalysis() {
       return response.json();
     },
   });
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(value);
-  };
 
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
@@ -106,42 +110,72 @@ export default function FinancialAnalysis() {
     );
   }
 
-  // Calculate financial metrics
-  const totalSpend = sheetsData?.summary?.totalSpend || 0;
-  const totalImpressions = sheetsData?.summary?.totalImpressions || 0;
-  const totalClicks = sheetsData?.summary?.totalClicks || 0;
-  const totalConversions = sheetsData?.summary?.totalConversions || 0;
-  const campaignBudget = campaign.budget ? parseFloat(campaign.budget) : 0;
+  // Aggregate metrics from all platforms
+  const platformMetrics = {
+    linkedIn: {
+      spend: linkedInData?.totalSpend || 0,
+      impressions: linkedInData?.totalImpressions || 0,
+      clicks: linkedInData?.totalClicks || 0,
+      conversions: linkedInData?.totalConversions || 0,
+    },
+    customIntegration: {
+      spend: customIntegrationData?.totalSpend || 0,
+      impressions: customIntegrationData?.totalImpressions || 0,
+      clicks: customIntegrationData?.totalClicks || 0,
+      conversions: customIntegrationData?.totalConversions || 0,
+    },
+    sheets: {
+      spend: sheetsData?.summary?.totalSpend || 0,
+      impressions: sheetsData?.summary?.totalImpressions || 0,
+      clicks: sheetsData?.summary?.totalClicks || 0,
+      conversions: sheetsData?.summary?.totalConversions || 0,
+    }
+  };
 
-  // Use mock data if no real data is available to ensure the dashboard displays properly
-  const useMockData = totalSpend === 0 || totalConversions === 0;
+  // Calculate totals across all platforms
+  const totalSpend = platformMetrics.linkedIn.spend + platformMetrics.customIntegration.spend + platformMetrics.sheets.spend;
+  const totalImpressions = platformMetrics.linkedIn.impressions + platformMetrics.customIntegration.impressions + platformMetrics.sheets.impressions;
+  const totalClicks = platformMetrics.linkedIn.clicks + platformMetrics.customIntegration.clicks + platformMetrics.sheets.clicks;
+  const totalConversions = platformMetrics.linkedIn.conversions + platformMetrics.customIntegration.conversions + platformMetrics.sheets.conversions;
   
-  // Mock data for Summer Splash campaign
-  const mockTotalSpend = 12847.65;
-  const mockTotalImpressions = 847520;
-  const mockTotalClicks = 21840;
-  const mockTotalConversions = 758;
-  const mockEstimatedAOV = 89.50;
+  // Get campaign budget and currency
+  const campaignBudget = campaign.budget ? parseFloat(campaign.budget) : 0;
+  const campaignCurrency = (campaign as any).currency || 'USD';
   
-  // Use real data if available, otherwise use mock data
-  const effectiveSpend = useMockData ? mockTotalSpend : totalSpend;
-  const effectiveImpressions = useMockData ? mockTotalImpressions : totalImpressions;
-  const effectiveClicks = useMockData ? mockTotalClicks : totalClicks;
-  const effectiveConversions = useMockData ? mockTotalConversions : totalConversions;
-  const estimatedAOV = useMockData ? mockEstimatedAOV : 50;
+  // Format currency with campaign's currency
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: campaignCurrency,
+      minimumFractionDigits: 2
+    }).format(value);
+  };
+  
+  // Estimate AOV (Average Order Value) - could come from GA4 or be configured
+  const estimatedAOV = ga4Data?.averageOrderValue || 50;
   
   // Financial calculations
-  const budgetUtilization = campaignBudget > 0 ? (effectiveSpend / campaignBudget) * 100 : 0;
-  const remainingBudget = campaignBudget - effectiveSpend;
-  const cpc = effectiveClicks > 0 ? effectiveSpend / effectiveClicks : 0;
-  const cpa = effectiveConversions > 0 ? effectiveSpend / effectiveConversions : 0;
-  const ctr = effectiveImpressions > 0 ? (effectiveClicks / effectiveImpressions) * 100 : 0;
-  const conversionRate = effectiveClicks > 0 ? (effectiveConversions / effectiveClicks) * 100 : 0;
+  const budgetUtilization = campaignBudget > 0 ? (totalSpend / campaignBudget) * 100 : 0;
+  const remainingBudget = campaignBudget - totalSpend;
+  const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+  const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
+  const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+  const conversionRate = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
+  const cpm = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
+  
+  // Calculate platform-specific ROAS
+  const calculatePlatformROAS = (spend: number, conversions: number) => {
+    const revenue = conversions * estimatedAOV;
+    return spend > 0 ? revenue / spend : 0;
+  };
+  
+  const linkedInROAS = calculatePlatformROAS(platformMetrics.linkedIn.spend, platformMetrics.linkedIn.conversions);
+  const customIntegrationROAS = calculatePlatformROAS(platformMetrics.customIntegration.spend, platformMetrics.customIntegration.conversions);
   
   // Calculate revenue/ROI
-  const estimatedRevenue = effectiveConversions * estimatedAOV;
-  const roas = effectiveSpend > 0 ? estimatedRevenue / effectiveSpend : 0;
-  const roi = effectiveSpend > 0 ? ((estimatedRevenue - effectiveSpend) / effectiveSpend) * 100 : 0;
+  const estimatedRevenue = totalConversions * estimatedAOV;
+  const roas = totalSpend > 0 ? estimatedRevenue / totalSpend : 0;
+  const roi = totalSpend > 0 ? ((estimatedRevenue - totalSpend) / totalSpend) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -191,7 +225,7 @@ export default function FinancialAnalysis() {
                       <div>
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
                         <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {formatCurrency(effectiveSpend)}
+                          {formatCurrency(totalSpend)}
                         </p>
                       </div>
                       <DollarSign className="w-8 h-8 text-red-500" />
@@ -262,7 +296,7 @@ export default function FinancialAnalysis() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Budget Used</span>
                       <span className="text-sm text-muted-foreground">
-                        {formatCurrency(effectiveSpend)} of {formatCurrency(campaignBudget)}
+                        {formatCurrency(totalSpend)} of {formatCurrency(campaignBudget)}
                       </span>
                     </div>
                     <Progress value={Math.min(budgetUtilization, 100)} className="h-2" />
@@ -343,7 +377,7 @@ export default function FinancialAnalysis() {
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span>Total Ad Spend:</span>
-                          <span className="font-medium">{formatCurrency(effectiveSpend)}</span>
+                          <span className="font-medium">{formatCurrency(totalSpend)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Estimated Revenue:</span>
@@ -369,7 +403,7 @@ export default function FinancialAnalysis() {
                         </div>
                         <div className="flex justify-between">
                           <span>Investment:</span>
-                          <span className="font-medium">{formatCurrency(effectiveSpend)}</span>
+                          <span className="font-medium">{formatCurrency(totalSpend)}</span>
                         </div>
                       </div>
                     </div>
@@ -378,71 +412,45 @@ export default function FinancialAnalysis() {
                   {/* Platform-Specific ROAS Breakdown */}
                   <div className="mt-6">
                     <h4 className="font-semibold mb-4">Platform ROAS Performance</h4>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-3">
-                        <div className="p-3 border rounded-lg">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="font-medium">TikTok Ads</span>
-                            <Badge className="bg-green-100 text-green-700">6.2x ROAS</Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Spend: {formatCurrency(totalSpend * 0.35)} • Revenue: {formatCurrency(totalSpend * 0.35 * 6.2)}
-                          </div>
-                        </div>
-                        <div className="p-3 border rounded-lg">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="font-medium">Instagram Ads</span>
-                            <Badge className="bg-green-100 text-green-700">5.8x ROAS</Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Spend: {formatCurrency(totalSpend * 0.25)} • Revenue: {formatCurrency(totalSpend * 0.25 * 5.8)}
-                          </div>
-                        </div>
-                        <div className="p-3 border rounded-lg">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="font-medium">Google Ads</span>
-                            <Badge className="bg-blue-100 text-blue-700">4.9x ROAS</Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Spend: {formatCurrency(totalSpend * 0.3)} • Revenue: {formatCurrency(totalSpend * 0.3 * 4.9)}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
+                    <div className="space-y-3">
+                      {/* LinkedIn Ads */}
+                      {platformMetrics.linkedIn.spend > 0 && (
                         <div className="p-3 border rounded-lg">
                           <div className="flex justify-between items-center mb-2">
                             <span className="font-medium">LinkedIn Ads</span>
-                            <Badge className="bg-orange-100 text-orange-700">2.8x ROAS</Badge>
+                            <Badge className={linkedInROAS >= 3 ? "bg-green-100 text-green-700" : linkedInROAS >= 1.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                              {linkedInROAS.toFixed(2)}x ROAS
+                            </Badge>
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            Spend: {formatCurrency(totalSpend * 0.1)} • Revenue: {formatCurrency(totalSpend * 0.1 * 2.8)}
+                            Spend: {formatCurrency(platformMetrics.linkedIn.spend)} • Conversions: {formatNumber(platformMetrics.linkedIn.conversions)} • Revenue: {formatCurrency(platformMetrics.linkedIn.conversions * estimatedAOV)}
                           </div>
                         </div>
-                        
-                        {/* Historical ROAS Trend */}
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                          <h5 className="font-medium mb-3">30-Day ROAS Trend</h5>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>Week 1:</span>
-                              <span className="text-orange-600">3.1x</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span>Week 2:</span>
-                              <span className="text-yellow-600">4.2x</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span>Week 3:</span>
-                              <span className="text-green-600">5.1x</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span>Week 4:</span>
-                              <span className="text-green-600 font-semibold">5.6x</span>
-                            </div>
+                      )}
+
+                      {/* Custom Integration (Other Platforms) */}
+                      {platformMetrics.customIntegration.spend > 0 && (
+                        <div className="p-3 border rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium">Custom Integration</span>
+                            <Badge className={customIntegrationROAS >= 3 ? "bg-green-100 text-green-700" : customIntegrationROAS >= 1.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                              {customIntegrationROAS.toFixed(2)}x ROAS
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Conversions: {formatNumber(platformMetrics.customIntegration.conversions)} • Revenue: {formatCurrency(platformMetrics.customIntegration.conversions * estimatedAOV)}
                           </div>
                         </div>
-                      </div>
+                      )}
+
+                      {/* No data message */}
+                      {totalSpend === 0 && (
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
+                          <p className="text-sm text-muted-foreground">
+                            No platform data available yet. Connect platforms or upload data to see performance breakdown.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -651,21 +659,21 @@ export default function FinancialAnalysis() {
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="p-4 border rounded-lg">
                         <h4 className="font-semibold text-green-600 mb-2">High Performance</h4>
-                        <p className="text-2xl font-bold">{formatCurrency(effectiveSpend * 0.6)}</p>
-                        <p className="text-sm text-muted-foreground">60% of current spend</p>
-                        <p className="text-xs mt-2">Platforms with ROAS &gt; 3.0x</p>
+                        <p className="text-2xl font-bold">{formatCurrency(platformMetrics.linkedIn.spend + platformMetrics.customIntegration.spend)}</p>
+                        <p className="text-sm text-muted-foreground">{totalSpend > 0 ? ((platformMetrics.linkedIn.spend + platformMetrics.customIntegration.spend) / totalSpend * 100).toFixed(0) : 0}% of current spend</p>
+                        <p className="text-xs mt-2">Platforms with ROAS &gt; 1.5x</p>
                       </div>
                       <div className="p-4 border rounded-lg">
                         <h4 className="font-semibold text-yellow-600 mb-2">Medium Performance</h4>
-                        <p className="text-2xl font-bold">{formatCurrency(effectiveSpend * 0.3)}</p>
-                        <p className="text-sm text-muted-foreground">30% of current spend</p>
-                        <p className="text-xs mt-2">Platforms with ROAS 1.5-3.0x</p>
+                        <p className="text-2xl font-bold">{formatCurrency(0)}</p>
+                        <p className="text-sm text-muted-foreground">0% of current spend</p>
+                        <p className="text-xs mt-2">Platforms with ROAS 1.0-1.5x</p>
                       </div>
                       <div className="p-4 border rounded-lg">
                         <h4 className="font-semibold text-red-600 mb-2">Low Performance</h4>
-                        <p className="text-2xl font-bold">{formatCurrency(effectiveSpend * 0.1)}</p>
-                        <p className="text-sm text-muted-foreground">10% of current spend</p>
-                        <p className="text-xs mt-2">Platforms with ROAS &lt; 1.5x</p>
+                        <p className="text-2xl font-bold">{formatCurrency(0)}</p>
+                        <p className="text-sm text-muted-foreground">0% of current spend</p>
+                        <p className="text-xs mt-2">Platforms with ROAS &lt; 1.0x</p>
                       </div>
                     </div>
                     

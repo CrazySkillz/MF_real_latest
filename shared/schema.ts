@@ -16,6 +16,8 @@ export const campaigns = pgTable("campaigns", {
   clicks: integer("clicks").notNull().default(0),
   spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default("0"),
   status: text("status").notNull().default("active"),
+  industry: text("industry"), // Industry category for trend tracking (e.g., "wine", "digital marketing")
+  trendKeywords: text("trend_keywords").array(), // Keywords to track in Google Trends
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

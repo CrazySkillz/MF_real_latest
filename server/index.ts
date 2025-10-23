@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes-oauth";
 import { setupVite, serveStatic, log } from "./vite";
+import { snapshotScheduler } from "./scheduler";
 
 const app = express();
 app.use(express.json());
@@ -66,5 +67,8 @@ app.use('/api', (req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start automated snapshot scheduler
+    snapshotScheduler.start();
   });
 })();

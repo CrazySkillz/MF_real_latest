@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Brain, Calendar, Target, Users, Award, Zap, AlertTriangle, CheckCircle, ArrowUpRight, ArrowDownRight, Eye, MousePointer, DollarSign, Clock } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Brain, Calendar, Target, Users, Award, Zap, AlertTriangle, CheckCircle, ArrowUpRight, ArrowDownRight, Eye, MousePointer, DollarSign, Clock, Settings, Plus, X } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -11,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart } from "recharts";
 import { format, subDays } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState } from "react";
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 
@@ -92,10 +96,20 @@ const marketShareData = [
 
 export default function TrendAnalysis() {
   const { id: campaignId } = useParams();
+  const { toast } = useToast();
+  const [isConfiguring, setIsConfiguring] = useState(false);
+  const [industry, setIndustry] = useState("");
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [newKeyword, setNewKeyword] = useState("");
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
+  });
+
+  const { data: trendsData, isLoading: trendsLoading } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "google-trends"],
+    enabled: !!campaignId && !!campaign && !!(campaign as any).trendKeywords?.length,
   });
 
   const { data: ga4Data } = useQuery({
@@ -107,6 +121,51 @@ export default function TrendAnalysis() {
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
   });
+
+  const updateKeywordsMutation = useMutation({
+    mutationFn: async (data: { industry: string; trendKeywords: string[] }) => {
+      return await apiRequest('PATCH', `/api/campaigns/${campaignId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-trends"] });
+      toast({
+        title: "Keywords Updated",
+        description: "Google Trends tracking keywords have been configured successfully.",
+      });
+      setIsConfiguring(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update keywords. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddKeyword = () => {
+    if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) {
+      setKeywords([...keywords, newKeyword.trim()]);
+      setNewKeyword("");
+    }
+  };
+
+  const handleRemoveKeyword = (keyword: string) => {
+    setKeywords(keywords.filter(k => k !== keyword));
+  };
+
+  const handleSaveKeywords = () => {
+    if (keywords.length === 0) {
+      toast({
+        title: "No Keywords",
+        description: "Please add at least one keyword to track.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateKeywordsMutation.mutate({ industry, trendKeywords: keywords });
+  };
 
   if (campaignLoading) {
     return (
@@ -201,7 +260,7 @@ export default function TrendAnalysis() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-4">
                 <Link href={`/campaigns/${(campaign as any)?.id}`}>
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" data-testid="button-back-to-campaign">
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Campaign
                   </Button>
@@ -211,8 +270,105 @@ export default function TrendAnalysis() {
                   <p className="text-slate-600 dark:text-slate-400 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
+              {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  setIsConfiguring(true);
+                  setIndustry((campaign as any).industry || "");
+                  setKeywords((campaign as any).trendKeywords || []);
+                }} data-testid="button-configure-trends">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configure Keywords
+                </Button>
+              )}
             </div>
           </div>
+
+          {/* Configuration Card */}
+          {(!(campaign as any)?.trendKeywords?.length || isConfiguring) && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Settings className="w-5 h-5" />
+                  <span>Configure Industry Trend Tracking</span>
+                </CardTitle>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Add keywords to track market trends from Google Trends. For example, if this is a wine campaign, add keywords like "wine", "red wine", "organic wine".
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-900 dark:text-white mb-2 block">
+                    Industry (Optional)
+                  </label>
+                  <Input
+                    placeholder="e.g., Wine, Digital Marketing, Healthcare"
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                    data-testid="input-industry"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium text-slate-900 dark:text-white mb-2 block">
+                    Trend Keywords *
+                  </label>
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Input
+                      placeholder="e.g., wine"
+                      value={newKeyword}
+                      onChange={(e) => setNewKeyword(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
+                      data-testid="input-keyword"
+                    />
+                    <Button onClick={handleAddKeyword} size="sm" data-testid="button-add-keyword">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  
+                  {keywords.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {keywords.map((keyword, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-sm" data-testid={`badge-keyword-${idx}`}>
+                          {keyword}
+                          <button
+                            onClick={() => handleRemoveKeyword(keyword)}
+                            className="ml-2 hover:text-red-600"
+                            data-testid={`button-remove-keyword-${idx}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Button 
+                    onClick={handleSaveKeywords} 
+                    disabled={updateKeywordsMutation.isPending}
+                    data-testid="button-save-keywords"
+                  >
+                    {updateKeywordsMutation.isPending ? "Saving..." : "Save & Track Trends"}
+                  </Button>
+                  {isConfiguring && (campaign as any)?.trendKeywords?.length > 0 && (
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => {
+                        setIsConfiguring(false);
+                        setKeywords([]);
+                        setIndustry("");
+                        setNewKeyword("");
+                      }}
+                      data-testid="button-cancel-configure"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Trend Analysis Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">

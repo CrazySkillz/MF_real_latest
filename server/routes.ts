@@ -1775,6 +1775,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test route
+  app.get("/api/test-snapshot", (req, res) => {
+    console.log('=== TEST ROUTE HIT ===');
+    res.json({ message: "Test route works!" });
+  });
+
   // Metric Snapshot routes
   app.post("/api/campaigns/:id/snapshots", async (req, res) => {
     console.log('=== CREATE SNAPSHOT ROUTE HIT ===');

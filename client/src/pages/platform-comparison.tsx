@@ -653,25 +653,58 @@ export default function PlatformComparison() {
                     </Card>
                   </div>
 
-                  {/* ROI Analysis */}
+                  {/* ROI & ROAS Analysis */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
                         <TrendingUp className="w-5 h-5" />
-                        <span>Return on Investment Analysis</span>
+                        <span>Return on Investment (ROI) & Return on Ad Spend (ROAS)</span>
                       </CardTitle>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                        ROI shows profit percentage, while ROAS shows revenue multiples
+                      </p>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <div className="grid gap-4 md:grid-cols-2">
                         {realPlatformMetrics.map((platform, index) => (
-                          <div key={index} className="text-center p-4 border rounded-lg dark:border-slate-700" data-testid={`roi-card-${index}`}>
-                            <div className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                              {platform.roas.toFixed(2)}x
+                          <div key={index} className="p-4 border rounded-lg dark:border-slate-700 space-y-3" data-testid={`roi-card-${index}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
                             </div>
-                            <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">{platform.platform}</div>
-                            <Badge variant={platform.roas >= 4 ? "default" : platform.roas >= 3 ? "secondary" : "outline"}>
-                              {platform.roas >= 4 ? "Excellent" : platform.roas >= 3 ? "Good" : "Fair"}
-                            </Badge>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <div className="text-xs text-slate-500 mb-1">ROI (Profit %)</div>
+                                <div className={`text-2xl font-bold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                  {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
+                                </div>
+                                <div className="text-xs text-slate-500 mt-1">
+                                  {platform.roi >= 100 ? 'Excellent' : platform.roi >= 50 ? 'Good' : platform.roi >= 0 ? 'Break-even+' : 'Loss'}
+                                </div>
+                              </div>
+                              
+                              <div>
+                                <div className="text-xs text-slate-500 mb-1">ROAS (Revenue)</div>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {platform.roas.toFixed(2)}x
+                                </div>
+                                <div className="text-xs text-slate-500 mt-1">
+                                  {platform.roas >= 4 ? 'Excellent' : platform.roas >= 3 ? 'Good' : platform.roas >= 1 ? 'Fair' : 'Poor'}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t dark:border-slate-600 text-xs text-slate-600 dark:text-slate-400">
+                              <div className="flex justify-between">
+                                <span>Total Spend:</span>
+                                <span className="font-medium">{formatCurrency(platform.spend)}</span>
+                              </div>
+                              <div className="flex justify-between mt-1">
+                                <span>Conversions:</span>
+                                <span className="font-medium">{formatNumber(platform.conversions)}</span>
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>

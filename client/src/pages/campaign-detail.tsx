@@ -3899,7 +3899,300 @@ export default function CampaignDetail() {
     );
   };
 
+  return (
+    // Helper to safely parse numbers
+    const parseNum = (val: any): number => {
+      const num = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val;
+      return isNaN(num) ? 0 : num;
+    };
 
+    const liMetrics = linkedinMetrics || {};
+    const ciMetrics = customIntegration?.metrics || {};
+
+    // Aggregate metrics from all sources
+    const totalImpressions = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
+    const totalClicks = parseNum(liMetrics.clicks);
+    const totalConversions = parseNum(liMetrics.conversions);
+    const totalSpend = parseNum(liMetrics.spend);
+    const totalEngagements = parseNum(liMetrics.engagements) + parseNum(ciMetrics.sessions);
+
+    // Calculate performance metrics
+    const overallCTR = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00';
+    const costPerConversion = totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : '0.00';
+
+    // Calculate campaign health status
+    const getHealthStatus = () => {
+      let score = 0;
+      const totalKPIs = kpis.length;
+      
+      if (totalKPIs > 0) {
+        const aboveTarget = kpis.filter(k => {
+          const current = parseFloat(k.currentValue) || 0;
+          const target = parseFloat(k.targetValue) || 1;
+          return (current / target) >= 1;
+        }).length;
+        score = (aboveTarget / totalKPIs) * 100;
+      }
+
+      if (score >= 80) return { status: 'Excellent', color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-950', icon: CheckCircle2 };
+      if (score >= 60) return { status: 'Good', color: 'text-blue-600', bgColor: 'bg-blue-100 dark:bg-blue-950', icon: TrendingUp };
+      if (score >= 40) return { status: 'Needs Attention', color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-950', icon: Clock };
+      return { status: 'Critical', color: 'text-red-600', bgColor: 'bg-red-100 dark:bg-red-950', icon: AlertCircle };
+    };
+
+    const healthStatus = getHealthStatus();
+    const HealthIcon = healthStatus.icon;
+
+    // localStorage-based "What's Changed" comparison
+    const getChanges = () => {
+      const storageKey = `campaign_${campaign.id}_last_snapshot`;
+      const lastSnapshot = localStorage.getItem(storageKey);
+      
+      const currentSnapshot = {
+        conversions: totalConversions,
+        ctr: parseFloat(overallCTR),
+        timestamp: Date.now(),
+      };
+
+      // Store current snapshot
+      localStorage.setItem(storageKey, JSON.stringify(currentSnapshot));
+
+      if (!lastSnapshot) {
+        return {
+          conversionsChange: 0,
+          ctrChange: 0,
+          timeSinceCheck: 'first visit',
+        };
+      }
+
+      const previous = JSON.parse(lastSnapshot);
+      const hoursSinceCheck = Math.floor((currentSnapshot.timestamp - previous.timestamp) / (1000 * 60 * 60));
+      
+      return {
+        conversionsChange: currentSnapshot.conversions - previous.conversions,
+        ctrChange: currentSnapshot.ctr - previous.ctr,
+        timeSinceCheck: hoursSinceCheck < 1 ? 'less than an hour' : `${hoursSinceCheck} hour${hoursSinceCheck > 1 ? 's' : ''} ago`,
+      };
+    };
+
+    const changes = getChanges();
+
+    // Generate priority action
+    const getPriorityAction = () => {
+      // Check if any KPIs are critically below target
+      const criticalKPIs = kpis.filter(k => {
+        const current = parseFloat(k.currentValue) || 0;
+        const target = parseFloat(k.targetValue) || 1;
+        return (current / target) < 0.7; // Less than 70%
+      });
+
+      if (criticalKPIs.length > 0) {
+        return {
+          message: `Review ${criticalKPIs[0].name} - currently at ${((parseFloat(criticalKPIs[0].currentValue) / parseFloat(criticalKPIs[0].targetValue)) * 100).toFixed(0)}% of target`,
+          type: 'warning',
+        };
+      }
+
+      // Check benchmarks
+      const belowBenchmarks = benchmarks.filter(b => {
+        const current = parseFloat(b.currentValue) || 0;
+        const benchmark = parseFloat(b.benchmarkValue) || 1;
+        return current < benchmark;
+      });
+
+      if (belowBenchmarks.length > 0) {
+        const improvement = ((parseFloat(belowBenchmarks[0].benchmarkValue) - parseFloat(belowBenchmarks[0].currentValue)) / parseFloat(belowBenchmarks[0].benchmarkValue) * 100).toFixed(0);
+        return {
+          message: `${belowBenchmarks[0].name} is ${improvement}% below benchmark - review strategy`,
+          type: 'attention',
+        };
+      }
+
+      // Everything is on track
+      return {
+        message: 'On track to exceed goals - maintain current strategy',
+        type: 'success',
+      };
+    };
+
+    const priorityAction = getPriorityAction();
+
+    return (
+      <Card className="border-2 border-blue-200 dark:border-blue-800">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Target className="w-5 h-5 text-blue-600" />
+            <span>Performance Summary</span>
+            <Badge variant="outline" className="ml-auto">Executive Snapshot</Badge>
+          </CardTitle>
+          <CardDescription>
+            Quick health check and key insights at a glance
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          
+          {/* Campaign Health Status */}
+          <div className={`p-4 rounded-lg ${healthStatus.bgColor}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <HealthIcon className={`w-8 h-8 ${healthStatus.color}`} />
+                <div>
+                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Campaign Health</div>
+                  <div className={`text-2xl font-bold ${healthStatus.color}`}>{healthStatus.status}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-slate-600 dark:text-slate-400">KPIs on Track</div>
+                <div className="text-xl font-bold text-slate-900 dark:text-white">
+                  {kpis.filter(k => (parseFloat(k.currentValue) / parseFloat(k.targetValue)) >= 1).length} / {kpis.length}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Snapshot & What's Changed */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Performance Snapshot */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-slate-900 dark:text-white flex items-center space-x-2">
+                <BarChart3 className="w-4 h-4" />
+                <span>Performance Snapshot</span>
+              </h4>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">Impressions:</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">{totalImpressions.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">Engagements:</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">{totalEngagements.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">Conversions:</span>
+                  <span className="font-semibold text-green-600">{totalConversions.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-slate-600 dark:text-slate-400">Total Spend:</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">${totalSpend.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">Cost/Conv:</span>
+                  <span className="font-semibold text-blue-600">${costPerConversion}</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 italic">All sources combined (LinkedIn + Custom Integration)</p>
+            </div>
+
+            {/* What's Changed */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-slate-900 dark:text-white flex items-center space-x-2">
+                <TrendingUp className="w-4 h-4" />
+                <span>What's Changed</span>
+              </h4>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-3">
+                <div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Since last check ({changes.timeSinceCheck})</div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Conversions:</span>
+                      <span className={`text-sm font-semibold ${changes.conversionsChange > 0 ? 'text-green-600' : changes.conversionsChange < 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                        {changes.conversionsChange > 0 ? '+' : ''}{changes.conversionsChange}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">CTR Change:</span>
+                      <span className={`text-sm font-semibold ${changes.ctrChange > 0 ? 'text-green-600' : changes.ctrChange < 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                        {changes.ctrChange > 0 ? '+' : ''}{changes.ctrChange.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2 border-t">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Alerts</div>
+                  <div className="text-sm">
+                    <span className="text-red-600 font-semibold">
+                      {kpis.filter(k => (parseFloat(k.currentValue) / parseFloat(k.targetValue)) < 1).length}
+                    </span>
+                    <span className="text-slate-600 dark:text-slate-400"> KPIs below target</span>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-green-600 font-semibold">
+                      {benchmarks.filter(b => parseFloat(b.currentValue) >= parseFloat(b.benchmarkValue)).length}
+                    </span>
+                    <span className="text-slate-600 dark:text-slate-400"> benchmarks exceeded</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Priority Action & Data Sources */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Top Priority Action */}
+            <div className={`p-4 rounded-lg border-2 ${
+              priorityAction.type === 'success' ? 'border-green-300 bg-green-50 dark:bg-green-950' :
+              priorityAction.type === 'warning' ? 'border-red-300 bg-red-50 dark:bg-red-950' :
+              'border-yellow-300 bg-yellow-50 dark:bg-yellow-950'
+            }`}>
+              <div className="flex items-start space-x-3">
+                {priorityAction.type === 'success' && <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />}
+                {priorityAction.type === 'warning' && <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />}
+                {priorityAction.type === 'attention' && <Clock className="w-5 h-5 text-yellow-600 mt-0.5" />}
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400 mb-1">
+                    Top Priority Action
+                  </div>
+                  <div className="text-sm font-medium text-slate-900 dark:text-white">
+                    {priorityAction.message}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Data Sources Status */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400 mb-3">
+                Data Sources
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-slate-900 dark:text-white">LinkedIn Ads</span>
+                  </span>
+                  <span className="text-xs text-slate-500">Connected</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-slate-900 dark:text-white">Custom Integration</span>
+                  </span>
+                  <span className="text-xs text-slate-500">Connected</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+                    <span className="text-slate-500">Google Analytics</span>
+                  </span>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs">Connect</Button>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+                    <span className="text-slate-500">Shopify</span>
+                  </span>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs">Connect</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -4324,6 +4617,9 @@ export default function CampaignDetail() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
+
+              {/* Performance Summary - Executive Snapshot */}
+              {renderPerformanceSummary()}
 
               {/* Campaign DeepDive */}
               <Card>

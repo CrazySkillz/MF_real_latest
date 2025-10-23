@@ -964,11 +964,22 @@ export default function Campaigns() {
   // Update edit form when editing campaign changes
   useEffect(() => {
     if (editingCampaign) {
+      // Format budget with commas for display
+      let formattedBudget = "";
+      if (editingCampaign.budget) {
+        const budgetStr = editingCampaign.budget.toString();
+        const parts = budgetStr.split('.');
+        const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        formattedBudget = parts[1] !== undefined 
+          ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
+          : `${integerPart}.00`;
+      }
+      
       editForm.reset({
         name: editingCampaign.name,
         clientWebsite: editingCampaign.clientWebsite || "",
         label: editingCampaign.label || "",
-        budget: editingCampaign.budget?.toString() || "",
+        budget: formattedBudget,
         currency: editingCampaign.currency || "USD",
       });
     }
@@ -985,11 +996,14 @@ export default function Campaigns() {
     }
   };
 
-  const formatCurrency = (value: string | null) => {
-    if (!value) return "$0.00";
+  const formatCurrency = (value: string | null, currency: string = 'USD') => {
+    if (!value) return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency
+    }).format(0);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency: currency
     }).format(parseFloat(value));
   };
 
@@ -1226,7 +1240,7 @@ export default function Campaigns() {
                         
                         <div className="flex items-center justify-between">
                           <div className="text-sm text-slate-500 dark:text-slate-400">
-                            Budget: {formatCurrency(campaign.budget)}
+                            Budget: {formatCurrency(campaign.budget, campaign.currency)}
                           </div>
                           <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
                             <Button 
@@ -1350,13 +1364,36 @@ export default function Campaigns() {
                   id="edit-budget"
                   {...editForm.register("budget", {
                     onChange: (e) => {
+                      // Remove all non-numeric characters except decimal point
                       const value = e.target.value.replace(/[^0-9.]/g, '');
                       const parts = value.split('.');
+                      
+                      // Limit to 2 decimal places
                       if (parts[1]?.length > 2) {
-                        e.target.value = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                        const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                        editForm.setValue("budget", formatted);
+                        e.target.value = formatted;
                       } else {
-                        e.target.value = value;
+                        editForm.setValue("budget", value);
                       }
+                    },
+                    onBlur: (e) => {
+                      // Format with commas on blur
+                      const value = e.target.value.replace(/[^0-9.]/g, '');
+                      if (value) {
+                        const parts = value.split('.');
+                        const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                        const formatted = parts[1] !== undefined 
+                          ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
+                          : `${integerPart}.00`;
+                        editForm.setValue("budget", value); // Store without commas
+                        e.target.value = formatted; // Display with commas
+                      }
+                    },
+                    onFocus: (e) => {
+                      // Remove commas on focus for easier editing
+                      const value = e.target.value.replace(/,/g, '');
+                      e.target.value = value;
                     }
                   })}
                   placeholder="0.00"

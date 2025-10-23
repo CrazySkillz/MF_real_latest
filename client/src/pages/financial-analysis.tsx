@@ -171,8 +171,11 @@ export default function FinancialAnalysis() {
     }).format(value);
   };
   
-  // Estimate AOV (Average Order Value) - could come from GA4 or be configured
-  const estimatedAOV = ga4Data?.averageOrderValue || 50;
+  // Get AOV (Average Order Value) from GA4, LinkedIn, or Custom Integration data
+  const estimatedAOV = ga4Data?.averageOrderValue || 
+                       linkedInData?.averageOrderValue || 
+                       customIntegrationData?.averageOrderValue || 
+                       0;
   
   // Financial calculations
   const budgetUtilization = campaignBudget > 0 ? (totalSpend / campaignBudget) * 100 : 0;
@@ -280,6 +283,172 @@ export default function FinancialAnalysis() {
                       </SelectContent>
                     </Select>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* AOV Warning */}
+              {estimatedAOV === 0 && (
+                <Card className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                      <div>
+                        <p className="font-medium text-yellow-900 dark:text-yellow-200">
+                          Average Order Value (AOV) Not Configured
+                        </p>
+                        <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                          Revenue, ROI, and ROAS calculations require AOV data from GA4, LinkedIn, or Custom Integration. Please configure tracking to enable financial performance metrics.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Budget Health Score Dashboard */}
+              <Card className="border-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Zap className="w-5 h-5" />
+                    <span>Campaign Health Score</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Real-time health assessment across key financial metrics
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const calculateHealthScore = () => {
+                      let score = 0;
+                      
+                      const budgetScore = budgetUtilization <= 80 ? 25 : budgetUtilization <= 95 ? 15 : budgetUtilization <= 100 ? 10 : 0;
+                      
+                      const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : new Date();
+                      const today = new Date();
+                      const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
+                      const dailyBurnRate = totalSpend / daysElapsed;
+                      const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
+                      const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + (dailyBurnRate > 0 ? remainingBudget / dailyBurnRate : 0);
+                      const targetDailySpend = campaignBudget / targetDaysTotal;
+                      const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
+                      const pacingDeviation = Math.abs(pacingPercentage - 100);
+                      const pacingScore = pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 5;
+                      
+                      const roiScore = roi >= 100 ? 25 : roi >= 50 ? 15 : roi >= 0 ? 10 : 5;
+                      
+                      const roasScore = roas >= 3 ? 25 : roas >= 1.5 ? 15 : roas >= 1 ? 10 : 5;
+                      
+                      score = budgetScore + pacingScore + roiScore + roasScore;
+                      
+                      return {
+                        total: score,
+                        budget: { score: budgetScore, status: budgetUtilization <= 80 ? 'excellent' : budgetUtilization <= 95 ? 'good' : budgetUtilization <= 100 ? 'warning' : 'critical' },
+                        pacing: { score: pacingScore, status: pacingDeviation <= 15 ? 'excellent' : pacingDeviation <= 30 ? 'good' : pacingDeviation <= 50 ? 'warning' : 'critical' },
+                        roi: { score: roiScore, status: roi >= 100 ? 'excellent' : roi >= 50 ? 'good' : roi >= 0 ? 'warning' : 'critical' },
+                        roas: { score: roasScore, status: roas >= 3 ? 'excellent' : roas >= 1.5 ? 'good' : roas >= 1 ? 'warning' : 'critical' }
+                      };
+                    };
+                    
+                    const healthData = calculateHealthScore();
+                    const getStatusColor = (status: string) => {
+                      switch (status) {
+                        case 'excellent': return 'bg-green-500';
+                        case 'good': return 'bg-green-400';
+                        case 'warning': return 'bg-yellow-500';
+                        case 'critical': return 'bg-red-500';
+                        default: return 'bg-gray-400';
+                      }
+                    };
+                    
+                    const getStatusBadgeColor = (status: string) => {
+                      switch (status) {
+                        case 'excellent': return 'bg-green-100 text-green-700';
+                        case 'good': return 'bg-green-100 text-green-600';
+                        case 'warning': return 'bg-yellow-100 text-yellow-700';
+                        case 'critical': return 'bg-red-100 text-red-700';
+                        default: return 'bg-gray-100 text-gray-700';
+                      }
+                    };
+                    
+                    return (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center space-x-3">
+                              <div className={`text-5xl font-bold ${healthData.total >= 80 ? 'text-green-600' : healthData.total >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                {healthData.total}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                <div>out of 100</div>
+                                <div className="font-semibold">
+                                  {healthData.total >= 80 ? 'Excellent' : healthData.total >= 60 ? 'Good' : healthData.total >= 40 ? 'Fair' : 'Needs Attention'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className={`w-24 h-24 rounded-full flex items-center justify-center ${healthData.total >= 80 ? 'bg-green-100' : healthData.total >= 60 ? 'bg-yellow-100' : 'bg-red-100'}`}>
+                            <Zap className={`w-12 h-12 ${healthData.total >= 80 ? 'text-green-600' : healthData.total >= 60 ? 'text-yellow-600' : 'text-red-600'}`} />
+                          </div>
+                        </div>
+                        
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                          <div className="p-4 border rounded-lg" data-testid="health-budget-utilization">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">Budget Utilization</span>
+                              <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.budget.status)}`} />
+                            </div>
+                            <div className="text-2xl font-bold">{formatPercentage(budgetUtilization)}</div>
+                            <Badge className={`mt-2 ${getStatusBadgeColor(healthData.budget.status)}`}>
+                              {healthData.budget.status}
+                            </Badge>
+                          </div>
+                          
+                          <div className="p-4 border rounded-lg" data-testid="health-pacing">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">Pacing Status</span>
+                              <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.pacing.status)}`} />
+                            </div>
+                            <div className="text-2xl font-bold">{(() => {
+                              const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : new Date();
+                              const today = new Date();
+                              const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
+                              const dailyBurnRate = totalSpend / daysElapsed;
+                              const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
+                              const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + (dailyBurnRate > 0 ? remainingBudget / dailyBurnRate : 0);
+                              const targetDailySpend = campaignBudget / targetDaysTotal;
+                              const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
+                              return formatPercentage(pacingPercentage);
+                            })()}</div>
+                            <Badge className={`mt-2 ${getStatusBadgeColor(healthData.pacing.status)}`}>
+                              {healthData.pacing.status}
+                            </Badge>
+                          </div>
+                          
+                          <div className="p-4 border rounded-lg" data-testid="health-roi">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">ROI Performance</span>
+                              <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.roi.status)}`} />
+                            </div>
+                            <div className="text-2xl font-bold">{formatPercentage(roi)}</div>
+                            <Badge className={`mt-2 ${getStatusBadgeColor(healthData.roi.status)}`}>
+                              {healthData.roi.status}
+                            </Badge>
+                          </div>
+                          
+                          <div className="p-4 border rounded-lg" data-testid="health-roas">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">ROAS Performance</span>
+                              <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.roas.status)}`} />
+                            </div>
+                            <div className="text-2xl font-bold">{roas.toFixed(2)}x</div>
+                            <Badge className={`mt-2 ${getStatusBadgeColor(healthData.roas.status)}`}>
+                              {healthData.roas.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
 

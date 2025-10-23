@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,6 +30,7 @@ const campaignFormSchema = insertCampaignSchema.extend({
   clientWebsite: z.string().optional(),
   label: z.string().optional(),
   budget: z.string().optional(),
+  currency: z.string().optional(),
 }).omit({
   type: true,
   platform: true,
@@ -723,7 +725,8 @@ export default function Campaigns() {
         name: data.name,
         clientWebsite: data.clientWebsite || null,
         label: data.label || null,
-        budget: data.budget ? parseFloat(data.budget) : null,
+        budget: data.budget || null,
+        currency: data.currency || "USD",
       });
       return response.json();
     },
@@ -966,6 +969,7 @@ export default function Campaigns() {
         clientWebsite: editingCampaign.clientWebsite || "",
         label: editingCampaign.label || "",
         budget: editingCampaign.budget?.toString() || "",
+        currency: editingCampaign.currency || "USD",
       });
     }
   }, [editingCampaign, editForm]);
@@ -1339,16 +1343,49 @@ export default function Campaigns() {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="edit-budget">Budget</Label>
-              <Input
-                id="edit-budget"
-                {...editForm.register("budget")}
-                placeholder="Enter budget amount"
-                type="number"
-                step="0.01"
-                data-testid="input-edit-budget"
-              />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="edit-budget">Budget</Label>
+                <Input
+                  id="edit-budget"
+                  {...editForm.register("budget", {
+                    onChange: (e) => {
+                      const value = e.target.value.replace(/[^0-9.]/g, '');
+                      const parts = value.split('.');
+                      if (parts[1]?.length > 2) {
+                        e.target.value = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                      } else {
+                        e.target.value = value;
+                      }
+                    }
+                  })}
+                  placeholder="0.00"
+                  type="text"
+                  inputMode="decimal"
+                  data-testid="input-edit-budget"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-currency">Currency</Label>
+                <Select
+                  value={editForm.watch("currency") || "USD"}
+                  onValueChange={(value) => editForm.setValue("currency", value)}
+                >
+                  <SelectTrigger id="edit-currency" data-testid="select-edit-currency">
+                    <SelectValue placeholder="USD" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="GBP">GBP</SelectItem>
+                    <SelectItem value="CAD">CAD</SelectItem>
+                    <SelectItem value="AUD">AUD</SelectItem>
+                    <SelectItem value="JPY">JPY</SelectItem>
+                    <SelectItem value="CNY">CNY</SelectItem>
+                    <SelectItem value="INR">INR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
             <div className="flex justify-end gap-3 mt-6">

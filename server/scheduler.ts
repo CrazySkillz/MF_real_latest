@@ -105,8 +105,10 @@ export class SnapshotScheduler {
   private intervalId: NodeJS.Timeout | null = null;
   private frequency: 'hourly' | 'daily' | 'weekly' = 'daily';
   
-  constructor(frequency: 'hourly' | 'daily' | 'weekly' = 'daily') {
-    this.frequency = frequency;
+  constructor(frequency?: 'hourly' | 'daily' | 'weekly') {
+    // Read from environment variable or use provided frequency or default to 'daily'
+    const envFrequency = process.env.SNAPSHOT_FREQUENCY as 'hourly' | 'daily' | 'weekly' | undefined;
+    this.frequency = envFrequency || frequency || 'daily';
   }
   
   start() {
@@ -151,7 +153,23 @@ export class SnapshotScheduler {
       this.start();
     }
   }
+  
+  getStatus() {
+    const intervals = {
+      hourly: 60 * 60 * 1000,
+      daily: 24 * 60 * 60 * 1000,
+      weekly: 7 * 24 * 60 * 60 * 1000
+    };
+    
+    const interval = intervals[this.frequency];
+    
+    return {
+      running: this.intervalId !== null,
+      frequency: this.frequency,
+      nextRun: this.intervalId ? new Date(Date.now() + interval).toISOString() : null
+    };
+  }
 }
 
 // Export singleton instance
-export const snapshotScheduler = new SnapshotScheduler('daily');
+export const snapshotScheduler = new SnapshotScheduler();

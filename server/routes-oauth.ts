@@ -8,6 +8,7 @@ import { realGA4Client } from "./real-ga4-client";
 import multer from "multer";
 import { parsePDFMetrics } from "./services/pdf-parser";
 import { nanoid } from "nanoid";
+import { snapshotScheduler } from "./scheduler";
 
 // Configure multer for PDF file uploads
 const upload = multer({
@@ -4213,6 +4214,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Comparison data fetch error:', error);
       res.status(500).json({ message: "Failed to fetch comparison data" });
+    }
+  });
+
+  // Get snapshot scheduler status
+  app.get("/api/snapshots/scheduler", async (req, res) => {
+    try {
+      const status = snapshotScheduler.getStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('Scheduler status fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch scheduler status" });
     }
   });
 

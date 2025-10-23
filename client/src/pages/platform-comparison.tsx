@@ -282,11 +282,15 @@ export default function PlatformComparison() {
   }));
 
   // Generate performance rankings
-  const getBestPerformer = (metric: 'roas' | 'conversions' | 'ctr' | 'cpc') => {
+  const getBestPerformer = (metric: 'roas' | 'conversions' | 'ctr' | 'cpc' | 'conversionRate') => {
     if (realPlatformMetrics.length === 0) return null;
     return realPlatformMetrics.reduce((best, current) => {
       if (metric === 'cpc') {
-        return (current.cpc > 0 && current.cpc < best.cpc) || best.cpc === 0 ? current : best;
+        // Find lowest CPC - zero is the absolute minimum
+        if (current.cpc === 0 && best.cpc === 0) return best; // Both zero, keep first
+        if (current.cpc === 0) return current; // Current is zero, it wins
+        if (best.cpc === 0) return best; // Best is zero, it wins
+        return current.cpc < best.cpc ? current : best; // Both non-zero, pick smaller
       }
       return current[metric] > best[metric] ? current : best;
     });
@@ -464,327 +468,466 @@ export default function PlatformComparison() {
 
             {/* Performance Metrics Tab */}
             <TabsContent value="performance" className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Radar Chart for Platform Comparison */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Activity className="w-5 h-5" />
-                      <span>Performance Radar</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart data={radarData}>
-                          <PolarGrid />
-                          <PolarAngleAxis dataKey="metric" className="text-xs" />
-                          <PolarRadiusAxis domain={[0, 100]} className="text-xs" />
-                          <Radar name="Google Analytics" dataKey="Google Analytics" stroke="#4285f4" fill="#4285f4" fillOpacity={0.1} />
-                          <Radar name="Google Sheets" dataKey="Google Sheets" stroke="#0f9d58" fill="#0f9d58" fillOpacity={0.1} />
-                          <Radar name="Facebook Ads" dataKey="Facebook Ads" stroke="#1877f2" fill="#1877f2" fillOpacity={0.1} />
-                          <Radar name="LinkedIn Ads" dataKey="LinkedIn Ads" stroke="#0077b5" fill="#0077b5" fillOpacity={0.1} />
-                          <Tooltip />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Detailed Metrics Table */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <BarChart3 className="w-5 h-5" />
-                      <span>Detailed Performance Metrics</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {platformMetrics.map((platform, index) => (
-                        <div key={index} className="p-3 border rounded-lg dark:border-slate-700">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
+              {realPlatformMetrics.length > 0 ? (
+                <>
+                  {/* Key Performance Indicators Grid */}
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm text-slate-600 dark:text-slate-400">Best CTR</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bestCTR?.ctr.toFixed(2)}%</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestCTR?.platform}</p>
                           </div>
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            <div>
-                              <span className="block text-slate-500 font-medium">CTR</span>
-                              <span className="text-slate-900 dark:text-white font-semibold">{platform.ctr}%</span>
-                            </div>
-                            <div>
-                              <span className="block text-slate-500 font-medium">CPC</span>
-                              <span className="text-slate-900 dark:text-white font-semibold">${platform.cpc}</span>
-                            </div>
-                            <div>
-                              <span className="block text-slate-500 font-medium">Conv. Rate</span>
-                              <span className="text-slate-900 dark:text-white font-semibold">{platform.conversionRate}%</span>
-                            </div>
-                          </div>
+                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                            <ArrowUp className="w-3 h-3 mr-1" />
+                            Best
+                          </Badge>
                         </div>
-                      ))}
-                    </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm text-slate-600 dark:text-slate-400">Lowest CPC</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(bestCPC?.cpc || 0)}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestCPC?.platform}</p>
+                          </div>
+                          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                            <DollarSign className="w-3 h-3 mr-1" />
+                            Efficient
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm text-slate-600 dark:text-slate-400">Best Conv. Rate</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {realPlatformMetrics.reduce((best, p) => p.conversionRate > best.conversionRate ? p : best).conversionRate.toFixed(2)}%
+                            </p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                              {realPlatformMetrics.reduce((best, p) => p.conversionRate > best.conversionRate ? p : best).platform}
+                            </p>
+                          </div>
+                          <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                            <Target className="w-3 h-3 mr-1" />
+                            Top CVR
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Detailed Metrics Table */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <BarChart3 className="w-5 h-5" />
+                          <span>Detailed Performance Metrics</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {realPlatformMetrics.map((platform, index) => (
+                            <div key={index} className="p-3 border rounded-lg dark:border-slate-700" data-testid={`metrics-detail-${index}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 text-xs">
+                                <div>
+                                  <span className="block text-slate-500 font-medium">CTR</span>
+                                  <span className="text-slate-900 dark:text-white font-semibold">{platform.ctr.toFixed(2)}%</span>
+                                </div>
+                                <div>
+                                  <span className="block text-slate-500 font-medium">CPC</span>
+                                  <span className="text-slate-900 dark:text-white font-semibold">{formatCurrency(platform.cpc)}</span>
+                                </div>
+                                <div>
+                                  <span className="block text-slate-500 font-medium">Conv. Rate</span>
+                                  <span className="text-slate-900 dark:text-white font-semibold">{platform.conversionRate.toFixed(2)}%</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Efficiency Comparison */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <Activity className="w-5 h-5" />
+                          <span>Efficiency Comparison</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {realPlatformMetrics.map((platform, index) => (
+                            <div key={index} className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="font-medium text-slate-900 dark:text-white">{platform.platform}</span>
+                                <span className="text-slate-600 dark:text-slate-400">{platform.roas.toFixed(2)}x ROAS</span>
+                              </div>
+                              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                <div 
+                                  className="h-2 rounded-full transition-all" 
+                                  style={{ 
+                                    width: `${Math.min((platform.roas / 5) * 100, 100)}%`,
+                                    backgroundColor: platform.color 
+                                  }}
+                                />
+                              </div>
+                              <div className="flex justify-between text-xs text-slate-500">
+                                <span>CPA: {formatCurrency(platform.conversions > 0 ? platform.spend / platform.conversions : 0)}</span>
+                                <span>{formatNumber(platform.conversions)} Conv.</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Platform Volume Comparison */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Users className="w-5 h-5" />
+                        <span>Volume & Reach Comparison</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={realPlatformMetrics} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                            <XAxis dataKey="platform" className="text-xs" />
+                            <YAxis className="text-xs" />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: 'var(--background)', 
+                                border: '1px solid var(--border)',
+                                borderRadius: '6px' 
+                              }} 
+                              formatter={(value, name) => [formatNumber(value as number), name]}
+                            />
+                            <Bar dataKey="impressions" fill="#3b82f6" name="Impressions" />
+                            <Bar dataKey="clicks" fill="#10b981" name="Clicks" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <Card>
+                  <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
+                    <p>No platform data available. Connect LinkedIn or Custom Integration to see performance metrics.</p>
                   </CardContent>
                 </Card>
-              </div>
-
-              {/* Platform Volume Comparison */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Users className="w-5 h-5" />
-                    <span>Volume & Reach Comparison</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={platformMetrics} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                        <XAxis dataKey="platform" className="text-xs" />
-                        <YAxis className="text-xs" />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'var(--background)', 
-                            border: '1px solid var(--border)',
-                            borderRadius: '6px' 
-                          }} 
-                          formatter={(value, name) => [formatNumber(value as number), name]}
-                        />
-                        <Bar dataKey="impressions" fill="#3b82f6" name="Impressions" />
-                        <Bar dataKey="clicks" fill="#10b981" name="Clicks" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
+              )}
             </TabsContent>
 
             {/* Cost Analysis Tab */}
             <TabsContent value="cost-analysis" className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Cost Efficiency Chart */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <DollarSign className="w-5 h-5" />
-                      <span>Cost per Conversion</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={costAnalysisData}>
-                          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                          <XAxis dataKey="name" className="text-xs" />
-                          <YAxis className="text-xs" />
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: 'var(--background)', 
-                              border: '1px solid var(--border)',
-                              borderRadius: '6px' 
-                            }} 
-                            formatter={(value) => [formatCurrency(value as number), "Cost per Conversion"]}
-                          />
-                          <Bar dataKey="costPerConversion" fill="#f59e0b" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Budget Allocation */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Target className="w-5 h-5" />
-                      <span>Budget Allocation Efficiency</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {costAnalysisData.map((platform, index) => (
-                        <div key={index} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-slate-900 dark:text-white">{platform.name}</span>
-                            <span className="text-sm text-slate-600 dark:text-slate-400">
-                              {platform.efficiency} conversions per $100
-                            </span>
-                          </div>
-                          <Progress value={parseFloat(platform.efficiency) * 2} className="h-2" />
-                          <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>Total Spend: {formatCurrency(platform.totalSpend)}</span>
-                            <span>{formatNumber(platform.conversions)} conversions</span>
-                          </div>
+              {realPlatformMetrics.length > 0 ? (
+                <>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Cost Efficiency Chart */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <DollarSign className="w-5 h-5" />
+                          <span>Cost per Conversion</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={costAnalysisData}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="name" className="text-xs" />
+                              <YAxis className="text-xs" />
+                              <Tooltip 
+                                contentStyle={{ 
+                                  backgroundColor: 'var(--background)', 
+                                  border: '1px solid var(--border)',
+                                  borderRadius: '6px' 
+                                }} 
+                                formatter={(value) => [formatCurrency(value as number), "Cost per Conversion"]}
+                              />
+                              <Bar dataKey="costPerConversion" fill="#f59e0b" />
+                            </BarChart>
+                          </ResponsiveContainer>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                      </CardContent>
+                    </Card>
 
-              {/* ROI Analysis */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <TrendingUp className="w-5 h-5" />
-                    <span>Return on Investment Analysis</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {platformMetrics.map((platform, index) => (
-                      <div key={index} className="text-center p-4 border rounded-lg dark:border-slate-700">
-                        <div className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                          {platform.roas}x
+                    {/* Budget Allocation */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <Target className="w-5 h-5" />
+                          <span>Budget Allocation Efficiency</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {costAnalysisData.map((platform, index) => (
+                            <div key={index} className="space-y-2" data-testid={`cost-allocation-${index}`}>
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-slate-900 dark:text-white">{platform.name}</span>
+                                <span className="text-sm text-slate-600 dark:text-slate-400">
+                                  {platform.efficiency} conversions per $100
+                                </span>
+                              </div>
+                              <Progress value={parseFloat(platform.efficiency) * 2} className="h-2" />
+                              <div className="flex items-center justify-between text-xs text-slate-500">
+                                <span>Total Spend: {formatCurrency(platform.totalSpend)}</span>
+                                <span>{formatNumber(platform.conversions)} conversions</span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">{platform.platform}</div>
-                        <Badge variant={platform.roas >= 4 ? "default" : platform.roas >= 3 ? "secondary" : "outline"}>
-                          {platform.roas >= 4 ? "Excellent" : platform.roas >= 3 ? "Good" : "Fair"}
-                        </Badge>
-                      </div>
-                    ))}
+                      </CardContent>
+                    </Card>
                   </div>
-                </CardContent>
-              </Card>
+
+                  {/* ROI Analysis */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <TrendingUp className="w-5 h-5" />
+                        <span>Return on Investment Analysis</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {realPlatformMetrics.map((platform, index) => (
+                          <div key={index} className="text-center p-4 border rounded-lg dark:border-slate-700" data-testid={`roi-card-${index}`}>
+                            <div className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                              {platform.roas.toFixed(2)}x
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">{platform.platform}</div>
+                            <Badge variant={platform.roas >= 4 ? "default" : platform.roas >= 3 ? "secondary" : "outline"}>
+                              {platform.roas >= 4 ? "Excellent" : platform.roas >= 3 ? "Good" : "Fair"}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <Card>
+                  <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
+                    <p>No platform data available. Connect LinkedIn or Custom Integration to see cost analysis.</p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Insights Tab */}
             <TabsContent value="insights" className="space-y-6">
-              <div className="grid gap-6">
-                {/* AI-Powered Platform Insights */}
+              {realPlatformMetrics.length > 0 ? (
+                <div className="grid gap-6">
+                  {/* AI-Powered Platform Insights */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Brain className="w-5 h-5" />
+                        <span>Platform Performance Insights</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Top Performer Insight */}
+                        {bestROAS && (
+                          <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg" data-testid="insight-top-performer">
+                            <div className="flex items-start space-x-3">
+                              <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
+                              <div>
+                                <h4 className="font-semibold text-green-800 dark:text-green-200 mb-1">Top Performer: {bestROAS.platform}</h4>
+                                <p className="text-sm text-green-700 dark:text-green-300">
+                                  {bestROAS.platform} delivers the highest ROAS at {bestROAS.roas.toFixed(2)}x with {formatNumber(bestROAS.conversions)} conversions. 
+                                  {bestROAS.roas >= 3 
+                                    ? ` This excellent performance suggests allocating 20-30% more budget to scale results.`
+                                    : ` Consider optimizing this channel further to improve returns.`}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Volume Leader Insight */}
+                        {bestConversions && (
+                          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="insight-volume-leader">
+                            <div className="flex items-start space-x-3">
+                              <Eye className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                              <div>
+                                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-1">Volume Leader: {bestConversions.platform}</h4>
+                                <p className="text-sm text-blue-700 dark:text-blue-300">
+                                  {bestConversions.platform} generates the most conversions with {formatNumber(bestConversions.conversions)} total. 
+                                  {bestConversions.impressions > 0 && ` With ${formatNumber(bestConversions.impressions)} impressions, this platform provides strong reach.`}
+                                  {bestConversions.conversions === bestROAS?.conversions 
+                                    ? ` Combining high volume with top ROAS makes this your strongest channel.`
+                                    : ` Focus on improving efficiency to match top ROAS performance.`}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Engagement Quality Insight */}
+                        {bestCTR && (
+                          <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg" data-testid="insight-engagement">
+                            <div className="flex items-start space-x-3">
+                              <Users className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
+                              <div>
+                                <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-1">Highest Engagement: {bestCTR.platform}</h4>
+                                <p className="text-sm text-purple-700 dark:text-purple-300">
+                                  {bestCTR.platform} has the best CTR at {bestCTR.ctr.toFixed(2)}%, indicating strong ad relevance and audience targeting. 
+                                  {bestCTR.conversionRate >= 2 
+                                    ? ` Combined with ${bestCTR.conversionRate.toFixed(2)}% conversion rate, this channel shows excellent quality traffic.`
+                                    : ` Optimize landing pages to convert this engaged traffic more effectively.`}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Opportunity/Warning Insight */}
+                        {realPlatformMetrics.length > 1 && (() => {
+                          const weakest = realPlatformMetrics.reduce((min, p) => p.roas < min.roas ? p : min);
+                          const roasGap = bestROAS && bestROAS.roas > 0 ? ((bestROAS.roas - weakest.roas) / bestROAS.roas * 100) : 0;
+                          
+                          return roasGap > 30 ? (
+                            <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg" data-testid="insight-optimization">
+                              <div className="flex items-start space-x-3">
+                                <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                                <div>
+                                  <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-1">Optimization Opportunity: {weakest.platform}</h4>
+                                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                                    {weakest.platform} ROAS of {weakest.roas.toFixed(2)}x is {roasGap.toFixed(0)}% below top performer. 
+                                    {weakest.ctr < 1 
+                                      ? ` Low CTR (${weakest.ctr.toFixed(2)}%) suggests creative refresh or audience refinement needed.`
+                                      : weakest.conversionRate < 2
+                                        ? ` Decent engagement but poor conversion suggests landing page optimization required.`
+                                        : ` Review targeting and bidding strategy to improve efficiency.`}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Strategic Recommendations */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Zap className="w-5 h-5" />
+                        <span>Strategic Recommendations</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {/* Budget Reallocation */}
+                        {realPlatformMetrics.length > 1 && bestROAS && (
+                          <div className="border-l-4 border-green-500 pl-4">
+                            <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Budget Reallocation Strategy</h4>
+                            <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                              {realPlatformMetrics.map((platform, idx) => {
+                                const isTop = platform.platform === bestROAS.platform;
+                                const isWeakest = platform.roas === Math.min(...realPlatformMetrics.map(p => p.roas));
+                                
+                                if (isTop && platform.roas >= 3) {
+                                  return (
+                                    <li key={idx} data-testid={`rec-budget-${idx}`}>
+                                      • Increase {platform.platform} budget by 20-30% (highest ROAS at {platform.roas.toFixed(2)}x)
+                                    </li>
+                                  );
+                                } else if (isWeakest && platform.roas < 2) {
+                                  return (
+                                    <li key={idx} data-testid={`rec-budget-${idx}`}>
+                                      • Reduce {platform.platform} budget by 15-20% until performance improves (ROAS: {platform.roas.toFixed(2)}x)
+                                    </li>
+                                  );
+                                } else {
+                                  return (
+                                    <li key={idx} data-testid={`rec-budget-${idx}`}>
+                                      • Maintain {platform.platform} current budget (ROAS: {platform.roas.toFixed(2)}x)
+                                    </li>
+                                  );
+                                }
+                              })}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Platform-Specific Optimizations */}
+                        <div className="border-l-4 border-blue-500 pl-4">
+                          <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Platform-Specific Optimizations</h4>
+                          <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                            {realPlatformMetrics.map((platform, idx) => {
+                              let recommendation = '';
+                              
+                              if (platform.ctr < 1) {
+                                recommendation = `${platform.platform}: Improve CTR (${platform.ctr.toFixed(2)}%) through creative refresh and A/B testing`;
+                              } else if (platform.conversionRate < 2) {
+                                recommendation = `${platform.platform}: Optimize landing pages to improve ${platform.conversionRate.toFixed(2)}% conversion rate`;
+                              } else if (platform.cpc > 5) {
+                                recommendation = `${platform.platform}: Reduce CPC (${formatCurrency(platform.cpc)}) through bid optimization and quality score improvements`;
+                              } else if (platform.roas >= 4) {
+                                recommendation = `${platform.platform}: Expand successful campaigns to similar audiences and regions`;
+                              } else {
+                                recommendation = `${platform.platform}: Test new ad formats and audience segments to scale performance`;
+                              }
+                              
+                              return <li key={idx} data-testid={`rec-optimization-${idx}`}>• {recommendation}</li>;
+                            })}
+                          </ul>
+                        </div>
+
+                        {/* Performance Monitoring */}
+                        <div className="border-l-4 border-purple-500 pl-4">
+                          <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Performance Monitoring</h4>
+                          <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                            <li>• Set up automated alerts for ROAS drops below 3.0x</li>
+                            <li>• Monitor CPC trends weekly for early optimization signals</li>
+                            <li>• Track cross-platform attribution for holistic view</li>
+                            <li>• Implement A/B testing schedule for continuous improvement</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Brain className="w-5 h-5" />
-                      <span>Platform Performance Insights</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                        <div className="flex items-start space-x-3">
-                          <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
-                          <div>
-                            <h4 className="font-semibold text-green-800 dark:text-green-200 mb-1">Top Performer: Google Sheets</h4>
-                            <p className="text-sm text-green-700 dark:text-green-300">
-                              Google Sheets delivers the highest ROAS at 4.1x with strong conversion efficiency. Consider increasing budget allocation by 25% to maximize returns.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <div className="flex items-start space-x-3">
-                          <Eye className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                          <div>
-                            <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-1">Volume Leader: Google Analytics</h4>
-                            <p className="text-sm text-blue-700 dark:text-blue-300">
-                              Google Analytics provides the highest reach with 15.4M impressions and maintains competitive CPC. Ideal for brand awareness campaigns.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-                        <div className="flex items-start space-x-3">
-                          <Users className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
-                          <div>
-                            <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-1">Quality Focus: LinkedIn Ads</h4>
-                            <p className="text-sm text-purple-700 dark:text-purple-300">
-                              LinkedIn Ads shows the highest CTR at 1.90% and strong engagement rates. Perfect for B2B targeting and professional audiences.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-                        <div className="flex items-start space-x-3">
-                          <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5" />
-                          <div>
-                            <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-1">Optimization Opportunity: Facebook Ads</h4>
-                            <p className="text-sm text-orange-700 dark:text-orange-300">
-                              Facebook Ads shows lower ROAS at 2.9x but high reach potential. Consider audience refinement and creative optimization to improve performance.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
+                    <p>No platform data available. Connect LinkedIn or Custom Integration to see insights and recommendations.</p>
                   </CardContent>
                 </Card>
-
-                {/* Strategic Recommendations */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Zap className="w-5 h-5" />
-                      <span>Strategic Recommendations</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-6">
-                      <div className="border-l-4 border-green-500 pl-4">
-                        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Budget Reallocation</h4>
-                        <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                          <li>• Increase Google Sheets budget by 25% (highest ROAS)</li>
-                          <li>• Maintain Google Analytics for volume and brand awareness</li>
-                          <li>• Optimize LinkedIn Ads creative while maintaining budget</li>
-                          <li>• Reduce Facebook Ads budget by 15% until optimization complete</li>
-                        </ul>
-                      </div>
-
-                      <div className="border-l-4 border-blue-500 pl-4">
-                        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Platform-Specific Optimizations</h4>
-                        <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                          <li>• Google Analytics: Focus on high-volume keywords and dayparting</li>
-                          <li>• Google Sheets: Expand successful campaign themes and audiences</li>
-                          <li>• LinkedIn Ads: Test video formats to leverage high engagement</li>
-                          <li>• Facebook Ads: Implement dynamic product ads and lookalike audiences</li>
-                        </ul>
-                      </div>
-
-                      <div className="border-l-4 border-purple-500 pl-4">
-                        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Performance Monitoring</h4>
-                        <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                          <li>• Set up automated alerts for ROAS drops below 3.0x</li>
-                          <li>• Monitor CPC trends weekly for early optimization signals</li>
-                          <li>• Track cross-platform attribution for holistic view</li>
-                          <li>• Implement A/B testing schedule for continuous improvement</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Competitive Benchmarking */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <GitCompare className="w-5 h-5" />
-                      <span>Industry Benchmarking</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="text-center p-4 border rounded-lg dark:border-slate-700">
-                        <div className="text-lg font-bold text-green-600 dark:text-green-400 mb-1">Above Average</div>
-                        <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">Overall CTR Performance</div>
-                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">+28% vs Industry</Badge>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg dark:border-slate-700">
-                        <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-1">Competitive</div>
-                        <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">Average CPC Efficiency</div>
-                        <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">Market Average</Badge>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg dark:border-slate-700">
-                        <div className="text-lg font-bold text-purple-600 dark:text-purple-400 mb-1">Excellent</div>
-                        <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">Conversion Performance</div>
-                        <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">+22% vs Industry</Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              )}
             </TabsContent>
           </Tabs>
         </main>

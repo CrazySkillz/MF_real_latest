@@ -33,7 +33,7 @@ function Router() {
       <Route path="/campaigns/:id/platform-comparison" component={PlatformComparison} />
       <Route path="/campaigns/:id/trend-analysis" component={TrendAnalysis} />
       <Route path="/campaigns/:id/executive-summary" component={ExecutiveSummary} />
-      <Route path="/campaigns/:id/financial" component={FinancialAnalysis} />
+      <Route path="/campaigns/:id/financial-analysis" component={FinancialAnalysis} />
       <Route path="/campaigns/:id/ga4-metrics" component={GA4Metrics} />
       <Route path="/campaigns/:id/google-sheets-data" component={GoogleSheetsData} />
       <Route path="/campaigns/:id/linkedin-analytics" component={LinkedInAnalytics} />

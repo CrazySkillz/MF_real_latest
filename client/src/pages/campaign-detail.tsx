@@ -4664,7 +4664,7 @@ export default function CampaignDetail() {
                       </Button>
                     </Link>
                     
-                    <Link href={`/campaigns/${campaign.id}/financial`}>
+                    <Link href={`/campaigns/${campaign.id}/financial-analysis`}>
                       <Button 
                         variant="outline" 
                         className="flex items-center justify-start space-x-3 h-auto p-4 w-full"

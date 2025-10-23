@@ -19,7 +19,7 @@ interface Campaign {
 }
 
 export default function FinancialAnalysis() {
-  const [, params] = useRoute("/campaigns/:id/financial");
+  const [, params] = useRoute("/campaigns/:id/financial-analysis");
   const campaignId = params?.id;
   const [comparisonPeriod, setComparisonPeriod] = useState<string>("7d");
 

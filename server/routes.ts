@@ -1777,6 +1777,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Metric Snapshot routes
   app.post("/api/campaigns/:id/snapshots", async (req, res) => {
+    console.log('=== CREATE SNAPSHOT ROUTE HIT ===');
+    console.log('Campaign ID:', req.params.id);
     try {
       const { id } = req.params;
       

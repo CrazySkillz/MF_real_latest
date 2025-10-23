@@ -4638,9 +4638,6 @@ export default function CampaignDetail() {
 
             <TabsContent value="overview" className="space-y-6">
 
-              {/* Performance Summary - Executive Snapshot */}
-              {renderPerformanceSummary()}
-
               {/* Campaign DeepDive */}
               <Card>
                 <CardHeader>

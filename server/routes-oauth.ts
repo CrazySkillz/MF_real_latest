@@ -4184,11 +4184,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const snapshot = await storage.createMetricSnapshot({
         campaignId: id,
-        totalImpressions,
-        totalEngagements,
-        totalClicks,
-        totalConversions,
-        totalSpend
+        totalImpressions: Math.round(totalImpressions),
+        totalEngagements: Math.round(totalEngagements),
+        totalClicks: Math.round(totalClicks),
+        totalConversions: Math.round(totalConversions),
+        totalSpend: totalSpend.toFixed(2)
       });
       
       console.log(`Snapshot created for campaign ${id}:`, snapshot);

@@ -1,75 +1,33 @@
 # PerformanceCore - Marketing Analytics Platform
 
 ## Overview
-PerformanceCore is a comprehensive marketing analytics platform designed for campaign performance tracking and optimization. It offers a sophisticated dashboard for managing advertising campaigns across multiple platforms, monitoring key performance indicators (KPIs), and integrating with various marketing services. The platform aims to drive superior marketing results through advanced analytics and seamless integrations. It is built as a full-stack solution.
+PerformanceCore is a comprehensive marketing analytics platform for tracking and optimizing advertising campaigns across multiple platforms. It provides a sophisticated dashboard for monitoring KPIs, integrating with various marketing services, and driving superior marketing results through advanced analytics. The platform is designed as a full-stack solution to offer a unified view of campaign performance.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **UI Library**: Radix UI with shadcn/ui
-- **Styling**: Tailwind CSS
-- **State Management**: TanStack Query (React Query)
-- **Routing**: Wouter
-- **Forms**: React Hook Form with Zod validation
-- **Charts**: Recharts for data visualization
-- **UI/UX**: Professional, GA4-inspired design with interactive elements like world maps and consistent iconography.
+### UI/UX Decisions
+The platform features a professional, GA4-inspired design with interactive elements like world maps and consistent iconography.
 
-### Backend
-- **Runtime**: Python with FastAPI
-- **Language**: Python 3.11 with Pydantic models
-- **API Design**: RESTful APIs with OpenAPI documentation
-- **Development**: Hot reload with Uvicorn server
+### Technical Implementations
+- **Frontend**: React 18 with TypeScript, Vite, Radix UI (shadcn/ui), Tailwind CSS, TanStack Query, Wouter, React Hook Form (Zod for validation), Recharts for data visualization.
+- **Backend**: Python 3.11 with FastAPI, Pydantic models, RESTful APIs, OpenAPI documentation, Uvicorn server.
+- **Data Storage**: PostgreSQL with Drizzle ORM, Zod-validated schema, Drizzle Kit for migrations.
+- **Data Flow**: Client requests via TanStack Query -> FastAPI for validation -> Abstract storage interface -> PostgreSQL via Drizzle ORM -> Typed responses to frontend -> React Query for UI updates.
 
-### Data Storage
-- **Database**: PostgreSQL with Drizzle ORM
-- **Schema**: Strongly typed with Zod validation
-- **Migrations**: Drizzle Kit
-- **Development Storage**: In-memory storage
-
-### Core Features
-- **Data Models**: Campaigns, Metrics, Integrations, Performance Data, LinkedIn Reports, Custom Integration Metrics.
-- **Frontend Components**: Dashboard, Integrations management, comprehensive UI components.
-- **Backend Services**: Abstracted storage interface, RESTful endpoints, Zod validation, centralized error handling.
-- **Data Flow**: Client requests via TanStack Query -> FastAPI handles validation -> Abstract storage interface -> PostgreSQL via Drizzle ORM -> Typed responses to frontend -> React Query manages UI updates.
-- **KPI Management**: Two-tier analytics architecture following marketing industry best practices:
-  - **Campaign-Level KPIs**: Aggregated cross-platform metrics showing unified campaign performance. Metrics automatically sum data from all connected sources (LinkedIn, Custom Integration, etc.) to provide total campaign view. Features three categories:
-    - *Core Campaign Metrics*: Raw aggregated totals (Total Impressions = LinkedIn Impressions + CI Pageviews, Total Engagements = LinkedIn Engagements + CI Sessions, Total Clicks, Total Conversions, Total Leads, Total Spend)
-    - *Blended Performance Metrics*: Calculated ratios using aggregated data (Overall CTR, Blended CPC/CPM, Campaign CVR/CPA/CPL)
-    - *Audience Metrics*: Web analytics (Total Users, Total Sessions from Custom Integration)
-  - **Platform-Level KPIs**: Channel-specific metrics for optimization (LinkedIn CTR, Email Open Rate, etc.) available in individual platform analytics pages
-  - **Technical Implementation**: Numeric coercion via parseNum helper prevents string concatenation bugs, handles missing data gracefully (defaults to 0), division-by-zero protection in calculated metrics, scalable for future data sources
-  - **Time-Based Analysis**: Daily, weekly, monthly, quarterly tracking with rolling averages, trend detection, and target date functionality
-  - **Email Alerts**: Configurable threshold-based alerts with condition settings (below, above, equals) for notifications when metrics cross thresholds
-- **Benchmark Alerts**: Benchmarks include email alert functionality with threshold monitoring, enabling users to be notified when performance deviates from industry standards or internal targets.
+### Feature Specifications
+- **KPI Management**: Two-tier analytics architecture: Campaign-Level KPIs (aggregated cross-platform metrics like Impressions, Engagements, Clicks, Conversions, Spend, CTR, CPC/CPM, CVR/CPA/CPL, and Audience Metrics) and Platform-Level KPIs (channel-specific metrics). Includes numeric coercion, division-by-zero protection, and time-based analysis (daily, weekly, monthly, quarterly).
+- **Email Alerts**: Configurable threshold-based alerts for KPIs and Benchmarks with various conditions (below, above, equals) and configurable recipients.
+- **Benchmark Alerts**: Includes email notification functionality when performance deviates from set benchmarks.
 - **Geographic Analytics**: Interactive world map visualization with country, region, and city breakdown, integrated with GA4 data.
 - **Dynamic Platform Detection**: Identifies connected services during campaign creation.
 - **Auto-Refresh**: Configurable auto-refresh functionality for data.
-- **Error Handling**: Seamless fallback analytics data display and silent token management for uninterrupted user experience (e.g., for OAuth issues).
-- **LinkedIn Reports**: 5th tab in LinkedIn Analytics with support for creating, managing, and viewing reports. Report types include Overview, KPIs, Benchmarks, Ad Comparison, and Custom reports. Features include two-step creation modal (type selection → configuration), report listing with metadata, and foundation for download/email/scheduling capabilities.
-- **Custom Integration Webhooks**: Automated PDF processing via unique webhook URLs for integration with Zapier, IFTTT, and other automation services. Each custom integration receives a unique token-based webhook endpoint for secure, automated metric updates.
-- **KPI Report Scheduling & Export**: Campaign-level KPI reports with PDF export and automated email delivery:
-  - **PDF Export**: One-click PDF generation of all campaign KPIs with formatted metrics, progress calculations, and professional layout using jsPDF
-  - **Automated Scheduling**: Configure email reports with daily, weekly, monthly, or quarterly frequency
-  - **Email Delivery**: Send scheduled reports to multiple recipients (comma-separated email list)
-  - **Reports Management**: View and manage all scheduled reports with frequency and recipient information
-  - **Backend Implementation**: RESTful API endpoints for CRUD operations on scheduled reports, database schema for report configuration storage
-  - **UI Integration**: Export and Schedule buttons in KPIs tab header, modal dialog for scheduling configuration, reports list section showing active schedules
-- **Performance Summary (Executive Dashboard)**: Focused 30-second executive snapshot accessible from Campaign DeepDive:
-  - **Layout**: Full-page view with Navigation, Sidebar, and tabbed interface matching platform design (Overview, Campaign Health, What's Changed, Insights)
-  - **Campaign Health Status**: Calculates health score based on KPIs meeting targets (Excellent ≥80%, Good ≥60%, Needs Attention ≥40%, Critical <40%)
-  - **Top Priority Action**: AI-powered recommendation identifying the most underperforming KPI/Benchmark with actionable guidance
-  - **Aggregated Metrics Snapshot**: Cross-platform totals (Impressions, Engagements, Conversions, Spend) combining ALL connected data sources
-  - **What's Changed**: Snapshot-based comparison showing metric changes with trend indicators (localStorage for testing, database-backed for production)
-  - **Data Source Status**: Visual indicators showing which platforms are connected and feeding data
-  - **AI-Powered Insights**: Context-aware recommendations based on performance (scale investment, review strategy, maintain course)
-  - **Scalability Architecture**: Designed for easy expansion - adding new platforms (Shopify, GA4, Google Ads) requires only: (1) Add query, (2) Parse metrics, (3) Add to aggregations, (4) Add to dataSources array. Health calculations and UI automatically adapt.
-  - **Numeric Coercion**: parseNum() helper ensures safe aggregation across different platform data formats (handles nulls, strings, NaN, Infinity)
-  - **Platform-Agnostic Health**: Health score independent of specific platforms - based on user-defined KPIs that can pull from any source
+- **LinkedIn Reports**: Functionality to create, manage, and view various report types (Overview, KPIs, Benchmarks, Ad Comparison, Custom) with a two-step creation modal and a listing of reports.
+- **Custom Integration Webhooks**: Automated PDF processing via unique token-based webhook URLs for integration with automation services like Zapier or IFTTT. Supports direct file uploads or URL-based PDF processing.
+- **KPI Report Scheduling & Export**: PDF export of campaign-level KPI reports and automated email delivery with configurable frequency (daily, weekly, monthly, quarterly) to multiple recipients.
+- **Performance Summary (Executive Dashboard)**: A focused executive snapshot from Campaign DeepDive including Campaign Health Status (calculated score), Top Priority Action (AI-powered recommendation), Aggregated Metrics Snapshot (cross-platform totals), Time-Based Metric Comparison (historical data comparison with trend indicators), Data Source Status, and AI-Powered Insights. Designed for scalability and platform-agnostic health scoring.
 
 ## External Dependencies
 
@@ -79,90 +37,7 @@ Preferred communication style: Simple, everyday language.
 - **Validation**: Zod
 - **Forms**: React Hook Form
 - **Marketing Platforms**: Facebook Ads, Google Analytics (GA4), LinkedIn Ads, Google Sheets
-- **Authentication**: OAuth 2.0 for Google services and LinkedIn Ads
-- **Build Tools**: Vite, ESLint, PostCSS, ESBuild (for backend compilation)
-
-## OAuth Integration & Production Validation
-
-### LinkedIn OAuth (Production-Ready)
-- **Implementation**: Full OAuth 2.0 authorization code flow with PKCE-like security
-- **OAuth Callback**: `/oauth-callback.html` handles authorization code exchange
-- **Flow**: User authorization → Code exchange → Token storage → Ad account selection → Campaign import
-- **Test Mode**: Mock data available for development/demo without real credentials
-- **Production Mode**: Requires LinkedIn Developer App with Client ID and Secret
-- **Scopes Required**: `r_ads_reporting`, `rw_ads`, `r_organization_admin`
-- **Validation Guide**: See `LINKEDIN_OAUTH_VALIDATION.md` for complete setup instructions
-- **Secrets**: Set `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` environment variables for production
-- **Redirect URIs**: Configure in LinkedIn app to match deployment URL (e.g., `https://[domain]/oauth-callback.html`)
-
-### Google Analytics (GA4) OAuth  
-- **Implementation**: OAuth 2.0 flow with automatic token refresh
-- **Integration**: Real-time and historical metrics via GA4 API
-- **Token Management**: Automatic refresh on expiry with seamless fallback
-
-### Custom Integration (Webhook-Based)
-- **Implementation**: Automated PDF processing via webhook endpoints with dual-format support
-- **Authentication**: Unique webhook token per integration for secure access
-- **Webhook URL**: `/api/webhook/custom-integration/:token` accepts POST requests in two formats:
-  - **Direct Upload** (Zapier): multipart/form-data with PDF file in 'pdf' field
-  - **URL-Based** (IFTTT): JSON body with PDF URL in 'value1', 'pdfUrl', or 'pdf_url' field
-- **Automation Services**: Compatible with Zapier (file upload), IFTTT (URL-based), Make.com, and other webhook-supporting platforms
-- **Data Flow**: 
-  - Email with PDF → Automation service → Webhook endpoint → PDF download/upload → PDF parsing → Metric extraction → Database storage → Dashboard update
-- **Metrics Extraction**: Automatic parsing of marketing metrics from PDF reports using pattern matching. Supports multiple formats:
-  - **Audience & Traffic** (GA4-style): Users (unique), Sessions, Pageviews, Avg. Session Duration, Pages/Session, Bounce Rate
-  - **Traffic Sources**: Organic Search, Direct/Branded, Email (Newsletters), Referral/Partners, Paid (Display/Search), Social (as percentages)
-  - **Email Performance**: Emails Delivered, Open Rate, Click-Through Rate, Click-to-Open, Hard Bounces, Spam Complaints, List Growth
-  - **Legacy Social Media**: Impressions, Reach, Clicks, Engagements, Spend, Conversions, Leads, Video Views, Viral Impressions
-- **PDF Parser**: Uses pdf-parse library with regex pattern matching for flexible metric extraction across table and inline formats
-- **IFTTT Integration**: Leverages IFTTT's email trigger "Attachment URL" ingredient to pass public PDF URLs to webhook for download and processing
-- **Setup**: Generate unique webhook token on connection → Copy webhook URL → Configure in automation service → Activate
-- **UI Display**: Metrics are conditionally displayed based on available data, with organized sections for each metric category
-- **Validation Pattern**: Robust metric validation using `isValidNumber` helper that ensures sections only render when valid numeric data exists (including zero values), preventing display of empty sections with N/A cards. Handles undefined, null, empty strings, NaN, and Infinity edge cases from PDF parsing
-
-## Email Alert System
-
-### Implementation
-- **Alert Configuration**: KPIs and Benchmarks support threshold-based email alerts configurable through the UI
-- **UI Controls**: Checkbox to enable alerts, threshold value, alert condition (below/above/equals), email recipients (comma-separated)
-- **Monitoring Service**: Server-side alert monitoring service (`alert-monitoring.ts`) checks KPI/Benchmark values against thresholds
-- **Email Service**: Flexible email service (`email-service.ts`) supporting multiple providers (SendGrid, Mailgun, SMTP) via nodemailer
-- **Throttling**: Built-in 24-hour throttling to prevent alert spam (configurable)
-- **API Endpoints**: 
-  - `POST /api/alerts/check` - Manually trigger alert checks (can be called by cron jobs)
-  - `GET /api/alerts/status` - Get alert configuration status
-
-### Email Configuration
-Set environment variables based on your email provider:
-
-**SendGrid:**
-- `EMAIL_PROVIDER=sendgrid`
-- `SENDGRID_API_KEY` or `EMAIL_SERVICE_API_KEY`
-- `EMAIL_FROM_ADDRESS`
-
-**Mailgun:**
-- `EMAIL_PROVIDER=mailgun`
-- `MAILGUN_SMTP_USER`, `MAILGUN_SMTP_PASS` or `EMAIL_SERVICE_API_KEY`
-- `EMAIL_FROM_ADDRESS`
-
-**SMTP (Gmail, etc.):**
-- `EMAIL_PROVIDER=smtp`
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` or `EMAIL_SERVICE_API_KEY`
-- `EMAIL_FROM_ADDRESS`
-
-### Alert Workflow
-1. User creates KPI/Benchmark with alert settings (threshold, condition, email recipients)
-2. Background job calls `/api/alerts/check` periodically (can use cron/scheduler)
-3. Monitoring service checks all enabled alerts
-4. If threshold is breached, email is sent via configured provider
-5. Last alert timestamp is updated to prevent spam
-
-### Future Enhancements
-- **Token Persistence**: Store OAuth tokens in database (currently in-memory)
-- **Token Refresh**: Implement refresh token flow for long-lived LinkedIn sessions
-- **Multi-Account Support**: Multiple LinkedIn connections per user
-- **Webhook Integration**: Real-time updates via LinkedIn webhooks
-- **Scheduled Reports Email**: Integration with alert system for automated report delivery
-- **Custom Integration PDF Templates**: Standardized PDF templates for consistent metric extraction
-- **Alert Frequency Options**: Immediate, hourly, daily, weekly alert frequency controls
-- **Slack/Teams Integration**: Additional notification channels beyond email
+- **Authentication**: OAuth 2.0 (for Google services and LinkedIn Ads)
+- **Build Tools**: Vite, ESLint, PostCSS, ESBuild
+- **Email Services**: SendGrid, Mailgun, SMTP (via Nodemailer)
+- **PDF Parsing**: pdf-parse library

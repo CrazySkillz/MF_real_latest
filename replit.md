@@ -59,6 +59,17 @@ Preferred communication style: Simple, everyday language.
   - **Reports Management**: View and manage all scheduled reports with frequency and recipient information
   - **Backend Implementation**: RESTful API endpoints for CRUD operations on scheduled reports, database schema for report configuration storage
   - **UI Integration**: Export and Schedule buttons in KPIs tab header, modal dialog for scheduling configuration, reports list section showing active schedules
+- **Performance Summary (Executive Dashboard)**: Focused 30-second executive snapshot accessible from Campaign DeepDive:
+  - **Layout**: Full-page view with Navigation, Sidebar, and tabbed interface matching platform design (Overview, Campaign Health, What's Changed, Insights)
+  - **Campaign Health Status**: Calculates health score based on KPIs meeting targets (Excellent ≥80%, Good ≥60%, Needs Attention ≥40%, Critical <40%)
+  - **Top Priority Action**: AI-powered recommendation identifying the most underperforming KPI/Benchmark with actionable guidance
+  - **Aggregated Metrics Snapshot**: Cross-platform totals (Impressions, Engagements, Conversions, Spend) combining ALL connected data sources
+  - **What's Changed**: Snapshot-based comparison showing metric changes with trend indicators (localStorage for testing, database-backed for production)
+  - **Data Source Status**: Visual indicators showing which platforms are connected and feeding data
+  - **AI-Powered Insights**: Context-aware recommendations based on performance (scale investment, review strategy, maintain course)
+  - **Scalability Architecture**: Designed for easy expansion - adding new platforms (Shopify, GA4, Google Ads) requires only: (1) Add query, (2) Parse metrics, (3) Add to aggregations, (4) Add to dataSources array. Health calculations and UI automatically adapt.
+  - **Numeric Coercion**: parseNum() helper ensures safe aggregation across different platform data formats (handles nulls, strings, NaN, Infinity)
+  - **Platform-Agnostic Health**: Health score independent of specific platforms - based on user-defined KPIs that can pull from any source
 
 ## External Dependencies
 

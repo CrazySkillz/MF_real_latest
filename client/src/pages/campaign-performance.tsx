@@ -69,7 +69,9 @@ export default function CampaignPerformanceSummary() {
     mutationFn: async () => {
       if (!campaignId) throw new Error("Campaign ID is required");
       const res = await apiRequest("POST", `/api/campaigns/${campaignId}/snapshots`);
-      return res.json();
+      const data = await res.json();
+      console.log('Snapshot created:', data);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison`] });
@@ -78,10 +80,11 @@ export default function CampaignPerformanceSummary() {
         description: "Metric snapshot has been saved successfully.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Snapshot creation error:', error);
       toast({
         title: "Error",
-        description: "Failed to create snapshot. Please try again.",
+        description: error?.message || "Failed to create snapshot. Please try again.",
         variant: "destructive",
       });
     },

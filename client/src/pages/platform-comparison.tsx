@@ -384,7 +384,7 @@ export default function PlatformComparison() {
               {realPlatformMetrics.length > 0 ? (
                 <>
                   {/* Key Performance Indicators Grid */}
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm text-slate-600 dark:text-slate-400">Best CTR</CardTitle>
@@ -442,6 +442,26 @@ export default function PlatformComparison() {
                         </div>
                       </CardContent>
                     </Card>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm text-slate-600 dark:text-slate-400">Best ROI</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {bestROI?.roi >= 0 ? '+' : ''}{bestROI?.roi.toFixed(1)}%
+                            </p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestROI?.platform}</p>
+                          </div>
+                          <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                            <TrendingUp className="w-3 h-3 mr-1" />
+                            Best Profit
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
 
                   <div className="grid gap-6 md:grid-cols-2">
@@ -461,7 +481,7 @@ export default function PlatformComparison() {
                                 <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
                               </div>
-                              <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="grid grid-cols-4 gap-2 text-xs">
                                 <div>
                                   <span className="block text-slate-500 font-medium">CTR</span>
                                   <span className="text-slate-900 dark:text-white font-semibold">{platform.ctr.toFixed(2)}%</span>
@@ -473,6 +493,12 @@ export default function PlatformComparison() {
                                 <div>
                                   <span className="block text-slate-500 font-medium">Conv. Rate</span>
                                   <span className="text-slate-900 dark:text-white font-semibold">{platform.conversionRate.toFixed(2)}%</span>
+                                </div>
+                                <div>
+                                  <span className="block text-slate-500 font-medium">ROI</span>
+                                  <span className={`font-semibold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -495,7 +521,12 @@ export default function PlatformComparison() {
                             <div key={index} className="space-y-2">
                               <div className="flex items-center justify-between text-sm">
                                 <span className="font-medium text-slate-900 dark:text-white">{platform.platform}</span>
-                                <span className="text-slate-600 dark:text-slate-400">{platform.roas.toFixed(2)}x ROAS</span>
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-slate-600 dark:text-slate-400">{platform.roas.toFixed(2)}x ROAS</span>
+                                  <span className={`font-medium ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}% ROI
+                                  </span>
+                                </div>
                               </div>
                               <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                                 <div 

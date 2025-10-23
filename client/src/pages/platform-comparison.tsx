@@ -271,9 +271,14 @@ export default function PlatformComparison() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-slate-500">ROAS</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">{platform.roas.toFixed(2)}x</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500">ROI</span>
                           <div className="flex items-center space-x-1">
-                            <span className="font-semibold text-slate-900 dark:text-white">{platform.roas.toFixed(2)}x</span>
-                            {getPerformanceBadge(platform.roas, 'roas')}
+                            <span className={`font-semibold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                              {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
+                            </span>
                           </div>
                         </div>
                       </CardContent>
@@ -290,7 +295,7 @@ export default function PlatformComparison() {
 
               {/* Quick Comparison Metrics */}
               {realPlatformMetrics.length > 0 && (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   {bestCTR && (
                     <Card data-testid="overview-best-ctr">
                       <CardHeader>
@@ -344,7 +349,27 @@ export default function PlatformComparison() {
                           </div>
                           <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
                             <ArrowUp className="w-3 h-3 mr-1" />
-                            Top ROI
+                            Top ROAS
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {bestROI && (
+                    <Card data-testid="overview-highest-roi">
+                      <CardHeader>
+                        <CardTitle className="text-sm">Highest ROI</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bestROI.platform}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestROI.roi >= 0 ? '+' : ''}{bestROI.roi.toFixed(1)}% profit margin</p>
+                          </div>
+                          <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                            <ArrowUp className="w-3 h-3 mr-1" />
+                            Best Profit
                           </Badge>
                         </div>
                       </CardContent>

@@ -5,6 +5,7 @@ import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, inse
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
+import googleTrends from "google-trends-api";
 
 // Simulate professional platform authentication (like Supermetrics)
 async function simulateProfessionalAuth(email: string, password: string, propertyId: string, campaignId: string) {
@@ -1868,6 +1869,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Comparison data fetch error:', error);
       res.status(500).json({ message: "Failed to fetch comparison data" });
+    }
+  });
+
+  // Google Trends API endpoint
+  app.get("/api/campaigns/:id/google-trends", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { timeframe = 'today 3-m' } = req.query;
+      
+      // Get campaign to access industry and keywords
+      const campaign = await storage.getCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      const keywords = (campaign as any).trendKeywords || [];
+      const industry = (campaign as any).industry;
+      
+      if (!keywords || keywords.length === 0) {
+        return res.status(400).json({ 
+          message: "No trend keywords configured for this campaign",
+          suggestion: "Add industry keywords to track market trends"
+        });
+      }
+      
+      // Fetch Google Trends data for each keyword
+      const trendsData = await Promise.all(
+        keywords.map(async (keyword: string) => {
+          try {
+            const results = await googleTrends.interestOverTime({
+              keyword,
+              startTime: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // Last 90 days
+              granularTimeResolution: true
+            });
+            
+            const parsedResults = JSON.parse(results);
+            return {
+              keyword,
+              data: parsedResults.default?.timelineData || []
+            };
+          } catch (error) {
+            console.error(`Error fetching trends for keyword "${keyword}":`, error);
+            return {
+              keyword,
+              data: [],
+              error: 'Failed to fetch trend data'
+            };
+          }
+        })
+      );
+      
+      res.json({
+        industry,
+        keywords,
+        trends: trendsData,
+        timeframe: 'Last 90 days'
+      });
+    } catch (error) {
+      console.error('Google Trends fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch Google Trends data" });
     }
   });
 

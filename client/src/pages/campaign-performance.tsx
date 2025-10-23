@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Camera } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Clock } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -64,30 +64,14 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId,
   });
 
-  // Mutation to create a metric snapshot (metrics are automatically calculated by backend)
-  const createSnapshotMutation = useMutation({
-    mutationFn: async () => {
-      if (!campaignId) throw new Error("Campaign ID is required");
-      const res = await apiRequest("POST", `/api/campaigns/${campaignId}/snapshots`);
-      const data = await res.json();
-      console.log('Snapshot created:', data);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison`] });
-      toast({
-        title: "Snapshot Created",
-        description: "Metric snapshot has been saved successfully.",
-      });
-    },
-    onError: (error: any) => {
-      console.error('Snapshot creation error:', error);
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to create snapshot. Please try again.",
-        variant: "destructive",
-      });
-    },
+  // Fetch scheduler status to show automatic snapshot information
+  const { data: schedulerStatus } = useQuery<{
+    running: boolean;
+    frequency: 'hourly' | 'daily' | 'weekly';
+    nextRun: string | null;
+  }>({
+    queryKey: ['/api/snapshots/scheduler'],
+    refetchInterval: 60000, // Refresh every minute
   });
 
   if (campaignLoading) {
@@ -300,15 +284,23 @@ export default function CampaignPerformanceSummary() {
                   </p>
                 </div>
               </div>
-              <Button 
-                onClick={() => createSnapshotMutation.mutate()}
-                disabled={createSnapshotMutation.isPending}
-                data-testid="button-create-snapshot"
-                size="sm"
-              >
-                <Camera className="w-4 h-4 mr-2" />
-                {createSnapshotMutation.isPending ? "Creating..." : "Create Snapshot"}
-              </Button>
+              
+              {/* Automatic Snapshot Status */}
+              {schedulerStatus && (
+                <div className="flex items-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800" data-testid="snapshot-scheduler-status">
+                  <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <div className="text-sm">
+                    <div className="font-medium text-blue-900 dark:text-blue-100">
+                      Automatic Snapshots: {schedulerStatus.frequency.charAt(0).toUpperCase() + schedulerStatus.frequency.slice(1)}
+                    </div>
+                    {schedulerStatus.nextRun && (
+                      <div className="text-xs text-blue-700 dark:text-blue-300">
+                        Next: {new Date(schedulerStatus.nextRun).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

@@ -133,16 +133,16 @@ export default function FinancialAnalysis() {
   // Aggregate metrics from all platforms
   const platformMetrics = {
     linkedIn: {
-      spend: linkedInData?.totalSpend || 0,
-      impressions: linkedInData?.totalImpressions || 0,
-      clicks: linkedInData?.totalClicks || 0,
-      conversions: linkedInData?.totalConversions || 0,
+      spend: linkedInData?.spend || 0,
+      impressions: linkedInData?.impressions || 0,
+      clicks: linkedInData?.clicks || 0,
+      conversions: linkedInData?.conversions || 0,
     },
     customIntegration: {
-      spend: customIntegrationData?.totalSpend || 0,
-      impressions: customIntegrationData?.totalImpressions || 0,
-      clicks: customIntegrationData?.totalClicks || 0,
-      conversions: customIntegrationData?.totalConversions || 0,
+      spend: parseFloat(customIntegrationData?.metrics?.spend || '0'),
+      impressions: customIntegrationData?.metrics?.impressions || 0,
+      clicks: customIntegrationData?.metrics?.clicks || 0,
+      conversions: customIntegrationData?.metrics?.conversions || 0,
     },
     sheets: {
       spend: sheetsData?.summary?.totalSpend || 0,

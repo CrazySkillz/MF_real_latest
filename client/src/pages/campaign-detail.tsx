@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { SiGoogle, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
 import { format } from "date-fns";
 import { reportStorage } from "@/lib/reportStorage";

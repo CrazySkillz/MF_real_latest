@@ -107,14 +107,6 @@ const radarData = [
   { metric: 'Reach', 'Google Analytics': 95, 'Google Sheets': 70, 'Facebook Ads': 80, 'LinkedIn Ads': 45 }
 ];
 
-// Cost analysis data
-const costAnalysisData = platformMetrics.map(platform => ({
-  name: platform.platform,
-  costPerConversion: platform.spend / platform.conversions,
-  totalSpend: platform.spend,
-  conversions: platform.conversions,
-  efficiency: ((platform.conversions / platform.spend) * 100).toFixed(2)
-}));
 
 export default function PlatformComparison() {
   const { id: campaignId } = useParams();
@@ -131,6 +123,18 @@ export default function PlatformComparison() {
 
   const { data: sheetsData } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
+    enabled: !!campaignId,
+  });
+
+  // Get LinkedIn metrics
+  const { data: linkedInData } = useQuery({
+    queryKey: ["/api/linkedin/metrics", campaignId],
+    enabled: !!campaignId,
+  });
+
+  // Get Custom Integration data
+  const { data: customIntegrationData } = useQuery({
+    queryKey: ["/api/custom-integration", campaignId],
     enabled: !!campaignId,
   });
 
@@ -200,6 +204,99 @@ export default function PlatformComparison() {
     }
   };
 
+  // Build platform metrics from real connected data
+  const buildPlatformMetrics = () => {
+    const platforms = [];
+    const estimatedAOV = ga4Data?.averageOrderValue || linkedInData?.averageOrderValue || customIntegrationData?.metrics?.averageOrderValue || 50;
+
+    // LinkedIn Platform
+    if (linkedInData) {
+      const linkedInSpend = linkedInData.spend || 0;
+      const linkedInImpressions = linkedInData.impressions || 0;
+      const linkedInClicks = linkedInData.clicks || 0;
+      const linkedInConversions = linkedInData.conversions || 0;
+      const linkedInCTR = linkedInImpressions > 0 ? (linkedInClicks / linkedInImpressions) * 100 : 0;
+      const linkedInCPC = linkedInClicks > 0 ? linkedInSpend / linkedInClicks : 0;
+      const linkedInConvRate = linkedInClicks > 0 ? (linkedInConversions / linkedInClicks) * 100 : 0;
+      const linkedInRevenue = linkedInConversions * estimatedAOV;
+      const linkedInROAS = linkedInSpend > 0 ? linkedInRevenue / linkedInSpend : 0;
+
+      platforms.push({
+        platform: 'LinkedIn Ads',
+        impressions: linkedInImpressions,
+        clicks: linkedInClicks,
+        conversions: linkedInConversions,
+        spend: linkedInSpend,
+        ctr: linkedInCTR,
+        cpc: linkedInCPC,
+        conversionRate: linkedInConvRate,
+        roas: linkedInROAS,
+        qualityScore: 0,
+        reach: linkedInData.reach || 0,
+        engagement: linkedInData.engagements || 0,
+        color: '#0077b5'
+      });
+    }
+
+    // Custom Integration Platform
+    if (customIntegrationData?.metrics) {
+      const customSpend = parseFloat(customIntegrationData.metrics.spend || '0');
+      const customImpressions = customIntegrationData.metrics.impressions || 0;
+      const customClicks = customIntegrationData.metrics.clicks || 0;
+      const customConversions = customIntegrationData.metrics.conversions || 0;
+      const customCTR = customImpressions > 0 ? (customClicks / customImpressions) * 100 : 0;
+      const customCPC = customClicks > 0 ? customSpend / customClicks : 0;
+      const customConvRate = customClicks > 0 ? (customConversions / customClicks) * 100 : 0;
+      const customRevenue = customConversions * estimatedAOV;
+      const customROAS = customSpend > 0 ? customRevenue / customSpend : 0;
+
+      platforms.push({
+        platform: 'Custom Integration',
+        impressions: customImpressions,
+        clicks: customClicks,
+        conversions: customConversions,
+        spend: customSpend,
+        ctr: customCTR,
+        cpc: customCPC,
+        conversionRate: customConvRate,
+        roas: customROAS,
+        qualityScore: 0,
+        reach: customIntegrationData.metrics.reach || 0,
+        engagement: customIntegrationData.metrics.engagements || 0,
+        color: '#8b5cf6'
+      });
+    }
+
+    return platforms;
+  };
+
+  const realPlatformMetrics = buildPlatformMetrics();
+
+  // Generate cost analysis data
+  const costAnalysisData = realPlatformMetrics.map(platform => ({
+    name: platform.platform,
+    costPerConversion: platform.conversions > 0 ? platform.spend / platform.conversions : 0,
+    totalSpend: platform.spend,
+    conversions: platform.conversions,
+    efficiency: platform.spend > 0 ? ((platform.conversions / platform.spend) * 100).toFixed(2) : '0'
+  }));
+
+  // Generate performance rankings
+  const getBestPerformer = (metric: 'roas' | 'conversions' | 'ctr' | 'cpc') => {
+    if (realPlatformMetrics.length === 0) return null;
+    return realPlatformMetrics.reduce((best, current) => {
+      if (metric === 'cpc') {
+        return (current.cpc > 0 && current.cpc < best.cpc) || best.cpc === 0 ? current : best;
+      }
+      return current[metric] > best[metric] ? current : best;
+    });
+  };
+
+  const bestROAS = getBestPerformer('roas');
+  const bestConversions = getBestPerformer('conversions');
+  const bestCTR = getBestPerformer('ctr');
+  const bestCPC = getBestPerformer('cpc');
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <Navigation />
@@ -238,34 +335,42 @@ export default function PlatformComparison() {
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               {/* Platform Performance Summary Cards */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {platformMetrics.map((platform, index) => (
-                  <Card key={index} className="border-l-4" style={{ borderLeftColor: platform.color }}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                        {platform.platform}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">Conversions</span>
-                        <span className="font-semibold text-slate-900 dark:text-white">{formatNumber(platform.conversions)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">Spend</span>
-                        <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(platform.spend)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">ROAS</span>
-                        <div className="flex items-center space-x-1">
-                          <span className="font-semibold text-slate-900 dark:text-white">{platform.roas}x</span>
-                          {getPerformanceBadge(platform.roas, 'roas')}
+              {realPlatformMetrics.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {realPlatformMetrics.map((platform, index) => (
+                    <Card key={index} className="border-l-4" style={{ borderLeftColor: platform.color }} data-testid={`platform-card-${index}`}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                          {platform.platform}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500">Conversions</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">{formatNumber(platform.conversions)}</span>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500">Spend</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(platform.spend)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500">ROAS</span>
+                          <div className="flex items-center space-x-1">
+                            <span className="font-semibold text-slate-900 dark:text-white">{platform.roas.toFixed(2)}x</span>
+                            {getPerformanceBadge(platform.roas, 'roas')}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
+                    <p>No platform data available. Connect LinkedIn or Custom Integration to see platform comparison.</p>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Platform Performance Comparison Chart */}
               <Card>

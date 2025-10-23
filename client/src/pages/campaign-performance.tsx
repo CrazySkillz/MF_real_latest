@@ -68,10 +68,8 @@ export default function CampaignPerformanceSummary() {
   const createSnapshotMutation = useMutation({
     mutationFn: async () => {
       if (!campaignId) throw new Error("Campaign ID is required");
-      return apiRequest(`/api/campaigns/${campaignId}/snapshots`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await apiRequest("POST", `/api/campaigns/${campaignId}/snapshots`);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison`] });

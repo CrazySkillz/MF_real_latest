@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap } from "lucide-react";
+import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -280,37 +280,105 @@ export default function FinancialAnalysis() {
                 </Card>
               </div>
 
-              {/* Budget Utilization */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Target className="w-5 h-5" />
-                    <span>Budget Utilization</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Campaign budget usage and remaining allocation
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Budget Used</span>
-                      <span className="text-sm text-muted-foreground">
-                        {formatCurrency(totalSpend)} of {formatCurrency(campaignBudget)}
-                      </span>
+              {/* Budget Utilization & Pacing */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Target className="w-5 h-5" />
+                      <span>Budget Utilization</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Campaign budget usage and remaining allocation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Budget Used</span>
+                        <span className="text-sm text-muted-foreground">
+                          {formatCurrency(totalSpend)} of {formatCurrency(campaignBudget)}
+                        </span>
+                      </div>
+                      <Progress value={Math.min(budgetUtilization, 100)} className="h-2" />
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={budgetUtilization > 90 ? "text-red-600" : "text-green-600"}>
+                          {formatPercentage(budgetUtilization)} utilized
+                        </span>
+                        <span className="text-muted-foreground">
+                          {formatCurrency(remainingBudget)} remaining
+                        </span>
+                      </div>
                     </div>
-                    <Progress value={Math.min(budgetUtilization, 100)} className="h-2" />
-                    <div className="flex items-center justify-between text-sm">
-                      <span className={budgetUtilization > 90 ? "text-red-600" : "text-green-600"}>
-                        {formatPercentage(budgetUtilization)} utilized
-                      </span>
-                      <span className="text-muted-foreground">
-                        {formatCurrency(remainingBudget)} remaining
-                      </span>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Activity className="w-5 h-5" />
+                      <span>Budget Pacing & Burn Rate</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Daily spend rate and budget projection
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {(() => {
+                        const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : new Date();
+                        const today = new Date();
+                        const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
+                        const dailyBurnRate = totalSpend / daysElapsed;
+                        const daysRemaining = dailyBurnRate > 0 ? remainingBudget / dailyBurnRate : Infinity;
+                        const projectedEndDate = dailyBurnRate > 0 ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000) : null;
+                        
+                        const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
+                        const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + daysRemaining;
+                        const targetDailySpend = campaignBudget / targetDaysTotal;
+                        
+                        const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
+                        const pacingStatus = pacingPercentage > 115 ? 'ahead' : pacingPercentage < 85 ? 'behind' : 'on-track';
+                        
+                        return (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">Daily Burn Rate</span>
+                              <span className="text-sm font-bold">{formatCurrency(dailyBurnRate)}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">Target Daily Spend</span>
+                              <span className="text-sm text-muted-foreground">{formatCurrency(targetDailySpend)}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">Pacing Status</span>
+                              <Badge className={
+                                pacingStatus === 'ahead' ? 'bg-red-100 text-red-700' : 
+                                pacingStatus === 'behind' ? 'bg-yellow-100 text-yellow-700' : 
+                                'bg-green-100 text-green-700'
+                              }>
+                                {pacingStatus === 'ahead' ? `${formatPercentage(pacingPercentage - 100)} Over` : 
+                                 pacingStatus === 'behind' ? `${formatPercentage(100 - pacingPercentage)} Under` : 
+                                 'On Track'}
+                              </Badge>
+                            </div>
+                            {projectedEndDate && daysRemaining > 0 && (
+                              <div className="pt-3 border-t">
+                                <p className="text-xs text-muted-foreground">
+                                  At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
+                                  {campaignEndDate && (
+                                    <span> ({projectedEndDate > campaignEndDate ? 'after' : 'before'} campaign end date)</span>
+                                  )}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Cost Efficiency Metrics */}
               <div className="grid gap-4 md:grid-cols-3">

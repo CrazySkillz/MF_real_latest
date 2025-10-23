@@ -51,6 +51,12 @@ The platform features a professional, GA4-inspired design with interactive eleme
     - **Platform-Specific Optimizations**: Generates targeted recommendations for each platform based on CTR, CVR, CPC, and ROAS metrics (creative refresh, landing page optimization, bid strategy adjustments)
     - **Performance Monitoring**: Best practices for ongoing campaign surveillance and optimization
   - **Intelligent Ranking Logic**: Corrected CPC comparison treating zero-cost platforms as absolute minimum while selecting smallest positive CPC when no zero values exist
+- **Trend Analysis Report**: Industry market trend tracking via Google Trends API integration. Features include:
+  - **Keyword Configuration**: UI to configure industry category and trend keywords per campaign (e.g., "wine", "organic wine" for wine campaigns)
+  - **Google Trends Integration**: Real-time market trend data fetched via google-trends-api library (90-day search interest trends)
+  - **Market Intelligence**: Provides executives with consumer interest patterns, seasonal demand shifts, and industry momentum insights
+  - **Configuration Card**: Displays setup interface when keywords aren't configured; shows "Configure Keywords" button when set
+  - **Database Schema**: Added `industry` (text) and `trendKeywords` (text array) fields to campaigns table
 
 ## External Dependencies
 

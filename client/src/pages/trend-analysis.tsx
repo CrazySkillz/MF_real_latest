@@ -14,7 +14,7 @@ import { format, subDays } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 
@@ -166,6 +166,14 @@ export default function TrendAnalysis() {
     }
     updateKeywordsMutation.mutate({ industry, trendKeywords: keywords });
   };
+
+  // Hydrate form state from campaign data
+  useEffect(() => {
+    if (campaign && !isConfiguring) {
+      setIndustry((campaign as any).industry || "");
+      setKeywords((campaign as any).trendKeywords || []);
+    }
+  }, [campaign, isConfiguring]);
 
   if (campaignLoading) {
     return (

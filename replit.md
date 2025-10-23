@@ -40,6 +40,16 @@ The platform features a professional, GA4-inspired design with interactive eleme
     - ROAS Performance (excellent ≥3x, good ≥1.5x, warning ≥1x, critical <1x)
   - **Platform-Specific ROAS**: Breakdown of return on ad spend by individual platforms with color-coded performance badges
   - **AOV Warning System**: Alerts when Average Order Value data is unavailable from platform integrations, ensuring transparency in financial calculations
+- **Platform Comparison**: Cross-channel performance analysis dashboard with real-time data from connected platforms (LinkedIn, Custom Integration). Features include:
+  - **Dynamic Platform Detection**: Automatically detects and displays only connected platforms, eliminating hardcoded dummy data
+  - **Performance Metrics Tab**: Real CTR, CPC, CVR comparisons with best performer identification (highest ROAS, lowest CPC, best CTR, best conversion rate) and efficiency visualizations including volume & reach bar charts
+  - **Cost Analysis Tab**: Cost per conversion analysis, budget allocation efficiency tracking, and ROI analysis with performance badges (Excellent/Good/Fair based on ROAS thresholds)
+  - **Insights Tab**: Data-driven recommendations engine that analyzes platform performance differences and generates actionable insights:
+    - **Performance Insights**: Identifies top performers, volume leaders, highest engagement platforms, and optimization opportunities with contextual analysis
+    - **Budget Reallocation Strategy**: Recommends specific budget adjustments (increase/maintain/reduce) based on ROAS performance with percentage guidance
+    - **Platform-Specific Optimizations**: Generates targeted recommendations for each platform based on CTR, CVR, CPC, and ROAS metrics (creative refresh, landing page optimization, bid strategy adjustments)
+    - **Performance Monitoring**: Best practices for ongoing campaign surveillance and optimization
+  - **Intelligent Ranking Logic**: Corrected CPC comparison treating zero-cost platforms as absolute minimum while selecting smallest positive CPC when no zero values exist
 
 ## External Dependencies
 

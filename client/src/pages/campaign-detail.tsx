@@ -3265,6 +3265,24 @@ export default function CampaignDetail() {
     },
   });
 
+  // Fetch LinkedIn metrics for Performance Summary
+  const { data: linkedinMetrics } = useQuery<any>({
+    queryKey: [`/api/linkedin/metrics/${campaignId}`],
+    enabled: !!campaignId,
+  });
+
+  // Fetch KPIs for Performance Summary
+  const { data: kpis = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaignId}/kpis`],
+    enabled: !!campaignId,
+  });
+
+  // Fetch Benchmarks for Performance Summary
+  const { data: benchmarks = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaignId}/benchmarks`],
+    enabled: !!campaignId,
+  });
+
   const { data: ga4Metrics, isLoading: ga4Loading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId && !!ga4Connection?.connected,
@@ -3899,7 +3917,8 @@ export default function CampaignDetail() {
     );
   };
 
-  return (
+  // Performance Summary - Executive Snapshot
+  const renderPerformanceSummary = () => {
     // Helper to safely parse numbers
     const parseNum = (val: any): number => {
       const num = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val;

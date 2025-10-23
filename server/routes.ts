@@ -1743,7 +1743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get the latest session
       const latestSession = sessions.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
       )[0];
       
       // Get metrics for the latest session
@@ -1792,7 +1792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sessions = await storage.getCampaignLinkedInImportSessions(id);
         if (sessions && sessions.length > 0) {
           const latestSession = sessions.sort((a, b) => 
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
           )[0];
           const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
           

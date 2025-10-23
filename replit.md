@@ -40,10 +40,11 @@ The platform features a professional, GA4-inspired design with interactive eleme
     - ROAS Performance (excellent ≥3x, good ≥1.5x, warning ≥1x, critical <1x)
   - **Platform-Specific ROAS**: Breakdown of return on ad spend by individual platforms with color-coded performance badges
   - **AOV Warning System**: Alerts when Average Order Value data is unavailable from platform integrations, ensuring transparency in financial calculations
-- **Platform Comparison**: Cross-channel performance analysis dashboard with real-time data from connected platforms (LinkedIn, Custom Integration). Features include:
+- **Platform Comparison**: Cross-channel performance analysis dashboard with real-time data from connected platforms (LinkedIn, Custom Integration). Features comprehensive ROI and ROAS tracking across all tabs:
   - **Dynamic Platform Detection**: Automatically detects and displays only connected platforms, eliminating hardcoded dummy data
-  - **Performance Metrics Tab**: Real CTR, CPC, CVR comparisons with best performer identification (highest ROAS, lowest CPC, best CTR, best conversion rate) and efficiency visualizations including volume & reach bar charts
-  - **Cost Analysis Tab**: Cost per conversion analysis, budget allocation efficiency tracking, and ROI analysis with performance badges (Excellent/Good/Fair based on ROAS thresholds)
+  - **Overview Tab**: Platform summary cards displaying Conversions, Spend, ROAS, and ROI with color-coded profit indicators. Quick comparison metrics highlight Best CTR, Lowest CPC, Highest ROAS, and Highest ROI performers
+  - **Performance Metrics Tab**: Best performer KPI cards (Best CTR, Lowest CPC, Best Conv. Rate, Best ROI), detailed metrics table with CTR/CPC/Conv.Rate/ROI columns, and efficiency comparison showing both ROAS and ROI percentages with volume & reach bar charts
+  - **Cost Analysis Tab**: Comprehensive ROI & ROAS analysis section comparing profit percentage (ROI) vs revenue multiples (ROAS) side-by-side for each platform with performance ratings (Excellent ≥100%, Good ≥50%, Break-even+ ≥0%, Loss <0% for ROI). Includes cost per conversion analysis and budget allocation efficiency tracking
   - **Insights Tab**: Data-driven recommendations engine that analyzes platform performance differences and generates actionable insights:
     - **Performance Insights**: Identifies top performers, volume leaders, highest engagement platforms, and optimization opportunities with contextual analysis
     - **Budget Reallocation Strategy**: Recommends specific budget adjustments (increase/maintain/reduce) based on ROAS performance with percentage guidance

@@ -4510,37 +4510,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Campaign not found" });
       }
 
-      // Fetch data from all connected sources in parallel
-      const [linkedinSessions, customIntegration, comparisonData] = await Promise.all([
-        storage.getCampaignLinkedInImportSessions(id).catch(() => []),
-        storage.getCustomIntegrationMetrics(id).catch(() => null),
-        storage.getComparisonData(id, 'last_week').catch(() => null)
-      ]);
-
-      // Calculate aggregated metrics
+      // Helper to parse numbers safely
       const parseNum = (val: any): number => {
-        const num = parseFloat(val);
-        return isNaN(num) ? 0 : num;
+        if (val === null || val === undefined || val === '') return 0;
+        const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+        return isNaN(num) || !isFinite(num) ? 0 : num;
       };
 
-      // LinkedIn metrics (latest session)
-      const latestLinkedIn = linkedinSessions && linkedinSessions.length > 0 ? linkedinSessions[0] : null;
-      const linkedinMetrics = {
-        impressions: parseNum(latestLinkedIn?.totalImpressions || 0),
-        clicks: parseNum(latestLinkedIn?.totalClicks || 0),
-        conversions: parseNum(latestLinkedIn?.totalConversions || 0),
-        spend: parseNum(latestLinkedIn?.totalSpend || 0),
-        revenue: parseNum(latestLinkedIn?.totalRevenue || 0)
+      // Fetch LinkedIn metrics
+      let linkedinMetrics: any = {
+        impressions: 0,
+        clicks: 0,
+        conversions: 0,
+        spend: 0,
+        revenue: 0
       };
+      
+      try {
+        const sessions = await storage.getCampaignLinkedInImportSessions(id);
+        if (sessions && sessions.length > 0) {
+          const latestSession = sessions.sort((a: any, b: any) => 
+            new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
+          )[0];
+          
+          const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
+          
+          metrics.forEach((m: any) => {
+            const value = parseFloat(m.metricValue || '0');
+            const key = m.metricKey.toLowerCase();
+            linkedinMetrics[key] = (linkedinMetrics[key] || 0) + value;
+          });
+        }
+      } catch (err) {
+        console.log('No LinkedIn metrics found for campaign', id);
+      }
 
-      // Custom Integration metrics
-      const customMetrics = {
-        impressions: parseNum(customIntegration?.impressions || 0),
-        clicks: parseNum(customIntegration?.clicks || 0),
-        conversions: parseNum(customIntegration?.conversions || 0),
-        spend: parseNum(customIntegration?.spend || 0),
-        revenue: parseNum(customIntegration?.revenue || 0)
+      // Fetch Custom Integration metrics
+      let customMetrics: any = {
+        impressions: 0,
+        clicks: 0,
+        conversions: 0,
+        spend: 0,
+        revenue: 0
       };
+      
+      try {
+        const customIntegration = await storage.getLatestCustomIntegrationMetrics(id);
+        if (customIntegration) {
+          customMetrics.impressions = parseNum(customIntegration.impressions);
+          customMetrics.clicks = parseNum(customIntegration.clicks);
+          customMetrics.conversions = parseNum(customIntegration.conversions);
+          customMetrics.spend = parseNum(customIntegration.spend);
+          customMetrics.revenue = parseNum(customIntegration.revenue);
+        }
+      } catch (err) {
+        console.log('No custom integration metrics found for campaign', id);
+      }
+
+      // Fetch comparison data for trend analysis
+      let comparisonData = null;
+      try {
+        comparisonData = await storage.getComparisonData(id, 'last_week');
+      } catch (err) {
+        console.log('No comparison data found');
+      }
 
       // Aggregate totals
       const totalImpressions = linkedinMetrics.impressions + customMetrics.impressions;

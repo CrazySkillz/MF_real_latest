@@ -1875,23 +1875,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Trends API endpoint
   app.get("/api/campaigns/:id/google-trends", async (req, res) => {
     try {
-      // TEMP DEBUG - return immediately to test if route is hit
-      return res.json({ debug: "Route is being hit!", timestamp: new Date().toISOString() });
-      
-      console.log(`[Google Trends] Route hit for campaign ${req.params.id}`);
       const { id } = req.params;
       const { timeframe = 'today 3-m' } = req.query;
       
       // Get campaign to access industry and keywords
       const campaign = await storage.getCampaign(id);
       if (!campaign) {
-        console.log(`[Google Trends] Campaign not found: ${id}`);
         return res.status(404).json({ message: "Campaign not found" });
       }
       
       const keywords = (campaign as any).trendKeywords || [];
       const industry = (campaign as any).industry;
-      console.log(`[Google Trends] Campaign found. Industry: ${industry}, Keywords:`, keywords);
       
       if (!keywords || keywords.length === 0) {
         return res.status(400).json({ 
@@ -1901,31 +1895,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Fetch Google Trends data for each keyword
-      console.log(`[Google Trends] Fetching data for keywords:`, keywords);
       const trendsData = await Promise.all(
         keywords.map(async (keyword: string) => {
           try {
-            console.log(`[Google Trends] Fetching data for "${keyword}"...`);
             const results = await googleTrends.interestOverTime({
               keyword,
               startTime: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // Last 90 days
               granularTimeResolution: true
             });
             
-            console.log(`[Google Trends] Raw results for "${keyword}":`, results?.substring(0, 200));
             const parsedResults = JSON.parse(results);
-            console.log(`[Google Trends] Parsed results for "${keyword}":`, {
-              hasDefault: !!parsedResults.default,
-              hasTimelineData: !!parsedResults.default?.timelineData,
-              timelineDataLength: parsedResults.default?.timelineData?.length || 0
-            });
+            const timelineData = parsedResults.default?.timelineData || [];
+            
+            console.log(`✓ Fetched ${timelineData.length} data points for "${keyword}"`);
             
             return {
               keyword,
-              data: parsedResults.default?.timelineData || []
+              data: timelineData
             };
           } catch (error) {
-            console.error(`[Google Trends] Error fetching trends for keyword "${keyword}":`, error);
+            console.error(`✗ Error fetching trends for "${keyword}":`, error.message);
             return {
               keyword,
               data: [],
@@ -1935,10 +1924,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      console.log(`[Google Trends] Final response:`, {
-        trendsCount: trendsData.length,
-        dataPoints: trendsData.map(t => ({ keyword: t.keyword, points: t.data?.length || 0 }))
-      });
+      const totalDataPoints = trendsData.reduce((sum, t) => sum + (t.data?.length || 0), 0);
+      console.log(`[Google Trends] Returned ${trendsData.length} keywords with ${totalDataPoints} total data points`);
       
       res.json({
         industry,

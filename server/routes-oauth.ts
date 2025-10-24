@@ -4512,7 +4512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch data from all connected sources in parallel
       const [linkedinSessions, customIntegration, comparisonData] = await Promise.all([
-        storage.getLinkedInImportSessions(id).catch(() => []),
+        storage.getCampaignLinkedInImportSessions(id).catch(() => []),
         storage.getCustomIntegrationMetrics(id).catch(() => null),
         storage.getComparisonData(id, 'last_week').catch(() => null)
       ]);

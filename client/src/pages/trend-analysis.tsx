@@ -80,7 +80,15 @@ export default function TrendAnalysis() {
   };
 
   const handleSaveKeywords = () => {
-    if (keywords.length === 0) {
+    // Auto-add any keyword that's currently in the input field
+    let finalKeywords = [...keywords];
+    if (newKeyword.trim() && !finalKeywords.includes(newKeyword.trim())) {
+      finalKeywords.push(newKeyword.trim());
+      setKeywords(finalKeywords);
+      setNewKeyword("");
+    }
+    
+    if (finalKeywords.length === 0) {
       toast({
         title: "No Keywords",
         description: "Please add at least one keyword to track.",
@@ -88,7 +96,7 @@ export default function TrendAnalysis() {
       });
       return;
     }
-    updateKeywordsMutation.mutate({ industry, trendKeywords: keywords });
+    updateKeywordsMutation.mutate({ industry, trendKeywords: finalKeywords });
   };
 
   // Hydrate form state from campaign data

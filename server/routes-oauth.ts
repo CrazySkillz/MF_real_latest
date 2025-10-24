@@ -4630,9 +4630,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       else if (healthScore >= 70) grade = 'C';
       else if (healthScore >= 60) grade = 'D';
 
-      // Platform performance breakdown
+      // Platform performance breakdown - show all platforms with any data (even if spend is $0)
       const platforms = [];
-      if (linkedinMetrics.spend > 0) {
+      
+      // Check if LinkedIn has any data
+      const hasLinkedInData = linkedinMetrics.spend > 0 || linkedinMetrics.impressions > 0 || 
+                               linkedinMetrics.clicks > 0 || linkedinMetrics.conversions > 0;
+      if (hasLinkedInData) {
         platforms.push({
           name: 'LinkedIn Ads',
           spend: linkedinMetrics.spend,
@@ -4643,7 +4647,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           spendShare: totalSpend > 0 ? (linkedinMetrics.spend / totalSpend) * 100 : 0
         });
       }
-      if (customMetrics.spend > 0) {
+      
+      // Check if Custom Integration has any data
+      const hasCustomData = customMetrics.spend > 0 || customMetrics.impressions > 0 || 
+                             customMetrics.clicks > 0 || customMetrics.conversions > 0;
+      if (hasCustomData) {
         platforms.push({
           name: 'Custom Integration',
           spend: customMetrics.spend,

@@ -3600,7 +3600,7 @@ export default function CampaignDetail() {
     },
     {
       id: "trend_analysis",
-      name: "Trend Analysis Report",
+      name: "Trend Analysis",
       description: "Time-series analysis of performance trends",
       icon: <TrendingUp className="w-4 h-4" />,
       metrics: ["impressions", "clicks", "conversions", "spend", "trends", "forecasting"],
@@ -4697,7 +4697,7 @@ export default function CampaignDetail() {
                       >
                         <TrendingUp className="w-5 h-5" />
                         <div className="text-left">
-                          <div className="font-medium">Trend Analysis Report</div>
+                          <div className="font-medium">Trend Analysis</div>
                           <div className="text-xs text-muted-foreground">Industry trend comparison & insights</div>
                         </div>
                       </Button>

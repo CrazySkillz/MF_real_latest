@@ -4499,6 +4499,293 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Executive Summary API endpoint - Strategic aggregated metrics
+  app.get("/api/campaigns/:id/executive-summary", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get campaign details
+      const campaign = await storage.getCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+
+      // Fetch data from all connected sources in parallel
+      const [linkedinSessions, customIntegration, comparisonData] = await Promise.all([
+        storage.getLinkedInImportSessions(id).catch(() => []),
+        storage.getCustomIntegrationMetrics(id).catch(() => null),
+        storage.getComparisonData(id, 'last_week').catch(() => null)
+      ]);
+
+      // Calculate aggregated metrics
+      const parseNum = (val: any): number => {
+        const num = parseFloat(val);
+        return isNaN(num) ? 0 : num;
+      };
+
+      // LinkedIn metrics (latest session)
+      const latestLinkedIn = linkedinSessions && linkedinSessions.length > 0 ? linkedinSessions[0] : null;
+      const linkedinMetrics = {
+        impressions: parseNum(latestLinkedIn?.totalImpressions || 0),
+        clicks: parseNum(latestLinkedIn?.totalClicks || 0),
+        conversions: parseNum(latestLinkedIn?.totalConversions || 0),
+        spend: parseNum(latestLinkedIn?.totalSpend || 0),
+        revenue: parseNum(latestLinkedIn?.totalRevenue || 0)
+      };
+
+      // Custom Integration metrics
+      const customMetrics = {
+        impressions: parseNum(customIntegration?.impressions || 0),
+        clicks: parseNum(customIntegration?.clicks || 0),
+        conversions: parseNum(customIntegration?.conversions || 0),
+        spend: parseNum(customIntegration?.spend || 0),
+        revenue: parseNum(customIntegration?.revenue || 0)
+      };
+
+      // Aggregate totals
+      const totalImpressions = linkedinMetrics.impressions + customMetrics.impressions;
+      const totalClicks = linkedinMetrics.clicks + customMetrics.clicks;
+      const totalConversions = linkedinMetrics.conversions + customMetrics.conversions;
+      const totalSpend = linkedinMetrics.spend + customMetrics.spend;
+      const totalRevenue = linkedinMetrics.revenue + customMetrics.revenue;
+
+      // Calculate KPIs
+      const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+      const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
+      const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+      const cvr = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
+      const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+      const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
+
+      // Calculate campaign health score (0-100)
+      let healthScore = 0;
+      let healthFactors = [];
+
+      // ROI component (0-30 points)
+      if (roi >= 100) { healthScore += 30; healthFactors.push({ factor: 'ROI', score: 30, status: 'excellent' }); }
+      else if (roi >= 50) { healthScore += 22; healthFactors.push({ factor: 'ROI', score: 22, status: 'good' }); }
+      else if (roi >= 0) { healthScore += 15; healthFactors.push({ factor: 'ROI', score: 15, status: 'acceptable' }); }
+      else { healthScore += 5; healthFactors.push({ factor: 'ROI', score: 5, status: 'poor' }); }
+
+      // ROAS component (0-25 points)
+      if (roas >= 3) { healthScore += 25; healthFactors.push({ factor: 'ROAS', score: 25, status: 'excellent' }); }
+      else if (roas >= 1.5) { healthScore += 18; healthFactors.push({ factor: 'ROAS', score: 18, status: 'good' }); }
+      else if (roas >= 1) { healthScore += 10; healthFactors.push({ factor: 'ROAS', score: 10, status: 'acceptable' }); }
+      else { healthScore += 3; healthFactors.push({ factor: 'ROAS', score: 3, status: 'poor' }); }
+
+      // CTR component (0-20 points)
+      if (ctr >= 3) { healthScore += 20; healthFactors.push({ factor: 'CTR', score: 20, status: 'excellent' }); }
+      else if (ctr >= 2) { healthScore += 15; healthFactors.push({ factor: 'CTR', score: 15, status: 'good' }); }
+      else if (ctr >= 1) { healthScore += 10; healthFactors.push({ factor: 'CTR', score: 10, status: 'acceptable' }); }
+      else { healthScore += 3; healthFactors.push({ factor: 'CTR', score: 3, status: 'poor' }); }
+
+      // Conversion Rate component (0-25 points)
+      if (cvr >= 5) { healthScore += 25; healthFactors.push({ factor: 'CVR', score: 25, status: 'excellent' }); }
+      else if (cvr >= 3) { healthScore += 18; healthFactors.push({ factor: 'CVR', score: 18, status: 'good' }); }
+      else if (cvr >= 1) { healthScore += 10; healthFactors.push({ factor: 'CVR', score: 10, status: 'acceptable' }); }
+      else { healthScore += 3; healthFactors.push({ factor: 'CVR', score: 3, status: 'poor' }); }
+
+      // Determine campaign grade
+      let grade = 'F';
+      if (healthScore >= 90) grade = 'A';
+      else if (healthScore >= 80) grade = 'B';
+      else if (healthScore >= 70) grade = 'C';
+      else if (healthScore >= 60) grade = 'D';
+
+      // Platform performance breakdown
+      const platforms = [];
+      if (linkedinMetrics.spend > 0) {
+        platforms.push({
+          name: 'LinkedIn Ads',
+          spend: linkedinMetrics.spend,
+          revenue: linkedinMetrics.revenue,
+          conversions: linkedinMetrics.conversions,
+          roas: linkedinMetrics.spend > 0 ? linkedinMetrics.revenue / linkedinMetrics.spend : 0,
+          roi: linkedinMetrics.spend > 0 ? ((linkedinMetrics.revenue - linkedinMetrics.spend) / linkedinMetrics.spend) * 100 : 0,
+          spendShare: totalSpend > 0 ? (linkedinMetrics.spend / totalSpend) * 100 : 0
+        });
+      }
+      if (customMetrics.spend > 0) {
+        platforms.push({
+          name: 'Custom Integration',
+          spend: customMetrics.spend,
+          revenue: customMetrics.revenue,
+          conversions: customMetrics.conversions,
+          roas: customMetrics.spend > 0 ? customMetrics.revenue / customMetrics.spend : 0,
+          roi: customMetrics.spend > 0 ? ((customMetrics.revenue - customMetrics.spend) / customMetrics.spend) * 100 : 0,
+          spendShare: totalSpend > 0 ? (customMetrics.spend / totalSpend) * 100 : 0
+        });
+      }
+
+      // Identify top and bottom performers
+      const topPlatform = platforms.length > 0 ? platforms.reduce((top, p) => p.roas > top.roas ? p : top) : null;
+      const bottomPlatform = platforms.length > 1 ? platforms.reduce((bottom, p) => p.roas < bottom.roas ? p : bottom) : null;
+
+      // Calculate growth trajectory based on comparison data
+      let growthTrajectory = 'stable';
+      let trendPercentage = 0;
+      if (comparisonData?.current && comparisonData?.previous) {
+        const currentRevenue = parseNum(comparisonData.current.totalConversions) * (totalRevenue / (totalConversions || 1));
+        const previousRevenue = parseNum(comparisonData.previous.totalConversions) * (totalRevenue / (totalConversions || 1));
+        trendPercentage = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+        
+        if (trendPercentage > 10) growthTrajectory = 'accelerating';
+        else if (trendPercentage < -10) growthTrajectory = 'declining';
+      }
+
+      // Risk assessment
+      let riskLevel = 'low';
+      const riskFactors = [];
+      
+      // Platform concentration risk
+      if (platforms.length === 1) {
+        riskFactors.push({ type: 'concentration', message: 'Single platform dependency - diversification recommended' });
+        riskLevel = 'medium';
+      } else if (platforms.length > 0 && platforms[0].spendShare > 70) {
+        riskFactors.push({ type: 'concentration', message: `${platforms[0].spendShare.toFixed(0)}% spend on ${platforms[0].name} - high concentration risk` });
+        riskLevel = 'medium';
+      }
+
+      // Performance risk
+      if (roi < 0) {
+        riskFactors.push({ type: 'performance', message: 'Negative ROI - immediate optimization required' });
+        riskLevel = 'high';
+      } else if (roas < 1) {
+        riskFactors.push({ type: 'performance', message: 'ROAS below breakeven - review campaign strategy' });
+        if (riskLevel === 'low') riskLevel = 'medium';
+      }
+
+      // Declining trend risk
+      if (growthTrajectory === 'declining' && trendPercentage < -15) {
+        riskFactors.push({ type: 'trend', message: `Performance declining ${Math.abs(trendPercentage).toFixed(0)}% - intervention needed` });
+        if (riskLevel === 'low') riskLevel = 'medium';
+      }
+
+      // Generate CEO summary
+      let ceoSummary = '';
+      if (grade === 'A' || grade === 'B') {
+        ceoSummary = `${campaign.name} is performing ${grade === 'A' ? 'exceptionally' : 'well'} with ${roi >= 0 ? 'strong' : 'positive'} ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
+      } else if (grade === 'C') {
+        ceoSummary = `${campaign.name} is showing acceptable performance with ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
+      } else {
+        ceoSummary = `${campaign.name} requires attention with ${roi < 0 ? 'negative' : 'below-target'} ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
+      }
+
+      if (topPlatform) {
+        ceoSummary += `${topPlatform.name} delivering ${topPlatform.roas > 2 ? 'exceptional' : 'strong'} results (${topPlatform.roas.toFixed(1)}x ROAS). `;
+      }
+
+      if (bottomPlatform && bottomPlatform.roas < 1.5) {
+        ceoSummary += `${bottomPlatform.name} underperforming and requires optimization. `;
+      } else if (growthTrajectory === 'accelerating') {
+        ceoSummary += `Campaign momentum growing - recommend increased investment. `;
+      } else if (growthTrajectory === 'declining') {
+        ceoSummary += `Performance trending downward - strategic review recommended. `;
+      }
+
+      // Strategic recommendations
+      const recommendations = [];
+      
+      // Budget optimization recommendations
+      if (topPlatform && bottomPlatform && topPlatform.roas > bottomPlatform.roas * 1.5) {
+        const reallocationAmount = bottomPlatform.spend * 0.3;
+        const estimatedImpact = reallocationAmount * (topPlatform.roas - bottomPlatform.roas);
+        recommendations.push({
+          priority: 'high',
+          category: 'Budget Reallocation',
+          action: `Shift $${reallocationAmount.toFixed(0)} from ${bottomPlatform.name} to ${topPlatform.name}`,
+          expectedImpact: `+$${estimatedImpact.toFixed(0)} revenue`,
+          investmentRequired: '$0 (reallocation)',
+          timeline: 'Immediate'
+        });
+      }
+
+      // Scaling recommendations
+      if (roi > 50 && roas > 2 && growthTrajectory !== 'declining') {
+        const scaleAmount = totalSpend * 0.5;
+        const estimatedRevenue = scaleAmount * roas;
+        const estimatedProfit = estimatedRevenue - scaleAmount;
+        recommendations.push({
+          priority: 'high',
+          category: 'Scaling Opportunity',
+          action: `Increase campaign budget by 50% to capitalize on strong performance`,
+          expectedImpact: `+$${estimatedProfit.toFixed(0)} profit`,
+          investmentRequired: `$${scaleAmount.toFixed(0)}`,
+          timeline: '30 days'
+        });
+      }
+
+      // Optimization recommendations
+      if (bottomPlatform && bottomPlatform.roas < 1.5) {
+        recommendations.push({
+          priority: 'medium',
+          category: 'Performance Optimization',
+          action: `Optimize ${bottomPlatform.name} targeting and creative (current ROAS: ${bottomPlatform.roas.toFixed(1)}x)`,
+          expectedImpact: `Potential ${((1.5 / bottomPlatform.roas - 1) * 100).toFixed(0)}% improvement in ROAS`,
+          investmentRequired: 'Creative & targeting resources',
+          timeline: '60 days'
+        });
+      }
+
+      // Diversification recommendations
+      if (platforms.length === 1) {
+        recommendations.push({
+          priority: 'medium',
+          category: 'Risk Mitigation',
+          action: 'Diversify to additional platforms to reduce dependency risk',
+          expectedImpact: 'Reduced platform risk, potential new audience reach',
+          investmentRequired: 'Testing budget & setup resources',
+          timeline: '90 days'
+        });
+      }
+
+      res.json({
+        campaign: {
+          id: campaign.id,
+          name: campaign.name,
+          objective: campaign.objective || 'Drive conversions and revenue'
+        },
+        metrics: {
+          totalRevenue,
+          totalSpend,
+          totalConversions,
+          totalClicks,
+          totalImpressions,
+          roi,
+          roas,
+          ctr,
+          cvr,
+          cpc,
+          cpa
+        },
+        health: {
+          score: Math.round(healthScore),
+          grade,
+          factors: healthFactors,
+          trajectory: growthTrajectory,
+          trendPercentage
+        },
+        risk: {
+          level: riskLevel,
+          factors: riskFactors
+        },
+        platforms,
+        topPerformer: topPlatform,
+        bottomPerformer: bottomPlatform,
+        ceoSummary,
+        recommendations,
+        dataFreshness: {
+          linkedinLastUpdate: latestLinkedIn?.importedAt || null,
+          customIntegrationLastUpdate: customIntegration?.lastUpdated || null
+        }
+      });
+
+    } catch (error) {
+      console.error('Executive summary error:', error);
+      res.status(500).json({ message: "Failed to generate executive summary" });
+    }
+  });
+
   const server = createServer(app);
   return server;
 }

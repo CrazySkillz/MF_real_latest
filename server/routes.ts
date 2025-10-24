@@ -1874,6 +1874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Google Trends API endpoint
   app.get("/api/campaigns/:id/google-trends", async (req, res) => {
+    console.log("=== GOOGLE TRENDS ROUTE EXECUTED ===");
     try {
       const { id } = req.params;
       const { timeframe = 'today 3-m' } = req.query;

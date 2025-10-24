@@ -1694,6 +1694,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Trends API endpoint
+  app.get("/api/campaigns/:id/google-trends", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get campaign to access industry and keywords
+      const campaign = await storage.getCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      const keywords = (campaign as any).trendKeywords || [];
+      const industry = (campaign as any).industry;
+      
+      if (!keywords || keywords.length === 0) {
+        return res.status(400).json({ 
+          message: "No trend keywords configured for this campaign",
+          suggestion: "Add industry keywords to track market trends"
+        });
+      }
+      
+      // Fetch Google Trends data for each keyword
+      const googleTrends = (await import("google-trends-api")).default;
+      const trendsData = await Promise.all(
+        keywords.map(async (keyword: string) => {
+          try {
+            const results = await googleTrends.interestOverTime({
+              keyword,
+              startTime: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // Last 90 days
+              granularTimeResolution: true
+            });
+            
+            const parsedResults = JSON.parse(results);
+            const timelineData = parsedResults.default?.timelineData || [];
+            
+            console.log(`✓ Fetched ${timelineData.length} data points for "${keyword}"`);
+            
+            return {
+              keyword,
+              data: timelineData
+            };
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`✗ Error fetching trends for "${keyword}":`, errorMessage);
+            return {
+              keyword,
+              data: [],
+              error: 'Failed to fetch trend data'
+            };
+          }
+        })
+      );
+      
+      const totalDataPoints = trendsData.reduce((sum, t) => sum + (t.data?.length || 0), 0);
+      console.log(`[Google Trends] Returned ${trendsData.length} keywords with ${totalDataPoints} total data points`);
+      
+      res.json({
+        industry,
+        keywords,
+        trends: trendsData,
+        timeframe: 'Last 90 days'
+      });
+    } catch (error) {
+      console.error('Google Trends fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch Google Trends data" });
+    }
+  });
+
   // Transfer Google Sheets connection from temporary campaign ID to real campaign ID
   app.post("/api/google-sheets/transfer-connection", async (req, res) => {
     try {

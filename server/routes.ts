@@ -1875,17 +1875,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Trends API endpoint
   app.get("/api/campaigns/:id/google-trends", async (req, res) => {
     try {
+      console.log(`[Google Trends] Route hit for campaign ${req.params.id}`);
       const { id } = req.params;
       const { timeframe = 'today 3-m' } = req.query;
       
       // Get campaign to access industry and keywords
       const campaign = await storage.getCampaign(id);
       if (!campaign) {
+        console.log(`[Google Trends] Campaign not found: ${id}`);
         return res.status(404).json({ message: "Campaign not found" });
       }
       
       const keywords = (campaign as any).trendKeywords || [];
       const industry = (campaign as any).industry;
+      console.log(`[Google Trends] Campaign found. Industry: ${industry}, Keywords:`, keywords);
       
       if (!keywords || keywords.length === 0) {
         return res.status(400).json({ 

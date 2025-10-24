@@ -4557,18 +4557,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         revenue: 0
       };
       let customIntegrationLastUpdate: string | null = null;
+      let hasCustomIntegration = false;
       
       try {
         const customIntegration = await storage.getLatestCustomIntegrationMetrics(id);
-        console.log('Custom Integration data for campaign', id, ':', customIntegration);
         if (customIntegration) {
+          hasCustomIntegration = true;
           customMetrics.impressions = parseNum(customIntegration.impressions);
           customMetrics.clicks = parseNum(customIntegration.clicks);
           customMetrics.conversions = parseNum(customIntegration.conversions);
           customMetrics.spend = parseNum(customIntegration.spend);
           customMetrics.revenue = parseNum(customIntegration.revenue);
-          customIntegrationLastUpdate = customIntegration.lastUpdated;
-          console.log('Parsed Custom Integration metrics:', customMetrics);
+          customIntegrationLastUpdate = customIntegration.uploadedAt;
         }
       } catch (err) {
         console.log('No custom integration metrics found for campaign', id);
@@ -4650,16 +4650,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check if Custom Integration has any data
-      const hasCustomData = customMetrics.spend > 0 || customMetrics.impressions > 0 || 
-                             customMetrics.clicks > 0 || customMetrics.conversions > 0;
-      console.log('Custom Integration - hasCustomData:', hasCustomData, 'metrics:', {
-        spend: customMetrics.spend,
-        impressions: customMetrics.impressions,
-        clicks: customMetrics.clicks,
-        conversions: customMetrics.conversions
-      });
-      if (hasCustomData) {
+      // Show Custom Integration if it exists (even with zero metrics)
+      if (hasCustomIntegration) {
         platforms.push({
           name: 'Custom Integration',
           spend: customMetrics.spend,
@@ -4669,9 +4661,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           roi: customMetrics.spend > 0 ? ((customMetrics.revenue - customMetrics.spend) / customMetrics.spend) * 100 : 0,
           spendShare: totalSpend > 0 ? (customMetrics.spend / totalSpend) * 100 : 0
         });
-        console.log('✓ Added Custom Integration to platforms');
-      } else {
-        console.log('✗ Custom Integration not added - no data');
       }
 
       // Identify top and bottom performers

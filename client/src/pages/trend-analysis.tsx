@@ -306,7 +306,7 @@ export default function TrendAnalysis() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Trend Analysis Report</h1>
+                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Trend Analysis</h1>
                   <p className="text-slate-600 dark:text-slate-400 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>

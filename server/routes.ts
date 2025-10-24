@@ -1914,7 +1914,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               data: timelineData
             };
           } catch (error) {
-            console.error(`✗ Error fetching trends for "${keyword}":`, error.message);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`✗ Error fetching trends for "${keyword}":`, errorMessage);
             return {
               keyword,
               data: [],

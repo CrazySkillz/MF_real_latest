@@ -131,22 +131,26 @@ export default function FinancialAnalysis() {
   }
 
   // Aggregate metrics from all platforms
+  // Custom Integration: Map pageviews→impressions, sessions→engagements (consistent with Performance Summary)
   const platformMetrics = {
     linkedIn: {
       spend: linkedInData?.spend || 0,
       impressions: linkedInData?.impressions || 0,
+      engagements: linkedInData?.engagements || 0,
       clicks: linkedInData?.clicks || 0,
       conversions: linkedInData?.conversions || 0,
     },
     customIntegration: {
       spend: parseFloat(customIntegrationData?.metrics?.spend || '0'),
-      impressions: customIntegrationData?.metrics?.impressions || 0,
+      impressions: customIntegrationData?.metrics?.pageviews || 0,
+      engagements: customIntegrationData?.metrics?.sessions || 0,
       clicks: customIntegrationData?.metrics?.clicks || 0,
       conversions: customIntegrationData?.metrics?.conversions || 0,
     },
     sheets: {
       spend: sheetsData?.summary?.totalSpend || 0,
       impressions: sheetsData?.summary?.totalImpressions || 0,
+      engagements: sheetsData?.summary?.totalEngagements || 0,
       clicks: sheetsData?.summary?.totalClicks || 0,
       conversions: sheetsData?.summary?.totalConversions || 0,
     }
@@ -155,6 +159,7 @@ export default function FinancialAnalysis() {
   // Calculate totals across all platforms
   const totalSpend = platformMetrics.linkedIn.spend + platformMetrics.customIntegration.spend + platformMetrics.sheets.spend;
   const totalImpressions = platformMetrics.linkedIn.impressions + platformMetrics.customIntegration.impressions + platformMetrics.sheets.impressions;
+  const totalEngagements = platformMetrics.linkedIn.engagements + platformMetrics.customIntegration.engagements + platformMetrics.sheets.engagements;
   const totalClicks = platformMetrics.linkedIn.clicks + platformMetrics.customIntegration.clicks + platformMetrics.sheets.clicks;
   const totalConversions = platformMetrics.linkedIn.conversions + platformMetrics.customIntegration.conversions + platformMetrics.sheets.conversions;
   

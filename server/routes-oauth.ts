@@ -4551,6 +4551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch Custom Integration metrics
       let customMetrics: any = {
         impressions: 0,
+        engagements: 0,
         clicks: 0,
         conversions: 0,
         spend: 0,
@@ -4563,7 +4564,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const customIntegration = await storage.getLatestCustomIntegrationMetrics(id);
         if (customIntegration) {
           hasCustomIntegration = true;
-          customMetrics.impressions = parseNum(customIntegration.impressions);
+          // Map GA4/Website metrics to campaign metrics
+          // Pageviews = Ad Impressions equivalent (eyeballs on content)
+          // Sessions = Engagement equivalent (meaningful interactions)
+          customMetrics.impressions = parseNum(customIntegration.pageviews);
+          customMetrics.engagements = parseNum(customIntegration.sessions);
           customMetrics.clicks = parseNum(customIntegration.clicks);
           customMetrics.conversions = parseNum(customIntegration.conversions);
           customMetrics.spend = parseNum(customIntegration.spend);
@@ -4582,8 +4587,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('No comparison data found');
       }
 
-      // Aggregate totals
+      // Aggregate totals (Custom Integration: pageviews→impressions, sessions→engagements)
       const totalImpressions = linkedinMetrics.impressions + customMetrics.impressions;
+      const totalEngagements = linkedinMetrics.engagements + customMetrics.engagements;
       const totalClicks = linkedinMetrics.clicks + customMetrics.clicks;
       const totalConversions = linkedinMetrics.conversions + customMetrics.conversions;
       const totalSpend = linkedinMetrics.spend + customMetrics.spend;
@@ -4797,6 +4803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalConversions,
           totalClicks,
           totalImpressions,
+          totalEngagements,
           roi,
           roas,
           ctr,

@@ -148,9 +148,10 @@ export default function PlatformComparison() {
     }
 
     // Custom Integration Platform
+    // Map GA4/Website metrics: pageviews→impressions, sessions→engagements (consistent with Performance Summary)
     if (customIntegrationData?.metrics) {
       const customSpend = parseFloat(customIntegrationData.metrics.spend || '0');
-      const customImpressions = customIntegrationData.metrics.impressions || 0;
+      const customImpressions = customIntegrationData.metrics.pageviews || 0;
       const customClicks = customIntegrationData.metrics.clicks || 0;
       const customConversions = customIntegrationData.metrics.conversions || 0;
       const customCTR = customImpressions > 0 ? (customClicks / customImpressions) * 100 : 0;
@@ -173,7 +174,7 @@ export default function PlatformComparison() {
         roi: customROI,
         qualityScore: 0,
         reach: customIntegrationData.metrics.reach || 0,
-        engagement: customIntegrationData.metrics.engagements || 0,
+        engagement: customIntegrationData.metrics.sessions || 0,
         color: '#8b5cf6'
       });
     }

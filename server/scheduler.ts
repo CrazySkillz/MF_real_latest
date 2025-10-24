@@ -47,8 +47,9 @@ async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMet
   }
   
   // Aggregate metrics from all sources
-  const totalImpressions = parseNum(linkedinMetrics.impressions) + parseNum(customIntegrationData.impressions);
-  const totalEngagements = parseNum(linkedinMetrics.engagements) + parseNum(customIntegrationData.engagements);
+  // Map Custom Integration: pageviews→impressions, sessions→engagements (consistent with Performance Summary)
+  const totalImpressions = parseNum(linkedinMetrics.impressions) + parseNum(customIntegrationData.pageviews);
+  const totalEngagements = parseNum(linkedinMetrics.engagements) + parseNum(customIntegrationData.sessions);
   const totalClicks = parseNum(linkedinMetrics.clicks) + parseNum(customIntegrationData.clicks);
   const totalConversions = parseNum(linkedinMetrics.conversions) + parseNum(customIntegrationData.conversions);
   const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend);

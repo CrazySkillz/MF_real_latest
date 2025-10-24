@@ -218,8 +218,8 @@ export default function ExecutiveSummary() {
                 </CardContent>
               </Card>
 
-              {/* Key Metrics Dashboard */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Key Metrics Dashboard - Complete Funnel Flow */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <Card className="border-l-4 border-green-500">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</CardTitle>
@@ -258,6 +258,20 @@ export default function ExecutiveSummary() {
                     </div>
                     <div className="flex items-center text-slate-600 dark:text-slate-400">
                       <span className="text-sm font-medium">CVR: {(executiveSummary as any).metrics.cvr.toFixed(2)}%</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-l-4 border-indigo-500">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Clicks</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                      {formatNumber((executiveSummary as any).metrics.totalClicks)}
+                    </div>
+                    <div className="flex items-center text-slate-600 dark:text-slate-400">
+                      <span className="text-sm font-medium">CPC: {formatCurrency((executiveSummary as any).metrics.cpc)}</span>
                     </div>
                   </CardContent>
                 </Card>

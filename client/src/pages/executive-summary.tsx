@@ -218,6 +218,133 @@ export default function ExecutiveSummary() {
                 </CardContent>
               </Card>
 
+              {/* Marketing Funnel Visualization */}
+              <Card className="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-900/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <BarChart3 className="w-5 h-5" />
+                    <span>Marketing Funnel Performance</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {/* Top of Funnel - Audience Reach */}
+                    <div className="relative">
+                      <div className="flex items-center justify-between bg-orange-100 dark:bg-orange-900/30 rounded-lg p-6 border-2 border-orange-300 dark:border-orange-700">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
+                            <Eye className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-orange-900 dark:text-orange-300 uppercase tracking-wide">Top of Funnel</div>
+                            <div className="text-2xl font-bold text-orange-900 dark:text-orange-100 mt-1">
+                              {formatNumber((executiveSummary as any).metrics.totalImpressions)} Impressions
+                            </div>
+                            <div className="text-sm text-orange-700 dark:text-orange-400 mt-1">Audience Reach</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-orange-700 dark:text-orange-400">Click-Through Rate</div>
+                          <div className="text-3xl font-bold text-orange-900 dark:text-orange-100">{(executiveSummary as any).metrics.ctr.toFixed(2)}%</div>
+                        </div>
+                      </div>
+                      <div className="flex justify-center my-2">
+                        <ArrowDownRight className="w-8 h-8 text-slate-400" />
+                      </div>
+                    </div>
+
+                    {/* Mid Funnel - Engagement */}
+                    <div className="relative ml-8 mr-8">
+                      <div className="flex items-center justify-between bg-indigo-100 dark:bg-indigo-900/30 rounded-lg p-6 border-2 border-indigo-300 dark:border-indigo-700">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center">
+                            <Target className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-300 uppercase tracking-wide">Mid Funnel</div>
+                            <div className="text-2xl font-bold text-indigo-900 dark:text-indigo-100 mt-1">
+                              {formatNumber((executiveSummary as any).metrics.totalClicks)} Clicks
+                            </div>
+                            <div className="text-sm text-indigo-700 dark:text-indigo-400 mt-1">
+                              Engagement • {formatCurrency((executiveSummary as any).metrics.cpc)} CPC
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-indigo-700 dark:text-indigo-400">Conversion Rate</div>
+                          <div className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">{(executiveSummary as any).metrics.cvr.toFixed(2)}%</div>
+                        </div>
+                      </div>
+                      <div className="flex justify-center my-2">
+                        <ArrowDownRight className="w-8 h-8 text-slate-400" />
+                      </div>
+                    </div>
+
+                    {/* Bottom of Funnel - Conversions & Revenue */}
+                    <div className="relative ml-16 mr-16">
+                      <div className="bg-gradient-to-r from-purple-100 to-green-100 dark:from-purple-900/30 dark:to-green-900/30 rounded-lg p-6 border-2 border-purple-300 dark:border-purple-700">
+                        <div className="text-center mb-4">
+                          <div className="text-sm font-semibold text-purple-900 dark:text-purple-300 uppercase tracking-wide">Bottom of Funnel</div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="text-center">
+                            <div className="flex justify-center mb-2">
+                              <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+                                <Zap className="w-5 h-5 text-white" />
+                              </div>
+                            </div>
+                            <div className="text-sm text-purple-700 dark:text-purple-400">Conversions</div>
+                            <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                              {formatNumber((executiveSummary as any).metrics.totalConversions)}
+                            </div>
+                          </div>
+                          <div className="text-center border-l border-r border-slate-300 dark:border-slate-600">
+                            <div className="flex justify-center mb-2">
+                              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                                <DollarSign className="w-5 h-5 text-white" />
+                              </div>
+                            </div>
+                            <div className="text-sm text-green-700 dark:text-green-400">Revenue</div>
+                            <div className="text-2xl font-bold text-green-900 dark:text-green-100">
+                              {formatCurrency((executiveSummary as any).metrics.totalRevenue)}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="flex justify-center mb-2">
+                              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                                <TrendingUp className="w-5 h-5 text-white" />
+                              </div>
+                            </div>
+                            <div className="text-sm text-blue-700 dark:text-blue-400">ROAS</div>
+                            <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                              {(executiveSummary as any).metrics.roas.toFixed(1)}x
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 text-center">
+                          <div className="text-sm text-slate-600 dark:text-slate-400">Return on Investment</div>
+                          <div className={`text-2xl font-bold ${(executiveSummary as any).metrics.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {(executiveSummary as any).metrics.roi.toFixed(1)}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Funnel Summary */}
+                    <div className="text-center pt-4 border-t border-slate-200 dark:border-slate-700">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                        <span className="font-semibold">Campaign Story:</span> We spent <span className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency((executiveSummary as any).metrics.totalSpend)}</span>, 
+                        reached <span className="font-bold text-orange-600 dark:text-orange-400">{formatNumber((executiveSummary as any).metrics.totalImpressions)}</span> people, 
+                        got <span className="font-bold text-indigo-600 dark:text-indigo-400">{formatNumber((executiveSummary as any).metrics.totalClicks)}</span> clicks, 
+                        converted <span className="font-bold text-purple-600 dark:text-purple-400">{formatNumber((executiveSummary as any).metrics.totalConversions)}</span> customers, 
+                        generated <span className="font-bold text-green-600 dark:text-green-400">{formatCurrency((executiveSummary as any).metrics.totalRevenue)}</span> revenue, 
+                        making <span className={`font-bold ${(executiveSummary as any).metrics.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{(executiveSummary as any).metrics.roi.toFixed(1)}%</span> profit.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Key Metrics Dashboard - Complete Funnel Flow */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <Card className="border-l-4 border-green-500">

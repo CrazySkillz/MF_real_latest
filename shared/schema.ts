@@ -547,6 +547,8 @@ export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   clicks: true,
   spend: true,
   status: true,
+  industry: true,
+  trendKeywords: true,
 });
 
 export const insertMetricSchema = createInsertSchema(metrics).pick({

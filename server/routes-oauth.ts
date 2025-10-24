@@ -4525,6 +4525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spend: 0,
         revenue: 0
       };
+      let linkedinLastUpdate: string | null = null;
       
       try {
         const sessions = await storage.getCampaignLinkedInImportSessions(id);
@@ -4532,6 +4533,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const latestSession = sessions.sort((a: any, b: any) => 
             new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
           )[0];
+          
+          linkedinLastUpdate = latestSession.importedAt;
           
           const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
           
@@ -4553,6 +4556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spend: 0,
         revenue: 0
       };
+      let customIntegrationLastUpdate: string | null = null;
       
       try {
         const customIntegration = await storage.getLatestCustomIntegrationMetrics(id);
@@ -4562,6 +4566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customMetrics.conversions = parseNum(customIntegration.conversions);
           customMetrics.spend = parseNum(customIntegration.spend);
           customMetrics.revenue = parseNum(customIntegration.revenue);
+          customIntegrationLastUpdate = customIntegration.lastUpdated;
         }
       } catch (err) {
         console.log('No custom integration metrics found for campaign', id);
@@ -4808,8 +4813,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ceoSummary,
         recommendations,
         dataFreshness: {
-          linkedinLastUpdate: latestLinkedIn?.importedAt || null,
-          customIntegrationLastUpdate: customIntegration?.lastUpdated || null
+          linkedinLastUpdate,
+          customIntegrationLastUpdate
         }
       });
 

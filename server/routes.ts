@@ -1875,6 +1875,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Trends API endpoint
   app.get("/api/campaigns/:id/google-trends", async (req, res) => {
     try {
+      // TEMP DEBUG - return immediately to test if route is hit
+      return res.json({ debug: "Route is being hit!", timestamp: new Date().toISOString() });
+      
       console.log(`[Google Trends] Route hit for campaign ${req.params.id}`);
       const { id } = req.params;
       const { timeframe = 'today 3-m' } = req.query;

@@ -4763,15 +4763,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         else growthTrajectory = 'stable';
       }
 
-      // Risk assessment
+      // Risk assessment - only based on platforms with actual advertising data
       let riskLevel = 'low';
       const riskFactors = [];
       
       // Platform concentration risk
-      if (platforms.length === 1) {
-        riskFactors.push({ type: 'concentration', message: 'Single platform dependency - diversification recommended' });
+      if (platforms.length === 1 && platformsForDisplay.length === 1) {
+        // Only one platform total - true single platform dependency
+        riskFactors.push({ type: 'concentration', message: 'Single advertising platform - diversification recommended' });
         riskLevel = 'medium';
-      } else if (platforms.length > 0 && platforms[0].spendShare > 70) {
+      } else if (platforms.length === 1 && platformsForDisplay.length > 1) {
+        // Multiple platforms connected but only one has advertising data
+        const platformsWithoutAdData = platformsForDisplay.filter(p => !platforms.some(pd => pd.name === p.name));
+        riskFactors.push({ 
+          type: 'concentration', 
+          message: `All advertising spend on ${platforms[0].name} - ${platformsWithoutAdData.map(p => p.name).join(', ')} ${platformsWithoutAdData.length === 1 ? 'has' : 'have'} no advertising data` 
+        });
+        riskLevel = 'medium';
+      } else if (platforms.length > 1 && platforms[0].spendShare > 70) {
+        // Multiple platforms with advertising data but high concentration
         riskFactors.push({ type: 'concentration', message: `${platforms[0].spendShare.toFixed(0)}% spend on ${platforms[0].name} - high concentration risk` });
         riskLevel = 'medium';
       }
@@ -4797,8 +4807,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         riskExplanation = 'Campaign is performing well with minimal risk factors. Continue monitoring performance.';
       } else if (riskLevel === 'medium') {
         const reasons = [];
-        if (platforms.length === 1) reasons.push('single platform dependency');
-        if (platforms.length > 0 && platforms[0].spendShare > 70) reasons.push('high platform concentration');
+        if (platforms.length === 1 && platformsForDisplay.length === 1) {
+          reasons.push('single advertising platform');
+        } else if (platforms.length === 1 && platformsForDisplay.length > 1) {
+          reasons.push('advertising spend concentrated on one platform');
+        }
+        if (platforms.length > 1 && platforms[0].spendShare > 70) reasons.push('high platform concentration');
         if (roas < 1) reasons.push('ROAS below breakeven');
         if (growthTrajectory === 'declining') reasons.push('declining performance trend');
         riskExplanation = `Moderate risk due to ${reasons.join(', ')}. Review recommended.`;

@@ -31,6 +31,28 @@ const campaignFormSchema = insertCampaignSchema.extend({
   label: z.string().optional(),
   budget: z.string().optional(),
   currency: z.string().optional(),
+  startDate: z.union([z.string(), z.date(), z.null()]).transform((val) => {
+    if (!val || val === null) return undefined;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed || !/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return undefined;
+      const date = new Date(trimmed);
+      if (Number.isNaN(date.getTime())) return undefined;
+      return date;
+    }
+    return val;
+  }).optional(),
+  endDate: z.union([z.string(), z.date(), z.null()]).transform((val) => {
+    if (!val || val === null) return undefined;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed || !/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return undefined;
+      const date = new Date(trimmed);
+      if (Number.isNaN(date.getTime())) return undefined;
+      return date;
+    }
+    return val;
+  }).optional(),
 }).omit({
   type: true,
   platform: true,
@@ -981,6 +1003,16 @@ export default function Campaigns() {
         label: editingCampaign.label || "",
         budget: formattedBudget,
         currency: editingCampaign.currency || "USD",
+        startDate: editingCampaign.startDate 
+          ? (editingCampaign.startDate instanceof Date 
+              ? editingCampaign.startDate.toISOString().slice(0, 10)
+              : new Date(editingCampaign.startDate).toISOString().slice(0, 10))
+          : "",
+        endDate: editingCampaign.endDate 
+          ? (editingCampaign.endDate instanceof Date 
+              ? editingCampaign.endDate.toISOString().slice(0, 10)
+              : new Date(editingCampaign.endDate).toISOString().slice(0, 10))
+          : "",
       });
     }
   }, [editingCampaign, editForm]);
@@ -1123,6 +1155,32 @@ export default function Campaigns() {
                       {form.formState.errors.budget && (
                         <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
                       )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="startDate">Start Date (optional)</Label>
+                        <Input
+                          id="startDate"
+                          type="date"
+                          {...form.register("startDate")}
+                        />
+                        {form.formState.errors.startDate && (
+                          <p className="text-sm text-destructive">{form.formState.errors.startDate.message}</p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="endDate">End Date (optional)</Label>
+                        <Input
+                          id="endDate"
+                          type="date"
+                          {...form.register("endDate")}
+                        />
+                        {form.formState.errors.endDate && (
+                          <p className="text-sm text-destructive">{form.formState.errors.endDate.message}</p>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="flex items-center space-x-3 pt-4">
@@ -1422,6 +1480,28 @@ export default function Campaigns() {
                     <SelectItem value="INR">INR</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-startDate">Start Date</Label>
+                <Input
+                  id="edit-startDate"
+                  type="date"
+                  {...editForm.register("startDate")}
+                  data-testid="input-edit-start-date"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-endDate">End Date</Label>
+                <Input
+                  id="edit-endDate"
+                  type="date"
+                  {...editForm.register("endDate")}
+                  data-testid="input-edit-end-date"
+                />
               </div>
             </div>
             

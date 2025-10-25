@@ -266,13 +266,22 @@ export default function ExecutiveSummary() {
                               {formatNumber((executiveSummary as any).metrics.totalClicks)} Clicks
                             </div>
                             <div className="text-sm text-indigo-700 dark:text-indigo-400 mt-1">
-                              Ad Clicks • {formatCurrency((executiveSummary as any).metrics.cpc)} CPC
+                              Cost Per Click: {formatCurrency((executiveSummary as any).metrics.cpc)}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-indigo-700 dark:text-indigo-400">Conversion Rate</div>
-                          <div className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">{(executiveSummary as any).metrics.cvr.toFixed(2)}%</div>
+                          <div className="text-sm text-indigo-700 dark:text-indigo-400">
+                            Conversion Rate{(executiveSummary as any).metrics.cvr > 100 && '*'}
+                          </div>
+                          <div className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">
+                            {Math.min((executiveSummary as any).metrics.cvr, 100).toFixed(2)}%
+                          </div>
+                          {(executiveSummary as any).metrics.cvr > 100 && (
+                            <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">
+                              *Includes view-through
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex justify-center my-2">

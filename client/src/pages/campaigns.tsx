@@ -749,11 +749,14 @@ export default function Campaigns() {
         label: data.label || null,
         budget: data.budget || null,
         currency: data.currency || "USD",
+        startDate: data.startDate || null,
+        endDate: data.endDate || null,
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", variables.id] });
       toast({
         title: "Campaign updated",
         description: "Campaign has been updated successfully.",

@@ -160,10 +160,9 @@ export default function ExecutiveSummary() {
 
           {/* Executive Summary Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="overview">Executive Overview</TabsTrigger>
               <TabsTrigger value="recommendations">Strategic Recommendations</TabsTrigger>
-              <TabsTrigger value="insights">Insights</TabsTrigger>
             </TabsList>
 
             {/* Executive Overview Tab */}
@@ -570,6 +569,47 @@ export default function ExecutiveSummary() {
                 </Card>
               </div>
 
+              {/* Risk Assessment */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <AlertTriangle className="w-5 h-5" />
+                    <span>Risk Assessment</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(executiveSummary as any).risk.factors.length === 0 ? (
+                    <div className="text-center py-6 text-slate-600 dark:text-slate-400">
+                      <CheckCircle className="w-12 h-12 mx-auto text-green-600 mb-2" />
+                      <p className="font-medium">No significant risks identified</p>
+                      <p className="text-sm">Campaign is operating within acceptable parameters</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {(executiveSummary as any).risk.factors.map((risk: any, index: number) => (
+                        <div key={index} className={`p-4 rounded-lg border ${
+                          risk.type === 'performance' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' :
+                          risk.type === 'concentration' ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20' :
+                          'border-orange-200 bg-orange-50 dark:bg-orange-900/20'
+                        }`}>
+                          <div className="flex items-start space-x-3">
+                            <AlertTriangle className={`w-5 h-5 mt-0.5 ${
+                              risk.type === 'performance' ? 'text-red-600' :
+                              risk.type === 'concentration' ? 'text-yellow-600' :
+                              'text-orange-600'
+                            }`} />
+                            <div>
+                              <div className="font-medium text-slate-900 dark:text-white capitalize mb-1">{risk.type} Risk</div>
+                              <p className="text-sm text-slate-700 dark:text-slate-300">{risk.message}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
             </TabsContent>
 
             {/* Strategic Recommendations Tab */}
@@ -581,7 +621,7 @@ export default function ExecutiveSummary() {
                     <div className="flex items-start space-x-3">
                       <Info className="w-5 h-5 text-slate-600 dark:text-slate-400 mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-slate-700 dark:text-slate-300">
-                        <strong>Note:</strong> {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.join(', ')} {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'has' : 'have'} no data uploaded and {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'is' : 'are'} excluded from strategic recommendations and insights. Upload data to receive platform-specific recommendations.
+                        <strong>Note:</strong> {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.join(', ')} {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'has' : 'have'} no advertising data (spend, conversions, or revenue) and {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'is' : 'are'} excluded from strategic recommendations and risk assessment. Upload advertising performance data to receive platform-specific recommendations.
                       </div>
                     </div>
                   </CardContent>
@@ -728,200 +768,6 @@ export default function ExecutiveSummary() {
                   ))}
                 </div>
               )}
-            </TabsContent>
-
-            {/* Insights Tab */}
-            <TabsContent value="insights" className="space-y-6">
-              {/* Data Accuracy Notice */}
-              {(executiveSummary as any).metadata?.dataAccuracy?.platformsExcludedFromRecommendations?.length > 0 && (
-                <Card className="border-slate-200 bg-slate-50 dark:bg-slate-800 dark:border-slate-700">
-                  <CardContent className="p-4">
-                    <div className="flex items-start space-x-3">
-                      <Info className="w-5 h-5 text-slate-600 dark:text-slate-400 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-slate-700 dark:text-slate-300">
-                        <strong>Note:</strong> {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.join(', ')} {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'has' : 'have'} no data uploaded and {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'is' : 'are'} excluded from risk assessment and insights. Upload data to receive comprehensive analysis.
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Risk Assessment */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <AlertTriangle className="w-5 h-5" />
-                    <span>Risk Assessment</span>
-                  </CardTitle>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                    Overall Risk Level: <Badge className={
-                      (executiveSummary as any).risk.level === 'low' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
-                      (executiveSummary as any).risk.level === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                      'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                    }>
-                      {(executiveSummary as any).risk.level.toUpperCase()}
-                    </Badge>
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  {(executiveSummary as any).risk.factors.length === 0 ? (
-                    <div className="text-center py-6 text-slate-600 dark:text-slate-400">
-                      <CheckCircle className="w-12 h-12 mx-auto text-green-600 mb-2" />
-                      <p className="font-medium">No significant risks identified</p>
-                      <p className="text-sm">Campaign is operating within acceptable parameters</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {(executiveSummary as any).risk.factors.map((risk: any, index: number) => (
-                        <div key={index} className={`p-4 rounded-lg border ${
-                          risk.type === 'performance' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' :
-                          risk.type === 'concentration' ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20' :
-                          'border-orange-200 bg-orange-50 dark:bg-orange-900/20'
-                        }`}>
-                          <div className="flex items-start space-x-3">
-                            <AlertTriangle className={`w-5 h-5 mt-0.5 ${
-                              risk.type === 'performance' ? 'text-red-600' :
-                              risk.type === 'concentration' ? 'text-yellow-600' :
-                              'text-orange-600'
-                            }`} />
-                            <div>
-                              <div className="font-medium text-slate-900 dark:text-white capitalize mb-1">{risk.type} Risk</div>
-                              <p className="text-sm text-slate-700 dark:text-slate-300">{risk.message}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Performance Insights */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <TrendingUp className="w-5 h-5" />
-                    <span>Performance Insights</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Top Performer */}
-                    {(executiveSummary as any).topPerformer && (
-                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                        <div className="flex items-start space-x-3">
-                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-                          <div>
-                            <div className="font-semibold text-green-900 dark:text-green-100 mb-1">Top Performer: {(executiveSummary as any).topPerformer.name}</div>
-                            <p className="text-sm text-green-700 dark:text-green-300">
-                              Delivering {(executiveSummary as any).topPerformer.roas.toFixed(1)}x ROAS with {(executiveSummary as any).topPerformer.roi.toFixed(1)}% ROI. 
-                              This platform is efficiently converting {(executiveSummary as any).topPerformer.spendShare.toFixed(0)}% of total budget into revenue.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Bottom Performer */}
-                    {(executiveSummary as any).bottomPerformer && (executiveSummary as any).bottomPerformer.roas < 1.5 && (
-                      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                        <div className="flex items-start space-x-3">
-                          <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5" />
-                          <div>
-                            <div className="font-semibold text-orange-900 dark:text-orange-100 mb-1">Optimization Opportunity: {(executiveSummary as any).bottomPerformer.name}</div>
-                            <p className="text-sm text-orange-700 dark:text-orange-300">
-                              Currently achieving {(executiveSummary as any).bottomPerformer.roas.toFixed(1)}x ROAS with {(executiveSummary as any).bottomPerformer.roi.toFixed(1)}% ROI. 
-                              Consider optimizing targeting, creative, or reallocating budget to higher-performing channels.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Growth Trajectory - Only show if historical data exists */}
-                    {(executiveSummary as any).health.trajectory && (
-                      <div className={`p-4 rounded-lg border ${
-                        (executiveSummary as any).health.trajectory === 'accelerating' ? 'border-green-200 bg-green-50 dark:bg-green-900/20' :
-                        (executiveSummary as any).health.trajectory === 'declining' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' :
-                        'border-blue-200 bg-blue-50 dark:bg-blue-900/20'
-                      }`}>
-                        <div className="flex items-start space-x-3">
-                          {(executiveSummary as any).health.trajectory === 'accelerating' && <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />}
-                          {(executiveSummary as any).health.trajectory === 'declining' && <TrendingDown className="w-5 h-5 text-red-600 mt-0.5" />}
-                          {(executiveSummary as any).health.trajectory === 'stable' && <Activity className="w-5 h-5 text-blue-600 mt-0.5" />}
-                          <div>
-                            <div className={`font-semibold mb-1 ${
-                              (executiveSummary as any).health.trajectory === 'accelerating' ? 'text-green-900 dark:text-green-100' :
-                              (executiveSummary as any).health.trajectory === 'declining' ? 'text-red-900 dark:text-red-100' :
-                              'text-blue-900 dark:text-blue-100'
-                            }`}>
-                              Performance Trajectory: {(executiveSummary as any).health.trajectory.charAt(0).toUpperCase() + (executiveSummary as any).health.trajectory.slice(1)}
-                            </div>
-                            <p className={`text-sm ${
-                              (executiveSummary as any).health.trajectory === 'accelerating' ? 'text-green-700 dark:text-green-300' :
-                              (executiveSummary as any).health.trajectory === 'declining' ? 'text-red-700 dark:text-red-300' :
-                              'text-blue-700 dark:text-blue-300'
-                            }`}>
-                              {(executiveSummary as any).health.trajectory === 'accelerating' && `Campaign showing positive momentum. Consider scaling investment to capitalize on growth.`}
-                              {(executiveSummary as any).health.trajectory === 'declining' && `Performance trending downward. Review campaign strategy and optimize underperforming elements.`}
-                              {(executiveSummary as any).health.trajectory === 'stable' && `Campaign maintaining steady performance. Monitor for optimization opportunities.`}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Executive Decision Framework */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Brain className="w-5 h-5" />
-                    <span>Executive Decision Framework</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-slate-900 dark:text-white">Immediate Actions (Next 30 Days)</h4>
-                      <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                        <li className="flex items-start space-x-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
-                          <span>Increase Google Sheets budget allocation by 30%</span>
-                        </li>
-                        <li className="flex items-start space-x-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
-                          <span>Implement Facebook Ads audience optimization</span>
-                        </li>
-                        <li className="flex items-start space-x-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
-                          <span>Establish weekly performance monitoring cadence</span>
-                        </li>
-                      </ul>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-slate-900 dark:text-white">Strategic Initiatives (90+ Days)</h4>
-                      <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                        <li className="flex items-start space-x-2">
-                          <Target className="w-4 h-4 text-blue-600 mt-0.5" />
-                          <span>Diversify platform portfolio to reduce concentration risk</span>
-                        </li>
-                        <li className="flex items-start space-x-2">
-                          <Target className="w-4 h-4 text-blue-600 mt-0.5" />
-                          <span>Implement advanced attribution modeling</span>
-                        </li>
-                        <li className="flex items-start space-x-2">
-                          <Target className="w-4 h-4 text-blue-600 mt-0.5" />
-                          <span>Explore emerging platform opportunities</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </main>

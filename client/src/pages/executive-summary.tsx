@@ -179,17 +179,19 @@ export default function ExecutiveSummary() {
                           </span>
                         </div>
                       </div>
-                      <div className="border-l border-slate-200 dark:border-slate-700 pl-6">
-                        <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Trajectory</div>
-                        <div className="flex items-center space-x-2">
-                          {(executiveSummary as any).health.trajectory === 'accelerating' && <TrendingUp className="w-5 h-5 text-green-600" />}
-                          {(executiveSummary as any).health.trajectory === 'declining' && <TrendingDown className="w-5 h-5 text-red-600" />}
-                          {(executiveSummary as any).health.trajectory === 'stable' && <Activity className="w-5 h-5 text-blue-600" />}
-                          <span className="text-lg font-medium text-slate-900 dark:text-white capitalize">
-                            {(executiveSummary as any).health.trajectory}
-                          </span>
+                      {(executiveSummary as any).health.trajectory && (
+                        <div className="border-l border-slate-200 dark:border-slate-700 pl-6">
+                          <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Trajectory</div>
+                          <div className="flex items-center space-x-2">
+                            {(executiveSummary as any).health.trajectory === 'accelerating' && <TrendingUp className="w-5 h-5 text-green-600" />}
+                            {(executiveSummary as any).health.trajectory === 'declining' && <TrendingDown className="w-5 h-5 text-red-600" />}
+                            {(executiveSummary as any).health.trajectory === 'stable' && <Activity className="w-5 h-5 text-blue-600" />}
+                            <span className="text-lg font-medium text-slate-900 dark:text-white capitalize">
+                              {(executiveSummary as any).health.trajectory}
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div className="border-l border-slate-200 dark:border-slate-700 pl-6">
                         <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Risk Level</div>
                         <Badge className={
@@ -199,6 +201,11 @@ export default function ExecutiveSummary() {
                         }>
                           {(executiveSummary as any).risk.level.toUpperCase()}
                         </Badge>
+                        {(executiveSummary as any).risk.explanation && (
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 max-w-xs">
+                            {(executiveSummary as any).risk.explanation}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -743,36 +750,38 @@ export default function ExecutiveSummary() {
                       </div>
                     )}
 
-                    {/* Growth Trajectory */}
-                    <div className={`p-4 rounded-lg border ${
-                      (executiveSummary as any).health.trajectory === 'accelerating' ? 'border-green-200 bg-green-50 dark:bg-green-900/20' :
-                      (executiveSummary as any).health.trajectory === 'declining' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' :
-                      'border-blue-200 bg-blue-50 dark:bg-blue-900/20'
-                    }`}>
-                      <div className="flex items-start space-x-3">
-                        {(executiveSummary as any).health.trajectory === 'accelerating' && <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />}
-                        {(executiveSummary as any).health.trajectory === 'declining' && <TrendingDown className="w-5 h-5 text-red-600 mt-0.5" />}
-                        {(executiveSummary as any).health.trajectory === 'stable' && <Activity className="w-5 h-5 text-blue-600 mt-0.5" />}
-                        <div>
-                          <div className={`font-semibold mb-1 ${
-                            (executiveSummary as any).health.trajectory === 'accelerating' ? 'text-green-900 dark:text-green-100' :
-                            (executiveSummary as any).health.trajectory === 'declining' ? 'text-red-900 dark:text-red-100' :
-                            'text-blue-900 dark:text-blue-100'
-                          }`}>
-                            Performance Trajectory: {(executiveSummary as any).health.trajectory.charAt(0).toUpperCase() + (executiveSummary as any).health.trajectory.slice(1)}
+                    {/* Growth Trajectory - Only show if historical data exists */}
+                    {(executiveSummary as any).health.trajectory && (
+                      <div className={`p-4 rounded-lg border ${
+                        (executiveSummary as any).health.trajectory === 'accelerating' ? 'border-green-200 bg-green-50 dark:bg-green-900/20' :
+                        (executiveSummary as any).health.trajectory === 'declining' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' :
+                        'border-blue-200 bg-blue-50 dark:bg-blue-900/20'
+                      }`}>
+                        <div className="flex items-start space-x-3">
+                          {(executiveSummary as any).health.trajectory === 'accelerating' && <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />}
+                          {(executiveSummary as any).health.trajectory === 'declining' && <TrendingDown className="w-5 h-5 text-red-600 mt-0.5" />}
+                          {(executiveSummary as any).health.trajectory === 'stable' && <Activity className="w-5 h-5 text-blue-600 mt-0.5" />}
+                          <div>
+                            <div className={`font-semibold mb-1 ${
+                              (executiveSummary as any).health.trajectory === 'accelerating' ? 'text-green-900 dark:text-green-100' :
+                              (executiveSummary as any).health.trajectory === 'declining' ? 'text-red-900 dark:text-red-100' :
+                              'text-blue-900 dark:text-blue-100'
+                            }`}>
+                              Performance Trajectory: {(executiveSummary as any).health.trajectory.charAt(0).toUpperCase() + (executiveSummary as any).health.trajectory.slice(1)}
+                            </div>
+                            <p className={`text-sm ${
+                              (executiveSummary as any).health.trajectory === 'accelerating' ? 'text-green-700 dark:text-green-300' :
+                              (executiveSummary as any).health.trajectory === 'declining' ? 'text-red-700 dark:text-red-300' :
+                              'text-blue-700 dark:text-blue-300'
+                            }`}>
+                              {(executiveSummary as any).health.trajectory === 'accelerating' && `Campaign showing positive momentum. Consider scaling investment to capitalize on growth.`}
+                              {(executiveSummary as any).health.trajectory === 'declining' && `Performance trending downward. Review campaign strategy and optimize underperforming elements.`}
+                              {(executiveSummary as any).health.trajectory === 'stable' && `Campaign maintaining steady performance. Monitor for optimization opportunities.`}
+                            </p>
                           </div>
-                          <p className={`text-sm ${
-                            (executiveSummary as any).health.trajectory === 'accelerating' ? 'text-green-700 dark:text-green-300' :
-                            (executiveSummary as any).health.trajectory === 'declining' ? 'text-red-700 dark:text-red-300' :
-                            'text-blue-700 dark:text-blue-300'
-                          }`}>
-                            {(executiveSummary as any).health.trajectory === 'accelerating' && `Campaign showing positive momentum. Consider scaling investment to capitalize on growth.`}
-                            {(executiveSummary as any).health.trajectory === 'declining' && `Performance trending downward. Review campaign strategy and optimize underperforming elements.`}
-                            {(executiveSummary as any).health.trajectory === 'stable' && `Campaign maintaining steady performance. Monitor for optimization opportunities.`}
-                          </p>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

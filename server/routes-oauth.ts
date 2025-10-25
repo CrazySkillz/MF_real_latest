@@ -4703,16 +4703,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const topPlatform = platforms.length > 0 ? platforms.reduce((top, p) => p.roas > top.roas ? p : top) : null;
       const bottomPlatform = platforms.length > 1 ? platforms.reduce((bottom, p) => p.roas < bottom.roas ? p : bottom) : null;
 
-      // Calculate growth trajectory based on comparison data
-      let growthTrajectory = 'stable';
+      // Calculate growth trajectory based on comparison data (only if historical data exists)
+      let growthTrajectory: string | null = null;
       let trendPercentage = 0;
+      let hasHistoricalData = false;
+      
       if (comparisonData?.current && comparisonData?.previous) {
+        hasHistoricalData = true;
         const currentRevenue = parseNum(comparisonData.current.totalConversions) * (totalRevenue / (totalConversions || 1));
         const previousRevenue = parseNum(comparisonData.previous.totalConversions) * (totalRevenue / (totalConversions || 1));
         trendPercentage = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
         
         if (trendPercentage > 10) growthTrajectory = 'accelerating';
         else if (trendPercentage < -10) growthTrajectory = 'declining';
+        else growthTrajectory = 'stable';
       }
 
       // Risk assessment
@@ -4741,6 +4745,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (growthTrajectory === 'declining' && trendPercentage < -15) {
         riskFactors.push({ type: 'trend', message: `Performance declining ${Math.abs(trendPercentage).toFixed(0)}% - intervention needed` });
         if (riskLevel === 'low') riskLevel = 'medium';
+      }
+      
+      // Generate risk explanation
+      let riskExplanation = '';
+      if (riskLevel === 'low') {
+        riskExplanation = 'Campaign is performing well with minimal risk factors. Continue monitoring performance.';
+      } else if (riskLevel === 'medium') {
+        const reasons = [];
+        if (platforms.length === 1) reasons.push('single platform dependency');
+        if (platforms.length > 0 && platforms[0].spendShare > 70) reasons.push('high platform concentration');
+        if (roas < 1) reasons.push('ROAS below breakeven');
+        if (growthTrajectory === 'declining') reasons.push('declining performance trend');
+        riskExplanation = `Moderate risk due to ${reasons.join(', ')}. Review recommended.`;
+      } else if (riskLevel === 'high') {
+        riskExplanation = 'High risk: Campaign experiencing negative ROI. Immediate action required to prevent further losses.';
       }
 
       // Generate CEO summary
@@ -4848,11 +4867,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           score: Math.round(healthScore),
           grade,
           factors: healthFactors,
-          trajectory: growthTrajectory,
-          trendPercentage
+          ...(hasHistoricalData && { 
+            trajectory: growthTrajectory,
+            trendPercentage 
+          })
         },
         risk: {
           level: riskLevel,
+          explanation: riskExplanation,
           factors: riskFactors
         },
         platforms,

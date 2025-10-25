@@ -574,6 +574,20 @@ export default function ExecutiveSummary() {
 
             {/* Strategic Recommendations Tab */}
             <TabsContent value="recommendations" className="space-y-6">
+              {/* Data Accuracy Notice */}
+              {(executiveSummary as any).metadata?.dataAccuracy?.platformsExcludedFromRecommendations?.length > 0 && (
+                <Card className="border-slate-200 bg-slate-50 dark:bg-slate-800 dark:border-slate-700">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3">
+                      <Info className="w-5 h-5 text-slate-600 dark:text-slate-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-slate-700 dark:text-slate-300">
+                        <strong>Note:</strong> {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.join(', ')} {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'has' : 'have'} no data uploaded and {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'is' : 'are'} excluded from strategic recommendations and insights. Upload data to receive platform-specific recommendations.
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Data Freshness Warnings */}
               {(executiveSummary as any).dataFreshness?.warnings?.length > 0 && (
                 <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
@@ -718,6 +732,20 @@ export default function ExecutiveSummary() {
 
             {/* Insights Tab */}
             <TabsContent value="insights" className="space-y-6">
+              {/* Data Accuracy Notice */}
+              {(executiveSummary as any).metadata?.dataAccuracy?.platformsExcludedFromRecommendations?.length > 0 && (
+                <Card className="border-slate-200 bg-slate-50 dark:bg-slate-800 dark:border-slate-700">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3">
+                      <Info className="w-5 h-5 text-slate-600 dark:text-slate-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-slate-700 dark:text-slate-300">
+                        <strong>Note:</strong> {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.join(', ')} {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'has' : 'have'} no data uploaded and {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'is' : 'are'} excluded from risk assessment and insights. Upload data to receive comprehensive analysis.
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Risk Assessment */}
               <Card>
                 <CardHeader>

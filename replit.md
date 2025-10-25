@@ -37,6 +37,7 @@ The platform features a professional, GA4-inspired design with interactive eleme
 - **Custom Integration Metric Mapping**: Supports PDF uploads for GA4, email, and social media metrics, intelligently mapping them to advertising campaign equivalents for consistent cross-platform reporting in all summary and comparison sections.
 - **Conversion Rate (CVR) Accuracy**: Displays two CVR metrics for transparency: "Click-Through CVR" (capped at 100%, based on direct ad clicks) and "Total CVR" (can exceed 100% due to view-through conversions, displayed only when >100%). This provides a complete understanding of campaign attribution.
 - **Custom Integration Fields NOT Used**: Specific GA4, traffic source, email, and social media metrics from custom integration are identified as not impacting Executive Summary aggregations to maintain focus on core advertising metrics.
+- **Strategic Recommendations Data Accuracy**: Platforms with no uploaded data (all metrics = 0) are explicitly excluded from Strategic Recommendations and Insights to prevent misleading comparisons. Only platforms with actual performance data (spend > 0 OR impressions > 0 OR clicks > 0 OR conversions > 0) influence top/bottom performer calculations and recommendation algorithms. UI displays clear notices when platforms are excluded, ensuring C-level executives understand the exact data basis for all financial recommendations.
 
 ## External Dependencies
 

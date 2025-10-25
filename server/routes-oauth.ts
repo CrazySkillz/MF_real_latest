@@ -4697,14 +4697,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       else if (healthScore >= 70) grade = 'C';
       else if (healthScore >= 60) grade = 'D';
 
-      // Platform performance breakdown - show all platforms with any data (even if spend is $0)
-      const platforms = [];
+      // Platform performance breakdown - only include platforms with actual data
+      const platforms: any[] = [];
+      const platformsForDisplay: any[] = []; // Separate array for UI display (includes platforms with no data)
       
-      // Check if LinkedIn has any data
+      // Check if LinkedIn has any meaningful data
       const hasLinkedInData = linkedinMetrics.spend > 0 || linkedinMetrics.impressions > 0 || 
                                linkedinMetrics.clicks > 0 || linkedinMetrics.conversions > 0;
       if (hasLinkedInData) {
-        platforms.push({
+        const linkedInPlatform = {
           name: 'LinkedIn Ads',
           spend: linkedinMetrics.spend,
           revenue: linkedinMetrics.revenue,
@@ -4712,23 +4713,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           roas: linkedinMetrics.spend > 0 ? linkedinMetrics.revenue / linkedinMetrics.spend : 0,
           roi: linkedinMetrics.spend > 0 ? ((linkedinMetrics.revenue - linkedinMetrics.spend) / linkedinMetrics.spend) * 100 : 0,
           spendShare: totalSpend > 0 ? (linkedinMetrics.spend / totalSpend) * 100 : 0
-        });
+        };
+        platforms.push(linkedInPlatform);
+        platformsForDisplay.push(linkedInPlatform);
       }
       
-      // Show Custom Integration if it exists (even with zero metrics)
+      // Check if Custom Integration has any meaningful data (not all zeros)
+      const hasCustomIntegrationData = customMetrics.spend > 0 || customMetrics.impressions > 0 || 
+                                        customMetrics.clicks > 0 || customMetrics.conversions > 0;
+      
       if (hasCustomIntegration) {
-        platforms.push({
+        const customPlatform = {
           name: 'Custom Integration',
           spend: customMetrics.spend,
           revenue: customMetrics.revenue,
           conversions: customMetrics.conversions,
           roas: customMetrics.spend > 0 ? customMetrics.revenue / customMetrics.spend : 0,
           roi: customMetrics.spend > 0 ? ((customMetrics.revenue - customMetrics.spend) / customMetrics.spend) * 100 : 0,
-          spendShare: totalSpend > 0 ? (customMetrics.spend / totalSpend) * 100 : 0
-        });
+          spendShare: totalSpend > 0 ? (customMetrics.spend / totalSpend) * 100 : 0,
+          hasData: hasCustomIntegrationData // Flag to indicate if platform has actual data
+        };
+        
+        // Only include in recommendations/insights if it has actual data
+        if (hasCustomIntegrationData) {
+          platforms.push(customPlatform);
+        }
+        
+        // Always include in display array
+        platformsForDisplay.push(customPlatform);
       }
 
-      // Identify top and bottom performers
+      // Identify top and bottom performers (only from platforms with data)
       const topPlatform = platforms.length > 0 ? platforms.reduce((top, p) => p.roas > top.roas ? p : top) : null;
       const bottomPlatform = platforms.length > 1 ? platforms.reduce((bottom, p) => p.roas < bottom.roas ? p : bottom) : null;
 
@@ -4999,7 +5014,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           explanation: riskExplanation,
           factors: riskFactors
         },
-        platforms,
+        platforms: platformsForDisplay, // UI display - includes all connected platforms
+        platformsWithData: platforms, // Only platforms with actual data (for internal use)
         topPerformer: topPlatform,
         bottomPerformer: bottomPlatform,
         ceoSummary,
@@ -5013,7 +5029,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         metadata: {
           generatedAt: now.toISOString(),
-          disclaimer: 'All projections are estimates based on historical performance and industry benchmarks. Actual results will vary based on market conditions, competition, creative execution, and other factors. Recommendations should be validated through controlled testing before full implementation.'
+          disclaimer: 'All projections are estimates based on historical performance and industry benchmarks. Actual results will vary based on market conditions, competition, creative execution, and other factors. Recommendations should be validated through controlled testing before full implementation.',
+          dataAccuracy: {
+            hasLinkedInData,
+            hasCustomIntegrationData,
+            platformsExcludedFromRecommendations: platformsForDisplay.filter(p => !platforms.some(pd => pd.name === p.name)).map(p => p.name)
+          }
         }
       });
 

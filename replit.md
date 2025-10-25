@@ -57,6 +57,43 @@ The platform features a professional, GA4-inspired design with interactive eleme
   - **Market Intelligence**: Provides executives with consumer interest patterns, seasonal demand shifts, and industry momentum insights
   - **Configuration Card**: Displays setup interface when keywords aren't configured; shows "Configure Keywords" button when set
   - **Database Schema**: Added `industry` (text) and `trendKeywords` (text array) fields to campaigns table
+- **Executive Summary**: Visual marketing funnel representation showing the complete customer journey from impressions → clicks → conversions → revenue, with automated health grading, risk assessment, and strategic recommendations. Includes three-stage funnel visualization (Top/Mid/Bottom) with color-coding, icons, and narrative summary. Aggregates metrics from LinkedIn Ads and Custom Integration APIs.
+
+## Custom Integration Metric Mapping
+
+**Enterprise-Grade Data Accuracy:** Custom Integration supports PDF uploads containing website analytics (GA4), email marketing, and social media metrics. These metrics are intelligently mapped to advertising campaign equivalents for consistent cross-platform reporting.
+
+### Metric Aggregation Map
+
+All sections (Executive Summary, Performance Summary, Budget & Financial Analysis, Platform Comparison, Automated Snapshots) use consistent mapping:
+
+| Custom Integration Source | Mapped To | Executive Summary Field | Calculation |
+|---------------------------|-----------|-------------------------|-------------|
+| **pageviews** (GA4) | Impressions | Total Impressions | LinkedIn impressions + CI pageviews |
+| **sessions** (GA4) | Engagements | Total Engagements | LinkedIn engagements + CI sessions |
+| **clicks** | Clicks | Total Clicks | LinkedIn clicks + CI clicks |
+| **conversions** | Conversions | Total Conversions | LinkedIn conversions + CI conversions |
+| **spend** | Spend | Total Spend | LinkedIn spend + CI spend |
+| **revenue** | Revenue | Total Revenue | LinkedIn revenue + CI revenue* |
+
+*Note: Revenue field does not currently exist in Custom Integration schema.
+
+### Conversion Rate (CVR) Accuracy
+
+**Known Issue:** LinkedIn reports both click-through conversions (user clicked ad → converted) and view-through conversions (user saw ad → converted later without clicking). Current implementation uses TOTAL conversions in CVR numerator, which can result in CVR > 100% when view-through conversions exceed ad clicks.
+
+**Formula:** CVR = Total Conversions / Total Clicks
+- If conversions include view-through attribution, CVR can exceed 100%
+- This is mathematically correct but can appear confusing to executives
+- Future enhancement: Filter to click-through conversions only for more intuitive CVR
+
+### Custom Integration Fields NOT Used
+
+These fields exist in the database but do NOT impact Executive Summary aggregations:
+- `users`, `avgSessionDuration`, `pagesPerSession`, `bounceRate` (GA4 metrics)
+- `organicSearchShare`, `directBrandedShare`, `emailShare`, `referralShare`, `paidShare`, `socialShare` (traffic source percentages)
+- `emailsDelivered`, `openRate`, `clickThroughRate`, `clickToOpenRate`, `hardBounces`, `spamComplaints`, `listGrowth` (email metrics)
+- `reach`, `viralImpressions`, `videoViews`, `leads` (social media metrics)
 
 ## External Dependencies
 

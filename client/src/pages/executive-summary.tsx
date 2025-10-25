@@ -253,7 +253,7 @@ export default function ExecutiveSummary() {
                       </div>
                     </div>
 
-                    {/* Mid Funnel - Engagement */}
+                    {/* Mid Funnel - Clicks */}
                     <div className="relative ml-8 mr-8">
                       <div className="flex items-center justify-between bg-indigo-100 dark:bg-indigo-900/30 rounded-lg p-6 border-2 border-indigo-300 dark:border-indigo-700">
                         <div className="flex items-center space-x-4">
@@ -266,7 +266,7 @@ export default function ExecutiveSummary() {
                               {formatNumber((executiveSummary as any).metrics.totalClicks)} Clicks
                             </div>
                             <div className="text-sm text-indigo-700 dark:text-indigo-400 mt-1">
-                              Engagement • {formatCurrency((executiveSummary as any).metrics.cpc)} CPC
+                              Ad Clicks • {formatCurrency((executiveSummary as any).metrics.cpc)} CPC
                             </div>
                           </div>
                         </div>

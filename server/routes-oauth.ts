@@ -4543,6 +4543,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const key = m.metricKey.toLowerCase();
             linkedinMetrics[key] = (linkedinMetrics[key] || 0) + value;
           });
+          
+          // Calculate LinkedIn revenue from conversion value
+          if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
+            const conversionValue = parseFloat(latestSession.conversionValue);
+            linkedinMetrics.revenue = linkedinMetrics.conversions * conversionValue;
+          }
         }
       } catch (err) {
         console.log('No LinkedIn metrics found for campaign', id);

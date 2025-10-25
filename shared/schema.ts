@@ -18,6 +18,8 @@ export const campaigns = pgTable("campaigns", {
   status: text("status").notNull().default("active"),
   industry: text("industry"), // Industry category for trend tracking (e.g., "wine", "digital marketing")
   trendKeywords: text("trend_keywords").array(), // Keywords to track in Google Trends
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

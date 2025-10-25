@@ -144,9 +144,8 @@ export default function ExecutiveSummary() {
 
           {/* Executive Summary Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview">Executive Overview</TabsTrigger>
-              <TabsTrigger value="performance">Performance Analysis</TabsTrigger>
               <TabsTrigger value="recommendations">Strategic Recommendations</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
             </TabsList>
@@ -459,150 +458,84 @@ export default function ExecutiveSummary() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {(executiveSummary as any).platforms.map((platform: any, index: number) => (
-                          <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-semibold text-slate-900 dark:text-white">{platform.name}</h4>
-                              <Badge className={
-                                platform.roas >= 3 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
-                                platform.roas >= 1.5 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
-                                platform.roas >= 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                                'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                              }>
-                                {platform.roas >= 3 ? 'Excellent' :
-                                 platform.roas >= 1.5 ? 'Good' :
-                                 platform.roas >= 1 ? 'Fair' : 'Needs Attention'}
-                              </Badge>
+                        {(executiveSummary as any).platforms.map((platform: any, index: number) => {
+                          // Check if Custom Integration has no data
+                          const isCustomIntegrationWithNoData = platform.name === 'Custom Integration' && 
+                            platform.spend === 0 && 
+                            platform.conversions === 0 && 
+                            platform.clicks === 0;
+                          
+                          return (
+                            <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold text-slate-900 dark:text-white">{platform.name}</h4>
+                                {isCustomIntegrationWithNoData ? (
+                                  <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                    No Data Available
+                                  </Badge>
+                                ) : (
+                                  <Badge className={
+                                    platform.roas >= 3 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                                    platform.roas >= 1.5 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
+                                    platform.roas >= 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                                  }>
+                                    {platform.roas >= 3 ? 'Excellent' :
+                                     platform.roas >= 1.5 ? 'Good' :
+                                     platform.roas >= 1 ? 'Fair' : 'Needs Attention'}
+                                  </Badge>
+                                )}
+                              </div>
+                              {isCustomIntegrationWithNoData ? (
+                                <div className="text-center py-6 text-slate-600 dark:text-slate-400">
+                                  <p className="text-sm">No PDF data imported yet. Upload performance data via Custom Integration webhook to see metrics.</p>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-5 gap-4">
+                                  <div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400">Spend</div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      {formatCurrency(platform.spend)}
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                      {platform.spendShare.toFixed(0)}% of total
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400">Revenue</div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      {formatCurrency(platform.revenue)}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400">Conversions</div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      {formatNumber(platform.conversions)}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400">ROAS</div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      {platform.roas.toFixed(1)}x
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400">ROI</div>
+                                    <div className={`text-sm font-semibold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                      {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <div className="grid grid-cols-5 gap-4">
-                              <div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400">Spend</div>
-                                <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                  {formatCurrency(platform.spend)}
-                                </div>
-                                <div className="text-xs text-slate-500">
-                                  {platform.spendShare.toFixed(0)}% of total
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400">Revenue</div>
-                                <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                  {formatCurrency(platform.revenue)}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400">Conversions</div>
-                                <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                  {formatNumber(platform.conversions)}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400">ROAS</div>
-                                <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                  {platform.roas.toFixed(1)}x
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400">ROI</div>
-                                <div className={`text-sm font-semibold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                  {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </CardContent>
                 </Card>
               </div>
 
-            </TabsContent>
-
-            {/* Performance Analysis Tab */}
-            <TabsContent value="performance" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <BarChart3 className="w-5 h-5" />
-                    <span>Health Score Breakdown</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {(executiveSummary as any).health.factors.map((factor: any, index: number) => (
-                      <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-slate-900 dark:text-white">{factor.factor}</span>
-                          <Badge className={
-                            factor.status === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
-                            factor.status === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
-                            factor.status === 'acceptable' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                            'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                          }>
-                            {factor.status.toUpperCase()}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <Progress value={(factor.score / 30) * 100} className="flex-1" />
-                          <span className="text-sm font-medium text-slate-900 dark:text-white">{factor.score} pts</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* KPI Metrics */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">CTR</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xl font-bold text-slate-900 dark:text-white mb-1">
-                      {(executiveSummary as any).metrics.ctr.toFixed(2)}%
-                    </div>
-                    <div className="text-xs text-slate-500">Click-Through Rate</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">CVR</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xl font-bold text-slate-900 dark:text-white mb-1">
-                      {(executiveSummary as any).metrics.cvr.toFixed(2)}%
-                    </div>
-                    <div className="text-xs text-slate-500">Conversion Rate</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">CPC</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xl font-bold text-slate-900 dark:text-white mb-1">
-                      {formatCurrency((executiveSummary as any).metrics.cpc, true)}
-                    </div>
-                    <div className="text-xs text-slate-500">Cost Per Click</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xl font-bold text-slate-900 dark:text-white mb-1">
-                      {formatCurrency((executiveSummary as any).metrics.cpa, true)}
-                    </div>
-                    <div className="text-xs text-slate-500">Cost Per Acquisition</div>
-                  </CardContent>
-                </Card>
-              </div>
             </TabsContent>
 
             {/* Strategic Recommendations Tab */}

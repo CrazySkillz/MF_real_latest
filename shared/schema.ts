@@ -553,6 +553,35 @@ export const insertCampaignSchema = createInsertSchema(campaigns).pick({
   trendKeywords: true,
   startDate: true,
   endDate: true,
+}).extend({
+  startDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
+    if (!val || val === null || val === undefined) return null;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed) return null;
+      const date = new Date(trimmed);
+      if (Number.isNaN(date.getTime())) return null;
+      return date;
+    }
+    if (val instanceof Date && !Number.isNaN(val.getTime())) {
+      return val;
+    }
+    return null;
+  }).nullable().optional(),
+  endDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
+    if (!val || val === null || val === undefined) return null;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed) return null;
+      const date = new Date(trimmed);
+      if (Number.isNaN(date.getTime())) return null;
+      return date;
+    }
+    if (val instanceof Date && !Number.isNaN(val.getTime())) {
+      return val;
+    }
+    return null;
+  }).nullable().optional(),
 });
 
 export const insertMetricSchema = createInsertSchema(metrics).pick({

@@ -59,6 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(campaign);
     } catch (error) {
+      console.error('Campaign update error:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
       }

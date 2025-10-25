@@ -59,6 +59,35 @@ The platform features a professional, GA4-inspired design with interactive eleme
   - **Database Schema**: Added `industry` (text) and `trendKeywords` (text array) fields to campaigns table
 - **Executive Summary**: Visual marketing funnel representation showing the complete customer journey from impressions → clicks → conversions → revenue, with automated health grading, risk assessment, and strategic recommendations. Includes three-stage funnel visualization (Top/Mid/Bottom) with color-coding, icons, and narrative summary. Aggregates metrics from LinkedIn Ads and Custom Integration APIs.
 
+## LinkedIn Revenue Calculation Architecture
+
+**Enterprise Accuracy:** LinkedIn revenue is calculated using the actual conversion value stored in `linkedinImportSessions.conversionValue`. This ensures consistent revenue calculations across all platform features.
+
+### Revenue Calculation Points
+
+All LinkedIn revenue calculations use the conversion value:
+
+1. **LinkedIn Metrics API** (`/api/linkedin/metrics/:campaignId`):
+   - Returns `revenue = conversions × conversionValue`
+   - Also returns `roas = revenue / spend` and `roi = ((revenue - spend) / spend) × 100`
+
+2. **Executive Summary API** (`/api/campaigns/:id/executive-summary`):
+   - Calculates `linkedinMetrics.revenue = conversions × conversionValue`
+   - Aggregates with Custom Integration revenue for total revenue metrics
+
+3. **Platform Comparison Page**:
+   - Uses `linkedInData.revenue` from backend API (already calculated with conversion value)
+   - Fallback to estimatedAOV only if revenue not available from backend
+
+4. **Financial Analysis Page**:
+   - Fetches LinkedIn data from `/api/linkedin/metrics/:campaignId`
+   - Automatically gets correct revenue with conversion value
+
+### Conversion Value Source
+- Stored in `linkedinImportSessions.conversionValue` field
+- Set during LinkedIn data import (default: $50 per conversion)
+- Used consistently across all revenue calculations
+
 ## Custom Integration Metric Mapping
 
 **Enterprise-Grade Data Accuracy:** Custom Integration supports PDF uploads containing website analytics (GA4), email marketing, and social media metrics. These metrics are intelligently mapped to advertising campaign equivalents for consistent cross-platform reporting.

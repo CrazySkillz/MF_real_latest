@@ -82,6 +82,16 @@ export default function ExecutiveSummary() {
     }).format(amount);
   };
 
+  // Format text strings that contain dollar amounts with commas
+  const formatRecommendationText = (text: string): string => {
+    if (!text) return text;
+    // Match dollar amounts like $123456 or -$123456 and format them with commas
+    return text.replace(/([+-]?)\$(\d+)(?!\.\d)/g, (match, sign, number) => {
+      const formatted = parseInt(number).toLocaleString('en-US');
+      return `${sign}$${formatted}`;
+    });
+  };
+
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
       case 'high':
@@ -619,7 +629,7 @@ export default function ExecutiveSummary() {
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="flex items-center space-x-3">
-                              <CardTitle className="text-lg">{rec.action}</CardTitle>
+                              <CardTitle className="text-lg">{formatRecommendationText(rec.action)}</CardTitle>
                               {getPriorityBadge(rec.priority)}
                               {rec.confidence && (
                                 <Badge variant="outline" className={
@@ -640,7 +650,7 @@ export default function ExecutiveSummary() {
                           <div className="grid gap-4 md:grid-cols-3">
                             <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                               <div className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">Expected Impact</div>
-                              <div className="text-sm text-green-700 dark:text-green-300">{rec.expectedImpact}</div>
+                              <div className="text-sm text-green-700 dark:text-green-300">{formatRecommendationText(rec.expectedImpact)}</div>
                             </div>
                             
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -650,7 +660,7 @@ export default function ExecutiveSummary() {
                             
                             <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                               <div className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-1">Investment Required</div>
-                              <div className="text-sm text-purple-700 dark:text-purple-300">{rec.investmentRequired}</div>
+                              <div className="text-sm text-purple-700 dark:text-purple-300">{formatRecommendationText(rec.investmentRequired)}</div>
                             </div>
                           </div>
 
@@ -661,15 +671,15 @@ export default function ExecutiveSummary() {
                               <div className="grid gap-3 md:grid-cols-3">
                                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
                                   <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Best Case</div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{rec.scenarios.bestCase}</div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{formatRecommendationText(rec.scenarios.bestCase)}</div>
                                 </div>
                                 <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
                                   <div className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Expected</div>
-                                  <div className="text-sm font-semibold text-blue-900 dark:text-blue-100">{rec.scenarios.expected}</div>
+                                  <div className="text-sm font-semibold text-blue-900 dark:text-blue-100">{formatRecommendationText(rec.scenarios.expected)}</div>
                                 </div>
                                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
                                   <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Worst Case</div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{rec.scenarios.worstCase}</div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{formatRecommendationText(rec.scenarios.worstCase)}</div>
                                 </div>
                               </div>
                             </div>

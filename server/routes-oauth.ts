@@ -52,9 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update a campaign by ID
   app.patch("/api/campaigns/:id", async (req, res) => {
     try {
-      console.log('Campaign update request body:', JSON.stringify(req.body, null, 2));
       const validatedData = insertCampaignSchema.partial().parse(req.body);
-      console.log('Validated data:', JSON.stringify(validatedData, null, 2));
       const campaign = await storage.updateCampaign(req.params.id, validatedData);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
@@ -63,7 +61,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Campaign update error:', error);
       if (error instanceof z.ZodError) {
-        console.error('Zod validation errors:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update campaign" });
@@ -4610,6 +4607,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('No comparison data found');
       }
 
+      // Data freshness validation
+      const now = new Date();
+      const dataFreshnessWarnings = [];
+      
+      if (linkedinLastUpdate) {
+        const linkedinAge = (now.getTime() - new Date(linkedinLastUpdate).getTime()) / (1000 * 60 * 60 * 24); // days
+        if (linkedinAge > 7) {
+          dataFreshnessWarnings.push({
+            source: 'LinkedIn Ads',
+            age: Math.round(linkedinAge),
+            severity: linkedinAge > 14 ? 'high' : 'medium',
+            message: `LinkedIn data is ${Math.round(linkedinAge)} days old - recommendations may be outdated`
+          });
+        }
+      }
+      
+      if (customIntegrationLastUpdate) {
+        const customAge = (now.getTime() - new Date(customIntegrationLastUpdate).getTime()) / (1000 * 60 * 60 * 24); // days
+        if (customAge > 7) {
+          dataFreshnessWarnings.push({
+            source: 'Custom Integration',
+            age: Math.round(customAge),
+            severity: customAge > 14 ? 'high' : 'medium',
+            message: `Custom Integration data is ${Math.round(customAge)} days old - recommendations may be outdated`
+          });
+        }
+      }
+
       // Aggregate totals (Custom Integration: pageviews→impressions, sessions→engagements)
       const totalImpressions = linkedinMetrics.impressions + customMetrics.impressions;
       const totalEngagements = linkedinMetrics.engagements + customMetrics.engagements;
@@ -4788,59 +4813,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ceoSummary += `Performance trending downward - strategic review recommended. `;
       }
 
-      // Strategic recommendations
+      // Strategic recommendations with enterprise-grade projections
       const recommendations = [];
+      
+      // Helper: Calculate diminishing returns for scaling (industry standard: 15-25% efficiency loss per doubling)
+      const calculateDiminishingReturns = (currentSpend: number, additionalSpend: number, currentRoas: number) => {
+        const spendIncreasePct = (additionalSpend / currentSpend) * 100;
+        let efficiencyLoss = 0;
+        
+        // Conservative diminishing returns model based on ad platform data
+        if (spendIncreasePct <= 25) efficiencyLoss = 0.05; // 5% loss for small increases
+        else if (spendIncreasePct <= 50) efficiencyLoss = 0.15; // 15% loss for moderate increases  
+        else if (spendIncreasePct <= 100) efficiencyLoss = 0.25; // 25% loss for doubling
+        else efficiencyLoss = 0.35; // 35% loss for aggressive scaling
+        
+        const adjustedRoas = currentRoas * (1 - efficiencyLoss);
+        return {
+          adjustedRoas,
+          efficiencyLoss: efficiencyLoss * 100,
+          bestCase: currentRoas * (1 - efficiencyLoss * 0.5), // 50% less efficiency loss
+          worstCase: currentRoas * (1 - efficiencyLoss * 1.5)  // 50% more efficiency loss
+        };
+      };
       
       // Budget optimization recommendations
       if (topPlatform && bottomPlatform && topPlatform.roas > bottomPlatform.roas * 1.5) {
-        const reallocationAmount = bottomPlatform.spend * 0.3;
-        const estimatedImpact = reallocationAmount * (topPlatform.roas - bottomPlatform.roas);
+        // Dynamic reallocation based on performance gap
+        const performanceGap = topPlatform.roas / bottomPlatform.roas;
+        const reallocationPct = performanceGap > 3 ? 0.5 : performanceGap > 2 ? 0.3 : 0.2;
+        const reallocationAmount = bottomPlatform.spend * reallocationPct;
+        
+        // Conservative estimate assuming some efficiency loss
+        const conservativeTopRoas = topPlatform.roas * 0.9; // 10% efficiency loss from reallocation
+        const estimatedImpact = reallocationAmount * (conservativeTopRoas - bottomPlatform.roas);
+        
         recommendations.push({
           priority: 'high',
           category: 'Budget Reallocation',
-          action: `Shift $${reallocationAmount.toFixed(0)} from ${bottomPlatform.name} to ${topPlatform.name}`,
+          action: `Shift ${(reallocationPct * 100).toFixed(0)}% ($${reallocationAmount.toFixed(0)}) from ${bottomPlatform.name} to ${topPlatform.name}`,
           expectedImpact: `+$${estimatedImpact.toFixed(0)} revenue`,
           investmentRequired: '$0 (reallocation)',
-          timeline: 'Immediate'
+          timeline: 'Immediate',
+          confidence: 'high',
+          assumptions: [
+            `${topPlatform.name} maintains ${(conservativeTopRoas / topPlatform.roas * 100).toFixed(0)}% of current efficiency`,
+            'Sufficient audience scale available',
+            'No major market changes'
+          ],
+          scenarios: {
+            bestCase: `+$${(estimatedImpact * 1.3).toFixed(0)} revenue`,
+            expected: `+$${estimatedImpact.toFixed(0)} revenue`,
+            worstCase: `+$${(estimatedImpact * 0.7).toFixed(0)} revenue`
+          }
         });
       }
 
-      // Scaling recommendations
+      // Scaling recommendations with diminishing returns
       if (roi > 50 && roas > 2 && growthTrajectory !== 'declining') {
         const scaleAmount = totalSpend * 0.5;
-        const estimatedRevenue = scaleAmount * roas;
-        const estimatedProfit = estimatedRevenue - scaleAmount;
+        const scalingModel = calculateDiminishingReturns(totalSpend, scaleAmount, roas);
+        
+        const expectedRevenue = scaleAmount * scalingModel.adjustedRoas;
+        const expectedProfit = expectedRevenue - scaleAmount;
+        
+        const bestCaseRevenue = scaleAmount * scalingModel.bestCase;
+        const bestCaseProfit = bestCaseRevenue - scaleAmount;
+        
+        const worstCaseRevenue = scaleAmount * scalingModel.worstCase;
+        const worstCaseProfit = worstCaseRevenue - scaleAmount;
+        
         recommendations.push({
           priority: 'high',
           category: 'Scaling Opportunity',
           action: `Increase campaign budget by 50% to capitalize on strong performance`,
-          expectedImpact: `+$${estimatedProfit.toFixed(0)} profit`,
+          expectedImpact: `+$${expectedProfit.toFixed(0)} profit (${scalingModel.adjustedRoas.toFixed(1)}x ROAS)`,
           investmentRequired: `$${scaleAmount.toFixed(0)}`,
-          timeline: '30 days'
+          timeline: '30 days',
+          confidence: 'medium',
+          assumptions: [
+            `${scalingModel.efficiencyLoss.toFixed(0)}% efficiency loss from diminishing returns`,
+            'Audience targeting remains effective at scale',
+            'Market demand supports increased spend',
+            'Creative performance remains stable'
+          ],
+          scenarios: {
+            bestCase: `+$${bestCaseProfit.toFixed(0)} profit (${scalingModel.bestCase.toFixed(1)}x ROAS)`,
+            expected: `+$${expectedProfit.toFixed(0)} profit (${scalingModel.adjustedRoas.toFixed(1)}x ROAS)`,
+            worstCase: `+$${worstCaseProfit.toFixed(0)} profit (${scalingModel.worstCase.toFixed(1)}x ROAS)`
+          },
+          disclaimer: 'Projections based on industry-standard diminishing returns. Actual results may vary based on audience saturation, competition, and creative fatigue.'
         });
       }
 
-      // Optimization recommendations
+      // Optimization recommendations with realistic projections
       if (bottomPlatform && bottomPlatform.roas < 1.5) {
+        const targetRoas = 1.5;
+        const currentRoasGap = targetRoas - bottomPlatform.roas;
+        const potentialRevenueLift = bottomPlatform.spend * currentRoasGap;
+        
         recommendations.push({
           priority: 'medium',
           category: 'Performance Optimization',
           action: `Optimize ${bottomPlatform.name} targeting and creative (current ROAS: ${bottomPlatform.roas.toFixed(1)}x)`,
-          expectedImpact: `Potential ${((1.5 / bottomPlatform.roas - 1) * 100).toFixed(0)}% improvement in ROAS`,
+          expectedImpact: `+$${potentialRevenueLift.toFixed(0)} revenue at 1.5x ROAS target`,
           investmentRequired: 'Creative & targeting resources',
-          timeline: '60 days'
+          timeline: '60 days',
+          confidence: 'medium',
+          assumptions: [
+            'Optimization achieves industry-average 1.5x ROAS',
+            'Testing and iteration improve targeting precision',
+            'Creative refresh reduces ad fatigue'
+          ],
+          scenarios: {
+            bestCase: `+$${(potentialRevenueLift * 1.4).toFixed(0)} revenue (1.7x ROAS)`,
+            expected: `+$${potentialRevenueLift.toFixed(0)} revenue (1.5x ROAS)`,
+            worstCase: `+$${(potentialRevenueLift * 0.6).toFixed(0)} revenue (1.3x ROAS)`
+          },
+          disclaimer: 'Optimization success depends on execution quality and market conditions. Historical improvements vary 20-40%.'
         });
       }
 
-      // Diversification recommendations
+      // Diversification recommendations with realistic expectations
       if (platforms.length === 1) {
+        const testBudget = totalSpend * 0.15; // 15% of current spend for testing
+        const conservativeRoas = roas * 0.7; // Assume 30% lower ROAS on new platform
+        const expectedRevenue = testBudget * conservativeRoas;
+        const expectedProfit = expectedRevenue - testBudget;
+        
         recommendations.push({
           priority: 'medium',
           category: 'Risk Mitigation',
-          action: 'Diversify to additional platforms to reduce dependency risk',
-          expectedImpact: 'Reduced platform risk, potential new audience reach',
-          investmentRequired: 'Testing budget & setup resources',
-          timeline: '90 days'
+          action: 'Test additional platforms to reduce single-platform dependency',
+          expectedImpact: `${expectedProfit > 0 ? `+$${expectedProfit.toFixed(0)} profit` : 'Reduced platform risk'} from diversification`,
+          investmentRequired: `$${testBudget.toFixed(0)} testing budget`,
+          timeline: '90 days',
+          confidence: 'low',
+          assumptions: [
+            'New platform achieves 70% of current ROAS initially',
+            'Learning curve spans 60-90 days',
+            'Risk reduction outweighs potential lower initial returns'
+          ],
+          scenarios: {
+            bestCase: `+$${(testBudget * roas - testBudget).toFixed(0)} profit (matches current ROAS)`,
+            expected: `+$${expectedProfit.toFixed(0)} profit (70% of current ROAS)`,
+            worstCase: `-$${(testBudget * 0.4).toFixed(0)} loss (testing investment only)`
+          },
+          disclaimer: 'Diversification is primarily a risk mitigation strategy. Initial ROI may be lower during testing phase.'
         });
       }
 
@@ -4888,7 +5006,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recommendations,
         dataFreshness: {
           linkedinLastUpdate,
-          customIntegrationLastUpdate
+          customIntegrationLastUpdate,
+          warnings: dataFreshnessWarnings,
+          overallStatus: dataFreshnessWarnings.length === 0 ? 'current' : 
+                        dataFreshnessWarnings.some(w => w.severity === 'high') ? 'stale' : 'aging'
+        },
+        metadata: {
+          generatedAt: now.toISOString(),
+          disclaimer: 'All projections are estimates based on historical performance and industry benchmarks. Actual results will vary based on market conditions, competition, creative execution, and other factors. Recommendations should be validated through controlled testing before full implementation.'
         }
       });
 

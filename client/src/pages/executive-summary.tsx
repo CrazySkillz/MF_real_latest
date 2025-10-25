@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Calendar, Brain, Activity } from "lucide-react";
+import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Calendar, Brain, Activity, Info } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -564,6 +564,41 @@ export default function ExecutiveSummary() {
 
             {/* Strategic Recommendations Tab */}
             <TabsContent value="recommendations" className="space-y-6">
+              {/* Data Freshness Warnings */}
+              {(executiveSummary as any).dataFreshness?.warnings?.length > 0 && (
+                <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                      <div className="space-y-2 flex-1">
+                        <div className="font-semibold text-yellow-900 dark:text-yellow-100">
+                          Data Freshness Alert
+                        </div>
+                        {(executiveSummary as any).dataFreshness.warnings.map((warning: any, idx: number) => (
+                          <div key={idx} className="text-sm text-yellow-800 dark:text-yellow-200">
+                            <strong>{warning.source}:</strong> {warning.message}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Enterprise Disclaimer */}
+              {(executiveSummary as any).metadata?.disclaimer && (
+                <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3">
+                      <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-blue-900 dark:text-blue-100">
+                        {(executiveSummary as any).metadata.disclaimer}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {(executiveSummary as any).recommendations.length === 0 ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
@@ -582,10 +617,23 @@ export default function ExecutiveSummary() {
                     <Card key={index}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">{rec.action}</CardTitle>
-                          {getPriorityBadge(rec.priority)}
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <CardTitle className="text-lg">{rec.action}</CardTitle>
+                              {getPriorityBadge(rec.priority)}
+                              {rec.confidence && (
+                                <Badge variant="outline" className={
+                                  rec.confidence === 'high' ? 'border-green-300 text-green-700 dark:border-green-700 dark:text-green-300' :
+                                  rec.confidence === 'medium' ? 'border-yellow-300 text-yellow-700 dark:border-yellow-700 dark:text-yellow-300' :
+                                  'border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300'
+                                }>
+                                  {rec.confidence} confidence
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{rec.category}</div>
+                          </div>
                         </div>
-                        <div className="text-sm text-slate-600 dark:text-slate-400">{rec.category}</div>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
@@ -605,6 +653,51 @@ export default function ExecutiveSummary() {
                               <div className="text-sm text-purple-700 dark:text-purple-300">{rec.investmentRequired}</div>
                             </div>
                           </div>
+
+                          {/* Scenario Planning */}
+                          {rec.scenarios && (
+                            <div className="border-t pt-4">
+                              <div className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Projected Scenarios</div>
+                              <div className="grid gap-3 md:grid-cols-3">
+                                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
+                                  <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Best Case</div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{rec.scenarios.bestCase}</div>
+                                </div>
+                                <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
+                                  <div className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Expected</div>
+                                  <div className="text-sm font-semibold text-blue-900 dark:text-blue-100">{rec.scenarios.expected}</div>
+                                </div>
+                                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
+                                  <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Worst Case</div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{rec.scenarios.worstCase}</div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Assumptions */}
+                          {rec.assumptions && rec.assumptions.length > 0 && (
+                            <div className="border-t pt-4">
+                              <div className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Key Assumptions</div>
+                              <ul className="space-y-1">
+                                {rec.assumptions.map((assumption: string, idx: number) => (
+                                  <li key={idx} className="text-sm text-slate-600 dark:text-slate-400 flex items-start">
+                                    <span className="mr-2">•</span>
+                                    <span>{assumption}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Recommendation-specific disclaimer */}
+                          {rec.disclaimer && (
+                            <div className="border-t pt-4">
+                              <div className="text-xs italic text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-3 rounded">
+                                {rec.disclaimer}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

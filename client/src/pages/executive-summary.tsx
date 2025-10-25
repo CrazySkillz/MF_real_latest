@@ -136,7 +136,13 @@ export default function ExecutiveSummary() {
               <div className="text-right">
                 <div className="text-sm text-slate-600 dark:text-slate-400">Campaign Period</div>
                 <div className="font-semibold text-slate-900 dark:text-white">
-                  {format(subDays(new Date(), 90), 'MMM dd')} - {format(new Date(), 'MMM dd, yyyy')}
+                  {(campaign as any)?.startDate && (campaign as any)?.endDate ? (
+                    `${format(new Date((campaign as any).startDate), 'MMM dd, yyyy')} - ${format(new Date((campaign as any).endDate), 'MMM dd, yyyy')}`
+                  ) : (campaign as any)?.startDate ? (
+                    `${format(new Date((campaign as any).startDate), 'MMM dd, yyyy')} - Present`
+                  ) : (
+                    `${format(subDays(new Date(), 90), 'MMM dd')} - ${format(new Date(), 'MMM dd, yyyy')}`
+                  )}
                 </div>
               </div>
             </div>

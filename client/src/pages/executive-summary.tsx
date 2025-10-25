@@ -73,12 +73,12 @@ export default function ExecutiveSummary() {
     return num.toLocaleString();
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number, showCents: boolean = false) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: showCents ? 2 : 0,
+      maximumFractionDigits: showCents ? 2 : 0,
     }).format(amount);
   };
 
@@ -266,7 +266,7 @@ export default function ExecutiveSummary() {
                               {formatNumber((executiveSummary as any).metrics.totalClicks)} Clicks
                             </div>
                             <div className="text-sm text-indigo-700 dark:text-indigo-400 mt-1">
-                              Cost Per Click: {formatCurrency((executiveSummary as any).metrics.cpc)}
+                              Cost Per Click: {formatCurrency((executiveSummary as any).metrics.cpc, true)}
                             </div>
                           </div>
                         </div>
@@ -416,7 +416,7 @@ export default function ExecutiveSummary() {
                       {formatNumber((executiveSummary as any).metrics.totalClicks)}
                     </div>
                     <div className="flex items-center text-slate-600 dark:text-slate-400">
-                      <span className="text-sm font-medium">CPC: {formatCurrency((executiveSummary as any).metrics.cpc)}</span>
+                      <span className="text-sm font-medium">CPC: {formatCurrency((executiveSummary as any).metrics.cpc, true)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -578,7 +578,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-xl font-bold text-slate-900 dark:text-white mb-1">
-                      {formatCurrency((executiveSummary as any).metrics.cpc)}
+                      {formatCurrency((executiveSummary as any).metrics.cpc, true)}
                     </div>
                     <div className="text-xs text-slate-500">Cost Per Click</div>
                   </CardContent>
@@ -590,7 +590,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-xl font-bold text-slate-900 dark:text-white mb-1">
-                      {formatCurrency((executiveSummary as any).metrics.cpa)}
+                      {formatCurrency((executiveSummary as any).metrics.cpa, true)}
                     </div>
                     <div className="text-xs text-slate-500">Cost Per Acquisition</div>
                   </CardContent>

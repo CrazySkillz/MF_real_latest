@@ -976,9 +976,15 @@ export default function Campaigns() {
 
   const handleEditSubmit = (data: CampaignFormData) => {
     if (editingCampaign) {
+      // Remove commas from budget before sending to backend
+      const cleanedData = {
+        ...data,
+        budget: data.budget ? data.budget.replace(/,/g, '') : data.budget,
+      };
+      
       updateCampaignMutation.mutate({
         id: editingCampaign.id,
-        ...data,
+        ...cleanedData,
       });
     }
   };

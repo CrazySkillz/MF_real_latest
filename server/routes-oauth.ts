@@ -4181,6 +4181,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const spend = aggregated.spend || 0;
       const conversions = aggregated.conversions || 0;
       
+      // Calculate revenue from conversion value
+      if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0 && conversions > 0) {
+        const conversionValue = parseFloat(latestSession.conversionValue);
+        aggregated.revenue = parseFloat((conversions * conversionValue).toFixed(2));
+        aggregated.conversionValue = conversionValue;
+        
+        // Calculate ROI and ROAS if revenue is available
+        if (spend > 0) {
+          aggregated.roas = parseFloat((aggregated.revenue / spend).toFixed(2));
+          aggregated.roi = parseFloat((((aggregated.revenue - spend) / spend) * 100).toFixed(2));
+        }
+      }
+      
       // CTR: (Clicks / Impressions) * 100
       if (impressions > 0) {
         aggregated.ctr = parseFloat(((clicks / impressions) * 100).toFixed(2));

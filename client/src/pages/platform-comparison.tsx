@@ -125,9 +125,11 @@ export default function PlatformComparison() {
       const linkedInCTR = linkedInImpressions > 0 ? (linkedInClicks / linkedInImpressions) * 100 : 0;
       const linkedInCPC = linkedInClicks > 0 ? linkedInSpend / linkedInClicks : 0;
       const linkedInConvRate = linkedInClicks > 0 ? (linkedInConversions / linkedInClicks) * 100 : 0;
-      const linkedInRevenue = linkedInConversions * estimatedAOV;
-      const linkedInROAS = linkedInSpend > 0 ? linkedInRevenue / linkedInSpend : 0;
-      const linkedInROI = linkedInSpend > 0 ? ((linkedInRevenue - linkedInSpend) / linkedInSpend) * 100 : 0;
+      
+      // Use actual revenue from backend (calculated from conversion value) or fallback to estimatedAOV
+      const linkedInRevenue = linkedInData.revenue || (linkedInConversions * estimatedAOV);
+      const linkedInROAS = linkedInData.roas || (linkedInSpend > 0 ? linkedInRevenue / linkedInSpend : 0);
+      const linkedInROI = linkedInData.roi || (linkedInSpend > 0 ? ((linkedInRevenue - linkedInSpend) / linkedInSpend) * 100 : 0);
 
       platforms.push({
         platform: 'LinkedIn Ads',

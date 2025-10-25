@@ -271,17 +271,26 @@ export default function ExecutiveSummary() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-indigo-700 dark:text-indigo-400">
-                            Conversion Rate{(executiveSummary as any).metrics.cvr > 100 && '*'}
-                          </div>
-                          <div className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">
-                            {Math.min((executiveSummary as any).metrics.cvr, 100).toFixed(2)}%
-                          </div>
-                          {(executiveSummary as any).metrics.cvr > 100 && (
-                            <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">
-                              *Includes view-through
+                          <div className="space-y-2">
+                            <div>
+                              <div className="text-xs text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                                Click-Through CVR
+                              </div>
+                              <div className="text-2xl font-bold text-indigo-900 dark:text-indigo-100">
+                                {(executiveSummary as any).metrics.clickThroughCvr.toFixed(2)}%
+                              </div>
                             </div>
-                          )}
+                            {(executiveSummary as any).metrics.totalCvr > 100 && (
+                              <div className="pt-1 border-t border-indigo-200 dark:border-indigo-700">
+                                <div className="text-xs text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                                  Total CVR (w/ view-through)
+                                </div>
+                                <div className="text-xl font-semibold text-indigo-700 dark:text-indigo-300">
+                                  {(executiveSummary as any).metrics.totalCvr.toFixed(2)}%
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="flex justify-center my-2">

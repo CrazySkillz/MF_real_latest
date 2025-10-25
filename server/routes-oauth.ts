@@ -4599,7 +4599,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
       const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
       const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
-      const cvr = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
+      
+      // CVR Calculation - Full Transparency Approach
+      // Click-Through CVR: Only conversions that can be attributed to direct clicks (capped at 100%)
+      const clickThroughConversions = Math.min(totalConversions, totalClicks);
+      const clickThroughCvr = totalClicks > 0 ? (clickThroughConversions / totalClicks) * 100 : 0;
+      
+      // Total CVR: Includes view-through conversions (can exceed 100%)
+      const totalCvr = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
+      
+      // Legacy CVR for backward compatibility
+      const cvr = totalCvr;
+      
       const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
       const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
 
@@ -4808,6 +4819,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           roas,
           ctr,
           cvr,
+          clickThroughCvr,
+          totalCvr,
+          clickThroughConversions,
           cpc,
           cpa
         },

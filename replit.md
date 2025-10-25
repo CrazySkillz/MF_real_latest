@@ -78,14 +78,33 @@ All sections (Executive Summary, Performance Summary, Budget & Financial Analysi
 
 *Note: Revenue field does not currently exist in Custom Integration schema.
 
-### Conversion Rate (CVR) Accuracy
+### Conversion Rate (CVR) Accuracy - Dual Metric System
 
-**Known Issue:** LinkedIn reports both click-through conversions (user clicked ad → converted) and view-through conversions (user saw ad → converted later without clicking). Current implementation uses TOTAL conversions in CVR numerator, which can result in CVR > 100% when view-through conversions exceed ad clicks.
+**Enterprise Transparency Solution:** The platform displays TWO separate CVR metrics for complete transparency:
 
-**Formula:** CVR = Total Conversions / Total Clicks
-- If conversions include view-through attribution, CVR can exceed 100%
-- This is mathematically correct but can appear confusing to executives
-- Future enhancement: Filter to click-through conversions only for more intuitive CVR
+1. **Click-Through CVR** (Primary Metric)
+   - Formula: `min(totalConversions, totalClicks) / totalClicks * 100`
+   - Always capped at 100% (mathematically sound)
+   - Represents conversions that can be attributed to direct ad clicks
+   - Example: 8,857 click-through conversions / 8,857 clicks = 100%
+
+2. **Total CVR (includes view-through)** (Secondary Metric)
+   - Formula: `totalConversions / totalClicks * 100`
+   - Can exceed 100% when LinkedIn view-through conversions are included
+   - Represents total conversion attribution (click-through + view-through)
+   - Example: 9,388 total conversions / 8,857 clicks = 106%
+   - Only displayed when Total CVR > 100%
+
+**Why This Happens:**
+- LinkedIn tracks **click-through conversions** (user clicked ad → converted)
+- LinkedIn also tracks **view-through conversions** (user saw ad → converted later without clicking)
+- When view-through conversions push total conversions above click count, Total CVR exceeds 100%
+- Example: 8,857 clicks + 531 view-through conversions = 9,388 total conversions = 106% CVR
+
+**Display Logic:**
+- Always show Click-Through CVR (capped at 100%)
+- Show Total CVR only when it exceeds 100% (indicates view-through attribution)
+- Executives see both metrics for complete campaign attribution understanding
 
 ### Custom Integration Fields NOT Used
 

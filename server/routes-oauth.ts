@@ -52,7 +52,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update a campaign by ID
   app.patch("/api/campaigns/:id", async (req, res) => {
     try {
+      console.log('Campaign update request body:', JSON.stringify(req.body, null, 2));
       const validatedData = insertCampaignSchema.partial().parse(req.body);
+      console.log('Validated data:', JSON.stringify(validatedData, null, 2));
       const campaign = await storage.updateCampaign(req.params.id, validatedData);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
@@ -61,6 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Campaign update error:', error);
       if (error instanceof z.ZodError) {
+        console.error('Zod validation errors:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update campaign" });

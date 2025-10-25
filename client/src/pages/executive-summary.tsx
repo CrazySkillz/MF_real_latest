@@ -486,71 +486,65 @@ export default function ExecutiveSummary() {
                                   </Badge>
                                 )}
                               </div>
-                              {hasNoData ? (
-                                <div className="text-center py-6 text-slate-600 dark:text-slate-400">
-                                  <p className="text-sm">No PDF data imported yet. Upload performance data via Custom Integration webhook to see metrics.</p>
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-5 gap-4">
-                                  <div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400">Spend</div>
-                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                      {platform.spend === 0 && platform.name === 'Custom Integration' ? (
-                                        <span className="text-slate-400">No data</span>
-                                      ) : (
-                                        formatCurrency(platform.spend)
-                                      )}
-                                    </div>
-                                    {platform.spend > 0 && (
-                                      <div className="text-xs text-slate-500">
-                                        {platform.spendShare.toFixed(0)}% of total
-                                      </div>
+                              <div className="grid grid-cols-5 gap-4">
+                                <div>
+                                  <div className="text-xs text-slate-600 dark:text-slate-400">Spend</div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    {hasNoData ? (
+                                      <span className="text-slate-400">No data</span>
+                                    ) : (
+                                      formatCurrency(platform.spend)
                                     )}
                                   </div>
-                                  <div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400">Revenue</div>
-                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                      {platform.revenue === 0 && platform.name === 'Custom Integration' ? (
-                                        <span className="text-slate-400">No data</span>
-                                      ) : (
-                                        formatCurrency(platform.revenue)
-                                      )}
+                                  {!hasNoData && platform.spend > 0 && (
+                                    <div className="text-xs text-slate-500">
+                                      {platform.spendShare.toFixed(0)}% of total
                                     </div>
-                                  </div>
-                                  <div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400">Conversions</div>
-                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                      {platform.conversions === 0 && platform.name === 'Custom Integration' ? (
-                                        <span className="text-slate-400">No data</span>
-                                      ) : (
-                                        formatNumber(platform.conversions)
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400">ROAS</div>
-                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                      {platform.roas === 0 && platform.name === 'Custom Integration' ? (
-                                        <span className="text-slate-400">N/A</span>
-                                      ) : (
-                                        `${platform.roas.toFixed(1)}x`
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400">ROI</div>
-                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                      {platform.roi === 0 && platform.name === 'Custom Integration' ? (
-                                        <span className="text-slate-400">N/A</span>
-                                      ) : (
-                                        <span className={platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                                          {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
-                                        </span>
-                                      )}
-                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="text-xs text-slate-600 dark:text-slate-400">Revenue</div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    {hasNoData ? (
+                                      <span className="text-slate-400">No data</span>
+                                    ) : (
+                                      formatCurrency(platform.revenue)
+                                    )}
                                   </div>
                                 </div>
-                              )}
+                                <div>
+                                  <div className="text-xs text-slate-600 dark:text-slate-400">Conversions</div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    {hasNoData ? (
+                                      <span className="text-slate-400">No data</span>
+                                    ) : (
+                                      formatNumber(platform.conversions)
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-slate-600 dark:text-slate-400">ROAS</div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    {hasNoData ? (
+                                      <span className="text-slate-400">No data</span>
+                                    ) : (
+                                      `${platform.roas.toFixed(1)}x`
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-slate-600 dark:text-slate-400">ROI</div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    {hasNoData ? (
+                                      <span className="text-slate-400">No data</span>
+                                    ) : (
+                                      <span className={platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                                        {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           );
                         })}

@@ -4701,9 +4701,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const platforms: any[] = [];
       const platformsForDisplay: any[] = []; // Separate array for UI display (includes platforms with no data)
       
-      // Check if LinkedIn has any meaningful data
-      const hasLinkedInData = linkedinMetrics.spend > 0 || linkedinMetrics.impressions > 0 || 
-                               linkedinMetrics.clicks > 0 || linkedinMetrics.conversions > 0;
+      // Check if LinkedIn has any meaningful advertising data
+      // We check spend, conversions, or revenue (not just impressions/clicks which could be organic)
+      const hasLinkedInData = linkedinMetrics.spend > 0 || linkedinMetrics.conversions > 0 || linkedinMetrics.revenue > 0;
       if (hasLinkedInData) {
         const linkedInPlatform = {
           name: 'LinkedIn Ads',
@@ -4718,9 +4718,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformsForDisplay.push(linkedInPlatform);
       }
       
-      // Check if Custom Integration has any meaningful data (not all zeros)
-      const hasCustomIntegrationData = customMetrics.spend > 0 || customMetrics.impressions > 0 || 
-                                        customMetrics.clicks > 0 || customMetrics.conversions > 0;
+      // Check if Custom Integration has any meaningful advertising data
+      // We check spend, conversions, or revenue (not impressions/engagements which could be website analytics)
+      const hasCustomIntegrationData = customMetrics.spend > 0 || customMetrics.conversions > 0 || customMetrics.revenue > 0;
       
       if (hasCustomIntegration) {
         const customPlatform = {

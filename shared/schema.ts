@@ -1014,28 +1014,3 @@ export type CustomIntegration = typeof customIntegrations.$inferSelect;
 export type InsertCustomIntegration = z.infer<typeof insertCustomIntegrationSchema>;
 export type CustomIntegrationMetrics = typeof customIntegrationMetrics.$inferSelect;
 export type InsertCustomIntegrationMetrics = z.infer<typeof insertCustomIntegrationMetricsSchema>;
-
-// Chat Support Tables
-export const chatConversations = pgTable("chat_conversations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: text("user_id"), // Optional user identifier
-  status: text("status").notNull().default("active"), // active, resolved, closed
-  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const chatMessages = pgTable("chat_messages", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  conversationId: text("conversation_id").notNull(),
-  senderType: text("sender_type").notNull(), // 'user' or 'support'
-  message: text("message").notNull(),
-  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const insertChatConversationSchema = createInsertSchema(chatConversations).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({ id: true, createdAt: true });
-
-export type ChatConversation = typeof chatConversations.$inferSelect;
-export type InsertChatConversation = z.infer<typeof insertChatConversationSchema>;
-export type ChatMessage = typeof chatMessages.$inferSelect;
-export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;

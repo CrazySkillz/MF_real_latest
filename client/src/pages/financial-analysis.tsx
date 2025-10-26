@@ -296,28 +296,6 @@ export default function FinancialAnalysis() {
                 </CardContent>
               </Card>
 
-              {/* Time-Based Comparison Selector */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Activity className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                      <span className="text-sm font-medium">Compare with:</span>
-                    </div>
-                    <Select value={comparisonPeriod} onValueChange={setComparisonPeriod}>
-                      <SelectTrigger className="w-[180px]" data-testid="select-comparison-period">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1d" data-testid="option-yesterday">Yesterday</SelectItem>
-                        <SelectItem value="7d" data-testid="option-last-week">Last 7 Days</SelectItem>
-                        <SelectItem value="30d" data-testid="option-last-month">Last 30 Days</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* AOV Warning */}
               {estimatedAOV === 0 && (
                 <Card className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">

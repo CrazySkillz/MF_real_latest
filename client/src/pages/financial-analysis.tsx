@@ -757,20 +757,18 @@ export default function FinancialAnalysis() {
                         </div>
                       )}
 
-                      {/* Custom Integration (Other Platforms) */}
-                      {platformMetrics.customIntegration.spend > 0 && (
-                        <div className="p-3 border rounded-lg">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="font-medium">Custom Integration</span>
-                            <Badge className={customIntegrationROAS >= 3 ? "bg-green-100 text-green-700" : customIntegrationROAS >= 1.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
-                              {customIntegrationROAS.toFixed(2)}x ROAS
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Conversions: {formatNumber(platformMetrics.customIntegration.conversions)} • Revenue: {formatCurrency(platformMetrics.customIntegration.conversions * fallbackAOV)}
-                          </div>
+                      {/* Custom Integration (Other Platforms) - Always shown */}
+                      <div className="p-3 border rounded-lg">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-medium">Custom Integration</span>
+                          <Badge className={customIntegrationROAS >= 3 ? "bg-green-100 text-green-700" : customIntegrationROAS >= 1.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                            {customIntegrationROAS.toFixed(2)}x ROAS
+                          </Badge>
                         </div>
-                      )}
+                        <div className="text-sm text-muted-foreground">
+                          Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Conversions: {formatNumber(platformMetrics.customIntegration.conversions)} • Revenue: {formatCurrency(platformMetrics.customIntegration.conversions * fallbackAOV)}
+                        </div>
+                      </div>
 
                       {/* No data message */}
                       {totalSpend === 0 && (
@@ -809,8 +807,8 @@ export default function FinancialAnalysis() {
                         );
                       })()}
 
-                      {/* Custom Integration (Other Platforms) */}
-                      {platformMetrics.customIntegration.spend > 0 && (() => {
+                      {/* Custom Integration (Other Platforms) - Always shown */}
+                      {(() => {
                         const customIntegrationRevenue = platformMetrics.customIntegration.conversions * fallbackAOV;
                         const customIntegrationROI = platformMetrics.customIntegration.spend > 0 
                           ? ((customIntegrationRevenue - platformMetrics.customIntegration.spend) / platformMetrics.customIntegration.spend) * 100 

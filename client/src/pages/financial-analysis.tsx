@@ -497,12 +497,15 @@ export default function FinancialAnalysis() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Net Profit</p>
                         <div className="flex items-center justify-between">
-                          <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {roas.toFixed(2)}x
+                          <p className={`text-2xl font-bold ${estimatedRevenue - totalSpend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(estimatedRevenue - totalSpend)}
                           </p>
-                          {historicalMetrics && renderTrendIndicator(calculateChange(roas, historicalMetrics.roas))}
+                          {historicalMetrics && renderTrendIndicator(calculateChange(
+                            estimatedRevenue - totalSpend, 
+                            historicalMetrics.revenue - historicalMetrics.spend
+                          ))}
                         </div>
                       </div>
                       <Calculator className="w-8 h-8 text-blue-500" />
@@ -514,19 +517,15 @@ export default function FinancialAnalysis() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions</p>
                         <div className="flex items-center justify-between">
-                          <p className={`text-2xl font-bold ${roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatPercentage(roi)}
+                          <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {formatNumber(totalConversions)}
                           </p>
-                          {historicalMetrics && renderTrendIndicator(calculateChange(roi, historicalMetrics.roi))}
+                          {historicalMetrics && historicalSnapshot && renderTrendIndicator(calculateChange(totalConversions, historicalSnapshot.totalConversions || 0))}
                         </div>
                       </div>
-                      {roi >= 0 ? (
-                        <TrendingUp className="w-8 h-8 text-green-500" />
-                      ) : (
-                        <TrendingDown className="w-8 h-8 text-red-500" />
-                      )}
+                      <Activity className="w-8 h-8 text-purple-500" />
                     </div>
                   </CardContent>
                 </Card>

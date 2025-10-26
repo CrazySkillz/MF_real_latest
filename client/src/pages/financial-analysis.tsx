@@ -1062,186 +1062,176 @@ export default function FinancialAnalysis() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="p-4 border rounded-lg">
-                        <h4 className="font-semibold text-green-600 mb-2">High Performance</h4>
-                        <p className="text-2xl font-bold">{formatCurrency(platformMetrics.linkedIn.spend + platformMetrics.customIntegration.spend)}</p>
-                        <p className="text-sm text-muted-foreground">{totalSpend > 0 ? ((platformMetrics.linkedIn.spend + platformMetrics.customIntegration.spend) / totalSpend * 100).toFixed(0) : 0}% of current spend</p>
-                        <p className="text-xs mt-2">Platforms with ROAS &gt; 1.5x</p>
-                      </div>
-                      <div className="p-4 border rounded-lg">
-                        <h4 className="font-semibold text-yellow-600 mb-2">Medium Performance</h4>
-                        <p className="text-2xl font-bold">{formatCurrency(0)}</p>
-                        <p className="text-sm text-muted-foreground">0% of current spend</p>
-                        <p className="text-xs mt-2">Platforms with ROAS 1.0-1.5x</p>
-                      </div>
-                      <div className="p-4 border rounded-lg">
-                        <h4 className="font-semibold text-red-600 mb-2">Low Performance</h4>
-                        <p className="text-2xl font-bold">{formatCurrency(0)}</p>
-                        <p className="text-sm text-muted-foreground">0% of current spend</p>
-                        <p className="text-xs mt-2">Platforms with ROAS &lt; 1.0x</p>
-                      </div>
-                    </div>
+                  {(() => {
+                    // Calculate performance tiers based on real ROAS
+                    const platforms = [
+                      { 
+                        name: 'LinkedIn Ads', 
+                        spend: platformMetrics.linkedIn.spend, 
+                        roas: linkedInROAS,
+                        conversions: platformMetrics.linkedIn.conversions,
+                        revenue: linkedInRevenue
+                      },
+                      { 
+                        name: 'Custom Integration', 
+                        spend: platformMetrics.customIntegration.spend, 
+                        roas: customIntegrationROAS,
+                        conversions: platformMetrics.customIntegration.conversions,
+                        revenue: platformMetrics.customIntegration.conversions * fallbackAOV
+                      }
+                    ].filter(p => p.spend > 0 || p.name === 'Custom Integration'); // Always show Custom Integration
                     
-                    {/* Detailed Platform Budget Breakdown */}
-                    <div className="mt-6">
-                      <h4 className="font-semibold mb-4">Current vs Recommended Budget Allocation</h4>
-                      <div className="space-y-4">
-                        <div className="p-4 border rounded-lg">
-                          <div className="flex justify-between items-center mb-3">
-                            <span className="font-medium">TikTok Ads</span>
-                            <div className="flex space-x-4 text-sm">
-                              <span>Current: {formatCurrency(totalSpend * 0.35)}</span>
-                              <span className="text-green-600 font-medium">Recommended: {formatCurrency(totalSpend * 0.45)}</span>
-                            </div>
+                    const highPerformance = platforms.filter(p => p.roas >= 3 && p.spend > 0);
+                    const mediumPerformance = platforms.filter(p => p.roas >= 1 && p.roas < 3 && p.spend > 0);
+                    const lowPerformance = platforms.filter(p => p.roas < 1 && p.spend > 0);
+                    
+                    const highSpend = highPerformance.reduce((sum, p) => sum + p.spend, 0);
+                    const mediumSpend = mediumPerformance.reduce((sum, p) => sum + p.spend, 0);
+                    const lowSpend = lowPerformance.reduce((sum, p) => sum + p.spend, 0);
+                    
+                    const platformsWithSpend = platforms.filter(p => p.spend > 0);
+                    const hasMultiplePlatforms = platformsWithSpend.length > 1;
+                    
+                    return (
+                      <div className="space-y-6">
+                        {/* Performance Tiers */}
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold text-green-600 mb-2">High Performance</h4>
+                            <p className="text-2xl font-bold">{formatCurrency(highSpend)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {totalSpend > 0 ? ((highSpend / totalSpend) * 100).toFixed(0) : 0}% of current spend
+                            </p>
+                            <p className="text-xs mt-2">Platforms with ROAS ≥ 3.0x</p>
                           </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>Current %:</span>
-                              <span>35%</span>
-                            </div>
-                            <Progress value={35} className="h-2" />
-                            <div className="flex justify-between text-sm">
-                              <span>Recommended %:</span>
-                              <span className="text-green-600 font-medium">45% (+10%)</span>
-                            </div>
-                            <Progress value={45} className="h-2" />
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold text-yellow-600 mb-2">Medium Performance</h4>
+                            <p className="text-2xl font-bold">{formatCurrency(mediumSpend)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {totalSpend > 0 ? ((mediumSpend / totalSpend) * 100).toFixed(0) : 0}% of current spend
+                            </p>
+                            <p className="text-xs mt-2">Platforms with ROAS 1.0-3.0x</p>
                           </div>
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            Reason: Highest ROAS (6.2x) and lowest CPA
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold text-red-600 mb-2">Low Performance</h4>
+                            <p className="text-2xl font-bold">{formatCurrency(lowSpend)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {totalSpend > 0 ? ((lowSpend / totalSpend) * 100).toFixed(0) : 0}% of current spend
+                            </p>
+                            <p className="text-xs mt-2">Platforms with ROAS &lt; 1.0x</p>
                           </div>
                         </div>
                         
-                        <div className="p-4 border rounded-lg">
-                          <div className="flex justify-between items-center mb-3">
-                            <span className="font-medium">Instagram Ads</span>
-                            <div className="flex space-x-4 text-sm">
-                              <span>Current: {formatCurrency(totalSpend * 0.25)}</span>
-                              <span className="text-green-600 font-medium">Recommended: {formatCurrency(totalSpend * 0.3)}</span>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>Current %:</span>
-                              <span>25%</span>
-                            </div>
-                            <Progress value={25} className="h-2" />
-                            <div className="flex justify-between text-sm">
-                              <span>Recommended %:</span>
-                              <span className="text-green-600 font-medium">30% (+5%)</span>
-                            </div>
-                            <Progress value={30} className="h-2" />
-                          </div>
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            Reason: Strong ROAS (5.8x) with high engagement rates
+                        {/* Platform Budget Breakdown */}
+                        <div className="mt-6">
+                          <h4 className="font-semibold mb-4">Platform Budget Analysis</h4>
+                          <div className="space-y-4">
+                            {platforms.map((platform, index) => {
+                              const hasNoData = platform.spend === 0 && platform.conversions === 0;
+                              const currentPercent = totalSpend > 0 ? (platform.spend / totalSpend) * 100 : 0;
+                              const performanceColor = platform.roas >= 3 ? 'green' : platform.roas >= 1 ? 'yellow' : 'red';
+                              
+                              return (
+                                <div key={index} className="p-4 border rounded-lg">
+                                  <div className="flex justify-between items-center mb-3">
+                                    <span className="font-medium">{platform.name}</span>
+                                    <div className="flex items-center space-x-2">
+                                      {hasNoData ? (
+                                        <Badge className="bg-slate-100 text-slate-700">No Data Available</Badge>
+                                      ) : (
+                                        <Badge className={
+                                          performanceColor === 'green' ? "bg-green-100 text-green-700" : 
+                                          performanceColor === 'yellow' ? "bg-yellow-100 text-yellow-700" : 
+                                          "bg-red-100 text-red-700"
+                                        }>
+                                          {platform.roas.toFixed(2)}x ROAS
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {hasNoData ? (
+                                    <p className="text-sm text-muted-foreground">No financial metrics available</p>
+                                  ) : (
+                                    <>
+                                      <div className="grid grid-cols-3 gap-4 text-sm mb-3">
+                                        <div>
+                                          <span className="text-muted-foreground">Spend:</span>
+                                          <p className="font-medium">{formatCurrency(platform.spend)}</p>
+                                        </div>
+                                        <div>
+                                          <span className="text-muted-foreground">Conversions:</span>
+                                          <p className="font-medium">{formatNumber(platform.conversions)}</p>
+                                        </div>
+                                        <div>
+                                          <span className="text-muted-foreground">Revenue:</span>
+                                          <p className="font-medium">{formatCurrency(platform.revenue)}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-between text-sm mb-2">
+                                        <span>Budget Share:</span>
+                                        <span>{currentPercent.toFixed(1)}%</span>
+                                      </div>
+                                      <Progress value={currentPercent} className="h-2" />
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                         
-                        <div className="p-4 border rounded-lg">
-                          <div className="flex justify-between items-center mb-3">
-                            <span className="font-medium">Google Ads</span>
-                            <div className="flex space-x-4 text-sm">
-                              <span>Current: {formatCurrency(totalSpend * 0.3)}</span>
-                              <span className="text-orange-600 font-medium">Recommended: {formatCurrency(totalSpend * 0.2)}</span>
+                        {/* Recommendations */}
+                        {hasMultiplePlatforms ? (
+                          <div className="border-t pt-4">
+                            <h4 className="font-semibold mb-3">Budget Optimization Recommendations</h4>
+                            <div className="space-y-3">
+                              {highPerformance.length > 0 && (
+                                <div className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                                  <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />
+                                  <div>
+                                    <p className="font-medium">Scale High-Performing Platforms</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {highPerformance.map(p => p.name).join(', ')} {highPerformance.length === 1 ? 'is' : 'are'} generating exceptional ROAS ≥ 3.0x - consider increasing budget allocation
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              {lowPerformance.length > 0 && (
+                                <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                                  <div>
+                                    <p className="font-medium">Optimize Underperforming Platforms</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {lowPerformance.map(p => p.name).join(', ')} showing ROAS below 1.0x - review targeting and creative or pause campaigns
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              {highPerformance.length > 0 && lowPerformance.length > 0 && (
+                                <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                  <Calculator className="w-5 h-5 text-blue-600 mt-0.5" />
+                                  <div>
+                                    <p className="font-medium">Budget Reallocation Opportunity</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      Reallocating budget from low to high-performing platforms could significantly improve overall campaign ROAS
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>Current %:</span>
-                              <span>30%</span>
-                            </div>
-                            <Progress value={30} className="h-2" />
-                            <div className="flex justify-between text-sm">
-                              <span>Recommended %:</span>
-                              <span className="text-orange-600 font-medium">20% (-10%)</span>
-                            </div>
-                            <Progress value={20} className="h-2" />
-                          </div>
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            Reason: Higher CPC and lower conversion rates vs social platforms
-                          </div>
-                        </div>
-                        
-                        <div className="p-4 border rounded-lg">
-                          <div className="flex justify-between items-center mb-3">
-                            <span className="font-medium">LinkedIn Ads</span>
-                            <div className="flex space-x-4 text-sm">
-                              <span>Current: {formatCurrency(totalSpend * 0.1)}</span>
-                              <span className="text-red-600 font-medium">Recommended: {formatCurrency(totalSpend * 0.05)}</span>
+                        ) : (
+                          <div className="border-t pt-4">
+                            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
+                              <p className="text-sm text-muted-foreground">
+                                Budget reallocation recommendations will appear when multiple platforms have active spend
+                              </p>
                             </div>
                           </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>Current %:</span>
-                              <span>10%</span>
-                            </div>
-                            <Progress value={10} className="h-2" />
-                            <div className="flex justify-between text-sm">
-                              <span>Recommended %:</span>
-                              <span className="text-red-600 font-medium">5% (-5%)</span>
-                            </div>
-                            <Progress value={5} className="h-2" />
-                          </div>
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            Reason: Lowest ROAS (2.8x) and highest CPA
-                          </div>
-                        </div>
+                        )}
                       </div>
-                    </div>
-                    
-                    {/* Budget Impact Projection */}
-                    <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <h5 className="font-semibold text-blue-900 dark:text-blue-300 mb-3">📊 Projected Impact of Reallocation</h5>
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-green-600">+{formatCurrency((totalSpend * 0.1) * 0.3)}</div>
-                          <div className="text-sm text-muted-foreground">Additional Revenue</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-blue-600">+0.8x</div>
-                          <div className="text-sm text-muted-foreground">ROAS Improvement</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-purple-600">-15%</div>
-                          <div className="text-sm text-muted-foreground">Average CPA</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border-t pt-4">
-                      <h4 className="font-semibold mb-3">Budget Optimization Recommendations</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded">
-                          <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />
-                          <div>
-                            <p className="font-medium">Increase High-Performing Platform Budget</p>
-                            <p className="text-sm text-muted-foreground">
-                              Consider increasing budget allocation to platforms generating ROAS above 3.0x
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                          <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                          <div>
-                            <p className="font-medium">Optimize Underperforming Campaigns</p>
-                            <p className="text-sm text-muted-foreground">
-                              Review targeting and creative for campaigns with CPA above ${(totalSpend / totalConversions * 1.5).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
-                          <Calculator className="w-5 h-5 text-blue-600 mt-0.5" />
-                          <div>
-                            <p className="font-medium">Budget Reallocation Opportunity</p>
-                            <p className="text-sm text-muted-foreground">
-                              Shifting {formatCurrency(totalSpend * 0.15)} to top-performing platforms could improve overall ROAS by 20-30%
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>

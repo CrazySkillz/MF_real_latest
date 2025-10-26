@@ -237,14 +237,6 @@ export interface IStorage {
     lastClickConversions: number;
     firstClickConversions: number;
   }[]>;
-  
-  // Chat Support
-  getChatConversation(conversationId: string): Promise<ChatConversation | undefined>;
-  createChatConversation(conversation: InsertChatConversation): Promise<ChatConversation>;
-  updateChatConversation(id: string, conversation: Partial<InsertChatConversation>): Promise<ChatConversation | undefined>;
-  getChatMessages(conversationId: string): Promise<ChatMessage[]>;
-  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
-  getActiveConversations(): Promise<ChatConversation[]>;
 }
 
 export class MemStorage implements IStorage {

@@ -773,7 +773,7 @@ export default function FinancialAnalysis() {
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {platformMetrics.customIntegration.spend === 0 && platformMetrics.customIntegration.conversions === 0 ? (
-                            "Upload data via Custom Integration to see performance metrics"
+                            "No financial metrics available"
                           ) : (
                             <>Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Conversions: {formatNumber(platformMetrics.customIntegration.conversions)} • Revenue: {formatCurrency(platformMetrics.customIntegration.conversions * fallbackAOV)}</>
                           )}
@@ -842,7 +842,7 @@ export default function FinancialAnalysis() {
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {!hasData ? (
-                                "Upload data via Custom Integration to see performance metrics"
+                                "No financial metrics available"
                               ) : (
                                 <>Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Net Profit: <span className={customIntegrationNetProfit >= 0 ? "text-green-600" : "text-red-600"}>{formatCurrency(customIntegrationNetProfit)}</span></>
                               )}

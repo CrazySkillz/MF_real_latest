@@ -4645,6 +4645,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalSpend = linkedinMetrics.spend + customMetrics.spend;
       const totalRevenue = linkedinMetrics.revenue + customMetrics.revenue;
 
+      // Calculate breakdown for funnel visualization (separate advertising from website analytics)
+      const advertisingImpressions = linkedinMetrics.impressions; // Only actual ad impressions from LinkedIn
+      const websitePageviews = customIntegrationRawData ? parseNum(customIntegrationRawData.pageviews) : 0; // Website pageviews from Custom Integration
+      const advertisingClicks = linkedinMetrics.clicks; // Only actual ad clicks from LinkedIn
+      const websiteClicks = customIntegrationRawData ? parseNum(customIntegrationRawData.clicks) : 0; // Website clicks from Custom Integration
+
       // Calculate KPIs
       const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
       const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
@@ -5022,7 +5028,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalCvr,
           clickThroughConversions,
           cpc,
-          cpa
+          cpa,
+          // Funnel breakdown (separate advertising from website analytics)
+          advertisingImpressions,
+          websitePageviews,
+          advertisingClicks,
+          websiteClicks
         },
         health: {
           score: Math.round(healthScore),

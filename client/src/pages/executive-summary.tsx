@@ -261,7 +261,9 @@ export default function ExecutiveSummary() {
                             <div className="text-2xl font-bold text-orange-900 dark:text-orange-100 mt-1">
                               {formatNumber((executiveSummary as any).metrics.totalImpressions)} Impressions
                             </div>
-                            <div className="text-sm text-orange-700 dark:text-orange-400 mt-1">Audience Reach</div>
+                            <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
+                              Advertising: {formatNumber((executiveSummary as any).metrics.advertisingImpressions || 0)} | Website: {formatNumber((executiveSummary as any).metrics.websitePageviews || 0)}
+                            </div>
                           </div>
                         </div>
                         <div className="text-right">
@@ -286,8 +288,8 @@ export default function ExecutiveSummary() {
                             <div className="text-2xl font-bold text-indigo-900 dark:text-indigo-100 mt-1">
                               {formatNumber((executiveSummary as any).metrics.totalClicks)} Clicks
                             </div>
-                            <div className="text-sm text-indigo-700 dark:text-indigo-400 mt-1">
-                              Cost Per Click: {formatCurrency((executiveSummary as any).metrics.cpc, true)}
+                            <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
+                              Advertising: {formatNumber((executiveSummary as any).metrics.advertisingClicks || 0)} | Website: {formatNumber((executiveSummary as any).metrics.websiteClicks || 0)}
                             </div>
                           </div>
                         </div>

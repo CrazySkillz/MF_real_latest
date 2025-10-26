@@ -882,10 +882,35 @@ export default function FinancialAnalysis() {
                           <span>Cost Per Click (CPC)</span>
                           <span className="font-medium">{formatCurrency(cpc)}</span>
                         </div>
-                        <div className="flex items-center justify-between p-3 border rounded">
-                          <span>Cost Per Acquisition (CPA)</span>
-                          <span className="font-medium">{formatCurrency(cpa)}</span>
-                        </div>
+                        
+                        {/* CPA - Handle view-through conversions */}
+                        {(() => {
+                          const clickThroughConversions = Math.min(totalConversions, totalClicks);
+                          const clickThroughCPA = clickThroughConversions > 0 ? totalSpend / clickThroughConversions : 0;
+                          const totalCPA = totalConversions > 0 ? totalSpend / totalConversions : 0;
+                          const hasViewThroughConversions = totalConversions > totalClicks;
+                          
+                          return (
+                            <div className="p-3 border rounded">
+                              <div className="flex items-center justify-between">
+                                <span>Cost Per Acquisition (CPA)</span>
+                                <span className="font-medium">{formatCurrency(clickThroughCPA)}</span>
+                              </div>
+                              {hasViewThroughConversions && (
+                                <>
+                                  <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
+                                    <span>Total CPA (incl. view-through):</span>
+                                    <span>{formatCurrency(totalCPA)}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-2">
+                                    Includes conversions from users who viewed ads without clicking
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        
                         <div className="flex items-center justify-between p-3 border rounded">
                           <span>Cost Per Thousand Impressions (CPM)</span>
                           <span className="font-medium">
@@ -900,7 +925,7 @@ export default function FinancialAnalysis() {
                       <div className="space-y-3">
                         <div className="p-3 border rounded">
                           <div className="flex items-center justify-between mb-2">
-                            <span>Click-through Rate</span>
+                            <span>Click-through Rate (CTR)</span>
                             <span className="font-medium">{formatPercentage(ctr)}</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -910,18 +935,40 @@ export default function FinancialAnalysis() {
                             ></div>
                           </div>
                         </div>
-                        <div className="p-3 border rounded">
-                          <div className="flex items-center justify-between mb-2">
-                            <span>Conversion Rate</span>
-                            <span className="font-medium">{formatPercentage(conversionRate)}</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-green-600 h-2 rounded-full" 
-                              style={{ width: `${Math.min(conversionRate * 5, 100)}%` }}
-                            ></div>
-                          </div>
-                        </div>
+                        
+                        {/* CVR - Handle view-through conversions */}
+                        {(() => {
+                          const clickThroughConversions = Math.min(totalConversions, totalClicks);
+                          const clickThroughCVR = totalClicks > 0 ? (clickThroughConversions / totalClicks) * 100 : 0;
+                          const totalCVR = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
+                          const hasViewThroughConversions = totalConversions > totalClicks;
+                          
+                          return (
+                            <div className="p-3 border rounded">
+                              <div className="flex items-center justify-between mb-2">
+                                <span>Conversion Rate (CVR)</span>
+                                <span className="font-medium">{formatPercentage(clickThroughCVR)}</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                <div 
+                                  className="bg-green-600 h-2 rounded-full" 
+                                  style={{ width: `${Math.min(clickThroughCVR, 100)}%` }}
+                                ></div>
+                              </div>
+                              {hasViewThroughConversions && (
+                                <>
+                                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                    <span>Total CVR (incl. view-through):</span>
+                                    <span>{formatPercentage(totalCVR)}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Total includes view-through conversions from ad impressions
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>

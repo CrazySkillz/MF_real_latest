@@ -4531,6 +4531,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return isNaN(num) || !isFinite(num) ? 0 : num;
       };
 
+      // Helper to convert PostgreSQL interval to seconds
+      const parseInterval = (interval: any): number => {
+        if (!interval) return 0;
+        const str = String(interval);
+        // Format: "HH:MM:SS" or "MM:SS" or just seconds
+        const parts = str.split(':');
+        if (parts.length === 3) {
+          // HH:MM:SS
+          return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+        } else if (parts.length === 2) {
+          // MM:SS
+          return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        } else {
+          // Just seconds
+          return parseNum(str);
+        }
+      };
+
       // Fetch LinkedIn metrics
       let linkedinMetrics: any = {
         impressions: 0,
@@ -4746,7 +4764,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pageviews: parseNum(customIntegrationRawData.pageviews),
             sessions: parseNum(customIntegrationRawData.sessions),
             clicks: parseNum(customIntegrationRawData.clicks),
-            impressions: parseNum(customIntegrationRawData.impressions) // Actual impressions from database
+            impressions: parseNum(customIntegrationRawData.impressions), // Actual impressions from database
+            users: parseNum(customIntegrationRawData.users),
+            bounceRate: parseNum(customIntegrationRawData.bounceRate),
+            avgSessionDuration: parseInterval(customIntegrationRawData.avgSessionDuration)
           }
         };
         

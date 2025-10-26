@@ -567,7 +567,7 @@ export default function ExecutiveSummary() {
                                       Website Analytics
                                     </span>
                                   </div>
-                                  <div className="grid grid-cols-3 gap-4">
+                                  <div className="grid grid-cols-5 gap-4">
                                     <div>
                                       <div className="text-xs text-slate-600 dark:text-slate-400">Pageviews</div>
                                       <div className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -580,14 +580,26 @@ export default function ExecutiveSummary() {
                                         {formatNumber(platform.websiteAnalytics.sessions)}
                                       </div>
                                     </div>
-                                    {platform.websiteAnalytics.clicks > 0 && (
-                                      <div>
-                                        <div className="text-xs text-slate-600 dark:text-slate-400">Clicks</div>
-                                        <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                          {formatNumber(platform.websiteAnalytics.clicks)}
-                                        </div>
+                                    <div>
+                                      <div className="text-xs text-slate-600 dark:text-slate-400">Users</div>
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {formatNumber(platform.websiteAnalytics.users || 0)}
                                       </div>
-                                    )}
+                                    </div>
+                                    <div>
+                                      <div className="text-xs text-slate-600 dark:text-slate-400">Bounce Rate</div>
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {platform.websiteAnalytics.bounceRate ? `${platform.websiteAnalytics.bounceRate.toFixed(1)}%` : 'N/A'}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="text-xs text-slate-600 dark:text-slate-400">Avg Duration</div>
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {platform.websiteAnalytics.avgSessionDuration 
+                                          ? `${Math.floor(platform.websiteAnalytics.avgSessionDuration / 60)}m ${Math.floor(platform.websiteAnalytics.avgSessionDuration % 60)}s`
+                                          : 'N/A'}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               )}

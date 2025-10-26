@@ -279,6 +279,23 @@ export default function FinancialAnalysis() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
+              {/* Data Source Notice */}
+              <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <DollarSign className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="font-medium text-blue-900 dark:text-blue-200">
+                        Financial Data Source: LinkedIn Ads
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        All financial metrics (spend, revenue, ROI, ROAS) are calculated from LinkedIn advertising data with a configured conversion value of {formatCurrency(linkedInConversionValue)}. Custom Integration provides website analytics only.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Time-Based Comparison Selector */}
               <Card>
                 <CardContent className="p-4">

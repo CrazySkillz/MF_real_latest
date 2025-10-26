@@ -927,24 +927,78 @@ export default function FinancialAnalysis() {
                   </div>
                   
                   
-                  {/* Cost Optimization Opportunities */}
-                  <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                    <h5 className="font-semibold text-yellow-800 dark:text-yellow-300 mb-3">🎯 Cost Optimization Opportunities</h5>
-                    <ul className="space-y-2 text-sm">
-                      <li className="flex items-start space-x-2">
-                        <span className="text-yellow-600">•</span>
-                        <span>LinkedIn CPA is 40% higher than average - consider audience refinement</span>
-                      </li>
-                      <li className="flex items-start space-x-2">
-                        <span className="text-yellow-600">•</span>
-                        <span>TikTok showing lowest CPC - opportunity to increase budget allocation</span>
-                      </li>
-                      <li className="flex items-start space-x-2">
-                        <span className="text-yellow-600">•</span>
-                        <span>Instagram CVR declining - test new creative variations</span>
-                      </li>
-                    </ul>
-                  </div>
+                  {/* Cost Optimization Opportunities - Dynamic Data-Driven */}
+                  {(() => {
+                    const recommendations: string[] = [];
+                    
+                    // Platform ROAS Performance
+                    if (platformMetrics.linkedIn.spend > 0 && linkedInROAS >= 10) {
+                      recommendations.push(`LinkedIn generating exceptional ${linkedInROAS.toFixed(2)}x ROAS - consider increasing budget allocation`);
+                    } else if (platformMetrics.linkedIn.spend > 0 && linkedInROAS >= 3) {
+                      recommendations.push(`LinkedIn showing strong ${linkedInROAS.toFixed(2)}x ROAS - maintain or scale current strategy`);
+                    } else if (platformMetrics.linkedIn.spend > 0 && linkedInROAS < 1.5) {
+                      recommendations.push(`LinkedIn ROAS below target at ${linkedInROAS.toFixed(2)}x - review targeting and creative performance`);
+                    }
+                    
+                    // Custom Integration Status
+                    if (platformMetrics.customIntegration.spend === 0 && platformMetrics.customIntegration.conversions === 0) {
+                      recommendations.push('Custom Integration has no financial data - upload campaign data to enable cross-platform comparison');
+                    } else if (platformMetrics.customIntegration.spend > 0) {
+                      const customROAS = platformMetrics.customIntegration.spend > 0 
+                        ? (platformMetrics.customIntegration.conversions * fallbackAOV) / platformMetrics.customIntegration.spend 
+                        : 0;
+                      if (customROAS < linkedInROAS && platformMetrics.linkedIn.spend > 0) {
+                        recommendations.push(`LinkedIn outperforming Custom Integration by ${((linkedInROAS - customROAS) / customROAS * 100).toFixed(0)}% - consider reallocating budget`);
+                      }
+                    }
+                    
+                    // CTR Performance
+                    if (ctr < 1) {
+                      recommendations.push(`Click-through rate below 1% - test new ad creative and messaging to improve engagement`);
+                    } else if (ctr >= 3) {
+                      recommendations.push(`Strong click-through rate of ${formatPercentage(ctr)} - ads resonating well with target audience`);
+                    }
+                    
+                    // CVR Performance
+                    if (conversionRate < 2) {
+                      recommendations.push(`Conversion rate below 2% - review landing page experience and offer relevance`);
+                    } else if (conversionRate >= 10) {
+                      recommendations.push(`Excellent conversion rate of ${formatPercentage(conversionRate)} - landing page highly effective`);
+                    }
+                    
+                    // ROI Performance
+                    if (roi > 1000) {
+                      recommendations.push(`Outstanding ROI of ${formatPercentage(roi)} - scale winning campaigns to maximize returns`);
+                    } else if (roi < 0) {
+                      recommendations.push(`Negative ROI - immediate optimization required to achieve profitability`);
+                    }
+                    
+                    // CPC Efficiency
+                    if (cpc > 10) {
+                      recommendations.push(`CPC of ${formatCurrency(cpc)} above average - refine audience targeting to reduce costs`);
+                    } else if (cpc < 2) {
+                      recommendations.push(`Low CPC of ${formatCurrency(cpc)} indicates efficient targeting - maintain current approach`);
+                    }
+                    
+                    // CPA with High ROAS indicates high-value conversions
+                    if (cpa > 50 && roas > 10) {
+                      recommendations.push(`High CPA of ${formatCurrency(cpa)} justified by exceptional ${roas.toFixed(2)}x ROAS - focus on quality over quantity`);
+                    }
+                    
+                    return recommendations.length > 0 ? (
+                      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <h5 className="font-semibold text-blue-900 dark:text-blue-300 mb-3">💡 Data-Driven Insights</h5>
+                        <ul className="space-y-2 text-sm">
+                          {recommendations.map((rec, index) => (
+                            <li key={index} className="flex items-start space-x-2">
+                              <span className="text-blue-600">•</span>
+                              <span>{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null;
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>

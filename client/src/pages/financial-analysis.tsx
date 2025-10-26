@@ -673,12 +673,17 @@ export default function FinancialAnalysis() {
 
                 <Card>
                   <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex-1">
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Rate</p>
                         <p className="text-xl font-bold text-slate-900 dark:text-white">
                           {formatPercentage(conversionRate)}
                         </p>
+                        {conversionRate > 100 && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            * Exceeds 100% due to view-through conversions from ad impressions
+                          </p>
+                        )}
                       </div>
                       <PieChart className="w-6 h-6 text-green-500" />
                     </div>

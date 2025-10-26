@@ -1769,7 +1769,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      res.json(aggregated);
+      // Include conversionValue from the latest session for revenue calculations
+      const conversionValue = parseFloat(latestSession.conversionValue || '0');
+      
+      res.json({
+        ...aggregated,
+        conversionValue
+      });
     } catch (error) {
       console.error('LinkedIn metrics fetch error:', error);
       res.status(500).json({ message: "Failed to fetch LinkedIn metrics" });

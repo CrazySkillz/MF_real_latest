@@ -752,7 +752,7 @@ export default function FinancialAnalysis() {
                             </Badge>
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            Spend: {formatCurrency(platformMetrics.linkedIn.spend)} • Conversions: {formatNumber(platformMetrics.linkedIn.conversions)} • Revenue: {formatCurrency(platformMetrics.linkedIn.conversions * estimatedAOV)}
+                            Spend: {formatCurrency(platformMetrics.linkedIn.spend)} • Conversions: {formatNumber(platformMetrics.linkedIn.conversions)} • Revenue: {formatCurrency(linkedInRevenue)}
                           </div>
                         </div>
                       )}
@@ -767,10 +767,70 @@ export default function FinancialAnalysis() {
                             </Badge>
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Conversions: {formatNumber(platformMetrics.customIntegration.conversions)} • Revenue: {formatCurrency(platformMetrics.customIntegration.conversions * estimatedAOV)}
+                            Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Conversions: {formatNumber(platformMetrics.customIntegration.conversions)} • Revenue: {formatCurrency(platformMetrics.customIntegration.conversions * fallbackAOV)}
                           </div>
                         </div>
                       )}
+
+                      {/* No data message */}
+                      {totalSpend === 0 && (
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
+                          <p className="text-sm text-muted-foreground">
+                            No platform data available yet. Connect platforms or upload data to see performance breakdown.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Platform-Specific ROI Breakdown */}
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-4">Platform ROI Performance</h4>
+                    <div className="space-y-3">
+                      {/* LinkedIn Ads */}
+                      {platformMetrics.linkedIn.spend > 0 && (() => {
+                        const linkedInROI = platformMetrics.linkedIn.spend > 0 
+                          ? ((linkedInRevenue - platformMetrics.linkedIn.spend) / platformMetrics.linkedIn.spend) * 100 
+                          : 0;
+                        const linkedInNetProfit = linkedInRevenue - platformMetrics.linkedIn.spend;
+                        
+                        return (
+                          <div className="p-3 border rounded-lg">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-medium">LinkedIn Ads</span>
+                              <Badge className={linkedInROI >= 100 ? "bg-green-100 text-green-700" : linkedInROI >= 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                                {formatPercentage(linkedInROI)} ROI
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Spend: {formatCurrency(platformMetrics.linkedIn.spend)} • Net Profit: <span className={linkedInNetProfit >= 0 ? "text-green-600" : "text-red-600"}>{formatCurrency(linkedInNetProfit)}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Custom Integration (Other Platforms) */}
+                      {platformMetrics.customIntegration.spend > 0 && (() => {
+                        const customIntegrationRevenue = platformMetrics.customIntegration.conversions * fallbackAOV;
+                        const customIntegrationROI = platformMetrics.customIntegration.spend > 0 
+                          ? ((customIntegrationRevenue - platformMetrics.customIntegration.spend) / platformMetrics.customIntegration.spend) * 100 
+                          : 0;
+                        const customIntegrationNetProfit = customIntegrationRevenue - platformMetrics.customIntegration.spend;
+                        
+                        return (
+                          <div className="p-3 border rounded-lg">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-medium">Custom Integration</span>
+                              <Badge className={customIntegrationROI >= 100 ? "bg-green-100 text-green-700" : customIntegrationROI >= 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                                {formatPercentage(customIntegrationROI)} ROI
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Net Profit: <span className={customIntegrationNetProfit >= 0 ? "text-green-600" : "text-red-600"}>{formatCurrency(customIntegrationNetProfit)}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* No data message */}
                       {totalSpend === 0 && (

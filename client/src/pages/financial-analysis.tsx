@@ -176,11 +176,17 @@ export default function FinancialAnalysis() {
     }).format(value);
   };
   
-  // Get AOV (Average Order Value) from GA4, LinkedIn, or Custom Integration data
-  const estimatedAOV = ga4Data?.averageOrderValue || 
-                       linkedInData?.averageOrderValue || 
-                       customIntegrationData?.averageOrderValue || 
-                       0;
+  // Get conversion value from LinkedIn (configured during connection setup)
+  // This is the primary source for revenue calculations per system design
+  const linkedInConversionValue = linkedInData?.conversionValue || 0;
+  
+  // Get AOV from GA4 or Custom Integration as fallback
+  const fallbackAOV = ga4Data?.averageOrderValue || 
+                      customIntegrationData?.averageOrderValue || 
+                      0;
+  
+  // Use LinkedIn conversion value if available, otherwise fallback to GA4/Custom Integration AOV
+  const estimatedAOV = linkedInConversionValue > 0 ? linkedInConversionValue : fallbackAOV;
   
   // Financial calculations
   const budgetUtilization = campaignBudget > 0 ? (totalSpend / campaignBudget) * 100 : 0;
@@ -192,16 +198,20 @@ export default function FinancialAnalysis() {
   const cpm = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
   
   // Calculate platform-specific ROAS
-  const calculatePlatformROAS = (spend: number, conversions: number) => {
-    const revenue = conversions * estimatedAOV;
+  const calculatePlatformROAS = (spend: number, conversions: number, platformConversionValue?: number) => {
+    const aov = platformConversionValue || estimatedAOV;
+    const revenue = conversions * aov;
     return spend > 0 ? revenue / spend : 0;
   };
   
-  const linkedInROAS = calculatePlatformROAS(platformMetrics.linkedIn.spend, platformMetrics.linkedIn.conversions);
+  const linkedInROAS = calculatePlatformROAS(platformMetrics.linkedIn.spend, platformMetrics.linkedIn.conversions, linkedInConversionValue);
   const customIntegrationROAS = calculatePlatformROAS(platformMetrics.customIntegration.spend, platformMetrics.customIntegration.conversions);
   
-  // Calculate revenue/ROI
-  const estimatedRevenue = totalConversions * estimatedAOV;
+  // Calculate revenue/ROI using LinkedIn conversion value for LinkedIn conversions
+  // and fallback AOV for other platforms
+  const linkedInRevenue = platformMetrics.linkedIn.conversions * linkedInConversionValue;
+  const otherRevenue = (platformMetrics.customIntegration.conversions + platformMetrics.sheets.conversions) * fallbackAOV;
+  const estimatedRevenue = linkedInRevenue + otherRevenue;
   const roas = totalSpend > 0 ? estimatedRevenue / totalSpend : 0;
   const roi = totalSpend > 0 ? ((estimatedRevenue - totalSpend) / totalSpend) * 100 : 0;
 
@@ -299,10 +309,10 @@ export default function FinancialAnalysis() {
                       <AlertTriangle className="w-5 h-5 text-yellow-600" />
                       <div>
                         <p className="font-medium text-yellow-900 dark:text-yellow-200">
-                          Average Order Value (AOV) Not Configured
+                          Conversion Value Not Configured
                         </p>
                         <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                          Revenue, ROI, and ROAS calculations require AOV data from GA4, LinkedIn, or Custom Integration. Please configure tracking to enable financial performance metrics.
+                          Revenue, ROI, and ROAS calculations require conversion value configuration. Set this during LinkedIn connection setup, or configure AOV in GA4 or Custom Integration.
                         </p>
                       </div>
                     </div>

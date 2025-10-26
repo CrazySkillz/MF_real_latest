@@ -761,12 +761,22 @@ export default function FinancialAnalysis() {
                       <div className="p-3 border rounded-lg">
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-medium">Custom Integration</span>
-                          <Badge className={customIntegrationROAS >= 3 ? "bg-green-100 text-green-700" : customIntegrationROAS >= 1.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
-                            {customIntegrationROAS.toFixed(2)}x ROAS
-                          </Badge>
+                          {platformMetrics.customIntegration.spend === 0 && platformMetrics.customIntegration.conversions === 0 ? (
+                            <Badge className="bg-slate-100 text-slate-700">
+                              No Data Available
+                            </Badge>
+                          ) : (
+                            <Badge className={customIntegrationROAS >= 3 ? "bg-green-100 text-green-700" : customIntegrationROAS >= 1.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                              {customIntegrationROAS.toFixed(2)}x ROAS
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Conversions: {formatNumber(platformMetrics.customIntegration.conversions)} • Revenue: {formatCurrency(platformMetrics.customIntegration.conversions * fallbackAOV)}
+                          {platformMetrics.customIntegration.spend === 0 && platformMetrics.customIntegration.conversions === 0 ? (
+                            "Upload data via Custom Integration to see performance metrics"
+                          ) : (
+                            <>Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Conversions: {formatNumber(platformMetrics.customIntegration.conversions)} • Revenue: {formatCurrency(platformMetrics.customIntegration.conversions * fallbackAOV)}</>
+                          )}
                         </div>
                       </div>
 
@@ -814,17 +824,28 @@ export default function FinancialAnalysis() {
                           ? ((customIntegrationRevenue - platformMetrics.customIntegration.spend) / platformMetrics.customIntegration.spend) * 100 
                           : 0;
                         const customIntegrationNetProfit = customIntegrationRevenue - platformMetrics.customIntegration.spend;
+                        const hasData = platformMetrics.customIntegration.spend > 0 || platformMetrics.customIntegration.conversions > 0;
                         
                         return (
                           <div className="p-3 border rounded-lg">
                             <div className="flex justify-between items-center mb-2">
                               <span className="font-medium">Custom Integration</span>
-                              <Badge className={customIntegrationROI >= 100 ? "bg-green-100 text-green-700" : customIntegrationROI >= 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
-                                {formatPercentage(customIntegrationROI)} ROI
-                              </Badge>
+                              {!hasData ? (
+                                <Badge className="bg-slate-100 text-slate-700">
+                                  No Data Available
+                                </Badge>
+                              ) : (
+                                <Badge className={customIntegrationROI >= 100 ? "bg-green-100 text-green-700" : customIntegrationROI >= 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                                  {formatPercentage(customIntegrationROI)} ROI
+                                </Badge>
+                              )}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Net Profit: <span className={customIntegrationNetProfit >= 0 ? "text-green-600" : "text-red-600"}>{formatCurrency(customIntegrationNetProfit)}</span>
+                              {!hasData ? (
+                                "Upload data via Custom Integration to see performance metrics"
+                              ) : (
+                                <>Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Net Profit: <span className={customIntegrationNetProfit >= 0 ? "text-green-600" : "text-red-600"}>{formatCurrency(customIntegrationNetProfit)}</span></>
+                              )}
                             </div>
                           </div>
                         );

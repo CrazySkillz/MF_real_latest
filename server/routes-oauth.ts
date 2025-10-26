@@ -4731,15 +4731,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           roas: customMetrics.spend > 0 ? customMetrics.revenue / customMetrics.spend : 0,
           roi: customMetrics.spend > 0 ? ((customMetrics.revenue - customMetrics.spend) / customMetrics.spend) * 100 : 0,
           spendShare: totalSpend > 0 ? (customMetrics.spend / totalSpend) * 100 : 0,
-          hasData: hasCustomIntegrationData // Flag to indicate if platform has actual data
+          hasData: hasCustomIntegrationData, // Flag to indicate if platform has actual advertising data
+          // Website analytics data (always included for Executive Overview)
+          websiteAnalytics: {
+            pageviews: customMetrics.impressions, // GA4 pageviews
+            sessions: customMetrics.engagements,   // GA4 sessions
+            clicks: customMetrics.clicks,          // Website clicks
+            impressions: customMetrics.impressions // Total impressions
+          }
         };
         
-        // Only include in recommendations/insights if it has actual data
+        // Only include in recommendations/insights if it has actual advertising data
         if (hasCustomIntegrationData) {
           platforms.push(customPlatform);
         }
         
-        // Always include in display array
+        // Always include in display array (with website analytics for Executive Overview)
         platformsForDisplay.push(customPlatform);
       }
 

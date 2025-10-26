@@ -474,21 +474,28 @@ export default function ExecutiveSummary() {
                     ) : (
                       <div className="space-y-4">
                         {(executiveSummary as any).platforms.map((platform: any, index: number) => {
-                          // Check if Custom Integration has no data (all key metrics are zero)
-                          const hasNoData = platform.name === 'Custom Integration' && 
-                            (platform.spend ?? 0) === 0 && 
-                            (platform.revenue ?? 0) === 0 && 
-                            (platform.conversions ?? 0) === 0;
+                          // Check if platform has advertising data (spend, conversions, or revenue)
+                          const hasAdvertisingData = platform.hasData !== false && (
+                            (platform.spend ?? 0) > 0 || 
+                            (platform.revenue ?? 0) > 0 || 
+                            (platform.conversions ?? 0) > 0
+                          );
+                          
+                          // Check if platform has website analytics data
+                          const hasWebsiteAnalytics = platform.websiteAnalytics && (
+                            (platform.websiteAnalytics.pageviews ?? 0) > 0 ||
+                            (platform.websiteAnalytics.sessions ?? 0) > 0
+                          );
                           
                           return (
                             <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
                               <div className="flex items-center justify-between mb-3">
                                 <h4 className="font-semibold text-slate-900 dark:text-white">{platform.name}</h4>
-                                {hasNoData ? (
-                                  <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                    No Data Available
+                                {!hasAdvertisingData && hasWebsiteAnalytics ? (
+                                  <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                    Website Analytics Only
                                   </Badge>
-                                ) : (
+                                ) : hasAdvertisingData ? (
                                   <Badge className={
                                     platform.roas >= 3 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
                                     platform.roas >= 1.5 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
@@ -499,67 +506,96 @@ export default function ExecutiveSummary() {
                                      platform.roas >= 1.5 ? 'Good' :
                                      platform.roas >= 1 ? 'Fair' : 'Needs Attention'}
                                   </Badge>
+                                ) : (
+                                  <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                    No Data
+                                  </Badge>
                                 )}
                               </div>
-                              <div className="grid grid-cols-5 gap-4">
-                                <div>
-                                  <div className="text-xs text-slate-600 dark:text-slate-400">Spend</div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                    {hasNoData ? (
-                                      <span className="text-slate-400">No data</span>
-                                    ) : (
-                                      formatCurrency(platform.spend)
-                                    )}
-                                  </div>
-                                  {!hasNoData && platform.spend > 0 && (
-                                    <div className="text-xs text-slate-500">
-                                      {platform.spendShare.toFixed(0)}% of total
+                              
+                              {/* Advertising Metrics */}
+                              {hasAdvertisingData && (
+                                <div className="grid grid-cols-5 gap-4 mb-4">
+                                  <div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400">Spend</div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      {formatCurrency(platform.spend)}
                                     </div>
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="text-xs text-slate-600 dark:text-slate-400">Revenue</div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                    {hasNoData ? (
-                                      <span className="text-slate-400">No data</span>
-                                    ) : (
-                                      formatCurrency(platform.revenue)
+                                    {platform.spend > 0 && (
+                                      <div className="text-xs text-slate-500">
+                                        {platform.spendShare.toFixed(0)}% of total
+                                      </div>
                                     )}
                                   </div>
-                                </div>
-                                <div>
-                                  <div className="text-xs text-slate-600 dark:text-slate-400">Conversions</div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                    {hasNoData ? (
-                                      <span className="text-slate-400">No data</span>
-                                    ) : (
-                                      formatNumber(platform.conversions)
-                                    )}
+                                  <div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400">Revenue</div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      {formatCurrency(platform.revenue)}
+                                    </div>
                                   </div>
-                                </div>
-                                <div>
-                                  <div className="text-xs text-slate-600 dark:text-slate-400">ROAS</div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                    {hasNoData ? (
-                                      <span className="text-slate-400">No data</span>
-                                    ) : (
-                                      `${platform.roas.toFixed(1)}x`
-                                    )}
+                                  <div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400">Conversions</div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      {formatNumber(platform.conversions)}
+                                    </div>
                                   </div>
-                                </div>
-                                <div>
-                                  <div className="text-xs text-slate-600 dark:text-slate-400">ROI</div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                    {hasNoData ? (
-                                      <span className="text-slate-400">No data</span>
-                                    ) : (
+                                  <div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400">ROAS</div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      {platform.roas.toFixed(1)}x
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400">ROI</div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
                                       <span className={platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                                         {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
                                       </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Website Analytics Metrics */}
+                              {hasWebsiteAnalytics && (
+                                <div className={hasAdvertisingData ? 'pt-4 border-t border-slate-200 dark:border-slate-700' : ''}>
+                                  <div className="flex items-center space-x-2 mb-3">
+                                    <Eye className="w-4 h-4 text-slate-500" />
+                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                                      Website Analytics
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-4">
+                                    <div>
+                                      <div className="text-xs text-slate-600 dark:text-slate-400">Pageviews</div>
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {formatNumber(platform.websiteAnalytics.pageviews)}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="text-xs text-slate-600 dark:text-slate-400">Sessions</div>
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {formatNumber(platform.websiteAnalytics.sessions)}
+                                      </div>
+                                    </div>
+                                    {platform.websiteAnalytics.clicks > 0 && (
+                                      <div>
+                                        <div className="text-xs text-slate-600 dark:text-slate-400">Clicks</div>
+                                        <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                          {formatNumber(platform.websiteAnalytics.clicks)}
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
-                              </div>
+                              )}
+                              
+                              {/* No Data State */}
+                              {!hasAdvertisingData && !hasWebsiteAnalytics && (
+                                <div className="text-center py-4 text-slate-400">
+                                  No data available for this platform
+                                </div>
+                              )}
                             </div>
                           );
                         })}

@@ -4577,6 +4577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spend: 0,
         revenue: 0
       };
+      let customIntegrationRawData: any = null; // Store raw data for website analytics
       let customIntegrationLastUpdate: string | null = null;
       let hasCustomIntegration = false;
       
@@ -4584,6 +4585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const customIntegration = await storage.getLatestCustomIntegrationMetrics(id);
         if (customIntegration) {
           hasCustomIntegration = true;
+          customIntegrationRawData = customIntegration; // Store original values
           // Map GA4/Website metrics to campaign metrics
           // Pageviews = Ad Impressions equivalent (eyeballs on content)
           // Sessions = Engagement equivalent (meaningful interactions)
@@ -4592,7 +4594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customMetrics.clicks = parseNum(customIntegration.clicks);
           customMetrics.conversions = parseNum(customIntegration.conversions);
           customMetrics.spend = parseNum(customIntegration.spend);
-          customMetrics.revenue = parseNum(customIntegration.revenue);
+          customMetrics.revenue = 0; // Custom Integration doesn't have revenue field
           customIntegrationLastUpdate = customIntegration.uploadedAt;
         }
       } catch (err) {
@@ -4722,7 +4724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // We check spend, conversions, or revenue (not impressions/engagements which could be website analytics)
       const hasCustomIntegrationData = customMetrics.spend > 0 || customMetrics.conversions > 0 || customMetrics.revenue > 0;
       
-      if (hasCustomIntegration) {
+      if (hasCustomIntegration && customIntegrationRawData) {
         const customPlatform = {
           name: 'Custom Integration',
           spend: customMetrics.spend,
@@ -4733,11 +4735,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           spendShare: totalSpend > 0 ? (customMetrics.spend / totalSpend) * 100 : 0,
           hasData: hasCustomIntegrationData, // Flag to indicate if platform has actual advertising data
           // Website analytics data (always included for Executive Overview)
+          // Use original database values, not mapped values
           websiteAnalytics: {
-            pageviews: customMetrics.impressions, // GA4 pageviews
-            sessions: customMetrics.engagements,   // GA4 sessions
-            clicks: customMetrics.clicks,          // Website clicks
-            impressions: customMetrics.impressions // Total impressions
+            pageviews: parseNum(customIntegrationRawData.pageviews),
+            sessions: parseNum(customIntegrationRawData.sessions),
+            clicks: parseNum(customIntegrationRawData.clicks),
+            impressions: parseNum(customIntegrationRawData.impressions) // Actual impressions from database
           }
         };
         

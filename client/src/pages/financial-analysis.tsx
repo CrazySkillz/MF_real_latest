@@ -861,25 +861,6 @@ export default function FinancialAnalysis() {
                       )}
                     </div>
                   </div>
-                  
-                  {/* ROI Benchmarking */}
-                  <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <h5 className="font-semibold text-blue-900 dark:text-blue-300 mb-3">Industry Benchmarking</h5>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-blue-600">{formatPercentage(roi)}</div>
-                        <div className="text-sm text-muted-foreground">Your ROI</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-gray-600">145%</div>
-                        <div className="text-sm text-muted-foreground">Fashion Industry Avg</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-green-600">+{((roi - 145) / 145 * 100).toFixed(0)}%</div>
-                        <div className="text-sm text-muted-foreground">vs Industry</div>
-                      </div>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

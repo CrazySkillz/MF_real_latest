@@ -126,7 +126,6 @@ export default function CampaignPerformanceSummary() {
 
   // Calculate aggregated metrics
   const linkedinImpressions = parseNum(linkedinMetrics?.impressions);
-  const linkedinReach = parseNum(linkedinMetrics?.reach);
   const linkedinClicks = parseNum(linkedinMetrics?.clicks);
   const linkedinEngagements = parseNum(linkedinMetrics?.engagement);
   const linkedinSpend = parseNum(linkedinMetrics?.spend);
@@ -135,17 +134,21 @@ export default function CampaignPerformanceSummary() {
 
   // Custom Integration advertising metrics
   const ciImpressions = parseNum(customIntegration?.metrics?.impressions);
-  const ciReach = parseNum(customIntegration?.metrics?.reach);
   const ciClicks = parseNum(customIntegration?.metrics?.clicks);
   const ciEngagements = parseNum(customIntegration?.metrics?.engagements);
   const ciSpend = parseNum(customIntegration?.metrics?.spend);
   const ciConversions = parseNum(customIntegration?.metrics?.conversions);
   const ciLeads = parseNum(customIntegration?.metrics?.leads);
+  
+  // Custom Integration website analytics (for funnel visualization)
+  const ciPageviews = parseNum(customIntegration?.metrics?.pageviews);
+  const ciSessions = parseNum(customIntegration?.metrics?.sessions);
 
-  // Aggregate advertising metrics across platforms
-  const totalReach = linkedinReach + ciReach; // Unique users reached
-  const totalImpressions = linkedinImpressions + ciImpressions; // Total ad impressions
-  const totalEngagements = linkedinEngagements + ciEngagements;
+  // Aggregate metrics - matching Executive Summary calculation
+  // Total Impressions = Advertising Impressions + Website Pageviews (full funnel view)
+  const advertisingImpressions = linkedinImpressions + ciImpressions;
+  const totalImpressions = advertisingImpressions + ciPageviews;
+  const totalEngagements = linkedinEngagements + ciEngagements + ciSessions;
   const totalClicks = linkedinClicks + ciClicks;
   const totalConversions = linkedinConversions + ciConversions;
   const totalLeads = linkedinLeads + ciLeads;
@@ -366,12 +369,14 @@ export default function CampaignPerformanceSummary() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Combined Reach</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Impressions</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{totalReach.toLocaleString()}</div>
-                    <p className="text-xs text-muted-foreground">Sum of per-platform reach</p>
+                    <div className="text-2xl font-bold">{totalImpressions.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Ad: {advertisingImpressions.toLocaleString()} | Web: {ciPageviews.toLocaleString()}
+                    </p>
                   </CardContent>
                 </Card>
 

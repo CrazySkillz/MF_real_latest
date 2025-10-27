@@ -489,8 +489,8 @@ export default function CampaignPerformanceSummary() {
             <TabsContent value="health" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Detailed Health Analysis</CardTitle>
-                  <CardDescription>In-depth breakdown of campaign health metrics</CardDescription>
+                  <CardTitle>Overall Health Summary</CardTitle>
+                  <CardDescription>Campaign health overview</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -515,6 +515,102 @@ export default function CampaignPerformanceSummary() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* All KPIs */}
+              {kpis.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Key Performance Indicators (KPIs)</CardTitle>
+                    <CardDescription>All campaign KPIs and their targets</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {kpis.map((kpi, idx) => {
+                        const current = parseNum(kpi.currentValue);
+                        const target = parseNum(kpi.targetValue);
+                        const isAboveTarget = current >= target;
+                        const percentage = target > 0 ? Math.round((current / target) * 100) : 0;
+                        
+                        return (
+                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: isAboveTarget ? '#22c55e' : '#ef4444' }}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-3">
+                                <span className="font-semibold text-slate-900 dark:text-white">{kpi.name}</span>
+                                <Badge variant={isAboveTarget ? "default" : "destructive"}>
+                                  {isAboveTarget ? "On Track" : "Below Target"}
+                                </Badge>
+                              </div>
+                              <span className="text-sm text-slate-500 dark:text-slate-400">{percentage}% of target</span>
+                            </div>
+                            <div className="flex items-center space-x-6 text-sm">
+                              <div>
+                                <span className="text-slate-500 dark:text-slate-400">Current: </span>
+                                <span className="font-semibold text-slate-900 dark:text-white">
+                                  {kpi.unit === '$' ? `$${current.toFixed(2)}` : kpi.unit === '%' ? `${current.toFixed(2)}%` : `${kpi.currentValue}${kpi.unit}`}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 dark:text-slate-400">Target: </span>
+                                <span className="font-semibold text-slate-900 dark:text-white">
+                                  {kpi.unit === '$' ? `$${target.toFixed(2)}` : kpi.unit === '%' ? `${target.toFixed(2)}%` : `${kpi.targetValue}${kpi.unit}`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* All Benchmarks */}
+              {benchmarks.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Industry Benchmarks</CardTitle>
+                    <CardDescription>Performance vs industry averages</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {benchmarks.map((benchmark, idx) => {
+                        const current = parseNum(benchmark.currentValue);
+                        const industry = parseNum(benchmark.industryAverage);
+                        const isAboveIndustry = current >= industry;
+                        const percentage = industry > 0 ? Math.round((current / industry) * 100) : 0;
+                        
+                        return (
+                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: isAboveIndustry ? '#22c55e' : '#ef4444' }}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-3">
+                                <span className="font-semibold text-slate-900 dark:text-white">{benchmark.metricName}</span>
+                                <Badge variant={isAboveIndustry ? "default" : "destructive"}>
+                                  {isAboveIndustry ? "Above Industry" : "Below Industry"}
+                                </Badge>
+                              </div>
+                              <span className="text-sm text-slate-500 dark:text-slate-400">{percentage}% of industry avg</span>
+                            </div>
+                            <div className="flex items-center space-x-6 text-sm">
+                              <div>
+                                <span className="text-slate-500 dark:text-slate-400">Your Performance: </span>
+                                <span className="font-semibold text-slate-900 dark:text-white">
+                                  {benchmark.unit === '$' ? `$${current.toFixed(2)}` : benchmark.unit === '%' ? `${current.toFixed(2)}%` : `${benchmark.currentValue}${benchmark.unit}`}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 dark:text-slate-400">Industry Avg: </span>
+                                <span className="font-semibold text-slate-900 dark:text-white">
+                                  {benchmark.unit === '$' ? `$${industry.toFixed(2)}` : benchmark.unit === '%' ? `${industry.toFixed(2)}%` : `${benchmark.industryAverage}${benchmark.unit}`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Data Source Status */}
               <Card>

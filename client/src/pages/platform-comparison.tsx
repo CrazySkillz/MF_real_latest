@@ -586,33 +586,87 @@ export default function PlatformComparison() {
                     </Card>
                   </div>
 
-                  {/* Platform Volume Comparison */}
+                  {/* Platform Volume Comparison - Advertising vs Website Analytics */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
                         <Users className="w-5 h-5" />
                         <span>Volume & Reach Comparison</span>
                       </CardTitle>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                        Advertising metrics (impressions/clicks from ad campaigns) vs Website analytics (pageviews/sessions from traffic)
+                      </p>
                     </CardHeader>
                     <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={realPlatformMetrics} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                            <XAxis dataKey="platform" className="text-xs" />
-                            <YAxis className="text-xs" />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'var(--background)', 
-                                border: '1px solid var(--border)',
-                                borderRadius: '6px' 
-                              }} 
-                              formatter={(value, name) => [formatNumber(value as number), name]}
-                            />
-                            <Bar dataKey="impressions" fill="#3b82f6" name="Impressions" />
-                            <Bar dataKey="clicks" fill="#10b981" name="Clicks" />
-                          </BarChart>
-                        </ResponsiveContainer>
+                      <div className="space-y-6">
+                        {realPlatformMetrics.map((platform, index) => {
+                          const isAdvertising = platform.spend > 0 || platform.platform === 'LinkedIn Ads';
+                          const hasWebsiteData = platform.impressions > 0 || platform.engagement > 0;
+                          
+                          return (
+                            <div key={index} className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
+                                  <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
+                                </div>
+                                <span className="text-xs px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                  {isAdvertising ? 'Advertising Metrics' : 'Website Analytics'}
+                                </span>
+                              </div>
+                              
+                              {hasWebsiteData ? (
+                                <div className="grid grid-cols-2 gap-4">
+                                  {/* Volume Metric */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-slate-600 dark:text-slate-400">
+                                        {isAdvertising ? 'Ad Impressions' : 'Pageviews'}
+                                      </span>
+                                      <span className="font-semibold text-slate-900 dark:text-white">
+                                        {formatNumber(platform.impressions)}
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                      <div 
+                                        className="h-2 rounded-full transition-all" 
+                                        style={{ 
+                                          width: `${Math.min((platform.impressions / Math.max(...realPlatformMetrics.map(p => p.impressions))) * 100, 100)}%`,
+                                          backgroundColor: platform.color 
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Engagement Metric */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-slate-600 dark:text-slate-400">
+                                        {isAdvertising ? 'Ad Clicks' : 'Sessions'}
+                                      </span>
+                                      <span className="font-semibold text-slate-900 dark:text-white">
+                                        {formatNumber(isAdvertising ? platform.clicks : platform.engagement)}
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                      <div 
+                                        className="h-2 rounded-full transition-all" 
+                                        style={{ 
+                                          width: `${Math.min(((isAdvertising ? platform.clicks : platform.engagement) / Math.max(...realPlatformMetrics.map(p => isAdvertising ? p.clicks : p.engagement))) * 100, 100)}%`,
+                                          backgroundColor: platform.color 
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="py-4 text-center">
+                                  <span className="text-sm text-slate-500 dark:text-slate-400">No volume data available</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </CardContent>
                   </Card>

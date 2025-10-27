@@ -257,37 +257,48 @@ export default function PlatformComparison() {
               {/* Platform Performance Summary Cards */}
               {realPlatformMetrics.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {realPlatformMetrics.map((platform, index) => (
-                    <Card key={index} className="border-l-4" style={{ borderLeftColor: platform.color }} data-testid={`platform-card-${index}`}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          {platform.platform}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">Conversions</span>
-                          <span className="font-semibold text-slate-900 dark:text-white">{formatNumber(platform.conversions)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">Spend</span>
-                          <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(platform.spend)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">ROAS</span>
-                          <span className="font-semibold text-slate-900 dark:text-white">{platform.roas.toFixed(2)}x</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">ROI</span>
-                          <div className="flex items-center space-x-1">
-                            <span className={`font-semibold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                              {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
-                            </span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                  {realPlatformMetrics.map((platform, index) => {
+                    const hasNoData = platform.spend === 0 && platform.conversions === 0;
+                    return (
+                      <Card key={index} className="border-l-4" style={{ borderLeftColor: platform.color }} data-testid={`platform-card-${index}`}>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                            {platform.platform}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          {hasNoData ? (
+                            <div className="py-4 text-center">
+                              <p className="text-sm text-slate-500 dark:text-slate-400">No Data Available</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500">Conversions</span>
+                                <span className="font-semibold text-slate-900 dark:text-white">{formatNumber(platform.conversions)}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500">Spend</span>
+                                <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(platform.spend)}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500">ROAS</span>
+                                <span className="font-semibold text-slate-900 dark:text-white">{platform.roas.toFixed(2)}x</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500">ROI</span>
+                                <div className="flex items-center space-x-1">
+                                  <span className={`font-semibold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
+                                  </span>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               ) : (
                 <Card>

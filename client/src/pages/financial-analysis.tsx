@@ -1349,14 +1349,14 @@ export default function FinancialAnalysis() {
                                 </div>
                               )}
                               
-                              {platformsWithSpend.length === 1 && (
+                              {platformsWithSpend.length === 1 && platforms.length > 1 && (
                                 <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                                   <div className="flex items-center space-x-2 mb-2">
                                     <Target className="w-5 h-5 text-blue-600" />
-                                    <h5 className="font-medium text-blue-800 dark:text-blue-300">Single Platform Focus</h5>
+                                    <h5 className="font-medium text-blue-800 dark:text-blue-300">Platform Data Status</h5>
                                   </div>
                                   <p className="text-sm">
-                                    Campaign currently running on {platformsWithSpend[0].name} only. Consider testing additional platforms to diversify traffic sources and compare performance.
+                                    {platformsWithSpend[0].name} generating financial metrics. {platforms.find(p => p.spend === 0 && p.conversions === 0)?.name} connected but no financial data available yet.
                                   </p>
                                 </div>
                               )}

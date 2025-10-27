@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity } from "lucide-react";
+import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity, Eye } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -1245,223 +1245,189 @@ export default function FinancialAnalysis() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20">
-                      <h4 className="font-semibold text-blue-700 dark:text-blue-300">Performance Summary</h4>
-                      <p className="text-sm mt-1">
-                        Your campaign is generating a {roas.toFixed(2)}x ROAS with {formatPercentage(roi)} ROI. 
-                        {roi >= 20 ? " Excellent performance!" : roi >= 0 ? " Positive returns achieved." : " Consider optimization to improve profitability."}
-                      </p>
-                    </div>
+                  {(() => {
+                    const platforms = [
+                      { 
+                        name: 'LinkedIn Ads', 
+                        spend: platformMetrics.linkedIn.spend, 
+                        roas: linkedInROAS,
+                        conversions: platformMetrics.linkedIn.conversions,
+                        revenue: linkedInRevenue,
+                        cpc: platformMetrics.linkedIn.clicks > 0 ? platformMetrics.linkedIn.spend / platformMetrics.linkedIn.clicks : 0,
+                        cvr: platformMetrics.linkedIn.clicks > 0 ? (platformMetrics.linkedIn.conversions / platformMetrics.linkedIn.clicks) * 100 : 0
+                      },
+                      { 
+                        name: 'Custom Integration', 
+                        spend: platformMetrics.customIntegration.spend, 
+                        roas: customIntegrationROAS,
+                        conversions: platformMetrics.customIntegration.conversions,
+                        revenue: platformMetrics.customIntegration.conversions * fallbackAOV,
+                        cpc: platformMetrics.customIntegration.clicks > 0 ? platformMetrics.customIntegration.spend / platformMetrics.customIntegration.clicks : 0,
+                        cvr: platformMetrics.customIntegration.clicks > 0 ? (platformMetrics.customIntegration.conversions / platformMetrics.customIntegration.clicks) * 100 : 0
+                      }
+                    ];
                     
-                    <div className="p-4 border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/20">
-                      <h4 className="font-semibold text-green-700 dark:text-green-300">Cost Efficiency</h4>
-                      <p className="text-sm mt-1">
-                        Your CPA of {formatCurrency(cpa)} is {cpa < 25 ? "excellent" : cpa < 50 ? "competitive" : "above average"}. 
-                        Consider optimizing targeting to reduce acquisition costs further.
-                      </p>
-                    </div>
+                    const platformsWithSpend = platforms.filter(p => p.spend > 0);
+                    const topPerformer = platformsWithSpend.length > 0 ? platformsWithSpend.reduce((a, b) => a.roas > b.roas ? a : b) : null;
+                    const bottomPerformer = platformsWithSpend.length > 1 ? platformsWithSpend.reduce((a, b) => a.roas < b.roas ? a : b) : null;
                     
-                    <div className="p-4 border-l-4 border-l-orange-500 bg-orange-50 dark:bg-orange-900/20">
-                      <h4 className="font-semibold text-orange-700 dark:text-orange-300">Budget Management</h4>
-                      <p className="text-sm mt-1">
-                        You've utilized {formatPercentage(budgetUtilization)} of your budget. 
-                        {budgetUtilization > 80 ? "Consider increasing budget for high-performing campaigns." : "Pace is healthy with room for optimization."}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Detailed Financial Insights */}
-                  <div className="mt-6">
-                    <h4 className="font-semibold mb-4">Advanced Financial Analysis</h4>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-4">
-                        <div className="p-4 border rounded-lg">
-                          <h5 className="font-medium mb-2 text-purple-700">Customer Lifetime Value Analysis</h5>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span>Average Order Value:</span>
-                              <span className="font-medium">{formatCurrency(estimatedAOV)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Estimated CLV:</span>
-                              <span className="font-medium">{formatCurrency(estimatedAOV * 2.8)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>CLV:CAC Ratio:</span>
-                              <span className="font-medium text-green-600">{(estimatedAOV * 2.8 / cpa).toFixed(1)}:1</span>
-                            </div>
+                    return (
+                      <div className="space-y-6">
+                        {/* Quick Summary Cards */}
+                        <div className="space-y-4">
+                          <div className="p-4 border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20">
+                            <h4 className="font-semibold text-blue-700 dark:text-blue-300">Performance Summary</h4>
+                            <p className="text-sm mt-1">
+                              Your campaign is generating a {roas.toFixed(2)}x ROAS with {formatPercentage(roi)} ROI. 
+                              {roi >= 20 ? " Excellent performance!" : roi >= 0 ? " Positive returns achieved." : " Consider optimization to improve profitability."}
+                            </p>
                           </div>
-                          <div className="mt-3 text-xs text-muted-foreground">
-                            Healthy ratio above 3:1 indicates sustainable growth
+                          
+                          <div className="p-4 border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/20">
+                            <h4 className="font-semibold text-green-700 dark:text-green-300">Cost Efficiency</h4>
+                            <p className="text-sm mt-1">
+                              Your CPA of {formatCurrency(cpa)} is {cpa < 25 ? "excellent" : cpa < 50 ? "competitive" : "above average"}. 
+                              {cpa < 25 ? " Continue current targeting strategy." : " Consider optimizing targeting to reduce acquisition costs."}
+                            </p>
+                          </div>
+                          
+                          <div className="p-4 border-l-4 border-l-orange-500 bg-orange-50 dark:bg-orange-900/20">
+                            <h4 className="font-semibold text-orange-700 dark:text-orange-300">Budget Management</h4>
+                            <p className="text-sm mt-1">
+                              You've utilized {formatPercentage(budgetUtilization)} of your budget. 
+                              {budgetUtilization > 80 ? " Consider increasing budget for high-performing campaigns." : " Pace is healthy with room for optimization."}
+                            </p>
                           </div>
                         </div>
                         
-                        <div className="p-4 border rounded-lg">
-                          <h5 className="font-medium mb-2 text-indigo-700">Revenue Attribution</h5>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span>Direct Sales:</span>
-                              <span className="font-medium">{formatCurrency(estimatedRevenue * 0.68)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Email Attribution:</span>
-                              <span className="font-medium">{formatCurrency(estimatedRevenue * 0.22)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Organic/Referral:</span>
-                              <span className="font-medium">{formatCurrency(estimatedRevenue * 0.1)}</span>
+                        {/* Platform Performance Insights */}
+                        {platformsWithSpend.length > 0 && (
+                          <div className="mt-6">
+                            <h4 className="font-semibold mb-4">Platform Performance Insights</h4>
+                            <div className="space-y-3">
+                              {topPerformer && (
+                                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <TrendingUp className="w-5 h-5 text-green-600" />
+                                    <h5 className="font-medium text-green-800 dark:text-green-300">Top Performer: {topPerformer.name}</h5>
+                                  </div>
+                                  <div className="text-sm space-y-1">
+                                    <p>Generating {topPerformer.roas.toFixed(2)}x ROAS with {formatCurrency(topPerformer.spend)} spend</p>
+                                    {topPerformer.roas >= 3 && (
+                                      <p className="text-green-700 dark:text-green-200 font-medium">
+                                        ✓ Exceptional performance - consider scaling budget allocation
+                                      </p>
+                                    )}
+                                    {topPerformer.cvr > 0 && (
+                                      <p>Conversion rate: {topPerformer.cvr.toFixed(2)}% | CPC: {formatCurrency(topPerformer.cpc)}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {bottomPerformer && bottomPerformer !== topPerformer && (
+                                <div className={`p-4 rounded-lg ${bottomPerformer.roas < 1 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-yellow-50 dark:bg-yellow-900/20'}`}>
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <AlertTriangle className={`w-5 h-5 ${bottomPerformer.roas < 1 ? 'text-red-600' : 'text-yellow-600'}`} />
+                                    <h5 className={`font-medium ${bottomPerformer.roas < 1 ? 'text-red-800 dark:text-red-300' : 'text-yellow-800 dark:text-yellow-300'}`}>
+                                      Needs Attention: {bottomPerformer.name}
+                                    </h5>
+                                  </div>
+                                  <div className="text-sm space-y-1">
+                                    <p>Generating {bottomPerformer.roas.toFixed(2)}x ROAS with {formatCurrency(bottomPerformer.spend)} spend</p>
+                                    {bottomPerformer.roas < 1 && (
+                                      <p className="text-red-700 dark:text-red-200 font-medium">
+                                        ⚠ Below break-even - review targeting and creative or pause campaigns
+                                      </p>
+                                    )}
+                                    {bottomPerformer.roas >= 1 && bottomPerformer.roas < 3 && (
+                                      <p className="text-yellow-700 dark:text-yellow-200 font-medium">
+                                        → Moderate performance - test optimizations to improve efficiency
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {platformsWithSpend.length === 1 && (
+                                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <Target className="w-5 h-5 text-blue-600" />
+                                    <h5 className="font-medium text-blue-800 dark:text-blue-300">Single Platform Focus</h5>
+                                  </div>
+                                  <p className="text-sm">
+                                    Campaign currently running on {platformsWithSpend[0].name} only. Consider testing additional platforms to diversify traffic sources and compare performance.
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="p-4 border rounded-lg">
-                          <h5 className="font-medium mb-2 text-green-700">Profitability Breakdown</h5>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span>Gross Margin:</span>
-                              <span className="font-medium">65%</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Ad Spend %:</span>
-                              <span className="font-medium">{((totalSpend / estimatedRevenue) * 100).toFixed(1)}%</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Net Margin:</span>
-                              <span className="font-medium text-green-600">{(((estimatedRevenue - totalSpend) / estimatedRevenue) * 100).toFixed(1)}%</span>
-                            </div>
-                          </div>
-                        </div>
+                        )}
                         
-                        <div className="p-4 border rounded-lg">
-                          <h5 className="font-medium mb-2 text-red-700">Risk Assessment</h5>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span>Budget Risk:</span>
-                              <span className={`font-medium ${budgetUtilization > 90 ? 'text-red-600' : budgetUtilization > 75 ? 'text-yellow-600' : 'text-green-600'}`}>
-                                {budgetUtilization > 90 ? 'High' : budgetUtilization > 75 ? 'Medium' : 'Low'}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Platform Dependency:</span>
-                              <span className="font-medium text-yellow-600">Medium</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Market Saturation:</span>
-                              <span className="font-medium text-green-600">Low</span>
-                            </div>
+                        {/* Key Opportunities */}
+                        <div className="mt-6">
+                          <h4 className="font-semibold mb-4">Key Opportunities</h4>
+                          <div className="space-y-3">
+                            {roas > 5 && (
+                              <div className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                                <DollarSign className="w-5 h-5 text-green-600 mt-0.5" />
+                                <div>
+                                  <p className="font-medium">Scale High-Performing Campaigns</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    With {roas.toFixed(2)}x ROAS, consider increasing budget to maximize returns while maintaining performance
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {conversionRate < 5 && totalConversions > 10 && (
+                              <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                <Target className="w-5 h-5 text-blue-600 mt-0.5" />
+                                <div>
+                                  <p className="font-medium">Conversion Rate Optimization</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Current CVR of {formatPercentage(conversionRate)} has room for improvement - test landing page variations and CTAs
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {ctr < 2 && totalClicks > 100 && (
+                              <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                                <Eye className="w-5 h-5 text-yellow-600 mt-0.5" />
+                                <div>
+                                  <p className="font-medium">Improve Ad Engagement</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    CTR of {formatPercentage(ctr)} below industry average - test new ad creative and messaging
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {budgetUtilization > 85 && roas > 2 && (
+                              <div className="flex items-start space-x-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded">
+                                <TrendingUp className="w-5 h-5 text-purple-600 mt-0.5" />
+                                <div>
+                                  <p className="font-medium">Budget Capacity</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {formatPercentage(budgetUtilization)} budget utilized with positive ROAS - consider increasing budget allocation
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {platformsWithSpend.length === 0 && (
+                              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
+                                <p className="text-sm text-muted-foreground">
+                                  No platform spending data available. Insights will appear when campaign data is collected.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  
-                  {/* Actionable Recommendations */}
-                  <div className="mt-6">
-                    <h4 className="font-semibold mb-4">🎯 Strategic Recommendations</h4>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-3">
-                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-bold text-green-600">1</span>
-                            </div>
-                            <span className="font-medium text-green-800 dark:text-green-300">Scale TikTok Investment</span>
-                          </div>
-                          <p className="text-sm text-green-700 dark:text-green-200">
-                            Increase TikTok budget by 29% (+{formatCurrency(totalSpend * 0.1)}) to maximize 6.2x ROAS opportunity
-                          </p>
-                        </div>
-                        
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-bold text-blue-600">2</span>
-                            </div>
-                            <span className="font-medium text-blue-800 dark:text-blue-300">Creative Refresh</span>
-                          </div>
-                          <p className="text-sm text-blue-700 dark:text-blue-200">
-                            Test new summer trend creatives on Instagram to maintain 5.8x ROAS performance
-                          </p>
-                        </div>
-                        
-                        <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-bold text-purple-600">3</span>
-                            </div>
-                            <span className="font-medium text-purple-800 dark:text-purple-300">AOV Optimization</span>
-                          </div>
-                          <p className="text-sm text-purple-700 dark:text-purple-200">
-                            Implement cross-sell bundles to increase AOV from ${estimatedAOV.toFixed(0)} to $95+
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-bold text-orange-600">4</span>
-                            </div>
-                            <span className="font-medium text-orange-800 dark:text-orange-300">Email Flow Expansion</span>
-                          </div>
-                          <p className="text-sm text-orange-700 dark:text-orange-200">
-                            Launch abandonment sequences to capture additional {formatCurrency(estimatedRevenue * 0.15)} revenue
-                          </p>
-                        </div>
-                        
-                        <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-bold text-yellow-600">5</span>
-                            </div>
-                            <span className="font-medium text-yellow-800 dark:text-yellow-300">Audience Expansion</span>
-                          </div>
-                          <p className="text-sm text-yellow-700 dark:text-yellow-200">
-                            Test lookalike audiences based on top 25% customers to scale efficiently
-                          </p>
-                        </div>
-                        
-                        <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-bold text-red-600">6</span>
-                            </div>
-                            <span className="font-medium text-red-800 dark:text-red-300">LinkedIn Optimization</span>
-                          </div>
-                          <p className="text-sm text-red-700 dark:text-red-200">
-                            Refine LinkedIn targeting or reduce budget by 50% to improve overall efficiency
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Financial Forecast */}
-                  <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <h5 className="font-semibold mb-3">📊 30-Day Financial Forecast</h5>
-                    <div className="grid gap-4 md:grid-cols-4">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-blue-600">{formatCurrency(estimatedRevenue * 1.25)}</div>
-                        <div className="text-sm text-muted-foreground">Projected Revenue</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-purple-600">{formatCurrency(totalSpend * 1.1)}</div>
-                        <div className="text-sm text-muted-foreground">Est. Ad Spend</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-green-600">{((estimatedRevenue * 1.25) / (totalSpend * 1.1)).toFixed(1)}x</div>
-                        <div className="text-sm text-muted-foreground">Target ROAS</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-orange-600">{formatCurrency((estimatedRevenue * 1.25) - (totalSpend * 1.1))}</div>
-                        <div className="text-sm text-muted-foreground">Est. Profit</div>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>

@@ -196,7 +196,19 @@ export default function CampaignPerformanceSummary() {
 
     if (underperformingKPIs.length > 0) {
       const topKPI = underperformingKPIs[0];
-      return `Improve "${topKPI.name}" - currently ${topKPI.currentValue}${topKPI.unit}, target ${topKPI.targetValue}${topKPI.unit}`;
+      const formatValue = (value: any, unit: string) => {
+        if (unit === '$') return `$${parseNum(value).toFixed(2)}`;
+        if (unit === '%') return `${parseNum(value).toFixed(2)}%`;
+        return `${value}${unit}`;
+      };
+      
+      return {
+        type: 'kpi',
+        name: topKPI.name,
+        currentValue: formatValue(topKPI.currentValue, topKPI.unit),
+        targetValue: formatValue(topKPI.targetValue, topKPI.unit),
+        action: 'Improve'
+      };
     }
 
     const underperformingBenchmarks = benchmarks.filter(b => {
@@ -206,10 +218,18 @@ export default function CampaignPerformanceSummary() {
     });
 
     if (underperformingBenchmarks.length > 0) {
-      return `Address "${underperformingBenchmarks[0].metricName}" - below industry average`;
+      return {
+        type: 'benchmark',
+        name: underperformingBenchmarks[0].metricName,
+        action: 'Address',
+        message: 'below industry average'
+      };
     }
 
-    return "Maintain current performance - all metrics on track";
+    return {
+      type: 'success',
+      message: 'Maintain current performance - all metrics on track'
+    };
   };
 
   // Calculate what's changed based on API comparison data
@@ -362,7 +382,42 @@ export default function CampaignPerformanceSummary() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-900 dark:text-white font-medium">{getPriorityAction()}</p>
+                  {(() => {
+                    const priority = getPriorityAction();
+                    
+                    if (priority.type === 'kpi') {
+                      return (
+                        <div className="space-y-3">
+                          <div>
+                            <span className="text-lg font-semibold text-slate-900 dark:text-white">
+                              {priority.action} "{priority.name}"
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-6">
+                            <div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Current</div>
+                              <div className="text-xl font-bold text-red-600 dark:text-red-400">{priority.currentValue}</div>
+                            </div>
+                            <div className="text-2xl text-slate-300 dark:text-slate-600">→</div>
+                            <div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Target</div>
+                              <div className="text-xl font-bold text-green-600 dark:text-green-400">{priority.targetValue}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    } else if (priority.type === 'benchmark') {
+                      return (
+                        <p className="text-slate-900 dark:text-white font-medium">
+                          {priority.action} "{priority.name}" - {priority.message}
+                        </p>
+                      );
+                    } else {
+                      return (
+                        <p className="text-green-700 dark:text-green-400 font-medium">{priority.message}</p>
+                      );
+                    }
+                  })()}
                 </CardContent>
               </Card>
 

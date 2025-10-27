@@ -75,6 +75,14 @@ const upload = multer({
   }
 });
 
+// Webhook upload - accepts all files without filtering
+const webhookUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  }
+}).any();
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Critical: Ensure API routes are handled before any other middleware
   app.use('/api', (req, res, next) => {
@@ -435,27 +443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Webhook endpoint for Custom Integration PDF uploads (CloudMailin integration)
-  // Accept ANY field name from CloudMailin
-  app.post("/api/webhook/custom-integration/:token", (req, res, next) => {
-    // Use .any() to accept unlimited files with ANY field name
-    const anyUpload = multer({
-      storage: multer.memoryStorage(),
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB max
-      }
-    }).any();
-
-    anyUpload(req, res, (err) => {
-      if (err) {
-        console.error('[Webhook] Multer error:', err);
-        return res.status(400).json({ 
-          success: false,
-          error: `File upload error: ${err.message}` 
-        });
-      }
-      next();
-    });
-  }, async (req, res) => {
+  app.post("/api/webhook/custom-integration/:token", webhookUpload, async (req, res) => {
     try {
       const { token } = req.params;
       console.log(`[Webhook] Received PDF upload request with token: ${token}`);

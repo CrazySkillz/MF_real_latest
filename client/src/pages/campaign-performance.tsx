@@ -132,16 +132,21 @@ export default function CampaignPerformanceSummary() {
   const linkedinConversions = parseNum(linkedinMetrics?.conversions);
   const linkedinLeads = parseNum(linkedinMetrics?.leads);
 
-  const ciPageviews = parseNum(customIntegration?.metrics?.pageviews);
-  const ciSessions = parseNum(customIntegration?.metrics?.sessions);
-  const ciUsers = parseNum(customIntegration?.metrics?.users);
+  // Custom Integration advertising metrics
+  const ciImpressions = parseNum(customIntegration?.metrics?.impressions);
+  const ciClicks = parseNum(customIntegration?.metrics?.clicks);
+  const ciEngagements = parseNum(customIntegration?.metrics?.engagements);
+  const ciSpend = parseNum(customIntegration?.metrics?.spend);
+  const ciConversions = parseNum(customIntegration?.metrics?.conversions);
+  const ciLeads = parseNum(customIntegration?.metrics?.leads);
 
-  const totalImpressions = linkedinImpressions + ciPageviews;
-  const totalEngagements = linkedinEngagements + ciSessions;
-  const totalClicks = linkedinClicks;
-  const totalConversions = linkedinConversions;
-  const totalLeads = linkedinLeads;
-  const totalSpend = linkedinSpend;
+  // Aggregate advertising metrics across platforms
+  const totalImpressions = linkedinImpressions + ciImpressions;
+  const totalEngagements = linkedinEngagements + ciEngagements;
+  const totalClicks = linkedinClicks + ciClicks;
+  const totalConversions = linkedinConversions + ciConversions;
+  const totalLeads = linkedinLeads + ciLeads;
+  const totalSpend = linkedinSpend + ciSpend;
 
   // Calculate campaign health score (including both KPIs and Benchmarks)
   const kpisAboveTarget = kpis.filter(kpi => {

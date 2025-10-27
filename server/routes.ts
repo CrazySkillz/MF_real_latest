@@ -435,10 +435,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Webhook endpoint for Custom Integration PDF uploads (CloudMailin integration)
-  app.post("/api/webhook/custom-integration/:token", upload.single('attachment'), async (req, res) => {
+  app.post("/api/webhook/custom-integration/:token", upload.any(), async (req, res) => {
     try {
       const { token } = req.params;
       console.log(`[Webhook] Received PDF upload request with token: ${token}`);
+      console.log(`[Webhook] Request body keys:`, Object.keys(req.body));
+      console.log(`[Webhook] Files:`, req.files);
 
       // Validate webhook token and get associated campaign
       const customIntegration = await storage.getCustomIntegrationByToken(token);
@@ -455,12 +457,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let pdfBuffer: Buffer;
       let pdfFileName: string | undefined;
 
-      // Check if file was uploaded directly
-      if (req.file) {
-        pdfBuffer = req.file.buffer;
-        pdfFileName = req.file.originalname;
-        console.log(`[Webhook] Processing uploaded PDF file: ${pdfFileName}`);
-      } 
+      // Check if files were uploaded (CloudMailin sends as array)
+      const files = req.files as Express.Multer.File[];
+      const pdfFile = files?.find(f => f.mimetype === 'application/pdf');
+      
+      if (pdfFile) {
+        pdfBuffer = pdfFile.buffer;
+        pdfFileName = pdfFile.originalname;
+        console.log(`[Webhook] Processing uploaded PDF file: ${pdfFileName} (field: ${pdfFile.fieldname})`);
+      }
       // Check if URL was provided in request body
       else if (req.body.pdfUrl) {
         const pdfUrl = req.body.pdfUrl;

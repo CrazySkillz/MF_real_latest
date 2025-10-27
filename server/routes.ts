@@ -6,6 +6,9 @@ import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import googleTrends from "google-trends-api";
+import multer from "multer";
+import { parsePDFMetrics } from "./services/pdf-parser";
+import axios from "axios";
 
 // Simulate professional platform authentication (like Supermetrics)
 async function simulateProfessionalAuth(email: string, password: string, propertyId: string, campaignId: string) {
@@ -56,6 +59,21 @@ async function simulateProfessionalAuth(email: string, password: string, propert
     };
   }
 }
+
+// Configure multer for file uploads (for webhook PDF processing)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Critical: Ensure API routes are handled before any other middleware
@@ -412,6 +430,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: "Failed to transfer custom integration" 
+      });
+    }
+  });
+
+  // Webhook endpoint for Custom Integration PDF uploads (CloudMailin integration)
+  app.post("/api/webhook/custom-integration/:token", upload.single('attachment'), async (req, res) => {
+    try {
+      const { token } = req.params;
+      console.log(`[Webhook] Received PDF upload request with token: ${token}`);
+
+      // Validate webhook token and get associated campaign
+      const customIntegration = await storage.getCustomIntegrationByToken(token);
+      if (!customIntegration) {
+        console.log(`[Webhook] Invalid token: ${token}`);
+        return res.status(401).json({ 
+          success: false,
+          error: "Invalid webhook token" 
+        });
+      }
+
+      console.log(`[Webhook] Token validated for campaign: ${customIntegration.campaignId}`);
+
+      let pdfBuffer: Buffer;
+      let pdfFileName: string | undefined;
+
+      // Check if file was uploaded directly
+      if (req.file) {
+        pdfBuffer = req.file.buffer;
+        pdfFileName = req.file.originalname;
+        console.log(`[Webhook] Processing uploaded PDF file: ${pdfFileName}`);
+      } 
+      // Check if URL was provided in request body
+      else if (req.body.pdfUrl) {
+        const pdfUrl = req.body.pdfUrl;
+        console.log(`[Webhook] Downloading PDF from URL: ${pdfUrl}`);
+        
+        try {
+          const response = await axios.get(pdfUrl, { responseType: 'arraybuffer' });
+          pdfBuffer = Buffer.from(response.data);
+          pdfFileName = pdfUrl.split('/').pop() || 'downloaded.pdf';
+        } catch (error) {
+          console.error('[Webhook] PDF download error:', error);
+          return res.status(400).json({ 
+            success: false,
+            error: "Failed to download PDF from provided URL" 
+          });
+        }
+      } 
+      else {
+        console.log('[Webhook] No PDF file or URL provided');
+        return res.status(400).json({ 
+          success: false,
+          error: "No PDF file uploaded or URL provided" 
+        });
+      }
+
+      // Parse the PDF to extract metrics
+      console.log('[Webhook] Parsing PDF metrics...');
+      const parsedMetrics = await parsePDFMetrics(pdfBuffer);
+      console.log('[Webhook] Parsed metrics:', parsedMetrics);
+
+      // Store the metrics
+      const metricsData = {
+        campaignId: customIntegration.campaignId,
+        ...parsedMetrics,
+        pdfFileName,
+        emailSubject: req.body.subject,
+        emailId: req.body.messageId
+      };
+
+      const metrics = await storage.createCustomIntegrationMetrics(metricsData);
+      console.log('[Webhook] Metrics stored successfully:', metrics.id);
+
+      res.json({ 
+        success: true,
+        message: "PDF processed successfully",
+        metricsId: metrics.id,
+        extractedMetrics: parsedMetrics
+      });
+    } catch (error) {
+      console.error('[Webhook] Error processing PDF:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to process PDF upload" 
       });
     }
   });

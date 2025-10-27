@@ -196,6 +196,9 @@ export default function PlatformComparison() {
     efficiency: platform.spend > 0 ? ((platform.conversions / platform.spend) * 100).toFixed(2) : '0'
   }));
 
+  // Filter cost analysis data for chart display (only platforms with actual financial data)
+  const costAnalysisChartData = costAnalysisData.filter(p => p.totalSpend > 0 || p.conversions > 0);
+
   // Generate performance rankings (only include platforms with actual financial data)
   const getBestPerformer = (metric: 'roas' | 'roi' | 'conversions' | 'ctr' | 'cpc' | 'conversionRate') => {
     // Filter out platforms with no financial data
@@ -694,24 +697,30 @@ export default function PlatformComparison() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={costAnalysisData}>
-                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                              <XAxis dataKey="name" className="text-xs" />
-                              <YAxis className="text-xs" />
-                              <Tooltip 
-                                contentStyle={{ 
-                                  backgroundColor: 'var(--background)', 
-                                  border: '1px solid var(--border)',
-                                  borderRadius: '6px' 
-                                }} 
-                                formatter={(value) => [formatCurrency(value as number), "Cost per Conversion"]}
-                              />
-                              <Bar dataKey="costPerConversion" fill="#f59e0b" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
+                        {costAnalysisChartData.length > 0 ? (
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={costAnalysisChartData}>
+                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                <XAxis dataKey="name" className="text-xs" />
+                                <YAxis className="text-xs" />
+                                <Tooltip 
+                                  contentStyle={{ 
+                                    backgroundColor: 'var(--background)', 
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '6px' 
+                                  }} 
+                                  formatter={(value) => [formatCurrency(value as number), "Cost per Conversion"]}
+                                />
+                                <Bar dataKey="costPerConversion" fill="#f59e0b" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <div className="h-64 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                            <p>No cost data available</p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
 
@@ -725,21 +734,32 @@ export default function PlatformComparison() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {costAnalysisData.map((platform, index) => (
-                            <div key={index} className="space-y-2" data-testid={`cost-allocation-${index}`}>
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-slate-900 dark:text-white">{platform.name}</span>
-                                <span className="text-sm text-slate-600 dark:text-slate-400">
-                                  {platform.efficiency} conversions per $100
-                                </span>
+                          {costAnalysisData.map((platform, index) => {
+                            const hasNoData = platform.totalSpend === 0 && platform.conversions === 0;
+                            return (
+                              <div key={index} className="space-y-2" data-testid={`cost-allocation-${index}`}>
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-slate-900 dark:text-white">{platform.name}</span>
+                                  {hasNoData ? (
+                                    <span className="text-sm text-slate-500 dark:text-slate-400">No Data Available</span>
+                                  ) : (
+                                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                                      {platform.efficiency} conversions per $100
+                                    </span>
+                                  )}
+                                </div>
+                                {!hasNoData && (
+                                  <>
+                                    <Progress value={parseFloat(platform.efficiency) * 2} className="h-2" />
+                                    <div className="flex items-center justify-between text-xs text-slate-500">
+                                      <span>Total Spend: {formatCurrency(platform.totalSpend)}</span>
+                                      <span>{formatNumber(platform.conversions)} conversions</span>
+                                    </div>
+                                  </>
+                                )}
                               </div>
-                              <Progress value={parseFloat(platform.efficiency) * 2} className="h-2" />
-                              <div className="flex items-center justify-between text-xs text-slate-500">
-                                <span>Total Spend: {formatCurrency(platform.totalSpend)}</span>
-                                <span>{formatNumber(platform.conversions)} conversions</span>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>
@@ -758,47 +778,58 @@ export default function PlatformComparison() {
                     </CardHeader>
                     <CardContent>
                       <div className="grid gap-4 md:grid-cols-2">
-                        {realPlatformMetrics.map((platform, index) => (
-                          <div key={index} className="p-4 border rounded-lg dark:border-slate-700 space-y-3" data-testid={`roi-card-${index}`}>
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <div className="text-xs text-slate-500 mb-1">ROI (Profit %)</div>
-                                <div className={`text-2xl font-bold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                  {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
-                                </div>
-                                <div className="text-xs text-slate-500 mt-1">
-                                  {platform.roi >= 100 ? 'Excellent' : platform.roi >= 50 ? 'Good' : platform.roi >= 0 ? 'Break-even+' : 'Loss'}
-                                </div>
+                        {realPlatformMetrics.map((platform, index) => {
+                          const hasNoData = platform.spend === 0 && platform.conversions === 0;
+                          return (
+                            <div key={index} className="p-4 border rounded-lg dark:border-slate-700 space-y-3" data-testid={`roi-card-${index}`}>
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
                               </div>
                               
-                              <div>
-                                <div className="text-xs text-slate-500 mb-1">ROAS (Revenue)</div>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {platform.roas.toFixed(2)}x
+                              {hasNoData ? (
+                                <div className="py-6 text-center">
+                                  <span className="text-sm text-slate-500 dark:text-slate-400">No Data Available</span>
                                 </div>
-                                <div className="text-xs text-slate-500 mt-1">
-                                  {platform.roas >= 4 ? 'Excellent' : platform.roas >= 3 ? 'Good' : platform.roas >= 1 ? 'Fair' : 'Poor'}
-                                </div>
-                              </div>
-                            </div>
+                              ) : (
+                                <>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <div className="text-xs text-slate-500 mb-1">ROI (Profit %)</div>
+                                      <div className={`text-2xl font-bold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                        {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
+                                      </div>
+                                      <div className="text-xs text-slate-500 mt-1">
+                                        {platform.roi >= 100 ? 'Excellent' : platform.roi >= 50 ? 'Good' : platform.roi >= 0 ? 'Break-even+' : 'Loss'}
+                                      </div>
+                                    </div>
+                                    
+                                    <div>
+                                      <div className="text-xs text-slate-500 mb-1">ROAS (Revenue)</div>
+                                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {platform.roas.toFixed(2)}x
+                                      </div>
+                                      <div className="text-xs text-slate-500 mt-1">
+                                        {platform.roas >= 4 ? 'Excellent' : platform.roas >= 3 ? 'Good' : platform.roas >= 1 ? 'Fair' : 'Poor'}
+                                      </div>
+                                    </div>
+                                  </div>
 
-                            <div className="pt-2 border-t dark:border-slate-600 text-xs text-slate-600 dark:text-slate-400">
-                              <div className="flex justify-between">
-                                <span>Total Spend:</span>
-                                <span className="font-medium">{formatCurrency(platform.spend)}</span>
-                              </div>
-                              <div className="flex justify-between mt-1">
-                                <span>Conversions:</span>
-                                <span className="font-medium">{formatNumber(platform.conversions)}</span>
-                              </div>
+                                  <div className="pt-2 border-t dark:border-slate-600 text-xs text-slate-600 dark:text-slate-400">
+                                    <div className="flex justify-between">
+                                      <span>Total Spend:</span>
+                                      <span className="font-medium">{formatCurrency(platform.spend)}</span>
+                                    </div>
+                                    <div className="flex justify-between mt-1">
+                                      <span>Conversions:</span>
+                                      <span className="font-medium">{formatNumber(platform.conversions)}</span>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </CardContent>
                   </Card>

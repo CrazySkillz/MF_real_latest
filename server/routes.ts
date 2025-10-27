@@ -435,7 +435,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Webhook endpoint for Custom Integration PDF uploads (CloudMailin integration)
-  app.post("/api/webhook/custom-integration/:token", upload.any(), async (req, res) => {
+  // Using raw body parser with manual multipart handling to support CloudMailin's format
+  app.post("/api/webhook/custom-integration/:token", (req, res, next) => {
+    // Create a dynamic upload middleware that accepts all fields
+    const dynamicUpload = multer({
+      storage: multer.memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB max
+      }
+    }).fields([
+      { name: 'attachments', maxCount: 10 },
+      { name: 'attachment', maxCount: 1 },
+      { name: 'file', maxCount: 1 },
+      { name: 'pdf', maxCount: 1 }
+    ]);
+
+    dynamicUpload(req, res, (err) => {
+      if (err) {
+        console.error('[Webhook] Multer error:', err);
+        return res.status(400).json({ 
+          success: false,
+          error: `File upload error: ${err.message}` 
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
     try {
       const { token } = req.params;
       console.log(`[Webhook] Received PDF upload request with token: ${token}`);
@@ -457,9 +482,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let pdfBuffer: Buffer;
       let pdfFileName: string | undefined;
 
-      // Check if files were uploaded (CloudMailin sends as array)
-      const files = req.files as Express.Multer.File[];
-      const pdfFile = files?.find(f => f.mimetype === 'application/pdf');
+      // Check if files were uploaded (CloudMailin sends as object with field names as keys)
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      let pdfFile: Express.Multer.File | undefined;
+
+      // Try to find PDF in various possible field names
+      if (files) {
+        for (const fieldName in files) {
+          const fileArray = files[fieldName];
+          if (fileArray && fileArray.length > 0) {
+            pdfFile = fileArray.find(f => f.mimetype === 'application/pdf' || f.originalname?.endsWith('.pdf'));
+            if (pdfFile) break;
+          }
+        }
+      }
       
       if (pdfFile) {
         pdfBuffer = pdfFile.buffer;
@@ -485,9 +521,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } 
       else {
         console.log('[Webhook] No PDF file or URL provided');
+        console.log('[Webhook] Available body fields:', Object.keys(req.body));
         return res.status(400).json({ 
           success: false,
-          error: "No PDF file uploaded or URL provided" 
+          error: "No PDF file uploaded or URL provided",
+          debug: {
+            bodyFields: Object.keys(req.body),
+            filesReceived: files ? Object.keys(files) : []
+          }
         });
       }
 

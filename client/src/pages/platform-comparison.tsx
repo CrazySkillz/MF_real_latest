@@ -493,34 +493,43 @@ export default function PlatformComparison() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {realPlatformMetrics.map((platform, index) => (
-                            <div key={index} className="p-3 border rounded-lg dark:border-slate-700" data-testid={`metrics-detail-${index}`}>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
+                          {realPlatformMetrics.map((platform, index) => {
+                            const hasNoData = platform.spend === 0 && platform.conversions === 0;
+                            return (
+                              <div key={index} className="p-3 border rounded-lg dark:border-slate-700" data-testid={`metrics-detail-${index}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
+                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
+                                </div>
+                                {hasNoData ? (
+                                  <div className="py-2 text-center">
+                                    <span className="text-sm text-slate-500 dark:text-slate-400">No Data Available</span>
+                                  </div>
+                                ) : (
+                                  <div className="grid grid-cols-4 gap-2 text-xs">
+                                    <div>
+                                      <span className="block text-slate-500 font-medium">CTR</span>
+                                      <span className="text-slate-900 dark:text-white font-semibold">{platform.ctr.toFixed(2)}%</span>
+                                    </div>
+                                    <div>
+                                      <span className="block text-slate-500 font-medium">CPC</span>
+                                      <span className="text-slate-900 dark:text-white font-semibold">{formatCurrency(platform.cpc)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="block text-slate-500 font-medium">Conv. Rate</span>
+                                      <span className="text-slate-900 dark:text-white font-semibold">{platform.conversionRate.toFixed(2)}%</span>
+                                    </div>
+                                    <div>
+                                      <span className="block text-slate-500 font-medium">ROI</span>
+                                      <span className={`font-semibold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                        {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                              <div className="grid grid-cols-4 gap-2 text-xs">
-                                <div>
-                                  <span className="block text-slate-500 font-medium">CTR</span>
-                                  <span className="text-slate-900 dark:text-white font-semibold">{platform.ctr.toFixed(2)}%</span>
-                                </div>
-                                <div>
-                                  <span className="block text-slate-500 font-medium">CPC</span>
-                                  <span className="text-slate-900 dark:text-white font-semibold">{formatCurrency(platform.cpc)}</span>
-                                </div>
-                                <div>
-                                  <span className="block text-slate-500 font-medium">Conv. Rate</span>
-                                  <span className="text-slate-900 dark:text-white font-semibold">{platform.conversionRate.toFixed(2)}%</span>
-                                </div>
-                                <div>
-                                  <span className="block text-slate-500 font-medium">ROI</span>
-                                  <span className={`font-semibold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                    {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>
@@ -535,32 +544,43 @@ export default function PlatformComparison() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {realPlatformMetrics.map((platform, index) => (
-                            <div key={index} className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="font-medium text-slate-900 dark:text-white">{platform.platform}</span>
-                                <div className="flex items-center space-x-3">
-                                  <span className="text-slate-600 dark:text-slate-400">{platform.roas.toFixed(2)}x ROAS</span>
-                                  <span className={`font-medium ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                    {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}% ROI
-                                  </span>
+                          {realPlatformMetrics.map((platform, index) => {
+                            const hasNoData = platform.spend === 0 && platform.conversions === 0;
+                            return (
+                              <div key={index} className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="font-medium text-slate-900 dark:text-white">{platform.platform}</span>
+                                  {hasNoData ? (
+                                    <span className="text-sm text-slate-500 dark:text-slate-400">No Data Available</span>
+                                  ) : (
+                                    <div className="flex items-center space-x-3">
+                                      <span className="text-slate-600 dark:text-slate-400">{platform.roas.toFixed(2)}x ROAS</span>
+                                      <span className={`font-medium ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                        {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}% ROI
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
+                                {!hasNoData && (
+                                  <>
+                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                      <div 
+                                        className="h-2 rounded-full transition-all" 
+                                        style={{ 
+                                          width: `${Math.min((platform.roas / 5) * 100, 100)}%`,
+                                          backgroundColor: platform.color 
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="flex justify-between text-xs text-slate-500">
+                                      <span>CPA: {formatCurrency(platform.conversions > 0 ? platform.spend / platform.conversions : 0)}</span>
+                                      <span>{formatNumber(platform.conversions)} Conv.</span>
+                                    </div>
+                                  </>
+                                )}
                               </div>
-                              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                <div 
-                                  className="h-2 rounded-full transition-all" 
-                                  style={{ 
-                                    width: `${Math.min((platform.roas / 5) * 100, 100)}%`,
-                                    backgroundColor: platform.color 
-                                  }}
-                                />
-                              </div>
-                              <div className="flex justify-between text-xs text-slate-500">
-                                <span>CPA: {formatCurrency(platform.conversions > 0 ? platform.spend / platform.conversions : 0)}</span>
-                                <span>{formatNumber(platform.conversions)} Conv.</span>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>

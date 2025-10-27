@@ -435,22 +435,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Webhook endpoint for Custom Integration PDF uploads (CloudMailin integration)
-  // Using raw body parser with manual multipart handling to support CloudMailin's format
+  // Accept ANY field name from CloudMailin
   app.post("/api/webhook/custom-integration/:token", (req, res, next) => {
-    // Create a dynamic upload middleware that accepts all fields
-    const dynamicUpload = multer({
+    // Use .any() to accept unlimited files with ANY field name
+    const anyUpload = multer({
       storage: multer.memoryStorage(),
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB max
       }
-    }).fields([
-      { name: 'attachments', maxCount: 10 },
-      { name: 'attachment', maxCount: 1 },
-      { name: 'file', maxCount: 1 },
-      { name: 'pdf', maxCount: 1 }
-    ]);
+    }).any();
 
-    dynamicUpload(req, res, (err) => {
+    anyUpload(req, res, (err) => {
       if (err) {
         console.error('[Webhook] Multer error:', err);
         return res.status(400).json({ 
@@ -482,19 +477,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let pdfBuffer: Buffer;
       let pdfFileName: string | undefined;
 
-      // Check if files were uploaded (CloudMailin sends as object with field names as keys)
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      // Check if files were uploaded (when using .any(), req.files is an array)
+      const files = req.files as Express.Multer.File[];
       let pdfFile: Express.Multer.File | undefined;
 
-      // Try to find PDF in various possible field names
-      if (files) {
-        for (const fieldName in files) {
-          const fileArray = files[fieldName];
-          if (fileArray && fileArray.length > 0) {
-            pdfFile = fileArray.find(f => f.mimetype === 'application/pdf' || f.originalname?.endsWith('.pdf'));
-            if (pdfFile) break;
-          }
-        }
+      // Find the first PDF file in the array
+      if (files && files.length > 0) {
+        console.log(`[Webhook] Received ${files.length} file(s)`);
+        files.forEach(f => console.log(`  - ${f.fieldname}: ${f.originalname} (${f.mimetype})`));
+        pdfFile = files.find(f => f.mimetype === 'application/pdf' || f.originalname?.endsWith('.pdf'));
       }
       
       if (pdfFile) {

@@ -764,28 +764,58 @@ export default function CampaignPerformanceSummary() {
                         ? totalSpend / totalConversions 
                         : 0;
                       
-                      // Platform comparison insights
+                      // Platform comparison insights - always analyze all connected sources
+                      const linkedinCVR = linkedinConversions > 0 && linkedinClicks > 0 
+                        ? (linkedinConversions / linkedinClicks * 100) 
+                        : 0;
+                      const ciCVR = ciConversions > 0 && ciClicks > 0 
+                        ? (ciConversions / ciClicks * 100) 
+                        : 0;
+                      const linkedinCPA = linkedinSpend > 0 && linkedinConversions > 0
+                        ? linkedinSpend / linkedinConversions
+                        : 0;
+                      const ciCPA = ciSpend > 0 && ciConversions > 0
+                        ? ciSpend / ciConversions
+                        : 0;
+                      
+                      // Both platforms active - compare performance
                       if (linkedinSpend > 0 && ciSpend > 0) {
-                        const linkedinCVR = linkedinConversions > 0 && linkedinClicks > 0 
-                          ? (linkedinConversions / linkedinClicks * 100) 
-                          : 0;
-                        const ciCVR = ciConversions > 0 && ciClicks > 0 
-                          ? (ciConversions / ciClicks * 100) 
-                          : 0;
-                        
                         if (linkedinCVR > ciCVR * 1.5 && linkedinCVR > 0) {
                           insights.push({
                             type: 'success',
                             title: 'LinkedIn Outperforming',
-                            message: `LinkedIn has ${linkedinCVR.toFixed(2)}% conversion rate vs ${ciCVR.toFixed(2)}% from Custom Integration. Consider allocating more budget to LinkedIn.`
+                            message: `LinkedIn: ${linkedinCVR.toFixed(2)}% CVR, $${linkedinCPA.toFixed(2)} CPA vs Custom Integration: ${ciCVR.toFixed(2)}% CVR, $${ciCPA > 0 ? ciCPA.toFixed(2) : '0.00'} CPA. LinkedIn showing superior efficiency.`
                           });
                         } else if (ciCVR > linkedinCVR * 1.5 && ciCVR > 0) {
                           insights.push({
                             type: 'success',
-                            title: 'Custom Integration Strong Performance',
-                            message: `Custom Integration achieving ${ciCVR.toFixed(2)}% conversion rate vs ${linkedinCVR.toFixed(2)}% from LinkedIn. Custom channels driving better results.`
+                            title: 'Custom Integration Outperforming',
+                            message: `Custom Integration: ${ciCVR.toFixed(2)}% CVR, $${ciCPA.toFixed(2)} CPA vs LinkedIn: ${linkedinCVR.toFixed(2)}% CVR, $${linkedinCPA > 0 ? linkedinCPA.toFixed(2) : '0.00'} CPA. Custom channels driving superior results.`
+                          });
+                        } else {
+                          // Similar performance
+                          insights.push({
+                            type: 'info',
+                            title: 'Balanced Platform Performance',
+                            message: `LinkedIn: ${linkedinCVR.toFixed(2)}% CVR from ${linkedinClicks.toLocaleString()} clicks. Custom Integration: ${ciCVR.toFixed(2)}% CVR from ${ciClicks.toLocaleString()} clicks. Both platforms contributing effectively.`
                           });
                         }
+                      } 
+                      // Only LinkedIn active
+                      else if (linkedinSpend > 0) {
+                        insights.push({
+                          type: 'info',
+                          title: 'LinkedIn Performance',
+                          message: `LinkedIn driving ${linkedinConversions.toLocaleString()} conversions from ${linkedinClicks.toLocaleString()} clicks (${linkedinCVR.toFixed(2)}% CVR). $${linkedinSpend.toLocaleString()} spent${linkedinCPA > 0 ? ` at $${linkedinCPA.toFixed(2)} CPA` : ''}.`
+                        });
+                      }
+                      // Only Custom Integration active
+                      else if (ciSpend > 0) {
+                        insights.push({
+                          type: 'info',
+                          title: 'Custom Integration Performance',
+                          message: `Custom Integration driving ${ciConversions.toLocaleString()} conversions from ${ciClicks.toLocaleString()} clicks (${ciCVR.toFixed(2)}% CVR). $${ciSpend.toLocaleString()} spent${ciCPA > 0 ? ` at $${ciCPA.toFixed(2)} CPA` : ''}.`
+                        });
                       }
                       
                       // CTR analysis
@@ -831,27 +861,49 @@ export default function CampaignPerformanceSummary() {
                         });
                       }
                       
-                      // Budget utilization
+                      // Budget utilization - always show breakdown of all sources
                       if (totalSpend > 0) {
-                        const linkedinPct = (linkedinSpend / totalSpend * 100);
-                        const ciPct = (ciSpend / totalSpend * 100);
+                        const linkedinPct = totalSpend > 0 ? (linkedinSpend / totalSpend * 100) : 0;
+                        const ciPct = totalSpend > 0 ? (ciSpend / totalSpend * 100) : 0;
                         
-                        if (linkedinSpend > 0 && ciSpend > 0) {
+                        const sources = [];
+                        if (linkedinSpend > 0) sources.push(`LinkedIn: $${linkedinSpend.toLocaleString()} (${linkedinPct.toFixed(1)}%)`);
+                        if (ciSpend > 0) sources.push(`Custom Integration: $${ciSpend.toLocaleString()} (${ciPct.toFixed(1)}%)`);
+                        
+                        if (sources.length > 0) {
                           insights.push({
                             type: 'info',
-                            title: 'Budget Distribution',
-                            message: `LinkedIn: $${linkedinSpend.toLocaleString()} (${linkedinPct.toFixed(1)}%), Custom Integration: $${ciSpend.toLocaleString()} (${ciPct.toFixed(1)}%). Total spend: $${totalSpend.toLocaleString()}.`
+                            title: 'Budget Allocation',
+                            message: `${sources.join(', ')}. Total spend across all platforms: $${totalSpend.toLocaleString()}.`
                           });
                         }
                       }
                       
-                      // Engagement analysis
-                      if (totalEngagements > advertisingEngagements && ciSessions > 0) {
-                        insights.push({
-                          type: 'info',
-                          title: 'Website Engagement',
-                          message: `${ciSessions.toLocaleString()} website sessions beyond ${advertisingEngagements.toLocaleString()} ad engagements indicates organic/direct traffic contributing to overall ${totalEngagements.toLocaleString()} total engagements.`
-                        });
+                      // Engagement analysis - account for all sources
+                      if (totalEngagements > 0) {
+                        if (ciSessions > 0 && advertisingEngagements > 0) {
+                          // Both ad and web engagement
+                          const webContribution = totalEngagements > 0 ? (ciSessions / totalEngagements * 100) : 0;
+                          insights.push({
+                            type: 'info',
+                            title: 'Multi-Channel Engagement',
+                            message: `Total engagements: ${totalEngagements.toLocaleString()} from ${advertisingEngagements.toLocaleString()} ad engagements (LinkedIn + CI) and ${ciSessions.toLocaleString()} website sessions (${webContribution.toFixed(1)}% from website traffic).`
+                          });
+                        } else if (advertisingEngagements > 0 && ciSessions === 0) {
+                          // Only ad engagement
+                          insights.push({
+                            type: 'info',
+                            title: 'Advertising Engagement',
+                            message: `${advertisingEngagements.toLocaleString()} total ad engagements from LinkedIn and Custom Integration advertising campaigns.`
+                          });
+                        } else if (ciSessions > 0 && advertisingEngagements === 0) {
+                          // Only web sessions
+                          insights.push({
+                            type: 'info',
+                            title: 'Website Traffic',
+                            message: `${ciSessions.toLocaleString()} website sessions tracked through Custom Integration analytics (no advertising engagement data available).`
+                          });
+                        }
                       }
                       
                       // Health score context
@@ -879,17 +931,17 @@ export default function CampaignPerformanceSummary() {
                       }
                       
                       return insights.map((insight, idx) => {
-                        const bgColors = {
+                        const bgColors: Record<string, string> = {
                           success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
                           warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
                           info: 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                         };
-                        const textColors = {
+                        const textColors: Record<string, string> = {
                           success: 'text-green-900 dark:text-green-100',
                           warning: 'text-yellow-900 dark:text-yellow-100',
                           info: 'text-slate-900 dark:text-slate-100'
                         };
-                        const bodyColors = {
+                        const bodyColors: Record<string, string> = {
                           success: 'text-green-800 dark:text-green-200',
                           warning: 'text-yellow-800 dark:text-yellow-200',
                           info: 'text-slate-700 dark:text-slate-300'

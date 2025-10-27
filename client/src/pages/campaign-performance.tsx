@@ -401,7 +401,9 @@ export default function CampaignPerformanceSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{totalConversions.toLocaleString()}</div>
-                    <p className="text-xs text-muted-foreground">Goal completions</p>
+                    <p className="text-xs text-muted-foreground">
+                      LinkedIn: {linkedinConversions.toLocaleString()} | CI: {ciConversions.toLocaleString()}
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -412,7 +414,9 @@ export default function CampaignPerformanceSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">${totalSpend.toLocaleString()}</div>
-                    <p className="text-xs text-muted-foreground">Campaign investment</p>
+                    <p className="text-xs text-muted-foreground">
+                      LinkedIn: ${linkedinSpend.toLocaleString()} | CI: ${ciSpend.toLocaleString()}
+                    </p>
                   </CardContent>
                 </Card>
               </div>

@@ -712,13 +712,17 @@ export default function CampaignPerformanceSummary() {
             <TabsContent value="insights" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Key Insights & Recommendations</CardTitle>
-                  <CardDescription>AI-powered insights based on your campaign performance</CardDescription>
+                  <CardTitle>Data-Driven Insights & Recommendations</CardTitle>
+                  <CardDescription>Performance analysis based on {campaign.name} actual metrics</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Priority Action</h4>
+                    {/* Priority Action */}
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center">
+                        <AlertTriangle className="w-4 h-4 mr-2" />
+                        Top Priority Action
+                      </h4>
                       {(() => {
                         const priority = getPriorityAction();
                         
@@ -742,19 +746,163 @@ export default function CampaignPerformanceSummary() {
                       })()}
                     </div>
                     
-                    {kpisAboveTarget === kpis.length && kpis.length > 0 && (
-                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2">Excellent Performance</h4>
-                        <p className="text-sm text-green-800 dark:text-green-200">All KPIs are meeting or exceeding targets. Consider scaling your investment.</p>
-                      </div>
-                    )}
-                    
-                    {healthScore < 60 && (
-                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                        <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2">Attention Needed</h4>
-                        <p className="text-sm text-yellow-800 dark:text-yellow-200">Campaign performance is below expectations. Review underperforming KPIs and adjust strategy.</p>
-                      </div>
-                    )}
+                    {/* Performance Analysis */}
+                    {(() => {
+                      const insights = [];
+                      
+                      // Calculate actual metrics for insights
+                      const ctr = totalClicks > 0 && advertisingImpressions > 0 
+                        ? (totalClicks / advertisingImpressions * 100) 
+                        : 0;
+                      const cvr = totalConversions > 0 && totalClicks > 0 
+                        ? (totalConversions / totalClicks * 100) 
+                        : 0;
+                      const cpc = totalSpend > 0 && totalClicks > 0 
+                        ? totalSpend / totalClicks 
+                        : 0;
+                      const cpa = totalSpend > 0 && totalConversions > 0 
+                        ? totalSpend / totalConversions 
+                        : 0;
+                      
+                      // Platform comparison insights
+                      if (linkedinSpend > 0 && ciSpend > 0) {
+                        const linkedinCVR = linkedinConversions > 0 && linkedinClicks > 0 
+                          ? (linkedinConversions / linkedinClicks * 100) 
+                          : 0;
+                        const ciCVR = ciConversions > 0 && ciClicks > 0 
+                          ? (ciConversions / ciClicks * 100) 
+                          : 0;
+                        
+                        if (linkedinCVR > ciCVR * 1.5 && linkedinCVR > 0) {
+                          insights.push({
+                            type: 'success',
+                            title: 'LinkedIn Outperforming',
+                            message: `LinkedIn has ${linkedinCVR.toFixed(2)}% conversion rate vs ${ciCVR.toFixed(2)}% from Custom Integration. Consider allocating more budget to LinkedIn.`
+                          });
+                        } else if (ciCVR > linkedinCVR * 1.5 && ciCVR > 0) {
+                          insights.push({
+                            type: 'success',
+                            title: 'Custom Integration Strong Performance',
+                            message: `Custom Integration achieving ${ciCVR.toFixed(2)}% conversion rate vs ${linkedinCVR.toFixed(2)}% from LinkedIn. Custom channels driving better results.`
+                          });
+                        }
+                      }
+                      
+                      // CTR analysis
+                      if (ctr > 0) {
+                        if (ctr < 1) {
+                          insights.push({
+                            type: 'warning',
+                            title: 'Low Click-Through Rate',
+                            message: `Current CTR is ${ctr.toFixed(2)}%. Consider testing new ad creative, headlines, or targeting to improve engagement. Industry benchmarks typically range from 1-3%.`
+                          });
+                        } else if (ctr >= 2) {
+                          insights.push({
+                            type: 'success',
+                            title: 'Strong Click-Through Rate',
+                            message: `Achieving ${ctr.toFixed(2)}% CTR from ${advertisingImpressions.toLocaleString()} impressions. Your ads are resonating well with the target audience.`
+                          });
+                        }
+                      }
+                      
+                      // Conversion efficiency
+                      if (cvr > 0) {
+                        if (cvr >= 5) {
+                          insights.push({
+                            type: 'success',
+                            title: 'Excellent Conversion Rate',
+                            message: `${cvr.toFixed(2)}% of clicks convert. This indicates strong ad-to-landing page alignment and quality traffic from ${totalClicks.toLocaleString()} total clicks.`
+                          });
+                        } else if (cvr < 2) {
+                          insights.push({
+                            type: 'warning',
+                            title: 'Conversion Rate Opportunity',
+                            message: `${cvr.toFixed(2)}% conversion rate suggests landing page optimization needed. Review user journey from ${totalClicks.toLocaleString()} clicks to improve ${totalConversions.toLocaleString()} conversions.`
+                          });
+                        }
+                      }
+                      
+                      // Cost efficiency
+                      if (cpa > 0 && totalConversions > 0) {
+                        insights.push({
+                          type: 'info',
+                          title: 'Cost Per Acquisition',
+                          message: `Spending $${cpa.toFixed(2)} per conversion from $${totalSpend.toLocaleString()} total spend. ${totalConversions.toLocaleString()} conversions achieved across all platforms.`
+                        });
+                      }
+                      
+                      // Budget utilization
+                      if (totalSpend > 0) {
+                        const linkedinPct = (linkedinSpend / totalSpend * 100);
+                        const ciPct = (ciSpend / totalSpend * 100);
+                        
+                        if (linkedinSpend > 0 && ciSpend > 0) {
+                          insights.push({
+                            type: 'info',
+                            title: 'Budget Distribution',
+                            message: `LinkedIn: $${linkedinSpend.toLocaleString()} (${linkedinPct.toFixed(1)}%), Custom Integration: $${ciSpend.toLocaleString()} (${ciPct.toFixed(1)}%). Total spend: $${totalSpend.toLocaleString()}.`
+                          });
+                        }
+                      }
+                      
+                      // Engagement analysis
+                      if (totalEngagements > advertisingEngagements && ciSessions > 0) {
+                        insights.push({
+                          type: 'info',
+                          title: 'Website Engagement',
+                          message: `${ciSessions.toLocaleString()} website sessions beyond ${advertisingEngagements.toLocaleString()} ad engagements indicates organic/direct traffic contributing to overall ${totalEngagements.toLocaleString()} total engagements.`
+                        });
+                      }
+                      
+                      // Health score context
+                      if (healthScore >= 80) {
+                        insights.push({
+                          type: 'success',
+                          title: 'Campaign Health Excellent',
+                          message: `${healthScore}% health score with ${totalAboveTarget} of ${totalMetrics} metrics meeting targets. Campaign performing above expectations.`
+                        });
+                      } else if (healthScore < 60) {
+                        insights.push({
+                          type: 'warning',
+                          title: 'Campaign Requires Attention',
+                          message: `${healthScore}% health score - only ${totalAboveTarget} of ${totalMetrics} metrics meeting targets. Focus on underperforming KPIs to improve results.`
+                        });
+                      }
+                      
+                      // If no insights generated, show data summary
+                      if (insights.length === 0) {
+                        insights.push({
+                          type: 'info',
+                          title: 'Campaign Summary',
+                          message: `Tracking ${totalImpressions.toLocaleString()} total impressions, ${totalEngagements.toLocaleString()} engagements, and ${totalConversions.toLocaleString()} conversions from $${totalSpend.toLocaleString()} spend across connected platforms.`
+                        });
+                      }
+                      
+                      return insights.map((insight, idx) => {
+                        const bgColors = {
+                          success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+                          warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
+                          info: 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                        };
+                        const textColors = {
+                          success: 'text-green-900 dark:text-green-100',
+                          warning: 'text-yellow-900 dark:text-yellow-100',
+                          info: 'text-slate-900 dark:text-slate-100'
+                        };
+                        const bodyColors = {
+                          success: 'text-green-800 dark:text-green-200',
+                          warning: 'text-yellow-800 dark:text-yellow-200',
+                          info: 'text-slate-700 dark:text-slate-300'
+                        };
+                        
+                        return (
+                          <div key={idx} className={`p-4 rounded-lg border ${bgColors[insight.type]}`}>
+                            <h4 className={`font-semibold mb-2 ${textColors[insight.type]}`}>{insight.title}</h4>
+                            <p className={`text-sm ${bodyColors[insight.type]}`}>{insight.message}</p>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </CardContent>
               </Card>

@@ -196,12 +196,15 @@ export default function PlatformComparison() {
     efficiency: platform.spend > 0 ? ((platform.conversions / platform.spend) * 100).toFixed(2) : '0'
   }));
 
-  // Generate performance rankings
+  // Generate performance rankings (only include platforms with actual financial data)
   const getBestPerformer = (metric: 'roas' | 'roi' | 'conversions' | 'ctr' | 'cpc' | 'conversionRate') => {
-    if (realPlatformMetrics.length === 0) return null;
-    return realPlatformMetrics.reduce((best, current) => {
+    // Filter out platforms with no financial data
+    const platformsWithData = realPlatformMetrics.filter(p => p.spend > 0 || p.conversions > 0);
+    if (platformsWithData.length === 0) return null;
+    
+    return platformsWithData.reduce((best, current) => {
       if (metric === 'cpc') {
-        // Find lowest CPC - zero is the absolute minimum
+        // Find lowest CPC among platforms with actual data
         if (current.cpc === 0 && best.cpc === 0) return best; // Both zero, keep first
         if (current.cpc === 0) return current; // Current is zero, it wins
         if (best.cpc === 0) return best; // Best is zero, it wins

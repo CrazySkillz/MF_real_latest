@@ -914,7 +914,11 @@ export default function PlatformComparison() {
 
                         {/* Opportunity/Warning Insight */}
                         {realPlatformMetrics.length > 1 && (() => {
-                          const weakest = realPlatformMetrics.reduce((min, p) => p.roas < min.roas ? p : min);
+                          // Only consider platforms with actual financial data
+                          const platformsWithData = realPlatformMetrics.filter(p => p.spend > 0 || p.conversions > 0);
+                          if (platformsWithData.length < 2) return null;
+                          
+                          const weakest = platformsWithData.reduce((min, p) => p.roas < min.roas ? p : min);
                           const roasGap = bestROAS && bestROAS.roas > 0 ? ((bestROAS.roas - weakest.roas) / bestROAS.roas * 100) : 0;
                           
                           return roasGap > 30 ? (
@@ -951,61 +955,71 @@ export default function PlatformComparison() {
                     <CardContent>
                       <div className="space-y-6">
                         {/* Budget Reallocation */}
-                        {realPlatformMetrics.length > 1 && bestROAS && (
-                          <div className="border-l-4 border-green-500 pl-4">
-                            <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Budget Reallocation Strategy</h4>
-                            <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                              {realPlatformMetrics.map((platform, idx) => {
-                                const isTop = platform.platform === bestROAS.platform;
-                                const isWeakest = platform.roas === Math.min(...realPlatformMetrics.map(p => p.roas));
-                                
-                                if (isTop && platform.roas >= 3) {
-                                  return (
-                                    <li key={idx} data-testid={`rec-budget-${idx}`}>
-                                      • Increase {platform.platform} budget by 20-30% (highest ROAS at {platform.roas.toFixed(2)}x)
-                                    </li>
-                                  );
-                                } else if (isWeakest && platform.roas < 2) {
-                                  return (
-                                    <li key={idx} data-testid={`rec-budget-${idx}`}>
-                                      • Reduce {platform.platform} budget by 15-20% until performance improves (ROAS: {platform.roas.toFixed(2)}x)
-                                    </li>
-                                  );
-                                } else {
-                                  return (
-                                    <li key={idx} data-testid={`rec-budget-${idx}`}>
-                                      • Maintain {platform.platform} current budget (ROAS: {platform.roas.toFixed(2)}x)
-                                    </li>
-                                  );
-                                }
-                              })}
-                            </ul>
-                          </div>
-                        )}
+                        {(() => {
+                          // Only include platforms with actual financial data
+                          const platformsWithData = realPlatformMetrics.filter(p => p.spend > 0 || p.conversions > 0);
+                          return platformsWithData.length > 1 && bestROAS ? (
+                            <div className="border-l-4 border-green-500 pl-4">
+                              <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Budget Reallocation Strategy</h4>
+                              <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                                {platformsWithData.map((platform, idx) => {
+                                  const isTop = platform.platform === bestROAS.platform;
+                                  const isWeakest = platform.roas === Math.min(...platformsWithData.map(p => p.roas));
+                                  
+                                  if (isTop && platform.roas >= 3) {
+                                    return (
+                                      <li key={idx} data-testid={`rec-budget-${idx}`}>
+                                        • Increase {platform.platform} budget by 20-30% (highest ROAS at {platform.roas.toFixed(2)}x)
+                                      </li>
+                                    );
+                                  } else if (isWeakest && platform.roas < 2) {
+                                    return (
+                                      <li key={idx} data-testid={`rec-budget-${idx}`}>
+                                        • Reduce {platform.platform} budget by 15-20% until performance improves (ROAS: {platform.roas.toFixed(2)}x)
+                                      </li>
+                                    );
+                                  } else {
+                                    return (
+                                      <li key={idx} data-testid={`rec-budget-${idx}`}>
+                                        • Maintain {platform.platform} current budget (ROAS: {platform.roas.toFixed(2)}x)
+                                      </li>
+                                    );
+                                  }
+                                })}
+                              </ul>
+                            </div>
+                          ) : null;
+                        })()}
 
                         {/* Platform-Specific Optimizations */}
-                        <div className="border-l-4 border-blue-500 pl-4">
-                          <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Platform-Specific Optimizations</h4>
-                          <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                            {realPlatformMetrics.map((platform, idx) => {
-                              let recommendation = '';
-                              
-                              if (platform.ctr < 1) {
-                                recommendation = `${platform.platform}: Improve CTR (${platform.ctr.toFixed(2)}%) through creative refresh and A/B testing`;
-                              } else if (platform.conversionRate < 2) {
-                                recommendation = `${platform.platform}: Optimize landing pages to improve ${platform.conversionRate.toFixed(2)}% conversion rate`;
-                              } else if (platform.cpc > 5) {
-                                recommendation = `${platform.platform}: Reduce CPC (${formatCurrency(platform.cpc)}) through bid optimization and quality score improvements`;
-                              } else if (platform.roas >= 4) {
-                                recommendation = `${platform.platform}: Expand successful campaigns to similar audiences and regions`;
-                              } else {
-                                recommendation = `${platform.platform}: Test new ad formats and audience segments to scale performance`;
-                              }
-                              
-                              return <li key={idx} data-testid={`rec-optimization-${idx}`}>• {recommendation}</li>;
-                            })}
-                          </ul>
-                        </div>
+                        {(() => {
+                          // Only include platforms with actual financial data
+                          const platformsWithData = realPlatformMetrics.filter(p => p.spend > 0 || p.conversions > 0);
+                          return platformsWithData.length > 0 ? (
+                            <div className="border-l-4 border-blue-500 pl-4">
+                              <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Platform-Specific Optimizations</h4>
+                              <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                                {platformsWithData.map((platform, idx) => {
+                                  let recommendation = '';
+                                  
+                                  if (platform.ctr < 1) {
+                                    recommendation = `${platform.platform}: Improve CTR (${platform.ctr.toFixed(2)}%) through creative refresh and A/B testing`;
+                                  } else if (platform.conversionRate < 2) {
+                                    recommendation = `${platform.platform}: Optimize landing pages to improve ${platform.conversionRate.toFixed(2)}% conversion rate`;
+                                  } else if (platform.cpc > 5) {
+                                    recommendation = `${platform.platform}: Reduce CPC (${formatCurrency(platform.cpc)}) through bid optimization and quality score improvements`;
+                                  } else if (platform.roas >= 4) {
+                                    recommendation = `${platform.platform}: Expand successful campaigns to similar audiences and regions`;
+                                  } else {
+                                    recommendation = `${platform.platform}: Test new ad formats and audience segments to scale performance`;
+                                  }
+                                  
+                                  return <li key={idx} data-testid={`rec-optimization-${idx}`}>• {recommendation}</li>;
+                                })}
+                              </ul>
+                            </div>
+                          ) : null;
+                        })()}
 
                         {/* Performance Monitoring */}
                         <div className="border-l-4 border-purple-500 pl-4">

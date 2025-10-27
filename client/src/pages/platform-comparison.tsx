@@ -996,6 +996,11 @@ export default function PlatformComparison() {
                         <Zap className="w-5 h-5" />
                         <span>Strategic Recommendations</span>
                       </CardTitle>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                        <strong>Note:</strong> These recommendations are directional guidance based on platform performance data. 
+                        Budget allocations and optimization strategies should be validated against your specific business objectives, 
+                        profit margins, competitive landscape, and strategic goals before implementation.
+                      </p>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-6">

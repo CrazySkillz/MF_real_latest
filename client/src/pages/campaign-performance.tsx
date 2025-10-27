@@ -719,7 +719,27 @@ export default function CampaignPerformanceSummary() {
                   <div className="space-y-4">
                     <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                       <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Priority Action</h4>
-                      <p className="text-sm text-blue-800 dark:text-blue-200">{getPriorityAction()}</p>
+                      {(() => {
+                        const priority = getPriorityAction();
+                        
+                        if (priority.type === 'kpi') {
+                          return (
+                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                              {priority.action} "{priority.name}" - currently {priority.currentValue}, target {priority.targetValue}
+                            </p>
+                          );
+                        } else if (priority.type === 'benchmark') {
+                          return (
+                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                              {priority.action} "{priority.name}" - {priority.message}
+                            </p>
+                          );
+                        } else {
+                          return (
+                            <p className="text-sm text-blue-800 dark:text-blue-200">{priority.message}</p>
+                          );
+                        }
+                      })()}
                     </div>
                     
                     {kpisAboveTarget === kpis.length && kpis.length > 0 && (

@@ -446,9 +446,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/webhook/custom-integration/:token", webhookUpload, async (req, res) => {
     try {
       const { token } = req.params;
-      console.log(`[Webhook] Received PDF upload request with token: ${token}`);
-      console.log(`[Webhook] Request body keys:`, Object.keys(req.body));
-      console.log(`[Webhook] Files:`, req.files);
+      console.log(`[Webhook] Received request with token: ${token}`);
+      console.log(`[Webhook] Request body:`, JSON.stringify(req.body, null, 2).substring(0, 500));
 
       // Validate webhook token and get associated campaign
       const customIntegration = await storage.getCustomIntegrationByToken(token);
@@ -465,23 +464,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let pdfBuffer: Buffer;
       let pdfFileName: string | undefined;
 
-      // Check if files were uploaded (when using .any(), req.files is an array)
-      const files = req.files as Express.Multer.File[];
-      let pdfFile: Express.Multer.File | undefined;
-
-      // Find the first PDF file in the array
-      if (files && files.length > 0) {
-        console.log(`[Webhook] Received ${files.length} file(s)`);
-        files.forEach(f => console.log(`  - ${f.fieldname}: ${f.originalname} (${f.mimetype})`));
-        pdfFile = files.find(f => f.mimetype === 'application/pdf' || f.originalname?.endsWith('.pdf'));
+      // Check for CloudMailin JSON format with base64 attachments
+      if (req.body.attachments && Array.isArray(req.body.attachments)) {
+        console.log(`[Webhook] Found ${req.body.attachments.length} attachment(s) in JSON body`);
+        const pdfAttachment = req.body.attachments.find((att: any) => 
+          att.content_type === 'application/pdf' || att.file_name?.endsWith('.pdf')
+        );
+        
+        if (pdfAttachment && pdfAttachment.content) {
+          console.log(`[Webhook] Processing base64 PDF: ${pdfAttachment.file_name}`);
+          pdfBuffer = Buffer.from(pdfAttachment.content, 'base64');
+          pdfFileName = pdfAttachment.file_name;
+        }
       }
-      
-      if (pdfFile) {
-        pdfBuffer = pdfFile.buffer;
-        pdfFileName = pdfFile.originalname;
-        console.log(`[Webhook] Processing uploaded PDF file: ${pdfFileName} (field: ${pdfFile.fieldname})`);
+      // Check for multipart file uploads
+      else if (req.files) {
+        const files = req.files as Express.Multer.File[];
+        if (files && files.length > 0) {
+          console.log(`[Webhook] Received ${files.length} file(s) via multipart`);
+          const pdfFile = files.find(f => f.mimetype === 'application/pdf' || f.originalname?.endsWith('.pdf'));
+          if (pdfFile) {
+            pdfBuffer = pdfFile.buffer;
+            pdfFileName = pdfFile.originalname;
+            console.log(`[Webhook] Processing uploaded PDF file: ${pdfFileName}`);
+          }
+        }
       }
-      // Check if URL was provided in request body
+      // Check for URL-based PDF
       else if (req.body.pdfUrl) {
         const pdfUrl = req.body.pdfUrl;
         console.log(`[Webhook] Downloading PDF from URL: ${pdfUrl}`);
@@ -497,17 +506,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             error: "Failed to download PDF from provided URL" 
           });
         }
-      } 
-      else {
-        console.log('[Webhook] No PDF file or URL provided');
-        console.log('[Webhook] Available body fields:', Object.keys(req.body));
+      }
+
+      // Check if we got a PDF
+      if (!pdfBuffer!) {
+        console.log('[Webhook] No PDF found in request');
         return res.status(400).json({ 
           success: false,
-          error: "No PDF file uploaded or URL provided",
-          debug: {
-            bodyFields: Object.keys(req.body),
-            filesReceived: files ? Object.keys(files) : []
-          }
+          error: "No PDF file found in request"
         });
       }
 

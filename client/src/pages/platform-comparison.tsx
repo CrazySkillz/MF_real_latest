@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, TrendingUp, Target, Users, MousePointer, DollarSign, Eye, Clock, AlertCircle, Zap, Brain, GitCompare, Activity, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowLeft, BarChart3, TrendingUp, Target, Users, MousePointer, DollarSign, Eye, Clock, AlertCircle, Zap, Brain, GitCompare, Activity, ArrowUp, ArrowDown, Info } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -857,6 +857,51 @@ export default function PlatformComparison() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
+                        {/* Data Source Notice */}
+                        {(() => {
+                          const platformsWithAdData = realPlatformMetrics.filter(p => p.spend > 0 || p.conversions > 0);
+                          const platformsWithoutAdData = realPlatformMetrics.filter(p => p.spend === 0 && p.conversions === 0);
+                          
+                          if (platformsWithoutAdData.length > 0) {
+                            return (
+                              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="data-source-notice">
+                                <div className="flex items-start space-x-3">
+                                  <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                                  <div className="text-sm">
+                                    <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Data Source Analysis</h4>
+                                    <p className="text-blue-700 dark:text-blue-300 mb-2">
+                                      Insights and recommendations are based only on platforms with advertising spend data to ensure financial accuracy:
+                                    </p>
+                                    <div className="space-y-1 text-blue-700 dark:text-blue-300">
+                                      {platformsWithAdData.length > 0 && (
+                                        <p>
+                                          <strong>Included in recommendations:</strong> {platformsWithAdData.map(p => p.platform).join(', ')} 
+                                          {platformsWithAdData.length === 1 ? ' (has advertising spend data)' : ' (have advertising spend data)'}
+                                        </p>
+                                      )}
+                                      {platformsWithoutAdData.length > 0 && (
+                                        <p>
+                                          <strong>Excluded from recommendations:</strong> {platformsWithoutAdData.map(p => p.platform).join(', ')} 
+                                          {platformsWithoutAdData.length === 1 
+                                            ? ' (website analytics only - no advertising spend)' 
+                                            : ' (website analytics only - no advertising spend)'}
+                                        </p>
+                                      )}
+                                    </div>
+                                    {platformsWithoutAdData.length > 0 && (
+                                      <p className="text-blue-700 dark:text-blue-300 mt-2 italic">
+                                        Note: When {platformsWithoutAdData.map(p => p.platform).join(' or ')} {platformsWithoutAdData.length === 1 ? 'has' : 'have'} advertising spend, 
+                                        {platformsWithoutAdData.length === 1 ? ' it' : ' they'} will be automatically included in performance comparisons and budget recommendations.
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+
                         {/* Top Performer Insight */}
                         {bestROAS && (
                           <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg" data-testid="insight-top-performer">

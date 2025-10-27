@@ -148,7 +148,8 @@ export default function CampaignPerformanceSummary() {
   // Total Impressions = Advertising Impressions + Website Pageviews (full funnel view)
   const advertisingImpressions = linkedinImpressions + ciImpressions;
   const totalImpressions = advertisingImpressions + ciPageviews;
-  const totalEngagements = linkedinEngagements + ciEngagements + ciSessions;
+  const advertisingEngagements = linkedinEngagements + ciEngagements;
+  const totalEngagements = advertisingEngagements + ciSessions;
   const totalClicks = linkedinClicks + ciClicks;
   const totalConversions = linkedinConversions + ciConversions;
   const totalLeads = linkedinLeads + ciLeads;
@@ -387,7 +388,9 @@ export default function CampaignPerformanceSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{totalEngagements.toLocaleString()}</div>
-                    <p className="text-xs text-muted-foreground">All interactions</p>
+                    <p className="text-xs text-muted-foreground">
+                      Ad: {advertisingEngagements.toLocaleString()} | Web: {ciSessions.toLocaleString()}
+                    </p>
                   </CardContent>
                 </Card>
 

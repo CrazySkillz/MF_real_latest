@@ -1055,10 +1055,10 @@ export default function FinancialAnalysis() {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Zap className="w-5 h-5" />
-                    <span>Intelligent Budget Allocation</span>
+                    <span>Performance-Based Budget Allocation</span>
                   </CardTitle>
                   <CardDescription>
-                    AI-powered budget recommendations and allocation insights
+                    Data-driven budget analysis and optimization insights
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

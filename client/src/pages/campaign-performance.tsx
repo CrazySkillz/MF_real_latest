@@ -388,7 +388,10 @@ export default function CampaignPerformanceSummary() {
                     if (priority.type === 'kpi') {
                       return (
                         <div className="space-y-3">
-                          <div>
+                          <div className="flex items-center space-x-3">
+                            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
+                              KPI
+                            </Badge>
                             <span className="text-lg font-semibold text-slate-900 dark:text-white">
                               {priority.action} "{priority.name}"
                             </span>
@@ -408,9 +411,14 @@ export default function CampaignPerformanceSummary() {
                       );
                     } else if (priority.type === 'benchmark') {
                       return (
-                        <p className="text-slate-900 dark:text-white font-medium">
-                          {priority.action} "{priority.name}" - {priority.message}
-                        </p>
+                        <div className="flex items-center space-x-3">
+                          <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                            Benchmark
+                          </Badge>
+                          <p className="text-slate-900 dark:text-white font-medium">
+                            {priority.action} "{priority.name}" - {priority.message}
+                          </p>
+                        </div>
                       );
                     } else {
                       return (

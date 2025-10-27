@@ -509,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if we got a PDF
-      if (!pdfBuffer!) {
+      if (!pdfBuffer) {
         console.log('[Webhook] No PDF found in request');
         return res.status(400).json({ 
           success: false,

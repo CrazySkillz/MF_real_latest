@@ -2285,6 +2285,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedMetrics = await parsePDFMetrics(pdfBuffer);
       console.log(`[Email] Parsed metrics:`, parsedMetrics);
 
+      // Get existing metrics to save as "previous" for change tracking
+      const existingMetrics = await storage.getCustomIntegration(integration.campaignId);
+      let previousMetrics = null;
+      let previousUpdateAt = null;
+      
+      if (existingMetrics && existingMetrics.metrics) {
+        // Save current state as previous before updating
+        previousMetrics = JSON.stringify({
+          users: existingMetrics.metrics.users,
+          sessions: existingMetrics.metrics.sessions,
+          pageviews: existingMetrics.metrics.pageviews,
+          avgSessionDuration: existingMetrics.metrics.avgSessionDuration,
+          bounceRate: existingMetrics.metrics.bounceRate,
+          emailsDelivered: existingMetrics.metrics.emailsDelivered,
+          openRate: existingMetrics.metrics.openRate,
+          clickThroughRate: existingMetrics.metrics.clickThroughRate,
+          spend: existingMetrics.metrics.spend,
+          conversions: existingMetrics.metrics.conversions,
+          impressions: existingMetrics.metrics.impressions,
+          clicks: existingMetrics.metrics.clicks,
+        });
+        previousUpdateAt = existingMetrics.metrics.uploadedAt;
+        console.log(`[Email] Saved previous metrics for change tracking`);
+      }
+
       // Helper to filter out NaN values
       const cleanMetric = (value: any) => (typeof value === 'number' && isNaN(value)) ? undefined : value;
 
@@ -2327,6 +2352,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdfFileName: fileName,
         emailSubject: req.body.headers?.subject || null,
         emailId: req.body.headers?.['message-id'] || null,
+        // Change tracking
+        previousMetrics: previousMetrics,
+        previousUpdateAt: previousUpdateAt,
       });
 
       console.log(`[Email] Metrics stored successfully:`, metrics.id);

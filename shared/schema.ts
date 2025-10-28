@@ -221,6 +221,8 @@ export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
   pdfFileName: text("pdf_file_name"),
   emailSubject: text("email_subject"),
   emailId: text("email_id"), // To track which email was processed
+  previousMetrics: text("previous_metrics"), // JSON snapshot of metrics before this update (for change tracking)
+  previousUpdateAt: timestamp("previous_update_at"), // Timestamp of previous metrics update
   uploadedAt: timestamp("uploaded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

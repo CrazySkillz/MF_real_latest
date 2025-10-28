@@ -707,14 +707,17 @@ export default function CampaignPerformanceSummary() {
                         if (customIntegration?.metrics) {
                           const m = customIntegration.metrics;
                           baselineData.push(
-                            { metric: 'Users', value: parseNum(m.users), category: 'Website Analytics' },
-                            { metric: 'Sessions', value: parseNum(m.sessions), category: 'Website Analytics' },
-                            { metric: 'Pageviews', value: parseNum(m.pageviews), category: 'Website Analytics' },
-                            { metric: 'Emails Delivered', value: parseNum(m.emailsDelivered), category: 'Email Marketing' },
-                            { metric: 'Ad Spend', value: parseNum(m.spend), category: 'Advertising' },
-                            { metric: 'Conversions', value: parseNum(m.conversions), category: 'Advertising' },
-                            { metric: 'Impressions', value: parseNum(m.impressions), category: 'Advertising' },
-                            { metric: 'Clicks', value: parseNum(m.clicks), category: 'Advertising' }
+                            { metric: 'Users', value: parseNum(m.users), category: 'Website Analytics', isPercentage: false },
+                            { metric: 'Sessions', value: parseNum(m.sessions), category: 'Website Analytics', isPercentage: false },
+                            { metric: 'Pageviews', value: parseNum(m.pageviews), category: 'Website Analytics', isPercentage: false },
+                            { metric: 'Bounce Rate', value: parseNum(m.bounceRate), category: 'Website Analytics', isPercentage: true },
+                            { metric: 'Emails Delivered', value: parseNum(m.emailsDelivered), category: 'Email Marketing', isPercentage: false },
+                            { metric: 'Open Rate', value: parseNum(m.openRate), category: 'Email Marketing', isPercentage: true },
+                            { metric: 'Click-Through Rate', value: parseNum(m.clickThroughRate), category: 'Email Marketing', isPercentage: true },
+                            { metric: 'Ad Spend', value: parseNum(m.spend), category: 'Advertising', isPercentage: false },
+                            { metric: 'Conversions', value: parseNum(m.conversions), category: 'Advertising', isPercentage: false },
+                            { metric: 'Impressions', value: parseNum(m.impressions), category: 'Advertising', isPercentage: false },
+                            { metric: 'Clicks', value: parseNum(m.clicks), category: 'Advertising', isPercentage: false }
                           );
                         }
                         
@@ -732,25 +735,25 @@ export default function CampaignPerformanceSummary() {
                           if (existingSpendIndex >= 0) {
                             baselineData[existingSpendIndex].value += linkedinSpend;
                           } else {
-                            baselineData.push({ metric: 'Ad Spend', value: linkedinSpend, category: 'Advertising' });
+                            baselineData.push({ metric: 'Ad Spend', value: linkedinSpend, category: 'Advertising', isPercentage: false });
                           }
                           
                           if (existingConversionsIndex >= 0) {
                             baselineData[existingConversionsIndex].value += linkedinConversions;
                           } else {
-                            baselineData.push({ metric: 'Conversions', value: linkedinConversions, category: 'Advertising' });
+                            baselineData.push({ metric: 'Conversions', value: linkedinConversions, category: 'Advertising', isPercentage: false });
                           }
                           
                           if (existingImpressionsIndex >= 0) {
                             baselineData[existingImpressionsIndex].value += linkedinImpressions;
                           } else {
-                            baselineData.push({ metric: 'Impressions', value: linkedinImpressions, category: 'Advertising' });
+                            baselineData.push({ metric: 'Impressions', value: linkedinImpressions, category: 'Advertising', isPercentage: false });
                           }
                           
                           if (existingClicksIndex >= 0) {
                             baselineData[existingClicksIndex].value += linkedinClicks;
                           } else {
-                            baselineData.push({ metric: 'Clicks', value: linkedinClicks, category: 'Advertising' });
+                            baselineData.push({ metric: 'Clicks', value: linkedinClicks, category: 'Advertising', isPercentage: false });
                           }
                         }
                         
@@ -782,7 +785,10 @@ export default function CampaignPerformanceSummary() {
                                     <YAxis className="text-xs" />
                                     <Tooltip 
                                       contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                      formatter={(value: any) => value.toLocaleString()}
+                                      formatter={(value: any, name: any, props: any) => {
+                                        const isPercent = props.payload.isPercentage;
+                                        return isPercent ? `${value.toFixed(2)}%` : value.toLocaleString();
+                                      }}
                                     />
                                     <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                                   </BarChart>
@@ -800,7 +806,10 @@ export default function CampaignPerformanceSummary() {
                                     <YAxis className="text-xs" />
                                     <Tooltip 
                                       contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                      formatter={(value: any) => value.toLocaleString()}
+                                      formatter={(value: any, name: any, props: any) => {
+                                        const isPercent = props.payload.isPercentage;
+                                        return isPercent ? `${value.toFixed(2)}%` : value.toLocaleString();
+                                      }}
                                     />
                                     <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                                   </BarChart>
@@ -818,7 +827,10 @@ export default function CampaignPerformanceSummary() {
                                     <YAxis className="text-xs" />
                                     <Tooltip 
                                       contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                      formatter={(value: any) => value.toLocaleString()}
+                                      formatter={(value: any, name: any, props: any) => {
+                                        const isPercent = props.payload.isPercentage;
+                                        return isPercent ? `${value.toFixed(2)}%` : value.toLocaleString();
+                                      }}
                                     />
                                     <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
                                   </BarChart>

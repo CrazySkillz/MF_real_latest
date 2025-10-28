@@ -2286,27 +2286,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Email] Parsed metrics:`, parsedMetrics);
 
       // Get existing metrics to save as "previous" for change tracking
-      const existingMetrics = await storage.getCustomIntegration(integration.campaignId);
+      const existingMetrics = await storage.getLatestCustomIntegrationMetrics(integration.campaignId);
       let previousMetrics = null;
       let previousUpdateAt = null;
       
-      if (existingMetrics && existingMetrics.metrics) {
+      if (existingMetrics) {
         // Save current state as previous before updating
         previousMetrics = JSON.stringify({
-          users: existingMetrics.metrics.users,
-          sessions: existingMetrics.metrics.sessions,
-          pageviews: existingMetrics.metrics.pageviews,
-          avgSessionDuration: existingMetrics.metrics.avgSessionDuration,
-          bounceRate: existingMetrics.metrics.bounceRate,
-          emailsDelivered: existingMetrics.metrics.emailsDelivered,
-          openRate: existingMetrics.metrics.openRate,
-          clickThroughRate: existingMetrics.metrics.clickThroughRate,
-          spend: existingMetrics.metrics.spend,
-          conversions: existingMetrics.metrics.conversions,
-          impressions: existingMetrics.metrics.impressions,
-          clicks: existingMetrics.metrics.clicks,
+          users: existingMetrics.users,
+          sessions: existingMetrics.sessions,
+          pageviews: existingMetrics.pageviews,
+          avgSessionDuration: existingMetrics.avgSessionDuration,
+          bounceRate: existingMetrics.bounceRate,
+          emailsDelivered: existingMetrics.emailsDelivered,
+          openRate: existingMetrics.openRate,
+          clickThroughRate: existingMetrics.clickThroughRate,
+          spend: existingMetrics.spend,
+          conversions: existingMetrics.conversions,
+          impressions: existingMetrics.impressions,
+          clicks: existingMetrics.clicks,
         });
-        previousUpdateAt = existingMetrics.metrics.uploadedAt;
+        previousUpdateAt = existingMetrics.uploadedAt;
         console.log(`[Email] Saved previous metrics for change tracking`);
       }
 

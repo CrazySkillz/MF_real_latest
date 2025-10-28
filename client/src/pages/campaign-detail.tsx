@@ -4035,8 +4035,11 @@ export default function CampaignDetail() {
       });
 
       if (criticalKPIs.length > 0) {
+        const kpi = criticalKPIs[0];
+        const metricName = kpi.metric || kpi.name;
+        const percentage = ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(0);
         return {
-          message: `Review KPI "${criticalKPIs[0].name}" - currently at ${((parseFloat(criticalKPIs[0].currentValue) / parseFloat(criticalKPIs[0].targetValue)) * 100).toFixed(0)}% of target`,
+          message: `Review ${metricName} - currently at ${percentage}% of target (KPI: ${kpi.name})`,
           type: 'warning',
         };
       }
@@ -4049,9 +4052,11 @@ export default function CampaignDetail() {
       });
 
       if (belowBenchmarks.length > 0) {
-        const improvement = ((parseFloat(belowBenchmarks[0].benchmarkValue) - parseFloat(belowBenchmarks[0].currentValue)) / parseFloat(belowBenchmarks[0].benchmarkValue) * 100).toFixed(0);
+        const benchmark = belowBenchmarks[0];
+        const metricName = benchmark.metric || benchmark.name;
+        const improvement = ((parseFloat(benchmark.benchmarkValue) - parseFloat(benchmark.currentValue)) / parseFloat(benchmark.benchmarkValue) * 100).toFixed(0);
         return {
-          message: `Benchmark "${belowBenchmarks[0].name}" is ${improvement}% below target - review strategy`,
+          message: `${metricName} is ${improvement}% below benchmark target (Benchmark: ${benchmark.name})`,
           type: 'attention',
         };
       }

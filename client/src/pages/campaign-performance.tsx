@@ -213,6 +213,7 @@ export default function CampaignPerformanceSummary() {
       return {
         type: 'kpi',
         name: topKPI.name,
+        metric: topKPI.metric || topKPI.name,
         currentValue: formatValue(topKPI.currentValue, topKPI.unit),
         targetValue: formatValue(topKPI.targetValue, topKPI.unit),
         action: 'Improve'
@@ -402,8 +403,11 @@ export default function CampaignPerformanceSummary() {
                                 KPI Below Target
                               </Badge>
                             </div>
-                            <div className="text-xl font-bold text-slate-900 dark:text-white mb-3">
-                              {priority.name}
+                            <div className="text-xl font-bold text-slate-900 dark:text-white">
+                              {priority.metric}
+                            </div>
+                            <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                              KPI: {priority.name}
                             </div>
                           </div>
                           <div className="flex items-center space-x-6">
@@ -1135,7 +1139,7 @@ export default function CampaignPerformanceSummary() {
                         if (priority.type === 'kpi') {
                           return (
                             <p className="text-sm text-blue-800 dark:text-blue-200">
-                              {priority.action} "{priority.name}" - currently {priority.currentValue}, target {priority.targetValue}
+                              {priority.action} {priority.metric} (KPI: {priority.name}) - currently {priority.currentValue}, target {priority.targetValue}
                             </p>
                           );
                         } else if (priority.type === 'benchmark') {

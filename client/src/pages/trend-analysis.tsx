@@ -25,15 +25,19 @@ export default function TrendAnalysis() {
   const [industry, setIndustry] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState("");
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
   });
 
-  const { data: trendsData, isLoading: trendsLoading } = useQuery({
+  const { data: trendsData, isFetching: trendsFetching, isError: trendsError, refetch: refetchTrends } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-trends"],
     enabled: !!campaignId && !!campaign && !!(campaign as any).trendKeywords?.length,
+    refetchOnMount: true,
+    staleTime: 0, // Prevent showing stale cached data
+    retry: false, // Don't retry automatically to prevent showing stale data on failures
   });
 
   const { data: ga4Data } = useQuery({
@@ -50,14 +54,23 @@ export default function TrendAnalysis() {
     mutationFn: async (data: { industry: string; trendKeywords: string[] }) => {
       return await apiRequest('PATCH', `/api/campaigns/${campaignId}`, data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-trends"] });
+    onSuccess: async () => {
+      // Start 2-minute cooldown to prevent rate limiting
+      setCooldownSeconds(120);
+      
       toast({
-        title: "Keywords Updated",
-        description: "Google Trends tracking keywords have been configured successfully.",
+        title: "Fetching Trend Data...",
+        description: "This may take up to 30 seconds. Please wait.",
       });
+      
       setIsConfiguring(false);
+      
+      // Clear existing trends data to prevent showing stale data if new fetch fails
+      queryClient.setQueryData(["/api/campaigns", campaignId, "google-trends"], null);
+      
+      // Invalidate both queries - this will trigger fresh fetches
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-trends"] });
     },
     onError: () => {
       toast({
@@ -106,6 +119,16 @@ export default function TrendAnalysis() {
       setKeywords((campaign as any).trendKeywords || []);
     }
   }, [campaign, isConfiguring]);
+
+  // Cooldown timer countdown
+  useEffect(() => {
+    if (cooldownSeconds > 0) {
+      const timer = setTimeout(() => {
+        setCooldownSeconds(cooldownSeconds - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldownSeconds]);
 
   // Process Google Trends data into chart-ready format
   const processedTrendsData = useMemo(() => {
@@ -383,13 +406,30 @@ export default function TrendAnalysis() {
                   )}
                 </div>
 
+                {cooldownSeconds > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                          Cooldown Active
+                        </p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          Please wait {Math.floor(cooldownSeconds / 60)}:{String(cooldownSeconds % 60).padStart(2, '0')} before next search to avoid rate limiting
+                        </p>
+                      </div>
+                    </div>
+                    <Progress value={((120 - cooldownSeconds) / 120) * 100} className="mt-2 h-1" />
+                  </div>
+                )}
+
                 <div className="flex items-center space-x-2">
                   <Button 
                     onClick={handleSaveKeywords} 
-                    disabled={updateKeywordsMutation.isPending}
+                    disabled={updateKeywordsMutation.isPending || cooldownSeconds > 0 || trendsFetching}
                     data-testid="button-save-keywords"
                   >
-                    {updateKeywordsMutation.isPending ? "Saving..." : "Save & Track Trends"}
+                    {trendsFetching ? "Fetching Data..." : updateKeywordsMutation.isPending ? "Saving..." : cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Save & Track Trends"}
                   </Button>
                   {isConfiguring && (campaign as any)?.trendKeywords?.length > 0 && (
                     <Button 
@@ -422,16 +462,29 @@ export default function TrendAnalysis() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
-                {trendsLoading ? (
+                {trendsFetching ? (
                   <Card>
-                    <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                      Loading Google Trends data...
+                    <CardContent className="p-8 text-center">
+                      <div className="flex flex-col items-center space-y-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <p className="text-slate-900 dark:text-white font-medium">Fetching Trend Data via SerpAPI</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">This may take up to 30 seconds...</p>
+                      </div>
                     </CardContent>
                   </Card>
-                ) : !processedTrendsData ? (
+                ) : trendsError || !processedTrendsData ? (
                   <Card>
-                    <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                      Unable to load trend data. Please try refreshing.
+                    <CardContent className="p-8 text-center">
+                      <div className="flex flex-col items-center space-y-3">
+                        <AlertTriangle className="w-12 h-12 text-yellow-600" />
+                        <p className="text-slate-900 dark:text-white font-medium">Failed to fetch trend data</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          SerpAPI request timed out or failed. This is usually due to Google rate limiting, not a code issue.
+                        </p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Please wait 2-5 minutes before trying again to avoid rate limits.
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
                 ) : (

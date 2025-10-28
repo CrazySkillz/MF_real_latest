@@ -3517,6 +3517,7 @@ export default function CampaignDetail() {
   const [scheduleDay, setScheduleDay] = useState("monday");
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [scheduleRecipients, setScheduleRecipients] = useState("");
+  const [selectedSections, setSelectedSections] = useState<{[key: string]: string[]}>({});
 
 
 
@@ -3916,6 +3917,16 @@ export default function CampaignDetail() {
         ? prev.filter(id => id !== metricId)
         : [...prev, metricId]
     );
+  };
+
+  const handleSectionTabToggle = (sectionId: string, tabName: string) => {
+    setSelectedSections(prev => {
+      const currentTabs = prev[sectionId] || [];
+      const newTabs = currentTabs.includes(tabName)
+        ? currentTabs.filter(tab => tab !== tabName)
+        : [...currentTabs, tabName];
+      return { ...prev, [sectionId]: newTabs };
+    });
   };
 
   // Performance Summary - Executive Snapshot
@@ -4363,24 +4374,38 @@ export default function CampaignDetail() {
                           </div>
                           
                           <div className="space-y-3">
-                            <Label className="text-base font-medium">Select Metrics to Include</Label>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                              {AVAILABLE_METRICS.map((metric) => (
-                                <div key={metric.id} className="flex items-start space-x-2 p-3 border rounded-lg">
-                                  <Checkbox
-                                    id={metric.id}
-                                    checked={reportMetrics.includes(metric.id)}
-                                    onCheckedChange={() => handleMetricToggle(metric.id)}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <Label htmlFor={metric.id} className="text-sm font-medium cursor-pointer">
-                                      {metric.name}
-                                    </Label>
-                                    <p className="text-xs text-muted-foreground">{metric.description}</p>
-                                  </div>
-                                </div>
+                            <Label className="text-base font-medium">Select Sections</Label>
+                            <Accordion type="multiple" className="w-full">
+                              {STANDARD_TEMPLATES.map((template) => (
+                                <AccordionItem key={template.id} value={template.id}>
+                                  <AccordionTrigger className="hover:no-underline">
+                                    <div className="flex items-center space-x-3">
+                                      {template.icon}
+                                      <span className="font-medium">{template.name}</span>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                    <div className="space-y-2 pt-2">
+                                      {template.sections.map((section) => (
+                                        <div key={section} className="flex items-center space-x-2 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800">
+                                          <Checkbox
+                                            id={`${template.id}-${section}`}
+                                            checked={(selectedSections[template.id] || []).includes(section)}
+                                            onCheckedChange={() => handleSectionTabToggle(template.id, section)}
+                                          />
+                                          <Label 
+                                            htmlFor={`${template.id}-${section}`} 
+                                            className="text-sm cursor-pointer flex-1"
+                                          >
+                                            {section}
+                                          </Label>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
                               ))}
-                            </div>
+                            </Accordion>
                           </div>
                         </div>
                       )}

@@ -809,8 +809,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <div 
                     className={`h-2 rounded-full transition-all ${
                       progressPercent >= 100 ? 'bg-green-600' : 
-                      progressPercent >= 80 ? 'bg-blue-600' :
-                      progressPercent >= 60 ? 'bg-yellow-600' : 'bg-red-600'
+                      progressPercent >= 70 ? 'bg-yellow-600' : 'bg-red-600'
                     }`}
                     style={{ width: `${Math.min(progressPercent, 100)}%` }}
                   />

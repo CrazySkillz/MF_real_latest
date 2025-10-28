@@ -404,10 +404,10 @@ export default function CampaignPerformanceSummary() {
                               </Badge>
                             </div>
                             <div className="text-xl font-bold text-slate-900 dark:text-white">
-                              {priority.metric}
+                              {priority.name}
                             </div>
                             <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                              KPI: {priority.name}
+                              KPI: {priority.metric}
                             </div>
                           </div>
                           <div className="flex items-center space-x-6">
@@ -1139,7 +1139,7 @@ export default function CampaignPerformanceSummary() {
                         if (priority.type === 'kpi') {
                           return (
                             <p className="text-sm text-blue-800 dark:text-blue-200">
-                              {priority.action} {priority.metric} (KPI: {priority.name}) - currently {priority.currentValue}, target {priority.targetValue}
+                              {priority.action} {priority.name} (Metric: {priority.metric}) - currently {priority.currentValue}, target {priority.targetValue}
                             </p>
                           );
                         } else if (priority.type === 'benchmark') {

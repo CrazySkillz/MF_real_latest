@@ -915,29 +915,37 @@ export default function CampaignPerformanceSummary() {
                             percentChange: data.percentChange
                           }));
                         
-                        const websiteMetrics = comparisonData.filter(d => 
-                          ['Users', 'Sessions', 'Pageviews', 'Bounce Rate'].includes(d.metric)
+                        // Separate count-based and percentage-based metrics for proper scaling
+                        const websiteTrafficMetrics = comparisonData.filter(d => 
+                          ['Users', 'Sessions', 'Pageviews'].includes(d.metric)
                         );
-                        const emailMetrics = comparisonData.filter(d => 
-                          ['Emails Delivered', 'Email Open Rate', 'Email CTR'].includes(d.metric)
+                        const websiteEngagementMetrics = comparisonData.filter(d => 
+                          ['Bounce Rate'].includes(d.metric)
+                        );
+                        const emailVolumeMetrics = comparisonData.filter(d => 
+                          ['Emails Delivered'].includes(d.metric)
+                        );
+                        const emailPerformanceMetrics = comparisonData.filter(d => 
+                          ['Email Open Rate', 'Email CTR'].includes(d.metric)
                         );
                         const adMetrics = comparisonData.filter(d => 
                           ['Ad Spend', 'Conversions', 'Impressions', 'Clicks'].includes(d.metric)
                         );
                         
                         return (
-                          <>
-                            {websiteMetrics.length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Website Traffic */}
+                            {websiteTrafficMetrics.length > 0 && (
                               <div>
                                 <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
-                                  Website Analytics
-                                  <Badge variant="outline" className="ml-2">{websiteMetrics.length} changes</Badge>
+                                  Website Analytics - Traffic
+                                  <Badge variant="outline" className="ml-2">{websiteTrafficMetrics.length} changes</Badge>
                                 </h4>
-                                <ResponsiveContainer width="100%" height={Math.max(200, websiteMetrics.length * 60)}>
-                                  <BarChart data={websiteMetrics} layout="vertical" margin={{ top: 5, right: 100, left: 100, bottom: 5 }}>
+                                <ResponsiveContainer width="100%" height={Math.max(200, websiteTrafficMetrics.length * 60)}>
+                                  <BarChart data={websiteTrafficMetrics} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                    <XAxis type="number" className="text-xs" />
-                                    <YAxis type="category" dataKey="metric" className="text-xs" width={90} />
+                                    <XAxis type="number" className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
+                                    <YAxis type="category" dataKey="metric" className="text-xs" width={80} />
                                     <Tooltip 
                                       contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
                                       formatter={(value: any) => value.toLocaleString()}
@@ -948,7 +956,7 @@ export default function CampaignPerformanceSummary() {
                                   </BarChart>
                                 </ResponsiveContainer>
                                 <div className="mt-2 grid grid-cols-1 gap-2">
-                                  {websiteMetrics.map((item) => (
+                                  {websiteTrafficMetrics.map((item) => (
                                     <div key={item.metric} className="flex items-center justify-between text-xs px-2">
                                       <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
                                       <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
@@ -960,17 +968,52 @@ export default function CampaignPerformanceSummary() {
                               </div>
                             )}
                             
-                            {emailMetrics.length > 0 && (
+                            {/* Website Engagement % */}
+                            {websiteEngagementMetrics.length > 0 && (
                               <div>
                                 <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
-                                  Email Marketing
-                                  <Badge variant="outline" className="ml-2">{emailMetrics.length} changes</Badge>
+                                  Website Analytics - Engagement %
+                                  <Badge variant="outline" className="ml-2">{websiteEngagementMetrics.length} changes</Badge>
                                 </h4>
-                                <ResponsiveContainer width="100%" height={Math.max(200, emailMetrics.length * 60)}>
-                                  <BarChart data={emailMetrics} layout="vertical" margin={{ top: 5, right: 100, left: 100, bottom: 5 }}>
+                                <ResponsiveContainer width="100%" height={Math.max(200, websiteEngagementMetrics.length * 60)}>
+                                  <BarChart data={websiteEngagementMetrics} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
                                     <XAxis type="number" className="text-xs" />
-                                    <YAxis type="category" dataKey="metric" className="text-xs" width={90} />
+                                    <YAxis type="category" dataKey="metric" className="text-xs" width={80} />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => `${value}%`}
+                                    />
+                                    <Legend />
+                                    <Bar dataKey="Previous" fill="#94a3b8" radius={[0, 4, 4, 0]} />
+                                    <Bar dataKey="Current" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                                <div className="mt-2 grid grid-cols-1 gap-2">
+                                  {websiteEngagementMetrics.map((item) => (
+                                    <div key={item.metric} className="flex items-center justify-between text-xs px-2">
+                                      <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
+                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                                        {item.direction === 'up' ? '+' : ''}{item.percentChange.toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Email Volume */}
+                            {emailVolumeMetrics.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                                  Email Marketing - Volume
+                                  <Badge variant="outline" className="ml-2">{emailVolumeMetrics.length} changes</Badge>
+                                </h4>
+                                <ResponsiveContainer width="100%" height={Math.max(200, emailVolumeMetrics.length * 60)}>
+                                  <BarChart data={emailVolumeMetrics} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis type="number" className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
+                                    <YAxis type="category" dataKey="metric" className="text-xs" width={80} />
                                     <Tooltip 
                                       contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
                                       formatter={(value: any) => value.toLocaleString()}
@@ -981,7 +1024,41 @@ export default function CampaignPerformanceSummary() {
                                   </BarChart>
                                 </ResponsiveContainer>
                                 <div className="mt-2 grid grid-cols-1 gap-2">
-                                  {emailMetrics.map((item) => (
+                                  {emailVolumeMetrics.map((item) => (
+                                    <div key={item.metric} className="flex items-center justify-between text-xs px-2">
+                                      <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
+                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                                        {item.direction === 'up' ? '+' : ''}{item.percentChange.toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Email Performance % */}
+                            {emailPerformanceMetrics.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                                  Email Marketing - Performance %
+                                  <Badge variant="outline" className="ml-2">{emailPerformanceMetrics.length} changes</Badge>
+                                </h4>
+                                <ResponsiveContainer width="100%" height={Math.max(200, emailPerformanceMetrics.length * 60)}>
+                                  <BarChart data={emailPerformanceMetrics} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis type="number" className="text-xs" />
+                                    <YAxis type="category" dataKey="metric" className="text-xs" width={80} />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => `${value}%`}
+                                    />
+                                    <Legend />
+                                    <Bar dataKey="Previous" fill="#94a3b8" radius={[0, 4, 4, 0]} />
+                                    <Bar dataKey="Current" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                                <div className="mt-2 grid grid-cols-1 gap-2">
+                                  {emailPerformanceMetrics.map((item) => (
                                     <div key={item.metric} className="flex items-center justify-between text-xs px-2">
                                       <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
                                       <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
@@ -1025,7 +1102,7 @@ export default function CampaignPerformanceSummary() {
                                 </div>
                               </div>
                             )}
-                          </>
+                          </div>
                         );
                       })()}
                     </div>

@@ -1919,6 +1919,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get real-time metric changes for custom integration
+  app.get("/api/custom-integration/:campaignId/changes", async (req, res) => {
+    try {
+      const current = await storage.getLatestCustomIntegrationMetrics(req.params.campaignId);
+      if (!current) {
+        return res.status(404).json({ message: "No metrics found" });
+      }
+
+      let previous = null;
+      let hasChanges = false;
+
+      // Parse previous metrics if available
+      if (current.previousMetrics) {
+        try {
+          previous = JSON.parse(current.previousMetrics);
+          hasChanges = true;
+        } catch (e) {
+          console.error("Failed to parse previous metrics:", e);
+        }
+      }
+
+      // Calculate changes
+      const changes: any = {
+        hasChanges,
+        currentUpdate: current.uploadedAt,
+        previousUpdate: current.previousUpdateAt,
+        metrics: {}
+      };
+
+      if (previous && hasChanges) {
+        const metricKeys = ['users', 'sessions', 'pageviews', 'bounceRate', 'emailsDelivered', 'openRate', 'clickThroughRate', 'spend', 'conversions', 'impressions', 'clicks'];
+        
+        metricKeys.forEach(key => {
+          const currentVal = parseFloat(current[key] || '0');
+          const previousVal = parseFloat(previous[key] || '0');
+          const diff = currentVal - previousVal;
+          const percentChange = previousVal !== 0 ? ((diff / previousVal) * 100) : 0;
+
+          changes.metrics[key] = {
+            current: currentVal,
+            previous: previousVal,
+            change: diff,
+            percentChange: percentChange,
+            direction: diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral'
+          };
+        });
+      }
+
+      res.json(changes);
+    } catch (error) {
+      console.error("Failed to fetch metric changes:", error);
+      res.status(500).json({ message: "Failed to fetch metric changes" });
+    }
+  });
+
   app.post("/api/custom-integration/transfer", async (req, res) => {
     try {
       const { fromCampaignId, toCampaignId } = req.body;

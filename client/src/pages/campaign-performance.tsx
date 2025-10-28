@@ -790,7 +790,7 @@ export default function CampaignPerformanceSummary() {
                                       <BarChart data={websiteCountData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
                                         <XAxis dataKey="metric" className="text-xs" />
-                                        <YAxis className="text-xs" />
+                                        <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
                                         <Tooltip 
                                           contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
                                           formatter={(value: any) => value.toLocaleString()}
@@ -833,7 +833,7 @@ export default function CampaignPerformanceSummary() {
                                       <BarChart data={emailCountData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
                                         <XAxis dataKey="metric" className="text-xs" />
-                                        <YAxis className="text-xs" />
+                                        <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
                                         <Tooltip 
                                           contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
                                           formatter={(value: any) => value.toLocaleString()}
@@ -873,7 +873,7 @@ export default function CampaignPerformanceSummary() {
                                   <BarChart data={adData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
                                     <XAxis dataKey="metric" className="text-xs" />
-                                    <YAxis className="text-xs" />
+                                    <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
                                     <Tooltip 
                                       contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
                                       formatter={(value: any) => value.toLocaleString()}

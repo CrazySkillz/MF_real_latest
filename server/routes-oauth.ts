@@ -1716,11 +1716,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Fetch Google Trends data for each keyword
-      const googleTrends = (await import("google-trends-api")).default;
-      const trendsData = await Promise.all(
-        keywords.map(async (keyword: string) => {
+      // Helper function to add delay between requests
+      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+      
+      // Helper function to retry Google Trends API calls
+      const fetchWithRetry = async (keyword: string, maxRetries = 3): Promise<any> => {
+        const googleTrends = (await import("google-trends-api")).default;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
+            // Add delay between requests to avoid rate limiting (except first request)
+            if (attempt > 1) {
+              const delayMs = attempt * 2000; // Increasing delay: 2s, 4s, 6s
+              console.log(`⏱️  Retry ${attempt}/${maxRetries} for "${keyword}" after ${delayMs}ms delay`);
+              await delay(delayMs);
+            }
+            
             const results = await googleTrends.interestOverTime({
               keyword,
               startTime: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // Last 90 days
@@ -1730,32 +1741,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const parsedResults = JSON.parse(results);
             const timelineData = parsedResults.default?.timelineData || [];
             
-            console.log(`✓ Fetched ${timelineData.length} data points for "${keyword}"`);
+            console.log(`✓ Fetched ${timelineData.length} data points for "${keyword}" (attempt ${attempt})`);
             
             return {
               keyword,
-              data: timelineData
+              data: timelineData,
+              success: true
             };
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`✗ Error fetching trends for "${keyword}":`, errorMessage);
-            return {
-              keyword,
-              data: [],
-              error: 'Failed to fetch trend data'
-            };
+            const isRateLimitOrHTML = errorMessage.includes('is not valid JSON') || errorMessage.includes('html');
+            
+            if (attempt === maxRetries) {
+              console.error(`✗ Failed to fetch trends for "${keyword}" after ${maxRetries} attempts:`, errorMessage);
+              return {
+                keyword,
+                data: [],
+                success: false,
+                error: isRateLimitOrHTML 
+                  ? 'Google Trends rate limit reached. Please try again in a few minutes.'
+                  : 'Failed to fetch trend data. Please try again later.'
+              };
+            }
+            
+            console.warn(`⚠️  Attempt ${attempt}/${maxRetries} failed for "${keyword}":`, errorMessage);
           }
-        })
-      );
+        }
+        
+        return {
+          keyword,
+          data: [],
+          success: false,
+          error: 'Unexpected error occurred'
+        };
+      };
+      
+      // Process keywords sequentially with delays to avoid rate limiting
+      const trendsData = [];
+      for (let i = 0; i < keywords.length; i++) {
+        const keyword = keywords[i];
+        
+        // Add delay between different keywords (except first)
+        if (i > 0) {
+          await delay(1500); // 1.5 second delay between keywords
+        }
+        
+        const result = await fetchWithRetry(keyword);
+        trendsData.push(result);
+      }
       
       const totalDataPoints = trendsData.reduce((sum, t) => sum + (t.data?.length || 0), 0);
-      console.log(`[Google Trends] Returned ${trendsData.length} keywords with ${totalDataPoints} total data points`);
+      const successCount = trendsData.filter(t => t.success).length;
+      const failedCount = trendsData.filter(t => !t.success).length;
+      
+      console.log(`[Google Trends] Returned ${trendsData.length} keywords (${successCount} successful, ${failedCount} failed) with ${totalDataPoints} total data points`);
       
       res.json({
         industry,
         keywords,
         trends: trendsData,
-        timeframe: 'Last 90 days'
+        timeframe: 'Last 90 days',
+        meta: {
+          totalKeywords: trendsData.length,
+          successful: successCount,
+          failed: failedCount
+        }
       });
     } catch (error) {
       console.error('Google Trends fetch error:', error);

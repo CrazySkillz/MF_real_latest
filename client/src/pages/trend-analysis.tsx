@@ -436,6 +436,40 @@ export default function TrendAnalysis() {
                   </Card>
                 ) : (
                   <>
+                    {/* Show errors for failed keywords */}
+                    {(() => {
+                      const failedKeywords = (trendsData as any)?.trends?.filter((t: any) => !t.success && t.error) || [];
+                      if (failedKeywords.length > 0) {
+                        return (
+                          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
+                            <CardHeader>
+                              <CardTitle className="text-sm font-medium text-amber-800 dark:text-amber-200 flex items-center">
+                                <AlertTriangle className="w-4 h-4 mr-2" />
+                                Google Trends Rate Limit
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                              <p className="text-sm text-amber-700 dark:text-amber-300">
+                                Some keywords couldn't be fetched due to Google's rate limiting. This is temporary.
+                              </p>
+                              <div className="mt-3 space-y-1">
+                                {failedKeywords.map((kw: any) => (
+                                  <div key={kw.keyword} className="flex items-start space-x-2 text-xs text-amber-600 dark:text-amber-400">
+                                    <span className="font-semibold">"{kw.keyword}":</span>
+                                    <span>{kw.error}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-xs text-amber-600 dark:text-amber-400 mt-3">
+                                💡 Tip: Wait a few minutes and refresh the page, or try fewer keywords at once.
+                              </p>
+                            </CardContent>
+                          </Card>
+                        );
+                      }
+                      return null;
+                    })()}
+
                     {/* Keyword Summary Cards */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {processedTrendsData.keywords.map((keyword: string) => {

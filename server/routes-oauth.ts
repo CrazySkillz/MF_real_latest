@@ -2819,7 +2819,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timeframe: req.body.timeframe || "monthly",
         trackingPeriod: req.body.trackingPeriod || 30,
         rollingAverage: req.body.rollingAverage || "7day",
-        targetDate: req.body.targetDate ? new Date(req.body.targetDate) : null
+        targetDate: req.body.targetDate && req.body.targetDate.trim() !== '' 
+          ? new Date(req.body.targetDate) 
+          : null
       };
       
       const validatedKPI = insertKPISchema.parse(requestData);
@@ -2854,8 +2856,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.alertThreshold !== undefined) {
         updateData.alertThreshold = req.body.alertThreshold?.toString();
       }
-      if (req.body.targetDate) {
-        updateData.targetDate = new Date(req.body.targetDate);
+      if (req.body.targetDate !== undefined) {
+        updateData.targetDate = req.body.targetDate && req.body.targetDate.trim() !== '' 
+          ? new Date(req.body.targetDate) 
+          : null;
       }
       
       const kpi = await storage.updateKPI(kpiId, updateData);

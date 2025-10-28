@@ -1716,41 +1716,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Helper function to add delay between requests
-      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+      // Check for SerpAPI key
+      const apiKey = process.env.SERPAPI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ 
+          message: "SerpAPI key not configured",
+          suggestion: "Add SERPAPI_API_KEY to Replit Secrets"
+        });
+      }
       
-      // Fetch Google Trends data
-      const googleTrends = (await import("google-trends-api")).default;
+      // Fetch Google Trends data using SerpAPI
+      const { getJson } = await import("serpapi");
       const trendsData = [];
       
-      for (let i = 0; i < keywords.length; i++) {
-        const keyword = keywords[i];
+      for (const keyword of keywords) {
         let success = false;
         let data = [];
         
         try {
-          // Add delay before each keyword (except first)
-          if (i > 0) {
-            await delay(3000);
-          }
-          
-          const results = await googleTrends.interestOverTime({
-            keyword,
-            startTime: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+          const response = await getJson({
+            engine: "google_trends",
+            q: keyword,
+            data_type: "TIMESERIES",
+            date: "today 3-m", // Last 90 days
+            api_key: apiKey
           });
           
-          const parsedResults = JSON.parse(results);
-          const timelineData = parsedResults.default?.timelineData || [];
+          // SerpAPI returns timeline data in interest_over_time.timeline_data
+          const timelineData = response?.interest_over_time?.timeline_data || [];
           
           if (timelineData && timelineData.length > 0) {
-            console.log(`✓ Fetched ${timelineData.length} data points for "${keyword}"`);
-            data = timelineData;
+            // Transform SerpAPI format to match Google Trends format expected by frontend
+            // SerpAPI provides: timestamp (Unix epoch), date (formatted string), values array
+            data = timelineData.map((item: any) => {
+              const keywordValue = item.values?.find((v: any) => v.query === keyword);
+              return {
+                time: item.timestamp, // Unix timestamp for frontend parsing
+                formattedTime: item.date, // Human-readable date range
+                formattedAxisTime: item.date.split(' ')[0], // Shortened for axis display
+                value: [keywordValue?.extracted_value || 0], // Numeric value (0-100)
+                formattedValue: [String(keywordValue?.extracted_value || 0)] // String format
+              };
+            });
+            
+            console.log(`✓ SerpAPI: Fetched ${data.length} data points for "${keyword}"`);
             success = true;
           } else {
-            console.warn(`⚠️  No data returned for "${keyword}"`);
+            console.warn(`⚠️  SerpAPI: No data returned for "${keyword}"`);
           }
         } catch (e) {
-          console.error(`✗ Error fetching trends for "${keyword}":`, e instanceof Error ? e.message : String(e));
+          console.error(`✗ SerpAPI error for "${keyword}":`, e instanceof Error ? e.message : String(e));
         }
         
         trendsData.push({
@@ -1764,7 +1779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const successCount = trendsData.filter(t => t.success).length;
       const failedCount = trendsData.filter(t => !t.success).length;
       
-      console.log(`[Google Trends] Returned ${trendsData.length} keywords (${successCount} successful, ${failedCount} failed) with ${totalDataPoints} total data points`);
+      console.log(`[Google Trends via SerpAPI] Returned ${trendsData.length} keywords (${successCount} successful, ${failedCount} failed) with ${totalDataPoints} total data points`);
       
       res.json({
         industry,
@@ -1774,7 +1789,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         meta: {
           totalKeywords: trendsData.length,
           successful: successCount,
-          failed: failedCount
+          failed: failedCount,
+          source: 'SerpAPI'
         }
       });
     } catch (error) {

@@ -4036,7 +4036,7 @@ export default function CampaignDetail() {
 
       if (criticalKPIs.length > 0) {
         return {
-          message: `Review ${criticalKPIs[0].name} - currently at ${((parseFloat(criticalKPIs[0].currentValue) / parseFloat(criticalKPIs[0].targetValue)) * 100).toFixed(0)}% of target`,
+          message: `Review KPI "${criticalKPIs[0].name}" - currently at ${((parseFloat(criticalKPIs[0].currentValue) / parseFloat(criticalKPIs[0].targetValue)) * 100).toFixed(0)}% of target`,
           type: 'warning',
         };
       }
@@ -4051,7 +4051,7 @@ export default function CampaignDetail() {
       if (belowBenchmarks.length > 0) {
         const improvement = ((parseFloat(belowBenchmarks[0].benchmarkValue) - parseFloat(belowBenchmarks[0].currentValue)) / parseFloat(belowBenchmarks[0].benchmarkValue) * 100).toFixed(0);
         return {
-          message: `${belowBenchmarks[0].name} is ${improvement}% below benchmark - review strategy`,
+          message: `Benchmark "${belowBenchmarks[0].name}" is ${improvement}% below target - review strategy`,
           type: 'attention',
         };
       }

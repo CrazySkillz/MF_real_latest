@@ -403,12 +403,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get real-time metric changes for custom integration
   app.get("/api/custom-integration/:campaignId/changes", async (req, res) => {
     try {
-      const customIntegration = await storage.getCustomIntegration(req.params.campaignId);
-      if (!customIntegration || !customIntegration.metrics) {
+      const current = await storage.getLatestCustomIntegrationMetrics(req.params.campaignId);
+      if (!current) {
         return res.status(404).json({ message: "No metrics found" });
       }
 
-      const current = customIntegration.metrics;
       let previous = null;
       let hasChanges = false;
 

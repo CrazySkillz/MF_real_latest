@@ -510,7 +510,7 @@ export default function TrendAnalysis() {
                       </div>
                     </CardContent>
                   </Card>
-                ) : trendsError || !processedTrendsData ? (
+                ) : trendsError || !processedTrendsData || !((trendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
                   <Card>
                     <CardContent className="p-8 text-center">
                       <div className="flex flex-col items-center space-y-4">
@@ -804,7 +804,7 @@ export default function TrendAnalysis() {
                     </div>
                   </CardContent>
                 </Card>
-              ) : !processedTrendsData ? (
+              ) : !processedTrendsData || !((trendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Unable to load comparison data. Please try refreshing from the Overview tab.
@@ -936,7 +936,7 @@ export default function TrendAnalysis() {
                     </div>
                   </CardContent>
                 </Card>
-              ) : !processedTrendsData ? (
+              ) : !processedTrendsData || !((trendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Unable to load seasonal data. Please try refreshing from the Overview tab.
@@ -1089,7 +1089,7 @@ export default function TrendAnalysis() {
                     </div>
                   </CardContent>
                 </Card>
-              ) : !processedTrendsData ? (
+              ) : !processedTrendsData || !((trendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Unable to load market insights. Please try refreshing from the Overview tab.

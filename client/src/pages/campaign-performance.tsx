@@ -506,26 +506,43 @@ export default function CampaignPerformanceSummary() {
                   <CardTitle>Overall Health Summary</CardTitle>
                   <CardDescription>Campaign health overview</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Overall Health Score</span>
-                    <span className="text-2xl font-bold">{healthScore}%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">KPIs Above Target</span>
-                    <Badge variant="default">{kpisAboveTarget} of {kpis.length}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Benchmarks Above Target</span>
-                    <Badge variant="default">{benchmarksAboveTarget} of {benchmarks.length}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Total Metrics Above Target</span>
-                    <Badge variant="default">{totalAboveTarget} of {totalMetrics}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Status</span>
-                    <Badge className={healthStatus.color}>{healthStatus.label}</Badge>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="border-l-4 pl-4 py-2" style={{ borderColor: healthScore >= 70 ? '#22c55e' : healthScore >= 50 ? '#eab308' : '#ef4444' }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-3">
+                          <span className="font-semibold text-slate-900 dark:text-white">Overall Health Score</span>
+                          <Badge variant={healthScore >= 70 ? "default" : "destructive"}>
+                            {healthStatus.label}
+                          </Badge>
+                        </div>
+                        <span className="text-2xl font-bold text-slate-900 dark:text-white">{healthScore}%</span>
+                      </div>
+                    </div>
+                    
+                    <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpisAboveTarget >= kpis.length / 2 ? '#22c55e' : '#ef4444' }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-3">
+                          <span className="font-semibold text-slate-900 dark:text-white">KPIs Above Target</span>
+                          <Badge variant={kpisAboveTarget >= kpis.length / 2 ? "default" : "destructive"}>
+                            {kpisAboveTarget >= kpis.length / 2 ? "Majority On Track" : "Needs Attention"}
+                          </Badge>
+                        </div>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">{kpisAboveTarget} of {kpis.length}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarksAboveTarget >= benchmarks.length / 2 ? '#22c55e' : '#ef4444' }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-3">
+                          <span className="font-semibold text-slate-900 dark:text-white">Benchmarks Above Target</span>
+                          <Badge variant={benchmarksAboveTarget >= benchmarks.length / 2 ? "default" : "destructive"}>
+                            {benchmarksAboveTarget >= benchmarks.length / 2 ? "Above Industry Average" : "Below Industry Average"}
+                          </Badge>
+                        </div>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">{benchmarksAboveTarget} of {benchmarks.length}</span>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -589,32 +606,32 @@ export default function CampaignPerformanceSummary() {
                     <div className="space-y-4">
                       {benchmarks.map((benchmark, idx) => {
                         const current = parseNum(benchmark.currentValue);
-                        const industry = parseNum(benchmark.industryAverage);
-                        const isAboveIndustry = current >= industry;
-                        const percentage = industry > 0 ? Math.round((current / industry) * 100) : 0;
+                        const target = parseNum(benchmark.benchmarkValue);
+                        const isAboveTarget = current >= target;
+                        const percentage = target > 0 ? Math.round((current / target) * 100) : 0;
                         
                         return (
-                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: isAboveIndustry ? '#22c55e' : '#ef4444' }}>
+                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: isAboveTarget ? '#22c55e' : '#ef4444' }}>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-3">
-                                <span className="font-semibold text-slate-900 dark:text-white">{benchmark.metricName}</span>
-                                <Badge variant={isAboveIndustry ? "default" : "destructive"}>
-                                  {isAboveIndustry ? "Above Industry" : "Below Industry"}
+                                <span className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</span>
+                                <Badge variant={isAboveTarget ? "default" : "destructive"}>
+                                  {isAboveTarget ? "Above Target" : "Below Target"}
                                 </Badge>
                               </div>
-                              <span className="text-sm text-slate-500 dark:text-slate-400">{percentage}% of industry avg</span>
+                              <span className="text-sm text-slate-500 dark:text-slate-400">{percentage}% of target</span>
                             </div>
                             <div className="flex items-center space-x-6 text-sm">
                               <div>
-                                <span className="text-slate-500 dark:text-slate-400">Your Performance: </span>
+                                <span className="text-slate-500 dark:text-slate-400">Current: </span>
                                 <span className="font-semibold text-slate-900 dark:text-white">
                                   {benchmark.unit === '$' ? `$${current.toFixed(2)}` : benchmark.unit === '%' ? `${current.toFixed(2)}%` : `${benchmark.currentValue}${benchmark.unit}`}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-slate-500 dark:text-slate-400">Industry Avg: </span>
+                                <span className="text-slate-500 dark:text-slate-400">Target: </span>
                                 <span className="font-semibold text-slate-900 dark:text-white">
-                                  {benchmark.unit === '$' ? `$${industry.toFixed(2)}` : benchmark.unit === '%' ? `${industry.toFixed(2)}%` : `${benchmark.industryAverage}${benchmark.unit}`}
+                                  {benchmark.unit === '$' ? `$${target.toFixed(2)}` : benchmark.unit === '%' ? `${target.toFixed(2)}%` : `${benchmark.benchmarkValue}${benchmark.unit}`}
                                 </span>
                               </div>
                             </div>

@@ -396,13 +396,15 @@ export default function CampaignPerformanceSummary() {
                     if (priority.type === 'kpi') {
                       return (
                         <div className="space-y-3">
-                          <div className="flex items-center space-x-3">
-                            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
-                              KPI
-                            </Badge>
-                            <span className="text-lg font-semibold text-slate-900 dark:text-white">
-                              {priority.action} "{priority.name}"
-                            </span>
+                          <div>
+                            <div className="flex items-center space-x-2 mb-2">
+                              <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
+                                KPI Below Target
+                              </Badge>
+                            </div>
+                            <div className="text-xl font-bold text-slate-900 dark:text-white mb-3">
+                              {priority.name}
+                            </div>
                           </div>
                           <div className="flex items-center space-x-6">
                             <div>

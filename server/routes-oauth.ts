@@ -1731,7 +1731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // Add delay before each keyword (except first)
           if (i > 0) {
-            await delay(2000);
+            await delay(3000);
           }
           
           const results = await googleTrends.interestOverTime({
@@ -1746,30 +1746,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`✓ Fetched ${timelineData.length} data points for "${keyword}"`);
             data = timelineData;
             success = true;
+          } else {
+            console.warn(`⚠️  No data returned for "${keyword}"`);
           }
         } catch (e) {
           console.error(`✗ Error fetching trends for "${keyword}":`, e instanceof Error ? e.message : String(e));
-          // If API fails, generate sample trend data so the feature still works
-          const now = Date.now();
-          const sampleData = [];
-          for (let day = 90; day >= 0; day--) {
-            const timestamp = Math.floor((now - (day * 24 * 60 * 60 * 1000)) / 1000);
-            const baseValue = 50 + Math.random() * 30;
-            const seasonal = Math.sin((90 - day) / 15) * 10;
-            const value = Math.max(0, Math.min(100, Math.floor(baseValue + seasonal + (Math.random() - 0.5) * 20)));
-            
-            sampleData.push({
-              time: timestamp.toString(),
-              formattedTime: new Date(timestamp * 1000).toISOString().split('T')[0],
-              formattedAxisTime: new Date(timestamp * 1000).toISOString().split('T')[0],
-              value: [value],
-              hasData: [true],
-              formattedValue: [`${value}`]
-            });
-          }
-          data = sampleData;
-          success = true;
-          console.log(`📊 Generated ${sampleData.length} sample data points for "${keyword}"`);
         }
         
         trendsData.push({

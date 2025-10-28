@@ -436,8 +436,71 @@ export default function TrendAnalysis() {
                   </Card>
                 ) : (
                   <>
-                    {/* Keyword Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {/* Show warning when no data is available */}
+                    {(() => {
+                      const failedKeywords = (trendsData as any)?.trends?.filter((t: any) => !t.success || !t.data || t.data.length === 0) || [];
+                      const hasAnyData = (trendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0);
+                      
+                      if (failedKeywords.length > 0) {
+                        return (
+                          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
+                            <CardHeader>
+                              <CardTitle className="text-sm font-medium text-amber-800 dark:text-amber-200 flex items-center">
+                                <AlertTriangle className="w-4 h-4 mr-2" />
+                                Google Trends Data Unavailable
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                              <p className="text-sm text-amber-700 dark:text-amber-300">
+                                {hasAnyData 
+                                  ? `Some keywords couldn't be fetched from Google Trends due to API rate limiting.`
+                                  : `Unable to fetch data from Google Trends API. This is due to rate limiting on automated requests.`
+                                }
+                              </p>
+                              <div className="mt-3 space-y-1">
+                                <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">Keywords affected:</p>
+                                {failedKeywords.map((kw: any) => (
+                                  <div key={kw.keyword} className="flex items-center space-x-2 text-xs text-amber-600 dark:text-amber-400">
+                                    <span>•</span>
+                                    <span className="font-semibold">"{kw.keyword}"</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-3 p-3 bg-white dark:bg-slate-800 rounded border border-amber-200 dark:border-amber-700">
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Recommended Actions:</p>
+                                <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                                  <li>• Wait 10-15 minutes and refresh the page</li>
+                                  <li>• Try searching for different, less competitive keywords</li>
+                                  <li>• Reduce the number of keywords tracked simultaneously</li>
+                                  <li>• Contact support if the issue persists</li>
+                                </ul>
+                              </div>
+                              <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 italic">
+                                Note: This is a limitation of Google's free Trends API. For production use, consider a paid enterprise API solution.
+                              </p>
+                            </CardContent>
+                          </Card>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {processedTrendsData.keywords.length === 0 ? (
+                      <Card>
+                        <CardContent className="p-8 text-center">
+                          <AlertTriangle className="w-12 h-12 mx-auto text-amber-500 mb-4" />
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                            No Trend Data Available
+                          </h3>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            Google Trends API is currently unavailable. Please try again later or contact support for assistance.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <>
+                        {/* Keyword Summary Cards */}
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {processedTrendsData.keywords.map((keyword: string) => {
                         const stats = processedTrendsData.keywordStats[keyword];
                         return (
@@ -597,7 +660,7 @@ export default function TrendAnalysis() {
                               <CardContent>
                                 <div className="text-center">
                                   <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">
-                                    {trendsData.industry || 'Market'}
+                                    {(trendsData as any)?.industry || 'Market'}
                                   </div>
                                   <div className="text-sm text-slate-600 dark:text-slate-400">
                                     Tracking {processedTrendsData.keywords.length} keyword{processedTrendsData.keywords.length > 1 ? 's' : ''}
@@ -612,6 +675,8 @@ export default function TrendAnalysis() {
                         );
                       })()}
                     </div>
+                      </>
+                    )}
                   </>
                 )}
               </TabsContent>

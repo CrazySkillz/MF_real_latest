@@ -155,8 +155,8 @@ export default function CampaignPerformanceSummary() {
   // Total Impressions = Advertising Impressions + Website Pageviews (full funnel view)
   const advertisingImpressions = linkedinImpressions + ciImpressions;
   const totalImpressions = advertisingImpressions + ciPageviews;
-  // Total Engagements = Ad Clicks (LinkedIn + CI) + Website Sessions
-  const advertisingEngagements = linkedinClicks + ciClicks;
+  // Total Engagements = LinkedIn Clicks + LinkedIn Engagements + CI Clicks + CI Engagements + Website Sessions
+  const advertisingEngagements = linkedinClicks + linkedinEngagements + ciClicks + ciEngagements;
   const totalEngagements = advertisingEngagements + ciSessions;
   const totalClicks = linkedinClicks + ciClicks;
   const totalConversions = linkedinConversions + ciConversions;

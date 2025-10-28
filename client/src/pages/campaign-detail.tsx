@@ -3580,7 +3580,7 @@ export default function CampaignDetail() {
       description: "Comprehensive overview of campaign performance metrics",
       icon: <BarChart3 className="w-4 h-4" />,
       metrics: ["impressions", "clicks", "conversions", "spend", "ctr", "cpc", "roas"],
-      sections: ["overview", "platforms", "trends", "insights"]
+      sections: ["Overview", "Campaign Health", "What's Changed", "Insights"]
     },
     {
       id: "roi_analysis",
@@ -3588,7 +3588,7 @@ export default function CampaignDetail() {
       description: "Comprehensive financial analysis including ROI, ROAS, cost analysis, revenue breakdown, and intelligent budget allocation insights",
       icon: <DollarSign className="w-4 h-4" />,
       metrics: ["spend", "conversions", "revenue", "roas", "cpa", "roi", "budget_allocation", "cost_efficiency"],
-      sections: ["financial_overview", "roi_roas_analysis", "cost_analysis", "revenue_breakdown", "budget_allocation", "recommendations"]
+      sections: ["Overview", "ROI & ROAS", "Cost Analysis", "Budget Allocation", "Insights"]
     },
     {
       id: "platform_comparison",
@@ -3596,7 +3596,7 @@ export default function CampaignDetail() {
       description: "Side-by-side comparison of all connected platforms",
       icon: <PieChart className="w-4 h-4" />,
       metrics: ["impressions", "clicks", "conversions", "spend", "ctr", "platform_share"],
-      sections: ["platform_overview", "performance_comparison", "efficiency_metrics", "recommendations"]
+      sections: ["Overview", "Performance Metrics", "Cost Analysis", "Insights"]
     },
     {
       id: "trend_analysis",
@@ -3604,7 +3604,7 @@ export default function CampaignDetail() {
       description: "Time-series analysis of performance trends",
       icon: <TrendingUp className="w-4 h-4" />,
       metrics: ["impressions", "clicks", "conversions", "spend", "trends", "forecasting"],
-      sections: ["trend_overview", "performance_patterns", "seasonality", "predictions"]
+      sections: ["Coming Soon"]
     },
     {
       id: "executive_summary",
@@ -3612,7 +3612,7 @@ export default function CampaignDetail() {
       description: "High-level summary for stakeholders and leadership",
       icon: <FileText className="w-4 h-4" />,
       metrics: ["key_metrics", "achievements", "challenges", "recommendations"],
-      sections: ["executive_overview", "key_achievements", "challenges", "next_steps"]
+      sections: ["Executive Overview", "Strategic Recommendations"]
     }
   ];
 

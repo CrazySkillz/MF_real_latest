@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SiLinkedin } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 interface Campaign {
   id: string;
@@ -674,75 +675,301 @@ export default function CampaignPerformanceSummary() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {!metricChanges?.hasChanges ? (
+                  {!customIntegration?.metrics && !linkedinMetrics ? (
                     <div className="text-center py-12">
                       <div className="mb-4">
                         <Clock className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto" />
                       </div>
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        {customIntegration?.metrics ? 'Baseline Captured' : 'No Data Yet'}
+                        No Data Yet
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-500 max-w-md mx-auto">
-                        {customIntegration?.metrics 
-                          ? 'Upload another PDF or sync LinkedIn to see what changed since your last update.' 
-                          : 'Upload a PDF via email or connect LinkedIn Ads to start tracking changes.'}
+                        Upload a PDF via email or connect LinkedIn Ads to start tracking changes.
                       </p>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {Object.entries(metricChanges.metrics || {})
-                        .filter(([_, data]: [string, any]) => data.change !== 0)
-                        .map(([metricKey, data]: [string, any]) => {
-                          const metricLabels: Record<string, string> = {
-                            users: 'Users',
-                            sessions: 'Sessions',
-                            pageviews: 'Pageviews',
-                            bounceRate: 'Bounce Rate',
-                            emailsDelivered: 'Emails Delivered',
-                            openRate: 'Email Open Rate',
-                            clickThroughRate: 'Email CTR',
-                            spend: 'Ad Spend',
-                            conversions: 'Conversions',
-                            impressions: 'Impressions',
-                            clicks: 'Clicks'
-                          };
-
-                          const label = metricLabels[metricKey] || metricKey;
-                          const isPercentage = metricKey.includes('Rate') || metricKey.includes('bounceRate');
-                          const isCurrency = metricKey === 'spend';
+                  ) : !metricChanges?.hasChanges ? (
+                    <div className="space-y-6">
+                      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        <p className="text-sm text-blue-900 dark:text-blue-100">
+                          <strong>Baseline Captured</strong> - Your initial metrics are shown below. Upload another PDF or sync LinkedIn to see what changed.
+                        </p>
+                      </div>
+                      
+                      {(() => {
+                        const parseNum = (val: any): number => {
+                          if (val === null || val === undefined) return 0;
+                          const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+                          return isNaN(num) ? 0 : num;
+                        };
+                        
+                        const baselineData = [];
+                        
+                        if (customIntegration?.metrics) {
+                          const m = customIntegration.metrics;
+                          baselineData.push(
+                            { metric: 'Users', value: parseNum(m.users), category: 'Website Analytics' },
+                            { metric: 'Sessions', value: parseNum(m.sessions), category: 'Website Analytics' },
+                            { metric: 'Pageviews', value: parseNum(m.pageviews), category: 'Website Analytics' },
+                            { metric: 'Emails Delivered', value: parseNum(m.emailsDelivered), category: 'Email Marketing' },
+                            { metric: 'Ad Spend', value: parseNum(m.spend), category: 'Advertising' },
+                            { metric: 'Conversions', value: parseNum(m.conversions), category: 'Advertising' },
+                            { metric: 'Impressions', value: parseNum(m.impressions), category: 'Advertising' },
+                            { metric: 'Clicks', value: parseNum(m.clicks), category: 'Advertising' }
+                          );
+                        }
+                        
+                        if (linkedinMetrics) {
+                          const linkedinSpend = parseNum(linkedinMetrics.spend);
+                          const linkedinConversions = parseNum(linkedinMetrics.conversions);
+                          const linkedinImpressions = parseNum(linkedinMetrics.impressions);
+                          const linkedinClicks = parseNum(linkedinMetrics.clicks);
                           
+                          const existingSpendIndex = baselineData.findIndex(d => d.metric === 'Ad Spend');
+                          const existingConversionsIndex = baselineData.findIndex(d => d.metric === 'Conversions');
+                          const existingImpressionsIndex = baselineData.findIndex(d => d.metric === 'Impressions');
+                          const existingClicksIndex = baselineData.findIndex(d => d.metric === 'Clicks');
+                          
+                          if (existingSpendIndex >= 0) {
+                            baselineData[existingSpendIndex].value += linkedinSpend;
+                          } else {
+                            baselineData.push({ metric: 'Ad Spend', value: linkedinSpend, category: 'Advertising' });
+                          }
+                          
+                          if (existingConversionsIndex >= 0) {
+                            baselineData[existingConversionsIndex].value += linkedinConversions;
+                          } else {
+                            baselineData.push({ metric: 'Conversions', value: linkedinConversions, category: 'Advertising' });
+                          }
+                          
+                          if (existingImpressionsIndex >= 0) {
+                            baselineData[existingImpressionsIndex].value += linkedinImpressions;
+                          } else {
+                            baselineData.push({ metric: 'Impressions', value: linkedinImpressions, category: 'Advertising' });
+                          }
+                          
+                          if (existingClicksIndex >= 0) {
+                            baselineData[existingClicksIndex].value += linkedinClicks;
+                          } else {
+                            baselineData.push({ metric: 'Clicks', value: linkedinClicks, category: 'Advertising' });
+                          }
+                        }
+                        
+                        const websiteData = baselineData.filter(d => d.category === 'Website Analytics' && d.value > 0);
+                        const emailData = baselineData.filter(d => d.category === 'Email Marketing' && d.value > 0);
+                        const adData = baselineData.filter(d => d.category === 'Advertising' && d.value > 0);
+                        
+                        const hasAnyData = websiteData.length > 0 || emailData.length > 0 || adData.length > 0;
+                        
+                        if (!hasAnyData) {
                           return (
-                            <div key={metricKey} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-3">
-                                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
-                                  {data.direction === "up" ? (
-                                    <TrendingUp className="w-4 h-4 text-green-600" />
-                                  ) : (
-                                    <TrendingDown className="w-4 h-4 text-red-600" />
-                                  )}
-                                </div>
-                                <div className="mt-1 flex items-baseline space-x-2 text-xs text-slate-500">
-                                  <span>{isPercentage ? data.previous.toFixed(2) + '%' : isCurrency ? `$${data.previous.toLocaleString()}` : data.previous.toLocaleString()}</span>
-                                  <span>→</span>
-                                  <span className="font-medium text-slate-700 dark:text-slate-300">
-                                    {isPercentage ? data.current.toFixed(2) + '%' : isCurrency ? `$${data.current.toLocaleString()}` : data.current.toLocaleString()}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex flex-col items-end">
-                                <span className={`text-base font-bold ${data.direction === "up" ? "text-green-600" : "text-red-600"}`}>
-                                  {data.direction === "up" ? "+" : ""}{isPercentage ? data.change.toFixed(2) + '%' : isCurrency ? `$${Math.abs(data.change).toLocaleString()}` : data.change.toLocaleString()}
-                                </span>
-                                {Math.abs(data.percentChange) > 0 && (
-                                  <span className="text-xs text-slate-500">
-                                    {data.percentChange > 0 ? '+' : ''}{data.percentChange.toFixed(1)}%
-                                  </span>
-                                )}
-                              </div>
+                            <div className="text-center py-8">
+                              <p className="text-sm text-slate-600 dark:text-slate-400">
+                                No metrics available to display. Waiting for data from connected platforms.
+                              </p>
                             </div>
                           );
-                        })}
+                        }
+                        
+                        return (
+                          <div className="space-y-6">
+                            {websiteData.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Website Analytics</h4>
+                                <ResponsiveContainer width="100%" height={200}>
+                                  <BarChart data={websiteData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis dataKey="metric" className="text-xs" />
+                                    <YAxis className="text-xs" />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => value.toLocaleString()}
+                                    />
+                                    <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            )}
+                            
+                            {emailData.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Email Marketing</h4>
+                                <ResponsiveContainer width="100%" height={150}>
+                                  <BarChart data={emailData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis dataKey="metric" className="text-xs" />
+                                    <YAxis className="text-xs" />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => value.toLocaleString()}
+                                    />
+                                    <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            )}
+                            
+                            {adData.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Advertising Performance</h4>
+                                <ResponsiveContainer width="100%" height={200}>
+                                  <BarChart data={adData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis dataKey="metric" className="text-xs" />
+                                    <YAxis className="text-xs" />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => value.toLocaleString()}
+                                    />
+                                    <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {(() => {
+                        const metricLabels: Record<string, string> = {
+                          users: 'Users',
+                          sessions: 'Sessions',
+                          pageviews: 'Pageviews',
+                          bounceRate: 'Bounce Rate',
+                          emailsDelivered: 'Emails Delivered',
+                          openRate: 'Email Open Rate',
+                          clickThroughRate: 'Email CTR',
+                          spend: 'Ad Spend',
+                          conversions: 'Conversions',
+                          impressions: 'Impressions',
+                          clicks: 'Clicks'
+                        };
+                        
+                        const comparisonData = Object.entries(metricChanges.metrics || {})
+                          .filter(([_, data]: [string, any]) => data.change !== 0)
+                          .map(([metricKey, data]: [string, any]) => ({
+                            metric: metricLabels[metricKey] || metricKey,
+                            Previous: data.previous,
+                            Current: data.current,
+                            change: data.change,
+                            direction: data.direction,
+                            percentChange: data.percentChange
+                          }));
+                        
+                        const websiteMetrics = comparisonData.filter(d => 
+                          ['Users', 'Sessions', 'Pageviews', 'Bounce Rate'].includes(d.metric)
+                        );
+                        const emailMetrics = comparisonData.filter(d => 
+                          ['Emails Delivered', 'Email Open Rate', 'Email CTR'].includes(d.metric)
+                        );
+                        const adMetrics = comparisonData.filter(d => 
+                          ['Ad Spend', 'Conversions', 'Impressions', 'Clicks'].includes(d.metric)
+                        );
+                        
+                        return (
+                          <>
+                            {websiteMetrics.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                                  Website Analytics
+                                  <Badge variant="outline" className="ml-2">{websiteMetrics.length} changes</Badge>
+                                </h4>
+                                <ResponsiveContainer width="100%" height={Math.max(200, websiteMetrics.length * 60)}>
+                                  <BarChart data={websiteMetrics} layout="vertical" margin={{ top: 5, right: 100, left: 100, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis type="number" className="text-xs" />
+                                    <YAxis type="category" dataKey="metric" className="text-xs" width={90} />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => value.toLocaleString()}
+                                    />
+                                    <Legend />
+                                    <Bar dataKey="Previous" fill="#94a3b8" radius={[0, 4, 4, 0]} />
+                                    <Bar dataKey="Current" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                                <div className="mt-2 grid grid-cols-1 gap-2">
+                                  {websiteMetrics.map((item) => (
+                                    <div key={item.metric} className="flex items-center justify-between text-xs px-2">
+                                      <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
+                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                                        {item.direction === 'up' ? '+' : ''}{item.percentChange.toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {emailMetrics.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                                  Email Marketing
+                                  <Badge variant="outline" className="ml-2">{emailMetrics.length} changes</Badge>
+                                </h4>
+                                <ResponsiveContainer width="100%" height={Math.max(200, emailMetrics.length * 60)}>
+                                  <BarChart data={emailMetrics} layout="vertical" margin={{ top: 5, right: 100, left: 100, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis type="number" className="text-xs" />
+                                    <YAxis type="category" dataKey="metric" className="text-xs" width={90} />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => value.toLocaleString()}
+                                    />
+                                    <Legend />
+                                    <Bar dataKey="Previous" fill="#94a3b8" radius={[0, 4, 4, 0]} />
+                                    <Bar dataKey="Current" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                                <div className="mt-2 grid grid-cols-1 gap-2">
+                                  {emailMetrics.map((item) => (
+                                    <div key={item.metric} className="flex items-center justify-between text-xs px-2">
+                                      <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
+                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                                        {item.direction === 'up' ? '+' : ''}{item.percentChange.toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {adMetrics.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                                  Advertising Performance
+                                  <Badge variant="outline" className="ml-2">{adMetrics.length} changes</Badge>
+                                </h4>
+                                <ResponsiveContainer width="100%" height={Math.max(200, adMetrics.length * 60)}>
+                                  <BarChart data={adMetrics} layout="vertical" margin={{ top: 5, right: 100, left: 100, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis type="number" className="text-xs" />
+                                    <YAxis type="category" dataKey="metric" className="text-xs" width={90} />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => value.toLocaleString()}
+                                    />
+                                    <Legend />
+                                    <Bar dataKey="Previous" fill="#94a3b8" radius={[0, 4, 4, 0]} />
+                                    <Bar dataKey="Current" fill="#10b981" radius={[0, 4, 4, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                                <div className="mt-2 grid grid-cols-1 gap-2">
+                                  {adMetrics.map((item) => (
+                                    <div key={item.metric} className="flex items-center justify-between text-xs px-2">
+                                      <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
+                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                                        {item.direction === 'up' ? '+' : ''}{item.percentChange.toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
                 </CardContent>

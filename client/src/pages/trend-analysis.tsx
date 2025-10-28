@@ -447,14 +447,14 @@ export default function TrendAnalysis() {
                             <CardHeader>
                               <CardTitle className="text-sm font-medium text-amber-800 dark:text-amber-200 flex items-center">
                                 <AlertTriangle className="w-4 h-4 mr-2" />
-                                Google Trends Data Unavailable
+                                Trend Data Unavailable
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
                               <p className="text-sm text-amber-700 dark:text-amber-300">
                                 {hasAnyData 
-                                  ? `Some keywords couldn't be fetched from Google Trends due to API rate limiting.`
-                                  : `Unable to fetch data from Google Trends API. This is due to rate limiting on automated requests.`
+                                  ? `Some keywords couldn't be fetched due to rate limiting. SerpAPI is being temporarily blocked by Google.`
+                                  : `Unable to fetch trend data via SerpAPI. Google is rate-limiting automated requests on the free tier.`
                                 }
                               </p>
                               <div className="mt-3 space-y-1">
@@ -476,7 +476,7 @@ export default function TrendAnalysis() {
                                 </ul>
                               </div>
                               <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 italic">
-                                Note: This is a limitation of Google's free Trends API. For production use, consider a paid enterprise API solution.
+                                Note: This is a limitation of SerpAPI's free tier (100 searches/month). Upgrade to SerpAPI paid plan ($50/month) for unlimited searches without rate limiting.
                               </p>
                             </CardContent>
                           </Card>

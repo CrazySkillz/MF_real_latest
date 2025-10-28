@@ -574,27 +574,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get existing metrics to save as previous before updating
-      const existingIntegration = await storage.getCustomIntegration(customIntegration.campaignId);
+      const existingMetrics = await storage.getCustomIntegrationMetrics(customIntegration.campaignId);
       let previousMetricsJson = null;
       let previousUpdateAt = null;
       
-      if (existingIntegration && existingIntegration.metrics) {
+      if (existingMetrics) {
         // Save current metrics as previous
-        const currentMetrics = existingIntegration.metrics;
         previousMetricsJson = JSON.stringify({
-          users: currentMetrics.users,
-          sessions: currentMetrics.sessions,
-          pageviews: currentMetrics.pageviews,
-          bounceRate: currentMetrics.bounceRate,
-          emailsDelivered: currentMetrics.emailsDelivered,
-          openRate: currentMetrics.openRate,
-          clickThroughRate: currentMetrics.clickThroughRate,
-          spend: currentMetrics.spend,
-          conversions: currentMetrics.conversions,
-          impressions: currentMetrics.impressions,
-          clicks: currentMetrics.clicks
+          users: existingMetrics.users,
+          sessions: existingMetrics.sessions,
+          pageviews: existingMetrics.pageviews,
+          bounceRate: existingMetrics.bounceRate,
+          emailsDelivered: existingMetrics.emailsDelivered,
+          openRate: existingMetrics.openRate,
+          clickThroughRate: existingMetrics.clickThroughRate,
+          spend: existingMetrics.spend,
+          conversions: existingMetrics.conversions,
+          impressions: existingMetrics.impressions,
+          clicks: existingMetrics.clicks
         });
-        previousUpdateAt = currentMetrics.uploadedAt;
+        previousUpdateAt = existingMetrics.uploadedAt;
         console.log('[Webhook] Saved previous metrics for change tracking');
       }
 

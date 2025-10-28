@@ -798,22 +798,46 @@ export default function CampaignPerformanceSummary() {
                               </div>
                             )}
                             
-                            {/* Website Analytics - Percentage Metrics */}
-                            {websitePercentData.length > 0 && (
-                              <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Website Analytics - Engagement %</h4>
-                                <ResponsiveContainer width="100%" height={150}>
-                                  <BarChart data={websitePercentData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                    <XAxis dataKey="metric" className="text-xs" />
-                                    <YAxis className="text-xs" domain={[0, 100]} />
-                                    <Tooltip 
-                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                      formatter={(value: any) => `${value.toFixed(2)}%`}
-                                    />
-                                    <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                                  </BarChart>
-                                </ResponsiveContainer>
+                            {/* Percentage Metrics - Side by Side */}
+                            {(websitePercentData.length > 0 || emailPercentData.length > 0) && (
+                              <div className="grid grid-cols-2 gap-4">
+                                {/* Website Analytics - Percentage Metrics */}
+                                {websitePercentData.length > 0 && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Website Analytics - Engagement %</h4>
+                                    <ResponsiveContainer width="100%" height={150}>
+                                      <BarChart data={websitePercentData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                        <XAxis dataKey="metric" className="text-xs" />
+                                        <YAxis className="text-xs" domain={[0, 100]} />
+                                        <Tooltip 
+                                          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                          formatter={(value: any) => `${value.toFixed(2)}%`}
+                                        />
+                                        <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                      </BarChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                )}
+                                
+                                {/* Email Marketing - Percentage Metrics */}
+                                {emailPercentData.length > 0 && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Email Marketing - Performance %</h4>
+                                    <ResponsiveContainer width="100%" height={150}>
+                                      <BarChart data={emailPercentData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                        <XAxis dataKey="metric" className="text-xs" />
+                                        <YAxis className="text-xs" domain={[0, 100]} />
+                                        <Tooltip 
+                                          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                          formatter={(value: any) => `${value.toFixed(2)}%`}
+                                        />
+                                        <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                      </BarChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                )}
                               </div>
                             )}
                             
@@ -829,25 +853,6 @@ export default function CampaignPerformanceSummary() {
                                     <Tooltip 
                                       contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
                                       formatter={(value: any) => value.toLocaleString()}
-                                    />
-                                    <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                                  </BarChart>
-                                </ResponsiveContainer>
-                              </div>
-                            )}
-                            
-                            {/* Email Marketing - Percentage Metrics */}
-                            {emailPercentData.length > 0 && (
-                              <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Email Marketing - Performance %</h4>
-                                <ResponsiveContainer width="100%" height={150}>
-                                  <BarChart data={emailPercentData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                    <XAxis dataKey="metric" className="text-xs" />
-                                    <YAxis className="text-xs" domain={[0, 100]} />
-                                    <Tooltip 
-                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                      formatter={(value: any) => `${value.toFixed(2)}%`}
                                     />
                                     <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                                   </BarChart>

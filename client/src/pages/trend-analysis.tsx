@@ -34,8 +34,7 @@ export default function TrendAnalysis() {
 
   const { data: trendsData, isFetching: trendsFetching, isError: trendsError, refetch: refetchTrends } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-trends"],
-    enabled: !!campaignId && !!campaign && !!(campaign as any).trendKeywords?.length,
-    refetchOnMount: true,
+    enabled: false, // Don't auto-fetch - only fetch when user explicitly requests
     staleTime: 0, // Prevent showing stale cached data
     retry: false, // Don't retry automatically to prevent showing stale data on failures
   });
@@ -65,12 +64,11 @@ export default function TrendAnalysis() {
       
       setIsConfiguring(false);
       
-      // Clear existing trends data to prevent showing stale data if new fetch fails
-      queryClient.setQueryData(["/api/campaigns", campaignId, "google-trends"], null);
-      
-      // Invalidate both queries - this will trigger fresh fetches
+      // Invalidate campaign query to refresh keywords
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-trends"] });
+      
+      // Manually trigger trends fetch
+      refetchTrends();
     },
     onError: () => {
       toast({
@@ -80,6 +78,25 @@ export default function TrendAnalysis() {
       });
     },
   });
+
+  const handleRefreshTrends = async () => {
+    if (cooldownSeconds > 0) {
+      toast({
+        title: "Cooldown Active",
+        description: `Please wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')} before refreshing again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCooldownSeconds(120);
+    toast({
+      title: "Fetching Trend Data...",
+      description: "This may take up to 30 seconds. Please wait.",
+    });
+    
+    await refetchTrends();
+  };
 
   const handleAddKeyword = () => {
     if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) {
@@ -472,18 +489,49 @@ export default function TrendAnalysis() {
                       </div>
                     </CardContent>
                   </Card>
+                ) : !trendsData ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <div className="flex flex-col items-center space-y-4">
+                        <TrendingUp className="w-16 h-16 text-slate-300 dark:text-slate-600" />
+                        <div>
+                          <p className="text-slate-900 dark:text-white font-medium text-lg mb-2">No Trend Data Yet</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                            Click the button below to fetch Google Trends data for your keywords
+                          </p>
+                        </div>
+                        <Button 
+                          onClick={handleRefreshTrends} 
+                          disabled={cooldownSeconds > 0}
+                          data-testid="button-refresh-trends"
+                        >
+                          {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Refresh Trends Data"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ) : trendsError || !processedTrendsData ? (
                   <Card>
                     <CardContent className="p-8 text-center">
-                      <div className="flex flex-col items-center space-y-3">
+                      <div className="flex flex-col items-center space-y-4">
                         <AlertTriangle className="w-12 h-12 text-yellow-600" />
-                        <p className="text-slate-900 dark:text-white font-medium">Failed to fetch trend data</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          SerpAPI request timed out or failed. This is usually due to Google rate limiting, not a code issue.
-                        </p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Please wait 2-5 minutes before trying again to avoid rate limits.
-                        </p>
+                        <div>
+                          <p className="text-slate-900 dark:text-white font-medium text-lg mb-2">Failed to Fetch Trend Data</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+                            SerpAPI request timed out or failed. This is usually due to Google rate limiting.
+                          </p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            Please wait 2-5 minutes before trying again.
+                          </p>
+                        </div>
+                        <Button 
+                          onClick={handleRefreshTrends} 
+                          disabled={cooldownSeconds > 0}
+                          variant="outline"
+                          data-testid="button-retry-trends"
+                        >
+                          {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Try Again"}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -742,10 +790,24 @@ export default function TrendAnalysis() {
                     Loading comparison data...
                   </CardContent>
                 </Card>
+              ) : !trendsData ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <div className="flex flex-col items-center space-y-4">
+                      <BarChart3 className="w-16 h-16 text-slate-300 dark:text-slate-600" />
+                      <div>
+                        <p className="text-slate-900 dark:text-white font-medium text-lg mb-2">No Data Available</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                          Fetch trend data from the Overview tab first
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : !processedTrendsData ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                    Unable to load comparison data. Please try refreshing.
+                    Unable to load comparison data. Please try refreshing from the Overview tab.
                   </CardContent>
                 </Card>
               ) : (
@@ -860,10 +922,24 @@ export default function TrendAnalysis() {
                     Loading seasonal data...
                   </CardContent>
                 </Card>
+              ) : !trendsData ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <div className="flex flex-col items-center space-y-4">
+                      <Calendar className="w-16 h-16 text-slate-300 dark:text-slate-600" />
+                      <div>
+                        <p className="text-slate-900 dark:text-white font-medium text-lg mb-2">No Data Available</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                          Fetch trend data from the Overview tab first
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : !processedTrendsData ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                    Unable to load seasonal data. Please try refreshing.
+                    Unable to load seasonal data. Please try refreshing from the Overview tab.
                   </CardContent>
                 </Card>
               ) : (
@@ -999,10 +1075,24 @@ export default function TrendAnalysis() {
                     Loading market insights...
                   </CardContent>
                 </Card>
+              ) : !trendsData ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <div className="flex flex-col items-center space-y-4">
+                      <Brain className="w-16 h-16 text-slate-300 dark:text-slate-600" />
+                      <div>
+                        <p className="text-slate-900 dark:text-white font-medium text-lg mb-2">No Data Available</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                          Fetch trend data from the Overview tab first
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : !processedTrendsData ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                    Unable to load market insights. Please try refreshing.
+                    Unable to load market insights. Please try refreshing from the Overview tab.
                   </CardContent>
                 </Card>
               ) : (

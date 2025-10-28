@@ -929,15 +929,41 @@ export default function CampaignPerformanceSummary() {
                         };
                         
                         const comparisonData = Object.entries(metricChanges.metrics || {})
-                          .filter(([_, data]: [string, any]) => data.change !== 0)
                           .map(([metricKey, data]: [string, any]) => ({
                             metric: metricLabels[metricKey] || metricKey,
                             Previous: data.previous,
                             Current: data.current,
                             change: data.change,
                             direction: data.direction,
-                            percentChange: data.percentChange
+                            percentChange: data.percentChange,
+                            source: 'Custom Integration'
                           }));
+                        
+                        // Add LinkedIn metrics if available
+                        if (linkedinMetrics) {
+                          const linkedinData = [
+                            { key: 'spend', value: parseNum(linkedinMetrics.spend), label: 'LinkedIn Ad Spend' },
+                            { key: 'conversions', value: parseNum(linkedinMetrics.conversions), label: 'LinkedIn Conversions' },
+                            { key: 'impressions', value: parseNum(linkedinMetrics.impressions), label: 'LinkedIn Impressions' },
+                            { key: 'clicks', value: parseNum(linkedinMetrics.clicks), label: 'LinkedIn Clicks' },
+                            { key: 'leads', value: parseNum(linkedinMetrics.leads), label: 'LinkedIn Leads' },
+                            { key: 'engagement', value: parseNum(linkedinMetrics.engagement), label: 'LinkedIn Engagement' }
+                          ];
+                          
+                          linkedinData.forEach(item => {
+                            if (item.value > 0) {
+                              comparisonData.push({
+                                metric: item.label,
+                                Previous: item.value,
+                                Current: item.value,
+                                change: 0,
+                                direction: 'neutral',
+                                percentChange: 0,
+                                source: 'LinkedIn Ads'
+                              });
+                            }
+                          });
+                        }
                         
                         // Separate count-based and percentage-based metrics for proper scaling
                         const websiteTrafficMetrics = comparisonData.filter(d => 
@@ -953,7 +979,7 @@ export default function CampaignPerformanceSummary() {
                           ['Email Open Rate', 'Email CTR'].includes(d.metric)
                         );
                         const adMetrics = comparisonData.filter(d => 
-                          ['Ad Spend', 'Conversions', 'Impressions', 'Clicks'].includes(d.metric)
+                          ['Ad Spend', 'Conversions', 'Impressions', 'Clicks', 'LinkedIn Ad Spend', 'LinkedIn Conversions', 'LinkedIn Impressions', 'LinkedIn Clicks', 'LinkedIn Leads', 'LinkedIn Engagement'].includes(d.metric)
                         );
                         
                         return (
@@ -961,9 +987,8 @@ export default function CampaignPerformanceSummary() {
                             {/* Website Traffic */}
                             {websiteTrafficMetrics.length > 0 && (
                               <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                                   Website Analytics - Traffic
-                                  <Badge variant="outline" className="ml-2">{websiteTrafficMetrics.length} changes</Badge>
                                 </h4>
                                 <ResponsiveContainer width="100%" height={Math.max(200, websiteTrafficMetrics.length * 60)}>
                                   <BarChart data={websiteTrafficMetrics} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -983,8 +1008,8 @@ export default function CampaignPerformanceSummary() {
                                   {websiteTrafficMetrics.map((item) => (
                                     <div key={item.metric} className="flex items-center justify-between text-xs px-2">
                                       <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
-                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                                        {item.direction === 'up' ? '+' : ''}{item.percentChange.toFixed(1)}%
+                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : item.direction === 'down' ? 'text-red-600' : 'text-slate-600'}`}>
+                                        {item.direction === 'neutral' ? 'No change' : `${item.direction === 'up' ? '+' : ''}${item.percentChange.toFixed(1)}%`}
                                       </span>
                                     </div>
                                   ))}
@@ -995,9 +1020,8 @@ export default function CampaignPerformanceSummary() {
                             {/* Website Engagement % */}
                             {websiteEngagementMetrics.length > 0 && (
                               <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                                   Website Analytics - Engagement %
-                                  <Badge variant="outline" className="ml-2">{websiteEngagementMetrics.length} changes</Badge>
                                 </h4>
                                 <ResponsiveContainer width="100%" height={Math.max(200, websiteEngagementMetrics.length * 60)}>
                                   <BarChart data={websiteEngagementMetrics} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -1017,8 +1041,8 @@ export default function CampaignPerformanceSummary() {
                                   {websiteEngagementMetrics.map((item) => (
                                     <div key={item.metric} className="flex items-center justify-between text-xs px-2">
                                       <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
-                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                                        {item.direction === 'up' ? '+' : ''}{item.percentChange.toFixed(1)}%
+                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : item.direction === 'down' ? 'text-red-600' : 'text-slate-600'}`}>
+                                        {item.direction === 'neutral' ? 'No change' : `${item.direction === 'up' ? '+' : ''}${item.percentChange.toFixed(1)}%`}
                                       </span>
                                     </div>
                                   ))}
@@ -1029,9 +1053,8 @@ export default function CampaignPerformanceSummary() {
                             {/* Email Volume */}
                             {emailVolumeMetrics.length > 0 && (
                               <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                                   Email Marketing - Volume
-                                  <Badge variant="outline" className="ml-2">{emailVolumeMetrics.length} changes</Badge>
                                 </h4>
                                 <ResponsiveContainer width="100%" height={Math.max(200, emailVolumeMetrics.length * 60)}>
                                   <BarChart data={emailVolumeMetrics} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -1051,8 +1074,8 @@ export default function CampaignPerformanceSummary() {
                                   {emailVolumeMetrics.map((item) => (
                                     <div key={item.metric} className="flex items-center justify-between text-xs px-2">
                                       <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
-                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                                        {item.direction === 'up' ? '+' : ''}{item.percentChange.toFixed(1)}%
+                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : item.direction === 'down' ? 'text-red-600' : 'text-slate-600'}`}>
+                                        {item.direction === 'neutral' ? 'No change' : `${item.direction === 'up' ? '+' : ''}${item.percentChange.toFixed(1)}%`}
                                       </span>
                                     </div>
                                   ))}
@@ -1063,9 +1086,8 @@ export default function CampaignPerformanceSummary() {
                             {/* Email Performance % */}
                             {emailPerformanceMetrics.length > 0 && (
                               <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                                   Email Marketing - Performance %
-                                  <Badge variant="outline" className="ml-2">{emailPerformanceMetrics.length} changes</Badge>
                                 </h4>
                                 <ResponsiveContainer width="100%" height={Math.max(200, emailPerformanceMetrics.length * 60)}>
                                   <BarChart data={emailPerformanceMetrics} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -1085,8 +1107,8 @@ export default function CampaignPerformanceSummary() {
                                   {emailPerformanceMetrics.map((item) => (
                                     <div key={item.metric} className="flex items-center justify-between text-xs px-2">
                                       <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
-                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                                        {item.direction === 'up' ? '+' : ''}{item.percentChange.toFixed(1)}%
+                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : item.direction === 'down' ? 'text-red-600' : 'text-slate-600'}`}>
+                                        {item.direction === 'neutral' ? 'No change' : `${item.direction === 'up' ? '+' : ''}${item.percentChange.toFixed(1)}%`}
                                       </span>
                                     </div>
                                   ))}
@@ -1096,9 +1118,8 @@ export default function CampaignPerformanceSummary() {
                             
                             {adMetrics.length > 0 && (
                               <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                                   Advertising Performance
-                                  <Badge variant="outline" className="ml-2">{adMetrics.length} changes</Badge>
                                 </h4>
                                 <ResponsiveContainer width="100%" height={Math.max(200, adMetrics.length * 60)}>
                                   <BarChart data={adMetrics} layout="vertical" margin={{ top: 5, right: 100, left: 100, bottom: 5 }}>
@@ -1118,8 +1139,8 @@ export default function CampaignPerformanceSummary() {
                                   {adMetrics.map((item) => (
                                     <div key={item.metric} className="flex items-center justify-between text-xs px-2">
                                       <span className="text-slate-600 dark:text-slate-400">{item.metric}</span>
-                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                                        {item.direction === 'up' ? '+' : ''}{item.percentChange.toFixed(1)}%
+                                      <span className={`font-semibold ${item.direction === 'up' ? 'text-green-600' : item.direction === 'down' ? 'text-red-600' : 'text-slate-600'}`}>
+                                        {item.direction === 'neutral' ? 'No change' : `${item.direction === 'up' ? '+' : ''}${item.percentChange.toFixed(1)}%`}
                                       </span>
                                     </div>
                                   ))}

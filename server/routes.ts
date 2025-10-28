@@ -575,6 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get existing metrics to save as previous before updating
       const existingMetrics = await storage.getLatestCustomIntegrationMetrics(customIntegration.campaignId);
+      console.log('[Webhook] Existing metrics found:', existingMetrics ? 'YES' : 'NO');
       let previousMetricsJson = null;
       let previousUpdateAt = null;
       
@@ -594,7 +595,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           clicks: existingMetrics.clicks
         });
         previousUpdateAt = existingMetrics.uploadedAt;
-        console.log('[Webhook] Saved previous metrics for change tracking');
+        console.log('[Webhook] Saved previous metrics for change tracking:', {
+          users: existingMetrics.users,
+          uploadedAt: existingMetrics.uploadedAt
+        });
+      } else {
+        console.log('[Webhook] No existing metrics found for campaign:', customIntegration.campaignId);
       }
 
       // Parse the PDF to extract metrics

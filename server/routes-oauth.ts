@@ -1740,7 +1740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             data_type: "TIMESERIES",
             date: "today 3-m", // Last 90 days
             api_key: apiKey,
-            timeout: 15000 // 15 second timeout
+            timeout: 30000 // 30 second timeout
           });
           
           // SerpAPI returns timeline data in interest_over_time.timeline_data

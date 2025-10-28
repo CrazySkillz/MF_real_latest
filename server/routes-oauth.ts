@@ -1719,75 +1719,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Helper function to add delay between requests
       const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
       
-      // Helper function to retry Google Trends API calls
-      const fetchWithRetry = async (keyword: string, maxRetries = 3): Promise<any> => {
-        const googleTrends = (await import("google-trends-api")).default;
+      // Fetch Google Trends data with exponential backoff
+      const googleTrends = (await import("google-trends-api")).default;
+      const trendsData = [];
+      
+      for (let i = 0; i < keywords.length; i++) {
+        const keyword = keywords[i];
+        let success = false;
+        let data = [];
+        let error = null;
         
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        // Try up to 5 times with exponential backoff
+        for (let attempt = 1; attempt <= 5 && !success; attempt++) {
           try {
-            // Add delay between requests to avoid rate limiting (except first request)
+            // Add increasing delay before each attempt (5s, 10s, 15s, 20s, 25s)
             if (attempt > 1) {
-              const delayMs = attempt * 2000; // Increasing delay: 2s, 4s, 6s
-              console.log(`⏱️  Retry ${attempt}/${maxRetries} for "${keyword}" after ${delayMs}ms delay`);
+              const delayMs = attempt * 5000;
+              console.log(`⏱️  Retry ${attempt}/5 for "${keyword}" after ${delayMs}ms delay`);
               await delay(delayMs);
             }
             
             const results = await googleTrends.interestOverTime({
               keyword,
-              startTime: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // Last 90 days
+              startTime: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
               granularTimeResolution: true
             });
             
             const parsedResults = JSON.parse(results);
             const timelineData = parsedResults.default?.timelineData || [];
             
-            console.log(`✓ Fetched ${timelineData.length} data points for "${keyword}" (attempt ${attempt})`);
-            
-            return {
-              keyword,
-              data: timelineData,
-              success: true
-            };
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            const isRateLimitOrHTML = errorMessage.includes('is not valid JSON') || errorMessage.includes('html');
-            
-            if (attempt === maxRetries) {
-              console.error(`✗ Failed to fetch trends for "${keyword}" after ${maxRetries} attempts:`, errorMessage);
-              return {
-                keyword,
-                data: [],
-                success: false,
-                error: isRateLimitOrHTML 
-                  ? 'Google Trends rate limit reached. Please try again in a few minutes.'
-                  : 'Failed to fetch trend data. Please try again later.'
-              };
+            if (timelineData && timelineData.length > 0) {
+              console.log(`✓ Fetched ${timelineData.length} data points for "${keyword}" (attempt ${attempt})`);
+              data = timelineData;
+              success = true;
+            } else {
+              throw new Error('No data returned');
             }
+          } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
             
-            console.warn(`⚠️  Attempt ${attempt}/${maxRetries} failed for "${keyword}":`, errorMessage);
+            if (attempt === 5) {
+              console.error(`✗ Failed to fetch trends for "${keyword}" after 5 attempts:`, errorMessage);
+              error = 'Unable to fetch data from Google Trends. Please try again later.';
+            } else {
+              console.warn(`⚠️  Attempt ${attempt}/5 failed for "${keyword}":`, errorMessage);
+            }
           }
         }
         
-        return {
+        trendsData.push({
           keyword,
-          data: [],
-          success: false,
-          error: 'Unexpected error occurred'
-        };
-      };
-      
-      // Process keywords sequentially with delays to avoid rate limiting
-      const trendsData = [];
-      for (let i = 0; i < keywords.length; i++) {
-        const keyword = keywords[i];
+          data,
+          success,
+          error
+        });
         
-        // Add delay between different keywords (except first)
-        if (i > 0) {
-          await delay(1500); // 1.5 second delay between keywords
+        // Add delay between different keywords
+        if (i < keywords.length - 1) {
+          await delay(3000); // 3 second delay between keywords
         }
-        
-        const result = await fetchWithRetry(keyword);
-        trendsData.push(result);
       }
       
       const totalDataPoints = trendsData.reduce((sum, t) => sum + (t.data?.length || 0), 0);

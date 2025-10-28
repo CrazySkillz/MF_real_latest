@@ -574,7 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get existing metrics to save as previous before updating
-      const existingMetrics = await storage.getCustomIntegrationMetrics(customIntegration.campaignId);
+      const existingMetrics = await storage.getLatestCustomIntegrationMetrics(customIntegration.campaignId);
       let previousMetricsJson = null;
       let previousUpdateAt = null;
       

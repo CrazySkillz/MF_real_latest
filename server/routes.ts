@@ -573,18 +573,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get existing metrics to save as previous before updating
+      const existingIntegration = await storage.getCustomIntegration(customIntegration.campaignId);
+      let previousMetricsJson = null;
+      let previousUpdateAt = null;
+      
+      if (existingIntegration && existingIntegration.metrics) {
+        // Save current metrics as previous
+        const currentMetrics = existingIntegration.metrics;
+        previousMetricsJson = JSON.stringify({
+          users: currentMetrics.users,
+          sessions: currentMetrics.sessions,
+          pageviews: currentMetrics.pageviews,
+          bounceRate: currentMetrics.bounceRate,
+          emailsDelivered: currentMetrics.emailsDelivered,
+          openRate: currentMetrics.openRate,
+          clickThroughRate: currentMetrics.clickThroughRate,
+          spend: currentMetrics.spend,
+          conversions: currentMetrics.conversions,
+          impressions: currentMetrics.impressions,
+          clicks: currentMetrics.clicks
+        });
+        previousUpdateAt = currentMetrics.uploadedAt;
+        console.log('[Webhook] Saved previous metrics for change tracking');
+      }
+
       // Parse the PDF to extract metrics
       console.log('[Webhook] Parsing PDF metrics...');
       const parsedMetrics = await parsePDFMetrics(pdfBuffer);
       console.log('[Webhook] Parsed metrics:', parsedMetrics);
 
-      // Store the metrics
+      // Store the metrics with previous metrics tracking
       const metricsData = {
         campaignId: customIntegration.campaignId,
         ...parsedMetrics,
         pdfFileName,
         emailSubject: req.body.subject,
-        emailId: req.body.messageId
+        emailId: req.body.messageId,
+        previousMetrics: previousMetricsJson,
+        previousUpdateAt: previousUpdateAt
       };
 
       const metrics = await storage.createCustomIntegrationMetrics(metricsData);

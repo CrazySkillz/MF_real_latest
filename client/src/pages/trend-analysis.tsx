@@ -736,7 +736,7 @@ export default function TrendAnalysis() {
 
             {/* Keyword Comparison Tab */}
             <TabsContent value="keyword-comparison" className="space-y-6">
-              {trendsLoading ? (
+              {trendsFetching ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Loading comparison data...
@@ -854,7 +854,7 @@ export default function TrendAnalysis() {
 
             {/* Seasonal Trends Tab */}
             <TabsContent value="seasonal-trends" className="space-y-6">
-              {trendsLoading ? (
+              {trendsFetching ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Loading seasonal data...
@@ -993,7 +993,7 @@ export default function TrendAnalysis() {
 
             {/* Market Insights Tab */}
             <TabsContent value="insights" className="space-y-6">
-              {trendsLoading ? (
+              {trendsFetching ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Loading market insights...

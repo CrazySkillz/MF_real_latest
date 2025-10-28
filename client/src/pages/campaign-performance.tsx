@@ -55,6 +55,12 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId,
   });
 
+  // Fetch real-time metric changes
+  const { data: metricChanges } = useQuery<any>({
+    queryKey: [`/api/custom-integration/${campaignId}/changes`],
+    enabled: !!campaignId,
+  });
+
   // Fetch comparison data
   const { data: comparisonData } = useQuery<{
     current: any | null;
@@ -641,67 +647,102 @@ export default function CampaignPerformanceSummary() {
             <TabsContent value="changes" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center space-x-2">
-                        <TrendingUp className="w-5 h-5" />
-                        <span>What's Changed</span>
-                      </CardTitle>
-                      <CardDescription className="mt-1.5">
-                        {snapshotTimestamp ? (
-                          <>Compare to: {new Date(snapshotTimestamp).toLocaleString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric', 
-                            year: 'numeric', 
-                            hour: 'numeric', 
-                            minute: '2-digit',
-                            hour12: true 
-                          })}</>
-                        ) : (
-                          <>No historical data available yet</>
-                        )}
-                      </CardDescription>
-                    </div>
-                    <Select 
-                      value={comparisonType} 
-                      onValueChange={(value) => setComparisonType(value as 'yesterday' | 'last_week' | 'last_month')}
-                    >
-                      <SelectTrigger className="w-[180px]" data-testid="select-comparison">
-                        <SelectValue placeholder="Select timeframe" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="yesterday" data-testid="option-yesterday">vs. Yesterday</SelectItem>
-                        <SelectItem value="last_week" data-testid="option-last-week">vs. Last Week</SelectItem>
-                        <SelectItem value="last_month" data-testid="option-last-month">vs. Last Month</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Activity className="w-5 h-5" />
+                    <span>What's Changed</span>
+                  </CardTitle>
+                  <CardDescription className="mt-1.5">
+                    {metricChanges?.hasChanges ? (
+                      <div className="flex items-center space-x-2">
+                        <span>Last Update: {new Date(metricChanges.currentUpdate).toLocaleString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          hour: 'numeric', 
+                          minute: '2-digit'
+                        })}</span>
+                        <span className="text-slate-400">|</span>
+                        <span className="text-slate-500">Previous: {new Date(metricChanges.previousUpdate).toLocaleString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          hour: 'numeric', 
+                          minute: '2-digit'
+                        })}</span>
+                      </div>
+                    ) : (
+                      <span>Tracking changes since last update</span>
+                    )}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {changes.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">No changes detected yet</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-500">
-                        Initial snapshot captured. Changes will appear here when metrics update.
+                  {!metricChanges?.hasChanges ? (
+                    <div className="text-center py-12">
+                      <div className="mb-4">
+                        <Clock className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto" />
+                      </div>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        {customIntegration?.metrics ? 'Baseline Captured' : 'No Data Yet'}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 max-w-md mx-auto">
+                        {customIntegration?.metrics 
+                          ? 'Upload another PDF or sync LinkedIn to see what changed since your last update.' 
+                          : 'Upload a PDF via email or connect LinkedIn Ads to start tracking changes.'}
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {changes.map((change, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{change.metric}</span>
-                          <div className="flex items-center space-x-2">
-                            {change.direction === "up" ? (
-                              <TrendingUp className="w-5 h-5 text-green-600" />
-                            ) : (
-                              <TrendingDown className="w-5 h-5 text-red-600" />
-                            )}
-                            <span className={`text-base font-bold ${change.direction === "up" ? "text-green-600" : "text-red-600"}`}>
-                              {change.direction === "up" ? "+" : ""}{change.change.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      {Object.entries(metricChanges.metrics || {})
+                        .filter(([_, data]: [string, any]) => data.change !== 0)
+                        .map(([metricKey, data]: [string, any]) => {
+                          const metricLabels: Record<string, string> = {
+                            users: 'Users',
+                            sessions: 'Sessions',
+                            pageviews: 'Pageviews',
+                            bounceRate: 'Bounce Rate',
+                            emailsDelivered: 'Emails Delivered',
+                            openRate: 'Email Open Rate',
+                            clickThroughRate: 'Email CTR',
+                            spend: 'Ad Spend',
+                            conversions: 'Conversions',
+                            impressions: 'Impressions',
+                            clicks: 'Clicks'
+                          };
+
+                          const label = metricLabels[metricKey] || metricKey;
+                          const isPercentage = metricKey.includes('Rate') || metricKey.includes('bounceRate');
+                          const isCurrency = metricKey === 'spend';
+                          
+                          return (
+                            <div key={metricKey} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                                  {data.direction === "up" ? (
+                                    <TrendingUp className="w-4 h-4 text-green-600" />
+                                  ) : (
+                                    <TrendingDown className="w-4 h-4 text-red-600" />
+                                  )}
+                                </div>
+                                <div className="mt-1 flex items-baseline space-x-2 text-xs text-slate-500">
+                                  <span>{isPercentage ? data.previous.toFixed(2) + '%' : isCurrency ? `$${data.previous.toLocaleString()}` : data.previous.toLocaleString()}</span>
+                                  <span>→</span>
+                                  <span className="font-medium text-slate-700 dark:text-slate-300">
+                                    {isPercentage ? data.current.toFixed(2) + '%' : isCurrency ? `$${data.current.toLocaleString()}` : data.current.toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end">
+                                <span className={`text-base font-bold ${data.direction === "up" ? "text-green-600" : "text-red-600"}`}>
+                                  {data.direction === "up" ? "+" : ""}{isPercentage ? data.change.toFixed(2) + '%' : isCurrency ? `$${Math.abs(data.change).toLocaleString()}` : data.change.toLocaleString()}
+                                </span>
+                                {Math.abs(data.percentChange) > 0 && (
+                                  <span className="text-xs text-slate-500">
+                                    {data.percentChange > 0 ? '+' : ''}{data.percentChange.toFixed(1)}%
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
                   )}
                 </CardContent>

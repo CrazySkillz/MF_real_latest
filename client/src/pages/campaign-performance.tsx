@@ -578,54 +578,6 @@ export default function CampaignPerformanceSummary() {
                 </Card>
               )}
 
-              {/* All Benchmarks */}
-              {benchmarks.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Industry Benchmarks</CardTitle>
-                    <CardDescription>Performance vs industry averages</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {benchmarks.map((benchmark, idx) => {
-                        const current = parseNum(benchmark.currentValue);
-                        const industry = parseNum(benchmark.industryAverage);
-                        const isAboveIndustry = current >= industry;
-                        const percentage = industry > 0 ? Math.round((current / industry) * 100) : 0;
-                        
-                        return (
-                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: isAboveIndustry ? '#22c55e' : '#ef4444' }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-3">
-                                <span className="font-semibold text-slate-900 dark:text-white">{benchmark.metricName}</span>
-                                <Badge variant={isAboveIndustry ? "default" : "destructive"}>
-                                  {isAboveIndustry ? "Above Industry" : "Below Industry"}
-                                </Badge>
-                              </div>
-                              <span className="text-sm text-slate-500 dark:text-slate-400">{percentage}% of industry avg</span>
-                            </div>
-                            <div className="flex items-center space-x-6 text-sm">
-                              <div>
-                                <span className="text-slate-500 dark:text-slate-400">Your Performance: </span>
-                                <span className="font-semibold text-slate-900 dark:text-white">
-                                  {benchmark.unit === '$' ? `$${current.toFixed(2)}` : benchmark.unit === '%' ? `${current.toFixed(2)}%` : `${benchmark.currentValue}${benchmark.unit}`}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-slate-500 dark:text-slate-400">Industry Avg: </span>
-                                <span className="font-semibold text-slate-900 dark:text-white">
-                                  {benchmark.unit === '$' ? `$${industry.toFixed(2)}` : benchmark.unit === '%' ? `${industry.toFixed(2)}%` : `${benchmark.industryAverage}${benchmark.unit}`}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Data Source Status */}
               <Card>
                 <CardHeader>

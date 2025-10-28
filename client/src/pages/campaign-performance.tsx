@@ -757,11 +757,15 @@ export default function CampaignPerformanceSummary() {
                           }
                         }
                         
-                        const websiteData = baselineData.filter(d => d.category === 'Website Analytics' && d.value > 0);
-                        const emailData = baselineData.filter(d => d.category === 'Email Marketing' && d.value > 0);
+                        // Separate count-based and percentage-based metrics for proper scaling
+                        const websiteCountData = baselineData.filter(d => d.category === 'Website Analytics' && !d.isPercentage && d.value > 0);
+                        const websitePercentData = baselineData.filter(d => d.category === 'Website Analytics' && d.isPercentage && d.value > 0);
+                        const emailCountData = baselineData.filter(d => d.category === 'Email Marketing' && !d.isPercentage && d.value > 0);
+                        const emailPercentData = baselineData.filter(d => d.category === 'Email Marketing' && d.isPercentage && d.value > 0);
                         const adData = baselineData.filter(d => d.category === 'Advertising' && d.value > 0);
                         
-                        const hasAnyData = websiteData.length > 0 || emailData.length > 0 || adData.length > 0;
+                        const hasAnyData = websiteCountData.length > 0 || websitePercentData.length > 0 || 
+                                          emailCountData.length > 0 || emailPercentData.length > 0 || adData.length > 0;
                         
                         if (!hasAnyData) {
                           return (
@@ -775,20 +779,18 @@ export default function CampaignPerformanceSummary() {
                         
                         return (
                           <div className="space-y-6">
-                            {websiteData.length > 0 && (
+                            {/* Website Analytics - Count Metrics */}
+                            {websiteCountData.length > 0 && (
                               <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Website Analytics</h4>
-                                <ResponsiveContainer width="100%" height={200}>
-                                  <BarChart data={websiteData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Website Analytics - Traffic</h4>
+                                <ResponsiveContainer width="100%" height={180}>
+                                  <BarChart data={websiteCountData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
                                     <XAxis dataKey="metric" className="text-xs" />
                                     <YAxis className="text-xs" />
                                     <Tooltip 
                                       contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                      formatter={(value: any, name: any, props: any) => {
-                                        const isPercent = props.payload.isPercentage;
-                                        return isPercent ? `${value.toFixed(2)}%` : value.toLocaleString();
-                                      }}
+                                      formatter={(value: any) => value.toLocaleString()}
                                     />
                                     <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                                   </BarChart>
@@ -796,20 +798,37 @@ export default function CampaignPerformanceSummary() {
                               </div>
                             )}
                             
-                            {emailData.length > 0 && (
+                            {/* Website Analytics - Percentage Metrics */}
+                            {websitePercentData.length > 0 && (
                               <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Email Marketing</h4>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Website Analytics - Engagement %</h4>
                                 <ResponsiveContainer width="100%" height={150}>
-                                  <BarChart data={emailData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                  <BarChart data={websitePercentData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis dataKey="metric" className="text-xs" />
+                                    <YAxis className="text-xs" domain={[0, 100]} />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => `${value.toFixed(2)}%`}
+                                    />
+                                    <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            )}
+                            
+                            {/* Email Marketing - Count Metrics */}
+                            {emailCountData.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Email Marketing - Volume</h4>
+                                <ResponsiveContainer width="100%" height={150}>
+                                  <BarChart data={emailCountData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
                                     <XAxis dataKey="metric" className="text-xs" />
                                     <YAxis className="text-xs" />
                                     <Tooltip 
                                       contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                      formatter={(value: any, name: any, props: any) => {
-                                        const isPercent = props.payload.isPercentage;
-                                        return isPercent ? `${value.toFixed(2)}%` : value.toLocaleString();
-                                      }}
+                                      formatter={(value: any) => value.toLocaleString()}
                                     />
                                     <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                                   </BarChart>
@@ -817,6 +836,26 @@ export default function CampaignPerformanceSummary() {
                               </div>
                             )}
                             
+                            {/* Email Marketing - Percentage Metrics */}
+                            {emailPercentData.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Email Marketing - Performance %</h4>
+                                <ResponsiveContainer width="100%" height={150}>
+                                  <BarChart data={emailPercentData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis dataKey="metric" className="text-xs" />
+                                    <YAxis className="text-xs" domain={[0, 100]} />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => `${value.toFixed(2)}%`}
+                                    />
+                                    <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            )}
+                            
+                            {/* Advertising Performance */}
                             {adData.length > 0 && (
                               <div>
                                 <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Advertising Performance</h4>
@@ -827,10 +866,7 @@ export default function CampaignPerformanceSummary() {
                                     <YAxis className="text-xs" />
                                     <Tooltip 
                                       contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                      formatter={(value: any, name: any, props: any) => {
-                                        const isPercent = props.payload.isPercentage;
-                                        return isPercent ? `${value.toFixed(2)}%` : value.toLocaleString();
-                                      }}
+                                      formatter={(value: any) => value.toLocaleString()}
                                     />
                                     <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
                                   </BarChart>

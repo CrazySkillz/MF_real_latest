@@ -79,6 +79,24 @@ const formatNumber = (value: number | string): string => {
   return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
 };
 
+// Helper function to format input numbers with commas (preserves user input)
+const formatInputNumber = (value: string): string => {
+  // Remove all non-digit and non-decimal characters
+  const cleaned = value.replace(/[^\d.]/g, '');
+  // Split on decimal point
+  const parts = cleaned.split('.');
+  // Format integer part with commas
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  // Return formatted value (with decimal if present)
+  return parts.length > 1 ? `${parts[0]}.${parts[1]}` : parts[0];
+};
+
+// Helper function to parse formatted number (removes commas)
+const parseFormattedNumber = (value: string): number => {
+  const cleaned = value.replace(/,/g, '');
+  return parseFloat(cleaned) || 0;
+};
+
 // Scheduled Reports Section Component
 function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
   const { toast } = useToast();
@@ -358,9 +376,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       campaignId: campaign.id,
       platformType: null, // Campaign-level KPI
       ...kpiForm,
-      currentValue: parseFloat(kpiForm.currentValue) || 0,
-      targetValue: parseFloat(kpiForm.targetValue),
-      alertThreshold: kpiForm.alertEnabled ? parseFloat(kpiForm.alertThreshold) : null,
+      currentValue: parseFormattedNumber(kpiForm.currentValue),
+      targetValue: parseFormattedNumber(kpiForm.targetValue),
+      alertThreshold: kpiForm.alertEnabled ? parseFormattedNumber(kpiForm.alertThreshold) : null,
       alertEmails: kpiForm.alertEnabled && kpiForm.alertEmails ? kpiForm.alertEmails.split(',').map(e => e.trim()) : null,
     });
   };
@@ -371,14 +389,14 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       name: kpi.name,
       description: kpi.description || '',
       metric: kpi.metric || '',
-      currentValue: kpi.currentValue?.toString() || '',
-      targetValue: kpi.targetValue?.toString() || '',
+      currentValue: kpi.currentValue ? formatInputNumber(kpi.currentValue.toString()) : '',
+      targetValue: kpi.targetValue ? formatInputNumber(kpi.targetValue.toString()) : '',
       unit: kpi.unit || '',
       category: kpi.category || '',
       timeframe: kpi.timeframe || 'Monthly',
       targetDate: kpi.targetDate ? new Date(kpi.targetDate).toISOString().split('T')[0] : '',
       alertEnabled: kpi.emailNotifications || false,
-      alertThreshold: kpi.alertThreshold?.toString() || '',
+      alertThreshold: kpi.alertThreshold ? formatInputNumber(kpi.alertThreshold.toString()) : '',
       alertCondition: kpi.alertCondition || 'below',
       alertEmails: kpi.emailRecipients || '',
     });
@@ -409,9 +427,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       campaignId: campaign.id,
       platformType: null,
       ...kpiForm,
-      currentValue: parseFloat(kpiForm.currentValue) || 0,
-      targetValue: parseFloat(kpiForm.targetValue),
-      alertThreshold: kpiForm.alertEnabled ? parseFloat(kpiForm.alertThreshold) : null,
+      currentValue: parseFormattedNumber(kpiForm.currentValue),
+      targetValue: parseFormattedNumber(kpiForm.targetValue),
+      alertThreshold: kpiForm.alertEnabled ? parseFormattedNumber(kpiForm.alertThreshold) : null,
       emailRecipients: kpiForm.alertEnabled && kpiForm.alertEmails ? kpiForm.alertEmails : null,
       emailNotifications: kpiForm.alertEnabled,
     });
@@ -1032,7 +1050,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   type="text"
                   placeholder="0"
                   value={kpiForm.currentValue}
-                  onChange={(e) => setKpiForm({ ...kpiForm, currentValue: e.target.value })}
+                  onChange={(e) => setKpiForm({ ...kpiForm, currentValue: formatInputNumber(e.target.value) })}
                   data-testid="input-campaign-kpi-current"
                 />
               </div>
@@ -1043,7 +1061,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   type="text"
                   placeholder="0"
                   value={kpiForm.targetValue}
-                  onChange={(e) => setKpiForm({ ...kpiForm, targetValue: e.target.value })}
+                  onChange={(e) => setKpiForm({ ...kpiForm, targetValue: formatInputNumber(e.target.value) })}
                   data-testid="input-campaign-kpi-target"
                 />
               </div>
@@ -1114,7 +1132,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       type="text"
                       placeholder="e.g., 50"
                       value={kpiForm.alertThreshold}
-                      onChange={(e) => setKpiForm({ ...kpiForm, alertThreshold: e.target.value })}
+                      onChange={(e) => setKpiForm({ ...kpiForm, alertThreshold: formatInputNumber(e.target.value) })}
                       data-testid="input-campaign-kpi-alert-threshold"
                     />
                   </div>
@@ -1369,7 +1387,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   type="text"
                   placeholder="0"
                   value={kpiForm.currentValue}
-                  onChange={(e) => setKpiForm({ ...kpiForm, currentValue: e.target.value })}
+                  onChange={(e) => setKpiForm({ ...kpiForm, currentValue: formatInputNumber(e.target.value) })}
                   data-testid="input-edit-campaign-kpi-current"
                 />
               </div>
@@ -1380,7 +1398,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   type="text"
                   placeholder="0"
                   value={kpiForm.targetValue}
-                  onChange={(e) => setKpiForm({ ...kpiForm, targetValue: e.target.value })}
+                  onChange={(e) => setKpiForm({ ...kpiForm, targetValue: formatInputNumber(e.target.value) })}
                   data-testid="input-edit-campaign-kpi-target"
                 />
               </div>
@@ -1451,7 +1469,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       type="text"
                       placeholder="e.g., 50"
                       value={kpiForm.alertThreshold}
-                      onChange={(e) => setKpiForm({ ...kpiForm, alertThreshold: e.target.value })}
+                      onChange={(e) => setKpiForm({ ...kpiForm, alertThreshold: formatInputNumber(e.target.value) })}
                       data-testid="input-edit-campaign-kpi-alert-threshold"
                     />
                   </div>

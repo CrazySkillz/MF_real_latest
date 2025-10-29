@@ -26,6 +26,7 @@ export default function CampaignPerformanceSummary() {
   const campaignId = params?.id;
   const [comparisonType, setComparisonType] = useState<'yesterday' | 'last_week' | 'last_month'>('yesterday');
   const [trendPeriod, setTrendPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [changeView, setChangeView] = useState<'comparison' | 'trends'>('comparison');
   const { toast } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
@@ -683,26 +684,81 @@ export default function CampaignPerformanceSummary() {
                     <div className="flex items-center space-x-2">
                       <Activity className="w-5 h-5" />
                       <div>
-                        <CardTitle>Historical Trends</CardTitle>
+                        <CardTitle>What's Changed</CardTitle>
                         <CardDescription className="mt-1.5">
-                          View metric trends over time with automated snapshot tracking
+                          Compare metrics over time
                         </CardDescription>
                       </div>
                     </div>
-                    <Select value={trendPeriod} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setTrendPeriod(value)}>
-                      <SelectTrigger className="w-[180px]" data-testid="select-trend-period">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="daily" data-testid="option-trend-daily">Last 24 Hours</SelectItem>
-                        <SelectItem value="weekly" data-testid="option-trend-weekly">Last 7 Days</SelectItem>
-                        <SelectItem value="monthly" data-testid="option-trend-monthly">Last 30 Days</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center space-x-3">
+                      <Tabs value={changeView} onValueChange={(value: any) => setChangeView(value)} className="w-auto">
+                        <TabsList data-testid="tabs-change-view">
+                          <TabsTrigger value="comparison" data-testid="tab-comparison">Comparison</TabsTrigger>
+                          <TabsTrigger value="trends" data-testid="tab-trends">Trends</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                      {changeView === 'trends' && (
+                        <Select value={trendPeriod} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setTrendPeriod(value)}>
+                          <SelectTrigger className="w-[180px]" data-testid="select-trend-period">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily" data-testid="option-trend-daily">Last 24 Hours</SelectItem>
+                            <SelectItem value="weekly" data-testid="option-trend-weekly">Last 7 Days</SelectItem>
+                            <SelectItem value="monthly" data-testid="option-trend-monthly">Last 30 Days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {snapshotsLoading ? (
+                  {changeView === 'comparison' ? (
+                    <div className="space-y-4">
+                      {/* Initial Metrics Display */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Impressions</div>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-impressions">
+                            {totalImpressions.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Engagements</div>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-engagements">
+                            {totalEngagements.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Clicks</div>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-clicks">
+                            {totalClicks.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Conversions</div>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-conversions">
+                            {totalConversions.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Leads</div>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-leads">
+                            {totalLeads.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Ad Spend</div>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-spend">
+                            ${totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 text-center pt-2">
+                        Switch to "Trends" view to see historical charts over time
+                      </div>
+                    </div>
+                  ) : snapshotsLoading ? (
                     <div className="space-y-6">
                       <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
                       <div className="grid grid-cols-2 gap-4">

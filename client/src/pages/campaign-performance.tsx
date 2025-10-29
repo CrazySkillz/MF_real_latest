@@ -732,10 +732,18 @@ export default function CampaignPerformanceSummary() {
                         (() => {
                           const ciMetrics = customIntegration?.metrics || {};
                           
+                          // Match Overview tab calculation exactly
+                          const linkedinImpressions = linkedinMetrics?.impressions || 0;
+                          const ciAdImpressions = ciMetrics.impressions || 0;
+                          const ciWebPageviews = ciMetrics.pageviews || 0;
+                          const advertisingImpressions = linkedinImpressions + ciAdImpressions;
+                          const totalImpressions = advertisingImpressions + ciWebPageviews;
+                          
                           const aggregatedData = [
                             { 
                               metric: 'Total Impressions', 
-                              value: (linkedinMetrics?.impressions || 0) + (ciMetrics.adImpressions || 0)
+                              value: totalImpressions,
+                              breakdown: `Ad: ${advertisingImpressions.toLocaleString()} | Web: ${ciWebPageviews.toLocaleString()}`
                             },
                             { 
                               metric: 'Total Clicks', 
@@ -776,6 +784,11 @@ export default function CampaignPerformanceSummary() {
                                       <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} />
                                     </BarChart>
                                   </ResponsiveContainer>
+                                  {item.breakdown && (
+                                    <p className="text-xs text-muted-foreground text-center mt-2">
+                                      {item.breakdown}
+                                    </p>
+                                  )}
                                 </div>
                               ))}
                             </div>

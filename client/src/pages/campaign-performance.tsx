@@ -718,64 +718,102 @@ export default function CampaignPerformanceSummary() {
                     <div className="space-y-6">
                       {/* Initial Bar Charts - Metrics by Source */}
                       {(() => {
-                        // Prepare comparison data for bar charts
                         const ciMetrics = customIntegration?.metrics || {};
                         
-                        const comparisonData = [
-                          {
-                            metric: 'Impressions',
-                            'LinkedIn Ads': linkedinMetrics?.impressions || 0,
-                            'Website Analytics': ciMetrics.adImpressions || 0,
-                          },
-                          {
-                            metric: 'Clicks',
-                            'LinkedIn Ads': linkedinMetrics?.clicks || 0,
-                            'Website Analytics': (ciMetrics.adClicks || 0) + (ciMetrics.emailClicks || 0),
-                          },
-                          {
-                            metric: 'Engagements',
-                            'LinkedIn Ads': linkedinMetrics?.totalEngagements || 0,
-                            'Website Analytics': ciMetrics.socialEngagements || 0,
-                          },
-                          {
-                            metric: 'Conversions',
-                            'LinkedIn Ads': linkedinMetrics?.conversions || 0,
-                            'Website Analytics': ciMetrics.goalCompletions || 0,
-                          },
-                          {
-                            metric: 'Leads',
-                            'LinkedIn Ads': linkedinMetrics?.leads || 0,
-                            'Website Analytics': 0,
-                          },
-                          {
-                            metric: 'Sessions',
-                            'LinkedIn Ads': 0,
-                            'Website Analytics': ciMetrics.sessions || 0,
-                          },
+                        // LinkedIn Ads metrics
+                        const linkedinData = [
+                          { metric: 'Impressions', value: linkedinMetrics?.impressions || 0 },
+                          { metric: 'Clicks', value: linkedinMetrics?.clicks || 0 },
+                          { metric: 'Engagements', value: linkedinMetrics?.totalEngagements || 0 },
+                          { metric: 'Conversions', value: linkedinMetrics?.conversions || 0 },
+                          { metric: 'Leads', value: linkedinMetrics?.leads || 0 },
+                          { metric: 'Ad Spend', value: parseFloat(linkedinMetrics?.costInLocalCurrency || '0') },
+                        ];
+
+                        // Website Analytics metrics
+                        const websiteData = [
+                          { metric: 'Users', value: ciMetrics.users || 0 },
+                          { metric: 'Sessions', value: ciMetrics.sessions || 0 },
+                          { metric: 'Pageviews', value: ciMetrics.pageviews || 0 },
+                          { metric: 'Bounce Rate', value: parseFloat(ciMetrics.bounceRate || '0') },
+                          { metric: 'Avg Session Duration', value: parseFloat(ciMetrics.avgSessionDuration || '0') },
+                          { metric: 'Goal Completions', value: ciMetrics.goalCompletions || 0 },
+                          { metric: 'Ad Impressions', value: ciMetrics.adImpressions || 0 },
+                          { metric: 'Ad Clicks', value: ciMetrics.adClicks || 0 },
+                          { metric: 'Ad Spend', value: parseFloat(ciMetrics.adSpend || '0') },
+                          { metric: 'Email Opens', value: ciMetrics.emailOpens || 0 },
+                          { metric: 'Email Clicks', value: ciMetrics.emailClicks || 0 },
+                          { metric: 'Email Bounces', value: ciMetrics.emailBounces || 0 },
+                          { metric: 'Social Impressions', value: ciMetrics.socialImpressions || 0 },
+                          { metric: 'Social Engagements', value: ciMetrics.socialEngagements || 0 },
+                          { metric: 'Social Clicks', value: ciMetrics.socialClicks || 0 },
                         ];
 
                         return (
                           <>
-                            <div className="grid grid-cols-2 gap-6">
-                              {comparisonData.map((data, index) => (
-                                <div key={index}>
-                                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">{data.metric}</h4>
-                                  <ResponsiveContainer width="100%" height={200}>
-                                    <BarChart data={[data]} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                                      <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                      <XAxis dataKey="metric" className="text-xs" />
-                                      <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
-                                      <Tooltip 
-                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                        formatter={(value: any) => value.toLocaleString()}
-                                      />
-                                      <Legend />
-                                      <Bar dataKey="LinkedIn Ads" fill="#0077B5" radius={[8, 8, 0, 0]} />
-                                      <Bar dataKey="Website Analytics" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
-                                    </BarChart>
-                                  </ResponsiveContainer>
-                                </div>
-                              ))}
+                            {/* LinkedIn Ads Metrics */}
+                            <div className="mb-8">
+                              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
+                                <SiLinkedin className="w-5 h-5 mr-2 text-blue-600" />
+                                LinkedIn Ads
+                              </h3>
+                              <div className="grid grid-cols-3 gap-4">
+                                {linkedinData.map((item, index) => (
+                                  <div key={index}>
+                                    <h4 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">{item.metric}</h4>
+                                    <ResponsiveContainer width="100%" height={150}>
+                                      <BarChart data={[item]} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                        <XAxis dataKey="metric" className="text-xs" hide />
+                                        <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
+                                        <Tooltip 
+                                          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                          formatter={(value: any) => [
+                                            item.metric.includes('Spend') ? `$${parseFloat(value).toFixed(2)}` : 
+                                            item.metric === 'Bounce Rate' ? `${parseFloat(value).toFixed(2)}%` :
+                                            item.metric === 'Avg Session Duration' ? `${Math.floor(value / 60)}m ${Math.floor(value % 60)}s` :
+                                            value.toLocaleString(),
+                                            item.metric
+                                          ]}
+                                        />
+                                        <Bar dataKey="value" fill="#0077B5" radius={[8, 8, 0, 0]} />
+                                      </BarChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Website Analytics Metrics */}
+                            <div>
+                              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                                Website Analytics (Custom Integration)
+                              </h3>
+                              <div className="grid grid-cols-3 gap-4">
+                                {websiteData.filter(item => item.value > 0).map((item, index) => (
+                                  <div key={index}>
+                                    <h4 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">{item.metric}</h4>
+                                    <ResponsiveContainer width="100%" height={150}>
+                                      <BarChart data={[item]} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                        <XAxis dataKey="metric" className="text-xs" hide />
+                                        <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
+                                        <Tooltip 
+                                          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                          formatter={(value: any) => [
+                                            item.metric.includes('Spend') ? `$${parseFloat(value).toFixed(2)}` : 
+                                            item.metric === 'Bounce Rate' ? `${parseFloat(value).toFixed(2)}%` :
+                                            item.metric === 'Avg Session Duration' ? `${Math.floor(value / 60)}m ${Math.floor(value % 60)}s` :
+                                            value.toLocaleString(),
+                                            item.metric
+                                          ]}
+                                        />
+                                        <Bar dataKey="value" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                                      </BarChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
 
                             {trendSnapshots.length === 0 && schedulerStatus && (

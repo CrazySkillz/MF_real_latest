@@ -130,6 +130,7 @@ export interface IStorage {
 
   // Metric Snapshots
   getCampaignSnapshots(campaignId: string): Promise<MetricSnapshot[]>;
+  getCampaignSnapshotsByPeriod(campaignId: string, period: 'daily' | 'weekly' | 'monthly'): Promise<MetricSnapshot[]>;
   getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined>;
   createMetricSnapshot(snapshot: InsertMetricSnapshot): Promise<MetricSnapshot>;
   getComparisonData(campaignId: string, comparisonType: 'yesterday' | 'last_week' | 'last_month'): Promise<{
@@ -2353,6 +2354,33 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(metricSnapshots)
       .where(eq(metricSnapshots.campaignId, campaignId))
       .orderBy(desc(metricSnapshots.recordedAt));
+  }
+
+  async getCampaignSnapshotsByPeriod(campaignId: string, period: 'daily' | 'weekly' | 'monthly'): Promise<MetricSnapshot[]> {
+    const now = new Date();
+    let startDate: Date;
+
+    switch (period) {
+      case 'daily':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 1);
+        break;
+      case 'weekly':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'monthly':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 30);
+        break;
+    }
+
+    return db.select().from(metricSnapshots)
+      .where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        sql`${metricSnapshots.recordedAt} >= ${startDate}`
+      ))
+      .orderBy(metricSnapshots.recordedAt);
   }
 
   async getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined> {

@@ -14,7 +14,7 @@ const parseNum = (val: any): number => {
   return isNaN(num) || !isFinite(num) ? 0 : num;
 };
 
-async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMetrics> {
+async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMetrics & { detailedMetrics: any }> {
   // Fetch LinkedIn metrics
   let linkedinMetrics: any = {};
   try {
@@ -54,12 +54,19 @@ async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMet
   const totalConversions = parseNum(linkedinMetrics.conversions) + parseNum(customIntegrationData.conversions);
   const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend);
   
+  // Store detailed metrics from both sources for historical tracking
+  const detailedMetrics = {
+    linkedin: linkedinMetrics,
+    customIntegration: customIntegrationData
+  };
+  
   return {
     totalImpressions: Math.round(totalImpressions),
     totalEngagements: Math.round(totalEngagements),
     totalClicks: Math.round(totalClicks),
     totalConversions: Math.round(totalConversions),
-    totalSpend: parseFloat(totalSpend.toFixed(2))
+    totalSpend: parseFloat(totalSpend.toFixed(2)),
+    detailedMetrics
   };
 }
 
@@ -84,6 +91,7 @@ async function createSnapshotsForAllCampaigns() {
             totalClicks: metrics.totalClicks,
             totalConversions: metrics.totalConversions,
             totalSpend: metrics.totalSpend.toFixed(2),
+            metrics: metrics.detailedMetrics,
             snapshotType: 'automatic'
           });
           

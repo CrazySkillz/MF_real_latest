@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -345,6 +345,8 @@ export const metricSnapshots = pgTable("metric_snapshots", {
   totalConversions: integer("total_conversions").notNull().default(0),
   totalLeads: integer("total_leads").notNull().default(0),
   totalSpend: decimal("total_spend", { precision: 10, scale: 2 }).notNull().default("0"),
+  // Detailed metrics from all sources (LinkedIn + Custom Integration)
+  metrics: jsonb("metrics"), // { linkedin: { impressions: 100, clicks: 50, ... }, customIntegration: { users: 200, sessions: 150, ... } }
   // Metadata
   snapshotType: text("snapshot_type").notNull().default("automatic"), // 'automatic', 'manual'
   recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -734,6 +736,7 @@ export const insertMetricSnapshotSchema = createInsertSchema(metricSnapshots).pi
   totalConversions: true,
   totalLeads: true,
   totalSpend: true,
+  metrics: true,
   snapshotType: true,
   notes: true,
 });

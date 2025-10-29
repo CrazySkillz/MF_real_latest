@@ -718,217 +718,64 @@ export default function CampaignPerformanceSummary() {
                     <div className="space-y-6">
                       {/* Initial Bar Charts - Metrics by Source */}
                       {(() => {
-                        // LinkedIn Ads detailed metrics
-                        const linkedinData = {
-                          impressions: linkedinMetrics?.impressions || 0,
-                          clicks: linkedinMetrics?.clicks || 0,
-                          engagements: linkedinMetrics?.totalEngagements || 0,
-                          conversions: linkedinMetrics?.conversions || 0,
-                          leads: linkedinMetrics?.leads || 0,
-                          spend: parseFloat(linkedinMetrics?.costInLocalCurrency || '0'),
-                        };
-
-                        // Website Analytics detailed metrics from Custom Integration
+                        // Prepare comparison data for bar charts
                         const ciMetrics = customIntegration?.metrics || {};
-                        const websiteData = {
-                          // GA4 Website Analytics
-                          users: ciMetrics.users || 0,
-                          sessions: ciMetrics.sessions || 0,
-                          pageviews: ciMetrics.pageviews || 0,
-                          bounceRate: parseFloat(ciMetrics.bounceRate || '0'),
-                          avgSessionDuration: parseFloat(ciMetrics.avgSessionDuration || '0'),
-                          // Ad metrics
-                          adImpressions: ciMetrics.adImpressions || 0,
-                          adClicks: ciMetrics.adClicks || 0,
-                          adSpend: parseFloat(ciMetrics.adSpend || '0'),
-                          goalCompletions: ciMetrics.goalCompletions || 0,
-                          // Email metrics
-                          emailOpens: ciMetrics.emailOpens || 0,
-                          emailClicks: ciMetrics.emailClicks || 0,
-                          emailBounces: ciMetrics.emailBounces || 0,
-                          // Social metrics
-                          socialImpressions: ciMetrics.socialImpressions || 0,
-                          socialEngagements: ciMetrics.socialEngagements || 0,
-                          socialClicks: ciMetrics.socialClicks || 0,
-                        };
+                        
+                        const comparisonData = [
+                          {
+                            metric: 'Impressions',
+                            'LinkedIn Ads': linkedinMetrics?.impressions || 0,
+                            'Website Analytics': ciMetrics.adImpressions || 0,
+                          },
+                          {
+                            metric: 'Clicks',
+                            'LinkedIn Ads': linkedinMetrics?.clicks || 0,
+                            'Website Analytics': (ciMetrics.adClicks || 0) + (ciMetrics.emailClicks || 0),
+                          },
+                          {
+                            metric: 'Engagements',
+                            'LinkedIn Ads': linkedinMetrics?.totalEngagements || 0,
+                            'Website Analytics': ciMetrics.socialEngagements || 0,
+                          },
+                          {
+                            metric: 'Conversions',
+                            'LinkedIn Ads': linkedinMetrics?.conversions || 0,
+                            'Website Analytics': ciMetrics.goalCompletions || 0,
+                          },
+                          {
+                            metric: 'Leads',
+                            'LinkedIn Ads': linkedinMetrics?.leads || 0,
+                            'Website Analytics': 0,
+                          },
+                          {
+                            metric: 'Sessions',
+                            'LinkedIn Ads': 0,
+                            'Website Analytics': ciMetrics.sessions || 0,
+                          },
+                        ];
 
                         return (
                           <>
-                            {/* LinkedIn Ads Metrics */}
-                            <div className="mb-6">
-                              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
-                                <SiLinkedin className="w-5 h-5 mr-2 text-blue-600" />
-                                LinkedIn Ads Metrics
-                              </h3>
-                              <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                  <h4 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Impressions</h4>
-                                  <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                    {linkedinData.impressions.toLocaleString()}
-                                  </div>
+                            <div className="grid grid-cols-2 gap-6">
+                              {comparisonData.map((data, index) => (
+                                <div key={index}>
+                                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">{data.metric}</h4>
+                                  <ResponsiveContainer width="100%" height={200}>
+                                    <BarChart data={[data]} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                                      <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                      <XAxis dataKey="metric" className="text-xs" />
+                                      <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
+                                      <Tooltip 
+                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                        formatter={(value: any) => value.toLocaleString()}
+                                      />
+                                      <Legend />
+                                      <Bar dataKey="LinkedIn Ads" fill="#0077B5" radius={[8, 8, 0, 0]} />
+                                      <Bar dataKey="Website Analytics" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                                    </BarChart>
+                                  </ResponsiveContainer>
                                 </div>
-                                <div>
-                                  <h4 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Clicks</h4>
-                                  <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                    {linkedinData.clicks.toLocaleString()}
-                                  </div>
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Engagements</h4>
-                                  <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                    {linkedinData.engagements.toLocaleString()}
-                                  </div>
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Conversions</h4>
-                                  <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                    {linkedinData.conversions.toLocaleString()}
-                                  </div>
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Leads</h4>
-                                  <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                    {linkedinData.leads.toLocaleString()}
-                                  </div>
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Ad Spend</h4>
-                                  <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                    ${linkedinData.spend.toFixed(2)}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Website Analytics Metrics */}
-                            <div>
-                              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                                Website Analytics (Custom Integration)
-                              </h3>
-                              
-                              {/* GA4 Analytics */}
-                              <div className="mb-6">
-                                <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">GA4 Website Metrics</h4>
-                                <div className="grid grid-cols-3 gap-4">
-                                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Users</div>
-                                    <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                      {websiteData.users.toLocaleString()}
-                                    </div>
-                                  </div>
-                                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Sessions</div>
-                                    <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                      {websiteData.sessions.toLocaleString()}
-                                    </div>
-                                  </div>
-                                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Pageviews</div>
-                                    <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                      {websiteData.pageviews.toLocaleString()}
-                                    </div>
-                                  </div>
-                                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Bounce Rate</div>
-                                    <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                      {websiteData.bounceRate.toFixed(2)}%
-                                    </div>
-                                  </div>
-                                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Avg. Session Duration</div>
-                                    <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                      {Math.floor(websiteData.avgSessionDuration / 60)}m {Math.floor(websiteData.avgSessionDuration % 60)}s
-                                    </div>
-                                  </div>
-                                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Goal Completions</div>
-                                    <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                      {websiteData.goalCompletions.toLocaleString()}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Ad Metrics from CI */}
-                              {(websiteData.adImpressions > 0 || websiteData.adClicks > 0 || websiteData.adSpend > 0) && (
-                                <div className="mb-6">
-                                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Advertising Metrics</h4>
-                                  <div className="grid grid-cols-3 gap-4">
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Ad Impressions</div>
-                                      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                        {websiteData.adImpressions.toLocaleString()}
-                                      </div>
-                                    </div>
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Ad Clicks</div>
-                                      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                        {websiteData.adClicks.toLocaleString()}
-                                      </div>
-                                    </div>
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Ad Spend</div>
-                                      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                        ${websiteData.adSpend.toFixed(2)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Email Metrics */}
-                              {(websiteData.emailOpens > 0 || websiteData.emailClicks > 0) && (
-                                <div className="mb-6">
-                                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Email Marketing Metrics</h4>
-                                  <div className="grid grid-cols-3 gap-4">
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Email Opens</div>
-                                      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                        {websiteData.emailOpens.toLocaleString()}
-                                      </div>
-                                    </div>
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Email Clicks</div>
-                                      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                        {websiteData.emailClicks.toLocaleString()}
-                                      </div>
-                                    </div>
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Email Bounces</div>
-                                      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                        {websiteData.emailBounces.toLocaleString()}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Social Media Metrics */}
-                              {(websiteData.socialImpressions > 0 || websiteData.socialEngagements > 0) && (
-                                <div>
-                                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Social Media Metrics</h4>
-                                  <div className="grid grid-cols-3 gap-4">
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Social Impressions</div>
-                                      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                        {websiteData.socialImpressions.toLocaleString()}
-                                      </div>
-                                    </div>
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Social Engagements</div>
-                                      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                        {websiteData.socialEngagements.toLocaleString()}
-                                      </div>
-                                    </div>
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Social Clicks</div>
-                                      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                        {websiteData.socialClicks.toLocaleString()}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
+                              ))}
                             </div>
 
                             {trendSnapshots.length === 0 && schedulerStatus && (

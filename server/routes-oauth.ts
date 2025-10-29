@@ -4423,6 +4423,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get campaign snapshots by time period for trend analysis
+  app.get("/api/campaigns/:id/snapshots", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { period } = req.query;
+      
+      if (!period || !['daily', 'weekly', 'monthly'].includes(period as string)) {
+        return res.status(400).json({ message: "Invalid period. Use: daily, weekly, or monthly" });
+      }
+      
+      const snapshots = await storage.getCampaignSnapshotsByPeriod(id, period as 'daily' | 'weekly' | 'monthly');
+      res.json(snapshots);
+    } catch (error) {
+      console.error('Snapshots fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch snapshots" });
+    }
+  });
+
   // Get snapshot scheduler status
   app.get("/api/snapshots/scheduler", async (req, res) => {
     try {

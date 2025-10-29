@@ -47,17 +47,39 @@ async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMet
   }
   
   // Aggregate metrics from all sources
-  // Map Custom Integration: pageviews→impressions, sessions→engagements (consistent with Performance Summary)
-  const totalImpressions = parseNum(linkedinMetrics.impressions) + parseNum(customIntegrationData.pageviews);
+  // Total Impressions = Advertising Impressions (LinkedIn + CI ads) + Website Pageviews (CI analytics)
+  // Must match Performance Summary calculation exactly
+  const advertisingImpressions = parseNum(linkedinMetrics.impressions) + parseNum(customIntegrationData.impressions);
+  const totalImpressions = advertisingImpressions + parseNum(customIntegrationData.pageviews);
   const totalEngagements = parseNum(linkedinMetrics.engagements) + parseNum(customIntegrationData.sessions);
   const totalClicks = parseNum(linkedinMetrics.clicks) + parseNum(customIntegrationData.clicks);
   const totalConversions = parseNum(linkedinMetrics.conversions) + parseNum(customIntegrationData.conversions);
   const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend);
   
   // Store detailed metrics from both sources for historical tracking
+  // Structure matches frontend expectations for per-source trend analysis
   const detailedMetrics = {
-    linkedin: linkedinMetrics,
-    customIntegration: customIntegrationData
+    linkedin: {
+      impressions: parseNum(linkedinMetrics.impressions),
+      clicks: parseNum(linkedinMetrics.clicks),
+      totalEngagements: parseNum(linkedinMetrics.engagement) + parseNum(linkedinMetrics.engagements),
+      conversions: parseNum(linkedinMetrics.conversions),
+      leads: parseNum(linkedinMetrics.leads),
+      costInLocalCurrency: linkedinMetrics.costinlocalcurrency || linkedinMetrics.costInLocalCurrency || '0',
+    },
+    customIntegration: {
+      // Advertising metrics
+      impressions: parseNum(customIntegrationData.impressions),
+      clicks: parseNum(customIntegrationData.clicks),
+      engagements: parseNum(customIntegrationData.engagements),
+      conversions: parseNum(customIntegrationData.conversions),
+      leads: parseNum(customIntegrationData.leads),
+      spend: customIntegrationData.spend || '0',
+      // Website analytics metrics
+      sessions: parseNum(customIntegrationData.sessions),
+      users: parseNum(customIntegrationData.users),
+      pageviews: parseNum(customIntegrationData.pageviews),
+    }
   };
   
   return {

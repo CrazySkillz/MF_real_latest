@@ -917,7 +917,8 @@ export default function CampaignPerformanceSummary() {
                             websiteSessions: ciMetrics.sessions || 0,
                             websiteUsers: ciMetrics.users || 0,
                             websitePageviews: ciMetrics.pageviews || 0,
-                            websiteGoalCompletions: ciMetrics.goalCompletions || 0,
+                            // Custom Integration conversions (mapped from advertising/web analytics)
+                            ciConversions: ciMetrics.conversions || 0,
                           };
                         });
 
@@ -971,7 +972,7 @@ export default function CampaignPerformanceSummary() {
                                     <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }} />
                                     <Legend />
                                     <Line type="monotone" dataKey="linkedinConversions" name="LinkedIn Ads" stroke="#0077B5" strokeWidth={2} dot={{ r: 3 }} />
-                                    <Line type="monotone" dataKey="websiteGoalCompletions" name="Website Analytics" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} />
+                                    <Line type="monotone" dataKey="ciConversions" name="Custom Integration" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} />
                                   </LineChart>
                                 </ResponsiveContainer>
                               </div>

@@ -718,7 +718,7 @@ export default function CampaignPerformanceSummary() {
                     <div className="space-y-6">
                       {/* Initial Bar Charts - Metrics by Source */}
                       {(() => {
-                        // Prepare data for bar charts
+                        // Prepare data for bar charts - LinkedIn Ads vs Website Analytics
                         const barData = [
                           {
                             source: 'LinkedIn Ads',
@@ -728,14 +728,11 @@ export default function CampaignPerformanceSummary() {
                             spend: parseFloat(linkedinMetrics?.costInLocalCurrency || '0'),
                           },
                           {
-                            source: 'Custom Integration',
+                            source: 'Website Analytics',
                             impressions: customIntegration?.metrics?.adImpressions || 0,
                             clicks: (customIntegration?.metrics?.adClicks || 0) + (customIntegration?.metrics?.emailClicks || 0),
                             conversions: customIntegration?.metrics?.goalCompletions || 0,
                             spend: parseFloat(customIntegration?.metrics?.adSpend || '0'),
-                          },
-                          {
-                            source: 'Website Analytics',
                             sessions: customIntegration?.metrics?.sessions || 0,
                             users: customIntegration?.metrics?.users || 0,
                             pageviews: customIntegration?.metrics?.pageviews || 0,

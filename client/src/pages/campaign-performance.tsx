@@ -69,13 +69,13 @@ export default function CampaignPerformanceSummary() {
     current: any | null;
     previous: any | null;
   }>({
-    queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison`, comparisonType],
+    queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`],
     enabled: !!campaignId,
   });
 
   // Fetch trend snapshots for time-series analysis
   const { data: trendSnapshots = [], isLoading: snapshotsLoading } = useQuery<any[]>({
-    queryKey: [`/api/campaigns/${campaignId}/snapshots`, trendPeriod],
+    queryKey: [`/api/campaigns/${campaignId}/snapshots?period=${trendPeriod}`],
     enabled: !!campaignId,
   });
 

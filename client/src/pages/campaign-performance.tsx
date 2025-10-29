@@ -26,7 +26,6 @@ export default function CampaignPerformanceSummary() {
   const campaignId = params?.id;
   const [comparisonType, setComparisonType] = useState<'yesterday' | 'last_week' | 'last_month'>('yesterday');
   const [trendPeriod, setTrendPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
-  const [changeView, setChangeView] = useState<'comparison' | 'trends'>('comparison');
   const { toast } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
@@ -686,79 +685,28 @@ export default function CampaignPerformanceSummary() {
                       <div>
                         <CardTitle>What's Changed</CardTitle>
                         <CardDescription className="mt-1.5">
-                          Compare metrics over time
+                          {trendSnapshots.length < 2 
+                            ? "Current metrics breakdown by source" 
+                            : "Metric trends over time"}
                         </CardDescription>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Tabs value={changeView} onValueChange={(value: any) => setChangeView(value)} className="w-auto">
-                        <TabsList data-testid="tabs-change-view">
-                          <TabsTrigger value="comparison" data-testid="tab-comparison">Comparison</TabsTrigger>
-                          <TabsTrigger value="trends" data-testid="tab-trends">Trends</TabsTrigger>
-                        </TabsList>
-                      </Tabs>
-                      {changeView === 'trends' && (
-                        <Select value={trendPeriod} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setTrendPeriod(value)}>
-                          <SelectTrigger className="w-[180px]" data-testid="select-trend-period">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="daily" data-testid="option-trend-daily">Last 24 Hours</SelectItem>
-                            <SelectItem value="weekly" data-testid="option-trend-weekly">Last 7 Days</SelectItem>
-                            <SelectItem value="monthly" data-testid="option-trend-monthly">Last 30 Days</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
+                    {trendSnapshots.length >= 2 && (
+                      <Select value={trendPeriod} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setTrendPeriod(value)}>
+                        <SelectTrigger className="w-[180px]" data-testid="select-trend-period">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily" data-testid="option-trend-daily">Last 24 Hours</SelectItem>
+                          <SelectItem value="weekly" data-testid="option-trend-weekly">Last 7 Days</SelectItem>
+                          <SelectItem value="monthly" data-testid="option-trend-monthly">Last 30 Days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {changeView === 'comparison' ? (
-                    <div className="space-y-4">
-                      {/* Initial Metrics Display */}
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Impressions</div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-impressions">
-                            {totalImpressions.toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Engagements</div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-engagements">
-                            {totalEngagements.toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Clicks</div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-clicks">
-                            {totalClicks.toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Conversions</div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-conversions">
-                            {totalConversions.toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Leads</div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-leads">
-                            {totalLeads.toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Ad Spend</div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-spend">
-                            ${totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 text-center pt-2">
-                        Switch to "Trends" view to see historical charts over time
-                      </div>
-                    </div>
-                  ) : snapshotsLoading ? (
+                  {snapshotsLoading ? (
                     <div className="space-y-6">
                       <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
                       <div className="grid grid-cols-2 gap-4">
@@ -766,23 +714,120 @@ export default function CampaignPerformanceSummary() {
                         <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
                       </div>
                     </div>
-                  ) : trendSnapshots.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="mb-4">
-                        <Clock className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto" />
-                      </div>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        No Historical Data Available
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 max-w-md mx-auto">
-                        Automated snapshots are being captured{schedulerStatus?.frequency ? ` ${schedulerStatus.frequency}` : ''}. 
-                        Historical trends will appear here once multiple snapshots are collected.
-                      </p>
-                      {schedulerStatus?.nextRun && (
-                        <p className="text-xs text-slate-400 dark:text-slate-600 mt-3">
-                          Next snapshot: {new Date(schedulerStatus.nextRun).toLocaleString()}
-                        </p>
-                      )}
+                  ) : trendSnapshots.length < 2 ? (
+                    <div className="space-y-6">
+                      {/* Initial Bar Charts - Metrics by Source */}
+                      {(() => {
+                        // Prepare data for bar charts
+                        const barData = [
+                          {
+                            source: 'LinkedIn Ads',
+                            impressions: linkedinMetrics?.impressions || 0,
+                            clicks: linkedinMetrics?.clicks || 0,
+                            conversions: linkedinMetrics?.conversions || 0,
+                            spend: parseFloat(linkedinMetrics?.costInLocalCurrency || '0'),
+                          },
+                          {
+                            source: 'Custom Integration',
+                            impressions: customIntegration?.metrics?.adImpressions || 0,
+                            clicks: (customIntegration?.metrics?.adClicks || 0) + (customIntegration?.metrics?.emailClicks || 0),
+                            conversions: customIntegration?.metrics?.goalCompletions || 0,
+                            spend: parseFloat(customIntegration?.metrics?.adSpend || '0'),
+                          },
+                          {
+                            source: 'Website Analytics',
+                            sessions: customIntegration?.metrics?.sessions || 0,
+                            users: customIntegration?.metrics?.users || 0,
+                            pageviews: customIntegration?.metrics?.pageviews || 0,
+                          }
+                        ];
+
+                        return (
+                          <>
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Impressions by Source</h4>
+                              <ResponsiveContainer width="100%" height={250}>
+                                <BarChart data={barData.filter(d => d.impressions)} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                  <XAxis dataKey="source" className="text-xs" />
+                                  <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
+                                  <Tooltip 
+                                    contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                    formatter={(value: any) => value.toLocaleString()}
+                                  />
+                                  <Bar dataKey="impressions" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Clicks by Source</h4>
+                                <ResponsiveContainer width="100%" height={220}>
+                                  <BarChart data={barData.filter(d => d.clicks)} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis dataKey="source" className="text-xs" />
+                                    <YAxis className="text-xs" />
+                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }} />
+                                    <Bar dataKey="clicks" fill="#10b981" radius={[8, 8, 0, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Conversions by Source</h4>
+                                <ResponsiveContainer width="100%" height={220}>
+                                  <BarChart data={barData.filter(d => d.conversions)} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis dataKey="source" className="text-xs" />
+                                    <YAxis className="text-xs" />
+                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }} />
+                                    <Bar dataKey="conversions" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Ad Spend by Source ($)</h4>
+                                <ResponsiveContainer width="100%" height={220}>
+                                  <BarChart data={barData.filter(d => d.spend)} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis dataKey="source" className="text-xs" />
+                                    <YAxis className="text-xs" />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
+                                      formatter={(value: any) => `$${parseFloat(value).toFixed(2)}`}
+                                    />
+                                    <Bar dataKey="spend" fill="#ef4444" radius={[8, 8, 0, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Website Sessions by Source</h4>
+                                <ResponsiveContainer width="100%" height={220}>
+                                  <BarChart data={barData.filter(d => d.sessions)} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                    <XAxis dataKey="source" className="text-xs" />
+                                    <YAxis className="text-xs" />
+                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }} />
+                                    <Bar dataKey="sessions" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </div>
+
+                            {trendSnapshots.length === 0 && schedulerStatus && (
+                              <div className="text-center py-4 text-xs text-slate-500 dark:text-slate-400">
+                                Trend charts will appear here once multiple snapshots are captured ({schedulerStatus.frequency}).
+                                {schedulerStatus.nextRun && ` Next snapshot: ${new Date(schedulerStatus.nextRun).toLocaleString()}`}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div className="space-y-6">

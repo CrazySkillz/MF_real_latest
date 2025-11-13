@@ -1050,26 +1050,21 @@ export default function Campaigns() {
     }
   };
 
+  const resetCreateModalState = () => {
+    setShowConnectorsStep(false);
+    setLinkedInImportComplete(false);
+    setConnectedPlatformsInDialog([]);
+    setCampaignData(null);
+    form.reset();
+  };
 
+  const handleCreateModalChange = (open: boolean) => {
+    setIsCreateModalOpen(open);
+    resetCreateModalState();
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-  const handleCreateModalChange = (open: boolean) => {
-    setIsCreateModalOpen(open);
-    if (open) {
-      setShowConnectorsStep(false);
-      setLinkedInImportComplete(false);
-      setConnectedPlatformsInDialog([]);
-      setCampaignData(null);
-      form.reset();
-    } else {
-      setShowConnectorsStep(false);
-      setLinkedInImportComplete(false);
-      setConnectedPlatformsInDialog([]);
-      setCampaignData(null);
-      form.reset();
-    }
-  };
 
       <Navigation />
       

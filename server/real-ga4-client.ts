@@ -35,12 +35,19 @@ export class RealGA4Client {
     this.setupGoogleAuth();
   }
 
+  private getBaseUrl(): string {
+    if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL;
+    if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL;
+    if (process.env.REPLIT_DOMAIN) return `https://${process.env.REPLIT_DOMAIN}`;
+    return process.env.NODE_ENV === 'production'
+      ? 'https://your-app.replit.app'
+      : 'http://localhost:5000';
+  }
+
   private async setupGoogleAuth() {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = process.env.NODE_ENV === 'production' 
-      ? 'https://your-app.replit.app/api/auth/google/callback'
-      : 'http://localhost:5000/api/auth/google/callback';
+    const redirectUri = `${this.getBaseUrl()}/api/auth/google/callback`;
 
     if (clientId && clientSecret) {
       try {
@@ -58,10 +65,8 @@ export class RealGA4Client {
   }
 
   generateAuthUrl(campaignId: string): string {
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.REPLIT_DOMAIN || 'https://your-app.replit.app'
-      : 'http://localhost:5000';
-      
+    const baseUrl = this.getBaseUrl();
+
     if (!this.oauth2Client) {
       // Return simulation URL if no real OAuth configured
       return `${baseUrl}/api/auth/google/simulation-auth?state=${campaignId}`;

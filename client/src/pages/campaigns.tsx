@@ -21,7 +21,7 @@ import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
+import { IntegratedGA4Auth } from "@/components/IntegratedGA4Auth";
 import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 
@@ -129,11 +129,10 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({});
   const [expandedPlatforms, setExpandedPlatforms] = useState<Record<string, boolean>>({});
-  const [ga4Properties, setGA4Properties] = useState<Array<{id: string, name: string}>>([]);
+  const [ga4Properties, setGA4Properties] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedGA4Property, setSelectedGA4Property] = useState<string>('');
   const [showPropertySelector, setShowPropertySelector] = useState(false);
-  const [ga4AccessToken, setGA4AccessToken] = useState<string>('');
-  const [ga4RefreshToken, setGA4RefreshToken] = useState<string>('');
+  const [isGA4PropertyLoading, setIsGA4PropertyLoading] = useState(false);
   const [showCustomIntegrationModal, setShowCustomIntegrationModal] = useState(false);
   const [customIntegrationEmail, setCustomIntegrationEmail] = useState('');
   const [allowedEmailAddresses, setAllowedEmailAddresses] = useState('');
@@ -186,56 +185,47 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
 
 
 
-  const handleGA4Connect = async () => {
-    if (!selectedGA4Property || !ga4AccessToken) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide both GA4 Property ID and Access Token.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const loadGA4Properties = async () => {
+    setIsGA4PropertyLoading(true);
     setIsConnecting(prev => ({ ...prev, 'google-analytics': true }));
-    
+
     try {
-      const response = await fetch('/api/ga4/connect-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId: 'temp-campaign-setup',
-          accessToken: ga4AccessToken,
-          refreshToken: ga4RefreshToken,
-          propertyId: selectedGA4Property
-        })
-      });
-      
+      const response = await fetch(`/api/campaigns/temp-campaign-setup/ga4-connection-status`);
       const data = await response.json();
-      
-      if (data.success) {
+
+      if (data.connected && Array.isArray(data.properties) && data.properties.length > 0) {
+        setGA4Properties(data.properties);
+        setSelectedGA4Property(data.properties[0]?.id || '');
+        setShowPropertySelector(true);
+        toast({
+          title: "Google Account Connected",
+          description: "Select the GA4 property you want to use for this campaign."
+        });
+      } else if (data.connected && data.propertyId) {
         setConnectedPlatforms(prev => [...prev, 'google-analytics']);
         setSelectedPlatforms(prev => [...prev, 'google-analytics']);
-        
+        setExpandedPlatforms(prev => ({ ...prev, 'google-analytics': false }));
         toast({
-          title: "GA4 Connected!",
-          description: "Successfully connected! Your real Google Analytics data will be available."
+          title: "GA4 Connected",
+          description: "Your Google Analytics property is already linked."
         });
       } else {
         toast({
-          title: "Connection Failed",
-          description: data.error || "Failed to connect with provided credentials.",
+          title: "Connection Pending",
+          description: "We couldn't fetch your GA4 properties. Please try connecting again.",
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('GA4 connection error:', error);
+      console.error('GA4 property load error:', error);
       toast({
         title: "Connection Failed",
-        description: "Failed to connect to Google Analytics. Please check your credentials.",
+        description: "Failed to retrieve Google Analytics properties. Please try again.",
         variant: "destructive"
       });
     } finally {
       setIsConnecting(prev => ({ ...prev, 'google-analytics': false }));
+      setIsGA4PropertyLoading(false);
     }
   };
 
@@ -295,59 +285,40 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
     }
   };
 
-  const checkOAuthResult = async () => {
-    try {
-      const response = await fetch('/api/ga4/check-connection/temp-campaign-setup');
-      const data = await response.json();
-      
-      if (data.connected && data.properties) {
-        handleOAuthSuccess(data.properties);
-      }
-    } catch (error) {
-      console.error('Failed to check OAuth result:', error);
-    }
-  };
-
-  const handleOAuthSuccess = (properties: Array<{id: string, name: string}>) => {
-    setGA4Properties(properties);
-    setShowPropertySelector(true);
-    
-    toast({
-      title: "Google Analytics Connected!",
-      description: "Please select a GA4 property to start pulling metrics."
-    });
-  };
-
-  const handleOAuthError = (error: string) => {
-    toast({
-      title: "Connection Failed",
-      description: error || "Failed to connect to Google Analytics",
-      variant: "destructive"
-    });
-  };
-
   const handlePropertySelection = async () => {
-    if (!selectedGA4Property) return;
+    if (!selectedGA4Property) {
+      toast({
+        title: "Property Required",
+        description: "Please select a GA4 property to continue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGA4PropertyLoading(true);
 
     try {
-      const response = await fetch('/api/ga4/select-property', {
+      const response = await fetch(`/api/campaigns/temp-campaign-setup/ga4-property`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          campaignId: 'temp-campaign-setup',
           propertyId: selectedGA4Property
         })
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
         setConnectedPlatforms(prev => [...prev, 'google-analytics']);
         setSelectedPlatforms(prev => [...prev, 'google-analytics']);
+        setExpandedPlatforms(prev => ({ ...prev, 'google-analytics': false }));
         setShowPropertySelector(false);
-        
         toast({
-          title: "Property Connected!",
-          description: "Starting to pull real-time metrics from your GA4 property."
+          title: "GA4 Connected!",
+          description: "Google Analytics is now linked to this campaign."
         });
+      } else {
+        throw new Error(data?.message || data?.error || "Failed to connect property");
       }
     } catch (error) {
       console.error('Property selection error:', error);
@@ -356,6 +327,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
         description: "Failed to connect to the selected property.",
         variant: "destructive"
       });
+    } finally {
+      setIsGA4PropertyLoading(false);
     }
   };
 
@@ -435,15 +408,16 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
               {isExpanded && !isConnected && (
                 <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-4">
                   {platform.id === 'google-analytics' && (
-                    <GA4ConnectionFlow
+                    <IntegratedGA4Auth
                       campaignId="temp-campaign-setup"
-                      onConnectionSuccess={() => {
-                        setConnectedPlatforms(prev => [...prev, 'google-analytics']);
-                        setSelectedPlatforms(prev => [...prev, 'google-analytics']);
-                        setExpandedPlatforms(prev => ({ ...prev, 'google-analytics': false }));
+                      onSuccess={() => {
+                        void loadGA4Properties();
+                      }}
+                      onError={(error) => {
                         toast({
-                          title: "GA4 Connected!",
-                          description: "Successfully connected with automatic token refresh for marketing professionals."
+                          title: "Connection Failed",
+                          description: error || "Unable to complete Google Analytics connection.",
+                          variant: "destructive"
                         });
                       }}
                     />
@@ -656,10 +630,10 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 </Button>
                 <Button 
                   onClick={handlePropertySelection}
-                  disabled={!selectedGA4Property}
+                  disabled={!selectedGA4Property || isGA4PropertyLoading}
                   className="flex-1"
                 >
-                  Connect Property
+                  {isGA4PropertyLoading ? "Connecting..." : "Connect Property"}
                 </Button>
               </div>
             </div>

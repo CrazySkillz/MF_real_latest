@@ -1054,6 +1054,23 @@ export default function Campaigns() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+  const handleCreateModalChange = (open: boolean) => {
+    setIsCreateModalOpen(open);
+    if (open) {
+      setShowConnectorsStep(false);
+      setLinkedInImportComplete(false);
+      setConnectedPlatformsInDialog([]);
+      setCampaignData(null);
+      form.reset();
+    } else {
+      setShowConnectorsStep(false);
+      setLinkedInImportComplete(false);
+      setConnectedPlatformsInDialog([]);
+      setCampaignData(null);
+      form.reset();
+    }
+  };
+
       <Navigation />
       
       <div className="flex">
@@ -1067,7 +1084,7 @@ export default function Campaigns() {
                 <p className="text-slate-600 dark:text-slate-400 mt-1">Create, manage, and optimize your marketing campaigns</p>
               </div>
               
-              <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+              <Dialog open={isCreateModalOpen} onOpenChange={handleCreateModalChange}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="w-4 h-4 mr-2" />

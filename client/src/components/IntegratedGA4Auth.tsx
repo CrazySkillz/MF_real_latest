@@ -4,7 +4,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SiGoogle } from "react-icons/si";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 interface IntegratedGA4AuthProps {
@@ -17,7 +16,6 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
   const [isConnecting, setIsConnecting] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
   const popupRef = useRef<Window | null>(null);
-  const { toast } = useToast();
 
   const cleanupPopup = useCallback(() => {
     if (popupRef.current && !popupRef.current.closed) {
@@ -35,10 +33,6 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
         setAuthCompleted(true);
         cleanupPopup();
         onSuccess();
-        toast({
-          title: "Connected",
-          description: "Authentication complete. Select your GA4 property to finish setup.",
-        });
       } else if (event.data?.type === "auth_error") {
         cleanupPopup();
         onError(event.data.error || "Authentication failed");
@@ -49,7 +43,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
     return () => {
       window.removeEventListener("message", handlePopupMessage);
     };
-  }, [cleanupPopup, onError, onSuccess, toast]);
+  }, [cleanupPopup, onError, onSuccess]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -69,17 +63,13 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
       if (data.connected) {
         setAuthCompleted(true);
         onSuccess();
-        toast({
-          title: "Connected",
-          description: "Authentication complete. Select your GA4 property to finish setup.",
-        });
       }
     } catch (error) {
       console.error("Failed to verify connection status:", error);
     } finally {
       setIsConnecting(false);
     }
-  }, [campaignId, onSuccess, toast]);
+  }, [campaignId, onSuccess]);
 
   const startOAuthFlow = useCallback(async () => {
     setIsConnecting(true);

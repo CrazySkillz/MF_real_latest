@@ -335,6 +335,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Simulation OAuth auth page (used when real credentials are absent)
+  app.get("/api/auth/google/simulation-auth", async (req, res) => {
+    try {
+      const { state } = req.query;
+
+      if (!state) {
+        return res.status(400).send("Missing state parameter");
+      }
+
+      const authPageHtml = `
+        <html>
+          <head>
+            <title>Connect Google Analytics</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
+              .consent-box { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background: #f9f9f9; }
+              .logo { text-align: center; margin-bottom: 20px; }
+              .permissions { margin: 20px 0; }
+              .permissions li { margin: 8px 0; }
+              button { background: #4285f4; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
+              button:hover { background: #3367d6; }
+              .cancel { background: #f8f9fa; color: #3c4043; border: 1px solid #dadce0; margin-top: 10px; }
+              .cancel:hover { background: #f1f3f4; }
+            </style>
+          </head>
+          <body>
+            <div class="consent-box">
+              <div class="logo">
+                <h2>🔗 Connect Google Analytics</h2>
+                <p>PerformanceCore wants to access your Google Analytics account</p>
+              </div>
+              
+              <div class="permissions">
+                <p><strong>This will allow PerformanceCore to:</strong></p>
+                <ul>
+                  <li>✓ Read your Google Analytics data</li>
+                  <li>✓ Access real-time metrics and reports</li>
+                  <li>✓ View your GA4 properties</li>
+                </ul>
+              </div>
+              
+              <button onclick="authorize()">Allow</button>
+              <button class="cancel" onclick="window.close()">Cancel</button>
+            </div>
+            
+            <script>
+              function authorize() {
+                const code = 'demo_auth_code_' + Date.now();
+                const campaignState = '${String(state).replace(/'/g, "\\'")}';
+                const callbackUrl = '/api/auth/google/callback?code=' + code + '&state=' + campaignState;
+                window.location.href = callbackUrl;
+              }
+            </script>
+          </body>
+        </html>
+      `;
+
+      res.send(authPageHtml);
+    } catch (error) {
+      console.error('[Integrated OAuth] Simulation auth error:', error);
+      res.status(500).send("Authentication setup failed");
+    }
+  });
+
+  // Real Google Analytics OAuth callback
+  app.get("/api/auth/google/callback", async (req, res) => {
+    try {
+      const { code, state, error } = req.query;
+
+      if (error) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Failed</title></head>
+            <body>
+              <h2>Authentication Failed</h2>
+              <p>Error: ${error}</p>
+              <button onclick="window.close()">Close</button>
+            </body>
+          </html>
+        `);
+      }
+
+      if (!code || !state) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>Missing authorization code or state parameter.</p>
+              <button onclick="window.close()">Close</button>
+            </body>
+          </html>
+        `);
+      }
+
+      console.log(`[Integrated OAuth] Processing callback for campaign ${state} with code ${code}`);
+      const result = await realGA4Client.handleCallback(code as string, state as string);
+      console.log('[Integrated OAuth] Callback result:', result);
+
+      if (result.success) {
+        res.send(`
+          <html>
+            <head><title>Google Analytics Connected</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #4285f4;">🎉 Successfully Connected!</h2>
+              <p>Your Google Analytics account is now connected.</p>
+              <p>You can now access real-time metrics and data.</p>
+              <button onclick="closeWindow()" style="background: #4285f4; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close Window</button>
+              <script>
+                function closeWindow() {
+                  try {
+                    if (window.opener) {
+                      window.opener.postMessage({ type: 'auth_success' }, window.location.origin);
+                    }
+                  } catch (e) {}
+                  window.close();
+                }
+                setTimeout(closeWindow, 3000);
+              </script>
+            </body>
+          </html>
+        `);
+      } else {
+        res.send(`
+          <html>
+            <head><title>Authentication Failed</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #d93025;">Authentication Failed</h2>
+              <p>Error: ${result.error}</p>
+              <button onclick="closeWithError()" style="background: #d93025; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close</button>
+              <script>
+                function closeWithError() {
+                  try {
+                    if (window.opener) {
+                      window.opener.postMessage({
+                        type: 'auth_error',
+                        error: '${result.error}'
+                      }, window.location.origin);
+                    }
+                  } catch (e) {}
+                  window.close();
+                }
+              </script>
+            </body>
+          </html>
+        `);
+      }
+    } catch (error) {
+      console.error('[Integrated OAuth] Callback error:', error);
+      res.redirect("/?error=callback_failed");
+    }
+  });
+
   // Check real GA4 connection status (supports integrated flow)
   app.get("/api/campaigns/:id/ga4-connection-status", async (req, res) => {
     try {

@@ -541,23 +541,28 @@ export const kpiReports = pgTable("kpi_reports", {
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-export const insertCampaignSchema = createInsertSchema(campaigns).pick({
-  name: true,
-  clientWebsite: true,
-  label: true,
-  budget: true,
-  currency: true,
-  type: true,
-  platform: true,
-  impressions: true,
-  clicks: true,
-  spend: true,
-  status: true,
-  industry: true,
-  trendKeywords: true,
-  startDate: true,
-  endDate: true,
-}).extend({
+export const insertCampaignSchema = createInsertSchema(campaigns)
+  .extend({
+    currency: z.string().default("USD"),
+  })
+  .pick({
+    name: true,
+    clientWebsite: true,
+    label: true,
+    budget: true,
+    currency: true,
+    type: true,
+    platform: true,
+    impressions: true,
+    clicks: true,
+    spend: true,
+    status: true,
+    industry: true,
+    trendKeywords: true,
+    startDate: true,
+    endDate: true,
+  })
+  .extend({
   startDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
     if (!val || val === null || val === undefined) return null;
     if (typeof val === 'string') {

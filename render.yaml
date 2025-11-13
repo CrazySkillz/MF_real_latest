@@ -1,0 +1,48 @@
+services:
+  # Web Service - Main Application
+  - type: web
+    name: performancecore
+    runtime: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: performancecore-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: EMAIL_PROVIDER
+        value: smtp
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_SECURE
+        value: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SNAPSHOT_FREQUENCY
+        value: daily
+    healthCheckPath: /api/health
+
+databases:
+  # PostgreSQL Database
+  - name: performancecore-db
+    databaseName: performancecore
+    plan: starter
+    region: oregon

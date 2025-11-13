@@ -26,6 +26,26 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint for monitoring
+  app.get("/api/health", async (req, res) => {
+    try {
+      // Check database connection
+      await storage.getCampaigns();
+      res.status(200).json({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        database: "connected"
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        database: "disconnected",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {

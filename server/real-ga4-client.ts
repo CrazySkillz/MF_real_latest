@@ -36,12 +36,16 @@ export class RealGA4Client {
   }
 
   private getBaseUrl(): string {
-    if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL;
-    if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL;
-    if (process.env.REPLIT_DOMAIN) return `https://${process.env.REPLIT_DOMAIN}`;
-    return process.env.NODE_ENV === 'production'
-      ? 'https://your-app.replit.app'
-      : 'http://localhost:5000';
+    const raw =
+      process.env.APP_BASE_URL ||
+      process.env.RENDER_EXTERNAL_URL ||
+      (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+      (process.env.NODE_ENV === 'production'
+        ? 'https://your-app.replit.app'
+        : 'http://localhost:5000');
+
+    // Ensure we never end with a trailing slash so we don't form "//api/..."
+    return raw.replace(/\/+$/, '');
   }
 
   private async setupGoogleAuth() {

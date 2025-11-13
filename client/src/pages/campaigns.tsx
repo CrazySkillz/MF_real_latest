@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FocusEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
@@ -129,7 +129,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({});
   const [expandedPlatforms, setExpandedPlatforms] = useState<Record<string, boolean>>({});
-  const [ga4Properties, setGA4Properties] = useState<Array<{ id: string; name: string }>>([]);
+  const [ga4Properties, setGA4Properties] = useState<Array<{ id: string; name: string; account?: string }>>([]);
   const [selectedGA4Property, setSelectedGA4Property] = useState<string>('');
   const [showPropertySelector, setShowPropertySelector] = useState(false);
   const [isGA4PropertyLoading, setIsGA4PropertyLoading] = useState(false);
@@ -167,7 +167,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const handlePlatformConnect = async (platformId: string) => {
     // Start connection process
     if (platformId === 'google-analytics') {
-      await handleGA4Connect();
+      await loadGA4Properties();
     } else if (platformId === 'google-sheets') {
       // Google Sheets connection is handled by the component
       // Mark as connected when the component succeeds
@@ -601,25 +601,35 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
             </DialogHeader>
             
             <div className="space-y-4">
-              <div className="space-y-3">
-                {ga4Properties.map((property) => (
-                  <label key={property.id} className="flex items-center space-x-3 cursor-pointer p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
-                    <input
-                      type="radio"
-                      name="property"
-                      value={property.id}
-                      checked={selectedGA4Property === property.id}
-                      onChange={(e) => setSelectedGA4Property(e.target.value)}
-                      className="text-blue-600"
-                    />
-                    <div>
-                      <div className="font-medium">{property.name}</div>
-                      <div className="text-sm text-gray-500">ID: {property.id}</div>
-                    </div>
-                  </label>
-                ))}
+              <div className="space-y-2">
+                <Label htmlFor="ga4-property-select">GA4 Property</Label>
+                <Select
+                  value={selectedGA4Property}
+                  onValueChange={(value) => setSelectedGA4Property(value)}
+                >
+                  <SelectTrigger id="ga4-property-select" className="w-full">
+                    <SelectValue placeholder="Select a GA4 property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ga4Properties.map((property) => (
+                      <SelectItem key={property.id} value={property.id}>
+                        <div className="flex flex-col text-left">
+                          <span className="font-medium">{property.name}</span>
+                          {property.account && (
+                            <span className="text-xs text-muted-foreground">
+                              Account: {property.account}
+                            </span>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            ID: {property.id}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              
+
               <div className="flex gap-2 pt-4">
                 <Button 
                   variant="outline" 
@@ -980,23 +990,27 @@ export default function Campaigns() {
           : `${integerPart}.00`;
       }
       
+      const startDateValue = editingCampaign.startDate 
+        ? (editingCampaign.startDate instanceof Date 
+            ? editingCampaign.startDate.toISOString().slice(0, 10)
+            : new Date(editingCampaign.startDate).toISOString().slice(0, 10))
+        : "";
+
+      const endDateValue = editingCampaign.endDate 
+        ? (editingCampaign.endDate instanceof Date 
+            ? editingCampaign.endDate.toISOString().slice(0, 10)
+            : new Date(editingCampaign.endDate).toISOString().slice(0, 10))
+        : "";
+
       editForm.reset({
         name: editingCampaign.name,
         clientWebsite: editingCampaign.clientWebsite || "",
         label: editingCampaign.label || "",
         budget: formattedBudget,
         currency: editingCampaign.currency || "USD",
-        startDate: editingCampaign.startDate 
-          ? (editingCampaign.startDate instanceof Date 
-              ? editingCampaign.startDate.toISOString().slice(0, 10)
-              : new Date(editingCampaign.startDate).toISOString().slice(0, 10))
-          : "",
-        endDate: editingCampaign.endDate 
-          ? (editingCampaign.endDate instanceof Date 
-              ? editingCampaign.endDate.toISOString().slice(0, 10)
-              : new Date(editingCampaign.endDate).toISOString().slice(0, 10))
-          : "",
-      });
+        startDate: startDateValue,
+        endDate: endDateValue,
+      } as any);
     }
   }, [editingCampaign, editForm]);
 
@@ -1413,47 +1427,49 @@ export default function Campaigns() {
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2 space-y-2">
                 <Label htmlFor="edit-budget">Budget</Label>
-                <Input
-                  id="edit-budget"
-                  {...editForm.register("budget", {
-                    onChange: (e) => {
-                      // Remove all non-numeric characters except decimal point
-                      const value = e.target.value.replace(/[^0-9.]/g, '');
-                      const parts = value.split('.');
-                      
-                      // Limit to 2 decimal places
-                      if (parts[1]?.length > 2) {
-                        const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
-                        editForm.setValue("budget", formatted);
-                        e.target.value = formatted;
-                      } else {
-                        editForm.setValue("budget", value);
-                      }
-                    },
-                    onBlur: (e) => {
-                      // Format with commas on blur
-                      const value = e.target.value.replace(/[^0-9.]/g, '');
-                      if (value) {
+                {(() => {
+                  const budgetRegister = editForm.register("budget");
+                  return (
+                    <Input
+                      id="edit-budget"
+                      {...budgetRegister}
+                      onChange={(e) => {
+                        budgetRegister.onChange(e);
+                        const value = e.target.value.replace(/[^0-9.]/g, '');
                         const parts = value.split('.');
-                        const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                        const formatted = parts[1] !== undefined 
-                          ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
-                          : `${integerPart}.00`;
-                        editForm.setValue("budget", value); // Store without commas
-                        e.target.value = formatted; // Display with commas
-                      }
-                    },
-                    onFocus: (e) => {
-                      // Remove commas on focus for easier editing
-                      const value = e.target.value.replace(/,/g, '');
-                      e.target.value = value;
-                    }
-                  })}
-                  placeholder="0.00"
-                  type="text"
-                  inputMode="decimal"
-                  data-testid="input-edit-budget"
-                />
+                        
+                        if (parts[1]?.length > 2) {
+                          const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                          editForm.setValue("budget", formatted);
+                          e.target.value = formatted;
+                        } else {
+                          editForm.setValue("budget", value);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        budgetRegister.onBlur(e);
+                        const value = e.target.value.replace(/[^0-9.]/g, '');
+                        if (value) {
+                          const parts = value.split('.');
+                          const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                          const formatted = parts[1] !== undefined 
+                            ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
+                            : `${integerPart}.00`;
+                          editForm.setValue("budget", value);
+                          e.target.value = formatted;
+                        }
+                      }}
+                      onFocus={(e: FocusEvent<HTMLInputElement>) => {
+                        const value = e.target.value.replace(/,/g, '');
+                        e.target.value = value;
+                      }}
+                      placeholder="0.00"
+                      type="text"
+                      inputMode="decimal"
+                      data-testid="input-edit-budget"
+                    />
+                  );
+                })()}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-currency">Currency</Label>

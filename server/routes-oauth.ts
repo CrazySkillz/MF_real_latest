@@ -312,6 +312,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Real Google Analytics OAuth flow (production-ready)
+  app.post("/api/auth/google/integrated-connect", async (req, res) => {
+    try {
+      const { campaignId } = req.body;
+
+      if (!campaignId) {
+        return res.status(400).json({ message: "Campaign ID is required" });
+      }
+
+      console.log(`[Integrated OAuth] Starting flow for campaign ${campaignId}`);
+      const authUrl = realGA4Client.generateAuthUrl(campaignId);
+
+      res.json({
+        authUrl,
+        message: "Google Analytics OAuth flow initiated",
+        isRealOAuth: !!process.env.GOOGLE_CLIENT_ID
+      });
+    } catch (error) {
+      console.error('[Integrated OAuth] Initiation error:', error);
+      res.status(500).json({ message: "Failed to initiate authentication" });
+    }
+  });
+
+  // Check real GA4 connection status (supports integrated flow)
+  app.get("/api/campaigns/:id/ga4-connection-status", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const isConnected = realGA4Client.isConnected(campaignId);
+
+      if (isConnected) {
+        const connection = realGA4Client.getConnection(campaignId);
+        const properties = await realGA4Client.getProperties(campaignId);
+
+        res.json({
+          connected: true,
+          email: connection?.email,
+          propertyId: connection?.propertyId,
+          properties: properties || [],
+          isRealOAuth: !!process.env.GOOGLE_CLIENT_ID,
+          dataSource: connection ? 'Real Google Analytics API' : 'Demo Mode'
+        });
+      } else {
+        res.json({ connected: false });
+      }
+    } catch (error) {
+      console.error('[Integrated OAuth] Connection status error:', error);
+      res.status(500).json({ message: "Failed to check connection status" });
+    }
+  });
+
+  // Set GA4 property for campaign (integrated flow)
+  app.post("/api/campaigns/:id/ga4-property", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { propertyId } = req.body;
+
+      if (!propertyId) {
+        return res.status(400).json({ message: "Property ID is required" });
+      }
+
+      const success = realGA4Client.setPropertyId(campaignId, propertyId);
+
+      if (success) {
+        res.json({ success: true, message: "Property set successfully" });
+      } else {
+        res.status(400).json({ message: "Campaign not connected" });
+      }
+    } catch (error) {
+      console.error('[Integrated OAuth] Set property error:', error);
+      res.status(500).json({ message: "Failed to set property" });
+    }
+  });
+
   // Get GA4 time series data for charts
   app.get("/api/campaigns/:id/ga4-timeseries", async (req, res) => {
     try {

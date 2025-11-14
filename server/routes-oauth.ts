@@ -570,28 +570,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = await storage.getGoogleSheetsConnection(campaignId);
       
       if (!connection || !connection.accessToken) {
+        console.error(`[Google Sheets] No connection found for campaign ${campaignId}`);
         return res.status(404).json({ error: 'No Google Sheets connection found' });
       }
 
+      console.log(`[Google Sheets] Found connection, access token exists: ${!!connection.accessToken}`);
+
       // Fetch spreadsheets from Google Drive API
-      const driveResponse = await fetch(
-        'https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name)',
-        {
-          headers: {
-            'Authorization': `Bearer ${connection.accessToken}`,
-          },
-        }
-      );
+      const driveUrl = 'https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name)';
+      console.log(`[Google Sheets] Calling Drive API: ${driveUrl}`);
+      
+      const driveResponse = await fetch(driveUrl, {
+        headers: {
+          'Authorization': `Bearer ${connection.accessToken}`,
+        },
+      });
+
+      console.log(`[Google Sheets] Drive API response status: ${driveResponse.status}`);
 
       if (!driveResponse.ok) {
-        throw new Error('Failed to fetch spreadsheets from Google Drive');
+        const errorBody = await driveResponse.text();
+        console.error(`[Google Sheets] Drive API error response:`, errorBody);
+        
+        let errorMessage = 'Failed to fetch spreadsheets from Google Drive';
+        try {
+          const errorJson = JSON.parse(errorBody);
+          errorMessage = errorJson.error?.message || errorMessage;
+          console.error(`[Google Sheets] Drive API error details:`, errorJson);
+        } catch (e) {
+          console.error(`[Google Sheets] Could not parse error response`);
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const driveData = await driveResponse.json();
-      const spreadsheets = driveData.files.map((file: any) => ({
+      const spreadsheets = driveData.files?.map((file: any) => ({
         id: file.id,
         name: file.name,
-      }));
+      })) || [];
 
       console.log(`[Google Sheets] Found ${spreadsheets.length} spreadsheets`);
       res.json({ spreadsheets });

@@ -335,12 +335,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
 
 
   const handleComplete = () => {
-    // Get platform names for display
-    const connectedPlatformNames = selectedPlatforms.map(id => {
-      const platform = platforms.find(p => p.id === id);
-      return platform ? platform.name : id;
-    });
-    onComplete(connectedPlatformNames);
+    // Pass platform IDs directly - don't convert to names
+    onComplete(selectedPlatforms);
   };
 
   return (

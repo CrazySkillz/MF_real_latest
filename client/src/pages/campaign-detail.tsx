@@ -3235,14 +3235,20 @@ export default function CampaignDetail() {
     staleTime: 0,
     cacheTime: 0,
     queryFn: async () => {
-      const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
-      if (!response.ok) {
-        console.log(`[Frontend] GA4 check failed for ${campaignId}:`, response.status);
+      try {
+        const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
+        if (!response.ok) {
+          console.log(`[Frontend] GA4 check failed for ${campaignId}:`, response.status);
+          return { connected: false };
+        }
+        const data = await response.json();
+        console.log(`[Frontend] GA4 connection status for ${campaignId}:`, JSON.stringify(data, null, 2));
+        // Ensure connected is explicitly boolean
+        return { ...data, connected: data.connected === true };
+      } catch (error) {
+        console.error(`[Frontend] GA4 check error for ${campaignId}:`, error);
         return { connected: false };
       }
-      const data = await response.json();
-      console.log(`[Frontend] GA4 connection status for ${campaignId}:`, data);
-      return data;
     },
   });
 

@@ -3481,18 +3481,14 @@ export default function CampaignDetail() {
     },
     {
       platform: "Google Sheets",
-      connected:
-        platformStatusMap.get("google-sheets")?.connected === true ||
-        !!sheetsConnection?.connected,
+      connected: platformStatusMap.get("google-sheets")?.connected === true,
       impressions: sheetsData?.summary?.totalImpressions || 0,
       clicks: sheetsData?.summary?.totalClicks || 0,
       conversions: 0, // Conversions not in summary, would need to be calculated separately
       spend: sheetsData?.summary?.totalSpend?.toString() || "0.00",
       ctr: sheetsData?.summary?.averageCTR ? `${sheetsData.summary.averageCTR.toFixed(2)}%` : "0.00%",
       cpc: sheetsData?.summary?.totalClicks && sheetsData.summary.totalClicks > 0 && sheetsData.summary.totalSpend ? `$${(sheetsData.summary.totalSpend / sheetsData.summary.totalClicks).toFixed(2)}` : "$0.00",
-      analyticsPath:
-        platformStatusMap.get("google-sheets")?.analyticsPath ||
-        (sheetsConnection?.connected ? `/campaigns/${campaign?.id}/google-sheets-data` : undefined)
+      analyticsPath: platformStatusMap.get("google-sheets")?.analyticsPath || `/campaigns/${campaign?.id}/google-sheets-data`
     },
     {
       platform: "Facebook Ads", 
@@ -3526,22 +3522,14 @@ export default function CampaignDetail() {
     },
     {
       platform: "LinkedIn Ads",
-      connected:
-        platformStatusMap.get("linkedin")?.connected === true ||
-        !!linkedInConnection?.connected,
-      impressions: linkedInConnection?.connected ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0,
-      clicks: linkedInConnection?.connected ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0,
-      conversions: linkedInConnection?.connected ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0,
-      spend: linkedInConnection?.connected ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00",
-      ctr: linkedInConnection?.connected ? "2.78%" : "0.00%",
-      cpc: linkedInConnection?.connected ? "$0.48" : "$0.00",
-      analyticsPath:
-        platformStatusMap.get("linkedin")?.analyticsPath ||
-        (linkedInConnection?.connected
-          ? `/campaigns/${campaign?.id}/linkedin-analytics${
-              linkedInSession?.id ? `?session=${linkedInSession.id}` : ""
-            }`
-          : undefined)
+      connected: platformStatusMap.get("linkedin")?.connected === true,
+      impressions: platformStatusMap.get("linkedin")?.connected ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0,
+      clicks: platformStatusMap.get("linkedin")?.connected ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0,
+      conversions: platformStatusMap.get("linkedin")?.connected ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0,
+      spend: platformStatusMap.get("linkedin")?.connected ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00",
+      ctr: platformStatusMap.get("linkedin")?.connected ? "2.78%" : "0.00%",
+      cpc: platformStatusMap.get("linkedin")?.connected ? "$0.48" : "$0.00",
+      analyticsPath: platformStatusMap.get("linkedin")?.analyticsPath || `/campaigns/${campaign?.id}/linkedin-analytics`
     },
     {
       platform: "Shopify",
@@ -3555,18 +3543,14 @@ export default function CampaignDetail() {
     },
     {
       platform: "Custom Integration",
-      connected:
-        platformStatusMap.get("custom-integration")?.connected === true ||
-        !!customIntegration,
+      connected: platformStatusMap.get("custom-integration")?.connected === true,
       impressions: 0,
       clicks: 0,
       conversions: 0,
       spend: "0.00",
       ctr: "0.00%",
       cpc: "$0.00",
-      analyticsPath:
-        platformStatusMap.get("custom-integration")?.analyticsPath ||
-        (customIntegration ? `/campaigns/${campaign?.id}/custom-integration-analytics` : undefined)
+      analyticsPath: platformStatusMap.get("custom-integration")?.analyticsPath || `/campaigns/${campaign?.id}/custom-integration-analytics`
     }
   ];
 

@@ -4734,7 +4734,10 @@ export default function CampaignDetail() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge variant={platform.connected ? "default" : "secondary"}>
+                      <Badge 
+                        variant={platform.connected ? "default" : "secondary"}
+                        className={platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+                      >
                         {platform.connected ? "Connected" : "Not Connected"}
                       </Badge>
                       {!platform.connected && (

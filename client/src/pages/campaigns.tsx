@@ -847,6 +847,8 @@ export default function Campaigns() {
           const result = await response.json();
           if (result.success) {
             console.log('✅ GA4 connection transferred successfully to campaign:', (newCampaign as any).id);
+            // Invalidate connection status queries so the detail page shows the connection
+            queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", (newCampaign as any).id] });
           }
         } catch (error) {
           console.error('❌ Failed to transfer GA4 connection:', error);

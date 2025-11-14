@@ -1173,8 +1173,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessTokenLength: newConnection.accessToken?.length || 0
       });
 
-      // Delete the temporary connection
-      await storage.deleteGA4Connection(fromCampaignId);
+      // Delete the temporary connection(s) by connection ID
+      const tempConnections = await storage.getGA4Connections(fromCampaignId);
+      for (const conn of tempConnections) {
+        await storage.deleteGA4Connection(conn.id);
+      }
 
       res.json({
         success: true,

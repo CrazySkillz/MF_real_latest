@@ -3230,10 +3230,17 @@ export default function CampaignDetail() {
   const { data: ga4Connection } = useQuery({
     queryKey: ["/api/ga4/check-connection", campaignId],
     enabled: !!campaignId,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
-      if (!response.ok) return { connected: false };
-      return response.json();
+      if (!response.ok) {
+        console.log(`[Frontend] GA4 check failed for ${campaignId}:`, response.status);
+        return { connected: false };
+      }
+      const data = await response.json();
+      console.log(`[Frontend] GA4 connection status for ${campaignId}:`, data);
+      return data;
     },
   });
 

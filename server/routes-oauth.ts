@@ -929,8 +929,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.campaignId;
       
+      console.log(`[GA4 Check] Checking connection for campaign: ${campaignId}`);
+      
       // Get all GA4 connections for this campaign
       const ga4Connections = await storage.getGA4Connections(campaignId);
+      
+      console.log(`[GA4 Check] Found ${ga4Connections.length} connections for campaign ${campaignId}`);
       
       if (ga4Connections && ga4Connections.length > 0) {
         const primaryConnection = ga4Connections.find(conn => conn.isPrimary) || ga4Connections[0];
@@ -1179,24 +1183,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Get the existing connection
-      const existingConnection = await storage.getGA4Connection(fromCampaignId);
+      // Get all connections for the source campaign (might be multiple)
+      const existingConnections = await storage.getGA4Connections(fromCampaignId);
       
-      console.log('Transfer connection - existing connection:', {
+      console.log('Transfer connection - checking for connections:', {
         fromCampaignId,
         toCampaignId,
-        found: !!existingConnection,
-        hasAccessToken: !!existingConnection?.accessToken,
-        accessTokenLength: existingConnection?.accessToken?.length || 0,
-        hasRefreshToken: !!existingConnection?.refreshToken
+        foundCount: existingConnections.length,
+        connections: existingConnections.map(c => ({
+          id: c.id,
+          propertyId: c.propertyId,
+          hasAccessToken: !!c.accessToken,
+          isPrimary: c.isPrimary
+        }))
       });
       
-      if (!existingConnection) {
+      if (!existingConnections || existingConnections.length === 0) {
         return res.status(404).json({
           success: false,
           error: "No GA4 connection found for the source campaign"
         });
       }
+
+      // Use the primary connection or the first one
+      const existingConnection = existingConnections.find(c => c.isPrimary) || existingConnections[0];
+      
+      console.log('Transfer connection - using connection:', {
+        id: existingConnection.id,
+        propertyId: existingConnection.propertyId,
+        hasAccessToken: !!existingConnection.accessToken,
+        accessTokenLength: existingConnection.accessToken?.length || 0,
+        hasRefreshToken: !!existingConnection.refreshToken
+      });
 
       // Create new connection with the real campaign ID
       const newConnection = await storage.createGA4Connection({

@@ -3227,6 +3227,18 @@ export default function CampaignDetail() {
   const { data: connectedPlatformsData } = useQuery<{ statuses: ConnectedPlatformStatus[] }>({
     queryKey: ["/api/campaigns", campaignId, "connected-platforms"],
     enabled: !!campaignId,
+    refetchOnMount: "always",
+    staleTime: 0,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/connected-platforms`);
+      if (!response.ok) {
+        console.error(`[Campaign Detail] Failed to fetch connected platforms for ${campaignId}`);
+        return { statuses: [] };
+      }
+      const data = await response.json();
+      console.log(`[Campaign Detail] Connected platforms for ${campaignId}:`, JSON.stringify(data, null, 2));
+      return data;
+    }
   });
 
   const connectedPlatformStatuses: ConnectedPlatformStatus[] =
@@ -3234,7 +3246,10 @@ export default function CampaignDetail() {
 
   const platformStatusMap = useMemo(() => {
     const map = new Map<string, ConnectedPlatformStatus>();
-    connectedPlatformStatuses.forEach((status) => map.set(status.id, status));
+    connectedPlatformStatuses.forEach((status) => {
+      console.log(`[Campaign Detail] Mapping platform ${status.id}: connected=${status.connected}`);
+      map.set(status.id, status);
+    });
     return map;
   }, [connectedPlatformStatuses]);
 
@@ -3442,9 +3457,15 @@ export default function CampaignDetail() {
 
   const gaPlatformStatus = platformStatusMap.get("google-analytics");
 
-  // Force connection status to be explicitly checked
-  const isGA4Connected =
-    ga4Connection?.connected === true || gaPlatformStatus?.connected === true;
+  // Use platformStatusMap as single source of truth for connection status
+  const isGA4Connected = gaPlatformStatus?.connected === true;
+  
+  console.log(`[Campaign Detail] GA4 Status Check:`, {
+    campaignId,
+    gaPlatformStatus,
+    isGA4Connected,
+    analyticsPath: gaPlatformStatus?.analyticsPath
+  });
   
   const platformMetrics: PlatformMetrics[] = [
     {
@@ -3456,10 +3477,7 @@ export default function CampaignDetail() {
       spend: "0.00", // GA4 doesn't track spend directly
       ctr: ga4Metrics?.impressions && ga4Metrics.impressions > 0 ? `${((ga4Metrics.clicks / ga4Metrics.impressions) * 100).toFixed(2)}%` : "0.00%",
       cpc: "$0.00", // GA4 doesn't track cost per click
-      analyticsPath:
-        isGA4Connected && (gaPlatformStatus?.analyticsPath || campaignId)
-          ? gaPlatformStatus?.analyticsPath || `/campaigns/${campaign?.id}/ga4-metrics`
-          : undefined
+      analyticsPath: isGA4Connected ? (gaPlatformStatus?.analyticsPath || `/campaigns/${campaign?.id}/ga4-metrics`) : undefined
     },
     {
       platform: "Google Sheets",

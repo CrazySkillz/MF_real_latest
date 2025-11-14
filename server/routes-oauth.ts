@@ -634,6 +634,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete/reset Google Sheets connection (for re-authentication)
+  app.delete("/api/google-sheets/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      console.log(`[Google Sheets] Deleting connection for campaign ${campaignId}`);
+
+      await storage.deleteGoogleSheetsConnection(campaignId);
+
+      console.log(`[Google Sheets] Connection deleted successfully`);
+      res.json({ success: true, message: 'Connection deleted' });
+    } catch (error: any) {
+      console.error('[Google Sheets] Delete connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete connection' });
+    }
+  });
+
   // Select spreadsheet for campaign
   app.post("/api/google-sheets/:campaignId/select-spreadsheet", async (req, res) => {
     try {

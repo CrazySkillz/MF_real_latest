@@ -545,18 +545,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if connection already exists in database
       const existingConnections = await storage.getGA4Connections(campaignId);
       
+      console.log(`[Set Property] Found ${existingConnections.length} existing connections for ${campaignId}`);
+      
       if (existingConnections.length > 0) {
         // Update existing connection
         const existingConnection = existingConnections[0];
+        console.log(`[Set Property] Updating existing connection ${existingConnection.id}`);
         await storage.updateGA4Connection(existingConnection.id, {
           propertyId,
           propertyName,
-          isPrimary: true
+          isPrimary: true,
+          isActive: true
         });
         // Set as primary
         await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
+        console.log(`[Set Property] Connection updated and set as primary`);
       } else {
         // Create new connection in database
+        console.log(`[Set Property] Creating new connection for ${campaignId} with property ${propertyId}`);
         const newConnection = await storage.createGA4Connection({
           campaignId,
           propertyId,
@@ -572,6 +578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         // Ensure it's set as primary
         await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
+        console.log(`[Set Property] New connection created: ${newConnection.id}, isPrimary: ${newConnection.isPrimary}, isActive: ${newConnection.isActive}`);
       }
 
       res.json({ success: true, message: "Property set successfully" });

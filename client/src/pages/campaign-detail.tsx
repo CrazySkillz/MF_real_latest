@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -3226,12 +3226,14 @@ export default function CampaignDetail() {
     },
   });
 
-  // Check GA4 connection status
-  const { data: ga4Connection } = useQuery({
+  // Check GA4 connection status - force refetch on mount
+  const { data: ga4Connection, refetch: refetchGA4Connection } = useQuery({
     queryKey: ["/api/ga4/check-connection", campaignId],
     enabled: !!campaignId,
-    refetchOnMount: true,
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
+    staleTime: 0,
+    cacheTime: 0,
     queryFn: async () => {
       const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
       if (!response.ok) {
@@ -3243,6 +3245,13 @@ export default function CampaignDetail() {
       return data;
     },
   });
+
+  // Refetch connection status when campaignId changes
+  useEffect(() => {
+    if (campaignId) {
+      refetchGA4Connection();
+    }
+  }, [campaignId, refetchGA4Connection]);
 
   // Check Google Sheets connection status
   const { data: sheetsConnection } = useQuery({

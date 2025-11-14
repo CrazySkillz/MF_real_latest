@@ -836,6 +836,7 @@ export default function Campaigns() {
       // Transfer GA4 connection if GA4 was connected
       if (selectedPlatforms.includes('google-analytics')) {
         try {
+          console.log('🔄 Starting GA4 connection transfer...');
           const response = await fetch('/api/ga4/transfer-connection', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -847,8 +848,11 @@ export default function Campaigns() {
           const result = await response.json();
           if (result.success) {
             console.log('✅ GA4 connection transferred successfully to campaign:', (newCampaign as any).id);
-            // Invalidate connection status queries so the detail page shows the connection
-            queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", (newCampaign as any).id] });
+            // Invalidate and refetch connection status queries
+            await queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", (newCampaign as any).id] });
+            await queryClient.refetchQueries({ queryKey: ["/api/ga4/check-connection", (newCampaign as any).id] });
+          } else {
+            console.error('❌ GA4 transfer failed:', result.error);
           }
         } catch (error) {
           console.error('❌ Failed to transfer GA4 connection:', error);

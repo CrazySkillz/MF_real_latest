@@ -3401,6 +3401,16 @@ export default function CampaignDetail() {
     "LinkedIn Ads": { impressions: 0.15, clicks: 0.15, spend: 0.12, conversions: 0.15 }
   };
   
+  // Debug: Log connection status
+  useEffect(() => {
+    console.log('[Campaign Detail] GA4 Connection Status:', {
+      campaignId,
+      ga4Connection,
+      connected: ga4Connection?.connected,
+      hasData: !!ga4Connection
+    });
+  }, [campaignId, ga4Connection]);
+
   const platformMetrics: PlatformMetrics[] = [
     {
       platform: "Google Analytics",

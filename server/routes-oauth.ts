@@ -525,13 +525,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Property ID is required" });
       }
 
+      // Update in-memory connection
       const success = realGA4Client.setPropertyId(campaignId, propertyId);
-
-      if (success) {
-        res.json({ success: true, message: "Property set successfully" });
-      } else {
-        res.status(400).json({ message: "Campaign not connected" });
+      if (!success) {
+        return res.status(400).json({ message: "Campaign not connected" });
       }
+
+      // Get the connection from realGA4Client
+      const connection = realGA4Client.getConnection(campaignId);
+      if (!connection) {
+        return res.status(400).json({ message: "Connection not found" });
+      }
+
+      // Find the property name from available properties
+      const properties = await realGA4Client.getProperties(campaignId);
+      const selectedProperty = properties?.find(p => p.id === propertyId);
+      const propertyName = selectedProperty?.name || `Property ${propertyId}`;
+
+      // Check if connection already exists in database
+      const existingConnections = await storage.getGA4Connections(campaignId);
+      
+      if (existingConnections.length > 0) {
+        // Update existing connection
+        const existingConnection = existingConnections[0];
+        await storage.updateGA4Connection(existingConnection.id, {
+          propertyId,
+          propertyName,
+          isPrimary: true
+        });
+        // Set as primary
+        await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
+      } else {
+        // Create new connection in database
+        const newConnection = await storage.createGA4Connection({
+          campaignId,
+          propertyId,
+          accessToken: connection.accessToken || '',
+          refreshToken: connection.refreshToken || '',
+          method: 'access_token',
+          propertyName,
+          isPrimary: true,
+          isActive: true,
+          clientId: process.env.GOOGLE_CLIENT_ID || undefined,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET || undefined,
+          expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined
+        });
+        // Ensure it's set as primary
+        await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
+      }
+
+      res.json({ success: true, message: "Property set successfully" });
     } catch (error) {
       console.error('[Integrated OAuth] Set property error:', error);
       res.status(500).json({ message: "Failed to set property" });
@@ -1163,14 +1206,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         refreshToken: existingConnection.refreshToken,
         method: 'access_token', // Ensure OAuth connections use access_token method
         propertyName: existingConnection.propertyName,
-        serviceAccountKey: existingConnection.serviceAccountKey
+        serviceAccountKey: existingConnection.serviceAccountKey,
+        isPrimary: true,
+        isActive: true,
+        clientId: existingConnection.clientId,
+        clientSecret: existingConnection.clientSecret,
+        expiresAt: existingConnection.expiresAt
       });
+      
+      // Set as primary connection
+      await storage.setPrimaryGA4Connection(toCampaignId, newConnection.id);
       
       console.log('Transfer connection - new connection created:', {
         id: newConnection.id,
         campaignId: newConnection.campaignId,
         hasAccessToken: !!newConnection.accessToken,
-        accessTokenLength: newConnection.accessToken?.length || 0
+        accessTokenLength: newConnection.accessToken?.length || 0,
+        isPrimary: true
       });
 
       // Delete the temporary connection(s) by connection ID

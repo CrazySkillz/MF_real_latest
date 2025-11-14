@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -45,6 +45,14 @@ interface Campaign {
   createdAt: string;
 }
 
+interface ConnectedPlatformStatus {
+  id: string;
+  name: string;
+  connected: boolean;
+  analyticsPath?: string | null;
+  lastConnectedAt?: string | null;
+}
+
 interface PlatformMetrics {
   platform: string;
   connected: boolean;
@@ -54,6 +62,7 @@ interface PlatformMetrics {
   spend: string;
   ctr: string;
   cpc: string;
+  analyticsPath?: string | null;
 }
 
 // Benchmark Interface
@@ -3215,6 +3224,20 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
   });
 
+  const { data: connectedPlatformsData } = useQuery<{ statuses: ConnectedPlatformStatus[] }>({
+    queryKey: ["/api/campaigns", campaignId, "connected-platforms"],
+    enabled: !!campaignId,
+  });
+
+  const connectedPlatformStatuses: ConnectedPlatformStatus[] =
+    connectedPlatformsData?.statuses ?? [];
+
+  const platformStatusMap = useMemo(() => {
+    const map = new Map<string, ConnectedPlatformStatus>();
+    connectedPlatformStatuses.forEach((status) => map.set(status.id, status));
+    return map;
+  }, [connectedPlatformStatuses]);
+
   // Get campaign KPIs for report inclusion
   const { data: campaignKPIs } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "kpis"],
@@ -3233,7 +3256,7 @@ export default function CampaignDetail() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0,
     queryFn: async () => {
       try {
         const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
@@ -3417,8 +3440,11 @@ export default function CampaignDetail() {
     });
   }, [campaignId, ga4Connection]);
 
+  const gaPlatformStatus = platformStatusMap.get("google-analytics");
+
   // Force connection status to be explicitly checked
-  const isGA4Connected = ga4Connection?.connected === true;
+  const isGA4Connected =
+    ga4Connection?.connected === true || gaPlatformStatus?.connected === true;
   
   const platformMetrics: PlatformMetrics[] = [
     {
@@ -3429,17 +3455,26 @@ export default function CampaignDetail() {
       conversions: ga4Metrics?.conversions || 0,
       spend: "0.00", // GA4 doesn't track spend directly
       ctr: ga4Metrics?.impressions && ga4Metrics.impressions > 0 ? `${((ga4Metrics.clicks / ga4Metrics.impressions) * 100).toFixed(2)}%` : "0.00%",
-      cpc: "$0.00" // GA4 doesn't track cost per click
+      cpc: "$0.00", // GA4 doesn't track cost per click
+      analyticsPath:
+        isGA4Connected && (gaPlatformStatus?.analyticsPath || campaignId)
+          ? gaPlatformStatus?.analyticsPath || `/campaigns/${campaign?.id}/ga4-metrics`
+          : undefined
     },
     {
       platform: "Google Sheets",
-      connected: !!sheetsConnection?.connected,
+      connected:
+        platformStatusMap.get("google-sheets")?.connected === true ||
+        !!sheetsConnection?.connected,
       impressions: sheetsData?.summary?.totalImpressions || 0,
       clicks: sheetsData?.summary?.totalClicks || 0,
       conversions: 0, // Conversions not in summary, would need to be calculated separately
       spend: sheetsData?.summary?.totalSpend?.toString() || "0.00",
       ctr: sheetsData?.summary?.averageCTR ? `${sheetsData.summary.averageCTR.toFixed(2)}%` : "0.00%",
-      cpc: sheetsData?.summary?.totalClicks && sheetsData.summary.totalClicks > 0 && sheetsData.summary.totalSpend ? `$${(sheetsData.summary.totalSpend / sheetsData.summary.totalClicks).toFixed(2)}` : "$0.00"
+      cpc: sheetsData?.summary?.totalClicks && sheetsData.summary.totalClicks > 0 && sheetsData.summary.totalSpend ? `$${(sheetsData.summary.totalSpend / sheetsData.summary.totalClicks).toFixed(2)}` : "$0.00",
+      analyticsPath:
+        platformStatusMap.get("google-sheets")?.analyticsPath ||
+        (sheetsConnection?.connected ? `/campaigns/${campaign?.id}/google-sheets-data` : undefined)
     },
     {
       platform: "Facebook Ads", 
@@ -3473,13 +3508,22 @@ export default function CampaignDetail() {
     },
     {
       platform: "LinkedIn Ads",
-      connected: !!linkedInConnection?.connected,
+      connected:
+        platformStatusMap.get("linkedin")?.connected === true ||
+        !!linkedInConnection?.connected,
       impressions: linkedInConnection?.connected ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0,
       clicks: linkedInConnection?.connected ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0,
       conversions: linkedInConnection?.connected ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0,
       spend: linkedInConnection?.connected ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00",
       ctr: linkedInConnection?.connected ? "2.78%" : "0.00%",
-      cpc: linkedInConnection?.connected ? "$0.48" : "$0.00"
+      cpc: linkedInConnection?.connected ? "$0.48" : "$0.00",
+      analyticsPath:
+        platformStatusMap.get("linkedin")?.analyticsPath ||
+        (linkedInConnection?.connected
+          ? `/campaigns/${campaign?.id}/linkedin-analytics${
+              linkedInSession?.id ? `?session=${linkedInSession.id}` : ""
+            }`
+          : undefined)
     },
     {
       platform: "Shopify",
@@ -3493,13 +3537,18 @@ export default function CampaignDetail() {
     },
     {
       platform: "Custom Integration",
-      connected: !!customIntegration,
+      connected:
+        platformStatusMap.get("custom-integration")?.connected === true ||
+        !!customIntegration,
       impressions: 0,
       clicks: 0,
       conversions: 0,
       spend: "0.00",
       ctr: "0.00%",
-      cpc: "$0.00"
+      cpc: "$0.00",
+      analyticsPath:
+        platformStatusMap.get("custom-integration")?.analyticsPath ||
+        (customIntegration ? `/campaigns/${campaign?.id}/custom-integration-analytics` : undefined)
     }
   ];
 
@@ -4790,43 +4839,15 @@ export default function CampaignDetail() {
                   {platform.connected && (
                     <div className="px-3 pb-3">
                       <div className="space-y-4">
-                        {platform.platform === "Google Analytics" && (
+                        {platform.analyticsPath && (
                           <div className="pt-2 border-t">
-                            <Link href={`/campaigns/${campaign.id}/ga4-metrics`}>
-                              <Button variant="outline" size="sm" className="w-full" data-testid="button-view-ga4-analytics">
-                                <BarChart3 className="w-4 h-4 mr-2" />
-                                View Detailed Analytics
-                              </Button>
-                            </Link>
-                          </div>
-                        )}
-                        
-                        {platform.platform === "Google Sheets" && (
-                          <div className="pt-2 border-t">
-                            <Link href={`/campaigns/${campaign.id}/google-sheets-data`}>
-                              <Button variant="outline" size="sm" className="w-full" data-testid="button-view-sheets-analytics">
-                                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                                View Detailed Analytics
-                              </Button>
-                            </Link>
-                          </div>
-                        )}
-                        
-                        {platform.platform === "LinkedIn Ads" && (
-                          <div className="pt-2 border-t">
-                            <Link href={`/campaigns/${campaign.id}/linkedin-analytics${linkedInSession?.id ? `?session=${linkedInSession.id}` : ''}`}>
-                              <Button variant="outline" size="sm" className="w-full" data-testid="button-view-linkedin-analytics">
-                                <BarChart3 className="w-4 h-4 mr-2" />
-                                View Detailed Analytics
-                              </Button>
-                            </Link>
-                          </div>
-                        )}
-                        
-                        {platform.platform === "Custom Integration" && (
-                          <div className="pt-2 border-t">
-                            <Link href={`/campaigns/${campaign.id}/custom-integration-analytics`}>
-                              <Button variant="outline" size="sm" className="w-full" data-testid="button-view-custom-analytics">
+                            <Link href={platform.analyticsPath}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full"
+                                data-testid={`button-view-${platform.platform.toLowerCase().replace(/\s+/g, '-')}-analytics`}
+                              >
                                 <BarChart3 className="w-4 h-4 mr-2" />
                                 View Detailed Analytics
                               </Button>

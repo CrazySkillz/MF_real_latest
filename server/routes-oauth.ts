@@ -985,6 +985,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Connected platforms summary for campaign detail page
+  app.get("/api/campaigns/:id/connected-platforms", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+
+      const [
+        ga4Connections,
+        googleSheetsConnection,
+        linkedInConnection,
+        customIntegration,
+      ] = await Promise.all([
+        storage.getGA4Connections(campaignId),
+        storage.getGoogleSheetsConnection(campaignId),
+        storage.getLinkedInConnection(campaignId),
+        storage.getCustomIntegration(campaignId),
+      ]);
+
+      const statuses = [
+        {
+          id: "google-analytics",
+          name: "Google Analytics",
+          connected: ga4Connections.length > 0,
+          analyticsPath:
+            ga4Connections.length > 0
+              ? `/campaigns/${campaignId}/ga4-metrics`
+              : null,
+          lastConnectedAt: ga4Connections[ga4Connections.length - 1]?.connectedAt,
+        },
+        {
+          id: "google-sheets",
+          name: "Google Sheets",
+          connected: !!googleSheetsConnection,
+          analyticsPath: googleSheetsConnection
+            ? `/campaigns/${campaignId}/google-sheets-data`
+            : null,
+          lastConnectedAt: googleSheetsConnection?.connectedAt,
+        },
+        {
+          id: "linkedin",
+          name: "LinkedIn Ads",
+          connected: !!linkedInConnection,
+          analyticsPath: linkedInConnection
+            ? `/campaigns/${campaignId}/linkedin-analytics`
+            : null,
+          lastConnectedAt: linkedInConnection?.connectedAt,
+        },
+        {
+          id: "custom-integration",
+          name: "Custom Integration",
+          connected: !!customIntegration,
+          analyticsPath: customIntegration
+            ? `/campaigns/${campaignId}/custom-integration-analytics`
+            : null,
+          lastConnectedAt: customIntegration?.connectedAt,
+        },
+      ];
+
+      res.json({ statuses });
+    } catch (error) {
+      console.error("Connected platforms status error:", error);
+      res
+        .status(500)
+        .json({ message: "Failed to fetch connected platform statuses" });
+    }
+  });
+
   // New route: Get all GA4 connections for a campaign
   app.get("/api/campaigns/:id/ga4-connections", async (req, res) => {
     try {

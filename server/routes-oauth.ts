@@ -410,9 +410,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[Google Sheets OAuth] Starting flow for campaign ${campaignId}`);
       
-      // Use the same Google OAuth client but with Sheets scopes
-      const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`;
+      // Use the same base URL logic as GA4 to ensure consistency
+      const rawBaseUrl = process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      
+      // Strip trailing slashes to prevent double slashes
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       const redirectUri = `${baseUrl}/api/auth/google-sheets/callback`;
+      
+      console.log(`[Google Sheets OAuth] Using redirect URI: ${redirectUri}`);
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(process.env.GOOGLE_CLIENT_ID || '')}&` +
@@ -477,9 +485,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = state as string;
       console.log(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
 
-      // Exchange code for tokens
-      const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`;
+      // Exchange code for tokens - use same base URL logic
+      const rawBaseUrl = process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       const redirectUri = `${baseUrl}/api/auth/google-sheets/callback`;
+      
+      console.log(`[Google Sheets OAuth] Using redirect URI for token exchange: ${redirectUri}`);
       
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',

@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, TrendingDown, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2, Pencil } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, TrendingDown, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2, Pencil, Shield } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -3215,6 +3215,103 @@ function CampaignInsightsChat({ campaign }: { campaign: Campaign }) {
   );
 }
 
+// Custom Integration Connection UI Component
+function CustomIntegrationConnectionUI({ campaignId, onSuccess }: { campaignId: string; onSuccess: () => void }) {
+  const [allowedEmailAddresses, setAllowedEmailAddresses] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const { toast } = useToast();
+
+  const handleConnect = async () => {
+    setIsConnecting(true);
+
+    try {
+      // Parse allowed email addresses (comma-separated or newline-separated)
+      const emailList = allowedEmailAddresses
+        .split(/[,\n]/)
+        .map(e => e.trim())
+        .filter(e => e.length > 0);
+
+      const response = await fetch('/api/custom-integration/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          email: 'webhook@custom-integration.local', // Placeholder email
+          allowedEmailAddresses: emailList.length > 0 ? emailList : undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const securityMsg = emailList.length > 0
+          ? ` Only emails from ${emailList.length} whitelisted address${emailList.length !== 1 ? 'es' : ''} will be accepted.`
+          : '';
+
+        toast({
+          title: "Custom Integration Connected!",
+          description: `Successfully connected.${securityMsg}`
+        });
+
+        onSuccess();
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: data.error || "Failed to connect with provided email.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Custom integration connection error:', error);
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">How it works:</h4>
+        <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-1 list-decimal list-inside">
+          <li>Click "Connect" to generate your unique webhook URL</li>
+          <li>Configure CloudMailin with this URL (instructions provided after connecting)</li>
+          <li>Forward PDF reports to your CloudMailin email address</li>
+          <li>Metrics appear automatically in your dashboard</li>
+        </ol>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
+          <Shield className="w-4 h-4" />
+          Email Whitelist (Optional - Recommended for Security)
+        </label>
+        <textarea
+          placeholder="Enter allowed email addresses (one per line or comma-separated)&#10;Example:&#10;marketing@company.com&#10;reports@agency.com"
+          value={allowedEmailAddresses}
+          onChange={(e) => setAllowedEmailAddresses(e.target.value)}
+          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+        />
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Only emails from these addresses will be able to send data to your webhook. Leave empty to accept from any email (less secure).
+        </p>
+      </div>
+
+      <Button
+        onClick={handleConnect}
+        disabled={isConnecting}
+        className="w-full"
+      >
+        {isConnecting ? 'Connecting...' : 'Connect Custom Integration'}
+      </Button>
+    </div>
+  );
+}
+
 export default function CampaignDetail() {
   const [, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id;
@@ -4862,27 +4959,40 @@ export default function CampaignDetail() {
                   {!platform.connected && expandedPlatform === platform.platform && (
                     <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-3">
                       {platform.platform === "Google Analytics" ? (
-                        <GA4ConnectionFlow 
-                          campaignId={campaign.id} 
+                        <GA4ConnectionFlow
+                          campaignId={campaign.id}
                           onConnectionSuccess={() => {
                             setExpandedPlatform(null);
                             window.location.reload();
                           }}
                         />
                       ) : platform.platform === "Google Sheets" ? (
-                        <GoogleSheetsConnectionFlow 
-                          campaignId={campaign.id} 
+                        <GoogleSheetsConnectionFlow
+                          campaignId={campaign.id}
                           onConnectionSuccess={() => {
                             setExpandedPlatform(null);
                             window.location.reload();
                           }}
                         />
                       ) : platform.platform === "LinkedIn Ads" ? (
-                        <LinkedInConnectionFlow 
-                          campaignId={campaign.id} 
+                        <LinkedInConnectionFlow
+                          campaignId={campaign.id}
                           onConnectionSuccess={() => {
                             setExpandedPlatform(null);
                             window.location.reload();
+                          }}
+                        />
+                      ) : platform.platform === "Custom Integration" ? (
+                        <CustomIntegrationConnectionUI
+                          campaignId={campaign.id}
+                          onSuccess={() => {
+                            setExpandedPlatform(null);
+                            queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaign.id] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "connected-platforms"] });
+                            toast({
+                              title: "Custom Integration Connected",
+                              description: "Your custom integration has been set up successfully."
+                            });
                           }}
                         />
                       ) : (

@@ -989,6 +989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/connected-platforms", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      console.log(`[Connected Platforms] Checking platforms for campaign ${campaignId}`);
 
       const [
         ga4Connections,
@@ -1001,6 +1002,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getLinkedInConnection(campaignId),
         storage.getCustomIntegration(campaignId),
       ]);
+
+      console.log(`[Connected Platforms] GA4 connections found: ${ga4Connections.length}`);
+      if (ga4Connections.length > 0) {
+        ga4Connections.forEach(conn => {
+          console.log(`[Connected Platforms] - GA4 Connection: ${conn.id}, property: ${conn.propertyId}, isPrimary: ${conn.isPrimary}, isActive: ${conn.isActive}`);
+        });
+      }
 
       const statuses = [
         {
@@ -1042,6 +1050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       ];
 
+      console.log(`[Connected Platforms] Returning statuses:`, JSON.stringify(statuses, null, 2));
       res.json({ statuses });
     } catch (error) {
       console.error("Connected platforms status error:", error);

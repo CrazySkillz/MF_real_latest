@@ -576,6 +576,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[Google Sheets] Found connection, access token exists: ${!!connection.accessToken}`);
 
+      // Check token scopes by calling tokeninfo endpoint
+      try {
+        const tokenInfoResponse = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${connection.accessToken}`);
+        if (tokenInfoResponse.ok) {
+          const tokenInfo = await tokenInfoResponse.json();
+          console.log(`[Google Sheets] Token scopes:`, tokenInfo.scope);
+        }
+      } catch (e) {
+        console.log(`[Google Sheets] Could not fetch token info`);
+      }
+
       // Fetch spreadsheets from Google Drive API
       const driveUrl = 'https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name)';
       console.log(`[Google Sheets] Calling Drive API: ${driveUrl}`);
@@ -597,6 +608,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const errorJson = JSON.parse(errorBody);
           errorMessage = errorJson.error?.message || errorMessage;
           console.error(`[Google Sheets] Drive API error details:`, errorJson);
+          
+          // If insufficient scopes, provide helpful message
+          if (errorJson.error?.code === 403 && errorJson.error?.message?.includes('insufficient authentication scopes')) {
+            errorMessage = 'Please reconnect Google Sheets to grant Drive access permissions';
+          }
         } catch (e) {
           console.error(`[Google Sheets] Could not parse error response`);
         }

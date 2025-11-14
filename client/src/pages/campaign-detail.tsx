@@ -3411,10 +3411,13 @@ export default function CampaignDetail() {
     });
   }, [campaignId, ga4Connection]);
 
+  // Force connection status to be explicitly checked
+  const isGA4Connected = ga4Connection?.connected === true;
+  
   const platformMetrics: PlatformMetrics[] = [
     {
       platform: "Google Analytics",
-      connected: !!ga4Connection?.connected,
+      connected: isGA4Connected,
       impressions: ga4Metrics?.impressions || 0,
       clicks: ga4Metrics?.clicks || 0,
       conversions: ga4Metrics?.conversions || 0,

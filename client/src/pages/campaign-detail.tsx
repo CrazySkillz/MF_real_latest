@@ -3295,14 +3295,9 @@ export default function CampaignDetail() {
   });
 
   // Check Custom Integration connection status
-  const { data: customIntegration } = useQuery({
-    queryKey: ["/api/custom-integration", campaignId],
+  const { data: customIntegrationConnection } = useQuery({
+    queryKey: ["/api/custom-integration/check-connection", campaignId],
     enabled: !!campaignId,
-    queryFn: async () => {
-      const response = await fetch(`/api/custom-integration/${campaignId}`);
-      if (!response.ok) return null;
-      return response.json();
-    },
   });
 
   // Fetch LinkedIn metrics for Performance Summary
@@ -3493,7 +3488,7 @@ export default function CampaignDetail() {
     },
     {
       platform: "Custom Integration",
-      connected: !!customIntegration,
+      connected: !!customIntegrationConnection?.connected,
       impressions: 0,
       clicks: 0,
       conversions: 0,

@@ -2243,16 +2243,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check Custom Integration connection status
+  app.get("/api/custom-integration/check-connection/:campaignId", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const customIntegration = await storage.getCustomIntegration(campaignId);
+
+      if (!customIntegration || !customIntegration.webhookToken) {
+        return res.json({ connected: false });
+      }
+
+      res.json({
+        connected: true,
+        integration: {
+          id: customIntegration.id,
+          email: customIntegration.email,
+          connectedAt: customIntegration.connectedAt,
+          hasEmailWhitelist: customIntegration.allowedEmailAddresses && customIntegration.allowedEmailAddresses.length > 0
+        }
+      });
+    } catch (error) {
+      console.error('Custom Integration connection check error:', error);
+      res.json({ connected: false });
+    }
+  });
+
   app.get("/api/custom-integration/:campaignId", async (req, res) => {
     try {
       const customIntegration = await storage.getCustomIntegration(req.params.campaignId);
       if (!customIntegration) {
         return res.status(404).json({ message: "Custom integration not found" });
       }
-      
+
       // Include latest metrics for KPI creation dropdown
       const metrics = await storage.getLatestCustomIntegrationMetrics(req.params.campaignId);
-      
+
       res.json({
         ...customIntegration,
         metrics: metrics || null

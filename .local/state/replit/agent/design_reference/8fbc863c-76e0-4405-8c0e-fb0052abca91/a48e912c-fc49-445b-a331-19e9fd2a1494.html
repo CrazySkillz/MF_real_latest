@@ -1,0 +1,508 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarketPulse Analytics - Marketing Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#2563EB',
+                        secondary: '#1E293B',
+                        accent: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-50 font-sans">
+    <!-- @COMPONENT: TopNavigation -->
+    <nav class="bg-white border-b border-slate-200 px-6 py-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-sm"></i>
+                    </div>
+                    <span class="text-xl font-semibold text-slate-900">MarketPulse</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <button class="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i class="fas fa-bell"></i>
+                    <span class="absolute -top-1 -right-1 w-3 h-3 bg-danger rounded-full"></span>
+                </button>
+                
+                <div class="flex items-center space-x-3">
+                    <div class="text-right">
+                        <div class="text-sm font-medium text-slate-900" data-bind="user.name">Sarah Johnson</div>
+                        <div class="text-xs text-slate-500" data-bind="user.role">Marketing Director</div>
+                    </div>
+                    <div class="w-8 h-8 bg-slate-300 rounded-full flex items-center justify-center">
+                        <span class="text-sm font-medium text-slate-700">SJ</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- @END_COMPONENT: TopNavigation -->
+
+    <div class="flex min-h-screen">
+        <!-- @COMPONENT: Sidebar -->
+        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col">
+            <div class="p-6">
+                <nav class="space-y-2">
+                    <a href="#" class="flex items-center space-x-3 px-3 py-2 bg-primary/10 text-primary rounded-lg font-medium">
+                        <i class="fas fa-chart-bar w-5"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                        <i class="fas fa-bullseye w-5"></i>
+                        <span>Campaigns</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                        <i class="fas fa-users w-5"></i>
+                        <span>Audiences</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                        <i class="fas fa-chart-line w-5"></i>
+                        <span>Analytics</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                        <i class="fas fa-plug w-5"></i>
+                        <span>Integrations</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Integration Status -->
+            <div class="p-6 mt-auto border-t border-slate-200">
+                <h3 class="text-sm font-semibold text-slate-900 mb-3">Connected Platforms</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i class="fab fa-facebook text-blue-600"></i>
+                            <span class="text-sm text-slate-700">Facebook Ads</span>
+                        </div>
+                        <div class="w-2 h-2 bg-accent rounded-full"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i class="fab fa-google text-red-500"></i>
+                            <span class="text-sm text-slate-700">Google Analytics</span>
+                        </div>
+                        <div class="w-2 h-2 bg-accent rounded-full"></div>
+                    </div>
+                    <button class="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary/5 rounded-lg transition-colors">
+                        <i class="fas fa-plus mr-2"></i>
+                        Add Integration
+                    </button>
+                </div>
+            </div>
+        </aside>
+        <!-- @END_COMPONENT: Sidebar -->
+
+        <!-- @COMPONENT: MainContent -->
+        <main class="flex-1 p-8">
+            <!-- Header Section -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h1 class="text-3xl font-bold text-slate-900">Marketing Dashboard</h1>
+                        <p class="text-slate-600 mt-1">Track your campaign performance and marketing metrics</p>
+                    </div>
+                    
+                    <!-- Date Range Filter -->
+                    <div class="flex items-center space-x-4">
+                        <select class="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                            <option>Last 7 days</option>
+                            <option>Last 30 days</option>
+                            <option>Last 3 months</option>
+                            <option>Custom range</option>
+                        </select>
+                        <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
+                            <i class="fas fa-download mr-2"></i>
+                            Export
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- @MAP: kpiMetrics.map(metric => ( -->
+                    <div class="bg-white rounded-xl border border-slate-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-eye text-primary"></i>
+                            </div>
+                            <div class="flex items-center space-x-1 text-xs">
+                                <i class="fas fa-arrow-up text-accent"></i>
+                                <span class="text-accent font-medium" data-bind="metric.change">+12.5%</span>
+                            </div>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900" data-bind="metric.value">847,329</h3>
+                        <p class="text-sm text-slate-600" data-bind="metric.label">Total Impressions</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-mouse-pointer text-accent"></i>
+                            </div>
+                            <div class="flex items-center space-x-1 text-xs">
+                                <i class="fas fa-arrow-up text-accent"></i>
+                                <span class="text-accent font-medium">+8.2%</span>
+                            </div>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900">23,847</h3>
+                        <p class="text-sm text-slate-600">Total Clicks</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-percentage text-warning"></i>
+                            </div>
+                            <div class="flex items-center space-x-1 text-xs">
+                                <i class="fas fa-arrow-down text-danger"></i>
+                                <span class="text-danger font-medium">-2.1%</span>
+                            </div>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900">2.81%</h3>
+                        <p class="text-sm text-slate-600">Click-through Rate</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-dollar-sign text-emerald-600"></i>
+                            </div>
+                            <div class="flex items-center space-x-1 text-xs">
+                                <i class="fas fa-arrow-up text-accent"></i>
+                                <span class="text-accent font-medium">+15.3%</span>
+                            </div>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900">$12,847</h3>
+                        <p class="text-sm text-slate-600">Ad Spend</p>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Performance Over Time Chart -->
+                <div class="bg-white rounded-xl border border-slate-200 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg font-semibold text-slate-900">Performance Over Time</h2>
+                        <select class="px-3 py-1 border border-slate-300 rounded text-sm">
+                            <option>Impressions</option>
+                            <option>Clicks</option>
+                            <option>Conversions</option>
+                        </select>
+                    </div>
+                    <div class="h-64">
+                        <canvas id="performanceChart" class="w-full h-full"></canvas>
+                    </div>
+                </div>
+
+                <!-- Campaign Distribution -->
+                <div class="bg-white rounded-xl border border-slate-200 p-6">
+                    <h2 class="text-lg font-semibold text-slate-900 mb-6">Campaign Performance</h2>
+                    <div class="h-64">
+                        <canvas id="campaignChart" class="w-full h-full"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campaign Table and Integration Forms -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Campaign Performance Table -->
+                <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg font-semibold text-slate-900">Active Campaigns</h2>
+                        <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm">
+                            <i class="fas fa-plus mr-2"></i>
+                            New Campaign
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-slate-200">
+                                    <th class="text-left py-3 px-4 font-medium text-slate-700">Campaign</th>
+                                    <th class="text-left py-3 px-4 font-medium text-slate-700">Platform</th>
+                                    <th class="text-left py-3 px-4 font-medium text-slate-700">Impressions</th>
+                                    <th class="text-left py-3 px-4 font-medium text-slate-700">CTR</th>
+                                    <th class="text-left py-3 px-4 font-medium text-slate-700">Spend</th>
+                                    <th class="text-left py-3 px-4 font-medium text-slate-700">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- @MAP: campaigns.map(campaign => ( -->
+                                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                    <td class="py-4 px-4">
+                                        <div class="font-medium text-slate-900" data-bind="campaign.name">Q4 Holiday Sale</div>
+                                        <div class="text-sm text-slate-500" data-bind="campaign.type">Search Campaign</div>
+                                    </td>
+                                    <td class="py-4 px-4">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fab fa-facebook text-blue-600"></i>
+                                            <span class="text-sm" data-bind="campaign.platform">Facebook</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-4 text-sm" data-bind="campaign.impressions">234,567</td>
+                                    <td class="py-4 px-4 text-sm" data-bind="campaign.ctr">3.2%</td>
+                                    <td class="py-4 px-4 text-sm" data-bind="campaign.spend">$2,847</td>
+                                    <td class="py-4 px-4">
+                                        <span class="px-3 py-1 bg-accent/10 text-accent rounded-full text-xs font-medium">Active</span>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                    <td class="py-4 px-4">
+                                        <div class="font-medium text-slate-900">Brand Awareness</div>
+                                        <div class="text-sm text-slate-500">Display Campaign</div>
+                                    </td>
+                                    <td class="py-4 px-4">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fab fa-google text-red-500"></i>
+                                            <span class="text-sm">Google Ads</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-4 text-sm">567,234</td>
+                                    <td class="py-4 px-4 text-sm">2.1%</td>
+                                    <td class="py-4 px-4 text-sm">$4,120</td>
+                                    <td class="py-4 px-4">
+                                        <span class="px-3 py-1 bg-accent/10 text-accent rounded-full text-xs font-medium">Active</span>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                    <td class="py-4 px-4">
+                                        <div class="font-medium text-slate-900">Product Launch</div>
+                                        <div class="text-sm text-slate-500">Video Campaign</div>
+                                    </td>
+                                    <td class="py-4 px-4">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fab fa-facebook text-blue-600"></i>
+                                            <span class="text-sm">Facebook</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-4 text-sm">123,456</td>
+                                    <td class="py-4 px-4 text-sm">4.8%</td>
+                                    <td class="py-4 px-4 text-sm">$1,560</td>
+                                    <td class="py-4 px-4">
+                                        <span class="px-3 py-1 bg-warning/10 text-warning rounded-full text-xs font-medium">Paused</span>
+                                    </td>
+                                </tr>
+                                <!-- @END_MAP )) -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Integration Panel -->
+                <div class="space-y-6">
+                    <!-- Add New Integration -->
+                    <div class="bg-white rounded-xl border border-slate-200 p-6">
+                        <h3 class="text-lg font-semibold text-slate-900 mb-4">Add Integration</h3>
+                        
+                        <div class="space-y-4">
+                            <button class="w-full flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors group">
+                                <div class="flex items-center space-x-3">
+                                    <i class="fab fa-facebook text-blue-600 text-xl"></i>
+                                    <div class="text-left">
+                                        <div class="font-medium text-slate-900">Facebook Ads</div>
+                                        <div class="text-sm text-slate-500">Connect your Facebook advertising account</div>
+                                    </div>
+                                </div>
+                                <i class="fas fa-chevron-right text-slate-400 group-hover:text-primary transition-colors"></i>
+                            </button>
+
+                            <button class="w-full flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors group">
+                                <div class="flex items-center space-x-3">
+                                    <i class="fab fa-google text-red-500 text-xl"></i>
+                                    <div class="text-left">
+                                        <div class="font-medium text-slate-900">Google Analytics</div>
+                                        <div class="text-sm text-slate-500">Track website performance and conversions</div>
+                                    </div>
+                                </div>
+                                <i class="fas fa-chevron-right text-slate-400 group-hover:text-primary transition-colors"></i>
+                            </button>
+
+                            <button class="w-full flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors group">
+                                <div class="flex items-center space-x-3">
+                                    <i class="fab fa-linkedin text-blue-700 text-xl"></i>
+                                    <div class="text-left">
+                                        <div class="font-medium text-slate-900">LinkedIn Ads</div>
+                                        <div class="text-sm text-slate-500">B2B advertising and lead generation</div>
+                                    </div>
+                                </div>
+                                <i class="fas fa-chevron-right text-slate-400 group-hover:text-primary transition-colors"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white rounded-xl border border-slate-200 p-6">
+                        <h3 class="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
+                        
+                        <div class="space-y-3">
+                            <button class="w-full text-left px-4 py-3 border border-slate-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors">
+                                <i class="fas fa-chart-line text-primary mr-3"></i>
+                                <span class="font-medium">Generate Report</span>
+                            </button>
+                            
+                            <button class="w-full text-left px-4 py-3 border border-slate-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors">
+                                <i class="fas fa-bell text-primary mr-3"></i>
+                                <span class="font-medium">Set up Alert</span>
+                            </button>
+                            
+                            <button class="w-full text-left px-4 py-3 border border-slate-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors">
+                                <i class="fas fa-cog text-primary mr-3"></i>
+                                <span class="font-medium">Account Settings</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <!-- @END_COMPONENT: MainContent -->
+    </div>
+
+    <!-- @COMPONENT: IntegrationModal (Hidden by default) -->
+    <div id="integrationModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl max-w-md w-full mx-4 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-semibold text-slate-900">Connect Facebook Ads</h3>
+                <button class="text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form class="space-y-4">
+                <!-- DO NOT create actual credential inputs for API keys unless explicitly requested -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Account Email</label>
+                    <input type="email" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" placeholder="your@email.com" data-mock="true">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Access Token</label>
+                    <input type="password" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" placeholder="••••••••••••••••" data-mock="true">
+                    <p class="text-xs text-slate-500 mt-1">Find this in your Facebook Developer Console</p>
+                </div>
+                
+                <div class="flex items-center space-x-3 pt-4">
+                    <button type="button" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        <i class="fas fa-plug mr-2"></i>
+                        Connect
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: IntegrationModal -->
+
+    <script>
+        (function() {
+            // Chart initialization
+            const ctx1 = document.getElementById('performanceChart').getContext('2d');
+            const performanceChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+                    datasets: [{
+                        label: 'Impressions',
+                        data: [65000, 78000, 82000, 95000, 88000, 92000, 105000],
+                        borderColor: '#2563EB',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#f1f5f9'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            const ctx2 = document.getElementById('campaignChart').getContext('2d');
+            const campaignChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Facebook Ads', 'Google Ads', 'LinkedIn Ads', 'Twitter Ads'],
+                    datasets: [{
+                        data: [45, 30, 15, 10],
+                        backgroundColor: [
+                            '#2563EB',
+                            '#10B981',
+                            '#F59E0B',
+                            '#EF4444'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+
+            // TODO: Implement business logic for:
+            // - Real-time data fetching
+            // - Authentication with social media platforms
+            // - Campaign management functionality
+            // - Alert system for performance thresholds
+            // - Data export capabilities
+            // - User settings and preferences
+        })();
+    </script>
+</body>
+</html>

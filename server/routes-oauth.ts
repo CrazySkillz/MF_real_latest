@@ -5614,6 +5614,346 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // TRANSFER CONNECTION ENDPOINTS
+  // ============================================================================
+
+  // Transfer GA4 connection from temp campaign to real campaign
+  app.post("/api/ga4/transfer-connection", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+
+      console.log(`[GA4 Transfer] Transferring connection from ${fromCampaignId} to ${toCampaignId}`);
+
+      if (!fromCampaignId || !toCampaignId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Both fromCampaignId and toCampaignId are required" 
+        });
+      }
+
+      // Get existing connections from temp campaign
+      const existingConnections = await storage.getGA4Connections(fromCampaignId);
+      console.log(`[GA4 Transfer] Found ${existingConnections.length} connections for ${fromCampaignId}`);
+
+      if (existingConnections.length === 0) {
+        console.log(`[GA4 Transfer] No connections found for ${fromCampaignId}`);
+        return res.status(404).json({ 
+          success: false, 
+          error: "No GA4 connection found for source campaign" 
+        });
+      }
+
+      // Get the primary connection or the first one
+      const existingConnection = existingConnections.find(c => c.isPrimary) || existingConnections[0];
+      console.log(`[GA4 Transfer] Using connection ${existingConnection.id} (isPrimary: ${existingConnection.isPrimary})`);
+
+      // Create new connection for target campaign
+      const newConnection = await storage.createGA4Connection({
+        campaignId: toCampaignId,
+        propertyId: existingConnection.propertyId,
+        accessToken: existingConnection.accessToken,
+        refreshToken: existingConnection.refreshToken,
+        method: 'access_token',
+        propertyName: existingConnection.propertyName,
+        serviceAccountKey: existingConnection.serviceAccountKey,
+        isPrimary: true,
+        isActive: true,
+        clientId: existingConnection.clientId,
+        clientSecret: existingConnection.clientSecret,
+        expiresAt: existingConnection.expiresAt
+      });
+
+      await storage.setPrimaryGA4Connection(toCampaignId, newConnection.id);
+      console.log(`[GA4 Transfer] Created new connection ${newConnection.id} for ${toCampaignId} (isPrimary: ${newConnection.isPrimary}, isActive: ${newConnection.isActive})`);
+
+      // Delete temp connections
+      const tempConnections = await storage.getGA4Connections(fromCampaignId);
+      for (const conn of tempConnections) {
+        await storage.deleteGA4Connection(conn.id);
+        console.log(`[GA4 Transfer] Deleted temp connection ${conn.id}`);
+      }
+
+      res.json({ 
+        success: true, 
+        message: 'GA4 connection transferred successfully',
+        connectionId: newConnection.id
+      });
+    } catch (error) {
+      console.error('[GA4 Transfer] Error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to transfer GA4 connection' 
+      });
+    }
+  });
+
+  // Set GA4 property for a campaign (used during initial setup)
+  app.post("/api/campaigns/:id/ga4-property", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { propertyId } = req.body;
+
+      console.log(`[Set Property] Setting property ${propertyId} for campaign ${campaignId}`);
+
+      if (!propertyId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Property ID is required" 
+        });
+      }
+
+      // Get connection from real GA4 client
+      const connection = realGA4Client.getConnection(campaignId);
+      if (!connection) {
+        console.log(`[Set Property] No connection found in realGA4Client for ${campaignId}`);
+        return res.status(404).json({ 
+          success: false, 
+          error: "No active GA4 connection found" 
+        });
+      }
+
+      // Update property ID in memory
+      realGA4Client.setPropertyId(campaignId, propertyId);
+
+      // Find property name from available properties
+      const propertyName = connection.availableProperties?.find(p => p.id === propertyId)?.name || propertyId;
+      console.log(`[Set Property] Property name: ${propertyName}`);
+
+      // Check if connection already exists in database
+      const existingConnections = await storage.getGA4Connections(campaignId);
+      console.log(`[Set Property] Found ${existingConnections.length} existing connections for ${campaignId}`);
+
+      if (existingConnections.length > 0) {
+        // Update existing connection
+        const existingConnection = existingConnections[0];
+        console.log(`[Set Property] Updating existing connection ${existingConnection.id}`);
+        
+        await storage.updateGA4Connection(existingConnection.id, {
+          propertyId,
+          propertyName,
+          isPrimary: true,
+          isActive: true
+        });
+        
+        await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
+        console.log(`[Set Property] Connection updated and set as primary`);
+      } else {
+        // Create new connection
+        console.log(`[Set Property] Creating new connection for ${campaignId} with property ${propertyId}`);
+        
+        const newConnection = await storage.createGA4Connection({
+          campaignId,
+          propertyId,
+          accessToken: connection.accessToken || '',
+          refreshToken: connection.refreshToken || '',
+          method: 'access_token',
+          propertyName,
+          isPrimary: true,
+          isActive: true,
+          clientId: process.env.GOOGLE_CLIENT_ID || undefined,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET || undefined,
+          expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined
+        });
+
+        await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
+        console.log(`[Set Property] New connection created: ${newConnection.id}, isPrimary: ${newConnection.isPrimary}, isActive: ${newConnection.isActive}`);
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Property set successfully" 
+      });
+    } catch (error) {
+      console.error('[Set Property] Error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to set property' 
+      });
+    }
+  });
+
+  // Check GA4 connection status for a campaign
+  app.get("/api/ga4/check-connection/:campaignId", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      console.log(`[GA4 Check] Checking connection for campaign ${campaignId}`);
+
+      const connections = await storage.getGA4Connections(campaignId);
+      console.log(`[GA4 Check] Found ${connections.length} connections in database`);
+
+      if (connections.length > 0) {
+        const primaryConnection = connections.find(c => c.isPrimary) || connections[0];
+        console.log(`[GA4 Check] Returning connected=true for ${campaignId}, primary connection: ${primaryConnection.id}`);
+        
+        res.json({
+          connected: true,
+          totalConnections: connections.length,
+          primaryConnection: {
+            id: primaryConnection.id,
+            propertyId: primaryConnection.propertyId,
+            propertyName: primaryConnection.propertyName,
+            isPrimary: primaryConnection.isPrimary,
+            isActive: primaryConnection.isActive
+          },
+          connections: connections.map(c => ({
+            id: c.id,
+            propertyId: c.propertyId,
+            propertyName: c.propertyName,
+            isPrimary: c.isPrimary,
+            isActive: c.isActive
+          }))
+        });
+      } else {
+        console.log(`[GA4 Check] No connections found for ${campaignId}, returning connected=false`);
+        res.json({ 
+          connected: false, 
+          totalConnections: 0, 
+          connections: [] 
+        });
+      }
+    } catch (error) {
+      console.error('[GA4 Check] Error:', error);
+      res.status(500).json({ 
+        connected: false, 
+        error: 'Failed to check connection status' 
+      });
+    }
+  });
+
+  // Get GA4 connection status (used during setup flow)
+  app.get("/api/campaigns/:id/ga4-connection-status", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      console.log(`[GA4 Status] Checking status for campaign ${campaignId}`);
+
+      const connection = realGA4Client.getConnection(campaignId);
+      
+      if (connection && connection.availableProperties) {
+        console.log(`[GA4 Status] Found connection with ${connection.availableProperties.length} properties`);
+        res.json({
+          connected: true,
+          properties: connection.availableProperties,
+          email: connection.email
+        });
+      } else {
+        console.log(`[GA4 Status] No connection found for ${campaignId}`);
+        res.json({ connected: false, properties: [] });
+      }
+    } catch (error) {
+      console.error('[GA4 Status] Error:', error);
+      res.status(500).json({ 
+        connected: false, 
+        error: 'Failed to get connection status' 
+      });
+    }
+  });
+
+  // Transfer Google Sheets connection
+  app.post("/api/google-sheets/transfer-connection", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+      console.log(`[Sheets Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
+
+      const existingConnection = await storage.getGoogleSheetsConnection(fromCampaignId);
+      
+      if (!existingConnection) {
+        return res.status(404).json({ 
+          success: false, 
+          error: "No Google Sheets connection found" 
+        });
+      }
+
+      await storage.createGoogleSheetsConnection({
+        campaignId: toCampaignId,
+        spreadsheetId: existingConnection.spreadsheetId,
+        spreadsheetName: existingConnection.spreadsheetName,
+        accessToken: existingConnection.accessToken,
+        refreshToken: existingConnection.refreshToken,
+        clientId: existingConnection.clientId,
+        clientSecret: existingConnection.clientSecret,
+        expiresAt: existingConnection.expiresAt
+      });
+
+      await storage.deleteGoogleSheetsConnection(fromCampaignId);
+      console.log(`[Sheets Transfer] Transfer complete`);
+
+      res.json({ success: true, message: 'Google Sheets connection transferred' });
+    } catch (error) {
+      console.error('[Sheets Transfer] Error:', error);
+      res.status(500).json({ success: false, error: 'Transfer failed' });
+    }
+  });
+
+  // Transfer LinkedIn connection
+  app.post("/api/linkedin/transfer-connection", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+      console.log(`[LinkedIn Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
+
+      const existingConnection = await storage.getLinkedInConnection(fromCampaignId);
+      
+      if (!existingConnection) {
+        return res.status(404).json({ 
+          success: false, 
+          error: "No LinkedIn connection found" 
+        });
+      }
+
+      await storage.createLinkedInConnection({
+        campaignId: toCampaignId,
+        adAccountId: existingConnection.adAccountId,
+        adAccountName: existingConnection.adAccountName,
+        accessToken: existingConnection.accessToken,
+        refreshToken: existingConnection.refreshToken,
+        clientId: existingConnection.clientId,
+        clientSecret: existingConnection.clientSecret,
+        method: existingConnection.method,
+        expiresAt: existingConnection.expiresAt
+      });
+
+      await storage.deleteLinkedInConnection(fromCampaignId);
+      console.log(`[LinkedIn Transfer] Transfer complete`);
+
+      res.json({ success: true, message: 'LinkedIn connection transferred' });
+    } catch (error) {
+      console.error('[LinkedIn Transfer] Error:', error);
+      res.status(500).json({ success: false, error: 'Transfer failed' });
+    }
+  });
+
+  // Transfer Custom Integration
+  app.post("/api/custom-integration/transfer", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+      console.log(`[Custom Integration Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
+
+      const existingIntegration = await storage.getCustomIntegration(fromCampaignId);
+      
+      if (!existingIntegration) {
+        return res.status(404).json({ 
+          success: false, 
+          error: "No custom integration found" 
+        });
+      }
+
+      await storage.createCustomIntegration({
+        campaignId: toCampaignId,
+        email: existingIntegration.email,
+        webhookToken: existingIntegration.webhookToken,
+        allowedEmailAddresses: existingIntegration.allowedEmailAddresses
+      });
+
+      await storage.deleteCustomIntegration(fromCampaignId);
+      console.log(`[Custom Integration Transfer] Transfer complete`);
+
+      res.json({ success: true, message: 'Custom integration transferred' });
+    } catch (error) {
+      console.error('[Custom Integration Transfer] Error:', error);
+      res.status(500).json({ success: false, error: 'Transfer failed' });
+    }
+  });
+
   const server = createServer(app);
   return server;
 }

@@ -25,7 +25,7 @@ import { format } from "date-fns";
 import { reportStorage } from "@/lib/reportStorage";
 import { exportCampaignKPIsToPDF, exportCampaignBenchmarksToPDF } from "@/lib/pdfExport";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
-import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
+import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { ABTestManager } from "@/components/ABTestManager";
 import { AttributionDashboard } from "@/components/AttributionDashboard";
@@ -4872,11 +4872,14 @@ export default function CampaignDetail() {
                           }}
                         />
                       ) : platform.platform === "Google Sheets" ? (
-                        <GoogleSheetsConnectionFlow 
+                        <SimpleGoogleSheetsAuth 
                           campaignId={campaign.id} 
-                          onConnectionSuccess={() => {
+                          onSuccess={() => {
                             setExpandedPlatform(null);
                             window.location.reload();
+                          }}
+                          onError={(error) => {
+                            console.error("Google Sheets connection error:", error);
                           }}
                         />
                       ) : platform.platform === "LinkedIn Ads" ? (

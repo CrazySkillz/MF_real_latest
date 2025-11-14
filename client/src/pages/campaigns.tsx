@@ -22,7 +22,7 @@ import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { IntegratedGA4Auth } from "@/components/IntegratedGA4Auth";
-import { GoogleSheetsConnectionFlow } from "@/components/GoogleSheetsConnectionFlow";
+import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 
 const campaignFormSchema = insertCampaignSchema.extend({
@@ -420,15 +420,22 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   )}
                   
                   {platform.id === 'google-sheets' && (
-                    <GoogleSheetsConnectionFlow
+                    <SimpleGoogleSheetsAuth
                       campaignId="temp-campaign-setup"
-                      onConnectionSuccess={() => {
+                      onSuccess={() => {
                         setConnectedPlatforms(prev => [...prev, 'google-sheets']);
                         setSelectedPlatforms(prev => [...prev, 'google-sheets']);
                         setExpandedPlatforms(prev => ({ ...prev, 'google-sheets': false }));
                         toast({
                           title: "Google Sheets Connected!",
                           description: "Successfully connected to your spreadsheet data."
+                        });
+                      }}
+                      onError={(error) => {
+                        toast({
+                          title: "Connection Failed",
+                          description: error,
+                          variant: "destructive"
                         });
                       }}
                     />

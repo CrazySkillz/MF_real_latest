@@ -399,6 +399,224 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Sheets OAuth - Start connection
+  app.post("/api/auth/google-sheets/connect", async (req, res) => {
+    try {
+      const { campaignId } = req.body;
+
+      if (!campaignId) {
+        return res.status(400).json({ message: "Campaign ID is required" });
+      }
+
+      console.log(`[Google Sheets OAuth] Starting flow for campaign ${campaignId}`);
+      
+      // Use the same Google OAuth client but with Sheets scopes
+      const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`;
+      const redirectUri = `${baseUrl}/api/auth/google-sheets/callback`;
+      
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(process.env.GOOGLE_CLIENT_ID || '')}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `response_type=code&` +
+        `scope=${encodeURIComponent('https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly')}&` +
+        `access_type=offline&` +
+        `prompt=consent&` +
+        `state=${encodeURIComponent(campaignId)}`;
+
+      res.json({
+        authUrl,
+        message: "Google Sheets OAuth flow initiated",
+      });
+    } catch (error) {
+      console.error('[Google Sheets OAuth] Initiation error:', error);
+      res.status(500).json({ message: "Failed to initiate authentication" });
+    }
+  });
+
+  // Google Sheets OAuth callback
+  app.get("/api/auth/google-sheets/callback", async (req, res) => {
+    try {
+      const { code, state, error } = req.query;
+
+      if (error) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Failed</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Failed</h2>
+              <p>Error: ${error}</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'sheets_auth_error', error: '${error}' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      if (!code || !state) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>Missing authorization code or state parameter.</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'sheets_auth_error', error: 'Missing parameters' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      const campaignId = state as string;
+      console.log(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
+
+      // Exchange code for tokens
+      const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`;
+      const redirectUri = `${baseUrl}/api/auth/google-sheets/callback`;
+      
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code: code as string,
+          client_id: process.env.GOOGLE_CLIENT_ID || '',
+          client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }),
+      });
+
+      const tokens = await tokenResponse.json();
+
+      if (!tokens.access_token) {
+        throw new Error('Failed to obtain access token');
+      }
+
+      // Store tokens temporarily (will be moved to real campaign later)
+      await storage.createGoogleSheetsConnection({
+        campaignId,
+        spreadsheetId: '', // Will be set when user selects spreadsheet
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : undefined,
+      });
+
+      console.log(`[Google Sheets OAuth] Tokens stored for campaign ${campaignId}`);
+
+      // Send success message to parent window
+      res.send(`
+        <html>
+          <head><title>Authentication Successful</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>✓ Authentication Successful</h2>
+            <p>You can now close this window and select your spreadsheet.</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'sheets_auth_success' }, window.location.origin);
+              }
+              setTimeout(() => window.close(), 1500);
+            </script>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      console.error('[Google Sheets OAuth] Callback error:', error);
+      res.send(`
+        <html>
+          <head><title>Authentication Error</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>Authentication Error</h2>
+            <p>${error.message || 'Failed to complete authentication'}</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'sheets_auth_error', error: '${error.message}' }, window.location.origin);
+              }
+              setTimeout(() => window.close(), 2000);
+            </script>
+          </body>
+        </html>
+      `);
+    }
+  });
+
+  // Get spreadsheets for campaign
+  app.get("/api/google-sheets/:campaignId/spreadsheets", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      console.log(`[Google Sheets] Fetching spreadsheets for campaign ${campaignId}`);
+
+      const connection = await storage.getGoogleSheetsConnection(campaignId);
+      
+      if (!connection || !connection.accessToken) {
+        return res.status(404).json({ error: 'No Google Sheets connection found' });
+      }
+
+      // Fetch spreadsheets from Google Drive API
+      const driveResponse = await fetch(
+        'https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name)',
+        {
+          headers: {
+            'Authorization': `Bearer ${connection.accessToken}`,
+          },
+        }
+      );
+
+      if (!driveResponse.ok) {
+        throw new Error('Failed to fetch spreadsheets from Google Drive');
+      }
+
+      const driveData = await driveResponse.json();
+      const spreadsheets = driveData.files.map((file: any) => ({
+        id: file.id,
+        name: file.name,
+      }));
+
+      console.log(`[Google Sheets] Found ${spreadsheets.length} spreadsheets`);
+      res.json({ spreadsheets });
+    } catch (error: any) {
+      console.error('[Google Sheets] Fetch spreadsheets error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch spreadsheets' });
+    }
+  });
+
+  // Select spreadsheet for campaign
+  app.post("/api/google-sheets/:campaignId/select-spreadsheet", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { spreadsheetId } = req.body;
+
+      if (!spreadsheetId) {
+        return res.status(400).json({ error: 'Spreadsheet ID is required' });
+      }
+
+      console.log(`[Google Sheets] Selecting spreadsheet ${spreadsheetId} for campaign ${campaignId}`);
+
+      const connection = await storage.getGoogleSheetsConnection(campaignId);
+      
+      if (!connection) {
+        return res.status(404).json({ error: 'No Google Sheets connection found' });
+      }
+
+      // Update connection with selected spreadsheet
+      await storage.updateGoogleSheetsConnection(campaignId, {
+        spreadsheetId,
+      });
+
+      console.log(`[Google Sheets] Spreadsheet selected successfully`);
+      res.json({ success: true, message: 'Spreadsheet connected successfully' });
+    } catch (error: any) {
+      console.error('[Google Sheets] Select spreadsheet error:', error);
+      res.status(500).json({ error: error.message || 'Failed to connect spreadsheet' });
+    }
+  });
+
   // Real Google Analytics OAuth callback
   app.get("/api/auth/google/callback", async (req, res) => {
     try {

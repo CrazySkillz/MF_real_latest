@@ -694,12 +694,16 @@ export default function Campaigns() {
         clientWebsite: data.clientWebsite || null,
         label: data.label || null,
         budget: data.budget ? parseFloat(data.budget) : null,
+        currency: data.currency || "USD",
+        conversionValue: data.conversionValue ? parseFloat(data.conversionValue as any) : null, // Added conversion value
         type: data.type || "campaign",
         platform: data.platform || "manual",
         impressions: data.impressions || 0,
         clicks: data.clicks || 0,
         spend: data.spend || "0",
         status: data.status || "active",
+        startDate: data.startDate || null,
+        endDate: data.endDate || null,
       });
       return response.json();
     },
@@ -725,6 +729,7 @@ export default function Campaigns() {
         label: data.label || null,
         budget: data.budget || null,
         currency: data.currency || "USD",
+        conversionValue: data.conversionValue || null, // Added conversion value
         startDate: data.startDate || null,
         endDate: data.endDate || null,
       });

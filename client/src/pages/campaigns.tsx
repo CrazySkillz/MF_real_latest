@@ -689,13 +689,14 @@ export default function Campaigns() {
 
   const createCampaignMutation = useMutation({
     mutationFn: async (data: CampaignFormData & { platform?: string; status?: string; type?: string; impressions?: number; clicks?: number; spend?: string }) => {
-      const response = await apiRequest("POST", "/api/campaigns", {
+      console.log('🚀 [Frontend] Creating campaign with data:', data);
+      const payload = {
         name: data.name,
         clientWebsite: data.clientWebsite || null,
         label: data.label || null,
         budget: data.budget ? parseFloat(data.budget) : null,
         currency: data.currency || "USD",
-        conversionValue: data.conversionValue ? parseFloat(data.conversionValue as any) : null, // Added conversion value
+        conversionValue: data.conversionValue ? parseFloat(data.conversionValue as any) : null,
         type: data.type || "campaign",
         platform: data.platform || "manual",
         impressions: data.impressions || 0,
@@ -704,18 +705,29 @@ export default function Campaigns() {
         status: data.status || "active",
         startDate: data.startDate || null,
         endDate: data.endDate || null,
-      });
-      return response.json();
+      };
+      console.log('🚀 [Frontend] API payload:', payload);
+      const response = await apiRequest("POST", "/api/campaigns", payload);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [Frontend] API error response:', errorData);
+        throw new Error(errorData.message || 'Failed to create campaign');
+      }
+      const result = await response.json();
+      console.log('✅ [Frontend] Campaign created:', result);
+      return result;
     },
     onSuccess: async (newCampaign) => {
+      console.log('✅ [Frontend] Campaign creation success callback:', newCampaign);
       // Only invalidate queries here
       // Dialog closing and navigation happen in handleConnectorsComplete after transfers
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('❌ [Frontend] Campaign creation error:', error);
       toast({
         title: "Error",
-        description: "Failed to create campaign. Please try again.",
+        description: error.message || "Failed to create campaign. Please try again.",
         variant: "destructive",
       });
     },

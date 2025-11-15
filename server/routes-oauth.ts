@@ -2379,6 +2379,333 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // CENTRALIZED LINKEDIN OAUTH (mirrors Google Analytics pattern)
+  // ============================================================================
+  
+  /**
+   * Initiate LinkedIn OAuth flow with centralized credentials
+   * Similar to Google Analytics - credentials stored in env vars, not user input
+   */
+  app.post("/api/auth/linkedin/connect", oauthRateLimiter, async (req, res) => {
+    try {
+      const { campaignId } = req.body;
+      if (!campaignId) {
+        return res.status(400).json({ message: "Campaign ID is required" });
+      }
+
+      console.log(`[LinkedIn OAuth] Starting flow for campaign ${campaignId}`);
+
+      // Check for centralized LinkedIn credentials
+      const clientId = process.env.LINKEDIN_CLIENT_ID;
+      const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+
+      if (!clientId || !clientSecret) {
+        console.log('[LinkedIn OAuth] Credentials not configured in environment variables');
+        return res.status(500).json({ 
+          message: "LinkedIn OAuth not configured. Please add LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET to environment variables.",
+          setupRequired: true
+        });
+      }
+
+      // Determine base URL
+      const rawBaseUrl = process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
+
+      console.log(`[LinkedIn OAuth] Using redirect URI: ${redirectUri}`);
+
+      // Build LinkedIn OAuth URL
+      const authUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `response_type=code&` +
+        `scope=${encodeURIComponent('r_ads_reporting rw_ads r_organization_admin')}&` +
+        `state=${encodeURIComponent(campaignId)}`;
+
+      res.json({ authUrl, message: "LinkedIn OAuth flow initiated" });
+    } catch (error) {
+      console.error('[LinkedIn OAuth] Initiation error:', error);
+      res.status(500).json({ message: "Failed to initiate authentication" });
+    }
+  });
+
+  /**
+   * Handle LinkedIn OAuth callback
+   * Exchanges authorization code for access token using centralized credentials
+   */
+  app.get("/api/auth/linkedin/callback", oauthRateLimiter, async (req, res) => {
+    try {
+      const { code, state, error, error_description } = req.query;
+
+      if (error) {
+        console.error(`[LinkedIn OAuth] Error from LinkedIn: ${error} - ${error_description}`);
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>${error_description || error}</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ 
+                    type: 'linkedin_auth_error', 
+                    error: '${error_description || error}' 
+                  }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      if (!code || !state) {
+        console.error('[LinkedIn OAuth] Missing code or state parameter');
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>Missing authorization code or state parameter.</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'linkedin_auth_error', error: 'Missing parameters' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      const campaignId = state as string;
+      console.log(`[LinkedIn OAuth] Processing callback for campaign ${campaignId}`);
+
+      // Get centralized credentials
+      const clientId = process.env.LINKEDIN_CLIENT_ID;
+      const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+
+      if (!clientId || !clientSecret) {
+        throw new Error('LinkedIn OAuth credentials not configured');
+      }
+
+      // Determine redirect URI (must match what was used in authorization)
+      const rawBaseUrl = process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
+
+      console.log(`[LinkedIn OAuth] Using redirect URI for token exchange: ${redirectUri}`);
+
+      // Exchange code for access token
+      const { retryOAuthExchange } = await import('./utils/retry');
+      
+      const tokenResponse = await retryOAuthExchange(async () => {
+        console.log('[LinkedIn OAuth] Attempting token exchange...');
+        const response = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code: code as string,
+            client_id: clientId,
+            client_secret: clientSecret,
+            redirect_uri: redirectUri,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[LinkedIn OAuth] Token exchange failed:', errorText);
+          throw new Error(`Token exchange failed: ${errorText}`);
+        }
+
+        return await response.json();
+      });
+
+      console.log('[LinkedIn OAuth] Token exchange successful');
+
+      if (!tokenResponse.access_token) {
+        throw new Error('Failed to obtain access token');
+      }
+
+      // Store connection temporarily (will be moved to real campaign later)
+      await storage.createLinkedInConnection({
+        campaignId,
+        adAccountId: '', // Will be set when user selects ad account
+        adAccountName: '',
+        accessToken: tokenResponse.access_token,
+        expiresAt: tokenResponse.expires_in 
+          ? new Date(Date.now() + tokenResponse.expires_in * 1000)
+          : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // Default 60 days
+        isPrimary: true,
+        isActive: true,
+      });
+
+      console.log(`[LinkedIn OAuth] Connection stored for campaign ${campaignId}`);
+
+      // Send success message to popup
+      res.send(`
+        <html>
+          <head><title>Authentication Successful</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>✓ LinkedIn Connected!</h2>
+            <p>Authentication successful. Fetching your ad accounts...</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ 
+                  type: 'linkedin_auth_success',
+                  accessToken: '${tokenResponse.access_token}'
+                }, window.location.origin);
+              }
+              setTimeout(() => window.close(), 1500);
+            </script>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      console.error('[LinkedIn OAuth] Callback error:', error);
+      res.send(`
+        <html>
+          <head><title>Authentication Error</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>Authentication Error</h2>
+            <p>${error.message || 'Failed to complete authentication'}</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ 
+                  type: 'linkedin_auth_error', 
+                  error: '${error.message || 'Authentication failed'}' 
+                }, window.location.origin);
+              }
+              setTimeout(() => window.close(), 2000);
+            </script>
+          </body>
+        </html>
+      `);
+    }
+  });
+
+  /**
+   * Fetch LinkedIn ad accounts using access token
+   */
+  app.post("/api/linkedin/ad-accounts", async (req, res) => {
+    try {
+      const { accessToken } = req.body;
+      
+      if (!accessToken) {
+        return res.status(400).json({ error: 'Access token is required' });
+      }
+
+      console.log('[LinkedIn] Fetching ad accounts');
+
+      const { LinkedInClient } = await import('./linkedinClient');
+      const { retryApiCall } = await import('./utils/retry');
+      
+      const linkedInClient = new LinkedInClient(accessToken);
+      
+      const adAccounts = await retryApiCall(
+        async () => await linkedInClient.getAdAccounts(),
+        'LinkedIn Ad Accounts'
+      );
+
+      console.log(`[LinkedIn] Found ${adAccounts.length} ad accounts`);
+
+      res.json({ 
+        adAccounts: adAccounts.map(account => ({
+          id: account.id,
+          name: account.name
+        }))
+      });
+    } catch (error: any) {
+      console.error('[LinkedIn] Fetch ad accounts error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch ad accounts' });
+    }
+  });
+
+  /**
+   * Select LinkedIn ad account and finalize connection
+   */
+  app.post("/api/linkedin/:campaignId/select-ad-account", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { adAccountId, accessToken } = req.body;
+
+      if (!adAccountId || !accessToken) {
+        return res.status(400).json({ error: 'Ad account ID and access token are required' });
+      }
+
+      console.log(`[LinkedIn] Selecting ad account ${adAccountId} for campaign ${campaignId}`);
+
+      // Fetch ad account details to get the name
+      const { LinkedInClient } = await import('./linkedinClient');
+      const linkedInClient = new LinkedInClient(accessToken);
+      const adAccounts = await linkedInClient.getAdAccounts();
+      const selectedAccount = adAccounts.find(acc => acc.id === adAccountId);
+
+      if (!selectedAccount) {
+        return res.status(404).json({ error: 'Ad account not found' });
+      }
+
+      // Update the connection with ad account details
+      const connection = await storage.getLinkedInConnection(campaignId);
+      
+      if (connection) {
+        // Update existing connection
+        await storage.updateLinkedInConnection(campaignId, {
+          adAccountId,
+          adAccountName: selectedAccount.name,
+        });
+      } else {
+        // Create new connection (shouldn't happen, but handle it)
+        await storage.createLinkedInConnection({
+          campaignId,
+          adAccountId,
+          adAccountName: selectedAccount.name,
+          accessToken,
+          expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
+          isPrimary: true,
+          isActive: true,
+        });
+      }
+
+      console.log(`[LinkedIn] Ad account selected successfully`);
+
+      res.json({ success: true, message: 'Ad account connected' });
+    } catch (error: any) {
+      console.error('[LinkedIn] Select ad account error:', error);
+      res.status(500).json({ error: error.message || 'Failed to select ad account' });
+    }
+  });
+
+  /**
+   * Delete LinkedIn connection
+   */
+  app.delete("/api/linkedin/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      console.log(`[LinkedIn] Deleting connection for campaign ${campaignId}`);
+      
+      await storage.deleteLinkedInConnection(campaignId);
+      
+      console.log(`[LinkedIn] Connection deleted successfully`);
+      res.json({ success: true, message: 'Connection deleted' });
+    } catch (error: any) {
+      console.error('[LinkedIn] Delete connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete connection' });
+    }
+  });
+
+  // ============================================================================
+  // END CENTRALIZED LINKEDIN OAUTH
+  // ============================================================================
+
   // Custom Integration routes
   app.post("/api/custom-integration/connect", async (req, res) => {
     try {

@@ -579,18 +579,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
         </DialogContent>
       </Dialog>
       
-      <div className="flex justify-between pt-6 border-t">
-        <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </Button>
-        <Button 
-          onClick={handleComplete}
-          disabled={selectedPlatforms.length === 0 || isLoading}
-        >
-          Continue with {selectedPlatforms.length} platform{selectedPlatforms.length !== 1 ? 's' : ''}
-        </Button>
-      </div>
+      {/* Buttons removed - now handled by parent component for better UX */}
       
       {/* GA4 Property Selection Modal */}
       {showPropertySelector && (
@@ -1259,7 +1248,7 @@ export default function Campaigns() {
                         />
                       </div>
                       
-                      {/* Move buttons outside scrollable area */}
+                      {/* Single unified button for campaign creation */}
                       <div className="flex items-center space-x-3 pt-4 border-t bg-background">
                         <Button 
                           type="button" 
@@ -1270,26 +1259,30 @@ export default function Campaigns() {
                           <ArrowLeft className="w-4 h-4 mr-2" />
                           Back
                         </Button>
-                        {linkedInImportComplete && (
-                          <Button 
-                            type="button" 
-                            className="flex-1"
-                            onClick={() => {
-                              // Use the platforms tracked by DataConnectorsStep
-                              console.log('🔧 Using tracked platforms:', connectedPlatformsInDialog);
-                              handleConnectorsComplete(connectedPlatformsInDialog);
-                            }}
-                            disabled={createCampaignMutation.isPending}
-                          >
-                            {createCampaignMutation.isPending ? "Creating..." : "Create Campaign"}
-                            <CheckCircle className="w-4 h-4 ml-2" />
-                          </Button>
-                        )}
-                        {!linkedInImportComplete && (
-                          <div className="flex-1 text-sm text-slate-500 dark:text-slate-400 text-center">
-                            Connect platforms or skip to create campaign
-                          </div>
-                        )}
+                        <Button 
+                          type="button" 
+                          className="flex-1"
+                          onClick={() => {
+                            // Use the platforms tracked by DataConnectorsStep
+                            console.log('🔧 Creating campaign with platforms:', connectedPlatformsInDialog);
+                            handleConnectorsComplete(connectedPlatformsInDialog);
+                          }}
+                          disabled={createCampaignMutation.isPending}
+                        >
+                          {createCampaignMutation.isPending ? (
+                            <>Creating...</>
+                          ) : connectedPlatformsInDialog.length > 0 ? (
+                            <>
+                              Create Campaign with {connectedPlatformsInDialog.length} platform{connectedPlatformsInDialog.length !== 1 ? 's' : ''}
+                              <CheckCircle className="w-4 h-4 ml-2" />
+                            </>
+                          ) : (
+                            <>
+                              Create Campaign
+                              <CheckCircle className="w-4 h-4 ml-2" />
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   )}

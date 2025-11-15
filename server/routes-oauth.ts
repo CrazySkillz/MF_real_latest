@@ -46,7 +46,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns", async (req, res) => {
     try {
       console.log('[Campaign Creation] Received data:', JSON.stringify(req.body, null, 2));
-      const validatedData = insertCampaignSchema.parse(req.body);
+      
+      // Remove conversionValue temporarily if column doesn't exist in database
+      const { conversionValue, ...dataWithoutConversionValue } = req.body;
+      const dataToValidate = conversionValue ? req.body : dataWithoutConversionValue;
+      
+      const validatedData = insertCampaignSchema.parse(dataToValidate);
       console.log('[Campaign Creation] Validated data:', JSON.stringify(validatedData, null, 2));
       const campaign = await storage.createCampaign(validatedData);
       console.log('[Campaign Creation] Campaign created successfully:', campaign.id);
@@ -57,7 +62,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('[Campaign Creation] Validation errors:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create campaign" });
+      console.error('[Campaign Creation] Database error details:', error);
+      res.status(500).json({ message: "Failed to create campaign", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 

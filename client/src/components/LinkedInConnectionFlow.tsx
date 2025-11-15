@@ -694,35 +694,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                           </div>
                         </div>
 
-                        {/* Conversion Value Input */}
-                        <div className="space-y-2">
-                          <Label htmlFor={`conversion-value-${campaign.id}`} className="text-sm font-medium">
-                            Conversion Value
-                          </Label>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Enter the average value per conversion for ROI and ROAS calculations
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="w-4 h-4 text-slate-500" />
-                            <Input
-                              id={`conversion-value-${campaign.id}`}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={campaign.conversionValue || ''}
-                              onChange={(e) => {
-                                setCampaigns(prev => prev.map(c => 
-                                  c.id === campaign.id 
-                                    ? { ...c, conversionValue: e.target.value }
-                                    : c
-                                ));
-                              }}
-                              className="flex-1"
-                              data-testid={`input-conversion-value-${campaign.id}`}
-                            />
-                          </div>
-                        </div>
+                        {/* Conversion Value removed - now set at campaign level for frictionless UX */}
                       </div>
                     )}
                   </div>

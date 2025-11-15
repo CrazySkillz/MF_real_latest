@@ -1175,6 +1175,28 @@ export default function Campaigns() {
                       )}
                     </div>
                     
+                    <div className="space-y-2">
+                      <Label htmlFor="conversionValue">Conversion Value (optional)</Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 dark:text-slate-400">$</span>
+                        <Input
+                          id="conversionValue"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          {...form.register("conversionValue")}
+                          className="flex-1"
+                        />
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Average revenue per conversion for ROI calculations. You can update this later.
+                      </p>
+                      {form.formState.errors.conversionValue && (
+                        <p className="text-sm text-destructive">{form.formState.errors.conversionValue.message}</p>
+                      )}
+                    </div>
+                    
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="startDate">Start Date (optional)</Label>

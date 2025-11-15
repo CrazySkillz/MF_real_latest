@@ -10,6 +10,7 @@ export const campaigns = pgTable("campaigns", {
   label: text("label"),
   budget: decimal("budget", { precision: 10, scale: 2 }),
   currency: text("currency").notNull().default("USD"),
+  conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Average revenue per conversion for ROI calculations
   type: text("type"),
   platform: text("platform"),
   impressions: integer("impressions").notNull().default(0),
@@ -551,6 +552,7 @@ export const insertCampaignSchema = createInsertSchema(campaigns)
     label: true,
     budget: true,
     currency: true,
+    conversionValue: true,
     type: true,
     platform: true,
     impressions: true,

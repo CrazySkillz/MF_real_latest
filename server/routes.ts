@@ -84,12 +84,25 @@ const webhookUpload = multer({
 }).any();
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Import rate limiters
+  const { 
+    oauthRateLimiter, 
+    linkedInApiRateLimiter, 
+    importRateLimiter,
+    googleSheetsRateLimiter,
+    ga4RateLimiter,
+    generalApiRateLimiter 
+  } = await import('./middleware/rateLimiter');
+
   // Critical: Ensure API routes are handled before any other middleware
   app.use('/api', (req, res, next) => {
     // Mark this as an API request to prevent Vite middleware interference
     (req as any).isApiRoute = true;
     next();
   });
+
+  // Apply general rate limiting to all API routes
+  app.use('/api', generalApiRateLimiter);
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {
@@ -2719,7 +2732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // LinkedIn OAuth and API Routes
   
   // OAuth callback - exchange code for access token and fetch ad accounts
-  app.post("/api/linkedin/oauth/callback", async (req, res) => {
+  app.post("/api/linkedin/oauth/callback", oauthRateLimiter, async (req, res) => {
     try {
       const { authCode, clientId, clientSecret, redirectUri, campaignId } = req.body;
       
@@ -2727,22 +2740,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "Missing required OAuth parameters" });
       }
 
-      // Import the LinkedIn client
+      console.log('[LinkedIn OAuth] Starting token exchange with retry logic');
+
+      // Import the LinkedIn client and retry utility
       const { LinkedInClient } = await import('./linkedinClient');
+      const { retryOAuthExchange, retryApiCall } = await import('./utils/retry');
       
-      // Exchange authorization code for access token
-      const tokens = await LinkedInClient.exchangeCodeForToken(
-        authCode,
-        clientId,
-        clientSecret,
-        redirectUri
-      );
+      // Exchange authorization code for access token with retry logic
+      const tokens = await retryOAuthExchange(async () => {
+        console.log('[LinkedIn OAuth] Attempting token exchange...');
+        return await LinkedInClient.exchangeCodeForToken(
+          authCode,
+          clientId,
+          clientSecret,
+          redirectUri
+        );
+      });
+      
+      console.log('[LinkedIn OAuth] Token exchange successful');
       
       // Create LinkedIn client with access token
       const linkedInClient = new LinkedInClient(tokens.access_token);
       
-      // Fetch ad accounts
-      const adAccounts = await linkedInClient.getAdAccounts();
+      // Fetch ad accounts with retry logic
+      const adAccounts = await retryApiCall(
+        async () => await linkedInClient.getAdAccounts(),
+        'LinkedIn Ad Accounts'
+      );
+      
+      console.log(`[LinkedIn OAuth] Successfully fetched ${adAccounts.length} ad accounts`);
       
       // Store the access token (in a real app, you'd store this in a database associated with the campaign)
       // For now, we'll return it to the frontend to use in subsequent requests
@@ -2756,7 +2782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }))
       });
     } catch (error: any) {
-      console.error('LinkedIn OAuth callback error:', error);
+      console.error('[LinkedIn OAuth] Callback error after retries:', error);
       res.status(500).json({ 
         success: false, 
         error: error.message || 'Failed to complete OAuth flow' 
@@ -2765,7 +2791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Fetch campaigns for a specific ad account
-  app.post("/api/linkedin/campaigns", async (req, res) => {
+  app.post("/api/linkedin/campaigns", linkedInApiRateLimiter, async (req, res) => {
     try {
       const { accessToken, adAccountId } = req.body;
       
@@ -2828,7 +2854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // LinkedIn Import Routes
   
   // Create LinkedIn import session with metrics and ad performance data
-  app.post("/api/linkedin/imports", async (req, res) => {
+  app.post("/api/linkedin/imports", importRateLimiter, async (req, res) => {
     try {
       const { campaignId, adAccountId, adAccountName, campaigns, accessToken, isTestMode } = req.body;
       

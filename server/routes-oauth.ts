@@ -26,6 +26,13 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Import rate limiters
+  const { 
+    oauthRateLimiter, 
+    googleSheetsRateLimiter,
+    ga4RateLimiter 
+  } = await import('./middleware/rateLimiter');
+
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {
@@ -400,7 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Google Sheets OAuth - Start connection
-  app.post("/api/auth/google-sheets/connect", async (req, res) => {
+  app.post("/api/auth/google-sheets/connect", oauthRateLimiter, async (req, res) => {
     try {
       const { campaignId } = req.body;
 
@@ -562,7 +569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get spreadsheets for campaign
-  app.get("/api/google-sheets/:campaignId/spreadsheets", async (req, res) => {
+  app.get("/api/google-sheets/:campaignId/spreadsheets", googleSheetsRateLimiter, async (req, res) => {
     try {
       const { campaignId } = req.params;
       console.log(`[Google Sheets] Fetching spreadsheets for campaign ${campaignId}`);
@@ -682,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Real Google Analytics OAuth callback
-  app.get("/api/auth/google/callback", async (req, res) => {
+  app.get("/api/auth/google/callback", oauthRateLimiter, async (req, res) => {
     try {
       const { code, state, error } = req.query;
 

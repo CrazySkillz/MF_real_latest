@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, isNull, desc } from "drizzle-orm";
@@ -46,6 +46,12 @@ export interface IStorage {
   createLinkedInConnection(connection: InsertLinkedInConnection): Promise<LinkedInConnection>;
   updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined>;
   deleteLinkedInConnection(campaignId: string): Promise<boolean>;
+  
+  // Meta Connections
+  getMetaConnection(campaignId: string): Promise<MetaConnection | undefined>;
+  createMetaConnection(connection: InsertMetaConnection): Promise<MetaConnection>;
+  updateMetaConnection(campaignId: string, connection: Partial<InsertMetaConnection>): Promise<MetaConnection | undefined>;
+  deleteMetaConnection(campaignId: string): Promise<boolean>;
   
   // LinkedIn Import Sessions
   getLinkedInImportSession(sessionId: string): Promise<LinkedInImportSession | undefined>;
@@ -249,6 +255,7 @@ export class MemStorage implements IStorage {
   private ga4Connections: Map<string, GA4Connection>;
   private googleSheetsConnections: Map<string, GoogleSheetsConnection>;
   private linkedinConnections: Map<string, LinkedInConnection>;
+  private metaConnections: Map<string, MetaConnection>;
   private linkedinImportSessions: Map<string, LinkedInImportSession>;
   private linkedinImportMetrics: Map<string, LinkedInImportMetric>;
   private linkedinAdPerformance: Map<string, LinkedInAdPerformance>;
@@ -280,6 +287,7 @@ export class MemStorage implements IStorage {
     this.ga4Connections = new Map();
     this.googleSheetsConnections = new Map();
     this.linkedinConnections = new Map();
+    this.metaConnections = new Map();
     this.linkedinImportSessions = new Map();
     this.linkedinImportMetrics = new Map();
     this.linkedinAdPerformance = new Map();
@@ -943,6 +951,47 @@ export class MemStorage implements IStorage {
 
   async deleteLinkedInConnection(campaignId: string): Promise<boolean> {
     return this.linkedinConnections.delete(campaignId);
+  }
+
+  // Meta Connection methods
+  async getMetaConnection(campaignId: string): Promise<MetaConnection | undefined> {
+    return this.metaConnections.get(campaignId);
+  }
+
+  async createMetaConnection(connection: InsertMetaConnection): Promise<MetaConnection> {
+    const id = randomUUID();
+    const metaConnection: MetaConnection = {
+      id,
+      campaignId: connection.campaignId,
+      adAccountId: connection.adAccountId,
+      adAccountName: connection.adAccountName || null,
+      accessToken: connection.accessToken || null,
+      refreshToken: connection.refreshToken || null,
+      method: connection.method,
+      expiresAt: connection.expiresAt || null,
+      connectedAt: new Date(),
+      createdAt: new Date(),
+    };
+    
+    this.metaConnections.set(connection.campaignId, metaConnection);
+    return metaConnection;
+  }
+
+  async updateMetaConnection(campaignId: string, connection: Partial<InsertMetaConnection>): Promise<MetaConnection | undefined> {
+    const existing = this.metaConnections.get(campaignId);
+    if (!existing) return undefined;
+    
+    const updated: MetaConnection = {
+      ...existing,
+      ...connection,
+    };
+    
+    this.metaConnections.set(campaignId, updated);
+    return updated;
+  }
+
+  async deleteMetaConnection(campaignId: string): Promise<boolean> {
+    return this.metaConnections.delete(campaignId);
   }
 
   // LinkedIn Import Session methods
@@ -1891,6 +1940,36 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(linkedinConnections)
       .where(eq(linkedinConnections.campaignId, campaignId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Meta Connection methods
+  async getMetaConnection(campaignId: string): Promise<MetaConnection | undefined> {
+    const [connection] = await db.select().from(metaConnections).where(eq(metaConnections.campaignId, campaignId));
+    return connection || undefined;
+  }
+
+  async createMetaConnection(connection: InsertMetaConnection): Promise<MetaConnection> {
+    const [metaConnection] = await db
+      .insert(metaConnections)
+      .values(connection)
+      .returning();
+    return metaConnection;
+  }
+
+  async updateMetaConnection(campaignId: string, connection: Partial<InsertMetaConnection>): Promise<MetaConnection | undefined> {
+    const [updated] = await db
+      .update(metaConnections)
+      .set(connection)
+      .where(eq(metaConnections.campaignId, campaignId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteMetaConnection(campaignId: string): Promise<boolean> {
+    const result = await db
+      .delete(metaConnections)
+      .where(eq(metaConnections.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
   }
 

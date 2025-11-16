@@ -1306,11 +1306,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ga4Connections,
         googleSheetsConnection,
         linkedInConnection,
+        metaConnection,
         customIntegration,
       ] = await Promise.all([
         storage.getGA4Connections(campaignId),
         storage.getGoogleSheetsConnection(campaignId),
         storage.getLinkedInConnection(campaignId),
+        storage.getMetaConnection(campaignId),
         storage.getCustomIntegration(campaignId),
       ]);
 
@@ -1349,6 +1351,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `/campaigns/${campaignId}/linkedin-analytics`
             : null,
           lastConnectedAt: linkedInConnection?.connectedAt,
+        },
+        {
+          id: "facebook",
+          name: "Meta/Facebook Ads",
+          connected: !!metaConnection,
+          analyticsPath: metaConnection
+            ? `/campaigns/${campaignId}/meta-analytics`
+            : null,
+          lastConnectedAt: metaConnection?.connectedAt,
         },
         {
           id: "custom-integration",
@@ -2726,6 +2737,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============================================================================
   // END CENTRALIZED LINKEDIN OAUTH
+  // ============================================================================
+
+  // ============================================================================
+  // META/FACEBOOK ADS INTEGRATION
+  // ============================================================================
+
+  /**
+   * Connect Meta/Facebook Ads account in test mode
+   * For production, this would be replaced with real OAuth flow
+   */
+  app.post("/api/meta/:campaignId/connect-test", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { adAccountId, adAccountName } = req.body;
+
+      if (!adAccountId || !adAccountName) {
+        return res.status(400).json({ error: "Ad account ID and name are required" });
+      }
+
+      console.log(`[Meta] Connecting test ad account ${adAccountId} to campaign ${campaignId}`);
+
+      // Create Meta connection in test mode
+      await storage.createMetaConnection({
+        campaignId,
+        adAccountId,
+        adAccountName,
+        accessToken: `test_token_${Date.now()}`, // Test mode token
+        method: 'test_mode',
+      });
+
+      console.log(`[Meta] Test connection created successfully`);
+      res.json({ success: true, message: 'Meta ad account connected in test mode' });
+    } catch (error: any) {
+      console.error('[Meta] Test connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to connect Meta ad account' });
+    }
+  });
+
+  /**
+   * Get Meta connection status for a campaign
+   */
+  app.get("/api/meta/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const connection = await storage.getMetaConnection(campaignId);
+      
+      if (!connection) {
+        return res.json({ connected: false });
+      }
+
+      res.json({
+        connected: true,
+        adAccountId: connection.adAccountId,
+        adAccountName: connection.adAccountName,
+        method: connection.method,
+      });
+    } catch (error: any) {
+      console.error('[Meta] Get connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to get connection status' });
+    }
+  });
+
+  /**
+   * Delete Meta connection
+   */
+  app.delete("/api/meta/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      console.log(`[Meta] Deleting connection for campaign ${campaignId}`);
+      
+      await storage.deleteMetaConnection(campaignId);
+      
+      console.log(`[Meta] Connection deleted successfully`);
+      res.json({ success: true, message: 'Connection deleted' });
+    } catch (error: any) {
+      console.error('[Meta] Delete connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete connection' });
+    }
+  });
+
+  /**
+   * Transfer Meta connection from temporary campaign to real campaign
+   */
+  app.post("/api/meta/transfer-connection", async (req, res) => {
+    try {
+      const { fromCampaignId, toCampaignId } = req.body;
+      console.log(`[Meta Transfer] Transferring connection from ${fromCampaignId} to ${toCampaignId}`);
+
+      const tempConnection = await storage.getMetaConnection(fromCampaignId);
+      
+      if (!tempConnection) {
+        console.log(`[Meta Transfer] No connection found for ${fromCampaignId}`);
+        return res.json({ success: true, message: 'No connection to transfer' });
+      }
+
+      // Create new connection for real campaign
+      await storage.createMetaConnection({
+        campaignId: toCampaignId,
+        adAccountId: tempConnection.adAccountId,
+        adAccountName: tempConnection.adAccountName,
+        accessToken: tempConnection.accessToken,
+        refreshToken: tempConnection.refreshToken,
+        method: tempConnection.method,
+        expiresAt: tempConnection.expiresAt,
+      });
+
+      // Delete temporary connection
+      await storage.deleteMetaConnection(fromCampaignId);
+
+      console.log(`[Meta Transfer] Connection transferred successfully`);
+      res.json({ success: true, message: 'Meta connection transferred' });
+    } catch (error: any) {
+      console.error('[Meta Transfer] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to transfer connection' });
+    }
+  });
+
+  // ============================================================================
+  // END META/FACEBOOK ADS INTEGRATION
   // ============================================================================
 
   // Custom Integration routes

@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { IntegratedGA4Auth } from "@/components/IntegratedGA4Auth";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
+import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 
 const campaignFormSchema = insertCampaignSchema.extend({
   name: z.string().min(1, "Campaign name is required"),
@@ -472,7 +473,29 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                     />
                   )}
                   
-                  {!['google-analytics', 'google-sheets', 'linkedin'].includes(platform.id) && (
+                  {platform.id === 'facebook' && (
+                    <SimpleMetaAuth
+                      campaignId="temp-campaign-setup"
+                      onSuccess={() => {
+                        setConnectedPlatforms(prev => [...prev, 'facebook']);
+                        setSelectedPlatforms(prev => [...prev, 'facebook']);
+                        setExpandedPlatforms(prev => ({ ...prev, 'facebook': false }));
+                        toast({
+                          title: "Meta/Facebook Ads Connected!",
+                          description: "Successfully connected to your Meta ad account."
+                        });
+                      }}
+                      onError={(error) => {
+                        toast({
+                          title: "Connection Failed",
+                          description: error,
+                          variant: "destructive"
+                        });
+                      }}
+                    />
+                  )}
+                  
+                  {!['google-analytics', 'google-sheets', 'linkedin', 'facebook'].includes(platform.id) && (
                     <div className="text-center py-6">
                       <div className="text-slate-600 dark:text-slate-400 mb-3">
                         {platform.name} integration coming soon
@@ -916,6 +939,31 @@ export default function Campaigns() {
         }
       } else {
         console.log('🔧 LinkedIn not in selected platforms, skipping transfer');
+      }
+
+      // Transfer Meta connection if Meta was connected
+      if (selectedPlatforms.includes('facebook')) {
+        console.log('🔧 Attempting Meta transfer...');
+        try {
+          const response = await fetch('/api/meta/transfer-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromCampaignId: 'temp-campaign-setup',
+              toCampaignId: (newCampaign as any).id
+            })
+          });
+          const result = await response.json();
+          if (result.success) {
+            console.log('✅ Meta connection transferred successfully to campaign:', (newCampaign as any).id);
+          } else {
+            console.error('❌ Meta transfer failed:', result.error);
+          }
+        } catch (error) {
+          console.error('❌ Failed to transfer Meta connection:', error);
+        }
+      } else {
+        console.log('🔧 Meta not in selected platforms, skipping transfer');
       }
 
       // Transfer Custom Integration if custom integration was connected

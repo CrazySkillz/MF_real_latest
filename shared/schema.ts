@@ -112,6 +112,19 @@ export const linkedinConnections = pgTable("linkedin_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const metaConnections = pgTable("meta_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  adAccountId: text("ad_account_id").notNull(),
+  adAccountName: text("ad_account_name"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  method: text("method").notNull(), // 'oauth' or 'test_mode'
+  expiresAt: timestamp("expires_at"),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const linkedinImportSessions = pgTable("linkedin_import_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
@@ -656,6 +669,16 @@ export const insertLinkedInConnectionSchema = createInsertSchema(linkedinConnect
   expiresAt: true,
 });
 
+export const insertMetaConnectionSchema = createInsertSchema(metaConnections).pick({
+  campaignId: true,
+  adAccountId: true,
+  adAccountName: true,
+  accessToken: true,
+  refreshToken: true,
+  method: true,
+  expiresAt: true,
+});
+
 export const insertKPISchema = createInsertSchema(kpis).pick({
   campaignId: true,
   platformType: true,
@@ -982,6 +1005,8 @@ export type GoogleSheetsConnection = typeof googleSheetsConnections.$inferSelect
 export type InsertGoogleSheetsConnection = z.infer<typeof insertGoogleSheetsConnectionSchema>;
 export type LinkedInConnection = typeof linkedinConnections.$inferSelect;
 export type InsertLinkedInConnection = z.infer<typeof insertLinkedInConnectionSchema>;
+export type MetaConnection = typeof metaConnections.$inferSelect;
+export type InsertMetaConnection = z.infer<typeof insertMetaConnectionSchema>;
 export type KPI = typeof kpis.$inferSelect;
 export type InsertKPI = z.infer<typeof insertKPISchema>;
 export type KPIProgress = typeof kpiProgress.$inferSelect;

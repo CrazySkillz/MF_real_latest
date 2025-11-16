@@ -1322,6 +1322,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[Connected Platforms] - GA4 Connection: ${conn.id}, property: ${conn.propertyId}, isPrimary: ${conn.isPrimary}, isActive: ${conn.isActive}`);
         });
       }
+      
+      console.log(`[Connected Platforms] Google Sheets connection:`, googleSheetsConnection ? `Found (ID: ${googleSheetsConnection.id})` : 'Not found');
+      console.log(`[Connected Platforms] LinkedIn connection:`, linkedInConnection ? `Found (ID: ${linkedInConnection.id})` : 'Not found');
+      console.log(`[Connected Platforms] Meta connection:`, metaConnection ? `Found (ID: ${metaConnection.id})` : 'Not found');
+      console.log(`[Connected Platforms] Custom Integration:`, customIntegration ? `Found (ID: ${customIntegration.id}, webhook: ${customIntegration.webhookToken})` : 'Not found');
 
       const statuses = [
         {
@@ -6536,11 +6541,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create new integration connection
-      await storage.createCustomIntegration({
+      const newIntegration = await storage.createCustomIntegration({
         campaignId: toCampaignId,
         email: existingIntegration.email,
         webhookToken: existingIntegration.webhookToken,
         allowedEmailAddresses: existingIntegration.allowedEmailAddresses
+      });
+      console.log(`[Custom Integration Transfer] Created new integration for campaign ${toCampaignId}:`, {
+        id: newIntegration.id,
+        webhookToken: newIntegration.webhookToken,
+        email: newIntegration.email
       });
 
       // Transfer metrics data if any exists
@@ -6590,6 +6600,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Delete old integration and metrics
       await storage.deleteCustomIntegration(fromCampaignId);
+      console.log(`[Custom Integration Transfer] Deleted old integration from ${fromCampaignId}`);
+      
+      // Verify the transfer was successful
+      const verifyIntegration = await storage.getCustomIntegration(toCampaignId);
+      if (verifyIntegration) {
+        console.log(`[Custom Integration Transfer] ✅ VERIFIED: Integration exists for campaign ${toCampaignId}`);
+      } else {
+        console.error(`[Custom Integration Transfer] ❌ VERIFICATION FAILED: Integration NOT found for campaign ${toCampaignId}`);
+      }
+      
       console.log(`[Custom Integration Transfer] Transfer complete`);
 
       res.json({ success: true, message: 'Custom integration and metrics transferred' });

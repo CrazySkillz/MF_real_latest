@@ -184,7 +184,7 @@ export const linkedinAdPerformance = pgTable("linkedin_ad_performance", {
 export const customIntegrations = pgTable("custom_integrations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
-  email: text("email").notNull(),
+  email: text("email"), // Nullable - not required for manual uploads
   webhookToken: text("webhook_token").notNull(),
   allowedEmailAddresses: text("allowed_email_addresses").array(), // Email whitelist for security
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),

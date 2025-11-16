@@ -47,11 +47,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('[Campaign Creation] Received data:', JSON.stringify(req.body, null, 2));
       
-      // Remove conversionValue temporarily if column doesn't exist in database
-      const { conversionValue, ...dataWithoutConversionValue } = req.body;
-      const dataToValidate = conversionValue ? req.body : dataWithoutConversionValue;
+      // Sanitize numeric fields to strings for decimal columns
+      const sanitizedData = { ...req.body };
+      if (sanitizedData.budget !== undefined && sanitizedData.budget !== null && typeof sanitizedData.budget === 'number') {
+        sanitizedData.budget = sanitizedData.budget.toString();
+        console.log('[Campaign Creation] Converted budget from number to string:', sanitizedData.budget);
+      }
+      if (sanitizedData.conversionValue !== undefined && sanitizedData.conversionValue !== null && typeof sanitizedData.conversionValue === 'number') {
+        sanitizedData.conversionValue = sanitizedData.conversionValue.toString();
+        console.log('[Campaign Creation] Converted conversionValue from number to string:', sanitizedData.conversionValue);
+      }
+      if (sanitizedData.spend !== undefined && sanitizedData.spend !== null && typeof sanitizedData.spend === 'number') {
+        sanitizedData.spend = sanitizedData.spend.toString();
+        console.log('[Campaign Creation] Converted spend from number to string:', sanitizedData.spend);
+      }
       
-      const validatedData = insertCampaignSchema.parse(dataToValidate);
+      const validatedData = insertCampaignSchema.parse(sanitizedData);
       console.log('[Campaign Creation] Validated data:', JSON.stringify(validatedData, null, 2));
       const campaign = await storage.createCampaign(validatedData);
       console.log('[Campaign Creation] Campaign created successfully:', campaign.id);

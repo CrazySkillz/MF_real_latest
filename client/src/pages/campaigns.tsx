@@ -1113,10 +1113,10 @@ export default function Campaigns() {
           const result = await response.json();
           if (result.success) {
             console.log('✅ Custom Integration transferred successfully to campaign:', (newCampaign as any).id);
-            // Invalidate query cache to show correct connection status
-            await queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", (newCampaign as any).id] });
-            await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", (newCampaign as any).id, "connected-platforms"] });
-            console.log('✅ Invalidated query cache for Custom Integration and connected platforms');
+            // Remove query cache entirely to ensure fresh data on next fetch
+            queryClient.removeQueries({ queryKey: ["/api/custom-integration", (newCampaign as any).id] });
+            queryClient.removeQueries({ queryKey: ["/api/campaigns", (newCampaign as any).id, "connected-platforms"] });
+            console.log('✅ Removed query cache for Custom Integration and connected platforms - will fetch fresh on next mount');
           } else {
             console.error('❌ Custom Integration transfer failed:', result.error);
           }

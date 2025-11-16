@@ -3230,9 +3230,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Parse the PDF to extract metrics
+      // Parse the PDF to extract metrics with enterprise validation
       const parsedMetrics = await parsePDFMetrics(pdfBuffer);
       console.log(`[Webhook] Parsed metrics:`, parsedMetrics);
+      console.log(`[Webhook] Confidence: ${parsedMetrics._confidence}%`);
+      console.log(`[Webhook] Extracted fields: ${parsedMetrics._extractedFields}`);
+      
+      if (parsedMetrics._warnings && parsedMetrics._warnings.length > 0) {
+        console.warn(`[Webhook] ⚠️  Validation warnings:`, parsedMetrics._warnings);
+      }
+      
+      if (parsedMetrics._requiresReview) {
+        console.warn(`[Webhook] ⚠️  MANUAL REVIEW REQUIRED - Confidence: ${parsedMetrics._confidence}%`);
+      }
 
       // Helper to filter out NaN values
       const cleanMetric = (value: any) => (typeof value === 'number' && isNaN(value)) ? undefined : value;
@@ -3280,14 +3290,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[Webhook] Metrics stored successfully:`, metrics.id);
 
-      res.json({
+      // Prepare response with validation metadata
+      const response: any = {
         success: true,
-        message: "PDF processed successfully",
+        message: parsedMetrics._requiresReview 
+          ? "PDF processed but requires manual review" 
+          : "PDF processed successfully",
         campaignId: integration.campaignId,
         metricsId: metrics.id,
         metrics: parsedMetrics,
         uploadedAt: metrics.uploadedAt,
-      });
+        // Enterprise validation metadata
+        confidence: parsedMetrics._confidence,
+        extractedFields: parsedMetrics._extractedFields,
+        requiresReview: parsedMetrics._requiresReview,
+        warnings: parsedMetrics._warnings || [],
+      };
+      
+      // If confidence is below threshold, include review URL
+      if (parsedMetrics._requiresReview) {
+        response.reviewUrl = `/campaigns/${integration.campaignId}/review-import/${metrics.id}`;
+        response.message += ` (Confidence: ${parsedMetrics._confidence}%)`;
+      }
+
+      res.json(response);
     } catch (error) {
       console.error("[Webhook] Error processing PDF:", error);
       res.status(500).json({ 

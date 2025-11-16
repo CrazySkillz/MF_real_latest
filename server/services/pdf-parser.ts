@@ -38,6 +38,12 @@ export interface ParsedMetrics {
   hardBounces?: number;
   spamComplaints?: number;
   listGrowth?: number;
+  
+  // Enterprise validation metadata
+  _confidence?: number; // 0-100 confidence score
+  _warnings?: string[]; // Validation warnings
+  _extractedFields?: number; // Number of fields successfully extracted
+  _requiresReview?: boolean; // True if confidence < 95%
 }
 
 /**
@@ -153,6 +159,7 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
     };
     
     // Extract each metric
+    let extractedCount = 0;
     for (const [key, pattern] of Object.entries(patterns)) {
       const match = text.match(pattern);
       if (match && match[1]) {
@@ -162,11 +169,31 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
         } else {
           metrics[key as keyof ParsedMetrics] = extractNumber(match[1]);
         }
+        extractedCount++;
       }
     }
     
+    // Enterprise validation
+    const validation = validateExtractedMetrics(metrics, extractedCount, Object.keys(patterns).length);
+    metrics._confidence = validation.confidence;
+    metrics._warnings = validation.warnings;
+    metrics._extractedFields = extractedCount;
+    metrics._requiresReview = validation.confidence < 95; // Enterprise threshold
+    
+    console.log('[PDF Parser] ✅ Validation complete');
+    console.log('[PDF Parser] Confidence:', validation.confidence + '%');
+    console.log('[PDF Parser] Extracted:', extractedCount, '/', Object.keys(patterns).length, 'fields');
+    
+    if (validation.warnings.length > 0) {
+      console.warn('[PDF Parser] ⚠️  Warnings:', validation.warnings);
+    }
+    
+    if (metrics._requiresReview) {
+      console.warn('[PDF Parser] ⚠️  MANUAL REVIEW REQUIRED - Confidence below 95%');
+    }
+    
     // Set defaults for backward compatibility if no metrics found
-    if (Object.keys(metrics).length === 0) {
+    if (extractedCount === 0) {
       metrics.impressions = 0;
       metrics.reach = 0;
       metrics.clicks = 0;
@@ -176,6 +203,9 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
       metrics.leads = 0;
       metrics.videoViews = 0;
       metrics.viralImpressions = 0;
+      metrics._confidence = 0;
+      metrics._warnings = ['No metrics extracted from PDF'];
+      metrics._requiresReview = true;
     }
     
     return metrics;
@@ -186,10 +216,123 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
 }
 
 /**
+ * Enterprise-grade validation of extracted metrics
+ * Returns confidence score (0-100) and list of warnings
+ */
+function validateExtractedMetrics(
+  metrics: ParsedMetrics, 
+  extractedCount: number, 
+  totalPatterns: number
+): { confidence: number; warnings: string[] } {
+  const warnings: string[] = [];
+  let confidence = 100;
+  
+  // Check extraction completeness
+  const extractionRate = (extractedCount / totalPatterns) * 100;
+  if (extractionRate < 30) {
+    warnings.push(`❌ CRITICAL: Very low extraction rate (${extractionRate.toFixed(0)}%)`);
+    confidence -= 40;
+  } else if (extractionRate < 50) {
+    warnings.push(`⚠️  WARNING: Low extraction rate (${extractionRate.toFixed(0)}%)`);
+    confidence -= 20;
+  }
+  
+  // Validate required metrics for website analytics
+  const requiredMetrics: (keyof ParsedMetrics)[] = ['users', 'sessions', 'pageviews'];
+  const missingRequired = requiredMetrics.filter(m => metrics[m] === undefined || metrics[m] === 0);
+  
+  if (missingRequired.length > 0) {
+    warnings.push(`❌ CRITICAL: Missing required metrics: ${missingRequired.join(', ')}`);
+    confidence -= missingRequired.length * 25; // -25% per missing required metric
+  }
+  
+  // Validate data ranges
+  if (metrics.users !== undefined) {
+    if (metrics.users < 0) {
+      warnings.push(`❌ CRITICAL: Users cannot be negative (${metrics.users})`);
+      confidence -= 30;
+    } else if (metrics.users > 100000000) {
+      warnings.push(`⚠️  WARNING: Users value unusually high (${metrics.users})`);
+      confidence -= 5;
+    }
+  }
+  
+  if (metrics.sessions !== undefined && metrics.sessions < 0) {
+    warnings.push(`❌ CRITICAL: Sessions cannot be negative (${metrics.sessions})`);
+    confidence -= 30;
+  }
+  
+  if (metrics.pageviews !== undefined && metrics.pageviews < 0) {
+    warnings.push(`❌ CRITICAL: Pageviews cannot be negative (${metrics.pageviews})`);
+    confidence -= 30;
+  }
+  
+  // Validate percentage ranges
+  const percentageMetrics: (keyof ParsedMetrics)[] = [
+    'bounceRate', 'openRate', 'clickThroughRate', 'clickToOpenRate',
+    'hardBounces', 'spamComplaints', 'organicSearchShare', 'directBrandedShare',
+    'emailShare', 'referralShare', 'paidShare', 'socialShare'
+  ];
+  
+  for (const metric of percentageMetrics) {
+    const value = metrics[metric];
+    if (value !== undefined && (value < 0 || value > 100)) {
+      warnings.push(`❌ CRITICAL: ${metric} out of range (0-100): ${value}%`);
+      confidence -= 15;
+    }
+  }
+  
+  // Validate logical relationships
+  if (metrics.users !== undefined && metrics.sessions !== undefined) {
+    if (metrics.sessions < metrics.users) {
+      warnings.push(`⚠️  WARNING: Sessions (${metrics.sessions}) < Users (${metrics.users}) - unusual but possible`);
+      confidence -= 5;
+    }
+  }
+  
+  if (metrics.sessions !== undefined && metrics.pageviews !== undefined) {
+    if (metrics.pageviews < metrics.sessions) {
+      warnings.push(`❌ CRITICAL: Pageviews (${metrics.pageviews}) < Sessions (${metrics.sessions}) - this is invalid`);
+      confidence -= 20;
+    }
+  }
+  
+  if (metrics.pagesPerSession !== undefined) {
+    if (metrics.pagesPerSession < 1) {
+      warnings.push(`❌ CRITICAL: Pages per session cannot be < 1 (${metrics.pagesPerSession})`);
+      confidence -= 20;
+    } else if (metrics.pagesPerSession > 100) {
+      warnings.push(`⚠️  WARNING: Pages per session unusually high (${metrics.pagesPerSession})`);
+      confidence -= 5;
+    }
+  }
+  
+  // Validate email metrics relationships
+  if (metrics.clickThroughRate !== undefined && metrics.openRate !== undefined) {
+    if (metrics.clickThroughRate > metrics.openRate) {
+      warnings.push(`❌ CRITICAL: Click rate (${metrics.clickThroughRate}%) > Open rate (${metrics.openRate}%) - impossible`);
+      confidence -= 20;
+    }
+  }
+  
+  // Ensure confidence is within 0-100
+  confidence = Math.max(0, Math.min(100, confidence));
+  
+  return { confidence, warnings };
+}
+
+/**
  * Get a summary of the parsed metrics for debugging
  */
 export function getMetricsSummary(metrics: ParsedMetrics): string {
-  return Object.entries(metrics)
-    .map(([key, value]) => `${key}: ${value.toLocaleString()}`)
-    .join(', ');
+  const metricEntries = Object.entries(metrics)
+    .filter(([key]) => !key.startsWith('_')) // Exclude metadata fields
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}: ${typeof value === 'number' ? value.toLocaleString() : value}`);
+  
+  const summary = metricEntries.join(', ');
+  const confidence = metrics._confidence !== undefined ? ` [Confidence: ${metrics._confidence}%]` : '';
+  const review = metrics._requiresReview ? ' [REQUIRES REVIEW]' : '';
+  
+  return summary + confidence + review;
 }

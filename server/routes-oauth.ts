@@ -6525,6 +6525,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // CUSTOM INTEGRATION
+  // ============================================================================
+
+  /**
+   * Connect custom integration for a campaign
+   * Creates a custom integration with webhook token
+   */
+  app.post("/api/custom-integration/:campaignId/connect", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { allowedEmailAddresses } = req.body;
+
+      console.log(`[Custom Integration] Connecting for campaign ${campaignId}`);
+
+      // Generate a unique webhook token
+      const webhookToken = require('crypto').randomBytes(32).toString('hex');
+
+      // Create the custom integration
+      const integration = await storage.createCustomIntegration({
+        campaignId,
+        email: null, // No email required for manual upload
+        webhookToken,
+        allowedEmailAddresses: allowedEmailAddresses || []
+      });
+
+      console.log(`[Custom Integration] Created integration with webhook token: ${webhookToken}`);
+
+      res.json({
+        success: true,
+        integration,
+        webhookUrl: `${req.protocol}://${req.get('host')}/api/email/inbound/${webhookToken}`
+      });
+    } catch (error: any) {
+      console.error('[Custom Integration] Connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to connect custom integration' });
+    }
+  });
+
+  /**
+   * Upload PDF for custom integration
+   * Uses multer middleware for file handling
+   */
+  const multer = require('multer');
+  const pdfUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+    fileFilter: (req: any, file: any, cb: any) => {
+      if (file.mimetype === 'application/pdf' || file.originalname?.endsWith('.pdf')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only PDF files are allowed'));
+      }
+    }
+  });
+
+  app.post("/api/custom-integration/:campaignId/upload-pdf", pdfUpload.single('pdf'), async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      console.log(`[Custom Integration] PDF upload for campaign ${campaignId}`);
+
+      // Check if custom integration exists
+      const integration = await storage.getCustomIntegration(campaignId);
+      if (!integration) {
+        return res.status(404).json({ error: 'Custom integration not found. Please connect first.' });
+      }
+
+      // Check if file was uploaded
+      if (!req.file) {
+        return res.status(400).json({ error: 'No PDF file uploaded' });
+      }
+
+      console.log(`[Custom Integration] Processing PDF: ${req.file.originalname}, size: ${req.file.size} bytes`);
+      
+      // Parse the PDF
+      const { parsePDFMetrics } = await import('./services/pdf-parser');
+      const metrics = await parsePDFMetrics(req.file.buffer);
+
+      // Store the metrics
+      await storage.createCustomIntegrationMetrics({
+        campaignId,
+        ...metrics,
+        pdfFileName: req.file.originalname,
+        emailSubject: `Manual Upload: ${req.file.originalname}`,
+        emailId: `manual-${Date.now()}`
+      });
+
+      console.log(`[Custom Integration] PDF parsed and metrics stored for campaign ${campaignId}`);
+      console.log(`[Custom Integration] Metrics confidence: ${metrics._confidence}%`);
+
+      res.json({
+        success: true,
+        message: 'PDF uploaded and parsed successfully',
+        ...metrics
+      });
+    } catch (error: any) {
+      console.error('[Custom Integration] PDF upload error:', error);
+      res.status(500).json({ error: error.message || 'Failed to upload PDF' });
+    }
+  });
+
   // Transfer Custom Integration
   app.post("/api/custom-integration/transfer", async (req, res) => {
     try {

@@ -6535,6 +6535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Create new integration connection
       await storage.createCustomIntegration({
         campaignId: toCampaignId,
         email: existingIntegration.email,
@@ -6542,10 +6543,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allowedEmailAddresses: existingIntegration.allowedEmailAddresses
       });
 
+      // Transfer metrics data if any exists
+      const existingMetrics = await storage.getAllCustomIntegrationMetrics(fromCampaignId);
+      console.log(`[Custom Integration Transfer] Found ${existingMetrics.length} metrics to transfer`);
+      
+      if (existingMetrics.length > 0) {
+        for (const metric of existingMetrics) {
+          // Create new metric record for the new campaign
+          await storage.createCustomIntegrationMetrics({
+            campaignId: toCampaignId,
+            impressions: metric.impressions,
+            reach: metric.reach,
+            clicks: metric.clicks,
+            engagements: metric.engagements,
+            spend: metric.spend,
+            conversions: metric.conversions,
+            leads: metric.leads,
+            videoViews: metric.videoViews,
+            viralImpressions: metric.viralImpressions,
+            users: metric.users,
+            sessions: metric.sessions,
+            pageviews: metric.pageviews,
+            avgSessionDuration: metric.avgSessionDuration,
+            pagesPerSession: metric.pagesPerSession,
+            bounceRate: metric.bounceRate,
+            organicSearchShare: metric.organicSearchShare,
+            directBrandedShare: metric.directBrandedShare,
+            emailShare: metric.emailShare,
+            referralShare: metric.referralShare,
+            paidShare: metric.paidShare,
+            socialShare: metric.socialShare,
+            emailsDelivered: metric.emailsDelivered,
+            openRate: metric.openRate,
+            clickThroughRate: metric.clickThroughRate,
+            clickToOpenRate: metric.clickToOpenRate,
+            hardBounces: metric.hardBounces,
+            spamComplaints: metric.spamComplaints,
+            listGrowth: metric.listGrowth,
+            pdfFileName: metric.pdfFileName,
+            emailSubject: metric.emailSubject,
+            emailId: metric.emailId,
+          });
+        }
+        console.log(`[Custom Integration Transfer] Transferred ${existingMetrics.length} metrics`);
+      }
+
+      // Delete old integration and metrics
       await storage.deleteCustomIntegration(fromCampaignId);
       console.log(`[Custom Integration Transfer] Transfer complete`);
 
-      res.json({ success: true, message: 'Custom integration transferred' });
+      res.json({ success: true, message: 'Custom integration and metrics transferred' });
     } catch (error) {
       console.error('[Custom Integration Transfer] Error:', error);
       res.status(500).json({ success: false, error: 'Transfer failed' });

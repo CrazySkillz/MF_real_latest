@@ -1840,8 +1840,15 @@ export default function CustomIntegrationAnalytics() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
-                {/* Show instructions only when there are NO metrics */}
-                {!hasMetrics && customIntegration?.webhookToken && (
+                {/* Show loading state while fetching metrics */}
+                {metricsLoading && (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                )}
+
+                {/* Show instructions only when there are NO metrics AND data has finished loading */}
+                {!metricsLoading && !hasMetrics && customIntegration?.webhookToken && (
                   <>
                     {/* Webhook URL Display */}
                     <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950">

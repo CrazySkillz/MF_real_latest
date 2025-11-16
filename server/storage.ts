@@ -90,6 +90,7 @@ export interface IStorage {
   
   // Custom Integration Metrics
   getCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
+  getAllCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics[]>;
   createCustomIntegrationMetrics(metrics: InsertCustomIntegrationMetrics): Promise<CustomIntegrationMetrics>;
   getLatestCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
   
@@ -1245,6 +1246,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.customIntegrationMetrics.values()).find(m => m.campaignId === campaignId);
   }
 
+  async getAllCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics[]> {
+    return Array.from(this.customIntegrationMetrics.values()).filter(m => m.campaignId === campaignId);
+  }
+
   async createCustomIntegrationMetrics(metricsData: InsertCustomIntegrationMetrics): Promise<CustomIntegrationMetrics> {
     const id = randomUUID();
     const metrics: CustomIntegrationMetrics = {
@@ -2168,6 +2173,12 @@ export class DatabaseStorage implements IStorage {
       .from(customIntegrationMetrics)
       .where(eq(customIntegrationMetrics.campaignId, campaignId));
     return metrics || undefined;
+  }
+
+  async getAllCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics[]> {
+    return await db.select()
+      .from(customIntegrationMetrics)
+      .where(eq(customIntegrationMetrics.campaignId, campaignId));
   }
 
   async createCustomIntegrationMetrics(metricsData: InsertCustomIntegrationMetrics): Promise<CustomIntegrationMetrics> {

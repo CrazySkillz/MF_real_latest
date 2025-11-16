@@ -8,6 +8,7 @@ import { realGA4Client } from "./real-ga4-client";
 import multer from "multer";
 import { parsePDFMetrics } from "./services/pdf-parser";
 import { nanoid } from "nanoid";
+import { randomBytes } from "crypto";
 import { snapshotScheduler } from "./scheduler";
 
 // Configure multer for PDF file uploads
@@ -6541,7 +6542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Custom Integration] Connecting for campaign ${campaignId}`);
 
       // Generate a unique webhook token
-      const webhookToken = require('crypto').randomBytes(32).toString('hex');
+      const webhookToken = randomBytes(32).toString('hex');
 
       // Create the custom integration
       const integration = await storage.createCustomIntegration({
@@ -6566,22 +6567,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   /**
    * Upload PDF for custom integration
-   * Uses multer middleware for file handling
+   * Uses multer middleware for file handling (imported at top of file)
    */
-  const multer = require('multer');
-  const pdfUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
-    fileFilter: (req: any, file: any, cb: any) => {
-      if (file.mimetype === 'application/pdf' || file.originalname?.endsWith('.pdf')) {
-        cb(null, true);
-      } else {
-        cb(new Error('Only PDF files are allowed'));
-      }
-    }
-  });
-
-  app.post("/api/custom-integration/:campaignId/upload-pdf", pdfUpload.single('pdf'), async (req, res) => {
+  app.post("/api/custom-integration/:campaignId/upload-pdf", upload.single('pdf'), async (req, res) => {
     try {
       const { campaignId } = req.params;
       console.log(`[Custom Integration] PDF upload for campaign ${campaignId}`);

@@ -1205,10 +1205,9 @@ export default function Campaigns() {
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="conversionValue">Conversion Value (optional)</Label>
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-500 dark:text-slate-400">$</span>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-2 space-y-2">
+                        <Label htmlFor="conversionValue">Conversion Value (optional)</Label>
                         <Input
                           id="conversionValue"
                           type="number"
@@ -1216,15 +1215,35 @@ export default function Campaigns() {
                           min="0"
                           placeholder="0.00"
                           {...form.register("conversionValue")}
-                          className="flex-1"
                         />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Average revenue per conversion for ROI calculations. You can update this later.
+                        </p>
+                        {form.formState.errors.conversionValue && (
+                          <p className="text-sm text-destructive">{form.formState.errors.conversionValue.message}</p>
+                        )}
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Average revenue per conversion for ROI calculations. You can update this later.
-                      </p>
-                      {form.formState.errors.conversionValue && (
-                        <p className="text-sm text-destructive">{form.formState.errors.conversionValue.message}</p>
-                      )}
+                      <div className="space-y-2">
+                        <Label htmlFor="conversionCurrency">Currency</Label>
+                        <Select
+                          value={form.watch("currency") || "USD"}
+                          onValueChange={(value) => form.setValue("currency", value)}
+                        >
+                          <SelectTrigger id="conversionCurrency">
+                            <SelectValue placeholder="USD" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                            <SelectItem value="CAD">CAD</SelectItem>
+                            <SelectItem value="AUD">AUD</SelectItem>
+                            <SelectItem value="JPY">JPY</SelectItem>
+                            <SelectItem value="CNY">CNY</SelectItem>
+                            <SelectItem value="INR">INR</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">

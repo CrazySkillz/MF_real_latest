@@ -71,6 +71,7 @@ function extractNumber(text: string): number {
  * - Table format (GA4 style): "Users (unique) | 1,275,432"
  * - Simple format: "Impressions: 12,450"
  * - Inline format: "Impressions 12450"
+ * - William Reed format: Industry-specific metrics from william-reed.com reports
  */
 export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
   try {
@@ -81,7 +82,16 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
     const text = textResult?.text || '';
     
     console.log('[PDF Parser] Extracted text length:', text.length);
-    console.log('[PDF Parser] First 200 chars:', text.substring(0, 200));
+    console.log('[PDF Parser] First 500 chars:', text.substring(0, 500));
+    
+    // Detect if this is a William Reed report
+    const isWilliamReed = /william[\s-]?reed/i.test(text) || 
+                          /food[\s&]+drink/i.test(text) ||
+                          /convenience\s+store/i.test(text);
+    
+    if (isWilliamReed) {
+      console.log('[PDF Parser] ✅ Detected William Reed report format');
+    }
     
     // Debug: Find all mentions of "rate" in the text
     const rateMatches = text.match(/.*rate.*/gi);
@@ -116,30 +126,30 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
       videoViews: /(?:video\s*views?|views?)[:\s|]+([0-9,.KM]+)/i,
       viralImpressions: /(?:viral\s*impressions?|organic\s*impressions?)[:\s|]+([0-9,.KM]+)/i,
       
-      // Audience & Traffic metrics (GA4 style)
-      users: /(?:users?\s*\(unique\)|unique\s*users?)[:\s|]+([0-9,.KM]+)/i,
-      sessions: /sessions?[:\s|]+([0-9,.KM]+)/i,
-      pageviews: /pageviews?[:\s|]+([0-9,.KM]+)/i,
-      avgSessionDuration: /(?:avg\.?\s*session\s*duration|average\s*session\s*duration)[:\s|]+([0-9:]+)/i,
-      pagesPerSession: /(?:pages?\s*\/\s*session|pages?\s*per\s*session)[:\s|]+([0-9,.]+)/i,
-      bounceRate: /bounce\s*rate[:\s|]+([0-9,.]+)%?/i,
+      // Audience & Traffic metrics (GA4 style + William Reed formats)
+      users: /(?:users?\s*\(unique\)|unique\s*users?|unique\s*visitors?|visitors?)[:\s|]+([0-9,.KM]+)/i,
+      sessions: /(?:sessions?|visits?)[:\s|]+([0-9,.KM]+)/i,
+      pageviews: /(?:pageviews?|page\s*views?|pages?\s*viewed)[:\s|]+([0-9,.KM]+)/i,
+      avgSessionDuration: /(?:avg\.?\s*session\s*duration|average\s*session\s*duration|avg\.?\s*time\s*on\s*site|average\s*time)[:\s|]+([0-9:]+)/i,
+      pagesPerSession: /(?:pages?\s*\/\s*session|pages?\s*per\s*session|pages?\s*per\s*visit)[:\s|]+([0-9,.]+)/i,
+      bounceRate: /(?:bounce\s*rate|exit\s*rate)[:\s|]+([0-9,.]+)%?/i,
       
-      // Traffic sources (percentages)
-      organicSearchShare: /organic\s*search[:\s|]+([0-9,.]+)%?/i,
-      directBrandedShare: /(?:direct\s*\/?\s*branded|direct)[:\s|]+([0-9,.]+)%?/i,
-      emailShare: /(?:email\s*\(newsletters?\)|email)[:\s|]+([0-9,.]+)%?/i,
-      referralShare: /(?:referral\s*\/?\s*partners?|referral)[:\s|]+([0-9,.]+)%?/i,
-      paidShare: /(?:paid\s*\(display\/search\)|paid)[:\s|]+([0-9,.]+)%?/i,
-      socialShare: /social[:\s|]+([0-9,.]+)%?/i,
+      // Traffic sources (percentages) - Enhanced for William Reed
+      organicSearchShare: /(?:organic\s*search|organic\s*traffic|search\s*engines?)[:\s|]+([0-9,.]+)%?/i,
+      directBrandedShare: /(?:direct\s*\/?\s*branded|direct\s*traffic|direct)[:\s|]+([0-9,.]+)%?/i,
+      emailShare: /(?:email\s*\(newsletters?\)|email\s*campaigns?|email\s*traffic|email)[:\s|]+([0-9,.]+)%?/i,
+      referralShare: /(?:referral\s*\/?\s*partners?|referral\s*traffic|referrals?)[:\s|]+([0-9,.]+)%?/i,
+      paidShare: /(?:paid\s*\(display\/search\)|paid\s*advertising|paid\s*traffic|paid)[:\s|]+([0-9,.]+)%?/i,
+      socialShare: /(?:social\s*media|social\s*traffic|social)[:\s|]+([0-9,.]+)%?/i,
       
-      // Email performance metrics
-      emailsDelivered: /(?:emails?\s*delivered|delivered)[:\s|]+([0-9,.KM]+)/i,
-      openRate: /open\s*rate\s*(?:\(unique\))?[:\s|]+([0-9,.]+)%?/i,
-      clickThroughRate: /(?:click-through\s*rate|click\s*-\s*through\s*rate|ctr)\s*(?:\(ctr\))?[:\s|]+([0-9,.]+)%?/i,
+      // Email performance metrics (William Reed newsletter formats)
+      emailsDelivered: /(?:emails?\s*delivered|emails?\s*sent|delivered)[:\s|]+([0-9,.KM]+)/i,
+      openRate: /(?:open\s*rate|opens?)\s*(?:\(unique\))?[:\s|]+([0-9,.]+)%?/i,
+      clickThroughRate: /(?:click-through\s*rate|click\s*-\s*through\s*rate|click\s*rate|ctr)\s*(?:\(ctr\))?[:\s|]+([0-9,.]+)%?/i,
       clickToOpenRate: /(?:click-to-open|click\s*-\s*to\s*-\s*open|ctor)\s*(?:\(ctor\))?[:\s|]+([0-9,.]+)%?/i,
-      hardBounces: /hard\s*bounces?[:\s|]+([0-9,.]+)%?/i,
-      spamComplaints: /spam\s*complaints?[:\s|]+([0-9,.]+)%?/i,
-      listGrowth: /(?:list\s*growth\s*(?:\(net\))?|net\s*subscribers?)[:\s|]+\+?([0-9,.KM]+)/i,
+      hardBounces: /(?:hard\s*bounces?|bounces?)[:\s|]+([0-9,.]+)%?/i,
+      spamComplaints: /(?:spam\s*complaints?|complaints?)[:\s|]+([0-9,.]+)%?/i,
+      listGrowth: /(?:list\s*growth\s*(?:\(net\))?|net\s*subscribers?|subscriber\s*growth|new\s*subscribers?)[:\s|]+\+?([0-9,.KM]+)/i,
     };
     
     // Extract each metric

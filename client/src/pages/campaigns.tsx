@@ -543,38 +543,54 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
       
       {/* Custom Integration Modal */}
       <Dialog open={showCustomIntegrationModal} onOpenChange={setShowCustomIntegrationModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Connect Custom Integration</DialogTitle>
             <DialogDescription>
-              Generate a secure webhook URL to receive PDF reports via CloudMailin email forwarding.
+              Import metrics from PDF reports (William Reed, etc.) into your dashboard
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
-              <h4 className="font-semibold text-slate-900 dark:text-white mb-2">How it works:</h4>
-              <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-1 list-decimal list-inside">
-                <li>Click "Connect" to generate your unique webhook URL</li>
-                <li>Configure CloudMailin with this URL (instructions provided after connecting)</li>
-                <li>Forward PDF reports to your CloudMailin email address</li>
-                <li>Metrics appear automatically in your dashboard</li>
-              </ol>
+              <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Two Ways to Import:</h4>
+              
+              <div className="space-y-3">
+                <div className="bg-white dark:bg-slate-800 rounded-md p-3 border border-slate-200 dark:border-slate-700">
+                  <h5 className="font-medium text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs">1</span>
+                    Manual Upload (Simplest)
+                  </h5>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 ml-7">
+                    After connecting, drag & drop PDF reports directly into your dashboard. Takes 30 seconds per report.
+                  </p>
+                </div>
+                
+                <div className="bg-white dark:bg-slate-800 rounded-md p-3 border border-slate-200 dark:border-slate-700">
+                  <h5 className="font-medium text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs">2</span>
+                    Email Forwarding (Automated)
+                  </h5>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 ml-7">
+                    Set up email forwarding once, then every PDF report automatically imports. Requires CloudMailin setup (instructions provided after connecting).
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
                 <Shield className="w-4 h-4" />
-                Email Whitelist (Optional - Recommended for Security)
+                Email Whitelist (Optional - For Email Forwarding Only)
               </label>
               <textarea
-                placeholder="Enter allowed email addresses (one per line or comma-separated)&#10;Example:&#10;marketing@company.com&#10;reports@agency.com"
+                placeholder="Leave empty if using manual upload&#10;&#10;For email forwarding, enter sender addresses:&#10;reports@william-reed.com&#10;analytics@yourprovider.com"
                 value={allowedEmailAddresses}
                 onChange={(e) => setAllowedEmailAddresses(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
                 data-testid="input-email-whitelist"
               />
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Only emails from these addresses will be able to send data to your webhook. Leave empty to accept from any email (less secure).
+                Only needed for email forwarding. Restricts which email addresses can send reports to your webhook.
               </p>
             </div>
 

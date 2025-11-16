@@ -3492,13 +3492,14 @@ export default function CampaignDetail() {
     },
     {
       platform: "Facebook Ads", 
-      connected: connectedPlatformNames.includes("Facebook Ads"),
-      impressions: connectedPlatformNames.includes("Facebook Ads") ? Math.round(campaignImpressions * platformDistribution["Facebook Ads"].impressions) : 0,
-      clicks: connectedPlatformNames.includes("Facebook Ads") ? Math.round(campaignClicks * platformDistribution["Facebook Ads"].clicks) : 0,
-      conversions: connectedPlatformNames.includes("Facebook Ads") ? Math.round(estimatedConversions * platformDistribution["Facebook Ads"].conversions) : 0,
-      spend: connectedPlatformNames.includes("Facebook Ads") ? (campaignSpend * platformDistribution["Facebook Ads"].spend).toFixed(2) : "0.00",
-      ctr: connectedPlatformNames.includes("Facebook Ads") ? "2.64%" : "0.00%",
-      cpc: connectedPlatformNames.includes("Facebook Ads") ? "$0.68" : "$0.00"
+      connected: platformStatusMap.get("facebook")?.connected === true,
+      impressions: platformStatusMap.get("facebook")?.connected ? Math.round(campaignImpressions * platformDistribution["Facebook Ads"].impressions) : 0,
+      clicks: platformStatusMap.get("facebook")?.connected ? Math.round(campaignClicks * platformDistribution["Facebook Ads"].clicks) : 0,
+      conversions: platformStatusMap.get("facebook")?.connected ? Math.round(estimatedConversions * platformDistribution["Facebook Ads"].conversions) : 0,
+      spend: platformStatusMap.get("facebook")?.connected ? (campaignSpend * platformDistribution["Facebook Ads"].spend).toFixed(2) : "0.00",
+      ctr: platformStatusMap.get("facebook")?.connected ? "2.64%" : "0.00%",
+      cpc: platformStatusMap.get("facebook")?.connected ? "$0.68" : "$0.00",
+      analyticsPath: platformStatusMap.get("facebook")?.analyticsPath || `/campaigns/${campaign?.id}/meta-analytics`
     },
     {
       platform: "Google Ads",

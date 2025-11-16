@@ -1023,6 +1023,7 @@ export default function Campaigns() {
         label: editingCampaign.label || "",
         budget: formattedBudget,
         currency: editingCampaign.currency || "USD",
+        conversionValue: editingCampaign.conversionValue?.toString() || "",
         startDate: startDateValue,
         endDate: endDateValue,
       } as any);
@@ -1167,18 +1168,41 @@ export default function Campaigns() {
                       )}
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="budget">Budget (optional)</Label>
-                      <Input
-                        id="budget"
-                        type="number"
-                        step="0.01"
-                        placeholder="Enter budget amount in USD"
-                        {...form.register("budget")}
-                      />
-                      {form.formState.errors.budget && (
-                        <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
-                      )}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-2 space-y-2">
+                        <Label htmlFor="budget">Budget (optional)</Label>
+                        <Input
+                          id="budget"
+                          type="number"
+                          step="0.01"
+                          placeholder="Enter budget amount"
+                          {...form.register("budget")}
+                        />
+                        {form.formState.errors.budget && (
+                          <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="currency">Currency</Label>
+                        <Select
+                          value={form.watch("currency") || "USD"}
+                          onValueChange={(value) => form.setValue("currency", value)}
+                        >
+                          <SelectTrigger id="currency">
+                            <SelectValue placeholder="USD" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                            <SelectItem value="CAD">CAD</SelectItem>
+                            <SelectItem value="AUD">AUD</SelectItem>
+                            <SelectItem value="JPY">JPY</SelectItem>
+                            <SelectItem value="CNY">CNY</SelectItem>
+                            <SelectItem value="INR">INR</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
@@ -1533,6 +1557,26 @@ export default function Campaigns() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-conversionValue">Conversion Value (optional)</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500 dark:text-slate-400">$</span>
+                <Input
+                  id="edit-conversionValue"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  {...editForm.register("conversionValue")}
+                  className="flex-1"
+                  data-testid="input-edit-conversion-value"
+                />
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Average revenue per conversion for ROI calculations
+              </p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">

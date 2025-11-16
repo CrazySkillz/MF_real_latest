@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink, Shield } from "lucide-react";
+import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink, Shield, Upload, Mail } from "lucide-react";
 import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -137,6 +137,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const [showCustomIntegrationModal, setShowCustomIntegrationModal] = useState(false);
   const [customIntegrationEmail, setCustomIntegrationEmail] = useState('');
   const [allowedEmailAddresses, setAllowedEmailAddresses] = useState('');
+  const [showEmailForwardingInstructions, setShowEmailForwardingInstructions] = useState(false);
+  const [customIntegrationWebhookUrl, setCustomIntegrationWebhookUrl] = useState('');
   const { toast } = useToast();
 
   // Notify parent whenever connected platforms change
@@ -547,54 +549,175 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
           <DialogHeader>
             <DialogTitle>Connect Custom Integration</DialogTitle>
             <DialogDescription>
-              Import metrics from PDF reports (William Reed, etc.) into your dashboard
+              Import metrics from PDF reports into your dashboard
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
-              <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Two Ways to Import:</h4>
+            <div className="space-y-3">
+              <button
+                onClick={async () => {
+                  // Create file input for PDF upload
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.pdf';
+                  input.onchange = async (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (!file) return;
+                    
+                    try {
+                      setIsConnecting(prev => ({ ...prev, 'custom-integration': true }));
+                      
+                      // First, create the custom integration connection
+                      const connectResponse = await fetch(`/api/custom-integration/temp-campaign-setup/connect`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          allowedEmailAddresses: []
+                        })
+                      });
+                      
+                      if (!connectResponse.ok) {
+                        throw new Error('Failed to create custom integration');
+                      }
+                      
+                      // Upload the PDF
+                      const formData = new FormData();
+                      formData.append('pdf', file);
+                      
+                      const uploadResponse = await fetch(`/api/custom-integration/temp-campaign-setup/upload-pdf`, {
+                        method: 'POST',
+                        body: formData
+                      });
+                      
+                      if (!uploadResponse.ok) {
+                        throw new Error('Failed to upload PDF');
+                      }
+                      
+                      const result = await uploadResponse.json();
+                      
+                      // Mark as connected
+                      setConnectedPlatforms(prev => [...prev, 'custom-integration']);
+                      setSelectedPlatforms(prev => [...prev, 'custom-integration']);
+                      setShowCustomIntegrationModal(false);
+                      
+                      toast({
+                        title: "PDF Uploaded Successfully!",
+                        description: result._confidence 
+                          ? `Metrics extracted with ${result._confidence}% confidence`
+                          : "Metrics extracted successfully"
+                      });
+                      
+                    } catch (error: any) {
+                      console.error('PDF upload error:', error);
+                      toast({
+                        title: "Upload Failed",
+                        description: error.message || "Failed to upload PDF",
+                        variant: "destructive"
+                      });
+                    } finally {
+                      setIsConnecting(prev => ({ ...prev, 'custom-integration': false }));
+                    }
+                  };
+                  input.click();
+                }}
+                className="w-full bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors text-left group"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold flex-shrink-0 group-hover:bg-blue-700 transition-colors">
+                    1
+                  </span>
+                  <div className="flex-1">
+                    <h5 className="font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      Manual Upload (Recommended)
+                    </h5>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Upload a PDF report now. Metrics will be extracted and ready to use immediately. Takes 30 seconds.
+                    </p>
+                  </div>
+                  <Upload className="w-5 h-5 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-shrink-0" />
+                </div>
+              </button>
               
-              <div className="space-y-3">
-                <div className="bg-white dark:bg-slate-800 rounded-md p-3 border border-slate-200 dark:border-slate-700">
-                  <h5 className="font-medium text-slate-900 dark:text-white mb-1 flex items-center gap-2">
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs">1</span>
-                    Manual Upload (Simplest)
-                  </h5>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 ml-7">
-                    After connecting, drag & drop PDF reports directly into your dashboard. Takes 30 seconds per report.
-                  </p>
+              <button
+                onClick={async () => {
+                  try {
+                    setIsConnecting(prev => ({ ...prev, 'custom-integration': true }));
+                    
+                    const response = await fetch(`/api/custom-integration/temp-campaign-setup/connect`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        allowedEmailAddresses: allowedEmailAddresses.split(/[\n,]/).map(e => e.trim()).filter(Boolean)
+                      })
+                    });
+                    
+                    if (!response.ok) {
+                      throw new Error('Failed to create custom integration');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    setConnectedPlatforms(prev => [...prev, 'custom-integration']);
+                    setSelectedPlatforms(prev => [...prev, 'custom-integration']);
+                    setShowCustomIntegrationModal(false);
+                    setShowEmailForwardingInstructions(true);
+                    setCustomIntegrationWebhookUrl(data.webhookUrl);
+                    
+                    toast({
+                      title: "Custom Integration Connected!",
+                      description: "Email forwarding setup instructions are ready."
+                    });
+                    
+                  } catch (error: any) {
+                    console.error('Custom integration connection error:', error);
+                    toast({
+                      title: "Connection Failed",
+                      description: error.message || "Failed to connect custom integration",
+                      variant: "destructive"
+                    });
+                  } finally {
+                    setIsConnecting(prev => ({ ...prev, 'custom-integration': false }));
+                  }
+                }}
+                disabled={isConnecting['custom-integration']}
+                className="w-full bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-600 text-white text-sm font-semibold flex-shrink-0 group-hover:bg-blue-700 transition-colors">
+                    2
+                  </span>
+                  <div className="flex-1">
+                    <h5 className="font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      Email Forwarding (Advanced)
+                    </h5>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Set up automatic import via email forwarding. Requires one-time CloudMailin configuration.
+                    </p>
+                  </div>
+                  <Mail className="w-5 h-5 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-shrink-0" />
                 </div>
-                
-                <div className="bg-white dark:bg-slate-800 rounded-md p-3 border border-slate-200 dark:border-slate-700">
-                  <h5 className="font-medium text-slate-900 dark:text-white mb-1 flex items-center gap-2">
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs">2</span>
-                    Email Forwarding (Automated)
-                  </h5>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 ml-7">
-                    Set up email forwarding once, then every PDF report automatically imports. Requires CloudMailin setup (instructions provided after connecting).
-                  </p>
-                </div>
-              </div>
+              </button>
             </div>
 
-            <div className="space-y-2">
+            {/* Email whitelist section - only show for email forwarding option */}
+            <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-700">
               <label className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
                 <Shield className="w-4 h-4" />
                 Email Whitelist (Optional - For Email Forwarding Only)
               </label>
               <textarea
-                placeholder="Leave empty if using manual upload&#10;&#10;For email forwarding, enter sender addresses:&#10;reports@william-reed.com&#10;analytics@yourprovider.com"
+                placeholder="Leave empty to accept from any email&#10;&#10;Or enter allowed sender addresses:&#10;reports@provider.com&#10;analytics@company.com"
                 value={allowedEmailAddresses}
                 onChange={(e) => setAllowedEmailAddresses(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] text-sm"
                 data-testid="input-email-whitelist"
               />
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Only needed for email forwarding. Restricts which email addresses can send reports to your webhook.
+                Restricts which email addresses can send reports to your webhook. Only applies to email forwarding option.
               </p>
             </div>
 
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -605,13 +728,6 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 data-testid="button-cancel"
               >
                 Cancel
-              </Button>
-              <Button
-                onClick={handleCustomIntegrationConnect}
-                disabled={isConnecting['custom-integration']}
-                data-testid="button-connect-custom"
-              >
-                {isConnecting['custom-integration'] ? 'Connecting...' : 'Connect'}
               </Button>
             </div>
           </div>

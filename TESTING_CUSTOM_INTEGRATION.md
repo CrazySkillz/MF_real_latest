@@ -6,10 +6,14 @@
 
 1. Open `test-sample-metrics.txt` (in this folder)
 2. Copy all the content
-3. Paste into Microsoft Word or Google Docs
-4. **Save as PDF** → Name it `test-metrics-report.pdf`
+3. Paste into **Microsoft Word** or **Google Docs**
+4. **Format the tables** (the markdown tables should auto-format)
+   - Or: Copy into Excel, then copy formatted tables to Word
+5. **Save as PDF** → Name it `test-metrics-report.pdf`
 
-**Alternative:** Use any existing PDF report you have with metrics.
+**Pro Tip:** The test file uses **table format** (like professional analytics reports) which is the most common format you'll encounter.
+
+**Alternative:** Use any existing PDF report you have with metrics in table format.
 
 ---
 
@@ -98,30 +102,27 @@ Custom Integration
 📊 Custom Integration Analytics
 
 Summary Cards:
-├─ Users: 125,432
-├─ Sessions: 234,567
-├─ Pageviews: 456,789
-└─ Bounce Rate: 42.3%
+├─ Users: 1,275,432
+├─ Sessions: 1,980,120
+├─ Pageviews: 4,050,980
+└─ Bounce Rate: 41.2%
 
 Traffic Sources Chart:
-├─ Organic Search: 35.2%
-├─ Direct: 28.5%
-├─ Email: 15.8%
-├─ Referral: 12.3%
-├─ Paid: 5.7%
-└─ Social: 2.5%
+├─ Organic Search: 39%
+├─ Direct / Branded: 26%
+├─ Email: 14%
+├─ Referral: 11%
+├─ Paid: 7%
+└─ Social: 3%
 
 Email Performance:
-├─ Delivered: 50,000
-├─ Open Rate: 24.5%
-├─ CTR: 3.2%
-└─ Subscriber Growth: 1,234
-
-Campaign Metrics:
-├─ Impressions: 500,000
-├─ Clicks: 12,500
-├─ Conversions: 450
-└─ Spend: $4,500.00
+├─ Delivered: 1,870,420
+├─ Open Rate: 25.1%
+├─ CTR: 4.1%
+├─ CTOR: 16.3%
+├─ Hard Bounces: 0.35%
+├─ Spam Complaints: 0.08%
+└─ List Growth: +2,450
 ```
 
 ---
@@ -238,26 +239,27 @@ If you see warnings in the logs (check browser console):
 
 ## 📊 Testing Different PDF Formats
 
-### **Format 1: Key-Value (Most Common)**
+### **Format 1: Table Format (Most Common)** ⭐ **RECOMMENDED**
+```
+| Metric    | This Period | Previous Period |
+|-----------|-------------|-----------------|
+| Users     | 1,275,432   | 1,210,000       |
+| Sessions  | 1,980,120   | 1,900,450       |
+```
+**Expected Confidence:** 90-100%
+**This is the format used in the test file and most professional reports**
+
+### **Format 2: Key-Value**
 ```
 Metric Name: Value
-Users: 125,432
-Sessions: 234,567
+Users: 1,275,432
+Sessions: 1,980,120
 ```
 **Expected Confidence:** 95-100%
 
-### **Format 2: Table Format**
-```
-| Metric    | Value   |
-|-----------|---------|
-| Users     | 125,432 |
-| Sessions  | 234,567 |
-```
-**Expected Confidence:** 90-95%
-
 ### **Format 3: Inline Text**
 ```
-This month we had 125,432 users and 234,567 sessions.
+This month we had 1,275,432 users and 1,980,120 sessions.
 ```
 **Expected Confidence:** 70-85%
 

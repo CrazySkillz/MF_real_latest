@@ -1,54 +1,55 @@
 # Sample Metrics Report for Testing PDF Upload
 
 Use this content to create a test PDF. You can:
-1. Copy this text into a Word document
-2. Save as PDF
-3. Upload to MetricMind to test parsing
+1. Copy this text into a Word/Excel document
+2. Format as tables (like the screenshot)
+3. Save as PDF
+4. Upload to MetricMind to test parsing
 
 ---
 
 # Marketing Analytics Report
 November 2024
 
-## Website Traffic Metrics
+## 1. Audience & Traffic Overview
 
-Unique Visitors: 125,432
-Sessions: 234,567
-Pageviews: 456,789
-Avg Session Duration: 00:02:38
-Pages per Session: 1.95
-Bounce Rate: 42.3%
+| Metric                | This Period | Previous Period | Change  | Definition / Notes                      |
+|-----------------------|-------------|-----------------|---------|----------------------------------------|
+| Users (unique)        | 1,275,432   | 1,210,000       | +5.4%   | Unique browsers/devices (cookie-based) |
+| Sessions              | 1,980,120   | 1,900,450       | +4.2%   | Total sessions across site domains     |
+| Pageviews             | 4,050,980   | 3,900,500       | +3.8%   | All pageviews across content & partner |
+| Avg. session duration | 00:02:38    | 00:02:30        | +5.3%   | Time in session across site            |
+| Pages / session       | 2.05        | 2.02            | +1.5%   | Average pages viewed per session       |
+| Bounce rate           | 41.2%       | 43.0%           | -1.8pp  | Single-page sessions / entrances       |
 
-## Traffic Sources (%)
+## Traffic sources (by channel)
 
-Organic Search: 35.2%
-Direct Traffic: 28.5%
-Email: 15.8%
-Referral: 12.3%
-Paid Advertising: 5.7%
-Social Media: 2.5%
+| Channel              | Share (%) | Primary notes                        |
+|----------------------|-----------|--------------------------------------|
+| Organic Search       | 39%       | Content SEO, long-tail queries       |
+| Direct / Branded     | 26%       | Returning audience and bookmark      |
+| Email (newsletters)  | 14%       | Segmented and sponsored sends        |
+| Referral / Partners  | 11%       | Partner sites & syndication          |
+| Paid (display/search)| 7%        | Paid placements & programmatic       |
+| Social               | 3%        | Corporate social & post amplification|
 
-## Email Campaign Performance
+## 2. Email & Newsletter Performance
 
-Emails Delivered: 50,000
-Open Rate: 24.5%
-Click-Through Rate: 3.2%
-Click-to-Open Rate: 13.1%
-Hard Bounces: 0.8%
-Spam Complaints: 0.1%
-Subscriber Growth: 1,234
-
-## Campaign Metrics
-
-Impressions: 500,000
-Clicks: 12,500
-Conversions: 450
-Spend: $4,500.00
-Reach: 350,000
-Engagements: 8,750
+| Metric                    | All Campaigns | Seg. Top Performers | Notes                           |
+|---------------------------|---------------|---------------------|---------------------------------|
+| Emails delivered          | 1,870,420     | —                   | Total delivered after suppression|
+| Open rate (unique)        | 25.1%         | Retail Europe: 28.3%| Unique opens / delivered        |
+| Click-through rate (CTR)  | 4.1%          | Retail Europe: 6.2% | Clicks / delivered              |
+| Click-to-open (CTOR)      | 16.3%         | Retail Europe: 21.9%| Clicks / opens                  |
+| Hard bounces              | 0.35%         | —                   | Permanent delivery failures     |
+| Spam complaints           | 0.08%         | —                   | Complaint rate                  |
+| List growth               | +2,450        | —                   | Net new subscribers             |
 
 ---
 
 This report contains sample data for testing purposes.
 Generated: November 16, 2024
+
+**Note:** This format matches professional analytics reports with tables.
+The parser should extract metrics from both "Metric | Value" and table formats.
 

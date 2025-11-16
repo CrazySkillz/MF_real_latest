@@ -2854,6 +2854,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * Get Meta analytics data for a campaign
+   */
+  app.get("/api/meta/:campaignId/analytics", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      console.log(`[Meta Analytics] Fetching analytics for campaign ${campaignId}`);
+
+      const connection = await storage.getMetaConnection(campaignId);
+      
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found for this campaign" });
+      }
+
+      // Generate mock data based on the connected ad account
+      const { generateMetaMockData } = await import('./utils/metaMockData');
+      const mockData = generateMetaMockData(connection.adAccountId, connection.adAccountName || 'Meta Ad Account');
+
+      console.log(`[Meta Analytics] Generated mock data for ${mockData.campaigns.length} campaigns`);
+      res.json(mockData);
+    } catch (error: any) {
+      console.error('[Meta Analytics] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch Meta analytics' });
+    }
+  });
+
+  /**
+   * Get Meta summary metrics for a campaign
+   */
+  app.get("/api/meta/:campaignId/summary", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      console.log(`[Meta Summary] Fetching summary for campaign ${campaignId}`);
+
+      const connection = await storage.getMetaConnection(campaignId);
+      
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found for this campaign" });
+      }
+
+      // Generate mock data and return just the summary
+      const { generateMetaMockData } = await import('./utils/metaMockData');
+      const mockData = generateMetaMockData(connection.adAccountId, connection.adAccountName || 'Meta Ad Account');
+
+      res.json({
+        adAccountName: mockData.adAccountName,
+        summary: mockData.summary,
+        topCampaigns: mockData.campaigns
+          .sort((a, b) => b.totals.spend - a.totals.spend)
+          .slice(0, 5)
+          .map(c => ({
+            name: c.campaign.name,
+            status: c.campaign.status,
+            objective: c.campaign.objective,
+            spend: c.totals.spend,
+            impressions: c.totals.impressions,
+            clicks: c.totals.clicks,
+            conversions: c.totals.conversions,
+            ctr: c.totals.ctr,
+            cpc: c.totals.cpc,
+            costPerConversion: c.totals.costPerConversion,
+          })),
+      });
+    } catch (error: any) {
+      console.error('[Meta Summary] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch Meta summary' });
+    }
+  });
+
   // ============================================================================
   // END META/FACEBOOK ADS INTEGRATION
   // ============================================================================

@@ -1171,13 +1171,48 @@ export default function Campaigns() {
                     <div className="grid grid-cols-3 gap-3">
                       <div className="col-span-2 space-y-2">
                         <Label htmlFor="budget">Budget (optional)</Label>
-                        <Input
-                          id="budget"
-                          type="number"
-                          step="0.01"
-                          placeholder="Enter budget amount"
-                          {...form.register("budget")}
-                        />
+                        {(() => {
+                          const budgetRegister = form.register("budget");
+                          return (
+                            <Input
+                              id="budget"
+                              {...budgetRegister}
+                              onChange={(e) => {
+                                budgetRegister.onChange(e);
+                                const value = e.target.value.replace(/[^0-9.]/g, '');
+                                const parts = value.split('.');
+                                
+                                if (parts[1]?.length > 2) {
+                                  const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                                  form.setValue("budget", formatted);
+                                  e.target.value = formatted;
+                                } else {
+                                  form.setValue("budget", value);
+                                }
+                              }}
+                              onBlur={(e) => {
+                                budgetRegister.onBlur(e);
+                                const value = e.target.value.replace(/[^0-9.]/g, '');
+                                if (value) {
+                                  const parts = value.split('.');
+                                  const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                  const formatted = parts[1] !== undefined 
+                                    ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
+                                    : `${integerPart}.00`;
+                                  form.setValue("budget", value);
+                                  e.target.value = formatted;
+                                }
+                              }}
+                              onFocus={(e: FocusEvent<HTMLInputElement>) => {
+                                const value = e.target.value.replace(/,/g, '');
+                                e.target.value = value;
+                              }}
+                              placeholder="0.00"
+                              type="text"
+                              inputMode="decimal"
+                            />
+                          );
+                        })()}
                         {form.formState.errors.budget && (
                           <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
                         )}
@@ -1208,14 +1243,49 @@ export default function Campaigns() {
                     <div className="grid grid-cols-3 gap-3">
                       <div className="col-span-2 space-y-2">
                         <Label htmlFor="conversionValue">Conversion Value (optional)</Label>
-                        <Input
-                          id="conversionValue"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                          {...form.register("conversionValue")}
-                        />
+                        {(() => {
+                          const conversionValueRegister = form.register("conversionValue");
+                          return (
+                            <Input
+                              id="conversionValue"
+                              {...conversionValueRegister}
+                              onChange={(e) => {
+                                conversionValueRegister.onChange(e);
+                                const value = e.target.value.replace(/[^0-9.]/g, '');
+                                const parts = value.split('.');
+                                
+                                if (parts[1]?.length > 2) {
+                                  const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                                  form.setValue("conversionValue", formatted);
+                                  e.target.value = formatted;
+                                } else {
+                                  form.setValue("conversionValue", value);
+                                }
+                              }}
+                              onBlur={(e) => {
+                                conversionValueRegister.onBlur(e);
+                                const value = e.target.value.replace(/[^0-9.]/g, '');
+                                if (value) {
+                                  const parts = value.split('.');
+                                  const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                  const formatted = parts[1] !== undefined 
+                                    ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
+                                    : `${integerPart}.00`;
+                                  form.setValue("conversionValue", value);
+                                  e.target.value = formatted;
+                                }
+                              }}
+                              onFocus={(e: FocusEvent<HTMLInputElement>) => {
+                                const value = e.target.value.replace(/,/g, '');
+                                e.target.value = value;
+                              }}
+                              placeholder="0.00"
+                              type="text"
+                              inputMode="decimal"
+                              min="0"
+                            />
+                          );
+                        })()}
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           Average revenue per conversion for ROI calculations. You can update this later.
                         </p>
@@ -1581,15 +1651,50 @@ export default function Campaigns() {
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2 space-y-2">
                 <Label htmlFor="edit-conversionValue">Conversion Value (optional)</Label>
-                <Input
-                  id="edit-conversionValue"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  {...editForm.register("conversionValue")}
-                  data-testid="input-edit-conversion-value"
-                />
+                {(() => {
+                  const conversionValueRegister = editForm.register("conversionValue");
+                  return (
+                    <Input
+                      id="edit-conversionValue"
+                      {...conversionValueRegister}
+                      onChange={(e) => {
+                        conversionValueRegister.onChange(e);
+                        const value = e.target.value.replace(/[^0-9.]/g, '');
+                        const parts = value.split('.');
+                        
+                        if (parts[1]?.length > 2) {
+                          const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                          editForm.setValue("conversionValue", formatted);
+                          e.target.value = formatted;
+                        } else {
+                          editForm.setValue("conversionValue", value);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        conversionValueRegister.onBlur(e);
+                        const value = e.target.value.replace(/[^0-9.]/g, '');
+                        if (value) {
+                          const parts = value.split('.');
+                          const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                          const formatted = parts[1] !== undefined 
+                            ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
+                            : `${integerPart}.00`;
+                          editForm.setValue("conversionValue", value);
+                          e.target.value = formatted;
+                        }
+                      }}
+                      onFocus={(e: FocusEvent<HTMLInputElement>) => {
+                        const value = e.target.value.replace(/,/g, '');
+                        e.target.value = value;
+                      }}
+                      placeholder="0.00"
+                      type="text"
+                      inputMode="decimal"
+                      min="0"
+                      data-testid="input-edit-conversion-value"
+                    />
+                  );
+                })()}
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Average revenue per conversion for ROI calculations
                 </p>

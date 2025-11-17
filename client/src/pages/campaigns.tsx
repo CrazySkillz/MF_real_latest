@@ -630,7 +630,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   </span>
                   <div className="flex-1">
                     <h5 className="font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      Manual Upload (Recommended)
+                      Manual Upload
                     </h5>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
                       Upload a PDF report now. Metrics will be extracted and ready to use immediately. Takes 30 seconds.
@@ -685,15 +685,15 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 className="w-full bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors text-left group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-start gap-3">
-                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-600 text-white text-sm font-semibold flex-shrink-0 group-hover:bg-blue-700 transition-colors">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold flex-shrink-0 group-hover:bg-blue-700 transition-colors">
                     2
                   </span>
                   <div className="flex-1">
                     <h5 className="font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      Email Forwarding (Advanced)
+                      Email Forwarding
                     </h5>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                      Set up automatic import via email forwarding. Requires one-time CloudMailin configuration.
+                      Get a unique email address. Forward PDFs and they're automatically imported.
                     </p>
                   </div>
                   <Mail className="w-5 h-5 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-shrink-0" />

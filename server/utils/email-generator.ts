@@ -17,13 +17,17 @@ export async function generateCampaignEmail(campaignName: string, storage: IStor
   
   // Handle empty slug
   if (!baseSlug) {
-    return `campaign-${Date.now()}@import.mforensics.com`;
+    const domain = process.env.EMAIL_DOMAIN || 'import.mforensics.com';
+    return `campaign-${Date.now()}@${domain}`;
   }
   
   // 2. Check if email already exists and find available suffix
   let slug = baseSlug;
   let suffix = 1;
-  const domain = 'import.mforensics.com';
+  // Use environment variable for domain (allows switching between test and production)
+  // For testing: sandboxXXXXXXXX.mailgun.org
+  // For production: import.yourdomain.com
+  const domain = process.env.EMAIL_DOMAIN || 'import.mforensics.com';
   
   // Try base slug first
   let email = `${slug}@${domain}`;

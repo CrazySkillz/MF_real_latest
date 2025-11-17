@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown, Zap, Link2, CheckCircle2, AlertCircle, Pencil, Trash2, Award, Trophy, Download, Settings } from "lucide-react";
+import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown, Zap, Link2, CheckCircle2, AlertCircle, Pencil, Trash2, Award, Trophy, Download, Settings, Copy, Upload } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -241,10 +241,35 @@ export default function CustomIntegrationAnalytics() {
   });
 
   // Fetch latest metrics from database
-  const { data: metricsData, isLoading: metricsLoading } = useQuery({
+  const { data: metricsData, isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
     queryKey: ["/api/custom-integration", campaignId, "metrics"],
     enabled: !!campaignId,
   });
+
+  // Auto-refresh when awaiting data (poll every 10 seconds)
+  useEffect(() => {
+    const hasAnyMetrics = metricsData && (
+      metricsData.users !== undefined ||
+      metricsData.sessions !== undefined ||
+      metricsData.pageviews !== undefined ||
+      metricsData.impressions !== undefined ||
+      metricsData.clicks !== undefined ||
+      metricsData.conversions !== undefined
+    );
+
+    if (!hasAnyMetrics && !metricsLoading && campaignId) {
+      console.log('[Auto-Refresh] No metrics yet, starting polling...');
+      const interval = setInterval(() => {
+        console.log('[Auto-Refresh] Polling for new metrics...');
+        refetchMetrics();
+      }, 10000); // 10 seconds
+
+      return () => {
+        console.log('[Auto-Refresh] Stopping polling');
+        clearInterval(interval);
+      };
+    }
+  }, [metricsData, metricsLoading, campaignId, refetchMetrics]);
 
   // Fetch platform-level KPIs for custom integration filtered by campaignId
   const kpiQueryKey = campaignId ? `/api/platforms/custom-integration/kpis?campaignId=${campaignId}` : null;
@@ -1847,127 +1872,142 @@ export default function CustomIntegrationAnalytics() {
                   </div>
                 )}
 
-                {/* Show instructions only when there are NO metrics AND data has finished loading */}
-                {!metricsLoading && !hasMetrics && customIntegration?.webhookToken && (
-                  <>
-                    {/* Webhook URL Display */}
-                    <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950">
-                      <CardContent className="pt-6">
-                        <div className="space-y-4">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                              <Link2 className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                                Your Webhook URL (For CloudMailin Configuration)
-                              </h3>
-                              <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                                Copy this URL and paste it into your CloudMailin address configuration
-                              </p>
-                              <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
-                                <div className="flex items-center justify-between gap-3">
-                                  <code className="text-sm text-blue-900 dark:text-blue-100 break-all font-mono">
-                                    {window.location.origin}/api/email/inbound/{customIntegration.webhookToken}
-                                  </code>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(`${window.location.origin}/api/email/inbound/${customIntegration.webhookToken}`);
-                                      toast({
-                                        title: "Copied!",
-                                        description: "Webhook URL copied to clipboard",
-                                      });
-                                    }}
-                                    className="flex-shrink-0"
-                                    data-testid="button-copy-webhook"
-                                  >
-                                    Copy URL
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
+                {/* Show "Awaiting Data" state when there are NO metrics AND data has finished loading */}
+                {!metricsLoading && !hasMetrics && customIntegration?.email && (
+                  <Card className="border-2 border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950">
+                    <CardContent className="pt-8 pb-8">
+                      <div className="text-center space-y-6">
+                        {/* Icon */}
+                        <div className="flex justify-center">
+                          <div className="w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                            <Mail className="w-10 h-10 text-blue-600 dark:text-blue-400" />
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
 
-                    {/* CloudMailin Setup Guide */}
-                    <Card className="border-slate-200 dark:border-slate-700">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-slate-900 dark:bg-white flex items-center justify-center">
-                            <span className="text-white dark:text-slate-900 font-bold text-sm">1</span>
-                          </div>
-                          Setup CloudMailin (One-Time, Takes 2 Minutes)
-                        </CardTitle>
-                        <CardDescription>
-                          CloudMailin converts emails into data our system can process. Free plan works perfectly.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-                            <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Steps:</h4>
-                            <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-3 list-decimal list-inside">
-                              <li>Click the button below to create a free CloudMailin address</li>
-                              <li>On CloudMailin's site, paste the webhook URL shown above (click "Copy URL" to copy it)</li>
-                              <li>Select format: <strong>JSON (Normalized)</strong></li>
-                              <li>Save and note your CloudMailin email address (looks like: abc123@cloudmailin.net)</li>
-                            </ol>
-                          </div>
+                        {/* Heading */}
+                        <div>
+                          <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                            Awaiting First Data Import
+                          </h3>
+                          <p className="text-slate-600 dark:text-slate-400">
+                            Your campaign is ready to receive data!
+                          </p>
+                        </div>
 
+                        {/* Email Address */}
+                        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                            📧 Forward PDF reports to:
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded border border-slate-300 dark:border-slate-700 text-blue-900 dark:text-blue-100 font-mono text-sm break-all">
+                              {customIntegration.email}
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                navigator.clipboard.writeText(customIntegration.email);
+                                toast({ 
+                                  title: "Copied!", 
+                                  description: "Email address copied to clipboard" 
+                                });
+                              }}
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className="text-left bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+                            How to import your first report:
+                          </h4>
+                          <ol className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                            <li className="flex items-start gap-2">
+                              <span className="font-semibold text-blue-600 dark:text-blue-400 mt-0.5">1.</span>
+                              <span>Receive a PDF report via email from your data provider</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-semibold text-blue-600 dark:text-blue-400 mt-0.5">2.</span>
+                              <span>Forward the email (with PDF attached) to the address above</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-semibold text-blue-600 dark:text-blue-400 mt-0.5">3.</span>
+                              <span>Metrics will appear on this page within 60 seconds</span>
+                            </li>
+                          </ol>
+                        </div>
+
+                        {/* Tip */}
+                        <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                          <p className="text-sm text-amber-900 dark:text-amber-100 flex items-center gap-2">
+                            <span className="text-lg">💡</span>
+                            <span><strong>Tip:</strong> Add this email to your contacts for quick access</span>
+                          </p>
+                        </div>
+
+                        {/* Manual Upload Option */}
+                        <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                            Don't want to wait? Upload a PDF now:
+                          </p>
+                          <input
+                            type="file"
+                            accept=".pdf"
+                            id="manual-pdf-upload"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+
+                              const formData = new FormData();
+                              formData.append('pdf', file);
+
+                              try {
+                                const res = await fetch(`/api/custom-integration/${campaignId}/upload-pdf`, {
+                                  method: 'POST',
+                                  body: formData,
+                                  credentials: 'include',
+                                });
+
+                                if (!res.ok) throw new Error('Upload failed');
+
+                                toast({
+                                  title: "Success!",
+                                  description: "PDF uploaded and metrics extracted",
+                                });
+
+                                // Refetch metrics
+                                refetchMetrics();
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to upload PDF",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          />
                           <Button
-                            onClick={() => window.open('https://www.cloudmailin.com/addresses/new', '_blank')}
-                            className="w-full bg-blue-600 hover:bg-blue-700"
-                            data-testid="button-setup-cloudmailin"
+                            variant="outline"
+                            onClick={() => document.getElementById('manual-pdf-upload')?.click()}
+                            className="gap-2"
                           >
-                            <Mail className="w-4 h-4 mr-2" />
-                            Create CloudMailin Address (Free) →
+                            <Upload className="w-4 h-4" />
+                            Upload PDF Manually
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
 
-                    {/* How to Use */}
-                    <Card className="border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">2</span>
-                          </div>
-                          How to Forward PDFs
-                        </CardTitle>
-                        <CardDescription>
-                          After CloudMailin is configured, here's how to get your metrics
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-green-200 dark:border-green-700">
-                            <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Every time you receive a PDF report:</h4>
-                            <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-2 list-decimal list-inside">
-                              <li>Forward the email (with PDF) to your CloudMailin email address (e.g., abc123@cloudmailin.net)</li>
-                              <li>CloudMailin sends it to our system automatically</li>
-                              <li>Metrics appear in your dashboard within seconds</li>
-                              <li>View them in the Overview, KPIs, and Benchmarks tabs</li>
-                            </ol>
-                          </div>
-
-                          <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4 border border-green-200 dark:border-green-700">
-                            <h4 className="font-semibold text-green-900 dark:text-green-100 mb-3 flex items-center gap-2">
-                              <TrendingUp className="w-4 h-4" />
-                              Pro Tip: Set Up Automatic Forwarding
-                            </h4>
-                            <p className="text-sm text-green-700 dark:text-green-300">
-                              In Gmail or Outlook, create a filter to auto-forward emails from specific senders (like reports@facebook.com) to your CloudMailin address. Then it's completely hands-free!
-                            </p>
-                          </div>
+                        {/* Status Footer */}
+                        <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+                          <span>Status: Waiting for data</span>
                         </div>
-                      </CardContent>
-                    </Card>
-                  </>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
 
 

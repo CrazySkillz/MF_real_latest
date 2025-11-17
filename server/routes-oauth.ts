@@ -6628,40 +6628,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
-   * Mailgun Inbound Webhook
+   * SendGrid Inbound Parse Webhook
    * Receives forwarded emails with PDF attachments
    * Email format: {campaign-slug}@import.mforensics.com
    */
-  app.post("/api/mailgun/inbound", async (req, res) => {
+  app.post("/api/sendgrid/inbound", async (req, res) => {
     try {
-      console.log('[Mailgun] Received inbound email webhook');
+      console.log('[SendGrid] Received inbound email webhook');
 
-      // 1. Verify webhook signature (if Mailgun signing key is configured)
-      if (process.env.MAILGUN_WEBHOOK_SIGNING_KEY) {
-        const signature = req.body.signature;
-        const timestamp = req.body.timestamp;
-        const token = req.body.token;
+      // 1. Verify webhook signature (if SendGrid verification key is configured)
+      if (process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY) {
+        const signature = req.headers['x-twilio-email-event-webhook-signature'];
+        const timestamp = req.headers['x-twilio-email-event-webhook-timestamp'];
         
-        const crypto = await import('crypto');
-        const expectedSignature = crypto
-          .createHmac('sha256', process.env.MAILGUN_WEBHOOK_SIGNING_KEY)
-          .update(timestamp + token)
-          .digest('hex');
-        
-        if (signature !== expectedSignature) {
-          console.error('[Mailgun] Invalid webhook signature');
-          return res.status(401).json({ error: 'Invalid signature' });
+        if (signature && timestamp) {
+          const crypto = await import('crypto');
+          const payload = timestamp + JSON.stringify(req.body);
+          const expectedSignature = crypto
+            .createHmac('sha256', process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY)
+            .update(payload)
+            .digest('base64');
+          
+          if (signature !== expectedSignature) {
+            console.error('[SendGrid] Invalid webhook signature');
+            return res.status(401).json({ error: 'Invalid signature' });
+          }
         }
       }
 
-      // 2. Extract email details
-      const recipient = req.body.recipient; // e.g., "q4-wine-marketing@import.mforensics.com"
-      const sender = req.body.sender || req.body.from;
+      // 2. Extract email details (SendGrid format)
+      const recipient = req.body.to; // e.g., "q4-wine-marketing@import.mforensics.com"
+      const sender = req.body.from;
       const subject = req.body.subject || 'No subject';
       
-      console.log(`[Mailgun] Recipient: ${recipient}`);
-      console.log(`[Mailgun] From: ${sender}`);
-      console.log(`[Mailgun] Subject: ${subject}`);
+      console.log(`[SendGrid] Recipient: ${recipient}`);
+      console.log(`[SendGrid] From: ${sender}`);
+      console.log(`[SendGrid] Subject: ${subject}`);
 
       // 3. Find campaign by email address
       const { extractEmailAddress } = await import('./utils/email-generator');
@@ -6670,62 +6672,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const integration = await storage.getCustomIntegrationByEmail(cleanRecipient);
       
       if (!integration) {
-        console.error(`[Mailgun] No integration found for email: ${cleanRecipient}`);
+        console.error(`[SendGrid] No integration found for email: ${cleanRecipient}`);
         return res.status(404).json({ error: 'Campaign not found for this email address' });
       }
 
       const campaignId = integration.campaignId;
-      console.log(`[Mailgun] Routing to campaign: ${campaignId}`);
+      console.log(`[SendGrid] Routing to campaign: ${campaignId}`);
 
       // 4. Check email whitelist (if configured)
       if (integration.allowedEmailAddresses && integration.allowedEmailAddresses.length > 0) {
         const cleanSender = extractEmailAddress(sender);
         if (!integration.allowedEmailAddresses.includes(cleanSender)) {
-          console.error(`[Mailgun] Sender ${cleanSender} not in whitelist`);
+          console.error(`[SendGrid] Sender ${cleanSender} not in whitelist`);
           return res.status(403).json({ error: 'Sender not authorized' });
         }
       }
 
-      // 5. Extract PDF attachment
-      const attachmentCount = parseInt(req.body['attachment-count'] || '0');
+      // 5. Extract PDF attachment (SendGrid format - JSON with base64)
       let pdfBuffer: Buffer | null = null;
       let pdfFileName: string | null = null;
 
-      console.log(`[Mailgun] Attachment count: ${attachmentCount}`);
-
-      // Check for attachments in Mailgun format
-      for (let i = 1; i <= attachmentCount; i++) {
-        const contentType = req.body[`content-type-${i}`] || req.body[`attachment-${i}-content-type`];
-        const attachmentName = req.body[`attachment-${i}-name`] || req.body[`attachment-name-${i}`];
-        
-        console.log(`[Mailgun] Attachment ${i}: ${attachmentName}, type: ${contentType}`);
-        
-        if (contentType === 'application/pdf' || attachmentName?.endsWith('.pdf')) {
-          // Mailgun provides attachment as URL or base64
-          const attachmentData = req.body[`attachment-${i}`];
+      // SendGrid sends attachments as JSON string
+      const attachmentsStr = req.body.attachments;
+      if (attachmentsStr) {
+        try {
+          const attachments = JSON.parse(attachmentsStr);
+          console.log(`[SendGrid] Found ${attachments.length} attachment(s)`);
           
-          if (attachmentData) {
-            // If it's a URL, fetch it
-            if (attachmentData.startsWith('http')) {
-              console.log(`[Mailgun] Fetching PDF from URL: ${attachmentData}`);
-              const response = await fetch(attachmentData);
-              pdfBuffer = Buffer.from(await response.arrayBuffer());
-            } else {
-              // Assume base64
-              pdfBuffer = Buffer.from(attachmentData, 'base64');
-            }
-            pdfFileName = attachmentName || 'report.pdf';
-            break;
+          // Find PDF attachment
+          const pdfAttachment = attachments.find((att: any) => 
+            att.type === 'application/pdf' || att.filename?.endsWith('.pdf')
+          );
+          
+          if (pdfAttachment) {
+            console.log(`[SendGrid] Found PDF: ${pdfAttachment.filename}`);
+            pdfBuffer = Buffer.from(pdfAttachment.content, 'base64');
+            pdfFileName = pdfAttachment.filename || 'report.pdf';
           }
+        } catch (parseError) {
+          console.error('[SendGrid] Failed to parse attachments JSON:', parseError);
         }
       }
 
       if (!pdfBuffer) {
-        console.error(`[Mailgun] No PDF attachment found in email`);
+        console.error(`[SendGrid] No PDF attachment found in email`);
         return res.status(400).json({ error: 'No PDF attachment found' });
       }
 
-      console.log(`[Mailgun] Processing PDF: ${pdfFileName}, size: ${pdfBuffer.length} bytes`);
+      console.log(`[SendGrid] Processing PDF: ${pdfFileName}, size: ${pdfBuffer.length} bytes`);
 
       // 6. Parse PDF
       const { parsePDFMetrics } = await import('./services/pdf-parser');
@@ -6737,14 +6731,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...metrics,
         pdfFileName,
         emailSubject: subject,
-        emailId: req.body['Message-Id'] || `mailgun-${Date.now()}`,
+        emailId: req.body['message-id'] || `sendgrid-${Date.now()}`,
       });
 
-      console.log(`[Mailgun] ✅ Metrics stored for campaign ${campaignId}`);
-      console.log(`[Mailgun] Confidence: ${metrics._confidence}%`);
+      console.log(`[SendGrid] ✅ Metrics stored for campaign ${campaignId}`);
+      console.log(`[SendGrid] Confidence: ${metrics._confidence}%`);
 
       if (metrics._requiresReview) {
-        console.warn(`[Mailgun] ⚠️  Metrics require manual review (confidence: ${metrics._confidence}%)`);
+        console.warn(`[SendGrid] ⚠️  Metrics require manual review (confidence: ${metrics._confidence}%)`);
       }
 
       res.json({
@@ -6756,7 +6750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error: any) {
-      console.error('[Mailgun] Error processing email:', error);
+      console.error('[SendGrid] Error processing email:', error);
       res.status(500).json({ error: 'Failed to process email' });
     }
   });

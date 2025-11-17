@@ -6537,19 +6537,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/custom-integration/:campaignId/connect", async (req, res) => {
     try {
       const { campaignId } = req.params;
-      const { allowedEmailAddresses } = req.body;
+      const { allowedEmailAddresses, campaignName } = req.body;
 
       console.log(`[Custom Integration] Connecting for campaign ${campaignId}`);
 
-      // Get campaign details to generate email from name
-      const campaign = await storage.getCampaign(campaignId);
-      if (!campaign) {
-        return res.status(404).json({ error: 'Campaign not found' });
+      // Handle temporary campaign during setup flow
+      let nameForEmail: string;
+      
+      if (campaignId === 'temp-campaign-setup') {
+        // Use provided campaign name or generate a temporary one
+        nameForEmail = campaignName || `temp-${Date.now()}`;
+        console.log(`[Custom Integration] Using temporary campaign name: ${nameForEmail}`);
+      } else {
+        // Get campaign details to generate email from name
+        const campaign = await storage.getCampaign(campaignId);
+        if (!campaign) {
+          return res.status(404).json({ error: 'Campaign not found' });
+        }
+        nameForEmail = campaign.name;
       }
 
       // Generate unique email address based on campaign name
       const { generateCampaignEmail } = await import('./utils/email-generator');
-      const campaignEmail = await generateCampaignEmail(campaign.name, storage);
+      const campaignEmail = await generateCampaignEmail(nameForEmail, storage);
 
       console.log(`[Custom Integration] Generated email: ${campaignEmail}`);
 

@@ -84,6 +84,7 @@ export interface IStorage {
   getCustomIntegration(campaignId: string): Promise<CustomIntegration | undefined>;
   getCustomIntegrationById(integrationId: string): Promise<CustomIntegration | undefined>;
   getCustomIntegrationByToken(token: string): Promise<CustomIntegration | undefined>;
+  getCustomIntegrationByEmail(email: string): Promise<CustomIntegration | undefined>;
   getAllCustomIntegrations(): Promise<CustomIntegration[]>;
   createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration>;
   deleteCustomIntegration(campaignId: string): Promise<boolean>;
@@ -1205,6 +1206,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.customIntegrations.values()).find(ci => ci.webhookToken === token);
   }
 
+  async getCustomIntegrationByEmail(email: string): Promise<CustomIntegration | undefined> {
+    return Array.from(this.customIntegrations.values()).find(ci => ci.email === email);
+  }
+
   async getAllCustomIntegrations(): Promise<CustomIntegration[]> {
     return Array.from(this.customIntegrations.values());
   }
@@ -2129,6 +2134,13 @@ export class DatabaseStorage implements IStorage {
     const [integration] = await db.select()
       .from(customIntegrations)
       .where(eq(customIntegrations.webhookToken, token));
+    return integration || undefined;
+  }
+
+  async getCustomIntegrationByEmail(email: string): Promise<CustomIntegration | undefined> {
+    const [integration] = await db.select()
+      .from(customIntegrations)
+      .where(eq(customIntegrations.email, email));
     return integration || undefined;
   }
 

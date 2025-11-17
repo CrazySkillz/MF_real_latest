@@ -663,11 +663,11 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                     setSelectedPlatforms(prev => [...prev, 'custom-integration']);
                     setShowCustomIntegrationModal(false);
                     setShowEmailForwardingInstructions(true);
-                    setCustomIntegrationWebhookUrl(data.webhookUrl);
+                    setCustomIntegrationEmail(data.campaignEmail || 'temp-campaign-setup@import.mforensics.com');
                     
                     toast({
-                      title: "Custom Integration Connected!",
-                      description: "Email forwarding setup instructions are ready."
+                      title: "Email Forwarding Configured!",
+                      description: "Forward PDFs to your unique email address."
                     });
                     
                   } catch (error: any) {
@@ -730,6 +730,89 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 data-testid="button-cancel"
               >
                 Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Forwarding Instructions Modal */}
+      <Dialog open={showEmailForwardingInstructions} onOpenChange={setShowEmailForwardingInstructions}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-500" />
+              Email Forwarding Configured!
+            </DialogTitle>
+            <DialogDescription>
+              Your unique email address has been generated
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Email Address Display */}
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-3">
+                Forward PDF reports to:
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 bg-white dark:bg-slate-900 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 text-blue-900 dark:text-blue-100 font-mono text-sm break-all">
+                  {customIntegrationEmail}
+                </code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(customIntegrationEmail);
+                    toast({
+                      title: "Copied!",
+                      description: "Email address copied to clipboard"
+                    });
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+            
+            {/* How it Works */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                How it works:
+              </h4>
+              <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                  <span>Forward any email with PDF attachments to this address</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                  <span>PDFs are automatically parsed and imported</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                  <span>Metrics appear in your dashboard within minutes</span>
+                </li>
+              </ul>
+            </div>
+            
+            {/* Tip */}
+            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              <p className="text-sm text-amber-900 dark:text-amber-100 flex items-start gap-2">
+                <span className="text-lg">💡</span>
+                <span>
+                  <strong>Tip:</strong> Add this email to your contacts for easy forwarding
+                </span>
+              </p>
+            </div>
+            
+            <div className="flex justify-end">
+              <Button
+                onClick={() => setShowEmailForwardingInstructions(false)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Got it!
               </Button>
             </div>
           </div>

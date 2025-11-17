@@ -1800,10 +1800,19 @@ export default function CustomIntegrationAnalytics() {
     return typeof num === 'number' && !Number.isNaN(num) && Number.isFinite(num);
   };
 
+  // Check for basic campaign metrics (impressions, clicks, etc.)
+  const hasBasicMetrics = metricsData && (
+    (metricsData.impressions !== undefined && metricsData.impressions > 0) ||
+    (metricsData.clicks !== undefined && metricsData.clicks > 0) ||
+    (metricsData.conversions !== undefined && metricsData.conversions > 0) ||
+    (metricsData.spend !== undefined && parseFloat(metricsData.spend || '0') > 0) ||
+    (metricsData.revenue !== undefined && parseFloat(metricsData.revenue || '0') > 0)
+  );
+
   const hasAudienceMetrics = metricsData && (
-    metricsData.users !== undefined ||
-    metricsData.sessions !== undefined ||
-    metricsData.pageviews !== undefined
+    (metricsData.users !== undefined && metricsData.users > 0) ||
+    (metricsData.sessions !== undefined && metricsData.sessions > 0) ||
+    (metricsData.pageviews !== undefined && metricsData.pageviews > 0)
   );
 
   const hasTrafficSources = metricsData && (
@@ -1816,12 +1825,12 @@ export default function CustomIntegrationAnalytics() {
   );
 
   const hasEmailMetrics = metricsData && (
-    metricsData.emailsDelivered !== undefined ||
-    metricsData.openRate !== undefined ||
-    metricsData.clickThroughRate !== undefined
+    (metricsData.emailsDelivered !== undefined && metricsData.emailsDelivered > 0) ||
+    isValidNumber(metricsData.openRate) ||
+    isValidNumber(metricsData.clickThroughRate)
   );
 
-  const hasMetrics = hasAudienceMetrics || hasTrafficSources || hasEmailMetrics;
+  const hasMetrics = hasBasicMetrics || hasAudienceMetrics || hasTrafficSources || hasEmailMetrics;
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900">

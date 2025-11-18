@@ -6769,8 +6769,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Mailgun Inbound Webhook
    * Receives forwarded emails with PDF attachments
    * Email format: {campaign-slug}@sandbox....mailgun.org
+   * Note: Uses multer middleware to parse multipart/form-data from Mailgun
    */
-  app.post("/api/mailgun/inbound", async (req, res) => {
+  app.post("/api/mailgun/inbound", upload.any(), async (req, res) => {
     try {
       console.log('[Mailgun] Received inbound email webhook');
       console.log('[Mailgun] Request body keys:', Object.keys(req.body));
@@ -6828,39 +6829,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // 5. Extract PDF attachment (Mailgun format)
+      // 5. Extract PDF attachment (Mailgun format via multer)
       let pdfBuffer: Buffer | null = null;
       let pdfFileName: string | null = null;
 
-      // Mailgun sends attachments as form fields (attachment-1, attachment-2, etc.)
-      const attachmentCount = parseInt(req.body['attachment-count'] || '0');
-      console.log(`[Mailgun] Found ${attachmentCount} attachment(s)`);
+      // Multer parses multipart/form-data and puts files in req.files
+      const files = (req as any).files as Express.Multer.File[] | undefined;
+      console.log(`[Mailgun] Found ${files?.length || 0} file(s)`);
       
-      for (let i = 1; i <= attachmentCount; i++) {
-        const attachmentData = req.body[`attachment-${i}`];
-        const contentType = req.body[`content-type-${i}`] || req.body[`attachment-${i}-content-type`];
+      if (files && files.length > 0) {
+        // Find PDF file
+        const pdfFile = files.find(file => 
+          file.mimetype === 'application/pdf' || 
+          file.originalname?.endsWith('.pdf') ||
+          file.fieldname?.startsWith('attachment-')
+        );
         
-        if (attachmentData && (contentType === 'application/pdf' || attachmentData.toString().startsWith('%PDF'))) {
-          console.log(`[Mailgun] Found PDF attachment ${i}`);
-          
-          // Check if it's base64 encoded or raw buffer
-          if (typeof attachmentData === 'string') {
-            pdfBuffer = Buffer.from(attachmentData, 'base64');
-          } else if (Buffer.isBuffer(attachmentData)) {
-            pdfBuffer = attachmentData;
-          } else {
-            // Try to convert to buffer
-            pdfBuffer = Buffer.from(attachmentData);
-          }
-          
-          pdfFileName = req.body[`attachment-${i}-name`] || `attachment-${i}.pdf`;
-          break;
+        if (pdfFile) {
+          console.log(`[Mailgun] Found PDF: ${pdfFile.originalname}, size: ${pdfFile.size} bytes`);
+          pdfBuffer = pdfFile.buffer;
+          pdfFileName = pdfFile.originalname || 'report.pdf';
         }
       }
 
       if (!pdfBuffer) {
         console.error(`[Mailgun] No PDF attachment found in email`);
-        console.log(`[Mailgun] Available fields:`, Object.keys(req.body));
+        console.log(`[Mailgun] Available body fields:`, Object.keys(req.body));
+        console.log(`[Mailgun] Files:`, files?.map(f => ({ name: f.originalname, field: f.fieldname, type: f.mimetype })));
         return res.status(400).json({ error: 'No PDF attachment found' });
       }
 

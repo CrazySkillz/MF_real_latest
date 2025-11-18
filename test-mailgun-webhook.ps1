@@ -3,41 +3,99 @@
 
 $campaignEmail = "temp-1763426057214@sandbox43db1805452144a196b3959d1b81ae5f.mailgun.org"
 
-# Mock PDF content (base64 encoded sample metrics)
-$pdfBase64 = "JVBERi0xLjQKJeLjz9MKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL1Jlc291cmNlczw8L0ZvbnQ8PC9GMSA1IDAgUj4+Pj4vTWVkaWFCb3hbMCAwIDYxMiA3OTJdL0NvbnRlbnRzIDQgMCBSPj4KZW5kb2JqCjQgMCBvYmoKPDwvTGVuZ3RoIDQ0Pj4Kc3RyZWFtCkJUCi9GMSA0OCBUZgoxMCA3MDAgVGQKKFRlc3QgUmVwb3J0KSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCjIgMCBvYmoKPDwvVHlwZS9QYWdlcy9LaWRzWzMgMCBSXS9Db3VudCAxPj4KZW5kb2JqCjEgMCBvYmoKPDwvVHlwZS9DYXRhbG9nL1BhZ2VzIDIgMCBSPj4KZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDI1MiAwMDAwMCBuIAowMDAwMDAwMjAxIDAwMDAwIG4gCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDEyNyAwMDAwMCBuIAowMDAwMDAwMTcxIDAwMDAwIG4gCnRyYWlsZXIKPDwvU2l6ZSA2L1Jvb3QgMSAwIFI+PgpzdGFydHhyZWYKMzAxCiUlRU9GCg=="
+# Create a simple test PDF with metrics text
+$pdfContent = @"
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 200 >>
+stream
+BT
+/F1 24 Tf
+50 700 Td
+(Marketing Campaign Report) Tj
+0 -40 Td
+(Impressions: 125000) Tj
+0 -30 Td
+(Clicks: 8500) Tj
+0 -30 Td
+(Conversions: 450) Tj
+0 -30 Td
+(Spend: $12500) Tj
+ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000214 00000 n
+trailer
+<< /Size 5 /Root 1 0 R >>
+startxref
+465
+%%EOF
+"@
 
-# Create the webhook payload (exactly as Mailgun sends it)
-$payload = @{
-    recipient = $campaignEmail
-    sender = "test@example.com"
-    from = "Test Sender <test@example.com>"
-    subject = "Weekly Performance Report"
-    "body-plain" = "Please see attached report"
-    "attachment-count" = "1"
-    "attachment-1" = $pdfBase64
-    timestamp = [int][double]::Parse((Get-Date -UFormat %s))
-    token = "test-token-123"
-    signature = "test-signature"
-} | ConvertTo-Json
+# Save as temporary PDF file
+$tempPdfPath = Join-Path $env:TEMP "test-report.pdf"
+$pdfContent | Out-File -FilePath $tempPdfPath -Encoding ASCII -NoNewline
 
 Write-Host "Sending mock Mailgun webhook to Render..." -ForegroundColor Cyan
 Write-Host "Campaign email: $campaignEmail" -ForegroundColor Yellow
 
 try {
+    # Create multipart/form-data boundary
+    $boundary = [System.Guid]::NewGuid().ToString()
+    
+    # Build multipart body
+    $LF = "`r`n"
+    $bodyLines = @(
+        "--$boundary",
+        "Content-Disposition: form-data; name=`"recipient`"",
+        "",
+        $campaignEmail,
+        "--$boundary",
+        "Content-Disposition: form-data; name=`"sender`"",
+        "",
+        "test@example.com",
+        "--$boundary",
+        "Content-Disposition: form-data; name=`"from`"",
+        "",
+        "Test Sender <test@example.com>",
+        "--$boundary",
+        "Content-Disposition: form-data; name=`"subject`"",
+        "",
+        "Weekly Performance Report",
+        "--$boundary",
+        "Content-Disposition: form-data; name=`"body-plain`"",
+        "",
+        "Please see attached report",
+        "--$boundary",
+        "Content-Disposition: form-data; name=`"attachment-1`"; filename=`"test-report.pdf`"",
+        "Content-Type: application/pdf",
+        "",
+        [System.IO.File]::ReadAllText($tempPdfPath),
+        "--$boundary--"
+    )
+    
+    $body = $bodyLines -join $LF
+    
     $response = Invoke-WebRequest `
         -Uri "https://mforensics.onrender.com/api/mailgun/inbound" `
         -Method POST `
-        -ContentType "application/x-www-form-urlencoded" `
-        -Body @{
-            recipient = $campaignEmail
-            sender = "test@example.com"
-            from = "Test Sender <test@example.com>"
-            subject = "Weekly Performance Report"
-            "body-plain" = "Please see attached report"
-            "attachment-count" = "1"
-            "attachment-1" = $pdfBase64
-            timestamp = [int][double]::Parse((Get-Date -UFormat %s))
-        }
+        -ContentType "multipart/form-data; boundary=$boundary" `
+        -Body $body
     
     Write-Host "`n✅ SUCCESS!" -ForegroundColor Green
     Write-Host "Status: $($response.StatusCode)" -ForegroundColor Green
@@ -48,7 +106,15 @@ try {
 } catch {
     Write-Host "`n❌ ERROR!" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
-    Write-Host "`nResponse:" -ForegroundColor Yellow
-    Write-Host $_.Exception.Response -ForegroundColor White
+    if ($_.Exception.Response) {
+        $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+        $responseBody = $reader.ReadToEnd()
+        Write-Host "`nResponse body:" -ForegroundColor Yellow
+        Write-Host $responseBody -ForegroundColor White
+    }
+} finally {
+    # Clean up temp file
+    if (Test-Path $tempPdfPath) {
+        Remove-Item $tempPdfPath -Force
+    }
 }
-

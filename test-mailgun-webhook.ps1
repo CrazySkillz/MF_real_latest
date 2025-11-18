@@ -1,7 +1,7 @@
 # Test Mailgun webhook with mock PDF data
 # This simulates what Mailgun would send when it receives an email with a PDF
 
-$campaignEmail = "temp-1763426057214@sandbox43db1805452144a196b3959d1b81ae5f.mailgun.org"
+$campaignEmail = "mailgun-test-campaign@sandbox43db1805452144a196b3959d1b81ae5f.mailgun.org"
 
 # Create a simple test PDF with metrics text
 $pdfContent = @"

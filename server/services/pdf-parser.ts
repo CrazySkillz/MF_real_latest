@@ -208,6 +208,16 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
       metrics._requiresReview = true;
     }
     
+    // Sanitize: Convert NaN to undefined (which becomes NULL in database)
+    // This prevents database errors when parsing fails for some fields
+    for (const key of Object.keys(metrics)) {
+      const value = metrics[key as keyof ParsedMetrics];
+      if (typeof value === 'number' && isNaN(value)) {
+        console.warn(`[PDF Parser] Sanitizing NaN value for field: ${key}`);
+        delete metrics[key as keyof ParsedMetrics];
+      }
+    }
+    
     return metrics;
   } catch (error) {
     console.error('Error parsing PDF:', error);

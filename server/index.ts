@@ -4,8 +4,21 @@ import { setupVite, serveStatic, log } from "./vite";
 import { snapshotScheduler } from "./scheduler";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Skip body parsing for webhook routes (they use multer for multipart/form-data)
+app.use((req, res, next) => {
+  if (req.path === '/api/mailgun/inbound' || req.path === '/api/sendgrid/inbound') {
+    return next();
+  }
+  express.json()(req, res, next);
+});
+
+app.use((req, res, next) => {
+  if (req.path === '/api/mailgun/inbound' || req.path === '/api/sendgrid/inbound') {
+    return next();
+  }
+  express.urlencoded({ extended: false })(req, res, next);
+});
 
 // API routes middleware - ensure all API routes are handled first
 app.use('/api', (req, res, next) => {

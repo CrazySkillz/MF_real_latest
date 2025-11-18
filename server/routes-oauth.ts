@@ -6765,6 +6765,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * Mailgun Inbound Webhook
+   * Receives forwarded emails with PDF attachments
+   * Email format: {campaign-slug}@sandbox....mailgun.org
+   */
+  app.post("/api/mailgun/inbound", async (req, res) => {
+    try {
+      console.log('[Mailgun] Received inbound email webhook');
+      console.log('[Mailgun] Request body keys:', Object.keys(req.body));
+
+      // 1. Verify webhook signature (if Mailgun signing key is configured)
+      if (process.env.MAILGUN_WEBHOOK_SIGNING_KEY) {
+        const crypto = await import('crypto');
+        const timestamp = req.body.timestamp;
+        const token = req.body.token;
+        const signature = req.body.signature;
+        
+        if (timestamp && token && signature) {
+          const expectedSignature = crypto
+            .createHmac('sha256', process.env.MAILGUN_WEBHOOK_SIGNING_KEY)
+            .update(timestamp + token)
+            .digest('hex');
+          
+          if (signature !== expectedSignature) {
+            console.error('[Mailgun] Invalid webhook signature');
+            return res.status(401).json({ error: 'Invalid signature' });
+          }
+          console.log('[Mailgun] Signature verified');
+        }
+      }
+
+      // 2. Extract email details (Mailgun format)
+      const recipient = req.body.recipient; // e.g., "temp-1763426057214@sandbox....mailgun.org"
+      const sender = req.body.sender || req.body.from;
+      const subject = req.body.subject || 'No subject';
+      
+      console.log(`[Mailgun] Recipient: ${recipient}`);
+      console.log(`[Mailgun] From: ${sender}`);
+      console.log(`[Mailgun] Subject: ${subject}`);
+
+      // 3. Find campaign by email address
+      const { extractEmailAddress } = await import('./utils/email-generator');
+      const cleanRecipient = extractEmailAddress(recipient);
+      
+      const integration = await storage.getCustomIntegrationByEmail(cleanRecipient);
+      
+      if (!integration) {
+        console.error(`[Mailgun] No integration found for email: ${cleanRecipient}`);
+        return res.status(404).json({ error: 'Campaign not found for this email address' });
+      }
+
+      const campaignId = integration.campaignId;
+      console.log(`[Mailgun] Routing to campaign: ${campaignId}`);
+
+      // 4. Check email whitelist (if configured)
+      if (integration.allowedEmailAddresses && integration.allowedEmailAddresses.length > 0) {
+        const cleanSender = extractEmailAddress(sender);
+        if (!integration.allowedEmailAddresses.includes(cleanSender)) {
+          console.error(`[Mailgun] Sender ${cleanSender} not in whitelist`);
+          return res.status(403).json({ error: 'Sender not authorized' });
+        }
+      }
+
+      // 5. Extract PDF attachment (Mailgun format)
+      let pdfBuffer: Buffer | null = null;
+      let pdfFileName: string | null = null;
+
+      // Mailgun sends attachments as form fields (attachment-1, attachment-2, etc.)
+      const attachmentCount = parseInt(req.body['attachment-count'] || '0');
+      console.log(`[Mailgun] Found ${attachmentCount} attachment(s)`);
+      
+      for (let i = 1; i <= attachmentCount; i++) {
+        const attachmentData = req.body[`attachment-${i}`];
+        const contentType = req.body[`content-type-${i}`] || req.body[`attachment-${i}-content-type`];
+        
+        if (attachmentData && (contentType === 'application/pdf' || attachmentData.toString().startsWith('%PDF'))) {
+          console.log(`[Mailgun] Found PDF attachment ${i}`);
+          
+          // Check if it's base64 encoded or raw buffer
+          if (typeof attachmentData === 'string') {
+            pdfBuffer = Buffer.from(attachmentData, 'base64');
+          } else if (Buffer.isBuffer(attachmentData)) {
+            pdfBuffer = attachmentData;
+          } else {
+            // Try to convert to buffer
+            pdfBuffer = Buffer.from(attachmentData);
+          }
+          
+          pdfFileName = req.body[`attachment-${i}-name`] || `attachment-${i}.pdf`;
+          break;
+        }
+      }
+
+      if (!pdfBuffer) {
+        console.error(`[Mailgun] No PDF attachment found in email`);
+        console.log(`[Mailgun] Available fields:`, Object.keys(req.body));
+        return res.status(400).json({ error: 'No PDF attachment found' });
+      }
+
+      console.log(`[Mailgun] Processing PDF: ${pdfFileName}, size: ${pdfBuffer.length} bytes`);
+
+      // 6. Parse PDF
+      const { parsePDFMetrics } = await import('./services/pdf-parser');
+      const metrics = await parsePDFMetrics(pdfBuffer);
+
+      // 7. Store metrics
+      await storage.createCustomIntegrationMetrics({
+        campaignId,
+        ...metrics,
+        pdfFileName,
+        emailSubject: subject,
+        emailId: req.body['message-id'] || req.body['Message-Id'] || `mailgun-${Date.now()}`,
+      });
+
+      console.log(`[Mailgun] ✅ Metrics stored for campaign ${campaignId}`);
+      console.log(`[Mailgun] Confidence: ${metrics._confidence}%`);
+
+      if (metrics._requiresReview) {
+        console.warn(`[Mailgun] ⚠️  Metrics require manual review (confidence: ${metrics._confidence}%)`);
+      }
+
+      res.json({
+        success: true,
+        message: 'PDF processed successfully',
+        confidence: metrics._confidence,
+        requiresReview: metrics._requiresReview,
+        campaignId
+      });
+
+    } catch (error: any) {
+      console.error('[Mailgun] Error processing email:', error);
+      res.status(500).json({ error: 'Failed to process email' });
+    }
+  });
+
   // Transfer Custom Integration
   app.post("/api/custom-integration/transfer", async (req, res) => {
     try {

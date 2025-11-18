@@ -6793,9 +6793,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: newIntegration.email
       });
 
-      // Transfer metrics data if any exists
-      const existingMetrics = await storage.getAllCustomIntegrationMetrics(fromCampaignId);
+      // Transfer metrics data if any exists (but NOT from temp-campaign-setup)
+      // temp-campaign-setup is just a placeholder and may have old test data
+      const shouldTransferMetrics = fromCampaignId !== 'temp-campaign-setup';
+      const existingMetrics = shouldTransferMetrics 
+        ? await storage.getAllCustomIntegrationMetrics(fromCampaignId)
+        : [];
+      
       console.log(`[Custom Integration Transfer] Found ${existingMetrics.length} metrics to transfer`);
+      if (fromCampaignId === 'temp-campaign-setup') {
+        console.log(`[Custom Integration Transfer] Skipping metrics transfer from temp campaign (would be old test data)`);
+      }
       
       if (existingMetrics.length > 0) {
         for (const metric of existingMetrics) {

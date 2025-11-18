@@ -241,9 +241,31 @@ export default function CustomIntegrationAnalytics() {
   });
 
   // Fetch latest metrics from database
-  const { data: metricsData, isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
+  const { data: metricsData, isLoading: metricsLoading, refetch: refetchMetrics, error: metricsError } = useQuery({
     queryKey: ["/api/custom-integration", campaignId, "metrics"],
+    queryFn: async () => {
+      console.log('[Metrics Query] Fetching metrics for campaign:', campaignId);
+      const res = await fetch(`/api/custom-integration/${campaignId}/metrics`, {
+        credentials: 'include',
+      });
+      
+      // If 404, return null (no metrics yet)
+      if (res.status === 404) {
+        console.log('[Metrics Query] No metrics found (404) - showing Awaiting Data state');
+        return null;
+      }
+      
+      if (!res.ok) {
+        console.error('[Metrics Query] Failed:', res.status, res.statusText);
+        throw new Error('Failed to fetch metrics');
+      }
+      
+      const data = await res.json();
+      console.log('[Metrics Query] Fetched metrics:', data);
+      return data;
+    },
     enabled: !!campaignId,
+    retry: false, // Don't retry on 404
   });
 
   // Auto-refresh when awaiting data (poll every 10 seconds)

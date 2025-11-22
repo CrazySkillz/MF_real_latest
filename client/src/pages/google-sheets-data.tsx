@@ -252,30 +252,28 @@ export default function GoogleSheetsData() {
                           ))}
                         </div>
                       ) : sheetsData.data && sheetsData.data.length > 0 ? (
-                        <div className="w-full overflow-x-auto -mx-6 px-6">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                {sheetsData.headers?.map((header, index) => (
-                                  <TableHead key={index} className="font-semibold">
-                                    {header}
-                                  </TableHead>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              {sheetsData.headers?.map((header, index) => (
+                                <TableHead key={index} className="font-semibold">
+                                  {header}
+                                </TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sheetsData.data.map((row, rowIndex) => (
+                              <TableRow key={rowIndex}>
+                                {row.map((cell, cellIndex) => (
+                                  <TableCell key={cellIndex} className="font-mono text-sm">
+                                    {cell || '-'}
+                                  </TableCell>
                                 ))}
                               </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {sheetsData.data.map((row, rowIndex) => (
-                                <TableRow key={rowIndex}>
-                                  {row.map((cell, cellIndex) => (
-                                    <TableCell key={cellIndex} className="font-mono text-sm">
-                                      {cell || '-'}
-                                    </TableCell>
-                                  ))}
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
+                            ))}
+                          </TableBody>
+                        </Table>
                       ) : (
                         <div className="text-center py-8">
                           <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />

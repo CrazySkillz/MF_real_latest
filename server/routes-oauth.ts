@@ -1370,6 +1370,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Connected Platforms] Meta connection:`, metaConnection ? `Found (ID: ${metaConnection.id})` : 'Not found');
       console.log(`[Connected Platforms] Custom Integration:`, customIntegration ? `Found (ID: ${customIntegration.id}, webhook: ${customIntegration.webhookToken})` : 'Not found');
 
+      // Get LinkedIn analytics path with latest session ID
+      let linkedInAnalyticsPath = null;
+      if (linkedInConnection) {
+        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+        if (sessions && sessions.length > 0) {
+          // Sort by importedAt descending to get the most recent session
+          const latestSession = sessions.sort((a: any, b: any) => 
+            new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
+          )[0];
+          linkedInAnalyticsPath = `/campaigns/${campaignId}/linkedin-analytics?session=${latestSession.id}`;
+          console.log(`[Connected Platforms] LinkedIn latest session: ${latestSession.id}`);
+        } else {
+          linkedInAnalyticsPath = `/campaigns/${campaignId}/linkedin-analytics`;
+          console.log(`[Connected Platforms] LinkedIn has no import sessions yet`);
+        }
+      }
+
       const statuses = [
         {
           id: "google-analytics",
@@ -1394,9 +1411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: "linkedin",
           name: "LinkedIn Ads",
           connected: !!linkedInConnection,
-          analyticsPath: linkedInConnection
-            ? `/campaigns/${campaignId}/linkedin-analytics`
-            : null,
+          analyticsPath: linkedInAnalyticsPath,
           lastConnectedAt: linkedInConnection?.connectedAt,
         },
         {

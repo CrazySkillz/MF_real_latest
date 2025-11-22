@@ -378,20 +378,6 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  {isConnected && (
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedPlatforms(prev => [...prev, platform.id]);
-                        } else {
-                          setSelectedPlatforms(prev => prev.filter(id => id !== platform.id));
-                        }
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  )}
-                  
                   {!isConnected && (
                     <div className="flex items-center gap-2">
                       {isExpanded && platformConnecting && (

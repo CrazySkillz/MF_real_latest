@@ -252,30 +252,28 @@ export default function GoogleSheetsData() {
                           ))}
                         </div>
                       ) : sheetsData.data && sheetsData.data.length > 0 ? (
-                        <div className="w-full overflow-x-auto">
-                          <table className="w-full caption-bottom text-sm">
-                            <thead className="[&_tr]:border-b">
-                              <tr className="border-b transition-colors hover:bg-muted/50">
-                                {sheetsData.headers?.map((header, index) => (
-                                  <th key={index} className="h-12 px-4 text-left align-middle font-medium text-muted-foreground font-semibold">
-                                    {header}
-                                  </th>
+                        <table className="w-full caption-bottom text-sm">
+                          <thead className="[&_tr]:border-b">
+                            <tr className="border-b transition-colors hover:bg-muted/50">
+                              {sheetsData.headers?.map((header, index) => (
+                                <th key={index} className="h-12 px-4 text-left align-middle font-medium text-muted-foreground font-semibold">
+                                  {header}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="[&_tr:last-child]:border-0">
+                            {sheetsData.data.map((row, rowIndex) => (
+                              <tr key={rowIndex} className="border-b transition-colors hover:bg-muted/50">
+                                {row.map((cell, cellIndex) => (
+                                  <td key={cellIndex} className="p-4 align-middle font-mono text-sm">
+                                    {cell || '-'}
+                                  </td>
                                 ))}
                               </tr>
-                            </thead>
-                            <tbody className="[&_tr:last-child]:border-0">
-                              {sheetsData.data.map((row, rowIndex) => (
-                                <tr key={rowIndex} className="border-b transition-colors hover:bg-muted/50">
-                                  {row.map((cell, cellIndex) => (
-                                    <td key={cellIndex} className="p-4 align-middle font-mono text-sm">
-                                      {cell || '-'}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                            ))}
+                          </tbody>
+                        </table>
                       ) : (
                         <div className="text-center py-8">
                           <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />

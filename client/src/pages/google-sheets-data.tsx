@@ -244,52 +244,48 @@ export default function GoogleSheetsData() {
                         {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="min-h-[400px]">
-                        {sheetsLoading ? (
-                          <div className="space-y-3">
-                            {[...Array(5)].map((_, i) => (
-                              <div key={i} className="h-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                            ))}
-                          </div>
-                        ) : sheetsData.data && sheetsData.data.length > 0 ? (
-                          <div className="w-full">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  {sheetsData.headers?.map((header, index) => (
-                                    <TableHead key={index} className="font-semibold">
-                                      {header}
-                                    </TableHead>
-                                  ))}
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {sheetsData.data.map((row, rowIndex) => (
-                                  <TableRow key={rowIndex}>
-                                    {row.map((cell, cellIndex) => (
-                                      <TableCell key={cellIndex} className="font-mono text-sm">
-                                        {cell || '-'}
-                                      </TableCell>
-                                    ))}
-                                  </TableRow>
+                    <CardContent className="p-6 pt-0 min-h-[400px]">
+                      {sheetsLoading ? (
+                        <div className="space-y-3">
+                          {[...Array(5)].map((_, i) => (
+                            <div key={i} className="h-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                          ))}
+                        </div>
+                      ) : sheetsData.data && sheetsData.data.length > 0 ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              {sheetsData.headers?.map((header, index) => (
+                                <TableHead key={index} className="font-semibold">
+                                  {header}
+                                </TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sheetsData.data.map((row, rowIndex) => (
+                              <TableRow key={rowIndex}>
+                                {row.map((cell, cellIndex) => (
+                                  <TableCell key={cellIndex} className="font-mono text-sm">
+                                    {cell || '-'}
+                                  </TableCell>
                                 ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        ) : (
-                          <div className="text-center py-8">
-                            <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                            <p className="text-slate-600 dark:text-slate-400">No data available</p>
-                            <p className="text-sm text-slate-500 mt-2">
-                              {sheetsData.totalRows > 0 
-                                ? `${sheetsData.totalRows} rows found but no data to display`
-                                : 'No rows found in the spreadsheet'
-                              }
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <div className="text-center py-8">
+                          <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                          <p className="text-slate-600 dark:text-slate-400">No data available</p>
+                          <p className="text-sm text-slate-500 mt-2">
+                            {sheetsData.totalRows > 0 
+                              ? `${sheetsData.totalRows} rows found but no data to display`
+                              : 'No rows found in the spreadsheet'
+                            }
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -300,7 +296,7 @@ export default function GoogleSheetsData() {
                       <CardTitle>Data Summary</CardTitle>
                       <CardDescription>Overview of your marketing data from Google Sheets</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-6 min-h-[400px]">
+                    <CardContent className="p-6 pt-0 min-h-[400px]">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Data Overview</h4>

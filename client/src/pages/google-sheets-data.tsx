@@ -233,7 +233,7 @@ export default function GoogleSheetsData() {
                   <TabsTrigger value="summary">Summary</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="data" className="mt-0">
+                <TabsContent value="data" className="mt-6">
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -244,7 +244,7 @@ export default function GoogleSheetsData() {
                         {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="overflow-x-auto">
+                    <CardContent className="p-6 overflow-x-auto">
                       {sheetsLoading ? (
                         <div className="space-y-3">
                           {[...Array(5)].map((_, i) => (
@@ -290,13 +290,13 @@ export default function GoogleSheetsData() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="summary" className="mt-0">
+                <TabsContent value="summary" className="mt-6">
                   <Card>
                     <CardHeader>
                       <CardTitle>Data Summary</CardTitle>
                       <CardDescription>Overview of your marketing data from Google Sheets</CardDescription>
                     </CardHeader>
-                    <CardContent className="min-h-[400px]">
+                    <CardContent className="p-6 min-h-[400px]">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Data Overview</h4>

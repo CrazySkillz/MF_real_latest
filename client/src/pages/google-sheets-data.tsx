@@ -26,6 +26,14 @@ interface GoogleSheetsData {
   headers: string[];
   data: any[][];
   summary: {
+    metrics?: Record<string, number>;
+    detectedColumns?: Array<{
+      name: string;
+      index: number;
+      type: 'currency' | 'integer' | 'decimal';
+      total: number;
+    }>;
+    // Legacy fields for backward compatibility
     totalImpressions?: number;
     totalClicks?: number;
     totalSpend?: number;
@@ -297,59 +305,83 @@ export default function GoogleSheetsData() {
                   <Card>
                     <CardHeader>
                       <CardTitle>Data Summary</CardTitle>
-                      <CardDescription>Overview of your marketing data from Google Sheets</CardDescription>
+                      <CardDescription>
+                        {sheetsData.summary?.detectedColumns && sheetsData.summary.detectedColumns.length > 0 
+                          ? `Dynamically detected and aggregated ${sheetsData.summary.detectedColumns.length} numeric columns from your spreadsheet`
+                          : 'Overview of your marketing data from Google Sheets'
+                        }
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 gap-6">
+                        {/* Data Overview Section */}
                         <div>
                           <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Data Overview</h4>
-                          <div className="space-y-3">
-                            <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Total Rows:</span>
-                              <span className="font-semibold">{formatNumber(sheetsData.totalRows)}</span>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
+                              <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Rows</div>
+                              <div className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(sheetsData.totalRows)}</div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Columns:</span>
-                              <span className="font-semibold">{sheetsData.headers?.length || 0}</span>
+                            <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
+                              <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Columns</div>
+                              <div className="text-2xl font-bold text-slate-900 dark:text-white">{sheetsData.headers?.length || 0}</div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Last Updated:</span>
-                              <span className="font-semibold">{new Date(sheetsData.lastUpdated).toLocaleDateString()}</span>
+                            <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
+                              <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Numeric Columns</div>
+                              <div className="text-2xl font-bold text-green-600">{sheetsData.summary?.detectedColumns?.length || 0}</div>
                             </div>
                           </div>
                         </div>
                         
-                        {sheetsData.summary && (
+                        {/* Dynamically Detected Metrics */}
+                        {sheetsData.summary?.detectedColumns && sheetsData.summary.detectedColumns.length > 0 && (
                           <div>
-                            <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Performance Metrics</h4>
-                            <div className="space-y-3">
-                              {sheetsData.summary.totalImpressions !== undefined && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Impressions:</span>
-                                  <span className="font-semibold">{formatNumber(sheetsData.summary.totalImpressions)}</span>
+                            <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                              Aggregated Metrics
+                              <Badge variant="secondary" className="ml-2 text-xs">Auto-detected</Badge>
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {sheetsData.summary.detectedColumns.map((col) => (
+                                <div key={col.name} className="border border-slate-200 dark:border-slate-700 p-4 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="text-sm font-medium text-slate-600 dark:text-slate-400">{col.name}</div>
+                                    <Badge variant="outline" className="text-xs">
+                                      {col.type === 'currency' ? '$' : col.type === 'decimal' ? '#.#' : '#'}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {col.type === 'currency' 
+                                      ? formatCurrency(col.total)
+                                      : col.type === 'decimal'
+                                      ? col.total.toFixed(2).toLocaleString()
+                                      : formatNumber(Math.round(col.total))
+                                    }
+                                  </div>
+                                  <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                                    Column {col.index + 1} • Sum of {sheetsData.totalRows} rows
+                                  </div>
                                 </div>
-                              )}
-                              {sheetsData.summary.totalClicks !== undefined && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Clicks:</span>
-                                  <span className="font-semibold">{formatNumber(sheetsData.summary.totalClicks)}</span>
-                                </div>
-                              )}
-                              {sheetsData.summary.totalSpend !== undefined && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Spend:</span>
-                                  <span className="font-semibold">{formatCurrency(sheetsData.summary.totalSpend)}</span>
-                                </div>
-                              )}
-                              {sheetsData.summary.averageCTR !== undefined && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Average CTR:</span>
-                                  <span className="font-semibold">{formatPercentage(sheetsData.summary.averageCTR)}</span>
-                                </div>
-                              )}
+                              ))}
                             </div>
                           </div>
                         )}
+
+                        {/* Fallback: Show message if no numeric columns detected */}
+                        {(!sheetsData.summary?.detectedColumns || sheetsData.summary.detectedColumns.length === 0) && (
+                          <div className="text-center py-8 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                            <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                            <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Numeric Data Detected</h4>
+                            <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+                              Your spreadsheet doesn't appear to contain numeric columns that can be aggregated. 
+                              Make sure your data includes columns with numbers (e.g., impressions, clicks, spend).
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Last Updated */}
+                        <div className="text-center text-sm text-slate-500 dark:text-slate-500 pt-4 border-t border-slate-200 dark:border-slate-700">
+                          Last updated: {new Date(sheetsData.lastUpdated).toLocaleString()}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

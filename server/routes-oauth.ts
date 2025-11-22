@@ -2272,123 +2272,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers: rows[0] || [],
         data: rows.slice(1), // All data rows (excluding header)
         sampleData: rows.slice(1, 6), // First 5 data rows for backward compatibility
-        metrics: {
-          budget: 0,
-          impressions: 0,
-          clicks: 0,
-          conversions: 0
-        }
+        metrics: {} as Record<string, number>,
+        detectedColumns: [] as Array<{name: string, index: number, type: string, total: number}>
       };
 
-      // Try to extract common marketing metrics from the data
+      // Dynamically detect and aggregate ALL numeric columns
       if (rows.length > 1 && rows[0]) {
-        const headers = rows[0].map((h: string) => String(h || '').toLowerCase().trim());
+        const headers = rows[0];
+        console.log('📊 Detected spreadsheet headers:', headers);
         
-        console.log('📊 Detected spreadsheet headers:', rows[0]);
-        console.log('📊 Normalized headers:', headers);
+        // First pass: Identify which columns contain numeric data
+        const numericColumns: Array<{name: string, index: number, type: 'currency' | 'integer' | 'decimal', samples: number[]}> = [];
         
-        // Find column indices with comprehensive matching - must use findIndex to handle column 0 properly
-        let budgetCol = headers.findIndex((h: string) => 
-          h.includes('budget') || 
-          h.includes('spend') || 
-          h.includes('cost') || 
-          h.includes('price') ||
-          h.includes('amount') ||
-          h.includes('usd') ||
-          h.includes('$')
-        );
-        
-        let impressionsCol = headers.findIndex((h: string) => 
-          h.includes('impression') || 
-          h.includes('views') || 
-          h.includes('reach') ||
-          h.includes('shown')
-        );
-        
-        let clicksCol = headers.findIndex((h: string) => 
-          h.includes('click') ||
-          h.includes('tap')
-        );
-        
-        let conversionsCol = headers.findIndex((h: string) => 
-          h.includes('conversion') || 
-          h.includes('lead') ||
-          h.includes('sale') ||
-          h.includes('purchase') ||
-          h.includes('action')
-        );
-        
-        console.log('✅ Column mapping detected:', {
-          budget: budgetCol >= 0 ? `Column ${budgetCol}: "${rows[0][budgetCol]}"` : 'Not found',
-          impressions: impressionsCol >= 0 ? `Column ${impressionsCol}: "${rows[0][impressionsCol]}"` : 'Not found',
-          clicks: clicksCol >= 0 ? `Column ${clicksCol}: "${rows[0][clicksCol]}"` : 'Not found',
-          conversions: conversionsCol >= 0 ? `Column ${conversionsCol}: "${rows[0][conversionsCol]}"` : 'Not found'
+        headers.forEach((header: string, index: number) => {
+          const headerStr = String(header || '').trim();
+          if (!headerStr) return; // Skip empty headers
+          
+          // Sample first 5 data rows to determine if column is numeric
+          const samples: number[] = [];
+          let hasNumericData = false;
+          let hasCurrency = false;
+          let hasDecimals = false;
+          
+          for (let i = 1; i < Math.min(6, rows.length); i++) {
+            const cellValue = rows[i]?.[index];
+            if (!cellValue) continue;
+            
+            const cellStr = String(cellValue).trim();
+            if (cellStr.includes('$') || cellStr.includes('USD')) hasCurrency = true;
+            
+            // Clean and parse the value
+            const cleanValue = cellStr.replace(/[$,]/g, '').trim();
+            const numValue = parseFloat(cleanValue);
+            
+            if (!isNaN(numValue)) {
+              samples.push(numValue);
+              hasNumericData = true;
+              if (cleanValue.includes('.')) hasDecimals = true;
+            }
+          }
+          
+          if (hasNumericData && samples.length > 0) {
+            const type = hasCurrency ? 'currency' : (hasDecimals ? 'decimal' : 'integer');
+            numericColumns.push({ name: headerStr, index, type, samples });
+          }
         });
-
-        // Sum up numeric values from the spreadsheet
-        console.log(`📊 Processing ${rows.length - 1} data rows...`);
-        let processedRows = 0;
         
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i] || [];
-          let rowHasData = false;
-          
-          if (budgetCol >= 0 && row[budgetCol]) {
-            // Remove currency symbols, commas, and parse
-            const cleanValue = String(row[budgetCol]).replace(/[$,]/g, '').trim();
-            const value = parseFloat(cleanValue);
-            if (!isNaN(value) && value > 0) {
-              campaignData.metrics.budget += value;
-              rowHasData = true;
-              if (i <= 3) console.log(`  Row ${i} budget: "${row[budgetCol]}" -> ${value}`);
-            }
-          }
-          
-          if (impressionsCol >= 0 && row[impressionsCol]) {
-            // Remove commas and parse
-            const cleanValue = String(row[impressionsCol]).replace(/,/g, '').trim();
-            const value = parseInt(cleanValue);
-            if (!isNaN(value) && value > 0) {
-              campaignData.metrics.impressions += value;
-              rowHasData = true;
-              if (i <= 3) console.log(`  Row ${i} impressions: "${row[impressionsCol]}" -> ${value}`);
-            }
-          }
-          
-          if (clicksCol >= 0 && row[clicksCol]) {
-            // Remove commas and parse
-            const cleanValue = String(row[clicksCol]).replace(/,/g, '').trim();
-            const value = parseInt(cleanValue);
-            if (!isNaN(value) && value > 0) {
-              campaignData.metrics.clicks += value;
-              rowHasData = true;
-              if (i <= 3) console.log(`  Row ${i} clicks: "${row[clicksCol]}" -> ${value}`);
-            }
-          }
-          
-          if (conversionsCol >= 0 && row[conversionsCol]) {
-            // Remove commas and parse
-            const cleanValue = String(row[conversionsCol]).replace(/,/g, '').trim();
-            const value = parseInt(cleanValue);
-            if (!isNaN(value) && value > 0) {
-              campaignData.metrics.conversions += value;
-              rowHasData = true;
-              if (i <= 3) console.log(`  Row ${i} conversions: "${row[conversionsCol]}" -> ${value}`);
-            }
-          }
-          
-          if (rowHasData) processedRows++;
-        }
+        console.log(`✅ Detected ${numericColumns.length} numeric columns:`, 
+          numericColumns.map(col => `"${col.name}" (${col.type})`).join(', ')
+        );
         
-        console.log(`✅ Successfully processed ${processedRows} rows with data`);
-        console.log('📊 Final aggregated metrics:', {
-          totalImpressions: campaignData.metrics.impressions.toLocaleString(),
-          totalClicks: campaignData.metrics.clicks.toLocaleString(),
-          totalSpend: `$${campaignData.metrics.budget.toLocaleString()}`,
-          averageCTR: campaignData.metrics.impressions > 0 
-            ? `${((campaignData.metrics.clicks / campaignData.metrics.impressions) * 100).toFixed(2)}%`
-            : '0%'
+        // Second pass: Aggregate all numeric columns
+        numericColumns.forEach(col => {
+          let total = 0;
+          let count = 0;
+          
+          for (let i = 1; i < rows.length; i++) {
+            const cellValue = rows[i]?.[col.index];
+            if (!cellValue) continue;
+            
+            const cleanValue = String(cellValue).replace(/[$,]/g, '').trim();
+            const numValue = parseFloat(cleanValue);
+            
+            if (!isNaN(numValue)) {
+              total += numValue;
+              count++;
+            }
+          }
+          
+          if (count > 0) {
+            campaignData.metrics[col.name] = total;
+            campaignData.detectedColumns.push({
+              name: col.name,
+              index: col.index,
+              type: col.type,
+              total: total
+            });
+            
+            console.log(`  ✓ ${col.name}: ${total.toLocaleString()} (${count} rows)`);
+          }
         });
+        
+        console.log(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rows.length - 1} data rows`);
       }
 
       res.json({
@@ -2399,12 +2364,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers: campaignData.headers,
         data: campaignData.data,
         summary: {
-          totalImpressions: campaignData.metrics.impressions,
-          totalClicks: campaignData.metrics.clicks,
-          totalSpend: campaignData.metrics.budget,
-          averageCTR: campaignData.metrics.clicks > 0 && campaignData.metrics.impressions > 0 
-            ? (campaignData.metrics.clicks / campaignData.metrics.impressions) * 100 
-            : 0
+          metrics: campaignData.metrics,
+          detectedColumns: campaignData.detectedColumns,
+          // Legacy fields for backward compatibility
+          totalImpressions: campaignData.metrics['Impressions'] || campaignData.metrics['impressions'] || 0,
+          totalClicks: campaignData.metrics['Clicks'] || campaignData.metrics['clicks'] || 0,
+          totalSpend: campaignData.metrics['Spend (USD)'] || campaignData.metrics['Budget'] || campaignData.metrics['Cost'] || 0,
+          averageCTR: (() => {
+            const impressions = campaignData.metrics['Impressions'] || campaignData.metrics['impressions'] || 0;
+            const clicks = campaignData.metrics['Clicks'] || campaignData.metrics['clicks'] || 0;
+            return impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0;
+          })()
         },
         lastUpdated: new Date().toISOString()
       });
@@ -7104,4 +7074,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const server = createServer(app);
   return server;
+}
 }

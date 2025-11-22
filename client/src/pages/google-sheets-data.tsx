@@ -10,8 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SiGooglesheets } from "react-icons/si";
-import { useToast } from "@/hooks/use-toast";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 interface Campaign {
   id: string;
@@ -37,8 +36,6 @@ interface GoogleSheetsData {
 export default function GoogleSheetsData() {
   const [, params] = useRoute("/campaigns/:id/google-sheets-data");
   const campaignId = params?.id;
-  const { toast } = useToast();
-  const lastUpdateRef = useRef<string>('');
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -63,19 +60,6 @@ export default function GoogleSheetsData() {
     },
   });
 
-  // Show toast notification when data is automatically refreshed
-  useEffect(() => {
-    if (sheetsData?.lastUpdated && lastUpdateRef.current && lastUpdateRef.current !== sheetsData.lastUpdated) {
-      toast({
-        title: "Data Updated",
-        description: "Your Google Sheets data has been automatically refreshed.",
-        duration: 3000,
-      });
-    }
-    if (sheetsData?.lastUpdated) {
-      lastUpdateRef.current = sheetsData.lastUpdated;
-    }
-  }, [sheetsData?.lastUpdated, toast]);
 
   // Debug data structure
   useEffect(() => {

@@ -597,7 +597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.params;
       console.log(`[Google Sheets] Fetching spreadsheets for campaign ${campaignId}`);
 
-      const connection = await storage.getGoogleSheetsConnection(campaignId);
+      let connection = await storage.getGoogleSheetsConnection(campaignId);
       
       if (!connection || !connection.accessToken) {
         console.error(`[Google Sheets] No connection found for campaign ${campaignId}`);
@@ -606,48 +606,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[Google Sheets] Found connection, access token exists: ${!!connection.accessToken}`);
 
-      // Check token scopes by calling tokeninfo endpoint
-      try {
-        const tokenInfoResponse = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${connection.accessToken}`);
-        if (tokenInfoResponse.ok) {
-          const tokenInfo = await tokenInfoResponse.json();
-          console.log(`[Google Sheets] Token scopes:`, tokenInfo.scope);
+      let accessToken = connection.accessToken;
+
+      // Check if token needs refresh (if expired or expiring soon)
+      const shouldRefreshToken = (conn: any) => {
+        if (!conn.tokenExpiresAt) return false;
+        const expiresAt = new Date(conn.tokenExpiresAt).getTime();
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+        return (expiresAt - now) < fiveMinutes;
+      };
+
+      // Proactively refresh token if needed
+      if (shouldRefreshToken(connection) && connection.refreshToken) {
+        console.log('🔄 Token expires soon, refreshing before Drive API call...');
+        try {
+          accessToken = await refreshGoogleSheetsToken(connection);
+          connection = await storage.getGoogleSheetsConnection(campaignId); // Get updated connection
+        } catch (refreshError) {
+          console.error('⚠️ Token refresh failed:', refreshError);
+          // Continue with existing token, will retry if 401
         }
-      } catch (e) {
-        console.log(`[Google Sheets] Could not fetch token info`);
       }
 
       // Fetch spreadsheets from Google Drive API
       const driveUrl = 'https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name)';
       console.log(`[Google Sheets] Calling Drive API: ${driveUrl}`);
       
-      const driveResponse = await fetch(driveUrl, {
+      let driveResponse = await fetch(driveUrl, {
         headers: {
-          'Authorization': `Bearer ${connection.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
       console.log(`[Google Sheets] Drive API response status: ${driveResponse.status}`);
+
+      // If 401, try refreshing token and retry
+      if (driveResponse.status === 401 && connection.refreshToken) {
+        console.log('🔄 Access token invalid (401), attempting refresh and retry...');
+        try {
+          accessToken = await refreshGoogleSheetsToken(connection);
+          
+          // Retry with new token
+          driveResponse = await fetch(driveUrl, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+          
+          console.log(`[Google Sheets] Retry after refresh - status: ${driveResponse.status}`);
+        } catch (refreshError) {
+          console.error('❌ Token refresh failed:', refreshError);
+          return res.status(401).json({ 
+            error: 'Authentication expired. Please reconnect Google Sheets.',
+            needsReauth: true
+          });
+        }
+      }
 
       if (!driveResponse.ok) {
         const errorBody = await driveResponse.text();
         console.error(`[Google Sheets] Drive API error response:`, errorBody);
         
         let errorMessage = 'Failed to fetch spreadsheets from Google Drive';
+        let needsReauth = false;
+        
         try {
           const errorJson = JSON.parse(errorBody);
           errorMessage = errorJson.error?.message || errorMessage;
           console.error(`[Google Sheets] Drive API error details:`, errorJson);
           
-          // If insufficient scopes, provide helpful message
+          // If insufficient scopes or auth error, user needs to reconnect
           if (errorJson.error?.code === 403 && errorJson.error?.message?.includes('insufficient authentication scopes')) {
             errorMessage = 'Please reconnect Google Sheets to grant Drive access permissions';
+            needsReauth = true;
+          } else if (errorJson.error?.code === 401) {
+            errorMessage = 'Authentication expired. Please reconnect Google Sheets.';
+            needsReauth = true;
           }
         } catch (e) {
           console.error(`[Google Sheets] Could not parse error response`);
         }
         
-        throw new Error(errorMessage);
+        return res.status(driveResponse.status).json({ error: errorMessage, needsReauth });
       }
 
       const driveData = await driveResponse.json();

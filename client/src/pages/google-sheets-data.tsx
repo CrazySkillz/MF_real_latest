@@ -233,7 +233,7 @@ export default function GoogleSheetsData() {
                   <TabsTrigger value="summary">Summary</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="data">
+                <TabsContent value="data" className="mt-0">
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -292,13 +292,13 @@ export default function GoogleSheetsData() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="summary">
+                <TabsContent value="summary" className="mt-0">
                   <Card>
                     <CardHeader>
                       <CardTitle>Data Summary</CardTitle>
                       <CardDescription>Overview of your marketing data from Google Sheets</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="min-h-[400px]">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Data Overview</h4>

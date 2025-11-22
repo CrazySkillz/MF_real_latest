@@ -227,13 +227,17 @@ export default function GoogleSheetsData() {
           ) : sheetsData ? (
             <>
               {/* Data Table with Tabs - No Summary Cards at Top */}
-              <Tabs defaultValue="data" className="space-y-6">
-                <TabsList>
-                  <TabsTrigger value="data">Raw Data</TabsTrigger>
-                  <TabsTrigger value="summary">Summary</TabsTrigger>
-                </TabsList>
+              <div className="space-y-6">
+                <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                  <button className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-background text-foreground shadow-sm">
+                    Raw Data
+                  </button>
+                  <button className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+                    Summary
+                  </button>
+                </div>
 
-                <TabsContent value="data" className="mt-6">
+                <div className="mt-6">
                   <Card className="w-full">
                     <CardHeader className="p-6">
                       <CardTitle className="flex items-center gap-2">
@@ -290,72 +294,8 @@ export default function GoogleSheetsData() {
                       </div>
                     </CardContent>
                   </Card>
-                </TabsContent>
-
-                <TabsContent value="summary" className="mt-6">
-                  <Card className="w-full">
-                    <CardHeader className="p-6">
-                      <CardTitle>Data Summary</CardTitle>
-                      <CardDescription>Overview of your marketing data from Google Sheets</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-6 pt-0">
-                      <div className="min-h-[400px]">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Data Overview</h4>
-                          <div className="space-y-3">
-                            <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Total Rows:</span>
-                              <span className="font-semibold">{formatNumber(sheetsData.totalRows)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Columns:</span>
-                              <span className="font-semibold">{sheetsData.headers?.length || 0}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Last Updated:</span>
-                              <span className="font-semibold">{new Date(sheetsData.lastUpdated).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {sheetsData.summary && (
-                          <div>
-                            <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Performance Metrics</h4>
-                            <div className="space-y-3">
-                              {sheetsData.summary.totalImpressions !== undefined && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Impressions:</span>
-                                  <span className="font-semibold">{formatNumber(sheetsData.summary.totalImpressions)}</span>
-                                </div>
-                              )}
-                              {sheetsData.summary.totalClicks !== undefined && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Clicks:</span>
-                                  <span className="font-semibold">{formatNumber(sheetsData.summary.totalClicks)}</span>
-                                </div>
-                              )}
-                              {sheetsData.summary.totalSpend !== undefined && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Spend:</span>
-                                  <span className="font-semibold">{formatCurrency(sheetsData.summary.totalSpend)}</span>
-                                </div>
-                              )}
-                              {sheetsData.summary.averageCTR !== undefined && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Average CTR:</span>
-                                  <span className="font-semibold">{formatPercentage(sheetsData.summary.averageCTR)}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                </div>
+              </div>
             </>
           ) : (
             <Card>

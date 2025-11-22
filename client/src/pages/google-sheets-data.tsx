@@ -234,8 +234,8 @@ export default function GoogleSheetsData() {
                 </TabsList>
 
                 <TabsContent value="data" className="mt-6">
-                  <Card>
-                    <CardHeader>
+                  <Card className="w-full">
+                    <CardHeader className="p-6">
                       <CardTitle className="flex items-center gap-2">
                         <FileSpreadsheet className="w-5 h-5 text-green-600" />
                         Spreadsheet Data
@@ -291,8 +291,8 @@ export default function GoogleSheetsData() {
                 </TabsContent>
 
                 <TabsContent value="summary" className="mt-6">
-                  <Card>
-                    <CardHeader>
+                  <Card className="w-full">
+                    <CardHeader className="p-6">
                       <CardTitle>Data Summary</CardTitle>
                       <CardDescription>Overview of your marketing data from Google Sheets</CardDescription>
                     </CardHeader>

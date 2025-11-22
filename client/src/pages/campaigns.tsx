@@ -426,7 +426,17 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                     <SimpleGoogleSheetsAuth
                       campaignId="temp-campaign-setup"
                       onSuccess={() => {
-                        setConnectedPlatforms(prev => [...prev, 'google-sheets']);
+                        console.log('📊 Google Sheets onSuccess fired!');
+                        setConnectedPlatforms(prev => {
+                          const updated = [...prev, 'google-sheets'];
+                          console.log('📊 Updated connectedPlatforms to:', updated);
+                          // Also update parent immediately
+                          if (onPlatformsChange) {
+                            console.log('📊 Immediately updating parent with:', updated);
+                            onPlatformsChange(updated);
+                          }
+                          return updated;
+                        });
                         setSelectedPlatforms(prev => [...prev, 'google-sheets']);
                         setExpandedPlatforms(prev => ({ ...prev, 'google-sheets': false }));
                         toast({

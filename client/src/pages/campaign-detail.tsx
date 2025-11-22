@@ -3560,33 +3560,13 @@ export default function CampaignDetail() {
     }
   ];
 
-  // Filter to only show platforms that are connected or were selected during campaign creation
-  const platformMetrics = allPlatformMetrics.filter(platform => {
-    // Always show if connected
-    if (platform.connected) {
-      console.log(`[Campaign Detail] Showing ${platform.platform} - connected: true`);
-      return true;
-    }
-    
-    // Show if platform was selected during campaign creation
-    // Check if the platform name matches any of the connected platform names from campaign.platform field
-    const isInCampaignPlatforms = connectedPlatformNames.some(name => {
-      const nameMatch = name.toLowerCase().includes(platform.platform.toLowerCase()) || 
-                       platform.platform.toLowerCase().includes(name.toLowerCase());
-      if (nameMatch) {
-        console.log(`[Campaign Detail] Showing ${platform.platform} - matched campaign platform: ${name}`);
-      }
-      return nameMatch;
-    });
-    
-    if (!isInCampaignPlatforms) {
-      console.log(`[Campaign Detail] Hiding ${platform.platform} - not connected and not in campaign platforms`);
-    }
-    
-    return isInCampaignPlatforms;
-  });
+  // Show ALL platforms, but only connected ones will have the blue badge and analytics button
+  // The platform cards will show connection status and allow users to connect from the campaign detail page
+  const platformMetrics = allPlatformMetrics;
   
-  console.log('[Campaign Detail] Final platform metrics count:', platformMetrics.length);
+  console.log('[Campaign Detail] Connected platform IDs:', connectedPlatformIds);
+  console.log('[Campaign Detail] Connected platform names:', connectedPlatformNames);
+  console.log('[Campaign Detail] Showing all platforms, connected count:', platformMetrics.filter(p => p.connected).length);
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {

@@ -3467,7 +3467,8 @@ export default function CampaignDetail() {
     analyticsPath: gaPlatformStatus?.analyticsPath
   });
   
-  const platformMetrics: PlatformMetrics[] = [
+  // Build platformMetrics array dynamically based on connected platforms
+  const allPlatformMetrics: PlatformMetrics[] = [
     {
       platform: "Google Analytics",
       connected: isGA4Connected,
@@ -3554,6 +3555,21 @@ export default function CampaignDetail() {
       analyticsPath: platformStatusMap.get("custom-integration")?.analyticsPath || `/campaigns/${campaign?.id}/custom-integration-analytics`
     }
   ];
+
+  // Filter to only show platforms that are connected or were selected during campaign creation
+  const platformMetrics = allPlatformMetrics.filter(platform => {
+    // Always show if connected
+    if (platform.connected) return true;
+    
+    // Show if platform was selected during campaign creation
+    // Check if the platform name matches any of the connected platform names from campaign.platform field
+    const isInCampaignPlatforms = connectedPlatformNames.some(name => 
+      name.toLowerCase().includes(platform.platform.toLowerCase()) || 
+      platform.platform.toLowerCase().includes(name.toLowerCase())
+    );
+    
+    return isInCampaignPlatforms;
+  });
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {

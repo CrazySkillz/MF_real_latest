@@ -1670,7 +1670,7 @@ export default function Campaigns() {
                             <>Creating...</>
                           ) : connectedPlatformsInDialog.length > 0 ? (
                             <>
-                              Create Campaign with {connectedPlatformsInDialog.length} platform{connectedPlatformsInDialog.length !== 1 ? 's' : ''}
+                              Create campaign with {connectedPlatformsInDialog.length} {connectedPlatformsInDialog.length === 1 ? 'platform' : 'platforms'}
                               <CheckCircle className="w-4 h-4 ml-2" />
                             </>
                           ) : (

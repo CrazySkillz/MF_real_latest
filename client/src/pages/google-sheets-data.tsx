@@ -244,7 +244,7 @@ export default function GoogleSheetsData() {
                         {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-6 overflow-x-auto">
+                    <CardContent className="p-6">
                       {sheetsLoading ? (
                         <div className="space-y-3">
                           {[...Array(5)].map((_, i) => (
@@ -252,28 +252,30 @@ export default function GoogleSheetsData() {
                           ))}
                         </div>
                       ) : sheetsData.data && sheetsData.data.length > 0 ? (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              {sheetsData.headers?.map((header, index) => (
-                                <TableHead key={index} className="font-semibold">
-                                  {header}
-                                </TableHead>
-                              ))}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {sheetsData.data.map((row, rowIndex) => (
-                              <TableRow key={rowIndex}>
-                                {row.map((cell, cellIndex) => (
-                                  <TableCell key={cellIndex} className="font-mono text-sm">
-                                    {cell || '-'}
-                                  </TableCell>
+                        <div className="w-full overflow-x-auto -mx-6 px-6">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                {sheetsData.headers?.map((header, index) => (
+                                  <TableHead key={index} className="font-semibold">
+                                    {header}
+                                  </TableHead>
                                 ))}
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {sheetsData.data.map((row, rowIndex) => (
+                                <TableRow key={rowIndex}>
+                                  {row.map((cell, cellIndex) => (
+                                    <TableCell key={cellIndex} className="font-mono text-sm">
+                                      {cell || '-'}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       ) : (
                         <div className="text-center py-8">
                           <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />

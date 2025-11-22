@@ -11,8 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SiGooglesheets } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useRef, useState } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEffect, useRef } from "react";
 
 interface Campaign {
   id: string;
@@ -40,7 +39,6 @@ export default function GoogleSheetsData() {
   const campaignId = params?.id;
   const { toast } = useToast();
   const lastUpdateRef = useRef<string>('');
-  const [refreshInterval, setRefreshInterval] = useState(30000); // Default 30 seconds
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -50,7 +48,7 @@ export default function GoogleSheetsData() {
   const { data: sheetsData, isLoading: sheetsLoading, error: sheetsError, refetch } = useQuery<GoogleSheetsData>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
-    refetchInterval: refreshInterval, // Dynamic refresh interval
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
     refetchIntervalInBackground: true, // Continue refreshing when tab is in background
     refetchOnWindowFocus: true, // Refresh when user returns to tab
     staleTime: 0, // Always consider data stale - force fresh fetch
@@ -185,22 +183,11 @@ export default function GoogleSheetsData() {
                 </div>
               </div>
               
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Auto-refresh:</span>
-                  <Select value={refreshInterval.toString()} onValueChange={(value) => setRefreshInterval(Number(value))}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10000">10 seconds</SelectItem>
-                      <SelectItem value="30000">30 seconds</SelectItem>
-                      <SelectItem value="60000">1 minute</SelectItem>
-                      <SelectItem value="300000">5 minutes</SelectItem>
-                      <SelectItem value="0">Disabled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="flex items-center space-x-3">
+                <Badge variant="secondary" className="text-xs">
+                  <Calendar className="w-3 h-3 mr-1" />
+                  Auto-refreshing every 30s
+                </Badge>
                 <Button
                   variant="outline"
                   onClick={() => refetch()}
@@ -208,7 +195,7 @@ export default function GoogleSheetsData() {
                   size="sm"
                 >
                   <RefreshCw className={`w-4 h-4 mr-2 ${sheetsLoading ? 'animate-spin' : ''}`} />
-                  Refresh Now
+                  Refresh
                 </Button>
                 {sheetsData?.spreadsheetId && (
                   <Button
@@ -216,6 +203,7 @@ export default function GoogleSheetsData() {
                     onClick={() => {
                       window.open(`https://docs.google.com/spreadsheets/d/${sheetsData.spreadsheetId}/edit`, '_blank');
                     }}
+                    size="sm"
                   >
                     <FileSpreadsheet className="w-4 h-4 mr-2" />
                     Open in Sheets
@@ -269,21 +257,13 @@ export default function GoogleSheetsData() {
                 <TabsContent value="data">
                   <Card>
                     <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            <FileSpreadsheet className="w-5 h-5 text-green-600" />
-                            Spreadsheet Data
-                          </CardTitle>
-                          <CardDescription>
-                            {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
-                          </CardDescription>
-                        </div>
-                        <Badge variant={sheetsLoading ? "default" : "secondary"}>
-                          <Calendar className={`w-3 h-3 mr-1 ${sheetsLoading ? 'animate-pulse' : ''}`} />
-                          {sheetsLoading ? "Updating..." : "Live Data"}
-                        </Badge>
-                      </div>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                        Spreadsheet Data
+                      </CardTitle>
+                      <CardDescription>
+                        {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       {sheetsLoading ? (

@@ -27,6 +27,7 @@ import { exportCampaignKPIsToPDF, exportCampaignBenchmarksToPDF } from "@/lib/pd
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
+import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { ABTestManager } from "@/components/ABTestManager";
 import { AttributionDashboard } from "@/components/AttributionDashboard";
 
@@ -4904,6 +4905,89 @@ export default function CampaignDetail() {
                             window.location.reload();
                           }}
                         />
+                      ) : platform.platform === "Facebook Ads" ? (
+                        <SimpleMetaAuth
+                          campaignId={campaign.id}
+                          onSuccess={() => {
+                            setExpandedPlatform(null);
+                            window.location.reload();
+                          }}
+                          onError={(error) => {
+                            console.error("Meta connection error:", error);
+                          }}
+                        />
+                      ) : platform.platform === "Custom Integration" ? (
+                        <div className="space-y-4">
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            Import metrics from PDF reports via manual upload or email forwarding.
+                          </p>
+                          <div className="space-y-3">
+                            <button
+                              onClick={async () => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = '.pdf';
+                                input.onchange = async (e) => {
+                                  const file = (e.target as HTMLInputElement).files?.[0];
+                                  if (!file) return;
+                                  
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append('pdf', file);
+                                    
+                                    const response = await fetch(`/api/custom-integration/${campaign.id}/upload-pdf`, {
+                                      method: 'POST',
+                                      body: formData
+                                    });
+                                    
+                                    if (response.ok) {
+                                      setExpandedPlatform(null);
+                                      window.location.reload();
+                                    }
+                                  } catch (error) {
+                                    console.error('PDF upload error:', error);
+                                  }
+                                };
+                                input.click();
+                              }}
+                              className="w-full bg-white dark:bg-slate-800 rounded-lg p-3 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-colors text-left"
+                            >
+                              <div className="font-medium text-slate-900 dark:text-white mb-1">
+                                Manual Upload
+                              </div>
+                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                                Upload a PDF report to extract metrics
+                              </div>
+                            </button>
+                            
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`/api/custom-integration/${campaign.id}/connect`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ allowedEmailAddresses: [] })
+                                  });
+                                  
+                                  if (response.ok) {
+                                    setExpandedPlatform(null);
+                                    window.location.reload();
+                                  }
+                                } catch (error) {
+                                  console.error('Email forwarding setup error:', error);
+                                }
+                              }}
+                              className="w-full bg-white dark:bg-slate-800 rounded-lg p-3 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-colors text-left"
+                            >
+                              <div className="font-medium text-slate-900 dark:text-white mb-1">
+                                Email Forwarding
+                              </div>
+                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                                Get a unique email address for automatic imports
+                              </div>
+                            </button>
+                          </div>
+                        </div>
                       ) : (
                         <div className="text-center py-6">
                           <div className="text-slate-600 dark:text-slate-400 mb-3">

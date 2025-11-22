@@ -1111,6 +1111,7 @@ export default function Campaigns() {
       // Transfer Google Sheets connection if Google Sheets was connected
       if (selectedPlatforms.includes('google-sheets')) {
         console.log('🔧 Attempting Google Sheets transfer...');
+        console.log('🔧 Selected platforms:', selectedPlatforms);
         try {
           const response = await fetch('/api/google-sheets/transfer-connection', {
             method: 'POST',
@@ -1120,7 +1121,18 @@ export default function Campaigns() {
               toCampaignId: (newCampaign as any).id
             })
           });
+          
+          console.log('🔧 Google Sheets transfer response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Google Sheets transfer HTTP error:', response.status, errorText);
+            throw new Error(`Transfer failed with status ${response.status}`);
+          }
+          
           const result = await response.json();
+          console.log('🔧 Google Sheets transfer result:', result);
+          
           if (result.success) {
             console.log('✅ Google Sheets connection transferred successfully to campaign:', (newCampaign as any).id);
           } else {
@@ -1131,6 +1143,7 @@ export default function Campaigns() {
         }
       } else {
         console.log('🔧 Google Sheets not in selected platforms, skipping transfer');
+        console.log('🔧 Selected platforms:', selectedPlatforms);
       }
 
       // Transfer LinkedIn connection if LinkedIn was connected

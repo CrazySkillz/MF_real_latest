@@ -244,7 +244,8 @@ export default function GoogleSheetsData() {
                         {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-6 pt-0 min-h-[400px]">
+                    <CardContent className="p-6 pt-0">
+                      <div className="min-h-[400px]">
                       {sheetsLoading ? (
                         <div className="space-y-3">
                           {[...Array(5)].map((_, i) => (
@@ -284,8 +285,9 @@ export default function GoogleSheetsData() {
                               : 'No rows found in the spreadsheet'
                             }
                           </p>
-                        </div>
-                      )}
+                          </div>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -296,8 +298,9 @@ export default function GoogleSheetsData() {
                       <CardTitle>Data Summary</CardTitle>
                       <CardDescription>Overview of your marketing data from Google Sheets</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-6 pt-0 min-h-[400px]">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <CardContent className="p-6 pt-0">
+                      <div className="min-h-[400px]">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Data Overview</h4>
                           <div className="space-y-3">
@@ -347,6 +350,7 @@ export default function GoogleSheetsData() {
                             </div>
                           </div>
                         )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

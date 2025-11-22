@@ -5,19 +5,17 @@ import { snapshotScheduler } from "./scheduler";
 
 const app = express();
 
-// Skip body parsing for webhook routes (they use multer for multipart/form-data)
+// Conditionally apply body parsing - skip for webhook routes that use multer
 app.use((req, res, next) => {
+  // Skip body parsing for Mailgun/SendGrid inbound webhooks (they use multer for multipart/form-data)
   if (req.path === '/api/mailgun/inbound' || req.path === '/api/sendgrid/inbound') {
     return next();
   }
-  express.json()(req, res, next);
-});
-
-app.use((req, res, next) => {
-  if (req.path === '/api/mailgun/inbound' || req.path === '/api/sendgrid/inbound') {
-    return next();
-  }
-  express.urlencoded({ extended: false })(req, res, next);
+  // Apply body parsing for all other routes
+  express.json()(req, res, (err) => {
+    if (err) return next(err);
+    express.urlencoded({ extended: false })(req, res, next);
+  });
 });
 
 // API routes middleware - ensure all API routes are handled first

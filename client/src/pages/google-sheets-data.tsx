@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SiGooglesheets } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
@@ -92,6 +93,21 @@ export default function GoogleSheetsData() {
       });
     }
   }, [sheetsData]);
+
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat('en-US').format(value);
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(value);
+  };
+
+  const formatPercentage = (value: number) => {
+    return `${value.toFixed(2)}%`;
+  };
 
 
   if (campaignLoading) {
@@ -243,71 +259,142 @@ export default function GoogleSheetsData() {
             </Card>
           ) : sheetsData ? (
             <>
-              {/* Spreadsheet Data Table - No Summary Cards */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <FileSpreadsheet className="w-5 h-5 text-green-600" />
-                        Spreadsheet Data
-                      </CardTitle>
-                      <CardDescription>
-                        {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
-                      </CardDescription>
-                    </div>
-                    <Badge variant={sheetsLoading ? "default" : "secondary"}>
-                      <Calendar className={`w-3 h-3 mr-1 ${sheetsLoading ? 'animate-pulse' : ''}`} />
-                      {sheetsLoading ? "Updating..." : "Live Data"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {sheetsLoading ? (
-                    <div className="space-y-3">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="h-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                      ))}
-                    </div>
-                  ) : sheetsData.data && sheetsData.data.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            {sheetsData.headers?.map((header, index) => (
-                              <TableHead key={index} className="font-semibold">
-                                {header}
-                              </TableHead>
-                            ))}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {sheetsData.data.map((row, rowIndex) => (
-                            <TableRow key={rowIndex}>
-                              {row.map((cell, cellIndex) => (
-                                <TableCell key={cellIndex} className="font-mono text-sm">
-                                  {cell || '-'}
-                                </TableCell>
-                              ))}
-                            </TableRow>
+              {/* Data Table with Tabs - No Summary Cards at Top */}
+              <Tabs defaultValue="data" className="space-y-6">
+                <TabsList>
+                  <TabsTrigger value="data">Raw Data</TabsTrigger>
+                  <TabsTrigger value="summary">Summary</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="data">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                            Spreadsheet Data
+                          </CardTitle>
+                          <CardDescription>
+                            {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
+                          </CardDescription>
+                        </div>
+                        <Badge variant={sheetsLoading ? "default" : "secondary"}>
+                          <Calendar className={`w-3 h-3 mr-1 ${sheetsLoading ? 'animate-pulse' : ''}`} />
+                          {sheetsLoading ? "Updating..." : "Live Data"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {sheetsLoading ? (
+                        <div className="space-y-3">
+                          {[...Array(5)].map((_, i) => (
+                            <div key={i} className="h-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
                           ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                      <p className="text-slate-600 dark:text-slate-400">No data available</p>
-                      <p className="text-sm text-slate-500 mt-2">
-                        {sheetsData.totalRows > 0 
-                          ? `${sheetsData.totalRows} rows found but no data to display`
-                          : 'No rows found in the spreadsheet'
-                        }
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        </div>
+                      ) : sheetsData.data && sheetsData.data.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                {sheetsData.headers?.map((header, index) => (
+                                  <TableHead key={index} className="font-semibold">
+                                    {header}
+                                  </TableHead>
+                                ))}
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {sheetsData.data.map((row, rowIndex) => (
+                                <TableRow key={rowIndex}>
+                                  {row.map((cell, cellIndex) => (
+                                    <TableCell key={cellIndex} className="font-mono text-sm">
+                                      {cell || '-'}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                          <p className="text-slate-600 dark:text-slate-400">No data available</p>
+                          <p className="text-sm text-slate-500 mt-2">
+                            {sheetsData.totalRows > 0 
+                              ? `${sheetsData.totalRows} rows found but no data to display`
+                              : 'No rows found in the spreadsheet'
+                            }
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="summary">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Data Summary</CardTitle>
+                      <CardDescription>Overview of your marketing data from Google Sheets</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Data Overview</h4>
+                          <div className="space-y-3">
+                            <div className="flex justify-between">
+                              <span className="text-slate-600 dark:text-slate-400">Total Rows:</span>
+                              <span className="font-semibold">{formatNumber(sheetsData.totalRows)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-600 dark:text-slate-400">Columns:</span>
+                              <span className="font-semibold">{sheetsData.headers?.length || 0}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-600 dark:text-slate-400">Last Updated:</span>
+                              <span className="font-semibold">{new Date(sheetsData.lastUpdated).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {sheetsData.summary && (
+                          <div>
+                            <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Performance Metrics</h4>
+                            <div className="space-y-3">
+                              {sheetsData.summary.totalImpressions !== undefined && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-600 dark:text-slate-400">Total Impressions:</span>
+                                  <span className="font-semibold">{formatNumber(sheetsData.summary.totalImpressions)}</span>
+                                </div>
+                              )}
+                              {sheetsData.summary.totalClicks !== undefined && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-600 dark:text-slate-400">Total Clicks:</span>
+                                  <span className="font-semibold">{formatNumber(sheetsData.summary.totalClicks)}</span>
+                                </div>
+                              )}
+                              {sheetsData.summary.totalSpend !== undefined && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-600 dark:text-slate-400">Total Spend:</span>
+                                  <span className="font-semibold">{formatCurrency(sheetsData.summary.totalSpend)}</span>
+                                </div>
+                              )}
+                              {sheetsData.summary.averageCTR !== undefined && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-600 dark:text-slate-400">Average CTR:</span>
+                                  <span className="font-semibold">{formatPercentage(sheetsData.summary.averageCTR)}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </>
           ) : (
             <Card>

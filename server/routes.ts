@@ -3137,9 +3137,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalEngagements = aggregated.totalEngagements || 0;
       
       // Use campaign conversion value (prioritize campaign, fallback to session)
+      console.log('[LinkedIn Analytics] Campaign conversion value:', campaign?.conversionValue);
+      console.log('[LinkedIn Analytics] Session conversion value:', session.conversionValue);
+      
       const conversionValue = campaign?.conversionValue 
         ? parseFloat(campaign.conversionValue.toString()) 
         : parseFloat(session.conversionValue || '0');
+      
+      console.log('[LinkedIn Analytics] Final conversion value:', conversionValue);
       
       const totalRevenue = totalConversions * conversionValue;
       const profit = totalRevenue - totalSpend;
@@ -3180,7 +3185,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Revenue Metrics (only if conversion value is set)
+      console.log('[LinkedIn Analytics] Checking revenue tracking - conversionValue:', conversionValue);
       if (conversionValue > 0) {
+        console.log('[LinkedIn Analytics] ✅ Revenue tracking ENABLED');
         aggregated.hasRevenueTracking = 1; // Flag to indicate revenue tracking is enabled
         aggregated.conversionValue = conversionValue;
         aggregated.totalRevenue = parseFloat(totalRevenue.toFixed(2));
@@ -3206,8 +3213,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           aggregated.revenuePerLead = parseFloat((totalRevenue / totalLeads).toFixed(2));
         }
       } else {
+        console.log('[LinkedIn Analytics] ❌ Revenue tracking DISABLED - conversion value is 0 or missing');
         aggregated.hasRevenueTracking = 0;
       }
+      
+      console.log('[LinkedIn Analytics] Final aggregated object:', JSON.stringify(aggregated, null, 2));
       
       res.json({
         session,

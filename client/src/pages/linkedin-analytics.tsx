@@ -1511,7 +1511,7 @@ export default function LinkedInAnalytics() {
   
   const formatCurrency = (num: number | string) => {
     const n = typeof num === 'string' ? parseFloat(num) : num;
-    return `$${(isNaN(n) ? 0 : n).toFixed(2)}`;
+    return `$${(isNaN(n) ? 0 : n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
   
   const formatPercentage = (num: number | string) => {
@@ -1626,7 +1626,12 @@ export default function LinkedInAnalytics() {
               <TabsContent value="overview" className="space-y-6" data-testid="content-overview">
                 {sessionLoading ? (
                   <div className="animate-pulse space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
                       <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
                       <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
                       <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
@@ -1636,8 +1641,8 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : sessionData && aggregated ? (
                   <>
-                    {/* LinkedIn Metrics Grid - 4 columns - Core Metrics Only */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* LinkedIn Metrics Grid - 3 columns - Core Metrics Only */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {Object.entries(aggregated)
                         .filter(([key]) => {
                           // Only show core metrics, exclude derived metrics and revenue tracking flag

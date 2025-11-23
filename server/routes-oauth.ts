@@ -2182,6 +2182,260 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return expiresAt <= fiveMinutesFromNow;
   }
 
+  // Helper function to generate intelligent insights from spreadsheet data
+  function generateInsights(
+    rows: any[][], 
+    detectedColumns: Array<{name: string, index: number, type: string, total: number}>,
+    metrics: Record<string, number>
+  ) {
+    const insights: any = {
+      topPerformers: [],
+      bottomPerformers: [],
+      anomalies: [],
+      trends: [],
+      correlations: [],
+      recommendations: [],
+      dataQuality: {
+        completeness: 0,
+        missingValues: 0,
+        outliers: []
+      }
+    };
+
+    if (rows.length <= 1 || detectedColumns.length === 0) {
+      return insights;
+    }
+
+    const dataRows = rows.slice(1); // Exclude header
+    const totalDataPoints = dataRows.length * detectedColumns.length;
+    let missingCount = 0;
+
+    // Analyze each numeric column
+    detectedColumns.forEach(col => {
+      const values: number[] = [];
+      const rowData: Array<{rowIndex: number, value: number, rowContent: any[]}> = [];
+
+      // Collect all values for this column
+      dataRows.forEach((row, idx) => {
+        const cellValue = row[col.index];
+        if (!cellValue || cellValue === '') {
+          missingCount++;
+          return;
+        }
+
+        const cleanValue = String(cellValue).replace(/[$,]/g, '').trim();
+        const numValue = parseFloat(cleanValue);
+
+        if (!isNaN(numValue)) {
+          values.push(numValue);
+          rowData.push({ rowIndex: idx + 2, value: numValue, rowContent: row }); // +2 because row 1 is header
+        } else {
+          missingCount++;
+        }
+      });
+
+      if (values.length === 0) return;
+
+      // Calculate statistics
+      const sum = values.reduce((a, b) => a + b, 0);
+      const mean = sum / values.length;
+      const sortedValues = [...values].sort((a, b) => a - b);
+      const median = sortedValues[Math.floor(sortedValues.length / 2)];
+      const min = sortedValues[0];
+      const max = sortedValues[sortedValues.length - 1];
+      
+      // Calculate standard deviation
+      const squareDiffs = values.map(value => Math.pow(value - mean, 2));
+      const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / values.length;
+      const stdDev = Math.sqrt(avgSquareDiff);
+
+      // Identify top performers (top 3 rows for this metric)
+      const topRows = [...rowData].sort((a, b) => b.value - a.value).slice(0, 3);
+      topRows.forEach(item => {
+        insights.topPerformers.push({
+          metric: col.name,
+          value: item.value,
+          rowNumber: item.rowIndex,
+          type: col.type,
+          percentOfTotal: col.total > 0 ? (item.value / col.total) * 100 : 0
+        });
+      });
+
+      // Identify bottom performers (bottom 3 rows for this metric)
+      const bottomRows = [...rowData].sort((a, b) => a.value - b.value).slice(0, 3);
+      bottomRows.forEach(item => {
+        if (item.value > 0) { // Only include non-zero values
+          insights.bottomPerformers.push({
+            metric: col.name,
+            value: item.value,
+            rowNumber: item.rowIndex,
+            type: col.type,
+            percentOfTotal: col.total > 0 ? (item.value / col.total) * 100 : 0
+          });
+        }
+      });
+
+      // Detect anomalies (values > 2 standard deviations from mean)
+      rowData.forEach(item => {
+        const zScore = Math.abs((item.value - mean) / stdDev);
+        if (zScore > 2 && values.length >= 10) { // Only flag anomalies if we have enough data
+          insights.anomalies.push({
+            metric: col.name,
+            value: item.value,
+            rowNumber: item.rowIndex,
+            type: col.type,
+            deviation: zScore,
+            direction: item.value > mean ? 'above' : 'below',
+            message: `${col.name} is ${zScore.toFixed(1)}x ${item.value > mean ? 'higher' : 'lower'} than average`
+          });
+        }
+      });
+
+      // Generate trend insights (compare first half vs second half)
+      if (values.length >= 10) {
+        const midpoint = Math.floor(values.length / 2);
+        const firstHalf = values.slice(0, midpoint);
+        const secondHalf = values.slice(midpoint);
+        const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+        const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+        const percentChange = ((secondAvg - firstAvg) / firstAvg) * 100;
+
+        if (Math.abs(percentChange) > 10) { // Only report significant trends
+          insights.trends.push({
+            metric: col.name,
+            direction: percentChange > 0 ? 'increasing' : 'decreasing',
+            percentChange: Math.abs(percentChange),
+            type: col.type,
+            message: `${col.name} is ${percentChange > 0 ? 'increasing' : 'decreasing'} by ${Math.abs(percentChange).toFixed(1)}% over time`
+          });
+        }
+      }
+
+      // Detect outliers for data quality
+      rowData.forEach(item => {
+        if (item.value > mean + 3 * stdDev || item.value < mean - 3 * stdDev) {
+          insights.dataQuality.outliers.push({
+            metric: col.name,
+            value: item.value,
+            rowNumber: item.rowIndex,
+            type: col.type
+          });
+        }
+      });
+    });
+
+    // Calculate correlations between metrics (if we have multiple metrics)
+    if (detectedColumns.length >= 2) {
+      for (let i = 0; i < detectedColumns.length; i++) {
+        for (let j = i + 1; j < detectedColumns.length; j++) {
+          const col1 = detectedColumns[i];
+          const col2 = detectedColumns[j];
+
+          const values1: number[] = [];
+          const values2: number[] = [];
+
+          // Collect paired values
+          dataRows.forEach(row => {
+            const val1 = row[col1.index];
+            const val2 = row[col2.index];
+
+            if (val1 && val2) {
+              const num1 = parseFloat(String(val1).replace(/[$,]/g, '').trim());
+              const num2 = parseFloat(String(val2).replace(/[$,]/g, '').trim());
+
+              if (!isNaN(num1) && !isNaN(num2)) {
+                values1.push(num1);
+                values2.push(num2);
+              }
+            }
+          });
+
+          if (values1.length >= 5) {
+            // Calculate Pearson correlation coefficient
+            const mean1 = values1.reduce((a, b) => a + b, 0) / values1.length;
+            const mean2 = values2.reduce((a, b) => a + b, 0) / values2.length;
+
+            let numerator = 0;
+            let denom1 = 0;
+            let denom2 = 0;
+
+            for (let k = 0; k < values1.length; k++) {
+              const diff1 = values1[k] - mean1;
+              const diff2 = values2[k] - mean2;
+              numerator += diff1 * diff2;
+              denom1 += diff1 * diff1;
+              denom2 += diff2 * diff2;
+            }
+
+            const correlation = numerator / Math.sqrt(denom1 * denom2);
+
+            if (Math.abs(correlation) > 0.5) { // Only report meaningful correlations
+              insights.correlations.push({
+                metric1: col1.name,
+                metric2: col2.name,
+                correlation: correlation,
+                strength: Math.abs(correlation) > 0.8 ? 'strong' : 'moderate',
+                direction: correlation > 0 ? 'positive' : 'negative',
+                message: `${col1.name} and ${col2.name} have a ${Math.abs(correlation) > 0.8 ? 'strong' : 'moderate'} ${correlation > 0 ? 'positive' : 'negative'} correlation (${(correlation * 100).toFixed(0)}%)`
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Generate actionable recommendations
+    insights.topPerformers.slice(0, 5).forEach((perf: any) => {
+      if (perf.percentOfTotal > 20) {
+        insights.recommendations.push({
+          type: 'opportunity',
+          priority: 'high',
+          metric: perf.metric,
+          message: `Row ${perf.rowNumber} accounts for ${perf.percentOfTotal.toFixed(1)}% of total ${perf.metric}. Consider analyzing what makes this row successful.`,
+          action: 'Investigate high performer'
+        });
+      }
+    });
+
+    insights.trends.forEach((trend: any) => {
+      if (trend.direction === 'decreasing' && trend.percentChange > 20) {
+        insights.recommendations.push({
+          type: 'alert',
+          priority: 'high',
+          metric: trend.metric,
+          message: `${trend.metric} has decreased by ${trend.percentChange.toFixed(1)}% over time. Immediate attention may be required.`,
+          action: 'Review declining metric'
+        });
+      } else if (trend.direction === 'increasing' && trend.percentChange > 20) {
+        insights.recommendations.push({
+          type: 'opportunity',
+          priority: 'medium',
+          metric: trend.metric,
+          message: `${trend.metric} is growing by ${trend.percentChange.toFixed(1)}%. Consider scaling this success.`,
+          action: 'Scale successful strategy'
+        });
+      }
+    });
+
+    insights.anomalies.slice(0, 5).forEach((anomaly: any) => {
+      insights.recommendations.push({
+        type: 'warning',
+        priority: 'medium',
+        metric: anomaly.metric,
+        message: `Row ${anomaly.rowNumber} has an unusual ${anomaly.metric} value. Verify data accuracy.`,
+        action: 'Verify data point'
+      });
+    });
+
+    // Data quality metrics
+    insights.dataQuality.completeness = ((totalDataPoints - missingCount) / totalDataPoints) * 100;
+    insights.dataQuality.missingValues = missingCount;
+
+    console.log(`💡 Generated ${insights.recommendations.length} recommendations, ${insights.anomalies.length} anomalies, ${insights.correlations.length} correlations`);
+
+    return insights;
+  }
+
   // Get spreadsheet data for a campaign
   app.get("/api/campaigns/:id/google-sheets-data", async (req, res) => {
     try {
@@ -2356,6 +2610,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rows.length - 1} data rows`);
       }
 
+      // Generate intelligent insights from the data
+      const insights = generateInsights(rows, campaignData.detectedColumns, campaignData.metrics);
+
       res.json({
         success: true,
         spreadsheetName: connection.spreadsheetName || connection.spreadsheetId,
@@ -2376,6 +2633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0;
           })()
         },
+        insights: insights,
         lastUpdated: new Date().toISOString()
       });
 

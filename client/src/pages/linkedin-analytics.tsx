@@ -1601,7 +1601,7 @@ export default function LinkedInAnalytics() {
                   </h1>
                   {session ? (
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                      {session.adAccountName} • {session.selectedCampaignsCount} campaigns • {session.selectedMetricsCount} metrics
+                      {session.adAccountName} • {session.selectedCampaignsCount} campaigns
                     </p>
                   ) : (
                     <p className="text-sm text-slate-600 dark:text-slate-400">

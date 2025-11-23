@@ -3106,6 +3106,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Import session not found" });
       }
       
+      // Get campaign to access conversion value
+      const campaign = await storage.getCampaign(session.campaignId);
+      
       const metrics = await storage.getLinkedInImportMetrics(sessionId);
       const ads = await storage.getLinkedInAdPerformance(sessionId);
       
@@ -3132,8 +3135,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalSpend = aggregated.totalSpend || 0;
       const totalImpressions = aggregated.totalImpressions || 0;
       const totalEngagements = aggregated.totalEngagements || 0;
-      const conversionValue = parseFloat(session.conversionValue || '0');
+      
+      // Use campaign conversion value (prioritize campaign, fallback to session)
+      const conversionValue = campaign?.conversionValue 
+        ? parseFloat(campaign.conversionValue.toString()) 
+        : parseFloat(session.conversionValue || '0');
+      
       const totalRevenue = totalConversions * conversionValue;
+      const profit = totalRevenue - totalSpend;
       
       // CTR - Click-Through Rate: (Total Clicks / Total Impressions) × 100
       if (totalImpressions > 0 && totalClicks > 0) {
@@ -3170,14 +3179,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.er = parseFloat(((totalEngagements / totalImpressions) * 100).toFixed(2));
       }
       
-      // ROI - Return on Investment: ((Revenue - Spend) / Spend) × 100
-      if (totalSpend > 0 && conversionValue > 0 && totalRevenue > 0) {
-        aggregated.roi = parseFloat((((totalRevenue - totalSpend) / totalSpend) * 100).toFixed(2));
-      }
-      
-      // ROAS - Return on Ad Spend: Revenue / Spend
-      if (totalSpend > 0 && conversionValue > 0 && totalRevenue > 0) {
-        aggregated.roas = parseFloat((totalRevenue / totalSpend).toFixed(2));
+      // Revenue Metrics (only if conversion value is set)
+      if (conversionValue > 0) {
+        aggregated.hasRevenueTracking = 1; // Flag to indicate revenue tracking is enabled
+        aggregated.conversionValue = conversionValue;
+        aggregated.totalRevenue = parseFloat(totalRevenue.toFixed(2));
+        aggregated.profit = parseFloat(profit.toFixed(2));
+        
+        // ROI - Return on Investment: ((Revenue - Spend) / Spend) × 100
+        if (totalSpend > 0) {
+          aggregated.roi = parseFloat((((totalRevenue - totalSpend) / totalSpend) * 100).toFixed(2));
+        }
+        
+        // ROAS - Return on Ad Spend: Revenue / Spend
+        if (totalSpend > 0) {
+          aggregated.roas = parseFloat((totalRevenue / totalSpend).toFixed(2));
+        }
+        
+        // Profit Margin: (Profit / Revenue) × 100
+        if (totalRevenue > 0) {
+          aggregated.profitMargin = parseFloat(((profit / totalRevenue) * 100).toFixed(2));
+        }
+        
+        // Revenue Per Lead: Revenue / Leads
+        if (totalLeads > 0) {
+          aggregated.revenuePerLead = parseFloat((totalRevenue / totalLeads).toFixed(2));
+        }
+      } else {
+        aggregated.hasRevenueTracking = 0;
       }
       
       res.json({

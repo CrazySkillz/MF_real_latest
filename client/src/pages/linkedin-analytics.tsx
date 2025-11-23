@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -1640,11 +1640,11 @@ export default function LinkedInAnalytics() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                       {Object.entries(aggregated)
                         .filter(([key]) => {
-                          // Only show core metrics, exclude derived metrics
-                          const derivedMetrics = ['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er', 'roi', 'roas'];
+                          // Only show core metrics, exclude derived metrics and revenue tracking flag
+                          const derivedMetrics = ['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er', 'roi', 'roas', 'hasrevenuetracking', 'conversionvalue', 'totalrevenue', 'profit', 'profitmargin', 'revenueperlead'];
                           const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
                           
-                          // Filter out derived metrics
+                          // Filter out derived metrics and revenue metrics
                           if (derivedMetrics.includes(metricKey)) return false;
                           
                           // Filter based on selected metrics from the session (case-insensitive)
@@ -1677,6 +1677,88 @@ export default function LinkedInAnalytics() {
                           );
                         })}
                     </div>
+
+                    {/* Revenue Metrics - Only shown if conversion value is set */}
+                    {aggregated.hasRevenueTracking === 1 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-5 h-5 text-green-600" />
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue Analytics</h3>
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            💰 Revenue Tracking Enabled
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                          <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  Total Revenue
+                                </h3>
+                                <DollarSign className="w-4 h-4 text-green-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                {formatCurrency(aggregated.totalRevenue || 0)}
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          <Card className="hover:shadow-md transition-shadow border-blue-200 dark:border-blue-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  ROAS
+                                </h3>
+                                <TrendingUp className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+                                {(aggregated.roas || 0).toFixed(2)}x
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          <Card className="hover:shadow-md transition-shadow border-purple-200 dark:border-purple-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  ROI
+                                </h3>
+                                <Percent className="w-4 h-4 text-purple-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">
+                                {(aggregated.roi || 0).toFixed(1)}%
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          <Card className={`hover:shadow-md transition-shadow ${
+                            (aggregated.profit || 0) >= 0 
+                              ? 'border-green-200 dark:border-green-800' 
+                              : 'border-red-200 dark:border-red-800'
+                          }`}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  Profit
+                                </h3>
+                                {(aggregated.profit || 0) >= 0 ? (
+                                  <TrendingUp className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <TrendingDown className="w-4 h-4 text-red-600" />
+                                )}
+                              </div>
+                              <p className={`text-2xl font-bold ${
+                                (aggregated.profit || 0) >= 0 
+                                  ? 'text-green-700 dark:text-green-400' 
+                                  : 'text-red-700 dark:text-red-400'
+                              }`}>
+                                {formatCurrency(aggregated.profit || 0)}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Campaign Breakdown */}
                     <div className="space-y-4">
@@ -1849,6 +1931,59 @@ export default function LinkedInAnalytics() {
                                       </p>
                                     </div>
                                   </div>
+
+                                  {/* Revenue Metrics - Only shown if conversion value is set */}
+                                  {aggregated?.hasRevenueTracking === 1 && (() => {
+                                    const campaignRevenue = conversions * (aggregated.conversionValue || 0);
+                                    const campaignProfit = campaignRevenue - spend;
+                                    const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
+                                    const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;
+                                    
+                                    return (
+                                      <div className="pt-4 border-t border-green-200 dark:border-green-800">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <h5 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Revenue Metrics</h5>
+                                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                            💰
+                                          </Badge>
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-3">
+                                          <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-lg">
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Revenue</p>
+                                            <p className="text-sm font-bold text-green-700 dark:text-green-400">
+                                              {formatCurrency(campaignRevenue)}
+                                            </p>
+                                          </div>
+                                          <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg">
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROAS</p>
+                                            <p className="text-sm font-bold text-blue-700 dark:text-blue-400">
+                                              {campaignROAS.toFixed(2)}x
+                                            </p>
+                                          </div>
+                                          <div className="bg-purple-50 dark:bg-purple-900/10 p-3 rounded-lg">
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROI</p>
+                                            <p className="text-sm font-bold text-purple-700 dark:text-purple-400">
+                                              {campaignROI.toFixed(1)}%
+                                            </p>
+                                          </div>
+                                          <div className={`p-3 rounded-lg ${
+                                            campaignProfit >= 0 
+                                              ? 'bg-green-50 dark:bg-green-900/10' 
+                                              : 'bg-red-50 dark:bg-red-900/10'
+                                          }`}>
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit</p>
+                                            <p className={`text-sm font-bold ${
+                                              campaignProfit >= 0 
+                                                ? 'text-green-700 dark:text-green-400' 
+                                                : 'text-red-700 dark:text-red-400'
+                                            }`}>
+                                              {formatCurrency(campaignProfit)}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
 
                                   {/* Performance Indicators */}
                                   <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">

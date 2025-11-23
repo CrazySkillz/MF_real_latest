@@ -338,7 +338,6 @@ export default function GoogleSheetsData() {
                           <div>
                             <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
                               Aggregated Metrics
-                              <Badge variant="secondary" className="ml-2 text-xs">Auto-detected</Badge>
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                               {sheetsData.summary.detectedColumns.map((col) => (
@@ -353,7 +352,7 @@ export default function GoogleSheetsData() {
                                     {col.type === 'currency' 
                                       ? formatCurrency(col.total)
                                       : col.type === 'decimal'
-                                      ? col.total.toFixed(2).toLocaleString()
+                                      ? col.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                                       : formatNumber(Math.round(col.total))
                                     }
                                   </div>

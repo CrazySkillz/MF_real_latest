@@ -6837,6 +6837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Transfer the connection
       await storage.createLinkedInConnection({
         campaignId: toCampaignId,
         adAccountId: existingConnection.adAccountId,
@@ -6849,10 +6850,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt: existingConnection.expiresAt
       });
 
+      // Transfer import sessions
+      const importSessions = await storage.getCampaignLinkedInImportSessions(fromCampaignId);
+      console.log(`[LinkedIn Transfer] Found ${importSessions?.length || 0} import sessions to transfer`);
+      
+      if (importSessions && importSessions.length > 0) {
+        for (const session of importSessions) {
+          // Update the session's campaignId
+          await storage.updateLinkedInImportSession(session.id, { campaignId: toCampaignId });
+          console.log(`[LinkedIn Transfer] Transferred session ${session.id} to campaign ${toCampaignId}`);
+        }
+      }
+
       await storage.deleteLinkedInConnection(fromCampaignId);
       console.log(`[LinkedIn Transfer] Transfer complete`);
 
-      res.json({ success: true, message: 'LinkedIn connection transferred' });
+      res.json({ success: true, message: 'LinkedIn connection and import sessions transferred' });
     } catch (error) {
       console.error('[LinkedIn Transfer] Error:', error);
       res.status(500).json({ success: false, error: 'Transfer failed' });

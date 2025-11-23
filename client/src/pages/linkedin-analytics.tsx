@@ -4059,26 +4059,115 @@ export default function LinkedInAnalytics() {
                     )}
                   </p>
                 </div>
-                {/* ROI */}
-                {aggregated?.roi !== undefined && (
-                  <div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROI (Return on Investment)</p>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                      {formatPercentage(aggregated.roi || 0)}
-                    </p>
-                  </div>
-                )}
-                {/* ROAS */}
-                {aggregated?.roas !== undefined && (
-                  <div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROAS (Return on Ad Spend)</p>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                      {(aggregated.roas || 0).toFixed(2)}x
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
+
+            {/* Revenue Analytics Section - Only shown if conversion value is set */}
+            {aggregated?.hasRevenueTracking === 1 && selectedCampaignDetails && (() => {
+              const campaignConversions = selectedCampaignDetails.metrics.conversions || 0;
+              const campaignSpend = selectedCampaignDetails.metrics.spend || 0;
+              const campaignLeads = selectedCampaignDetails.metrics.leads || 0;
+              const conversionValue = aggregated.conversionValue || 0;
+              
+              const campaignRevenue = campaignConversions * conversionValue;
+              const campaignProfit = campaignRevenue - campaignSpend;
+              const campaignROAS = campaignSpend > 0 ? campaignRevenue / campaignSpend : 0;
+              const campaignROI = campaignSpend > 0 ? ((campaignRevenue - campaignSpend) / campaignSpend) * 100 : 0;
+              const campaignProfitMargin = campaignRevenue > 0 ? (campaignProfit / campaignRevenue) * 100 : 0;
+              const campaignRevenuePerLead = campaignLeads > 0 ? campaignRevenue / campaignLeads : 0;
+              
+              return (
+                <div className="space-y-3 pt-4 border-t border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Revenue Analytics</h4>
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      💰 ${conversionValue.toFixed(2)}/conversion
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    {/* Total Revenue */}
+                    <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Total Revenue</p>
+                      <p className="text-lg font-bold text-green-700 dark:text-green-400">
+                        {formatCurrency(campaignRevenue)}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        {campaignConversions} conversions × ${conversionValue.toFixed(2)}
+                      </p>
+                    </div>
+                    
+                    {/* ROAS */}
+                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROAS (Return on Ad Spend)</p>
+                      <p className="text-lg font-bold text-blue-700 dark:text-blue-400">
+                        {campaignROAS.toFixed(2)}x
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        ${campaignRevenue.toFixed(0)} / ${campaignSpend.toFixed(0)}
+                      </p>
+                    </div>
+                    
+                    {/* ROI */}
+                    <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROI (Return on Investment)</p>
+                      <p className="text-lg font-bold text-purple-700 dark:text-purple-400">
+                        {campaignROI.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        {campaignROI >= 0 ? 'Profitable' : 'Loss'}
+                      </p>
+                    </div>
+                    
+                    {/* Profit */}
+                    <div className={`p-4 rounded-lg border ${
+                      campaignProfit >= 0 
+                        ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800' 
+                        : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+                    }`}>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit</p>
+                      <p className={`text-lg font-bold ${
+                        campaignProfit >= 0 
+                          ? 'text-green-700 dark:text-green-400' 
+                          : 'text-red-700 dark:text-red-400'
+                      }`}>
+                        {formatCurrency(campaignProfit)}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        Revenue - Spend
+                      </p>
+                    </div>
+                    
+                    {/* Profit Margin */}
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit Margin</p>
+                      <p className={`text-lg font-bold ${
+                        campaignProfitMargin >= 0 
+                          ? 'text-slate-900 dark:text-white' 
+                          : 'text-red-700 dark:text-red-400'
+                      }`}>
+                        {campaignProfitMargin.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        Profit / Revenue
+                      </p>
+                    </div>
+                    
+                    {/* Revenue Per Lead */}
+                    {campaignLeads > 0 && (
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Revenue Per Lead</p>
+                        <p className="text-lg font-bold text-slate-900 dark:text-white">
+                          {formatCurrency(campaignRevenuePerLead)}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                          {campaignLeads} leads
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Performance Indicators */}
             {selectedCampaignDetails && (

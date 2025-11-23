@@ -4089,16 +4089,18 @@ export default function LinkedInAnalytics() {
                     )}
                   </p>
                 </div>
-                {/* ER */}
-                <div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ER (Engagement Rate)</p>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                    {formatPercentage(
-                      selectedCampaignDetails?.metrics.impressions > 0
-                        ? (selectedCampaignDetails?.metrics.engagements / selectedCampaignDetails?.metrics.impressions) * 100
-                        : 0
-                    )}
-                  </p>
+                {/* ER - Centered on last row */}
+                <div className="col-span-3 flex justify-center">
+                  <div className="w-1/3">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ER (Engagement Rate)</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {formatPercentage(
+                        selectedCampaignDetails?.metrics.impressions > 0
+                          ? (selectedCampaignDetails?.metrics.engagements / selectedCampaignDetails?.metrics.impressions) * 100
+                          : 0
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

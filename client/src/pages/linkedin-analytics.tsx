@@ -1788,12 +1788,14 @@ export default function LinkedInAnalytics() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="name">Name</SelectItem>
-                                <SelectItem value="spend">Spend</SelectItem>
-                                <SelectItem value="conversions">Conversions</SelectItem>
-                                <SelectItem value="roas">ROAS</SelectItem>
-                                <SelectItem value="ctr">CTR</SelectItem>
-                                <SelectItem value="cpa">CPA</SelectItem>
+                                <SelectItem value="name">Name (A-Z)</SelectItem>
+                                <SelectItem value="spend">Spend (High to Low)</SelectItem>
+                                <SelectItem value="conversions">Conversions (High to Low)</SelectItem>
+                                <SelectItem value="clicks">Clicks (High to Low)</SelectItem>
+                                <SelectItem value="impressions">Impressions (High to Low)</SelectItem>
+                                <SelectItem value="ctr">CTR (High to Low)</SelectItem>
+                                <SelectItem value="cpa">CPA (Low to High)</SelectItem>
+                                <SelectItem value="cvr">CVR (High to Low)</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -1834,7 +1836,42 @@ export default function LinkedInAnalytics() {
                               acc[metric.campaignUrn].metrics[metric.metricKey] = parseFloat(metric.metricValue);
                               return acc;
                             }, {})
-                          ).map((linkedInCampaign: any, index: number) => {
+                          )
+                          .filter((campaign: any) => {
+                            // Filter by status
+                            if (filterBy === 'all') return true;
+                            return campaign.status === filterBy;
+                          })
+                          .sort((a: any, b: any) => {
+                            // Sort campaigns based on selected option
+                            switch (sortBy) {
+                              case 'name':
+                                return a.name.localeCompare(b.name);
+                              case 'spend':
+                                return (b.metrics.spend || 0) - (a.metrics.spend || 0);
+                              case 'conversions':
+                                return (b.metrics.conversions || 0) - (a.metrics.conversions || 0);
+                              case 'clicks':
+                                return (b.metrics.clicks || 0) - (a.metrics.clicks || 0);
+                              case 'impressions':
+                                return (b.metrics.impressions || 0) - (a.metrics.impressions || 0);
+                              case 'ctr':
+                                const ctrA = (a.metrics.impressions || 0) > 0 ? ((a.metrics.clicks || 0) / (a.metrics.impressions || 0)) * 100 : 0;
+                                const ctrB = (b.metrics.impressions || 0) > 0 ? ((b.metrics.clicks || 0) / (b.metrics.impressions || 0)) * 100 : 0;
+                                return ctrB - ctrA;
+                              case 'cpa':
+                                const cpaA = (a.metrics.conversions || 0) > 0 ? (a.metrics.spend || 0) / (a.metrics.conversions || 0) : Infinity;
+                                const cpaB = (b.metrics.conversions || 0) > 0 ? (b.metrics.spend || 0) / (b.metrics.conversions || 0) : Infinity;
+                                return cpaA - cpaB; // Low to High
+                              case 'cvr':
+                                const cvrA = (a.metrics.clicks || 0) > 0 ? ((a.metrics.conversions || 0) / (a.metrics.clicks || 0)) * 100 : 0;
+                                const cvrB = (b.metrics.clicks || 0) > 0 ? ((b.metrics.conversions || 0) / (b.metrics.clicks || 0)) * 100 : 0;
+                                return cvrB - cvrA;
+                              default:
+                                return 0;
+                            }
+                          })
+                          .map((linkedInCampaign: any, index: number) => {
                             // Calculate derived metrics
                             const impressions = linkedInCampaign.metrics.impressions || 0;
                             const clicks = linkedInCampaign.metrics.clicks || 0;
@@ -3902,10 +3939,9 @@ export default function LinkedInAnalytics() {
               {selectedCampaignDetails?.name}
             </DialogTitle>
             <DialogDescription>
-              Campaign ID: {selectedCampaignDetails ? Object.keys(metrics?.reduce((acc: any, m: any) => ({ ...acc, [m.campaignUrn]: true }), {}) || {}).indexOf(selectedCampaignDetails.urn) + 1 : ''} • 
               <Badge 
                 variant={selectedCampaignDetails?.status === 'active' ? 'default' : 'secondary'}
-                className={selectedCampaignDetails?.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 ml-2' : 'ml-2'}
+                className={selectedCampaignDetails?.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
               >
                 {selectedCampaignDetails?.status}
               </Badge>

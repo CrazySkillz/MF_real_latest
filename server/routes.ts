@@ -3097,17 +3097,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get import session overview with aggregated metrics
+  // FORCE REBUILD: Revenue tracking diagnostics v2
   app.get("/api/linkedin/imports/:sessionId", async (req, res) => {
     try {
       const { sessionId } = req.params;
+      console.log('=== LINKEDIN ANALYTICS ENDPOINT CALLED ===');
+      console.log('Session ID:', sessionId);
       
       const session = await storage.getLinkedInImportSession(sessionId);
       if (!session) {
         return res.status(404).json({ message: "Import session not found" });
       }
       
+      console.log('Session found, Campaign ID:', session.campaignId);
+      
       // Get campaign to access conversion value
       const campaign = await storage.getCampaign(session.campaignId);
+      console.log('Campaign retrieved:', campaign ? 'YES' : 'NO');
+      console.log('Campaign data:', JSON.stringify(campaign, null, 2));
       
       const metrics = await storage.getLinkedInImportMetrics(sessionId);
       const ads = await storage.getLinkedInAdPerformance(sessionId);

@@ -5961,6 +5961,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.hasRevenueTracking = 0;
       }
       
+      // Calculate performance indicators based on benchmarks
+      try {
+        const campaignBenchmarks = await storage.getBenchmarksForCampaign(campaignId);
+        
+        if (campaignBenchmarks && campaignBenchmarks.length > 0) {
+          console.log(`[Performance Indicators] Found ${campaignBenchmarks.length} benchmarks for campaign`);
+          
+          // Helper function to calculate performance level
+          const getPerformanceLevel = (actualValue: number, benchmark: any): string | null => {
+            if (!benchmark || !benchmark.benchmarkValue) return null;
+            
+            const target = parseFloat(benchmark.benchmarkValue);
+            const metricKey = benchmark.metric?.toLowerCase();
+            
+            // For cost metrics (lower is better): CPC, CPM, CPA, CPL
+            const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl'].includes(metricKey || '');
+            
+            if (lowerIsBetter) {
+              // Lower is better logic
+              if (actualValue <= target * 0.75) return 'excellent'; // 25% below target
+              if (actualValue <= target) return 'good';
+              if (actualValue <= target * 1.25) return 'fair'; // 25% above target
+              return 'poor';
+            } else {
+              // Higher is better logic (CTR, CVR, ER, ROI, ROAS)
+              if (actualValue >= target * 1.25) return 'excellent'; // 25% above target
+              if (actualValue >= target) return 'good';
+              if (actualValue >= target * 0.75) return 'fair'; // 25% below target
+              return 'poor';
+            }
+          };
+          
+          // Calculate performance for each metric
+          const performanceIndicators: Record<string, string | null> = {};
+          
+          for (const benchmark of campaignBenchmarks) {
+            const metricKey = benchmark.metric?.toLowerCase();
+            if (!metricKey) continue;
+            
+            const actualValue = aggregated[metricKey];
+            if (actualValue !== undefined && actualValue !== null) {
+              performanceIndicators[metricKey] = getPerformanceLevel(actualValue, benchmark);
+            }
+          }
+          
+          aggregated.performanceIndicators = performanceIndicators;
+          console.log('[Performance Indicators] Calculated:', performanceIndicators);
+        } else {
+          console.log('[Performance Indicators] No benchmarks found for campaign');
+          aggregated.performanceIndicators = {};
+        }
+      } catch (benchmarkError) {
+        console.error('[Performance Indicators] Error calculating performance:', benchmarkError);
+        aggregated.performanceIndicators = {};
+      }
+      
       // Calculate final data quality score
       const finalDataQuality = calculateDataQualityScore(
         rawMetrics.length,

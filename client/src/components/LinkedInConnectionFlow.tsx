@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { SiLinkedin } from "react-icons/si";
 import { Briefcase, CheckCircle, AlertCircle, ExternalLink, FlaskConical, TrendingUp, MousePointerClick, DollarSign, Eye, Target, Percent, UserPlus, Heart, MessageCircle, Share2, Activity, Users, Play, Repeat2 } from "lucide-react";
@@ -682,12 +683,21 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                                 >
                                   <Icon className="w-4 h-4 text-green-600" />
                                   <div className="flex-1">
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1 flex-wrap">
                                       <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{metric.label}</p>
                                       {metric.requiresConversion && (
-                                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                          💰
-                                        </Badge>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 cursor-help">
+                                                Requires Conversion Value
+                                              </Badge>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p className="text-xs">Set conversion value in campaign settings to calculate this metric</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
                                       )}
                                     </div>
                                   </div>

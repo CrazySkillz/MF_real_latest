@@ -623,9 +623,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                               <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
                                 {campaign.status}
                               </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                9 Core Metrics + 9 Derived Metrics
-                              </Badge>
                             </div>
                           </div>
                         </div>
@@ -665,15 +662,15 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                           <p className="text-xs text-slate-500 dark:text-slate-400">Calculated from core metrics</p>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                             {[
-                              { key: 'ctr', label: 'Click-Through Rate (CTR)', icon: Percent },
-                              { key: 'cpc', label: 'Cost Per Click (CPC)', icon: DollarSign },
-                              { key: 'cpm', label: 'Cost Per Mille (CPM)', icon: DollarSign },
-                              { key: 'cvr', label: 'Conversion Rate (CVR)', icon: Target },
-                              { key: 'cpa', label: 'Cost per Acquisition (CPA)', icon: DollarSign },
-                              { key: 'cpl', label: 'Cost per Lead (CPL)', icon: DollarSign },
-                              { key: 'er', label: 'Engagement Rate (ER)', icon: Activity },
-                              { key: 'roi', label: 'Return on Investment (ROI)', icon: TrendingUp },
-                              { key: 'roas', label: 'Return on Ad Spend (ROAS)', icon: TrendingUp }
+                              { key: 'ctr', label: 'Click-Through Rate (CTR)', icon: Percent, requiresConversion: false },
+                              { key: 'cpc', label: 'Cost Per Click (CPC)', icon: DollarSign, requiresConversion: false },
+                              { key: 'cpm', label: 'Cost Per Mille (CPM)', icon: DollarSign, requiresConversion: false },
+                              { key: 'cvr', label: 'Conversion Rate (CVR)', icon: Target, requiresConversion: false },
+                              { key: 'cpa', label: 'Cost per Acquisition (CPA)', icon: DollarSign, requiresConversion: false },
+                              { key: 'cpl', label: 'Cost per Lead (CPL)', icon: DollarSign, requiresConversion: false },
+                              { key: 'er', label: 'Engagement Rate (ER)', icon: Activity, requiresConversion: false },
+                              { key: 'roi', label: 'Return on Investment (ROI)', icon: TrendingUp, requiresConversion: true },
+                              { key: 'roas', label: 'Return on Ad Spend (ROAS)', icon: TrendingUp, requiresConversion: true }
                             ].map((metric) => {
                               const Icon = metric.icon;
                               
@@ -685,7 +682,14 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                                 >
                                   <Icon className="w-4 h-4 text-green-600" />
                                   <div className="flex-1">
-                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{metric.label}</p>
+                                    <div className="flex items-center gap-1">
+                                      <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{metric.label}</p>
+                                      {metric.requiresConversion && (
+                                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                          💰
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               );

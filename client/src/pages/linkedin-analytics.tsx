@@ -182,6 +182,8 @@ export default function LinkedInAnalytics() {
   const { data: campaignData, isLoading: campaignLoading } = useQuery({
     queryKey: ['/api/campaigns', campaignId],
     enabled: !!campaignId,
+    refetchOnMount: 'always',
+    staleTime: 0, // Always fetch fresh data
   });
 
   // Fetch import session data

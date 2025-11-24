@@ -987,7 +987,8 @@ export default function Campaigns() {
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       // Also invalidate the specific campaign query so LinkedIn analytics refreshes
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", variables.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", variables.id] });
+      // Invalidate LinkedIn import sessions to pick up conversion value changes
+      queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
       toast({
         title: "Campaign updated",
         description: "Campaign has been updated successfully.",

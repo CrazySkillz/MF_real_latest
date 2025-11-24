@@ -183,6 +183,7 @@ export default function LinkedInAnalytics() {
     queryKey: ['/api/campaigns', campaignId],
     enabled: !!campaignId,
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true, // Refetch when window regains focus
     staleTime: 0, // Always fetch fresh data
   });
 
@@ -190,6 +191,9 @@ export default function LinkedInAnalytics() {
   const { data: sessionData, isLoading: sessionLoading } = useQuery({
     queryKey: ['/api/linkedin/imports', sessionId],
     enabled: !!sessionId,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always fetch fresh data to pick up conversion value changes
   });
 
   // Fetch ad performance data

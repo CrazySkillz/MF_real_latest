@@ -4146,7 +4146,7 @@ export default function LinkedInAnalytics() {
                   <div className="flex items-center gap-2">
                     <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Revenue Analytics</h4>
                     <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                      💰 ${conversionValue.toFixed(2)}/conversion
+                      💰 {formatCurrency(conversionValue)}/conversion
                     </Badge>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
@@ -4157,7 +4157,7 @@ export default function LinkedInAnalytics() {
                         {formatCurrency(campaignRevenue)}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
-                        {campaignConversions} conversions × ${conversionValue.toFixed(2)}
+                        {campaignConversions.toLocaleString()} conversions × {formatCurrency(conversionValue)}
                       </p>
                     </div>
                     
@@ -4168,7 +4168,7 @@ export default function LinkedInAnalytics() {
                         {campaignROAS.toFixed(2)}x
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
-                        ${campaignRevenue.toFixed(0)} / ${campaignSpend.toFixed(0)}
+                        {formatCurrency(campaignRevenue)} / {formatCurrency(campaignSpend)}
                       </p>
                     </div>
                     
@@ -4225,7 +4225,7 @@ export default function LinkedInAnalytics() {
                           {formatCurrency(campaignRevenuePerLead)}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
-                          {campaignLeads} leads
+                          {campaignLeads.toLocaleString()} leads
                         </p>
                       </div>
                     )}

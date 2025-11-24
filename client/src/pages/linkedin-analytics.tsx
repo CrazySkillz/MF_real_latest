@@ -1509,9 +1509,27 @@ export default function LinkedInAnalytics() {
     return (isNaN(n) ? 0 : n).toLocaleString();
   };
   
-  const formatCurrency = (num: number | string) => {
+  const formatCurrency = (num: number | string, currencyCode?: string) => {
     const n = typeof num === 'string' ? parseFloat(num) : num;
-    return `$${(isNaN(n) ? 0 : n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const currency = currencyCode || campaignData?.currency || 'USD';
+    
+    // Currency configurations
+    const currencyConfig: Record<string, { symbol: string; locale: string; decimals: number }> = {
+      USD: { symbol: '$', locale: 'en-US', decimals: 2 },
+      GBP: { symbol: '£', locale: 'en-GB', decimals: 2 },
+      EUR: { symbol: '€', locale: 'de-DE', decimals: 2 },
+      JPY: { symbol: '¥', locale: 'ja-JP', decimals: 0 },
+      CAD: { symbol: 'C$', locale: 'en-CA', decimals: 2 },
+      AUD: { symbol: 'A$', locale: 'en-AU', decimals: 2 },
+      INR: { symbol: '₹', locale: 'en-IN', decimals: 2 },
+    };
+    
+    const config = currencyConfig[currency] || currencyConfig['USD'];
+    
+    return `${config.symbol}${(isNaN(n) ? 0 : n).toLocaleString(config.locale, { 
+      minimumFractionDigits: config.decimals, 
+      maximumFractionDigits: config.decimals 
+    })}`;
   };
   
   const formatPercentage = (num: number | string) => {

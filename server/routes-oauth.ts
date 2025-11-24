@@ -5778,8 +5778,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Campaign found:', campaign ? 'YES' : 'NO');
       console.log('Campaign conversion value:', campaign?.conversionValue);
       
-      const metrics = await storage.getLinkedInImportMetrics(sessionId);
+      const rawMetrics = await storage.getLinkedInImportMetrics(sessionId);
       const ads = await storage.getLinkedInAdPerformance(sessionId);
+      
+      // ============================================
+      // DATA VALIDATION LAYER
+      // ============================================
+      const { 
+        LinkedInMetricSchema, 
+        validateMetricValue, 
+        validateMetricRelationships,
+        calculateDataQualityScore 
+      } = await import('./validation/linkedin-metrics.js');
+      
+      const validatedMetrics: any[] = [];
+      const validationErrors: any[] = [];
+      
+      // Validate each metric
+      for (const metric of rawMetrics) {
+        try {
+          // Schema validation
+          const validated = LinkedInMetricSchema.parse(metric);
+          
+          // Value constraint validation
+          const valueValidation = validateMetricValue(validated.metricKey, validated.metricValue);
+          if (!valueValidation.isValid) {
+            validationErrors.push({
+              metric: validated.metricKey,
+              value: validated.metricValue,
+              campaign: validated.campaignName,
+              error: valueValidation.error,
+              timestamp: new Date(),
+            });
+            console.warn('[Validation Warning]', valueValidation.error);
+            continue; // Skip this metric
+          }
+          
+          validatedMetrics.push(validated);
+        } catch (error) {
+          console.error('[Validation Error]', error);
+          validationErrors.push({
+            metric: metric.metricKey,
+            value: metric.metricValue,
+            campaign: metric.campaignName,
+            error: error instanceof Error ? error.message : 'Unknown validation error',
+            timestamp: new Date(),
+          });
+        }
+      }
+      
+      // Use validated metrics
+      const metrics = validatedMetrics;
+      
+      // Log validation summary
+      if (validationErrors.length > 0) {
+        console.warn(`[LinkedIn Metrics Validation] ${validationErrors.length} metrics failed validation`);
+      }
+      
+      const dataQuality = calculateDataQualityScore(
+        rawMetrics.length,
+        validatedMetrics.length,
+        0 // Will add relationship errors later
+      );
+      
+      console.log(`[Data Quality] Score: ${dataQuality.score.toFixed(1)}% (${dataQuality.grade}) - ${dataQuality.message}`);
       
       // Get unique selected metrics from the imported data
       const selectedMetrics = Array.from(new Set(metrics.map((m: any) => m.metricKey)));
@@ -5805,28 +5867,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalImpressions = aggregated.totalImpressions || 0;
       const totalEngagements = aggregated.totalTotalengagements || 0;
       
+      // Validate metric relationships
+      const { sanitizeCalculatedMetric } = await import('./validation/linkedin-metrics.js');
+      const relationshipValidation = validateMetricRelationships({
+        impressions: totalImpressions,
+        clicks: totalClicks,
+        conversions: totalConversions,
+        leads: totalLeads,
+        engagements: totalEngagements,
+        reach: aggregated.totalReach || 0,
+      });
+      
+      if (!relationshipValidation.isValid) {
+        console.warn('[Relationship Validation] Issues detected:', relationshipValidation.errors);
+        relationshipValidation.errors.forEach(err => {
+          validationErrors.push({
+            metric: 'relationship',
+            value: null,
+            campaign: session.adAccountName || 'Unknown',
+            error: err,
+            timestamp: new Date(),
+          });
+        });
+      }
+      
       // CVR (Conversion Rate): (Conversions / Clicks) * 100
       if (totalClicks > 0) {
         const cvr = (totalConversions / totalClicks) * 100;
-        aggregated.cvr = parseFloat(cvr.toFixed(2));
+        aggregated.cvr = sanitizeCalculatedMetric('cvr', parseFloat(cvr.toFixed(2)));
       }
       
       // CPA (Cost per Conversion): Spend / Conversions
       if (totalConversions > 0 && totalSpend > 0) {
         const cpa = totalSpend / totalConversions;
-        aggregated.cpa = parseFloat(cpa.toFixed(2));
+        aggregated.cpa = sanitizeCalculatedMetric('cpa', parseFloat(cpa.toFixed(2)));
       }
       
       // CPL (Cost per Lead): Spend / Leads
       if (totalLeads > 0 && totalSpend > 0) {
         const cpl = totalSpend / totalLeads;
-        aggregated.cpl = parseFloat(cpl.toFixed(2));
+        aggregated.cpl = sanitizeCalculatedMetric('cpl', parseFloat(cpl.toFixed(2)));
       }
       
       // ER (Engagement Rate): (Total Engagements / Impressions) * 100
       if (totalImpressions > 0) {
         const er = (totalEngagements / totalImpressions) * 100;
-        aggregated.er = parseFloat(er.toFixed(2));
+        aggregated.er = sanitizeCalculatedMetric('er', parseFloat(er.toFixed(2)));
       }
       
       // Get conversion value from campaign (prioritize campaign, fallback to session)
@@ -5850,17 +5936,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // ROI - Return on Investment: ((Revenue - Spend) / Spend) × 100
         if (totalSpend > 0) {
-          aggregated.roi = parseFloat((((totalRevenue - totalSpend) / totalSpend) * 100).toFixed(2));
+          const roi = ((totalRevenue - totalSpend) / totalSpend) * 100;
+          aggregated.roi = sanitizeCalculatedMetric('roi', parseFloat(roi.toFixed(2)));
         }
         
         // ROAS - Return on Ad Spend: Revenue / Spend
         if (totalSpend > 0) {
-          aggregated.roas = parseFloat((totalRevenue / totalSpend).toFixed(2));
+          const roas = totalRevenue / totalSpend;
+          aggregated.roas = sanitizeCalculatedMetric('roas', parseFloat(roas.toFixed(2)));
         }
         
         // Profit Margin: (Profit / Revenue) × 100
         if (totalRevenue > 0) {
-          aggregated.profitMargin = parseFloat(((profit / totalRevenue) * 100).toFixed(2));
+          const profitMargin = (profit / totalRevenue) * 100;
+          aggregated.profitMargin = sanitizeCalculatedMetric('profitMargin', parseFloat(profitMargin.toFixed(2)));
         }
         
         // Revenue Per Lead: Revenue / Leads
@@ -5872,10 +5961,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.hasRevenueTracking = 0;
       }
       
+      // Calculate final data quality score
+      const finalDataQuality = calculateDataQualityScore(
+        rawMetrics.length,
+        validatedMetrics.length,
+        relationshipValidation.errors.length
+      );
+      
+      // Prepare validation summary
+      const validationSummary = validationErrors.length > 0 ? {
+        totalMetrics: rawMetrics.length,
+        validMetrics: validatedMetrics.length,
+        invalidMetrics: validationErrors.length,
+        dataQuality: finalDataQuality,
+        message: `${validationErrors.length} metrics failed validation and were excluded`,
+        errors: validationErrors.slice(0, 10), // Include first 10 errors for debugging
+      } : undefined;
+      
       res.json({
         session,
         metrics,
-        aggregated
+        aggregated,
+        validationSummary
       });
     } catch (error) {
       console.error('LinkedIn import session fetch error:', error);

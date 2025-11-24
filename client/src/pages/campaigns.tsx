@@ -1500,17 +1500,24 @@ export default function Campaigns() {
                           onValueChange={(value) => form.setValue("currency", value)}
                         >
                           <SelectTrigger id="currency">
-                            <SelectValue placeholder="USD" />
+                            <SelectValue placeholder="USD - US Dollar" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="USD">USD</SelectItem>
-                            <SelectItem value="EUR">EUR</SelectItem>
-                            <SelectItem value="GBP">GBP</SelectItem>
-                            <SelectItem value="CAD">CAD</SelectItem>
-                            <SelectItem value="AUD">AUD</SelectItem>
-                            <SelectItem value="JPY">JPY</SelectItem>
-                            <SelectItem value="CNY">CNY</SelectItem>
-                            <SelectItem value="INR">INR</SelectItem>
+                            <SelectItem value="USD">🇺🇸 USD - US Dollar</SelectItem>
+                            <SelectItem value="EUR">🇪🇺 EUR - Euro</SelectItem>
+                            <SelectItem value="GBP">🇬🇧 GBP - British Pound</SelectItem>
+                            <SelectItem value="JPY">🇯🇵 JPY - Japanese Yen</SelectItem>
+                            <SelectItem value="CAD">🇨🇦 CAD - Canadian Dollar</SelectItem>
+                            <SelectItem value="AUD">🇦🇺 AUD - Australian Dollar</SelectItem>
+                            <SelectItem value="INR">🇮🇳 INR - Indian Rupee</SelectItem>
+                            <SelectItem value="CNY">🇨🇳 CNY - Chinese Yuan</SelectItem>
+                            <SelectItem value="BRL">🇧🇷 BRL - Brazilian Real</SelectItem>
+                            <SelectItem value="MXN">🇲🇽 MXN - Mexican Peso</SelectItem>
+                            <SelectItem value="CHF">🇨🇭 CHF - Swiss Franc</SelectItem>
+                            <SelectItem value="SEK">🇸🇪 SEK - Swedish Krona</SelectItem>
+                            <SelectItem value="NZD">🇳🇿 NZD - New Zealand Dollar</SelectItem>
+                            <SelectItem value="SGD">🇸🇬 SGD - Singapore Dollar</SelectItem>
+                            <SelectItem value="HKD">🇭🇰 HKD - Hong Kong Dollar</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1579,14 +1586,21 @@ export default function Campaigns() {
                             <SelectValue placeholder="USD" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="USD">USD</SelectItem>
-                            <SelectItem value="EUR">EUR</SelectItem>
-                            <SelectItem value="GBP">GBP</SelectItem>
-                            <SelectItem value="CAD">CAD</SelectItem>
-                            <SelectItem value="AUD">AUD</SelectItem>
-                            <SelectItem value="JPY">JPY</SelectItem>
-                            <SelectItem value="CNY">CNY</SelectItem>
-                            <SelectItem value="INR">INR</SelectItem>
+                            <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                            <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+                            <SelectItem value="GBP">🇬🇧 GBP</SelectItem>
+                            <SelectItem value="JPY">🇯🇵 JPY</SelectItem>
+                            <SelectItem value="CAD">🇨🇦 CAD</SelectItem>
+                            <SelectItem value="AUD">🇦🇺 AUD</SelectItem>
+                            <SelectItem value="INR">🇮🇳 INR</SelectItem>
+                            <SelectItem value="CNY">🇨🇳 CNY</SelectItem>
+                            <SelectItem value="BRL">🇧🇷 BRL</SelectItem>
+                            <SelectItem value="MXN">🇲🇽 MXN</SelectItem>
+                            <SelectItem value="CHF">🇨🇭 CHF</SelectItem>
+                            <SelectItem value="SEK">🇸🇪 SEK</SelectItem>
+                            <SelectItem value="NZD">🇳🇿 NZD</SelectItem>
+                            <SelectItem value="SGD">🇸🇬 SGD</SelectItem>
+                            <SelectItem value="HKD">🇭🇰 HKD</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1908,17 +1922,24 @@ export default function Campaigns() {
                   onValueChange={(value) => editForm.setValue("currency", value)}
                 >
                   <SelectTrigger id="edit-currency" data-testid="select-edit-currency">
-                    <SelectValue placeholder="USD" />
+                    <SelectValue placeholder="USD - US Dollar" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                    <SelectItem value="CAD">CAD</SelectItem>
-                    <SelectItem value="AUD">AUD</SelectItem>
-                    <SelectItem value="JPY">JPY</SelectItem>
-                    <SelectItem value="CNY">CNY</SelectItem>
-                    <SelectItem value="INR">INR</SelectItem>
+                    <SelectItem value="USD">🇺🇸 USD - US Dollar</SelectItem>
+                    <SelectItem value="EUR">🇪🇺 EUR - Euro</SelectItem>
+                    <SelectItem value="GBP">🇬🇧 GBP - British Pound</SelectItem>
+                    <SelectItem value="JPY">🇯🇵 JPY - Japanese Yen</SelectItem>
+                    <SelectItem value="CAD">🇨🇦 CAD - Canadian Dollar</SelectItem>
+                    <SelectItem value="AUD">🇦🇺 AUD - Australian Dollar</SelectItem>
+                    <SelectItem value="INR">🇮🇳 INR - Indian Rupee</SelectItem>
+                    <SelectItem value="CNY">🇨🇳 CNY - Chinese Yuan</SelectItem>
+                    <SelectItem value="BRL">🇧🇷 BRL - Brazilian Real</SelectItem>
+                    <SelectItem value="MXN">🇲🇽 MXN - Mexican Peso</SelectItem>
+                    <SelectItem value="CHF">🇨🇭 CHF - Swiss Franc</SelectItem>
+                    <SelectItem value="SEK">🇸🇪 SEK - Swedish Krona</SelectItem>
+                    <SelectItem value="NZD">🇳🇿 NZD - New Zealand Dollar</SelectItem>
+                    <SelectItem value="SGD">🇸🇬 SGD - Singapore Dollar</SelectItem>
+                    <SelectItem value="HKD">🇭🇰 HKD - Hong Kong Dollar</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1985,14 +2006,21 @@ export default function Campaigns() {
                     <SelectValue placeholder="USD" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                    <SelectItem value="CAD">CAD</SelectItem>
-                    <SelectItem value="AUD">AUD</SelectItem>
-                    <SelectItem value="JPY">JPY</SelectItem>
-                    <SelectItem value="CNY">CNY</SelectItem>
-                    <SelectItem value="INR">INR</SelectItem>
+                    <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                    <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+                    <SelectItem value="GBP">🇬🇧 GBP</SelectItem>
+                    <SelectItem value="JPY">🇯🇵 JPY</SelectItem>
+                    <SelectItem value="CAD">🇨🇦 CAD</SelectItem>
+                    <SelectItem value="AUD">🇦🇺 AUD</SelectItem>
+                    <SelectItem value="INR">🇮🇳 INR</SelectItem>
+                    <SelectItem value="CNY">🇨🇳 CNY</SelectItem>
+                    <SelectItem value="BRL">🇧🇷 BRL</SelectItem>
+                    <SelectItem value="MXN">🇲🇽 MXN</SelectItem>
+                    <SelectItem value="CHF">🇨🇭 CHF</SelectItem>
+                    <SelectItem value="SEK">🇸🇪 SEK</SelectItem>
+                    <SelectItem value="NZD">🇳🇿 NZD</SelectItem>
+                    <SelectItem value="SGD">🇸🇬 SGD</SelectItem>
+                    <SelectItem value="HKD">🇭🇰 HKD</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

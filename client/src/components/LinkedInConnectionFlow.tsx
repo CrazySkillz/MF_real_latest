@@ -657,9 +657,9 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                           </div>
                         </div>
 
-                        {/* Derived Metrics */}
+                        {/* Derived Metrics & Revenue Analytics */}
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Derived Metrics</Label>
+                          <Label className="text-sm font-medium">Derived Metrics & Revenue Analytics</Label>
                           <p className="text-xs text-slate-500 dark:text-slate-400">Calculated from core metrics</p>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                             {[
@@ -671,7 +671,11 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                               { key: 'cpl', label: 'Cost per Lead (CPL)', icon: DollarSign, requiresConversion: false },
                               { key: 'er', label: 'Engagement Rate (ER)', icon: Activity, requiresConversion: false },
                               { key: 'roi', label: 'Return on Investment (ROI)', icon: TrendingUp, requiresConversion: true },
-                              { key: 'roas', label: 'Return on Ad Spend (ROAS)', icon: TrendingUp, requiresConversion: true }
+                              { key: 'roas', label: 'Return on Ad Spend (ROAS)', icon: TrendingUp, requiresConversion: true },
+                              { key: 'totalRevenue', label: 'Total Revenue', icon: DollarSign, requiresConversion: true },
+                              { key: 'profit', label: 'Profit', icon: TrendingUp, requiresConversion: true },
+                              { key: 'profitMargin', label: 'Profit Margin', icon: Percent, requiresConversion: true },
+                              { key: 'revenuePerLead', label: 'Revenue Per Lead', icon: DollarSign, requiresConversion: true }
                             ].map((metric) => {
                               const Icon = metric.icon;
                               

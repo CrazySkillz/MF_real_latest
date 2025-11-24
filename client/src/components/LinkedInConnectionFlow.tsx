@@ -652,7 +652,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                                   <Icon className="w-4 h-4 text-blue-500" />
                                   <div className="flex-1">
                                     <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{metric.label}</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">{metric.getValue(campaign)}</p>
                                   </div>
                                 </div>
                               );

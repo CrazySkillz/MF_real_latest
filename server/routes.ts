@@ -9,6 +9,7 @@ import googleTrends from "google-trends-api";
 import multer from "multer";
 import { parsePDFMetrics } from "./services/pdf-parser";
 import axios from "axios";
+import { getIndustryBenchmarks } from "./data/industry-benchmarks";
 
 // Simulate professional platform authentication (like Supermetrics)
 async function simulateProfessionalAuth(email: string, password: string, propertyId: string, campaignId: string) {
@@ -129,6 +130,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertCampaignSchema.parse(req.body);
       const campaign = await storage.createCampaign(validatedData);
+      
+      // Auto-generate benchmarks if industry is selected (NON-BLOCKING)
+      if (validatedData.industry) {
+        try {
+          const industryBenchmarks = getIndustryBenchmarks(validatedData.industry);
+          if (industryBenchmarks) {
+            console.log(`[Benchmarks] Auto-generating for industry: ${validatedData.industry}`);
+            
+            // Create benchmarks using EXISTING table structure
+            for (const [metricKey, thresholds] of Object.entries(industryBenchmarks)) {
+              await storage.createBenchmark({
+                campaignId: campaign.id,
+                platformType: 'linkedin', // Default to LinkedIn for now
+                category: 'performance',
+                name: `${metricKey.toUpperCase()} Target`,
+                metric: metricKey,
+                description: `Industry average for ${validatedData.industry}`,
+                benchmarkValue: thresholds.target.toString(),
+                currentValue: '0',
+                unit: thresholds.unit,
+                benchmarkType: 'industry',
+                industry: validatedData.industry,
+                status: 'active',
+                period: 'monthly',
+              });
+            }
+            
+            console.log(`[Benchmarks] ✅ Created ${Object.keys(industryBenchmarks).length} benchmarks for campaign ${campaign.id}`);
+          }
+        } catch (benchmarkError) {
+          // NON-CRITICAL: Log error but don't fail campaign creation
+          console.error('[Benchmarks] ⚠️ Failed to auto-generate benchmarks:', benchmarkError);
+          console.error('[Benchmarks] Campaign created successfully, but benchmarks were not generated');
+        }
+      }
+      
       res.status(201).json(campaign);
     } catch (error) {
       console.error("Failed to create campaign:", error);

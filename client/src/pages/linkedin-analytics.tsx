@@ -1789,6 +1789,311 @@ export default function LinkedInAnalytics() {
                       </div>
                     )}
 
+                    {/* Derived Metrics with Performance Indicators */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-slate-600" />
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Performance Metrics</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {/* CTR */}
+                        {aggregated.ctr !== undefined && (
+                          <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  CTR (Click-Through Rate)
+                                </h3>
+                                <TrendingUp className="w-4 h-4 text-slate-400" />
+                              </div>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatPercentage(aggregated.ctr)}
+                              </p>
+                              {aggregated.performanceIndicators?.ctr && (
+                                <Badge 
+                                  variant={
+                                    aggregated.performanceIndicators.ctr === 'excellent' ? 'default' :
+                                    aggregated.performanceIndicators.ctr === 'good' ? 'secondary' :
+                                    aggregated.performanceIndicators.ctr === 'fair' ? 'outline' : 'destructive'
+                                  }
+                                  className={`mt-2 ${
+                                    aggregated.performanceIndicators.ctr === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    aggregated.performanceIndicators.ctr === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    aggregated.performanceIndicators.ctr === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}
+                                >
+                                  {aggregated.performanceIndicators.ctr === 'excellent' && '🟢 Excellent'}
+                                  {aggregated.performanceIndicators.ctr === 'good' && '🔵 Good'}
+                                  {aggregated.performanceIndicators.ctr === 'fair' && '🟡 Fair'}
+                                  {aggregated.performanceIndicators.ctr === 'poor' && '🔴 Poor'}
+                                </Badge>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* CPC */}
+                        {aggregated.cpc !== undefined && (
+                          <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  CPC (Cost Per Click)
+                                </h3>
+                                <DollarSign className="w-4 h-4 text-slate-400" />
+                              </div>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(aggregated.cpc)}
+                              </p>
+                              {aggregated.performanceIndicators?.cpc && (
+                                <Badge 
+                                  variant={
+                                    aggregated.performanceIndicators.cpc === 'excellent' ? 'default' :
+                                    aggregated.performanceIndicators.cpc === 'good' ? 'secondary' :
+                                    aggregated.performanceIndicators.cpc === 'fair' ? 'outline' : 'destructive'
+                                  }
+                                  className={`mt-2 ${
+                                    aggregated.performanceIndicators.cpc === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    aggregated.performanceIndicators.cpc === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    aggregated.performanceIndicators.cpc === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}
+                                >
+                                  {aggregated.performanceIndicators.cpc === 'excellent' && '🟢 Excellent'}
+                                  {aggregated.performanceIndicators.cpc === 'good' && '🔵 Good'}
+                                  {aggregated.performanceIndicators.cpc === 'fair' && '🟡 Fair'}
+                                  {aggregated.performanceIndicators.cpc === 'poor' && '🔴 Poor'}
+                                </Badge>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* CVR */}
+                        {aggregated.cvr !== undefined && (
+                          <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  CVR (Conversion Rate)
+                                </h3>
+                                <Target className="w-4 h-4 text-slate-400" />
+                              </div>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatPercentage(aggregated.cvr)}
+                              </p>
+                              {aggregated.performanceIndicators?.cvr && (
+                                <Badge 
+                                  variant={
+                                    aggregated.performanceIndicators.cvr === 'excellent' ? 'default' :
+                                    aggregated.performanceIndicators.cvr === 'good' ? 'secondary' :
+                                    aggregated.performanceIndicators.cvr === 'fair' ? 'outline' : 'destructive'
+                                  }
+                                  className={`mt-2 ${
+                                    aggregated.performanceIndicators.cvr === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    aggregated.performanceIndicators.cvr === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    aggregated.performanceIndicators.cvr === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}
+                                >
+                                  {aggregated.performanceIndicators.cvr === 'excellent' && '🟢 Excellent'}
+                                  {aggregated.performanceIndicators.cvr === 'good' && '🔵 Good'}
+                                  {aggregated.performanceIndicators.cvr === 'fair' && '🟡 Fair'}
+                                  {aggregated.performanceIndicators.cvr === 'poor' && '🔴 Poor'}
+                                </Badge>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* CPA */}
+                        {aggregated.cpa !== undefined && (
+                          <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  CPA (Cost Per Acquisition)
+                                </h3>
+                                <DollarSign className="w-4 h-4 text-slate-400" />
+                              </div>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(aggregated.cpa)}
+                              </p>
+                              {aggregated.performanceIndicators?.cpa && (
+                                <Badge 
+                                  variant={
+                                    aggregated.performanceIndicators.cpa === 'excellent' ? 'default' :
+                                    aggregated.performanceIndicators.cpa === 'good' ? 'secondary' :
+                                    aggregated.performanceIndicators.cpa === 'fair' ? 'outline' : 'destructive'
+                                  }
+                                  className={`mt-2 ${
+                                    aggregated.performanceIndicators.cpa === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    aggregated.performanceIndicators.cpa === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    aggregated.performanceIndicators.cpa === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}
+                                >
+                                  {aggregated.performanceIndicators.cpa === 'excellent' && '🟢 Excellent'}
+                                  {aggregated.performanceIndicators.cpa === 'good' && '🔵 Good'}
+                                  {aggregated.performanceIndicators.cpa === 'fair' && '🟡 Fair'}
+                                  {aggregated.performanceIndicators.cpa === 'poor' && '🔴 Poor'}
+                                </Badge>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* CPL */}
+                        {aggregated.cpl !== undefined && (
+                          <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  CPL (Cost Per Lead)
+                                </h3>
+                                <DollarSign className="w-4 h-4 text-slate-400" />
+                              </div>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(aggregated.cpl)}
+                              </p>
+                              {aggregated.performanceIndicators?.cpl && (
+                                <Badge 
+                                  variant={
+                                    aggregated.performanceIndicators.cpl === 'excellent' ? 'default' :
+                                    aggregated.performanceIndicators.cpl === 'good' ? 'secondary' :
+                                    aggregated.performanceIndicators.cpl === 'fair' ? 'outline' : 'destructive'
+                                  }
+                                  className={`mt-2 ${
+                                    aggregated.performanceIndicators.cpl === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    aggregated.performanceIndicators.cpl === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    aggregated.performanceIndicators.cpl === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}
+                                >
+                                  {aggregated.performanceIndicators.cpl === 'excellent' && '🟢 Excellent'}
+                                  {aggregated.performanceIndicators.cpl === 'good' && '🔵 Good'}
+                                  {aggregated.performanceIndicators.cpl === 'fair' && '🟡 Fair'}
+                                  {aggregated.performanceIndicators.cpl === 'poor' && '🔴 Poor'}
+                                </Badge>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* ER */}
+                        {aggregated.er !== undefined && (
+                          <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  ER (Engagement Rate)
+                                </h3>
+                                <Activity className="w-4 h-4 text-slate-400" />
+                              </div>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatPercentage(aggregated.er)}
+                              </p>
+                              {aggregated.performanceIndicators?.er && (
+                                <Badge 
+                                  variant={
+                                    aggregated.performanceIndicators.er === 'excellent' ? 'default' :
+                                    aggregated.performanceIndicators.er === 'good' ? 'secondary' :
+                                    aggregated.performanceIndicators.er === 'fair' ? 'outline' : 'destructive'
+                                  }
+                                  className={`mt-2 ${
+                                    aggregated.performanceIndicators.er === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    aggregated.performanceIndicators.er === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    aggregated.performanceIndicators.er === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}
+                                >
+                                  {aggregated.performanceIndicators.er === 'excellent' && '🟢 Excellent'}
+                                  {aggregated.performanceIndicators.er === 'good' && '🔵 Good'}
+                                  {aggregated.performanceIndicators.er === 'fair' && '🟡 Fair'}
+                                  {aggregated.performanceIndicators.er === 'poor' && '🔴 Poor'}
+                                </Badge>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* ROI */}
+                        {aggregated.roi !== undefined && aggregated.hasRevenueTracking === 1 && (
+                          <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  ROI (Return on Investment)
+                                </h3>
+                                <TrendingUp className="w-4 h-4 text-slate-400" />
+                              </div>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatPercentage(aggregated.roi)}
+                              </p>
+                              {aggregated.performanceIndicators?.roi && (
+                                <Badge 
+                                  variant={
+                                    aggregated.performanceIndicators.roi === 'excellent' ? 'default' :
+                                    aggregated.performanceIndicators.roi === 'good' ? 'secondary' :
+                                    aggregated.performanceIndicators.roi === 'fair' ? 'outline' : 'destructive'
+                                  }
+                                  className={`mt-2 ${
+                                    aggregated.performanceIndicators.roi === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    aggregated.performanceIndicators.roi === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    aggregated.performanceIndicators.roi === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}
+                                >
+                                  {aggregated.performanceIndicators.roi === 'excellent' && '🟢 Excellent'}
+                                  {aggregated.performanceIndicators.roi === 'good' && '🔵 Good'}
+                                  {aggregated.performanceIndicators.roi === 'fair' && '🟡 Fair'}
+                                  {aggregated.performanceIndicators.roi === 'poor' && '🔴 Poor'}
+                                </Badge>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* ROAS */}
+                        {aggregated.roas !== undefined && aggregated.hasRevenueTracking === 1 && (
+                          <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  ROAS (Return on Ad Spend)
+                                </h3>
+                                <TrendingUp className="w-4 h-4 text-slate-400" />
+                              </div>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {(aggregated.roas || 0).toFixed(2)}x
+                              </p>
+                              {aggregated.performanceIndicators?.roas && (
+                                <Badge 
+                                  variant={
+                                    aggregated.performanceIndicators.roas === 'excellent' ? 'default' :
+                                    aggregated.performanceIndicators.roas === 'good' ? 'secondary' :
+                                    aggregated.performanceIndicators.roas === 'fair' ? 'outline' : 'destructive'
+                                  }
+                                  className={`mt-2 ${
+                                    aggregated.performanceIndicators.roas === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    aggregated.performanceIndicators.roas === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    aggregated.performanceIndicators.roas === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}
+                                >
+                                  {aggregated.performanceIndicators.roas === 'excellent' && '🟢 Excellent'}
+                                  {aggregated.performanceIndicators.roas === 'good' && '🔵 Good'}
+                                  {aggregated.performanceIndicators.roas === 'fair' && '🟡 Fair'}
+                                  {aggregated.performanceIndicators.roas === 'poor' && '🔴 Poor'}
+                                </Badge>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Campaign Breakdown */}
                     <div className="space-y-4">
                       <div className="flex items-center gap-2">

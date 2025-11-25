@@ -1059,6 +1059,7 @@ export default function Campaigns() {
       // Create campaign with connected platforms data - no artificial metrics
       const campaignWithPlatforms = {
         ...campaignData,
+        industry: campaignData.industry || undefined, // Include industry for benchmark generation
         platform: selectedPlatforms.join(', '), // Store connected platforms
         status: "active" as const,
         type: "campaign" as const,

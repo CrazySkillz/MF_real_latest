@@ -5963,7 +5963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calculate performance indicators based on benchmarks
       try {
-        const campaignBenchmarks = await storage.getBenchmarksForCampaign(session.campaignId);
+        const campaignBenchmarks = await storage.getCampaignBenchmarks(session.campaignId);
         
         if (campaignBenchmarks && campaignBenchmarks.length > 0) {
           console.log(`[Performance Indicators] Found ${campaignBenchmarks.length} benchmarks for campaign`);

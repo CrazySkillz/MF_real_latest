@@ -1631,7 +1631,7 @@ export default function Campaigns() {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        We'll set recommended performance benchmarks based on your industry
+                        💡 <strong>Smart Benchmarks:</strong> We'll automatically set industry-standard performance targets for metrics like CTR, CPC, CVR, and ROI. You can customize them later in the Benchmarks tab.
                       </p>
                     </div>
                     
@@ -2077,7 +2077,7 @@ export default function Campaigns() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                We'll set recommended performance benchmarks based on your industry
+                💡 <strong>Smart Benchmarks:</strong> We'll automatically set industry-standard performance targets for metrics like CTR, CPC, CVR, and ROI. You can customize them later in the Benchmarks tab.
               </p>
             </div>
             

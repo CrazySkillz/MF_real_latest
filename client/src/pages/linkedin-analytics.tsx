@@ -1788,6 +1788,43 @@ export default function LinkedInAnalytics() {
                           </Card>
                         )}
                         
+                        {/* CPM */}
+                        {aggregated.cpm !== undefined && (
+                          <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  CPM (Cost Per Mille)
+                                </h3>
+                                <DollarSign className="w-4 h-4 text-slate-400" />
+                              </div>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(aggregated.cpm)}
+                              </p>
+                              {campaignData?.industry && aggregated.performanceIndicators?.cpm && (
+                                <Badge 
+                                  variant={
+                                    aggregated.performanceIndicators.cpm === 'excellent' ? 'default' :
+                                    aggregated.performanceIndicators.cpm === 'good' ? 'secondary' :
+                                    aggregated.performanceIndicators.cpm === 'fair' ? 'outline' : 'destructive'
+                                  }
+                                  className={`mt-2 ${
+                                    aggregated.performanceIndicators.cpm === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    aggregated.performanceIndicators.cpm === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    aggregated.performanceIndicators.cpm === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}
+                                >
+                                  {aggregated.performanceIndicators.cpm === 'excellent' && '🟢 Excellent'}
+                                  {aggregated.performanceIndicators.cpm === 'good' && '🔵 Good'}
+                                  {aggregated.performanceIndicators.cpm === 'fair' && '🟡 Fair'}
+                                  {aggregated.performanceIndicators.cpm === 'poor' && '🔴 Poor'}
+                                </Badge>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                        
                         {/* CVR */}
                         {aggregated.cvr !== undefined && (
                           <Card className="hover:shadow-md transition-shadow">

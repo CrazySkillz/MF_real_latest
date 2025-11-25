@@ -128,13 +128,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/campaigns", async (req, res) => {
     try {
+      console.log('[Campaign Creation] Raw request body:', JSON.stringify(req.body, null, 2));
       const validatedData = insertCampaignSchema.parse(req.body);
+      console.log('[Campaign Creation] Validated data:', JSON.stringify(validatedData, null, 2));
       const campaign = await storage.createCampaign(validatedData);
+      console.log('[Campaign Creation] Campaign created with ID:', campaign.id);
       
       // Auto-generate benchmarks if industry is selected (NON-BLOCKING)
+      console.log('[Benchmarks] Checking industry field:', validatedData.industry);
       if (validatedData.industry) {
+        console.log('[Benchmarks] Industry found, attempting to generate benchmarks...');
         try {
           const industryBenchmarks = getIndustryBenchmarks(validatedData.industry);
+          console.log('[Benchmarks] Industry benchmarks retrieved:', industryBenchmarks ? 'YES' : 'NO');
           if (industryBenchmarks) {
             console.log(`[Benchmarks] Auto-generating for industry: ${validatedData.industry}`);
             
@@ -158,12 +164,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             console.log(`[Benchmarks] ✅ Created ${Object.keys(industryBenchmarks).length} benchmarks for campaign ${campaign.id}`);
+          } else {
+            console.log('[Benchmarks] ❌ No industry benchmarks found for:', validatedData.industry);
           }
         } catch (benchmarkError) {
           // NON-CRITICAL: Log error but don't fail campaign creation
           console.error('[Benchmarks] ⚠️ Failed to auto-generate benchmarks:', benchmarkError);
+          console.error('[Benchmarks] Error details:', benchmarkError instanceof Error ? benchmarkError.stack : benchmarkError);
           console.error('[Benchmarks] Campaign created successfully, but benchmarks were not generated');
         }
+      } else {
+        console.log('[Benchmarks] ⊗ No industry specified, skipping benchmark generation');
       }
       
       res.status(201).json(campaign);

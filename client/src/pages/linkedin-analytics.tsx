@@ -1717,7 +1717,8 @@ export default function LinkedInAnalytics() {
                             💰 Revenue Tracking Enabled
                           </Badge>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {/* Total Revenue */}
                           <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
@@ -1732,6 +1733,7 @@ export default function LinkedInAnalytics() {
                             </CardContent>
                           </Card>
                           
+                          {/* ROAS */}
                           <Card className="hover:shadow-md transition-shadow border-blue-200 dark:border-blue-800">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
@@ -1746,6 +1748,7 @@ export default function LinkedInAnalytics() {
                             </CardContent>
                           </Card>
                           
+                          {/* ROI */}
                           <Card className="hover:shadow-md transition-shadow border-purple-200 dark:border-purple-800">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
@@ -1760,6 +1763,7 @@ export default function LinkedInAnalytics() {
                             </CardContent>
                           </Card>
                           
+                          {/* Profit */}
                           <Card className={`hover:shadow-md transition-shadow ${
                             (aggregated.profit || 0) >= 0 
                               ? 'border-green-200 dark:border-green-800' 
@@ -1782,6 +1786,36 @@ export default function LinkedInAnalytics() {
                                   : 'text-red-700 dark:text-red-400'
                               }`}>
                                 {formatCurrency(aggregated.profit || 0)}
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Profit Margin */}
+                          <Card className="hover:shadow-md transition-shadow border-indigo-200 dark:border-indigo-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  Profit Margin
+                                </h3>
+                                <Percent className="w-4 h-4 text-indigo-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">
+                                {(aggregated.profitMargin || 0).toFixed(1)}%
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Revenue Per Lead */}
+                          <Card className="hover:shadow-md transition-shadow border-teal-200 dark:border-teal-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  Revenue Per Lead
+                                </h3>
+                                <DollarSign className="w-4 h-4 text-teal-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-teal-700 dark:text-teal-400">
+                                {formatCurrency(aggregated.revenuePerLead || 0)}
                               </p>
                             </CardContent>
                           </Card>
@@ -1809,7 +1843,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(aggregated.ctr)}
                               </p>
-                              {aggregated.performanceIndicators?.ctr && (
+                              {campaignData?.industry && aggregated.performanceIndicators?.ctr && (
                                 <Badge 
                                   variant={
                                     aggregated.performanceIndicators.ctr === 'excellent' ? 'default' :
@@ -1846,7 +1880,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpc)}
                               </p>
-                              {aggregated.performanceIndicators?.cpc && (
+                              {campaignData?.industry && aggregated.performanceIndicators?.cpc && (
                                 <Badge 
                                   variant={
                                     aggregated.performanceIndicators.cpc === 'excellent' ? 'default' :
@@ -1883,7 +1917,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(aggregated.cvr)}
                               </p>
-                              {aggregated.performanceIndicators?.cvr && (
+                              {campaignData?.industry && aggregated.performanceIndicators?.cvr && (
                                 <Badge 
                                   variant={
                                     aggregated.performanceIndicators.cvr === 'excellent' ? 'default' :
@@ -1920,7 +1954,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpa)}
                               </p>
-                              {aggregated.performanceIndicators?.cpa && (
+                              {campaignData?.industry && aggregated.performanceIndicators?.cpa && (
                                 <Badge 
                                   variant={
                                     aggregated.performanceIndicators.cpa === 'excellent' ? 'default' :
@@ -1957,7 +1991,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpl)}
                               </p>
-                              {aggregated.performanceIndicators?.cpl && (
+                              {campaignData?.industry && aggregated.performanceIndicators?.cpl && (
                                 <Badge 
                                   variant={
                                     aggregated.performanceIndicators.cpl === 'excellent' ? 'default' :
@@ -1994,7 +2028,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(aggregated.er)}
                               </p>
-                              {aggregated.performanceIndicators?.er && (
+                              {campaignData?.industry && aggregated.performanceIndicators?.er && (
                                 <Badge 
                                   variant={
                                     aggregated.performanceIndicators.er === 'excellent' ? 'default' :
@@ -2031,7 +2065,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(aggregated.roi)}
                               </p>
-                              {aggregated.performanceIndicators?.roi && (
+                              {campaignData?.industry && aggregated.performanceIndicators?.roi && (
                                 <Badge 
                                   variant={
                                     aggregated.performanceIndicators.roi === 'excellent' ? 'default' :
@@ -2068,7 +2102,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {(aggregated.roas || 0).toFixed(2)}x
                               </p>
-                              {aggregated.performanceIndicators?.roas && (
+                              {campaignData?.industry && aggregated.performanceIndicators?.roas && (
                                 <Badge 
                                   variant={
                                     aggregated.performanceIndicators.roas === 'excellent' ? 'default' :
@@ -2356,92 +2390,112 @@ export default function LinkedInAnalytics() {
                                     );
                                   })()}
 
-                                  {/* Performance Indicators */}
-                                  <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
-                                    <div className="flex items-center gap-3 flex-wrap">
-                                      {/* CTR Indicators */}
-                                      {ctr > 5 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">CTR Excellent</span>
-                                        </div>
-                                      )}
-                                      {ctr < 1 && ctr > 0 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">CTR Weak</span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* Conversion Rate Indicators */}
-                                      {convRate > 10 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">Conversion High</span>
-                                        </div>
-                                      )}
-                                      {convRate < 2 && convRate > 0 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">Conversion Low</span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* CPA Indicators */}
-                                      {cpa > 0 && cpa < 150 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">CPA Strong</span>
-                                        </div>
-                                      )}
-                                      {cpa > 300 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">CPA Weak</span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* ROAS Indicators */}
-                                      {roas > 4 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Strong</span>
-                                        </div>
-                                      )}
-                                      {roas > 0 && roas < 1.5 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Weak</span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* Engagement Rate Indicators */}
-                                      {engagementRate > 2 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Good</span>
-                                        </div>
-                                      )}
-                                      {engagementRate > 0 && engagementRate < 0.5 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                                          <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Low</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="text-blue-600 hover:text-blue-700"
-                                      onClick={() => {
-                                        setSelectedCampaignDetails(linkedInCampaign);
-                                        setIsCampaignDetailsModalOpen(true);
+                                  {/* Performance Indicators - Only shown when industry is selected */}
+                                  {campaignData?.industry && (
+                                    <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
+                                      <div className="flex items-center gap-3 flex-wrap">
+                                        {/* CTR Indicators */}
+                                        {ctr > 5 && (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">CTR Excellent</span>
+                                          </div>
+                                        )}
+                                        {ctr < 1 && ctr > 0 && (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">CTR Weak</span>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Conversion Rate Indicators */}
+                                        {convRate > 10 && (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">Conversion High</span>
+                                          </div>
+                                        )}
+                                        {convRate < 2 && convRate > 0 && (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">Conversion Low</span>
+                                          </div>
+                                        )}
+                                        
+                                        {/* CPA Indicators */}
+                                        {cpa > 0 && cpa < 150 && (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">CPA Strong</span>
+                                          </div>
+                                        )}
+                                        {cpa > 300 && (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">CPA Weak</span>
+                                          </div>
+                                        )}
+                                        
+                                        {/* ROAS Indicators */}
+                                        {roas > 4 && (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Strong</span>
+                                          </div>
+                                        )}
+                                        {roas > 0 && roas < 1.5 && (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Weak</span>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Engagement Rate Indicators */}
+                                        {engagementRate > 2 && (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Good</span>
+                                          </div>
+                                        )}
+                                        {engagementRate > 0 && engagementRate < 0.5 && (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Low</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="text-blue-600 hover:text-blue-700"
+                                        onClick={() => {
+                                          setSelectedCampaignDetails(linkedInCampaign);
+                                          setIsCampaignDetailsModalOpen(true);
                                       }}
                                       data-testid={`button-view-details-${index}`}
                                     >
                                       View Details →
                                     </Button>
-                                  </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* View Details Button - Always visible */}
+                                  {!campaignData?.industry && (
+                                    <div className="flex justify-end pt-3 border-t border-slate-200 dark:border-slate-700">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="text-blue-600 hover:text-blue-700"
+                                        onClick={() => {
+                                          setSelectedCampaignDetails(linkedInCampaign);
+                                          setIsCampaignDetailsModalOpen(true);
+                                        }}
+                                        data-testid={`button-view-details-${index}`}
+                                      >
+                                        View Details →
+                                      </Button>
+                                    </div>
+                                  )}
                                 </CardContent>
                               </Card>
                             );
@@ -4539,8 +4593,8 @@ export default function LinkedInAnalytics() {
               );
             })()}
 
-            {/* Performance Indicators */}
-            {selectedCampaignDetails && (
+            {/* Performance Indicators - Only shown when industry is selected */}
+            {campaignData?.industry && selectedCampaignDetails && (
               <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Performance Analysis</h4>
                 <div className="flex items-center gap-3 flex-wrap">

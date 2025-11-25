@@ -935,6 +935,7 @@ export default function Campaigns() {
         budget: data.budget ? parseFloat(data.budget) : null,
         currency: data.currency || "USD",
         conversionValue: data.conversionValue ? parseFloat(data.conversionValue as any) : null,
+        industry: data.industry || null, // ✅ INCLUDE INDUSTRY FOR BENCHMARK GENERATION
         type: data.type || "campaign",
         platform: data.platform || "manual",
         impressions: data.impressions || 0,

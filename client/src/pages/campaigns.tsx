@@ -1390,7 +1390,11 @@ export default function Campaigns() {
               
               <Dialog open={isCreateModalOpen} onOpenChange={handleCreateModalChange}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsCreateModalOpen(true);
+                  }}>
                     <Plus className="w-4 h-4 mr-2" />
                     New Campaign
                   </Button>

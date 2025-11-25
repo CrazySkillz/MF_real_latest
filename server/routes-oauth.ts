@@ -5676,6 +5676,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.cpc = parseFloat((spend / clicks).toFixed(2));
       }
       
+      // CPM: (Spend / Impressions) * 1000
+      if (impressions > 0) {
+        aggregated.cpm = parseFloat(((spend / impressions) * 1000).toFixed(2));
+      }
+      
       res.json(aggregated);
     } catch (error) {
       console.error('LinkedIn metrics fetch error:', error);
@@ -5927,6 +5932,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             timestamp: new Date(),
           });
         });
+      }
+      
+      // CTR (Click-Through Rate): (Clicks / Impressions) * 100
+      if (totalImpressions > 0) {
+        const ctr = (totalClicks / totalImpressions) * 100;
+        aggregated.ctr = sanitizeCalculatedMetric('ctr', parseFloat(ctr.toFixed(2)));
+      }
+      
+      // CPC (Cost Per Click): Spend / Clicks
+      if (totalClicks > 0 && totalSpend > 0) {
+        const cpc = totalSpend / totalClicks;
+        aggregated.cpc = sanitizeCalculatedMetric('cpc', parseFloat(cpc.toFixed(2)));
+      }
+      
+      // CPM (Cost Per Mille): (Spend / Impressions) * 1000
+      if (totalImpressions > 0 && totalSpend > 0) {
+        const cpm = (totalSpend / totalImpressions) * 1000;
+        aggregated.cpm = sanitizeCalculatedMetric('cpm', parseFloat(cpm.toFixed(2)));
       }
       
       // CVR (Conversion Rate): (Conversions / Clicks) * 100

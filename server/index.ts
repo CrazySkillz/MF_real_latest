@@ -76,8 +76,14 @@ app.use('/api', (req, res, next) => {
     server.listen(port, "0.0.0.0", () => {
       log(`serving on port ${port}`);
       
-      // Start automated snapshot scheduler
-      snapshotScheduler.start();
+      // Start automated snapshot scheduler after a delay to ensure DB connection is ready
+      setTimeout(() => {
+        try {
+          snapshotScheduler.start();
+        } catch (error) {
+          console.error('Failed to start snapshot scheduler:', error);
+        }
+      }, 5000); // 5 second delay
     });
   } catch (error) {
     console.error('Failed to start server:', error);

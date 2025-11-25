@@ -121,14 +121,20 @@ async function createSnapshotsForAllCampaigns() {
         } else {
           console.log(`⊗ Skipped campaign "${campaign.name}" (${campaign.id}) - no metrics data`);
         }
-      } catch (error) {
-        console.error(`✗ Failed to create snapshot for campaign ${campaign.id}:`, error);
+      } catch (error: any) {
+        // Log error but continue with other campaigns
+        console.error(`✗ Failed to create snapshot for campaign ${campaign.id}:`, error?.message || error);
       }
     }
     
     console.log('=== AUTOMATED SNAPSHOT SCHEDULER COMPLETED ===\n');
-  } catch (error) {
-    console.error('Automated snapshot scheduler error:', error);
+  } catch (error: any) {
+    // Handle connection errors gracefully
+    if (error?.message?.includes('Connection terminated') || error?.message?.includes('ECONNREFUSED')) {
+      console.error('⚠️ Database connection error in scheduler - will retry on next run:', error?.message);
+    } else {
+      console.error('Automated snapshot scheduler error:', error?.message || error);
+    }
   }
 }
 

@@ -128,6 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/campaigns", async (req, res) => {
     try {
+      console.log('=== CAMPAIGN CREATION START ===');
       console.log('[Campaign Creation] Raw request body:', JSON.stringify(req.body, null, 2));
       const validatedData = insertCampaignSchema.parse(req.body);
       console.log('[Campaign Creation] Validated data:', JSON.stringify(validatedData, null, 2));

@@ -1707,122 +1707,6 @@ export default function LinkedInAnalytics() {
                         })}
                     </div>
 
-                    {/* Revenue Metrics - Only shown if conversion value is set */}
-                    {aggregated.hasRevenueTracking === 1 && (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="w-5 h-5 text-green-600" />
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue Analytics</h3>
-                          <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                            💰 Revenue Tracking Enabled
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {/* Total Revenue */}
-                          <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                  Total Revenue
-                                </h3>
-                                <DollarSign className="w-4 h-4 text-green-600" />
-                              </div>
-                              <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                                {formatCurrency(aggregated.totalRevenue || 0)}
-                              </p>
-                            </CardContent>
-                          </Card>
-                          
-                          {/* ROAS */}
-                          <Card className="hover:shadow-md transition-shadow border-blue-200 dark:border-blue-800">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                  ROAS
-                                </h3>
-                                <TrendingUp className="w-4 h-4 text-blue-600" />
-                              </div>
-                              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-                                {(aggregated.roas || 0).toFixed(2)}x
-                              </p>
-                            </CardContent>
-                          </Card>
-                          
-                          {/* ROI */}
-                          <Card className="hover:shadow-md transition-shadow border-purple-200 dark:border-purple-800">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                  ROI
-                                </h3>
-                                <Percent className="w-4 h-4 text-purple-600" />
-                              </div>
-                              <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">
-                                {(aggregated.roi || 0).toFixed(1)}%
-                              </p>
-                            </CardContent>
-                          </Card>
-                          
-                          {/* Profit */}
-                          <Card className={`hover:shadow-md transition-shadow ${
-                            (aggregated.profit || 0) >= 0 
-                              ? 'border-green-200 dark:border-green-800' 
-                              : 'border-red-200 dark:border-red-800'
-                          }`}>
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                  Profit
-                                </h3>
-                                {(aggregated.profit || 0) >= 0 ? (
-                                  <TrendingUp className="w-4 h-4 text-green-600" />
-                                ) : (
-                                  <TrendingDown className="w-4 h-4 text-red-600" />
-                                )}
-                              </div>
-                              <p className={`text-2xl font-bold ${
-                                (aggregated.profit || 0) >= 0 
-                                  ? 'text-green-700 dark:text-green-400' 
-                                  : 'text-red-700 dark:text-red-400'
-                              }`}>
-                                {formatCurrency(aggregated.profit || 0)}
-                              </p>
-                            </CardContent>
-                          </Card>
-                          
-                          {/* Profit Margin */}
-                          <Card className="hover:shadow-md transition-shadow border-indigo-200 dark:border-indigo-800">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                  Profit Margin
-                                </h3>
-                                <Percent className="w-4 h-4 text-indigo-600" />
-                              </div>
-                              <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">
-                                {(aggregated.profitMargin || 0).toFixed(1)}%
-                              </p>
-                            </CardContent>
-                          </Card>
-                          
-                          {/* Revenue Per Lead */}
-                          <Card className="hover:shadow-md transition-shadow border-teal-200 dark:border-teal-800">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                  Revenue Per Lead
-                                </h3>
-                                <DollarSign className="w-4 h-4 text-teal-600" />
-                              </div>
-                              <p className="text-2xl font-bold text-teal-700 dark:text-teal-400">
-                                {formatCurrency(aggregated.revenuePerLead || 0)}
-                              </p>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Derived Metrics with Performance Indicators */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
@@ -2127,6 +2011,122 @@ export default function LinkedInAnalytics() {
                         )}
                       </div>
                     </div>
+
+                    {/* Revenue Metrics - Only shown if conversion value is set */}
+                    {aggregated.hasRevenueTracking === 1 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-5 h-5 text-green-600" />
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue Analytics</h3>
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            💰 Revenue Tracking Enabled
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {/* Total Revenue */}
+                          <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  Total Revenue
+                                </h3>
+                                <DollarSign className="w-4 h-4 text-green-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                {formatCurrency(aggregated.totalRevenue || 0)}
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          {/* ROAS */}
+                          <Card className="hover:shadow-md transition-shadow border-blue-200 dark:border-blue-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  ROAS
+                                </h3>
+                                <TrendingUp className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+                                {(aggregated.roas || 0).toFixed(2)}x
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          {/* ROI */}
+                          <Card className="hover:shadow-md transition-shadow border-purple-200 dark:border-purple-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  ROI
+                                </h3>
+                                <Percent className="w-4 h-4 text-purple-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">
+                                {(aggregated.roi || 0).toFixed(1)}%
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Profit */}
+                          <Card className={`hover:shadow-md transition-shadow ${
+                            (aggregated.profit || 0) >= 0 
+                              ? 'border-green-200 dark:border-green-800' 
+                              : 'border-red-200 dark:border-red-800'
+                          }`}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  Profit
+                                </h3>
+                                {(aggregated.profit || 0) >= 0 ? (
+                                  <TrendingUp className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <TrendingDown className="w-4 h-4 text-red-600" />
+                                )}
+                              </div>
+                              <p className={`text-2xl font-bold ${
+                                (aggregated.profit || 0) >= 0 
+                                  ? 'text-green-700 dark:text-green-400' 
+                                  : 'text-red-700 dark:text-red-400'
+                              }`}>
+                                {formatCurrency(aggregated.profit || 0)}
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Profit Margin */}
+                          <Card className="hover:shadow-md transition-shadow border-indigo-200 dark:border-indigo-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  Profit Margin
+                                </h3>
+                                <Percent className="w-4 h-4 text-indigo-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">
+                                {(aggregated.profitMargin || 0).toFixed(1)}%
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Revenue Per Lead */}
+                          <Card className="hover:shadow-md transition-shadow border-teal-200 dark:border-teal-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                  Revenue Per Lead
+                                </h3>
+                                <DollarSign className="w-4 h-4 text-teal-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-teal-700 dark:text-teal-400">
+                                {formatCurrency(aggregated.revenuePerLead || 0)}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Campaign Breakdown */}
                     <div className="space-y-4">

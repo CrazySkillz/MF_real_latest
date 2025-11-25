@@ -67,6 +67,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[Campaign Creation] Validated data:', JSON.stringify(validatedData, null, 2));
       const campaign = await storage.createCampaign(validatedData);
       console.log('[Campaign Creation] Campaign created successfully:', campaign.id);
+      
+      // AUTO-GENERATE BENCHMARKS IF INDUSTRY IS SELECTED
+      if (validatedData.industry) {
+        console.log('[Benchmarks] Industry detected:', validatedData.industry);
+        try {
+          const { getIndustryBenchmarks } = await import('./data/industry-benchmarks.js');
+          const industryBenchmarks = getIndustryBenchmarks(validatedData.industry);
+          
+          if (industryBenchmarks) {
+            console.log(`[Benchmarks] Generating ${Object.keys(industryBenchmarks).length} benchmarks...`);
+            
+            for (const [metricKey, thresholds] of Object.entries(industryBenchmarks)) {
+              await storage.createBenchmark({
+                campaignId: campaign.id,
+                platformType: 'linkedin',
+                category: 'performance',
+                name: `${metricKey.toUpperCase()} Target`,
+                metric: metricKey,
+                description: `Technology industry average for ${metricKey}`,
+                benchmarkValue: thresholds.target.toString(),
+                currentValue: '0',
+                unit: thresholds.unit,
+                benchmarkType: 'industry',
+                industry: validatedData.industry,
+                status: 'active',
+                period: 'monthly',
+              });
+            }
+            
+            console.log(`[Benchmarks] ✅ Created ${Object.keys(industryBenchmarks).length} benchmarks for campaign ${campaign.id}`);
+          }
+        } catch (benchmarkError) {
+          console.error('[Benchmarks] ⚠️ Failed to generate benchmarks:', benchmarkError);
+        }
+      } else {
+        console.log('[Benchmarks] No industry specified, skipping benchmark generation');
+      }
+      
       res.status(201).json(campaign);
     } catch (error) {
       console.error('[Campaign Creation] Error:', error);

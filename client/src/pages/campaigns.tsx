@@ -1390,17 +1390,12 @@ export default function Campaigns() {
                 <p className="text-slate-600 dark:text-slate-400 mt-1">Create, manage, and optimize your marketing campaigns</p>
               </div>
               
+              <Button onClick={() => setIsCreateModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Campaign
+              </Button>
+              
               <Dialog open={isCreateModalOpen} onOpenChange={handleCreateModalChange}>
-                <DialogTrigger asChild>
-                  <Button onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsCreateModalOpen(true);
-                  }}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    New Campaign
-                  </Button>
-                </DialogTrigger>
                 <DialogContent className={`${showConnectorsStep ? "sm:max-w-4xl" : "sm:max-w-md"} max-h-[90vh] overflow-y-auto pr-12`}>
                   <DialogHeader className="sticky top-0 bg-background z-10 pb-4 pr-8">
                     <DialogTitle>
@@ -1618,14 +1613,14 @@ export default function Campaigns() {
                     <div className="space-y-2">
                       <Label htmlFor="industry">Industry (Optional)</Label>
                       <Select
-                        value={form.watch("industry") || ""}
-                        onValueChange={(value) => form.setValue("industry", value)}
+                        value={form.watch("industry") || undefined}
+                        onValueChange={(value) => form.setValue("industry", value === "none" ? undefined : value)}
                       >
                         <SelectTrigger id="industry">
                           <SelectValue placeholder="Select industry for benchmark recommendations" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           <SelectItem value="technology">Technology</SelectItem>
                           <SelectItem value="ecommerce">E-commerce</SelectItem>
                           <SelectItem value="healthcare">Healthcare</SelectItem>
@@ -2064,14 +2059,14 @@ export default function Campaigns() {
             <div className="space-y-2">
               <Label htmlFor="edit-industry">Industry (Optional)</Label>
               <Select
-                value={editForm.watch("industry") || ""}
-                onValueChange={(value) => editForm.setValue("industry", value)}
+                value={editForm.watch("industry") || undefined}
+                onValueChange={(value) => editForm.setValue("industry", value === "none" ? undefined : value)}
               >
                 <SelectTrigger id="edit-industry" data-testid="select-edit-industry">
                   <SelectValue placeholder="Select industry for benchmark recommendations" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   <SelectItem value="technology">Technology</SelectItem>
                   <SelectItem value="ecommerce">E-commerce</SelectItem>
                   <SelectItem value="healthcare">Healthcare</SelectItem>

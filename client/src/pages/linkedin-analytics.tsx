@@ -187,6 +187,70 @@ export default function LinkedInAnalytics() {
     staleTime: 0, // Always fetch fresh data
   });
 
+  // Fetch campaign benchmarks
+  const { data: benchmarks = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaignId}/benchmarks`],
+    enabled: !!campaignId,
+  });
+
+  // Helper function to get benchmark for a metric
+  const getBenchmarkForMetric = (metricName: string) => {
+    return benchmarks.find((b: any) => 
+      b.metric?.toLowerCase() === metricName.toLowerCase() ||
+      b.name?.toLowerCase().includes(metricName.toLowerCase())
+    );
+  };
+
+  // Helper function to calculate performance level based on benchmark
+  const getPerformanceLevel = (currentValue: number, benchmarkValue: number, metricType: 'higher-better' | 'lower-better' = 'higher-better'): 'excellent' | 'good' | 'fair' | 'poor' => {
+    if (!benchmarkValue || benchmarkValue === 0) return 'fair';
+    
+    const ratio = currentValue / benchmarkValue;
+    
+    if (metricType === 'higher-better') {
+      // For metrics where higher is better (CTR, CVR, ER, ROI, ROAS)
+      if (ratio >= 1.2) return 'excellent';
+      if (ratio >= 1.0) return 'good';
+      if (ratio >= 0.8) return 'fair';
+      return 'poor';
+    } else {
+      // For metrics where lower is better (CPC, CPM, CPA, CPL)
+      if (ratio <= 0.8) return 'excellent';
+      if (ratio <= 1.0) return 'good';
+      if (ratio <= 1.2) return 'fair';
+      return 'poor';
+    }
+  };
+
+  // Helper function to render performance badge
+  const renderPerformanceBadge = (metricName: string, currentValue: number | undefined, metricType: 'higher-better' | 'lower-better' = 'higher-better') => {
+    const benchmark = getBenchmarkForMetric(metricName);
+    if (!benchmark || currentValue === undefined) return null;
+    
+    const performanceLevel = getPerformanceLevel(currentValue, parseFloat(benchmark.benchmarkValue), metricType);
+    
+    return (
+      <Badge 
+        variant={
+          performanceLevel === 'excellent' ? 'default' :
+          performanceLevel === 'good' ? 'secondary' :
+          performanceLevel === 'fair' ? 'outline' : 'destructive'
+        }
+        className={`mt-2 ${
+          performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+          performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+          performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+        }`}
+      >
+        {performanceLevel === 'excellent' && '🟢 Excellent'}
+        {performanceLevel === 'good' && '🔵 Good'}
+        {performanceLevel === 'fair' && '🟡 Fair'}
+        {performanceLevel === 'poor' && '🔴 Poor'}
+      </Badge>
+    );
+  };
+
   // Fetch import session data
   const { data: sessionData, isLoading: sessionLoading } = useQuery({
     queryKey: ['/api/linkedin/imports', sessionId],
@@ -1727,26 +1791,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(aggregated.ctr)}
                               </p>
-                              {campaignData?.industry && aggregated.performanceIndicators?.ctr && (
-                                <Badge 
-                                  variant={
-                                    aggregated.performanceIndicators.ctr === 'excellent' ? 'default' :
-                                    aggregated.performanceIndicators.ctr === 'good' ? 'secondary' :
-                                    aggregated.performanceIndicators.ctr === 'fair' ? 'outline' : 'destructive'
-                                  }
-                                  className={`mt-2 ${
-                                    aggregated.performanceIndicators.ctr === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                    aggregated.performanceIndicators.ctr === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                    aggregated.performanceIndicators.ctr === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                  }`}
-                                >
-                                  {aggregated.performanceIndicators.ctr === 'excellent' && '🟢 Excellent'}
-                                  {aggregated.performanceIndicators.ctr === 'good' && '🔵 Good'}
-                                  {aggregated.performanceIndicators.ctr === 'fair' && '🟡 Fair'}
-                                  {aggregated.performanceIndicators.ctr === 'poor' && '🔴 Poor'}
-                                </Badge>
-                              )}
+                              {renderPerformanceBadge('ctr', aggregated.ctr, 'higher-better')}
                             </CardContent>
                           </Card>
                         )}
@@ -1764,26 +1809,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpc)}
                               </p>
-                              {campaignData?.industry && aggregated.performanceIndicators?.cpc && (
-                                <Badge 
-                                  variant={
-                                    aggregated.performanceIndicators.cpc === 'excellent' ? 'default' :
-                                    aggregated.performanceIndicators.cpc === 'good' ? 'secondary' :
-                                    aggregated.performanceIndicators.cpc === 'fair' ? 'outline' : 'destructive'
-                                  }
-                                  className={`mt-2 ${
-                                    aggregated.performanceIndicators.cpc === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                    aggregated.performanceIndicators.cpc === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                    aggregated.performanceIndicators.cpc === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                  }`}
-                                >
-                                  {aggregated.performanceIndicators.cpc === 'excellent' && '🟢 Excellent'}
-                                  {aggregated.performanceIndicators.cpc === 'good' && '🔵 Good'}
-                                  {aggregated.performanceIndicators.cpc === 'fair' && '🟡 Fair'}
-                                  {aggregated.performanceIndicators.cpc === 'poor' && '🔴 Poor'}
-                                </Badge>
-                              )}
+                              {renderPerformanceBadge('cpc', aggregated.cpc, 'lower-better')}
                             </CardContent>
                           </Card>
                         )}
@@ -1801,26 +1827,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpm)}
                               </p>
-                              {campaignData?.industry && aggregated.performanceIndicators?.cpm && (
-                                <Badge 
-                                  variant={
-                                    aggregated.performanceIndicators.cpm === 'excellent' ? 'default' :
-                                    aggregated.performanceIndicators.cpm === 'good' ? 'secondary' :
-                                    aggregated.performanceIndicators.cpm === 'fair' ? 'outline' : 'destructive'
-                                  }
-                                  className={`mt-2 ${
-                                    aggregated.performanceIndicators.cpm === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                    aggregated.performanceIndicators.cpm === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                    aggregated.performanceIndicators.cpm === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                  }`}
-                                >
-                                  {aggregated.performanceIndicators.cpm === 'excellent' && '🟢 Excellent'}
-                                  {aggregated.performanceIndicators.cpm === 'good' && '🔵 Good'}
-                                  {aggregated.performanceIndicators.cpm === 'fair' && '🟡 Fair'}
-                                  {aggregated.performanceIndicators.cpm === 'poor' && '🔴 Poor'}
-                                </Badge>
-                              )}
+                              {renderPerformanceBadge('cpm', aggregated.cpm, 'lower-better')}
                             </CardContent>
                           </Card>
                         )}
@@ -1838,26 +1845,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(aggregated.cvr)}
                               </p>
-                              {campaignData?.industry && aggregated.performanceIndicators?.cvr && (
-                                <Badge 
-                                  variant={
-                                    aggregated.performanceIndicators.cvr === 'excellent' ? 'default' :
-                                    aggregated.performanceIndicators.cvr === 'good' ? 'secondary' :
-                                    aggregated.performanceIndicators.cvr === 'fair' ? 'outline' : 'destructive'
-                                  }
-                                  className={`mt-2 ${
-                                    aggregated.performanceIndicators.cvr === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                    aggregated.performanceIndicators.cvr === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                    aggregated.performanceIndicators.cvr === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                  }`}
-                                >
-                                  {aggregated.performanceIndicators.cvr === 'excellent' && '🟢 Excellent'}
-                                  {aggregated.performanceIndicators.cvr === 'good' && '🔵 Good'}
-                                  {aggregated.performanceIndicators.cvr === 'fair' && '🟡 Fair'}
-                                  {aggregated.performanceIndicators.cvr === 'poor' && '🔴 Poor'}
-                                </Badge>
-                              )}
+                              {renderPerformanceBadge('cvr', aggregated.cvr, 'higher-better')}
                             </CardContent>
                           </Card>
                         )}
@@ -1875,26 +1863,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpa)}
                               </p>
-                              {campaignData?.industry && aggregated.performanceIndicators?.cpa && (
-                                <Badge 
-                                  variant={
-                                    aggregated.performanceIndicators.cpa === 'excellent' ? 'default' :
-                                    aggregated.performanceIndicators.cpa === 'good' ? 'secondary' :
-                                    aggregated.performanceIndicators.cpa === 'fair' ? 'outline' : 'destructive'
-                                  }
-                                  className={`mt-2 ${
-                                    aggregated.performanceIndicators.cpa === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                    aggregated.performanceIndicators.cpa === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                    aggregated.performanceIndicators.cpa === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                  }`}
-                                >
-                                  {aggregated.performanceIndicators.cpa === 'excellent' && '🟢 Excellent'}
-                                  {aggregated.performanceIndicators.cpa === 'good' && '🔵 Good'}
-                                  {aggregated.performanceIndicators.cpa === 'fair' && '🟡 Fair'}
-                                  {aggregated.performanceIndicators.cpa === 'poor' && '🔴 Poor'}
-                                </Badge>
-                              )}
+                              {renderPerformanceBadge('cpa', aggregated.cpa, 'lower-better')}
                             </CardContent>
                           </Card>
                         )}
@@ -1912,26 +1881,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpl)}
                               </p>
-                              {campaignData?.industry && aggregated.performanceIndicators?.cpl && (
-                                <Badge 
-                                  variant={
-                                    aggregated.performanceIndicators.cpl === 'excellent' ? 'default' :
-                                    aggregated.performanceIndicators.cpl === 'good' ? 'secondary' :
-                                    aggregated.performanceIndicators.cpl === 'fair' ? 'outline' : 'destructive'
-                                  }
-                                  className={`mt-2 ${
-                                    aggregated.performanceIndicators.cpl === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                    aggregated.performanceIndicators.cpl === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                    aggregated.performanceIndicators.cpl === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                  }`}
-                                >
-                                  {aggregated.performanceIndicators.cpl === 'excellent' && '🟢 Excellent'}
-                                  {aggregated.performanceIndicators.cpl === 'good' && '🔵 Good'}
-                                  {aggregated.performanceIndicators.cpl === 'fair' && '🟡 Fair'}
-                                  {aggregated.performanceIndicators.cpl === 'poor' && '🔴 Poor'}
-                                </Badge>
-                              )}
+                              {renderPerformanceBadge('cpl', aggregated.cpl, 'lower-better')}
                             </CardContent>
                           </Card>
                         )}
@@ -1949,26 +1899,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(aggregated.er)}
                               </p>
-                              {campaignData?.industry && aggregated.performanceIndicators?.er && (
-                                <Badge 
-                                  variant={
-                                    aggregated.performanceIndicators.er === 'excellent' ? 'default' :
-                                    aggregated.performanceIndicators.er === 'good' ? 'secondary' :
-                                    aggregated.performanceIndicators.er === 'fair' ? 'outline' : 'destructive'
-                                  }
-                                  className={`mt-2 ${
-                                    aggregated.performanceIndicators.er === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                    aggregated.performanceIndicators.er === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                    aggregated.performanceIndicators.er === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                  }`}
-                                >
-                                  {aggregated.performanceIndicators.er === 'excellent' && '🟢 Excellent'}
-                                  {aggregated.performanceIndicators.er === 'good' && '🔵 Good'}
-                                  {aggregated.performanceIndicators.er === 'fair' && '🟡 Fair'}
-                                  {aggregated.performanceIndicators.er === 'poor' && '🔴 Poor'}
-                                </Badge>
-                              )}
+                              {renderPerformanceBadge('er', aggregated.er, 'higher-better')}
                             </CardContent>
                           </Card>
                         )}

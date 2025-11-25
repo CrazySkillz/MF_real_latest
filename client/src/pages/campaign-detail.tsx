@@ -1764,21 +1764,21 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     metric: '',
     name: '',
     category: 'performance',
-    benchmarkType: 'industry',
-    competitorName: '',
     unit: '',
     benchmarkValue: '',
     currentValue: '',
     industry: '',
     description: '',
-    source: '',
-    geographicLocation: '',
-    period: 'monthly',
-    confidenceLevel: '',
     alertsEnabled: false,
     alertThreshold: '',
     alertCondition: 'below' as 'below' | 'above' | 'equals',
     emailRecipients: ''
+  });
+
+  // Fetch industry list
+  const { data: industryData } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
+    queryKey: ['/api/industry-benchmarks'],
+    staleTime: Infinity, // Industry list doesn't change
   });
 
   // Create Benchmark mutation
@@ -1949,17 +1949,11 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       metric: '',
       name: '',
       category: 'performance',
-      benchmarkType: 'industry',
-      competitorName: '',
       unit: '',
       benchmarkValue: '',
       currentValue: '',
       industry: '',
       description: '',
-      source: '',
-      geographicLocation: '',
-      period: 'monthly',
-      confidenceLevel: '',
       alertsEnabled: false,
       alertThreshold: '',
       alertCondition: 'below',
@@ -2000,17 +1994,11 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       metric: benchmark.metric || '',
       name: benchmark.name || '',
       category: benchmark.category || 'performance',
-      benchmarkType: benchmark.benchmarkType || 'industry',
-      competitorName: benchmark.competitorName || '',
       unit: benchmark.unit || '',
       benchmarkValue: String(benchmark.benchmarkValue || ''),
       currentValue: String(benchmark.currentValue || ''),
       industry: benchmark.industry || '',
       description: benchmark.description || '',
-      source: benchmark.source || '',
-      geographicLocation: benchmark.geoLocation || '',
-      period: benchmark.period || 'monthly',
-      confidenceLevel: benchmark.confidenceLevel || '',
       alertsEnabled: benchmark.alertsEnabled || false,
       alertThreshold: String(benchmark.alertThreshold || ''),
       alertCondition: benchmark.alertCondition || 'below',
@@ -2574,26 +2562,52 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="benchmark-type">Benchmark Type</Label>
+                <Label htmlFor="benchmark-industry">Industry (Optional)</Label>
                 <Select
-                  value={benchmarkForm.benchmarkType}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, benchmarkType: value })}
+                  value={benchmarkForm.industry}
+                  onValueChange={async (value) => {
+                    // Update industry
+                    setBenchmarkForm({ ...benchmarkForm, industry: value });
+                    
+                    // If industry selected and metric selected, auto-fill benchmark value
+                    if (value && value !== 'other' && benchmarkForm.metric) {
+                      try {
+                        const response = await fetch(`/api/industry-benchmarks/${value}/${benchmarkForm.metric}`);
+                        if (response.ok) {
+                          const data = await response.json();
+                          setBenchmarkForm(prev => ({
+                            ...prev,
+                            benchmarkValue: String(data.value),
+                            unit: data.unit
+                          }));
+                        }
+                      } catch (error) {
+                        console.error('Failed to fetch benchmark value:', error);
+                      }
+                    }
+                  }}
                 >
-                  <SelectTrigger id="benchmark-type">
-                    <SelectValue />
+                  <SelectTrigger id="benchmark-industry">
+                    <SelectValue placeholder="Select industry for auto-fill or leave blank" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="industry">Industry Average</SelectItem>
-                    <SelectItem value="competitor">Competitor</SelectItem>
-                    <SelectItem value="historical">Historical</SelectItem>
-                    <SelectItem value="goal">Internal Goal</SelectItem>
+                    <SelectItem value="">None (Enter custom value)</SelectItem>
+                    {industryData?.industries.map((industry) => (
+                      <SelectItem key={industry.value} value={industry.value}>
+                        {industry.label}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="other">Other (Custom value)</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  💡 Select an industry to auto-fill benchmark value, or leave blank to enter custom value
+                </p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Description (Optional)</Label>
               <Textarea
                 id="description"
                 placeholder="Describe what this benchmark represents"
@@ -2677,37 +2691,6 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     <SelectItem value="$">$</SelectItem>
                     <SelectItem value="count">Count</SelectItem>
                     <SelectItem value="ratio">Ratio</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="industry">Industry</Label>
-                <Input
-                  id="industry"
-                  placeholder="e.g., E-commerce"
-                  value={benchmarkForm.industry}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, industry: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="period">Period</Label>
-                <Select
-                  value={benchmarkForm.period}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, period: value })}
-                >
-                  <SelectTrigger id="period">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

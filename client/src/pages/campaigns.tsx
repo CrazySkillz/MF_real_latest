@@ -1047,6 +1047,8 @@ export default function Campaigns() {
   });
 
   const handleSubmit = (data: CampaignFormData) => {
+    console.log('📋 Form submitted with data:', data);
+    console.log('📋 Industry value:', data.industry);
     setCampaignData(data);
     setShowConnectorsStep(true);
   };
@@ -1069,6 +1071,7 @@ export default function Campaigns() {
       };
       
       console.log('🔧 Creating campaign with platforms:', selectedPlatforms);
+      console.log('🔧 Campaign data includes industry:', campaignWithPlatforms.industry);
       
       // Create the campaign and wait for response
       const newCampaign = await new Promise((resolve, reject) => {

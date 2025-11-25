@@ -910,6 +910,7 @@ export default function Campaigns() {
       clientWebsite: "",
       label: "",
       budget: "",
+      industry: "",
     },
   });
 
@@ -920,6 +921,7 @@ export default function Campaigns() {
       clientWebsite: "",
       label: "",
       budget: "",
+      industry: "",
     },
   });
 

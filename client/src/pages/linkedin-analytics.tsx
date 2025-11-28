@@ -557,6 +557,7 @@ export default function LinkedInAnalytics() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
       toast({
         title: "Benchmark Updated",
         description: "Your LinkedIn benchmark has been updated successfully.",
@@ -566,17 +567,11 @@ export default function LinkedInAnalytics() {
       setBenchmarkForm({
         metric: '',
         name: '',
-        benchmarkType: '',
         unit: '',
         benchmarkValue: '',
         currentValue: '',
         industry: '',
         description: '',
-        source: '',
-        geographicLocation: '',
-        period: 'monthly',
-        confidenceLevel: '',
-        competitorName: '',
         alertsEnabled: false,
         alertThreshold: '',
         alertCondition: 'below',
@@ -587,6 +582,29 @@ export default function LinkedInAnalytics() {
       toast({
         title: "Error",
         description: error.message || "Failed to update benchmark",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete Benchmark mutation
+  const deleteBenchmarkMutation = useMutation({
+    mutationFn: async (benchmarkId: string) => {
+      const res = await apiRequest('DELETE', `/api/platforms/linkedin/benchmarks/${benchmarkId}`);
+      return res.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+      toast({
+        title: "Benchmark Deleted",
+        description: "The benchmark has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete benchmark",
         variant: "destructive",
       });
     }
@@ -2981,17 +2999,11 @@ export default function LinkedInAnalytics() {
                                     setBenchmarkForm({
                                       metric: benchmark.metric || '',
                                       name: benchmark.name || '',
-                                      benchmarkType: benchmark.benchmarkType || '',
                                       unit: benchmark.unit || '',
                                       benchmarkValue: benchmark.benchmarkValue || '',
                                       currentValue: benchmark.currentValue || '',
                                       industry: benchmark.industry || '',
                                       description: benchmark.description || '',
-                                      source: benchmark.source || '',
-                                      geographicLocation: benchmark.geoLocation || '',
-                                      period: benchmark.period || 'monthly',
-                                      confidenceLevel: benchmark.confidenceLevel || '',
-                                      competitorName: benchmark.competitorName || '',
                                       alertsEnabled: benchmark.alertsEnabled || false,
                                       alertThreshold: benchmark.alertThreshold || '',
                                       alertCondition: benchmark.alertCondition || 'below',
@@ -3003,6 +3015,19 @@ export default function LinkedInAnalytics() {
                                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                 >
                                   <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (window.confirm(`Are you sure you want to delete "${benchmark.name}"? This will also remove the performance badge from the Overview tab.`)) {
+                                      deleteBenchmarkMutation.mutate(benchmark.id);
+                                    }
+                                  }}
+                                  data-testid={`button-delete-benchmark-${benchmark.id}`}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                >
+                                  <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
                             </div>

@@ -2389,21 +2389,34 @@ export class DatabaseStorage implements IStorage {
 
   // Benchmark methods for DatabaseStorage
   async getCampaignBenchmarks(campaignId: string): Promise<Benchmark[]> {
+    console.log(`[Storage] Getting benchmarks for campaign: ${campaignId}`);
+    
     // Get benchmarks that are either:
-    // 1. Scoped to all campaigns (applyTo = 'all' or specificCampaignId is null)
-    // 2. Scoped specifically to this campaign (specificCampaignId = campaignId)
-    return db.select().from(benchmarks)
+    // 1. Created in this campaign AND scoped to all campaigns (applyTo = 'all')
+    // 2. Scoped specifically to this campaign (specificCampaignId = campaignId), regardless of where created
+    const results = await db.select().from(benchmarks)
       .where(
-        and(
-          eq(benchmarks.campaignId, campaignId),
-          or(
-            eq(benchmarks.applyTo, 'all'),
-            isNull(benchmarks.specificCampaignId),
-            eq(benchmarks.specificCampaignId, campaignId)
-          )
+        or(
+          // Global benchmarks created in this campaign
+          and(
+            eq(benchmarks.campaignId, campaignId),
+            or(
+              eq(benchmarks.applyTo, 'all'),
+              isNull(benchmarks.specificCampaignId)
+            )
+          ),
+          // Campaign-specific benchmarks targeting this campaign (from any source)
+          eq(benchmarks.specificCampaignId, campaignId)
         )
       )
       .orderBy(benchmarks.category, benchmarks.name);
+    
+    console.log(`[Storage] Found ${results.length} benchmarks for campaign ${campaignId}`);
+    results.forEach(b => {
+      console.log(`  - ${b.name} (metric: ${b.metric}, applyTo: ${b.applyTo}, specificCampaignId: ${b.specificCampaignId})`);
+    });
+    
+    return results;
   }
 
   async getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<Benchmark[]> {

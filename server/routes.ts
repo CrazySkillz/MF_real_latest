@@ -1915,9 +1915,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Campaign-level Benchmark routes
   app.get("/api/campaigns/:id/benchmarks", async (req, res) => {
+    console.log(`[API] GET /api/campaigns/${req.params.id}/benchmarks`);
     try {
       const { id } = req.params;
       const benchmarks = await storage.getCampaignBenchmarks(id);
+      console.log(`[API] Returning ${benchmarks.length} benchmarks for campaign ${id}`);
       res.json(benchmarks);
     } catch (error) {
       console.error('Campaign Benchmark fetch error:', error);

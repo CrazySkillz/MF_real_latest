@@ -256,11 +256,12 @@ export default function LinkedInAnalytics() {
     console.log('Looking for benchmark:', metricName);
     console.log('Available benchmarks:', benchmarks);
     
+    // STRICT MATCHING: Only match by metric field, NOT by name
+    // This prevents wrong benchmarks from being used
     const found = benchmarks.find((b: any) => {
       const metricMatch = b.metric?.toLowerCase() === metricName.toLowerCase();
-      const nameMatch = b.name?.toLowerCase().includes(metricName.toLowerCase());
-      console.log(`Checking benchmark: metric="${b.metric}", name="${b.name}", metricMatch=${metricMatch}, nameMatch=${nameMatch}`);
-      return metricMatch || nameMatch;
+      console.log(`Checking benchmark: metric="${b.metric}", name="${b.name}", metricMatch=${metricMatch}`);
+      return metricMatch; // Only return if metric field matches exactly
     });
     
     console.log('Found benchmark:', found);

@@ -700,6 +700,22 @@ export default function LinkedInAnalytics() {
 
   // Handle create Benchmark
   const handleCreateBenchmark = () => {
+    // Check for duplicate metric benchmark
+    const existingBenchmark = benchmarks.find((b: any) => 
+      b.metric?.toLowerCase() === benchmarkForm.metric?.toLowerCase() &&
+      b.applyTo === benchmarkForm.applyTo &&
+      b.specificCampaignId === benchmarkForm.specificCampaignId
+    );
+    
+    if (existingBenchmark && !editingBenchmark) {
+      toast({
+        title: "Duplicate Benchmark",
+        description: `A benchmark for ${benchmarkForm.metric.toUpperCase()} already exists. Please edit the existing benchmark or delete it first.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const derivedCategory = getCategoryFromMetric(benchmarkForm.metric);
     const benchmarkData = {
       campaignId: campaignId,
@@ -3070,16 +3086,22 @@ export default function LinkedInAnalytics() {
                           <CardContent className="p-6">
                             <div className="flex items-start justify-between mb-4">
                               <div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
                                     {benchmark.name}
                                   </h3>
-                                  {benchmark.specificCampaignId && (
+                                  {/* Metric Type Badge */}
+                                  {benchmark.metric && (
+                                    <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">
+                                      {benchmark.metric.toUpperCase()}
+                                    </Badge>
+                                  )}
+                                  {/* Scope Badge */}
+                                  {benchmark.specificCampaignId ? (
                                     <Badge variant="outline" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
                                       Campaign: {benchmark.specificCampaignId}
                                     </Badge>
-                                  )}
-                                  {benchmark.applyTo === 'all' && (
+                                  ) : (
                                     <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                                       All Campaigns
                                     </Badge>

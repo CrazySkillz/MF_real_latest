@@ -552,11 +552,11 @@ export default function LinkedInAnalytics() {
     onSuccess: async (createdBenchmark) => {
       console.log('Benchmark created successfully:', createdBenchmark);
       
-      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
       
-      // Force immediate refetch
+      // Force immediate refetch for both Overview and Benchmarks tab
       await refetchBenchmarks();
+      await refetchBenchmarksTab();
       
       toast({
         title: "Benchmark Created",
@@ -599,11 +599,11 @@ export default function LinkedInAnalytics() {
       console.log('Benchmark updated successfully:', updatedBenchmark);
       console.log('Invalidating queries to refresh UI...');
       
-      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
       
-      // Force immediate refetch
+      // Force immediate refetch for both Overview and Benchmarks tab
       await refetchBenchmarks();
+      await refetchBenchmarksTab();
       
       console.log('Queries invalidated, UI should update now');
       
@@ -649,11 +649,11 @@ export default function LinkedInAnalytics() {
     onSuccess: async () => {
       console.log('Benchmark deleted successfully');
       
-      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
       
-      // Force immediate refetch
+      // Force immediate refetch for both Overview and Benchmarks tab
       await refetchBenchmarks();
+      await refetchBenchmarksTab();
       
       // Clear editing state and reset form
       setEditingBenchmark(null);
@@ -1730,14 +1730,11 @@ export default function LinkedInAnalytics() {
   });
 
   // Fetch platform-level LinkedIn Benchmarks filtered by campaignId
-  const { data: benchmarksData, isLoading: benchmarksLoading} = useQuery({
-    queryKey: ['/api/platforms/linkedin/benchmarks', campaignId],
-    queryFn: async () => {
-      const response = await fetch(`/api/platforms/linkedin/benchmarks?campaignId=${campaignId}`);
-      if (!response.ok) throw new Error('Failed to fetch benchmarks');
-      return response.json();
-    },
+  const { data: benchmarksData, isLoading: benchmarksLoading, refetch: refetchBenchmarksTab } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/benchmarks`],
     enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const formatNumber = (num: number | string) => {

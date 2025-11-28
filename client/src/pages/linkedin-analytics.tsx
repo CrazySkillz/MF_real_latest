@@ -109,21 +109,21 @@ export default function LinkedInAnalytics() {
   const [benchmarkForm, setBenchmarkForm] = useState({
     metric: '',
     name: '',
-    benchmarkType: '',
     unit: '',
     benchmarkValue: '',
     currentValue: '',
     industry: '',
     description: '',
-    source: '',
-    geographicLocation: '',
-    period: 'monthly',
-    confidenceLevel: '',
-    competitorName: '',
     alertsEnabled: false,
     alertThreshold: '',
     alertCondition: 'below',
     emailRecipients: ''
+  });
+
+  // Fetch industry list for benchmark modal
+  const { data: industryData } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
+    queryKey: ['/api/industry-benchmarks'],
+    staleTime: Infinity,
   });
 
   // Report Form State
@@ -3999,98 +3999,49 @@ export default function LinkedInAnalytics() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-industry">Industry</Label>
-                <Input
-                  id="benchmark-industry"
-                  placeholder="e.g., SaaS, E-commerce"
-                  value={benchmarkForm.industry}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, industry: e.target.value })}
-                  data-testid="input-benchmark-industry"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-source">Source</Label>
-                <Input
-                  id="benchmark-source"
-                  placeholder="e.g., Industry Report, LinkedIn"
-                  value={benchmarkForm.source}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, source: e.target.value })}
-                  data-testid="input-benchmark-source"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-industry">Industry (Optional)</Label>
+              <Select
+                value={benchmarkForm.industry}
+                onValueChange={async (value) => {
+                  // Update industry
+                  setBenchmarkForm({ ...benchmarkForm, industry: value });
+                  
+                  // If industry selected and metric selected, auto-fill benchmark value
+                  if (value && value !== 'other' && benchmarkForm.metric) {
+                    try {
+                      const response = await fetch(`/api/industry-benchmarks/${value}/${benchmarkForm.metric}`);
+                      if (response.ok) {
+                        const data = await response.json();
+                        setBenchmarkForm(prev => ({
+                          ...prev,
+                          benchmarkValue: String(data.value),
+                          unit: data.unit
+                        }));
+                      }
+                    } catch (error) {
+                      console.error('Failed to fetch benchmark value:', error);
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger id="benchmark-industry" data-testid="select-benchmark-industry">
+                  <SelectValue placeholder="Select industry for auto-fill or leave blank" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None (Enter custom value)</SelectItem>
+                  {industryData?.industries.map((industry) => (
+                    <SelectItem key={industry.value} value={industry.value}>
+                      {industry.label}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="other">Other (Custom value)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                💡 Select an industry to auto-fill benchmark value, or leave blank to enter custom value
+              </p>
             </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-period">Period</Label>
-                <Select
-                  value={benchmarkForm.period}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, period: value })}
-                >
-                  <SelectTrigger id="benchmark-period" data-testid="select-benchmark-period">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-type">Benchmark Type</Label>
-                <Select
-                  value={benchmarkForm.benchmarkType}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, benchmarkType: value })}
-                >
-                  <SelectTrigger id="benchmark-type" data-testid="select-benchmark-type">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="industry">Industry Average</SelectItem>
-                    <SelectItem value="competitor">Competitor</SelectItem>
-                    <SelectItem value="internal">Internal Target</SelectItem>
-                    <SelectItem value="best-in-class">Best in Class</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-confidence">Confidence Level</Label>
-                <Select
-                  value={benchmarkForm.confidenceLevel}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, confidenceLevel: value })}
-                >
-                  <SelectTrigger id="benchmark-confidence" data-testid="select-benchmark-confidence">
-                    <SelectValue placeholder="Select confidence" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Competitor Name - Conditional */}
-            {benchmarkForm.benchmarkType === 'competitor' && (
-              <div className="space-y-2">
-                <Label htmlFor="competitor-name">Competitor Name *</Label>
-                <Input
-                  id="competitor-name"
-                  placeholder="e.g., Acme Corp, Competitor X"
-                  value={benchmarkForm.competitorName}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, competitorName: e.target.value })}
-                  data-testid="input-competitor-name"
-                />
-              </div>
-            )}
 
             {/* Email Alerts Section */}
             <div className="space-y-4 pt-4 border-t">

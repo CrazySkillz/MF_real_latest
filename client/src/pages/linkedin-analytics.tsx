@@ -1784,11 +1784,11 @@ export default function LinkedInAnalytics() {
     refetchOnMount: 'always',
   });
 
-  // Debug logging for benchmarks
-  console.log('[Benchmarks Tab] Campaign ID:', campaignId);
-  console.log('[Benchmarks Tab] Benchmarks loading:', benchmarksLoading);
-  console.log('[Benchmarks Tab] Benchmarks data:', benchmarksData);
-  console.log('[Benchmarks Tab] Number of benchmarks:', Array.isArray(benchmarksData) ? benchmarksData.length : 'not an array');
+  // Debug logging for benchmarks - VERSION 2025-11-28-20:00
+  console.log('[Benchmarks Tab V2] Campaign ID:', campaignId);
+  console.log('[Benchmarks Tab V2] Benchmarks loading:', benchmarksLoading);
+  console.log('[Benchmarks Tab V2] Benchmarks data:', benchmarksData);
+  console.log('[Benchmarks Tab V2] Number of benchmarks:', Array.isArray(benchmarksData) ? benchmarksData.length : 'not an array');
   
   if (Array.isArray(benchmarksData) && benchmarksData.length > 0) {
     console.log('[Benchmarks Tab] Benchmark details:');

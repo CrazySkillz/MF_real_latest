@@ -3127,7 +3127,11 @@ export default function LinkedInAnalytics() {
 
                     {/* Benchmark Cards */}
                     <div className="space-y-4">
-                      {(benchmarksData as any[]).map((benchmark: any) => (
+                      {console.log('[MAPPING] About to map benchmarks:', benchmarksData.length)}
+                      {(benchmarksData as any[]).map((benchmark: any, index: number) => {
+                        console.log(`[MAPPING] Rendering benchmark ${index + 1}:`, benchmark.name);
+                        try {
+                          return (
                         <Card key={benchmark.id} data-testid={`benchmark-card-${benchmark.id}`}>
                           <CardContent className="p-6">
                             <div className="flex items-start justify-between mb-4">
@@ -3316,7 +3320,13 @@ export default function LinkedInAnalytics() {
                             )}
                           </CardContent>
                         </Card>
-                      ))}
+                        );
+                        } catch (error) {
+                          console.error(`[MAPPING ERROR] Failed to render benchmark ${index + 1}:`, error);
+                          console.error('[MAPPING ERROR] Benchmark data:', benchmark);
+                          return <div key={benchmark.id} className="text-red-500 p-4 border border-red-500">Error rendering benchmark: {benchmark.name}</div>;
+                        }
+                      })}
                     </div>
                   </>
                 ) : (

@@ -250,10 +250,18 @@ export default function LinkedInAnalytics() {
 
   // Helper function to get benchmark for a metric
   const getBenchmarkForMetric = (metricName: string) => {
-    return benchmarks.find((b: any) => 
-      b.metric?.toLowerCase() === metricName.toLowerCase() ||
-      b.name?.toLowerCase().includes(metricName.toLowerCase())
-    );
+    console.log('Looking for benchmark:', metricName);
+    console.log('Available benchmarks:', benchmarks);
+    
+    const found = benchmarks.find((b: any) => {
+      const metricMatch = b.metric?.toLowerCase() === metricName.toLowerCase();
+      const nameMatch = b.name?.toLowerCase().includes(metricName.toLowerCase());
+      console.log(`Checking benchmark: metric="${b.metric}", name="${b.name}", metricMatch=${metricMatch}, nameMatch=${nameMatch}`);
+      return metricMatch || nameMatch;
+    });
+    
+    console.log('Found benchmark:', found);
+    return found;
   };
 
   // Helper function to calculate performance level based on benchmark
@@ -280,9 +288,15 @@ export default function LinkedInAnalytics() {
   // Helper function to render performance badge
   const renderPerformanceBadge = (metricName: string, currentValue: number | undefined, metricType: 'higher-better' | 'lower-better' = 'higher-better') => {
     const benchmark = getBenchmarkForMetric(metricName);
-    if (!benchmark || currentValue === undefined) return null;
+    console.log(`renderPerformanceBadge for ${metricName}: benchmark=`, benchmark, `currentValue=${currentValue}`);
+    
+    if (!benchmark || currentValue === undefined) {
+      console.log(`No badge for ${metricName}: benchmark=${!!benchmark}, currentValue=${currentValue}`);
+      return null;
+    }
     
     const performanceLevel = getPerformanceLevel(currentValue, parseFloat(benchmark.benchmarkValue), metricType);
+    console.log(`Performance level for ${metricName}: ${performanceLevel} (current=${currentValue}, benchmark=${benchmark.benchmarkValue})`);
     
     return (
       <Badge 

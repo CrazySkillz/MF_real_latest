@@ -1928,7 +1928,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/campaigns/:id/benchmarks", async (req, res) => {
-    console.log('=== CREATE CAMPAIGN BENCHMARK ===');
+    console.log('\n\n=== CREATE CAMPAIGN BENCHMARK ===');
+    console.log('Campaign ID from URL:', req.params.id);
     console.log('Request body:', JSON.stringify(req.body, null, 2));
     
     try {
@@ -1946,18 +1947,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentValue: req.body.currentValue === '' ? null : req.body.currentValue
       };
       
-      console.log('Cleaned data:', JSON.stringify(cleanedData, null, 2));
+      console.log('🔧 Cleaned data:', JSON.stringify(cleanedData, null, 2));
+      console.log('🎯 KEY FIELDS:');
+      console.log('   - campaignId:', cleanedData.campaignId);
+      console.log('   - applyTo:', cleanedData.applyTo);
+      console.log('   - specificCampaignId:', cleanedData.specificCampaignId);
       
       const validatedBenchmark = insertBenchmarkSchema.parse(cleanedData);
       
-      console.log('Validated benchmark:', JSON.stringify(validatedBenchmark, null, 2));
+      console.log('✅ Validated benchmark:', JSON.stringify(validatedBenchmark, null, 2));
       
       const benchmark = await storage.createBenchmark(validatedBenchmark);
-      console.log('Created benchmark:', JSON.stringify(benchmark, null, 2));
+      console.log('💾 Created benchmark in database:', JSON.stringify(benchmark, null, 2));
+      console.log('🔑 SAVED VALUES:');
+      console.log('   - id:', benchmark.id);
+      console.log('   - campaignId:', benchmark.campaignId);
+      console.log('   - applyTo:', benchmark.applyTo);
+      console.log('   - specificCampaignId:', benchmark.specificCampaignId);
+      console.log('=== END CREATE BENCHMARK ===\n\n');
       
       res.json(benchmark);
     } catch (error) {
-      console.error('Campaign Benchmark creation error:', error);
+      console.error('❌ Campaign Benchmark creation error:', error);
       if (error instanceof z.ZodError) {
         console.error('Zod validation errors:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid benchmark data", errors: error.errors });

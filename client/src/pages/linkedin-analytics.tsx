@@ -3102,11 +3102,20 @@ export default function LinkedInAnalytics() {
                                     const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';
                                     const isAbove = current > benchmarkVal;
                                     
+                                    // Determine if metric is "lower is better" (cost metrics)
+                                    const metricLower = benchmark.metric?.toLowerCase() || '';
+                                    const isLowerBetter = ['cpc', 'cpm', 'cpa', 'cpl'].includes(metricLower) || 
+                                                         benchmark.category === 'cost' ||
+                                                         benchmark.unit === '$';
+                                    
+                                    // For lower-better metrics, flip the logic
+                                    const isGoodPerformance = isLowerBetter ? !isAbove : isAbove;
+                                    
                                     return (
                                       <>
                                         <Badge 
-                                          variant={isAbove ? "default" : "secondary"}
-                                          className={isAbove ? "bg-green-600" : "bg-red-600"}
+                                          variant={isGoodPerformance ? "default" : "secondary"}
+                                          className={isGoodPerformance ? "bg-green-600" : "bg-red-600"}
                                         >
                                           {isAbove ? (
                                             <>
@@ -3121,7 +3130,7 @@ export default function LinkedInAnalytics() {
                                           )}
                                         </Badge>
                                         <span className="text-xs text-slate-500">
-                                          {isAbove ? '🎉 Outperforming!' : '⚠️ Needs improvement'}
+                                          {isGoodPerformance ? '🎉 Outperforming!' : '⚠️ Needs improvement'}
                                         </span>
                                       </>
                                     );

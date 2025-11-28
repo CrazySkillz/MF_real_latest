@@ -1936,11 +1936,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cleanedData = {
         ...req.body,
         campaignId: id,
-        platformType: null, // Campaign-level benchmark (not platform-specific)
+        platformType: req.body.platformType || 'linkedin', // Use provided platformType or default to linkedin
+        applyTo: req.body.applyTo || 'all', // Default to 'all' if not specified
+        specificCampaignId: req.body.applyTo === 'specific' ? req.body.specificCampaignId : null,
         alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
         benchmarkValue: req.body.benchmarkValue === '' ? null : req.body.benchmarkValue,
         currentValue: req.body.currentValue === '' ? null : req.body.currentValue
       };
+      
+      console.log('Cleaned data:', JSON.stringify(cleanedData, null, 2));
       
       const validatedBenchmark = insertBenchmarkSchema.parse(cleanedData);
       
@@ -1972,6 +1976,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (cleanedData.alertThreshold === '') cleanedData.alertThreshold = null;
       if (cleanedData.benchmarkValue === '') cleanedData.benchmarkValue = null;
       if (cleanedData.currentValue === '') cleanedData.currentValue = null;
+      if (cleanedData.applyTo === 'specific' && !cleanedData.specificCampaignId) {
+        return res.status(400).json({ message: "specificCampaignId is required when applyTo is 'specific'" });
+      }
+      if (cleanedData.applyTo === 'all') {
+        cleanedData.specificCampaignId = null;
+      }
       
       const validatedBenchmark = insertBenchmarkSchema.partial().parse(cleanedData);
       console.log('Validated benchmark update:', JSON.stringify(validatedBenchmark, null, 2));

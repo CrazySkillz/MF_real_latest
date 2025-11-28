@@ -701,16 +701,32 @@ export default function LinkedInAnalytics() {
   // Handle create Benchmark
   const handleCreateBenchmark = () => {
     // Check for duplicate metric benchmark
-    const existingBenchmark = benchmarks.find((b: any) => 
-      b.metric?.toLowerCase() === benchmarkForm.metric?.toLowerCase() &&
-      b.applyTo === benchmarkForm.applyTo &&
-      b.specificCampaignId === benchmarkForm.specificCampaignId
-    );
+    const existingBenchmarks = (benchmarksData as any[]) || [];
+    const existingBenchmark = existingBenchmarks.find((b: any) => {
+      const metricMatch = b.metric?.toLowerCase() === benchmarkForm.metric?.toLowerCase();
+      const scopeMatch = benchmarkForm.applyTo === 'specific' 
+        ? b.specificCampaignId === benchmarkForm.specificCampaignId
+        : b.applyTo === 'all' || !b.specificCampaignId;
+      
+      console.log('Checking duplicate:', {
+        benchmark: b,
+        metricMatch,
+        scopeMatch,
+        formMetric: benchmarkForm.metric,
+        formApplyTo: benchmarkForm.applyTo,
+        formCampaignId: benchmarkForm.specificCampaignId
+      });
+      
+      return metricMatch && scopeMatch;
+    });
     
     if (existingBenchmark && !editingBenchmark) {
+      const scopeText = benchmarkForm.applyTo === 'specific' 
+        ? `for campaign ${benchmarkForm.specificCampaignId}`
+        : 'for All Campaigns';
       toast({
         title: "Duplicate Benchmark",
-        description: `A benchmark for ${benchmarkForm.metric.toUpperCase()} already exists. Please edit the existing benchmark or delete it first.`,
+        description: `A benchmark for ${benchmarkForm.metric.toUpperCase()} ${scopeText} already exists. Please edit the existing benchmark or delete it first.`,
         variant: "destructive",
       });
       return;

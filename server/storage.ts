@@ -1,7 +1,7 @@
 import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type KPI, type InsertKPI, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, kpis, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { eq, and, or, isNull, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Campaigns
@@ -2389,8 +2389,20 @@ export class DatabaseStorage implements IStorage {
 
   // Benchmark methods for DatabaseStorage
   async getCampaignBenchmarks(campaignId: string): Promise<Benchmark[]> {
+    // Get benchmarks that are either:
+    // 1. Scoped to all campaigns (applyTo = 'all' or specificCampaignId is null)
+    // 2. Scoped specifically to this campaign (specificCampaignId = campaignId)
     return db.select().from(benchmarks)
-      .where(eq(benchmarks.campaignId, campaignId))
+      .where(
+        and(
+          eq(benchmarks.campaignId, campaignId),
+          or(
+            eq(benchmarks.applyTo, 'all'),
+            isNull(benchmarks.specificCampaignId),
+            eq(benchmarks.specificCampaignId, campaignId)
+          )
+        )
+      )
       .orderBy(benchmarks.category, benchmarks.name);
   }
 

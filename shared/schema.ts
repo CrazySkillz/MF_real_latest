@@ -325,6 +325,9 @@ export const benchmarks = pgTable("benchmarks", {
   status: text("status").notNull().default("active"), // 'active', 'archived', 'draft'
   variance: decimal("variance", { precision: 10, scale: 2 }), // % difference from benchmark (positive = above benchmark)
   confidenceLevel: text("confidence_level").default("medium"), // 'low', 'medium', 'high'
+  // Benchmark scope fields
+  applyTo: text("apply_to").notNull().default("all"), // 'all' for all campaigns, 'specific' for specific campaign
+  specificCampaignId: text("specific_campaign_id"), // Campaign ID when applyTo is 'specific', null when 'all'
   // Alert and notification settings
   alertThreshold: decimal("alert_threshold", { precision: 10, scale: 2 }), // Threshold value to trigger alert
   alertCondition: text("alert_condition").default("below"), // 'below', 'above', 'equals'
@@ -743,6 +746,8 @@ export const insertBenchmarkSchema = createInsertSchema(benchmarks).pick({
   status: true,
   variance: true,
   confidenceLevel: true,
+  applyTo: true,
+  specificCampaignId: true,
   alertThreshold: true,
   alertCondition: true,
   alertsEnabled: true,

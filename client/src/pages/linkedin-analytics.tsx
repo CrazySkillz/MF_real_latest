@@ -128,23 +128,6 @@ export default function LinkedInAnalytics() {
     staleTime: Infinity,
   });
 
-  // Extract unique campaigns from ads data
-  const availableCampaigns = useMemo(() => {
-    if (!adsData || !Array.isArray(adsData)) return [];
-    
-    const campaignMap = new Map();
-    adsData.forEach((ad: any) => {
-      if (ad.campaignName) {
-        campaignMap.set(ad.campaignName, {
-          name: ad.campaignName,
-          id: ad.campaignId || ad.campaignName
-        });
-      }
-    });
-    
-    return Array.from(campaignMap.values());
-  }, [adsData]);
-
   // Fallback industry list if API fails
   const fallbackIndustries = [
     { value: 'technology', label: 'Technology' },
@@ -369,6 +352,23 @@ export default function LinkedInAnalytics() {
     queryKey: ['/api/linkedin/imports', sessionId, 'ads'],
     enabled: !!sessionId,
   });
+
+  // Extract unique campaigns from ads data
+  const availableCampaigns = useMemo(() => {
+    if (!adsData || !Array.isArray(adsData)) return [];
+    
+    const campaignMap = new Map();
+    adsData.forEach((ad: any) => {
+      if (ad.campaignName) {
+        campaignMap.set(ad.campaignName, {
+          name: ad.campaignName,
+          id: ad.campaignId || ad.campaignName
+        });
+      }
+    });
+    
+    return Array.from(campaignMap.values());
+  }, [adsData]);
 
   // Fetch LinkedIn reports filtered by campaignId
   const { data: reportsData, isLoading: reportsLoading } = useQuery({

@@ -3016,19 +3016,35 @@ export default function LinkedInAnalytics() {
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    if (window.confirm(`Are you sure you want to delete "${benchmark.name}"? This will also remove the performance badge from the Overview tab.`)) {
-                                      deleteBenchmarkMutation.mutate(benchmark.id);
-                                    }
-                                  }}
-                                  data-testid={`button-delete-benchmark-${benchmark.id}`}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                      data-testid={`button-delete-benchmark-${benchmark.id}`}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Benchmark</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete "{benchmark.name}"? This will also remove the performance badge from the Overview tab. This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteBenchmarkMutation.mutate(benchmark.id)}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             </div>
 

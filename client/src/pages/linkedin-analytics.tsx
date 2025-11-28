@@ -243,9 +243,12 @@ export default function LinkedInAnalytics() {
   });
 
   // Fetch campaign benchmarks
-  const { data: benchmarks = [] } = useQuery<any[]>({
+  const { data: benchmarks = [], refetch: refetchBenchmarks } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignId}/benchmarks`],
     enabled: !!campaignId,
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 
   // Helper function to get benchmark for a metric
@@ -266,23 +269,35 @@ export default function LinkedInAnalytics() {
 
   // Helper function to calculate performance level based on benchmark
   const getPerformanceLevel = (currentValue: number, benchmarkValue: number, metricType: 'higher-better' | 'lower-better' = 'higher-better'): 'excellent' | 'good' | 'fair' | 'poor' => {
-    if (!benchmarkValue || benchmarkValue === 0) return 'fair';
+    console.log(`getPerformanceLevel: current=${currentValue}, benchmark=${benchmarkValue}, type=${metricType}`);
+    
+    if (!benchmarkValue || benchmarkValue === 0) {
+      console.log('No benchmark value, returning fair');
+      return 'fair';
+    }
     
     const ratio = currentValue / benchmarkValue;
+    console.log(`Ratio: ${ratio} (${currentValue} / ${benchmarkValue})`);
+    
+    let result: 'excellent' | 'good' | 'fair' | 'poor';
     
     if (metricType === 'higher-better') {
       // For metrics where higher is better (CTR, CVR, ER, ROI, ROAS)
-      if (ratio >= 1.2) return 'excellent';
-      if (ratio >= 1.0) return 'good';
-      if (ratio >= 0.8) return 'fair';
-      return 'poor';
+      if (ratio >= 1.2) result = 'excellent';
+      else if (ratio >= 1.0) result = 'good';
+      else if (ratio >= 0.8) result = 'fair';
+      else result = 'poor';
+      console.log(`Higher-better logic: ratio ${ratio} >= 1.2? ${ratio >= 1.2}, >= 1.0? ${ratio >= 1.0}, >= 0.8? ${ratio >= 0.8} → ${result}`);
     } else {
       // For metrics where lower is better (CPC, CPM, CPA, CPL)
-      if (ratio <= 0.8) return 'excellent';
-      if (ratio <= 1.0) return 'good';
-      if (ratio <= 1.2) return 'fair';
-      return 'poor';
+      if (ratio <= 0.8) result = 'excellent';
+      else if (ratio <= 1.0) result = 'good';
+      else if (ratio <= 1.2) result = 'fair';
+      else result = 'poor';
+      console.log(`Lower-better logic: ratio ${ratio} <= 0.8? ${ratio <= 0.8}, <= 1.0? ${ratio <= 1.0}, <= 1.2? ${ratio <= 1.2} → ${result}`);
     }
+    
+    return result;
   };
 
   // Helper function to render performance badge

@@ -529,9 +529,15 @@ export default function LinkedInAnalytics() {
       const res = await apiRequest('POST', '/api/platforms/linkedin/benchmarks', benchmarkData);
       return res.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (createdBenchmark) => {
+      console.log('Benchmark created successfully:', createdBenchmark);
+      
       await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+      
+      // Force immediate refetch
+      await refetchBenchmarks();
+      
       toast({
         title: "Benchmark Created",
         description: "Your LinkedIn benchmark has been created successfully. The performance badge will now appear in the Overview tab.",
@@ -563,12 +569,22 @@ export default function LinkedInAnalytics() {
   // Update Benchmark mutation
   const updateBenchmarkMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      console.log('Updating benchmark:', id, 'with data:', data);
       const res = await apiRequest('PUT', `/api/platforms/linkedin/benchmarks/${id}`, data);
       return res.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (updatedBenchmark) => {
+      console.log('Benchmark updated successfully:', updatedBenchmark);
+      console.log('Invalidating queries to refresh UI...');
+      
       await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+      
+      // Force immediate refetch
+      await refetchBenchmarks();
+      
+      console.log('Queries invalidated, UI should update now');
+      
       toast({
         title: "Benchmark Updated",
         description: "Your LinkedIn benchmark has been updated successfully. The performance badge in the Overview tab will reflect the new values.",
@@ -590,6 +606,7 @@ export default function LinkedInAnalytics() {
       });
     },
     onError: (error: any) => {
+      console.error('Failed to update benchmark:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to update benchmark",
@@ -605,8 +622,16 @@ export default function LinkedInAnalytics() {
       return res.json();
     },
     onSuccess: async () => {
+      console.log('Benchmark deleted successfully');
+      
       await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+      
+      // Force immediate refetch
+      await refetchBenchmarks();
+      
+      console.log('Benchmark queries refetched, badge should disappear now');
+      
       toast({
         title: "Benchmark Deleted",
         description: "The benchmark has been deleted successfully. The performance badge has been removed from the Overview tab.",

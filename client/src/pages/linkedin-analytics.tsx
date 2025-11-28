@@ -363,21 +363,21 @@ export default function LinkedInAnalytics() {
   });
 
   // Extract unique campaigns from ads data
-  // Fetch all campaigns for the dropdown
-  const { data: allCampaignsData } = useQuery({
-    queryKey: ['/api/campaigns'],
-  });
-
   const availableCampaigns = useMemo(() => {
-    // Use actual campaigns from database, not ads data
-    if (allCampaignsData && Array.isArray(allCampaignsData)) {
-      return allCampaignsData.map((c: any) => ({
-        id: c.id,
-        name: c.name
-      }));
-    }
-    return [];
-  }, [allCampaignsData]);
+    if (!adsData || !Array.isArray(adsData)) return [];
+    
+    const campaignMap = new Map();
+    adsData.forEach((ad: any) => {
+      if (ad.campaignName) {
+        campaignMap.set(ad.campaignName, {
+          name: ad.campaignName,
+          id: ad.campaignId || ad.campaignName
+        });
+      }
+    });
+    
+    return Array.from(campaignMap.values());
+  }, [adsData]);
 
   // Helper to get campaign name from ID
   const getCampaignName = (campaignId: string): string => {

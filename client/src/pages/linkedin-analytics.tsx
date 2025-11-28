@@ -371,13 +371,15 @@ export default function LinkedInAnalytics() {
       if (ad.campaignName) {
         campaignMap.set(ad.campaignName, {
           name: ad.campaignName,
-          id: ad.campaignId || ad.campaignName
+          // For LinkedIn campaigns, use the parent database campaign ID (campaignId from URL)
+          // This ensures benchmarks for LinkedIn campaigns show on the correct database campaign
+          id: campaignId  // Use the current database campaign ID, not the LinkedIn campaign ID
         });
       }
     });
     
     return Array.from(campaignMap.values());
-  }, [adsData]);
+  }, [adsData, campaignId]);
 
   // Helper to get campaign name from ID
   const getCampaignName = (campaignId: string): string => {

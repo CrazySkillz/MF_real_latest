@@ -26,11 +26,20 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 const getCategoryFromMetric = (metric: string): string => {
   const metricLower = metric.toLowerCase();
   
-  if (['ctr', 'cpc', 'cpm', 'cpa', 'cpl'].some(m => metricLower.includes(m))) return 'cost';
-  if (['cvr', 'conversions', 'leads'].some(m => metricLower.includes(m))) return 'conversion';
-  if (['er', 'engagements', 'likes', 'comments', 'shares'].some(m => metricLower.includes(m))) return 'engagement';
+  // Cost metrics (lower is better)
+  if (['cpc', 'cpm', 'cpa', 'cpl'].some(m => metricLower.includes(m))) return 'cost';
+  
+  // Performance metrics (higher is better)
+  if (['ctr', 'cvr', 'er', 'roi', 'roas'].some(m => metricLower.includes(m))) return 'performance';
+  
+  // Conversion metrics
+  if (['conversions', 'leads'].some(m => metricLower.includes(m))) return 'conversion';
+  
+  // Engagement metrics
+  if (['engagements', 'likes', 'comments', 'shares'].some(m => metricLower.includes(m))) return 'engagement';
+  
+  // Reach metrics
   if (['impressions', 'reach', 'viral'].some(m => metricLower.includes(m))) return 'reach';
-  if (['roi', 'roas', 'video'].some(m => metricLower.includes(m))) return 'performance';
   
   return 'performance'; // default
 };

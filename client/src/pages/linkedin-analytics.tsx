@@ -379,6 +379,12 @@ export default function LinkedInAnalytics() {
     return Array.from(campaignMap.values());
   }, [adsData]);
 
+  // Helper to get campaign name from ID
+  const getCampaignName = (campaignId: string): string => {
+    const campaign = availableCampaigns.find(c => c.id === campaignId);
+    return campaign?.name || campaignId;
+  };
+
   // Fetch LinkedIn reports filtered by campaignId
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
     queryKey: ['/api/platforms/linkedin/reports', campaignId],
@@ -3115,7 +3121,7 @@ export default function LinkedInAnalytics() {
                                   {/* Scope Badge */}
                                   {benchmark.specificCampaignId ? (
                                     <Badge variant="outline" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                                      Campaign: {benchmark.specificCampaignId}
+                                      Campaign: {getCampaignName(benchmark.specificCampaignId)}
                                     </Badge>
                                   ) : (
                                     <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
@@ -4288,7 +4294,7 @@ export default function LinkedInAnalytics() {
                     <SelectContent>
                       {availableCampaigns.length > 0 ? (
                         availableCampaigns.map((campaign) => (
-                          <SelectItem key={campaign.id} value={campaign.name}>
+                          <SelectItem key={campaign.id} value={campaign.id}>
                             {campaign.name}
                           </SelectItem>
                         ))

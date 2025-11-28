@@ -3821,6 +3821,11 @@ export default function LinkedInAnalytics() {
                 : 'Define a new benchmark for your LinkedIn campaigns. You can select metrics from the Overview tab as current values.'}
             </DialogDescription>
           </DialogHeader>
+          {!sessionData ? (
+            <div className="flex items-center justify-center py-8">
+              <p className="text-slate-500">Loading...</p>
+            </div>
+          ) : (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="benchmark-name">Benchmark Name *</Label>
@@ -4008,7 +4013,7 @@ export default function LinkedInAnalytics() {
                   setBenchmarkForm({ ...benchmarkForm, industry: value });
                   
                   // If industry selected and metric selected, auto-fill benchmark value
-                  if (value && value !== 'other' && benchmarkForm.metric) {
+                  if (value && value !== 'other' && value !== 'none' && benchmarkForm.metric) {
                     try {
                       const response = await fetch(`/api/industry-benchmarks/${value}/${benchmarkForm.metric}`);
                       if (response.ok) {
@@ -4029,7 +4034,7 @@ export default function LinkedInAnalytics() {
                   <SelectValue placeholder="Select industry for auto-fill or leave blank" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (Enter custom value)</SelectItem>
+                  <SelectItem value="none">None (Enter custom value)</SelectItem>
                   {industryData?.industries?.map((industry) => (
                     <SelectItem key={industry.value} value={industry.value}>
                       {industry.label}
@@ -4155,6 +4160,7 @@ export default function LinkedInAnalytics() {
               </Button>
             </div>
           </div>
+          )}
         </DialogContent>
       </Dialog>
 

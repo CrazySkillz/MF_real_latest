@@ -3107,10 +3107,10 @@ export default function LinkedInAnalytics() {
 
                               <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                                 <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                                  Source
+                                  Benchmark Source
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
-                                  {benchmark.source || 'LinkedIn'}
+                                  {benchmark.industry ? `Industry Standard (${benchmark.industry})` : benchmark.source || 'Custom'}
                                 </div>
                               </div>
                             </div>

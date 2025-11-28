@@ -596,26 +596,24 @@ export default function LinkedInAnalytics() {
   const handleCreateBenchmark = () => {
     const derivedCategory = getCategoryFromMetric(benchmarkForm.metric);
     const benchmarkData = {
-      campaignId: campaignId, // Include campaignId for data isolation
+      campaignId: campaignId,
       name: benchmarkForm.name,
+      metric: benchmarkForm.metric, // ← CRITICAL: Include metric field!
       category: derivedCategory,
-      benchmarkType: benchmarkForm.benchmarkType,
       unit: benchmarkForm.unit,
       benchmarkValue: benchmarkForm.benchmarkValue,
       currentValue: benchmarkForm.currentValue || '0',
       industry: benchmarkForm.industry,
       description: benchmarkForm.description,
-      source: benchmarkForm.source,
-      geoLocation: benchmarkForm.geographicLocation,
-      period: benchmarkForm.period,
-      confidenceLevel: benchmarkForm.confidenceLevel,
-      competitorName: benchmarkForm.competitorName,
       alertsEnabled: benchmarkForm.alertsEnabled,
       alertThreshold: benchmarkForm.alertThreshold,
       alertCondition: benchmarkForm.alertCondition,
       emailRecipients: benchmarkForm.emailRecipients,
-      status: 'active'
+      status: 'active',
+      platformType: 'linkedin' // Specify platform
     };
+    
+    console.log('Creating benchmark with data:', benchmarkData);
     
     if (editingBenchmark) {
       updateBenchmarkMutation.mutate({ id: editingBenchmark.id, data: benchmarkData });

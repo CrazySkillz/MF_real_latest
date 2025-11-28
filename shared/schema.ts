@@ -328,6 +328,7 @@ export const benchmarks = pgTable("benchmarks", {
   // Benchmark scope fields
   applyTo: text("apply_to").notNull().default("all"), // 'all' for all campaigns, 'specific' for specific campaign
   specificCampaignId: text("specific_campaign_id"), // Campaign ID when applyTo is 'specific', null when 'all'
+  linkedInCampaignName: text("linkedin_campaign_name"), // LinkedIn campaign name for display (when applicable)
   // Alert and notification settings
   alertThreshold: decimal("alert_threshold", { precision: 10, scale: 2 }), // Threshold value to trigger alert
   alertCondition: text("alert_condition").default("below"), // 'below', 'above', 'equals'
@@ -748,6 +749,7 @@ export const insertBenchmarkSchema = createInsertSchema(benchmarks).pick({
   confidenceLevel: true,
   applyTo: true,
   specificCampaignId: true,
+  linkedInCampaignName: true,
   alertThreshold: true,
   alertCondition: true,
   alertsEnabled: true,

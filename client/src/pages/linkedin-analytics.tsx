@@ -260,6 +260,7 @@ export default function LinkedInAnalytics() {
     staleTime: 0, // Always fetch fresh data
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+    cacheTime: 0, // Don't cache at all
   });
 
   // Helper function to get benchmark for a metric
@@ -371,9 +372,8 @@ export default function LinkedInAnalytics() {
       if (ad.campaignName) {
         campaignMap.set(ad.campaignName, {
           name: ad.campaignName,
-          // For LinkedIn campaigns, use the parent database campaign ID (campaignId from URL)
-          // This ensures benchmarks for LinkedIn campaigns show on the correct database campaign
-          id: campaignId  // Use the current database campaign ID, not the LinkedIn campaign ID
+          linkedInCampaignName: ad.campaignName, // Store the LinkedIn campaign name
+          id: campaignId  // Parent database campaign ID
         });
       }
     });
@@ -708,12 +708,23 @@ export default function LinkedInAnalytics() {
 
   // Handle create Benchmark
   const handleCreateBenchmark = () => {
+    // For campaign-specific benchmarks, convert LinkedIn campaign name to database campaign ID
+    let finalSpecificCampaignId = null;
+    if (benchmarkForm.applyTo === 'specific') {
+      // If a LinkedIn campaign name was selected, use the parent database campaign ID
+      finalSpecificCampaignId = campaignId; // Always use the current database campaign ID
+      console.log('[Create] Campaign-specific benchmark:', {
+        selectedLinkedInCampaign: benchmarkForm.specificCampaignId,
+        savingDatabaseCampaignId: finalSpecificCampaignId
+      });
+    }
+    
     // Check for duplicate metric benchmark
     const existingBenchmarks = (benchmarksData as any[]) || [];
     const existingBenchmark = existingBenchmarks.find((b: any) => {
       const metricMatch = b.metric?.toLowerCase() === benchmarkForm.metric?.toLowerCase();
       const scopeMatch = benchmarkForm.applyTo === 'specific' 
-        ? b.specificCampaignId === benchmarkForm.specificCampaignId
+        ? b.specificCampaignId === finalSpecificCampaignId
         : b.applyTo === 'all' || !b.specificCampaignId;
       
       console.log('Checking duplicate:', {
@@ -722,7 +733,7 @@ export default function LinkedInAnalytics() {
         scopeMatch,
         formMetric: benchmarkForm.metric,
         formApplyTo: benchmarkForm.applyTo,
-        formCampaignId: benchmarkForm.specificCampaignId
+        formCampaignId: finalSpecificCampaignId
       });
       
       return metricMatch && scopeMatch;
@@ -730,7 +741,7 @@ export default function LinkedInAnalytics() {
     
     if (existingBenchmark && !editingBenchmark) {
       const scopeText = benchmarkForm.applyTo === 'specific' 
-        ? `for campaign ${benchmarkForm.specificCampaignId}`
+        ? `for this campaign`
         : 'for All Campaigns';
       toast({
         title: "Duplicate Benchmark",
@@ -752,7 +763,8 @@ export default function LinkedInAnalytics() {
       industry: benchmarkForm.industry,
       description: benchmarkForm.description,
       applyTo: benchmarkForm.applyTo, // 'all' or 'specific'
-      specificCampaignId: benchmarkForm.applyTo === 'specific' ? benchmarkForm.specificCampaignId : null,
+      specificCampaignId: finalSpecificCampaignId, // Use the converted campaign ID
+      linkedInCampaignName: benchmarkForm.applyTo === 'specific' ? benchmarkForm.specificCampaignId : null, // Store LinkedIn campaign name for display
       alertsEnabled: benchmarkForm.alertsEnabled,
       alertThreshold: benchmarkForm.alertThreshold,
       alertCondition: benchmarkForm.alertCondition,
@@ -1784,6 +1796,8 @@ export default function LinkedInAnalytics() {
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    cacheTime: 0, // Don't cache at all
   });
 
   // Debug logging for benchmarks - VERSION 2025-11-28-20:00
@@ -3151,7 +3165,7 @@ export default function LinkedInAnalytics() {
                                   {/* Scope Badge */}
                                   {benchmark.specificCampaignId ? (
                                     <Badge variant="outline" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                                      Campaign: {getCampaignName(benchmark.specificCampaignId)}
+                                      Campaign: {benchmark.linkedInCampaignName || getCampaignName(benchmark.specificCampaignId)}
                                     </Badge>
                                   ) : (
                                     <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
@@ -4327,7 +4341,10 @@ export default function LinkedInAnalytics() {
                   <Label htmlFor="benchmark-campaign">Select Campaign *</Label>
                   <Select
                     value={benchmarkForm.specificCampaignId}
-                    onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, specificCampaignId: value })}
+                    onValueChange={(value) => {
+                      console.log('[Dropdown] Selected campaign:', value);
+                      setBenchmarkForm({ ...benchmarkForm, specificCampaignId: value });
+                    }}
                   >
                     <SelectTrigger id="benchmark-campaign" data-testid="select-benchmark-campaign">
                       <SelectValue placeholder="Choose a campaign" />
@@ -4335,7 +4352,7 @@ export default function LinkedInAnalytics() {
                     <SelectContent>
                       {availableCampaigns.length > 0 ? (
                         availableCampaigns.map((campaign) => (
-                          <SelectItem key={campaign.id} value={campaign.id}>
+                          <SelectItem key={campaign.name} value={campaign.linkedInCampaignName || campaign.name}>
                             {campaign.name}
                           </SelectItem>
                         ))
@@ -4347,7 +4364,7 @@ export default function LinkedInAnalytics() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Select the specific campaign this benchmark applies to
+                    Select the specific LinkedIn campaign this benchmark applies to
                   </p>
                 </div>
               )}

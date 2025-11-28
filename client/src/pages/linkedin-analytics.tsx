@@ -655,6 +655,24 @@ export default function LinkedInAnalytics() {
       // Force immediate refetch
       await refetchBenchmarks();
       
+      // Clear editing state and reset form
+      setEditingBenchmark(null);
+      setBenchmarkForm({
+        metric: '',
+        name: '',
+        unit: '',
+        benchmarkValue: '',
+        currentValue: '',
+        industry: '',
+        description: '',
+        applyTo: 'all',
+        specificCampaignId: '',
+        alertsEnabled: false,
+        alertThreshold: '',
+        alertCondition: 'below',
+        emailRecipients: ''
+      });
+      
       console.log('Benchmark queries refetched, badge should disappear now');
       
       toast({
@@ -2946,7 +2964,25 @@ export default function LinkedInAnalytics() {
                     </p>
                   </div>
                   <Button 
-                    onClick={() => setIsBenchmarkModalOpen(true)}
+                    onClick={() => {
+                      setEditingBenchmark(null);
+                      setBenchmarkForm({
+                        metric: '',
+                        name: '',
+                        unit: '',
+                        benchmarkValue: '',
+                        currentValue: '',
+                        industry: '',
+                        description: '',
+                        applyTo: 'all',
+                        specificCampaignId: '',
+                        alertsEnabled: false,
+                        alertThreshold: '',
+                        alertCondition: 'below',
+                        emailRecipients: ''
+                      });
+                      setIsBenchmarkModalOpen(true);
+                    }}
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                     data-testid="button-create-benchmark"
                   >
@@ -3226,7 +3262,25 @@ export default function LinkedInAnalytics() {
                           No benchmarks have been created for this campaign yet.
                         </p>
                         <Button 
-                          onClick={() => setIsBenchmarkModalOpen(true)}
+                          onClick={() => {
+                            setEditingBenchmark(null);
+                            setBenchmarkForm({
+                              metric: '',
+                              name: '',
+                              unit: '',
+                              benchmarkValue: '',
+                              currentValue: '',
+                              industry: '',
+                              description: '',
+                              applyTo: 'all',
+                              specificCampaignId: '',
+                              alertsEnabled: false,
+                              alertThreshold: '',
+                              alertCondition: 'below',
+                              emailRecipients: ''
+                            });
+                            setIsBenchmarkModalOpen(true);
+                          }}
                           data-testid="button-create-benchmark"
                           className="bg-blue-600 hover:bg-blue-700"
                         >

@@ -4030,11 +4030,11 @@ export default function LinkedInAnalytics() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">None (Enter custom value)</SelectItem>
-                  {industryData?.industries.map((industry) => (
+                  {industryData?.industries?.map((industry) => (
                     <SelectItem key={industry.value} value={industry.value}>
                       {industry.label}
                     </SelectItem>
-                  ))}
+                  )) || null}
                   <SelectItem value="other">Other (Custom value)</SelectItem>
                 </SelectContent>
               </Select>

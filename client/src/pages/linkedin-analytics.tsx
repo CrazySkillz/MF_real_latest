@@ -155,6 +155,32 @@ export default function LinkedInAnalytics() {
     console.error('Failed to fetch industries:', industryError);
   }
 
+  // Hardcoded benchmark values as fallback (matches server/data/industry-benchmarks.ts)
+  const getBenchmarkValueFallback = (industry: string, metric: string): { value: number; unit: string } | null => {
+    const benchmarks: Record<string, Record<string, { value: number; unit: string }>> = {
+      'technology': { ctr: { value: 2.0, unit: '%' }, cpc: { value: 3.5, unit: '$' }, cpm: { value: 30.0, unit: '$' }, cvr: { value: 3.0, unit: '%' }, cpa: { value: 100.0, unit: '$' }, cpl: { value: 80.0, unit: '$' }, er: { value: 2.5, unit: '%' }, roi: { value: 300.0, unit: '%' }, roas: { value: 4.0, unit: 'x' } },
+      'saas': { ctr: { value: 2.3, unit: '%' }, cpc: { value: 3.2, unit: '$' }, cpm: { value: 28.0, unit: '$' }, cvr: { value: 3.5, unit: '%' }, cpa: { value: 90.0, unit: '$' }, cpl: { value: 72.0, unit: '$' }, er: { value: 2.8, unit: '%' }, roi: { value: 330.0, unit: '%' }, roas: { value: 4.3, unit: 'x' } },
+      'ecommerce': { ctr: { value: 1.8, unit: '%' }, cpc: { value: 2.5, unit: '$' }, cpm: { value: 25.0, unit: '$' }, cvr: { value: 2.5, unit: '%' }, cpa: { value: 80.0, unit: '$' }, cpl: { value: 65.0, unit: '$' }, er: { value: 3.0, unit: '%' }, roi: { value: 350.0, unit: '%' }, roas: { value: 4.5, unit: 'x' } },
+      'healthcare': { ctr: { value: 1.5, unit: '%' }, cpc: { value: 4.0, unit: '$' }, cpm: { value: 35.0, unit: '$' }, cvr: { value: 2.0, unit: '%' }, cpa: { value: 120.0, unit: '$' }, cpl: { value: 100.0, unit: '$' }, er: { value: 2.0, unit: '%' }, roi: { value: 250.0, unit: '%' }, roas: { value: 3.5, unit: 'x' } },
+      'finance': { ctr: { value: 1.2, unit: '%' }, cpc: { value: 5.0, unit: '$' }, cpm: { value: 45.0, unit: '$' }, cvr: { value: 1.8, unit: '%' }, cpa: { value: 150.0, unit: '$' }, cpl: { value: 130.0, unit: '$' }, er: { value: 1.5, unit: '%' }, roi: { value: 200.0, unit: '%' }, roas: { value: 3.0, unit: 'x' } },
+      'education': { ctr: { value: 2.2, unit: '%' }, cpc: { value: 3.0, unit: '$' }, cpm: { value: 28.0, unit: '$' }, cvr: { value: 3.5, unit: '%' }, cpa: { value: 85.0, unit: '$' }, cpl: { value: 70.0, unit: '$' }, er: { value: 3.5, unit: '%' }, roi: { value: 320.0, unit: '%' }, roas: { value: 4.2, unit: 'x' } },
+      'real-estate': { ctr: { value: 1.6, unit: '%' }, cpc: { value: 4.5, unit: '$' }, cpm: { value: 38.0, unit: '$' }, cvr: { value: 2.2, unit: '%' }, cpa: { value: 110.0, unit: '$' }, cpl: { value: 95.0, unit: '$' }, er: { value: 2.2, unit: '%' }, roi: { value: 280.0, unit: '%' }, roas: { value: 3.8, unit: 'x' } },
+      'professional-services': { ctr: { value: 1.9, unit: '%' }, cpc: { value: 3.8, unit: '$' }, cpm: { value: 32.0, unit: '$' }, cvr: { value: 2.8, unit: '%' }, cpa: { value: 95.0, unit: '$' }, cpl: { value: 75.0, unit: '$' }, er: { value: 2.8, unit: '%' }, roi: { value: 310.0, unit: '%' }, roas: { value: 4.1, unit: 'x' } },
+      'retail': { ctr: { value: 2.1, unit: '%' }, cpc: { value: 2.8, unit: '$' }, cpm: { value: 26.0, unit: '$' }, cvr: { value: 3.2, unit: '%' }, cpa: { value: 75.0, unit: '$' }, cpl: { value: 60.0, unit: '$' }, er: { value: 3.2, unit: '%' }, roi: { value: 340.0, unit: '%' }, roas: { value: 4.4, unit: 'x' } },
+      'hospitality': { ctr: { value: 1.7, unit: '%' }, cpc: { value: 3.3, unit: '$' }, cpm: { value: 29.0, unit: '$' }, cvr: { value: 2.3, unit: '%' }, cpa: { value: 88.0, unit: '$' }, cpl: { value: 70.0, unit: '$' }, er: { value: 2.6, unit: '%' }, roi: { value: 290.0, unit: '%' }, roas: { value: 3.9, unit: 'x' } },
+      'automotive': { ctr: { value: 1.4, unit: '%' }, cpc: { value: 4.2, unit: '$' }, cpm: { value: 36.0, unit: '$' }, cvr: { value: 1.9, unit: '%' }, cpa: { value: 125.0, unit: '$' }, cpl: { value: 105.0, unit: '$' }, er: { value: 1.8, unit: '%' }, roi: { value: 240.0, unit: '%' }, roas: { value: 3.4, unit: 'x' } },
+      'manufacturing': { ctr: { value: 1.3, unit: '%' }, cpc: { value: 4.8, unit: '$' }, cpm: { value: 40.0, unit: '$' }, cvr: { value: 1.7, unit: '%' }, cpa: { value: 140.0, unit: '$' }, cpl: { value: 118.0, unit: '$' }, er: { value: 1.6, unit: '%' }, roi: { value: 220.0, unit: '%' }, roas: { value: 3.2, unit: 'x' } },
+      'nonprofit': { ctr: { value: 2.5, unit: '%' }, cpc: { value: 2.2, unit: '$' }, cpm: { value: 22.0, unit: '$' }, cvr: { value: 4.0, unit: '%' }, cpa: { value: 55.0, unit: '$' }, cpl: { value: 45.0, unit: '$' }, er: { value: 4.2, unit: '%' }, roi: { value: 380.0, unit: '%' }, roas: { value: 4.8, unit: 'x' } },
+      'legal': { ctr: { value: 1.1, unit: '%' }, cpc: { value: 6.5, unit: '$' }, cpm: { value: 52.0, unit: '$' }, cvr: { value: 1.5, unit: '%' }, cpa: { value: 180.0, unit: '$' }, cpl: { value: 155.0, unit: '$' }, er: { value: 1.3, unit: '%' }, roi: { value: 180.0, unit: '%' }, roas: { value: 2.8, unit: 'x' } },
+      'insurance': { ctr: { value: 1.3, unit: '%' }, cpc: { value: 5.5, unit: '$' }, cpm: { value: 48.0, unit: '$' }, cvr: { value: 1.6, unit: '%' }, cpa: { value: 165.0, unit: '$' }, cpl: { value: 142.0, unit: '$' }, er: { value: 1.4, unit: '%' }, roi: { value: 190.0, unit: '%' }, roas: { value: 2.9, unit: 'x' } },
+      'telecommunications': { ctr: { value: 1.6, unit: '%' }, cpc: { value: 4.0, unit: '$' }, cpm: { value: 34.0, unit: '$' }, cvr: { value: 2.1, unit: '%' }, cpa: { value: 105.0, unit: '$' }, cpl: { value: 88.0, unit: '$' }, er: { value: 2.0, unit: '%' }, roi: { value: 260.0, unit: '%' }, roas: { value: 3.6, unit: 'x' } },
+      'entertainment': { ctr: { value: 2.4, unit: '%' }, cpc: { value: 2.6, unit: '$' }, cpm: { value: 24.0, unit: '$' }, cvr: { value: 3.8, unit: '%' }, cpa: { value: 68.0, unit: '$' }, cpl: { value: 55.0, unit: '$' }, er: { value: 4.5, unit: '%' }, roi: { value: 360.0, unit: '%' }, roas: { value: 4.6, unit: 'x' } },
+      'food-beverage': { ctr: { value: 2.0, unit: '%' }, cpc: { value: 2.9, unit: '$' }, cpm: { value: 27.0, unit: '$' }, cvr: { value: 3.3, unit: '%' }, cpa: { value: 78.0, unit: '$' }, cpl: { value: 62.0, unit: '$' }, er: { value: 3.6, unit: '%' }, roi: { value: 350.0, unit: '%' }, roas: { value: 4.5, unit: 'x' } }
+    };
+
+    return benchmarks[industry]?.[metric] || null;
+  };
+
   // Report Form State
   const [reportForm, setReportForm] = useState({
     name: '',
@@ -4044,6 +4070,7 @@ export default function LinkedInAnalytics() {
                   // If industry selected and metric selected, auto-fill benchmark value
                   if (value && value !== 'other' && value !== 'none' && benchmarkForm.metric) {
                     try {
+                      // Try API first
                       const response = await fetch(`/api/industry-benchmarks/${value}/${benchmarkForm.metric}`);
                       if (response.ok) {
                         const data = await response.json();
@@ -4052,9 +4079,28 @@ export default function LinkedInAnalytics() {
                           benchmarkValue: String(data.value),
                           unit: data.unit
                         }));
+                      } else {
+                        // Fallback to hardcoded values
+                        const fallbackData = getBenchmarkValueFallback(value, benchmarkForm.metric);
+                        if (fallbackData) {
+                          setBenchmarkForm(prev => ({
+                            ...prev,
+                            benchmarkValue: String(fallbackData.value),
+                            unit: fallbackData.unit
+                          }));
+                        }
                       }
                     } catch (error) {
-                      console.error('Failed to fetch benchmark value:', error);
+                      console.error('Failed to fetch benchmark value, using fallback:', error);
+                      // Use fallback on error
+                      const fallbackData = getBenchmarkValueFallback(value, benchmarkForm.metric);
+                      if (fallbackData) {
+                        setBenchmarkForm(prev => ({
+                          ...prev,
+                          benchmarkValue: String(fallbackData.value),
+                          unit: fallbackData.unit
+                        }));
+                      }
                     }
                   }
                 }}

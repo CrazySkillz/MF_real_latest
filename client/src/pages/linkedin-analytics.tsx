@@ -121,10 +121,39 @@ export default function LinkedInAnalytics() {
   });
 
   // Fetch industry list for benchmark modal
-  const { data: industryData } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
+  const { data: industryData, error: industryError } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
     queryKey: ['/api/industry-benchmarks'],
     staleTime: Infinity,
   });
+
+  // Fallback industry list if API fails
+  const fallbackIndustries = [
+    { value: 'technology', label: 'Technology' },
+    { value: 'saas', label: 'SaaS' },
+    { value: 'ecommerce', label: 'E-commerce' },
+    { value: 'healthcare', label: 'Healthcare' },
+    { value: 'finance', label: 'Finance & Banking' },
+    { value: 'education', label: 'Education' },
+    { value: 'real-estate', label: 'Real Estate' },
+    { value: 'professional-services', label: 'Professional Services' },
+    { value: 'retail', label: 'Retail' },
+    { value: 'hospitality', label: 'Hospitality & Travel' },
+    { value: 'automotive', label: 'Automotive' },
+    { value: 'manufacturing', label: 'Manufacturing' },
+    { value: 'nonprofit', label: 'Non-profit' },
+    { value: 'legal', label: 'Legal Services' },
+    { value: 'insurance', label: 'Insurance' },
+    { value: 'telecommunications', label: 'Telecommunications' },
+    { value: 'entertainment', label: 'Entertainment & Media' },
+    { value: 'food-beverage', label: 'Food & Beverage' }
+  ];
+
+  const industries = industryData?.industries || fallbackIndustries;
+
+  // Log for debugging
+  if (industryError) {
+    console.error('Failed to fetch industries:', industryError);
+  }
 
   // Report Form State
   const [reportForm, setReportForm] = useState({
@@ -4035,11 +4064,11 @@ export default function LinkedInAnalytics() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None (Enter custom value)</SelectItem>
-                  {industryData?.industries?.map((industry) => (
+                  {industries.map((industry) => (
                     <SelectItem key={industry.value} value={industry.value}>
                       {industry.label}
                     </SelectItem>
-                  )) || null}
+                  ))}
                   <SelectItem value="other">Other (Custom value)</SelectItem>
                 </SelectContent>
               </Select>

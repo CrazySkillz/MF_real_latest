@@ -128,6 +128,23 @@ export default function LinkedInAnalytics() {
     staleTime: Infinity,
   });
 
+  // Extract unique campaigns from ads data
+  const availableCampaigns = useMemo(() => {
+    if (!adsData || !Array.isArray(adsData)) return [];
+    
+    const campaignMap = new Map();
+    adsData.forEach((ad: any) => {
+      if (ad.campaignName) {
+        campaignMap.set(ad.campaignName, {
+          name: ad.campaignName,
+          id: ad.campaignId || ad.campaignName
+        });
+      }
+    });
+    
+    return Array.from(campaignMap.values());
+  }, [adsData]);
+
   // Fallback industry list if API fails
   const fallbackIndustries = [
     { value: 'technology', label: 'Technology' },
@@ -4163,15 +4180,29 @@ export default function LinkedInAnalytics() {
               {benchmarkForm.applyTo === 'specific' && (
                 <div className="space-y-2">
                   <Label htmlFor="benchmark-campaign">Select Campaign *</Label>
-                  <Input
-                    id="benchmark-campaign"
-                    placeholder="Enter campaign name"
+                  <Select
                     value={benchmarkForm.specificCampaignId}
-                    onChange={(e) => setBenchmarkForm({ ...benchmarkForm, specificCampaignId: e.target.value })}
-                    data-testid="input-benchmark-campaign"
-                  />
+                    onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, specificCampaignId: value })}
+                  >
+                    <SelectTrigger id="benchmark-campaign" data-testid="select-benchmark-campaign">
+                      <SelectValue placeholder="Choose a campaign" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCampaigns.length > 0 ? (
+                        availableCampaigns.map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.name}>
+                            {campaign.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-campaigns" disabled>
+                          No campaigns available
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Enter the name of the specific campaign this benchmark applies to
+                    Select the specific campaign this benchmark applies to
                   </p>
                 </div>
               )}

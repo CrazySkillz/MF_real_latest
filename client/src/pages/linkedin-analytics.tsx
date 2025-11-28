@@ -526,7 +526,8 @@ export default function LinkedInAnalytics() {
   // Create Benchmark mutation
   const createBenchmarkMutation = useMutation({
     mutationFn: async (benchmarkData: any) => {
-      const res = await apiRequest('POST', '/api/platforms/linkedin/benchmarks', benchmarkData);
+      console.log('Creating benchmark with data:', benchmarkData);
+      const res = await apiRequest('POST', `/api/campaigns/${campaignId}/benchmarks`, benchmarkData);
       return res.json();
     },
     onSuccess: async (createdBenchmark) => {
@@ -570,7 +571,7 @@ export default function LinkedInAnalytics() {
   const updateBenchmarkMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       console.log('Updating benchmark:', id, 'with data:', data);
-      const res = await apiRequest('PUT', `/api/platforms/linkedin/benchmarks/${id}`, data);
+      const res = await apiRequest('PATCH', `/api/campaigns/${campaignId}/benchmarks/${id}`, data);
       return res.json();
     },
     onSuccess: async (updatedBenchmark) => {
@@ -618,7 +619,8 @@ export default function LinkedInAnalytics() {
   // Delete Benchmark mutation
   const deleteBenchmarkMutation = useMutation({
     mutationFn: async (benchmarkId: string) => {
-      const res = await apiRequest('DELETE', `/api/platforms/linkedin/benchmarks/${benchmarkId}`);
+      console.log('Deleting benchmark:', benchmarkId);
+      const res = await apiRequest('DELETE', `/api/campaigns/${campaignId}/benchmarks/${benchmarkId}`);
       return res.json();
     },
     onSuccess: async () => {

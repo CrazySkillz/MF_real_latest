@@ -1789,6 +1789,17 @@ export default function LinkedInAnalytics() {
   console.log('[Benchmarks Tab] Benchmarks loading:', benchmarksLoading);
   console.log('[Benchmarks Tab] Benchmarks data:', benchmarksData);
   console.log('[Benchmarks Tab] Number of benchmarks:', Array.isArray(benchmarksData) ? benchmarksData.length : 'not an array');
+  
+  if (Array.isArray(benchmarksData) && benchmarksData.length > 0) {
+    console.log('[Benchmarks Tab] Benchmark details:');
+    benchmarksData.forEach((b: any, index: number) => {
+      console.log(`  ${index + 1}. ${b.name}`);
+      console.log(`     - ID: ${b.id}`);
+      console.log(`     - Metric: ${b.metric}`);
+      console.log(`     - Apply To: ${b.applyTo}`);
+      console.log(`     - Specific Campaign ID: ${b.specificCampaignId}`);
+    });
+  }
 
   const formatNumber = (num: number | string) => {
     const n = typeof num === 'string' ? parseFloat(num) : num;

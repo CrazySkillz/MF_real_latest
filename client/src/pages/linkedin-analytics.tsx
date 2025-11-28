@@ -114,6 +114,8 @@ export default function LinkedInAnalytics() {
     currentValue: '',
     industry: '',
     description: '',
+    applyTo: 'all', // 'all' or 'specific'
+    specificCampaignId: '', // ID of specific campaign if applyTo='specific'
     alertsEnabled: false,
     alertThreshold: '',
     alertCondition: 'below',
@@ -552,6 +554,8 @@ export default function LinkedInAnalytics() {
         currentValue: '',
         industry: '',
         description: '',
+        applyTo: 'all',
+        specificCampaignId: '',
         alertsEnabled: false,
         alertThreshold: '',
         alertCondition: 'below',
@@ -600,6 +604,8 @@ export default function LinkedInAnalytics() {
         currentValue: '',
         industry: '',
         description: '',
+        applyTo: 'all',
+        specificCampaignId: '',
         alertsEnabled: false,
         alertThreshold: '',
         alertCondition: 'below',
@@ -661,6 +667,8 @@ export default function LinkedInAnalytics() {
       currentValue: benchmarkForm.currentValue || '0',
       industry: benchmarkForm.industry,
       description: benchmarkForm.description,
+      applyTo: benchmarkForm.applyTo, // 'all' or 'specific'
+      specificCampaignId: benchmarkForm.applyTo === 'specific' ? benchmarkForm.specificCampaignId : null,
       alertsEnabled: benchmarkForm.alertsEnabled,
       alertThreshold: benchmarkForm.alertThreshold,
       alertCondition: benchmarkForm.alertCondition,
@@ -3003,9 +3011,21 @@ export default function LinkedInAnalytics() {
                           <CardContent className="p-6">
                             <div className="flex items-start justify-between mb-4">
                               <div>
-                                <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
-                                  {benchmark.name}
-                                </h3>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
+                                    {benchmark.name}
+                                  </h3>
+                                  {benchmark.specificCampaignId && (
+                                    <Badge variant="outline" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                                      Campaign: {benchmark.specificCampaignId}
+                                    </Badge>
+                                  )}
+                                  {benchmark.applyTo === 'all' && (
+                                    <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                      All Campaigns
+                                    </Badge>
+                                  )}
+                                </div>
                                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                                   {benchmark.description || 'No description provided'}
                                 </p>
@@ -3042,6 +3062,8 @@ export default function LinkedInAnalytics() {
                                       currentValue: benchmark.currentValue || '',
                                       industry: benchmark.industry || '',
                                       description: benchmark.description || '',
+                                      applyTo: benchmark.applyTo || 'all',
+                                      specificCampaignId: benchmark.specificCampaignId || '',
                                       alertsEnabled: benchmark.alertsEnabled || false,
                                       alertThreshold: benchmark.alertThreshold || '',
                                       alertCondition: benchmark.alertCondition || 'below',
@@ -4112,6 +4134,47 @@ export default function LinkedInAnalytics() {
                 rows={3}
                 data-testid="input-benchmark-description"
               />
+            </div>
+
+            {/* Apply To Section */}
+            <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-apply-to" className="text-base font-semibold">
+                  Apply Benchmark To
+                </Label>
+                <Select
+                  value={benchmarkForm.applyTo}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, applyTo: value, specificCampaignId: value === 'all' ? '' : benchmarkForm.specificCampaignId })}
+                >
+                  <SelectTrigger id="benchmark-apply-to" data-testid="select-benchmark-apply-to">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Campaigns (Aggregate)</SelectItem>
+                    <SelectItem value="specific">Specific Campaign</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  Choose whether this benchmark applies to all campaigns combined or a specific individual campaign
+                </p>
+              </div>
+
+              {/* Campaign Selector - Only show if 'specific' is selected */}
+              {benchmarkForm.applyTo === 'specific' && (
+                <div className="space-y-2">
+                  <Label htmlFor="benchmark-campaign">Select Campaign *</Label>
+                  <Input
+                    id="benchmark-campaign"
+                    placeholder="Enter campaign name"
+                    value={benchmarkForm.specificCampaignId}
+                    onChange={(e) => setBenchmarkForm({ ...benchmarkForm, specificCampaignId: e.target.value })}
+                    data-testid="input-benchmark-campaign"
+                  />
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Enter the name of the specific campaign this benchmark applies to
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-4">

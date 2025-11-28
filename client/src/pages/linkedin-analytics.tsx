@@ -513,27 +513,22 @@ export default function LinkedInAnalytics() {
       const res = await apiRequest('POST', '/api/platforms/linkedin/benchmarks', benchmarkData);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
       toast({
         title: "Benchmark Created",
-        description: "Your LinkedIn benchmark has been created successfully.",
+        description: "Your LinkedIn benchmark has been created successfully. The performance badge will now appear in the Overview tab.",
       });
       setIsBenchmarkModalOpen(false);
       setBenchmarkForm({
         metric: '',
         name: '',
-        benchmarkType: '',
         unit: '',
         benchmarkValue: '',
         currentValue: '',
         industry: '',
         description: '',
-        source: '',
-        geographicLocation: '',
-        period: 'monthly',
-        confidenceLevel: '',
-        competitorName: '',
         alertsEnabled: false,
         alertThreshold: '',
         alertCondition: 'below',
@@ -560,7 +555,7 @@ export default function LinkedInAnalytics() {
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
       toast({
         title: "Benchmark Updated",
-        description: "Your LinkedIn benchmark has been updated successfully.",
+        description: "Your LinkedIn benchmark has been updated successfully. The performance badge in the Overview tab will reflect the new values.",
       });
       setIsBenchmarkModalOpen(false);
       setEditingBenchmark(null);
@@ -598,7 +593,7 @@ export default function LinkedInAnalytics() {
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
       toast({
         title: "Benchmark Deleted",
-        description: "The benchmark has been deleted successfully.",
+        description: "The benchmark has been deleted successfully. The performance badge has been removed from the Overview tab.",
       });
     },
     onError: (error: any) => {
@@ -4031,24 +4026,24 @@ export default function LinkedInAnalytics() {
                     <SelectValue placeholder="Select metric to benchmark" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="impressions">Impressions (from LinkedIn)</SelectItem>
-                    <SelectItem value="reach">Reach (from LinkedIn)</SelectItem>
-                    <SelectItem value="clicks">Clicks (from LinkedIn)</SelectItem>
-                    <SelectItem value="engagements">Engagements (from LinkedIn)</SelectItem>
-                    <SelectItem value="spend">Spend (from LinkedIn)</SelectItem>
-                    <SelectItem value="conversions">Conversions (from LinkedIn)</SelectItem>
-                    <SelectItem value="leads">Leads (from LinkedIn)</SelectItem>
-                    <SelectItem value="videoViews">Video Views (from LinkedIn)</SelectItem>
-                    <SelectItem value="viralImpressions">Viral Impressions (from LinkedIn)</SelectItem>
-                    <SelectItem value="ctr">Click-Through Rate (from LinkedIn)</SelectItem>
-                    <SelectItem value="cpc">Cost Per Click (from LinkedIn)</SelectItem>
-                    <SelectItem value="cpm">Cost Per Mille (from LinkedIn)</SelectItem>
-                    <SelectItem value="cvr">Conversion Rate (from LinkedIn)</SelectItem>
-                    <SelectItem value="cpa">Cost Per Acquisition (from LinkedIn)</SelectItem>
-                    <SelectItem value="cpl">Cost Per Lead (from LinkedIn)</SelectItem>
-                    <SelectItem value="er">Engagement Rate (from LinkedIn)</SelectItem>
-                    <SelectItem value="roi">Return on Investment (from LinkedIn)</SelectItem>
-                    <SelectItem value="roas">Return on Ad Spend (from LinkedIn)</SelectItem>
+                    <SelectItem value="impressions">Impressions</SelectItem>
+                    <SelectItem value="reach">Reach</SelectItem>
+                    <SelectItem value="clicks">Clicks</SelectItem>
+                    <SelectItem value="engagements">Engagements</SelectItem>
+                    <SelectItem value="spend">Spend</SelectItem>
+                    <SelectItem value="conversions">Conversions</SelectItem>
+                    <SelectItem value="leads">Leads</SelectItem>
+                    <SelectItem value="videoViews">Video Views</SelectItem>
+                    <SelectItem value="viralImpressions">Viral Impressions</SelectItem>
+                    <SelectItem value="ctr">Click-Through Rate (CTR)</SelectItem>
+                    <SelectItem value="cpc">Cost Per Click (CPC)</SelectItem>
+                    <SelectItem value="cpm">Cost Per Mille (CPM)</SelectItem>
+                    <SelectItem value="cvr">Conversion Rate (CVR)</SelectItem>
+                    <SelectItem value="cpa">Cost Per Acquisition (CPA)</SelectItem>
+                    <SelectItem value="cpl">Cost Per Lead (CPL)</SelectItem>
+                    <SelectItem value="er">Engagement Rate (ER)</SelectItem>
+                    <SelectItem value="roi">Return on Investment (ROI)</SelectItem>
+                    <SelectItem value="roas">Return on Ad Spend (ROAS)</SelectItem>
                     <SelectItem value="custom">Custom Value</SelectItem>
                   </SelectContent>
                 </Select>

@@ -1784,6 +1784,12 @@ export default function LinkedInAnalytics() {
     refetchOnMount: 'always',
   });
 
+  // Debug logging for benchmarks
+  console.log('[Benchmarks Tab] Campaign ID:', campaignId);
+  console.log('[Benchmarks Tab] Benchmarks loading:', benchmarksLoading);
+  console.log('[Benchmarks Tab] Benchmarks data:', benchmarksData);
+  console.log('[Benchmarks Tab] Number of benchmarks:', Array.isArray(benchmarksData) ? benchmarksData.length : 'not an array');
+
   const formatNumber = (num: number | string) => {
     const n = typeof num === 'string' ? parseFloat(num) : num;
     return (isNaN(n) ? 0 : n).toLocaleString();

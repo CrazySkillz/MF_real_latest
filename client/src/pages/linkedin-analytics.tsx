@@ -3052,12 +3052,19 @@ export default function LinkedInAnalytics() {
                   </Button>
                 </div>
 
+                {/* DEBUG: Force show condition check */}
+                {console.log('[RENDER CHECK] benchmarksLoading:', benchmarksLoading)}
+                {console.log('[RENDER CHECK] benchmarksData:', benchmarksData)}
+                {console.log('[RENDER CHECK] Is Array:', Array.isArray(benchmarksData))}
+                {console.log('[RENDER CHECK] Length:', Array.isArray(benchmarksData) ? benchmarksData.length : 'N/A')}
+                {console.log('[RENDER CHECK] Condition result:', benchmarksData && Array.isArray(benchmarksData) && (benchmarksData as any[]).length > 0)}
+                
                 {benchmarksLoading ? (
                   <div className="animate-pulse space-y-4">
                     <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
                     <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
                   </div>
-                ) : benchmarksData && (benchmarksData as any[]).length > 0 ? (
+                ) : benchmarksData && Array.isArray(benchmarksData) && (benchmarksData as any[]).length > 0 ? (
                   <>
                     {/* Benchmark Summary Cards */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -3313,16 +3320,20 @@ export default function LinkedInAnalytics() {
                     </div>
                   </>
                 ) : (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Trophy className="w-5 h-5" />
-                        LinkedIn Benchmarks
-                      </CardTitle>
-                      <CardDescription>
-                        Compare your performance against industry benchmarks
-                      </CardDescription>
-                    </CardHeader>
+                  <>
+                    {console.log('[ELSE BLOCK] Showing empty state')}
+                    {console.log('[ELSE BLOCK] benchmarksData:', benchmarksData)}
+                    {console.log('[ELSE BLOCK] benchmarksLoading:', benchmarksLoading)}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="w-5 h-5" />
+                          LinkedIn Benchmarks
+                        </CardTitle>
+                        <CardDescription>
+                          Compare your performance against industry benchmarks
+                        </CardDescription>
+                      </CardHeader>
                     <CardContent>
                       <div className="text-center py-8">
                         <p className="text-slate-600 dark:text-slate-400 mb-4">
@@ -3357,6 +3368,7 @@ export default function LinkedInAnalytics() {
                       </div>
                     </CardContent>
                   </Card>
+                  </>
                 )}
               </TabsContent>
 

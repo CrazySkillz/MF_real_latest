@@ -3081,7 +3081,7 @@ export default function LinkedInAnalytics() {
                             <div>
                               <p className="text-sm text-slate-600 dark:text-slate-400">Active</p>
                               <p className="text-2xl font-bold text-green-600">
-                                {(benchmarksData as any[]).filter((b: any) => b.isActive).length}
+                                {(benchmarksData as any[]).filter((b: any) => b.status === 'active').length}
                               </p>
                             </div>
                             <CheckCircle2 className="w-8 h-8 text-green-500" />
@@ -3166,8 +3166,8 @@ export default function LinkedInAnalytics() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge variant={benchmark.isActive ? 'default' : 'secondary'}>
-                                  {benchmark.isActive ? 'Active' : 'Inactive'}
+                                <Badge variant={benchmark.status === 'active' ? 'default' : 'secondary'}>
+                                  {benchmark.status === 'active' ? 'Active' : 'Inactive'}
                                 </Badge>
                                 <Button
                                   size="sm"

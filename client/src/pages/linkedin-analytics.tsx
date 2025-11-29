@@ -2086,7 +2086,14 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(aggregated.ctr)}
                               </p>
-                              {renderPerformanceBadge('ctr', aggregated.ctr, 'higher-better')}
+                              {/* Only show badge if benchmark is for ALL campaigns */}
+                              {(() => {
+                                const ctrBenchmark = getBenchmarkForMetric('ctr');
+                                if (ctrBenchmark && !ctrBenchmark.linkedInCampaignName) {
+                                  return renderPerformanceBadge('ctr', aggregated.ctr, 'higher-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                         )}
@@ -2104,7 +2111,14 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpc)}
                               </p>
-                              {renderPerformanceBadge('cpc', aggregated.cpc, 'lower-better')}
+                              {/* Only show badge if benchmark is for ALL campaigns */}
+                              {(() => {
+                                const cpcBenchmark = getBenchmarkForMetric('cpc');
+                                if (cpcBenchmark && !cpcBenchmark.linkedInCampaignName) {
+                                  return renderPerformanceBadge('cpc', aggregated.cpc, 'lower-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                         )}
@@ -2122,7 +2136,14 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpm)}
                               </p>
-                              {renderPerformanceBadge('cpm', aggregated.cpm, 'lower-better')}
+                              {/* Only show badge if benchmark is for ALL campaigns */}
+                              {(() => {
+                                const cpmBenchmark = getBenchmarkForMetric('cpm');
+                                if (cpmBenchmark && !cpmBenchmark.linkedInCampaignName) {
+                                  return renderPerformanceBadge('cpm', aggregated.cpm, 'lower-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                         )}
@@ -2140,7 +2161,14 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(aggregated.cvr)}
                               </p>
-                              {renderPerformanceBadge('cvr', aggregated.cvr, 'higher-better')}
+                              {/* Only show badge if benchmark is for ALL campaigns */}
+                              {(() => {
+                                const cvrBenchmark = getBenchmarkForMetric('cvr');
+                                if (cvrBenchmark && !cvrBenchmark.linkedInCampaignName) {
+                                  return renderPerformanceBadge('cvr', aggregated.cvr, 'higher-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                         )}
@@ -2158,7 +2186,14 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpa)}
                               </p>
-                              {renderPerformanceBadge('cpa', aggregated.cpa, 'lower-better')}
+                              {/* Only show badge if benchmark is for ALL campaigns, not campaign-specific */}
+                              {(() => {
+                                const cpaBenchmark = getBenchmarkForMetric('cpa');
+                                if (cpaBenchmark && !cpaBenchmark.linkedInCampaignName) {
+                                  return renderPerformanceBadge('cpa', aggregated.cpa, 'lower-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                         )}
@@ -2499,30 +2534,85 @@ export default function LinkedInAnalytics() {
                                       <p className="text-sm font-semibold text-slate-900 dark:text-white">
                                         {formatPercentage(ctr)}
                                       </p>
+                                      {/* Badge for campaign-specific CTR benchmark */}
+                                      {(() => {
+                                        const ctrBenchmark = benchmarks.find((b: any) => 
+                                          b.metric?.toLowerCase() === 'ctr' && 
+                                          b.linkedInCampaignName === linkedInCampaign.name
+                                        );
+                                        if (ctrBenchmark) {
+                                          return renderPerformanceBadge('ctr', ctr, 'higher-better');
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                     <div>
                                       <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPC</p>
                                       <p className="text-sm font-semibold text-slate-900 dark:text-white">
                                         {formatCurrency(cpc)}
                                       </p>
+                                      {/* Badge for campaign-specific CPC benchmark */}
+                                      {(() => {
+                                        const cpcBenchmark = benchmarks.find((b: any) => 
+                                          b.metric?.toLowerCase() === 'cpc' && 
+                                          b.linkedInCampaignName === linkedInCampaign.name
+                                        );
+                                        if (cpcBenchmark) {
+                                          return renderPerformanceBadge('cpc', cpc, 'lower-better');
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                     <div>
                                       <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPM</p>
                                       <p className="text-sm font-semibold text-slate-900 dark:text-white">
                                         {formatCurrency(cpm)}
                                       </p>
+                                      {/* Badge for campaign-specific CPM benchmark */}
+                                      {(() => {
+                                        const cpmBenchmark = benchmarks.find((b: any) => 
+                                          b.metric?.toLowerCase() === 'cpm' && 
+                                          b.linkedInCampaignName === linkedInCampaign.name
+                                        );
+                                        if (cpmBenchmark) {
+                                          return renderPerformanceBadge('cpm', cpm, 'lower-better');
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                     <div>
-                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Conv. Rate</p>
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Conv. Rate (CVR)</p>
                                       <p className="text-sm font-semibold text-slate-900 dark:text-white">
                                         {formatPercentage(convRate)}
                                       </p>
+                                      {/* Badge for campaign-specific CVR benchmark */}
+                                      {(() => {
+                                        const cvrBenchmark = benchmarks.find((b: any) => 
+                                          b.metric?.toLowerCase() === 'cvr' && 
+                                          b.linkedInCampaignName === linkedInCampaign.name
+                                        );
+                                        if (cvrBenchmark) {
+                                          return renderPerformanceBadge('cvr', convRate, 'higher-better');
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                     <div>
-                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Cost/Conv.</p>
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Cost/Conv. (CPA)</p>
                                       <p className="text-sm font-semibold text-slate-900 dark:text-white">
                                         {formatCurrency(costPerConv)}
                                       </p>
+                                      {/* Render badge for campaign-specific CPA benchmark */}
+                                      {(() => {
+                                        const cpaBenchmark = benchmarks.find((b: any) => 
+                                          b.metric?.toLowerCase() === 'cpa' && 
+                                          b.linkedInCampaignName === linkedInCampaign.name
+                                        );
+                                        if (cpaBenchmark) {
+                                          return renderPerformanceBadge('cpa', cpa, 'lower-better');
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                   </div>
 

@@ -6072,27 +6072,31 @@ export default function LinkedInAnalytics() {
             <div className="flex items-center justify-center py-12">
               <p className="text-lg text-slate-500">No metrics available for this campaign</p>
             </div>
-          ) : (() => {
-            // Calculate metrics for this campaign
-            const impressions = selectedCampaignDetails.metrics.impressions || 0;
-            const clicks = selectedCampaignDetails.metrics.clicks || 0;
-            const spend = selectedCampaignDetails.metrics.spend || 0;
-            const conversions = selectedCampaignDetails.metrics.conversions || 0;
-            const engagements = selectedCampaignDetails.metrics.engagements || 0;
-            const leads = selectedCampaignDetails.metrics.leads || 0;
-            
-            const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-            const cpc = clicks > 0 ? spend / clicks : 0;
-            const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
-            const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
-            const cpa = conversions > 0 ? spend / conversions : 0;
-            const cpl = leads > 0 ? spend / leads : 0;
-            const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
-            
-            return (
-              <div className="space-y-6">
-                {/* Core Metrics Grid */}
-                <div className="grid grid-cols-3 gap-4">
+          ) : (
+            // Render campaign metrics
+            <div className="space-y-6">
+              {(() => {
+                try {
+                  // Calculate metrics for this campaign
+                  const impressions = selectedCampaignDetails.metrics?.impressions || 0;
+                  const clicks = selectedCampaignDetails.metrics?.clicks || 0;
+                  const spend = selectedCampaignDetails.metrics?.spend || 0;
+                  const conversions = selectedCampaignDetails.metrics?.conversions || 0;
+                  const engagements = selectedCampaignDetails.metrics?.engagements || 0;
+                  const leads = selectedCampaignDetails.metrics?.leads || 0;
+                  
+                  const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+                  const cpc = clicks > 0 ? spend / clicks : 0;
+                  const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+                  const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+                  const cpa = conversions > 0 ? spend / conversions : 0;
+                  const cpl = leads > 0 ? spend / leads : 0;
+                  const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
+                  
+                  return (
+                    <>
+                      {/* Core Metrics Grid */}
+                      <div className="grid grid-cols-3 gap-4">
                   <Card>
                     <CardContent className="p-4">
                       <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Impressions</p>
@@ -6356,12 +6360,23 @@ export default function LinkedInAnalytics() {
                           {formatPercentage(er)}
                         </p>
                       </CardContent>
-                    </Card>
+                      </Card>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })()}
+                    </>
+                  );
+                } catch (error) {
+                  console.error('[Campaign Details Modal] Error rendering:', error);
+                  return (
+                    <div className="p-8 text-center">
+                      <p className="text-red-600 font-bold">Error loading campaign details</p>
+                      <p className="text-sm text-slate-500 mt-2">{String(error)}</p>
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

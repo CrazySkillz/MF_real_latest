@@ -5174,6 +5174,9 @@ export default function LinkedInAnalytics() {
                 <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Performance Analysis</h4>
                 <div className="flex items-center gap-3 flex-wrap">
                   {(() => {
+                    // This section uses selectedCampaignDetails, not linkedInCampaign
+                    const campaignName = selectedCampaignDetails.name;
+                    
                     const impressions = selectedCampaignDetails.metrics.impressions || 0;
                     const clicks = selectedCampaignDetails.metrics.clicks || 0;
                     const spend = selectedCampaignDetails.metrics.spend || 0;

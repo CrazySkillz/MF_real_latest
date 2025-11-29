@@ -2727,75 +2727,46 @@ export default function LinkedInAnalytics() {
                                   {campaignData?.industry && (
                                     <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
                                       <div className="flex items-center gap-3 flex-wrap">
-                                        {/* CTR Indicators */}
-                                        {ctr > 5 && (
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                                            <span className="text-sm text-slate-700 dark:text-slate-300">CTR Excellent</span>
-                                          </div>
-                                        )}
-                                        {ctr < 1 && ctr > 0 && (
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                                            <span className="text-sm text-slate-700 dark:text-slate-300">CTR Weak</span>
-                                          </div>
-                                        )}
+                                        {/* Performance Indicators - Using Benchmark System */}
+                                        {/* ER (Engagement Rate) Badge */}
+                                        {(() => {
+                                          const erBenchmark = benchmarks.find((b: any) => 
+                                            b.metric?.toLowerCase() === 'er' && 
+                                            b.linkedInCampaignName === linkedInCampaign.name
+                                          );
+                                          if (erBenchmark) {
+                                            return renderPerformanceBadge('er', engagementRate, 'higher-better');
+                                          }
+                                          return null;
+                                        })()}
                                         
-                                        {/* Conversion Rate Indicators */}
-                                        {convRate > 10 && (
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                                            <span className="text-sm text-slate-700 dark:text-slate-300">Conversion High</span>
-                                          </div>
-                                        )}
-                                        {convRate < 2 && convRate > 0 && (
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                                            <span className="text-sm text-slate-700 dark:text-slate-300">Conversion Low</span>
-                                          </div>
-                                        )}
+                                        {/* ROI Badge */}
+                                        {aggregated?.hasRevenueTracking === 1 && (() => {
+                                          const roiBenchmark = benchmarks.find((b: any) => 
+                                            b.metric?.toLowerCase() === 'roi' && 
+                                            b.linkedInCampaignName === linkedInCampaign.name
+                                          );
+                                          if (roiBenchmark) {
+                                            const campaignRevenue = conversions * (aggregated.conversionValue || 0);
+                                            const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;
+                                            return renderPerformanceBadge('roi', campaignROI, 'higher-better');
+                                          }
+                                          return null;
+                                        })()}
                                         
-                                        {/* CPA Indicators */}
-                                        {cpa > 0 && cpa < 150 && (
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                                            <span className="text-sm text-slate-700 dark:text-slate-300">CPA Strong</span>
-                                          </div>
-                                        )}
-                                        {cpa > 300 && (
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                                            <span className="text-sm text-slate-700 dark:text-slate-300">CPA Weak</span>
-                                          </div>
-                                        )}
-                                        
-                                        {/* ROAS Indicators */}
-                                        {roas > 4 && (
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                                            <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Strong</span>
-                                          </div>
-                                        )}
-                                        {roas > 0 && roas < 1.5 && (
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                                            <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Weak</span>
-                                          </div>
-                                        )}
-                                        
-                                        {/* Engagement Rate Indicators */}
-                                        {engagementRate > 2 && (
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                                            <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Good</span>
-                                          </div>
-                                        )}
-                                        {engagementRate > 0 && engagementRate < 0.5 && (
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                                            <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Low</span>
-                                          </div>
-                                        )}
+                                        {/* ROAS Badge */}
+                                        {aggregated?.hasRevenueTracking === 1 && (() => {
+                                          const roasBenchmark = benchmarks.find((b: any) => 
+                                            b.metric?.toLowerCase() === 'roas' && 
+                                            b.linkedInCampaignName === linkedInCampaign.name
+                                          );
+                                          if (roasBenchmark) {
+                                            const campaignRevenue = conversions * (aggregated.conversionValue || 0);
+                                            const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
+                                            return renderPerformanceBadge('roas', campaignROAS, 'higher-better');
+                                          }
+                                          return null;
+                                        })()}
                                       </div>
                                       <Button 
                                         variant="ghost" 
@@ -5205,75 +5176,47 @@ export default function LinkedInAnalytics() {
                     
                     return (
                       <>
-                        {/* CTR Indicators */}
-                        {ctr > 5 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">CTR Excellent</span>
-                          </div>
-                        )}
-                        {ctr < 1 && ctr > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">CTR Weak</span>
-                          </div>
-                        )}
+                        {/* Performance Indicators - Using Benchmark System */}
+                        {/* Note: This is a summary view - individual metric badges are shown above in the Secondary Metrics section */}
+                        {/* ER (Engagement Rate) Badge */}
+                        {(() => {
+                          const erBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'er' && 
+                            b.linkedInCampaignName === linkedInCampaign.name
+                          );
+                          if (erBenchmark) {
+                            return renderPerformanceBadge('er', engagementRate, 'higher-better');
+                          }
+                          return null;
+                        })()}
                         
-                        {/* Conversion Rate Indicators */}
-                        {convRate > 10 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">Conversion High</span>
-                          </div>
-                        )}
-                        {convRate < 2 && convRate > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">Conversion Low</span>
-                          </div>
-                        )}
+                        {/* ROI Badge */}
+                        {aggregated?.hasRevenueTracking === 1 && (() => {
+                          const roiBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'roi' && 
+                            b.linkedInCampaignName === linkedInCampaign.name
+                          );
+                          if (roiBenchmark) {
+                            const campaignRevenue = conversions * (aggregated.conversionValue || 0);
+                            const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;
+                            return renderPerformanceBadge('roi', campaignROI, 'higher-better');
+                          }
+                          return null;
+                        })()}
                         
-                        {/* CPA Indicators */}
-                        {cpa > 0 && cpa < 150 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">CPA Strong</span>
-                          </div>
-                        )}
-                        {cpa > 300 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">CPA Weak</span>
-                          </div>
-                        )}
-                        
-                        {/* ROAS Indicators */}
-                        {roas > 4 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Strong</span>
-                          </div>
-                        )}
-                        {roas > 0 && roas < 1.5 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">ROAS Weak</span>
-                          </div>
-                        )}
-                        
-                        {/* Engagement Rate Indicators */}
-                        {engagementRate > 2 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Good</span>
-                          </div>
-                        )}
-                        {engagementRate > 0 && engagementRate < 0.5 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">Engagement Low</span>
-                          </div>
-                        )}
+                        {/* ROAS Badge */}
+                        {aggregated?.hasRevenueTracking === 1 && (() => {
+                          const roasBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'roas' && 
+                            b.linkedInCampaignName === linkedInCampaign.name
+                          );
+                          if (roasBenchmark) {
+                            const campaignRevenue = conversions * (aggregated.conversionValue || 0);
+                            const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
+                            return renderPerformanceBadge('roas', campaignROAS, 'higher-better');
+                          }
+                          return null;
+                        })()}
                       </>
                     );
                   })()}

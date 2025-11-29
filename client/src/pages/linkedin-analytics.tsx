@@ -6108,73 +6108,209 @@ export default function LinkedInAnalytics() {
                   const cpl = leads > 0 ? spend / leads : 0;
                   const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
                   
+                  // Calculate additional metrics
+                  const reach = selectedCampaignDetails.metrics?.reach || 0;
+                  const videoViews = selectedCampaignDetails.metrics?.videoViews || 0;
+                  const viralImpressions = selectedCampaignDetails.metrics?.viralImpressions || 0;
+                  
                   return (
                     <>
-                      {/* Core Metrics Grid */}
-                      <div className="grid grid-cols-3 gap-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Impressions</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatNumber(impressions)}
-                      </p>
-                      {/* Campaign-specific impressions badge */}
-                      {Array.isArray(benchmarks) && (() => {
-                        const impressionsBenchmark = benchmarks.find((b: any) => 
-                          b.metric?.toLowerCase() === 'impressions' && 
-                          b.linkedInCampaignName === selectedCampaignDetails.name
-                        );
-                        if (impressionsBenchmark) {
-                          return renderPerformanceBadge('impressions', impressions, 'higher-better');
-                        }
-                        return null;
-                      })()}
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Clicks</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatNumber(clicks)}
-                      </p>
-                      {/* Campaign-specific clicks badge */}
-                      {Array.isArray(benchmarks) && (() => {
-                        const clicksBenchmark = benchmarks.find((b: any) => 
-                          b.metric?.toLowerCase() === 'clicks' && 
-                          b.linkedInCampaignName === selectedCampaignDetails.name
-                        );
-                        if (clicksBenchmark) {
-                          return renderPerformanceBadge('clicks', clicks, 'higher-better');
-                        }
-                        return null;
-                      })()}
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Spend</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatCurrency(spend)}
-                      </p>
-                      {/* Campaign-specific spend badge */}
-                      {Array.isArray(benchmarks) && (() => {
-                        const spendBenchmark = benchmarks.find((b: any) => 
-                          b.metric?.toLowerCase() === 'spend' && 
-                          b.linkedInCampaignName === selectedCampaignDetails.name
-                        );
-                        if (spendBenchmark) {
-                          return renderPerformanceBadge('spend', spend, 'lower-better');
-                        }
-                        return null;
-                      })()}
-                    </CardContent>
-                  </Card>
-                </div>
+                      {/* Core Metrics Section */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Core Metrics</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                          {/* Impressions */}
+                          <Card>
+                            <CardContent className="p-4">
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Impressions</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatNumber(impressions)}
+                              </p>
+                              {Array.isArray(benchmarks) && (() => {
+                                const impressionsBenchmark = benchmarks.find((b: any) => 
+                                  b.metric?.toLowerCase() === 'impressions' && 
+                                  b.linkedInCampaignName === selectedCampaignDetails.name
+                                );
+                                if (impressionsBenchmark) {
+                                  return renderPerformanceBadge('impressions', impressions, 'higher-better');
+                                }
+                                return null;
+                              })()}
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Clicks */}
+                          <Card>
+                            <CardContent className="p-4">
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Clicks</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatNumber(clicks)}
+                              </p>
+                              {Array.isArray(benchmarks) && (() => {
+                                const clicksBenchmark = benchmarks.find((b: any) => 
+                                  b.metric?.toLowerCase() === 'clicks' && 
+                                  b.linkedInCampaignName === selectedCampaignDetails.name
+                                );
+                                if (clicksBenchmark) {
+                                  return renderPerformanceBadge('clicks', clicks, 'higher-better');
+                                }
+                                return null;
+                              })()}
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Spend */}
+                          <Card>
+                            <CardContent className="p-4">
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Spend</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(spend)}
+                              </p>
+                              {Array.isArray(benchmarks) && (() => {
+                                const spendBenchmark = benchmarks.find((b: any) => 
+                                  b.metric?.toLowerCase() === 'spend' && 
+                                  b.linkedInCampaignName === selectedCampaignDetails.name
+                                );
+                                if (spendBenchmark) {
+                                  return renderPerformanceBadge('spend', spend, 'lower-better');
+                                }
+                                return null;
+                              })()}
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Conversions */}
+                          <Card>
+                            <CardContent className="p-4">
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Conversions</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatNumber(conversions)}
+                              </p>
+                              {Array.isArray(benchmarks) && (() => {
+                                const conversionsBenchmark = benchmarks.find((b: any) => 
+                                  b.metric?.toLowerCase() === 'conversions' && 
+                                  b.linkedInCampaignName === selectedCampaignDetails.name
+                                );
+                                if (conversionsBenchmark) {
+                                  return renderPerformanceBadge('conversions', conversions, 'higher-better');
+                                }
+                                return null;
+                              })()}
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Leads */}
+                          <Card>
+                            <CardContent className="p-4">
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Leads</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatNumber(leads)}
+                              </p>
+                              {Array.isArray(benchmarks) && (() => {
+                                const leadsBenchmark = benchmarks.find((b: any) => 
+                                  b.metric?.toLowerCase() === 'leads' && 
+                                  b.linkedInCampaignName === selectedCampaignDetails.name
+                                );
+                                if (leadsBenchmark) {
+                                  return renderPerformanceBadge('leads', leads, 'higher-better');
+                                }
+                                return null;
+                              })()}
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Engagements */}
+                          <Card>
+                            <CardContent className="p-4">
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Engagements</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatNumber(engagements)}
+                              </p>
+                              {Array.isArray(benchmarks) && (() => {
+                                const engagementsBenchmark = benchmarks.find((b: any) => 
+                                  b.metric?.toLowerCase() === 'engagements' && 
+                                  b.linkedInCampaignName === selectedCampaignDetails.name
+                                );
+                                if (engagementsBenchmark) {
+                                  return renderPerformanceBadge('engagements', engagements, 'higher-better');
+                                }
+                                return null;
+                              })()}
+                            </CardContent>
+                          </Card>
+                          
+                          {/* Reach */}
+                          {reach > 0 && (
+                            <Card>
+                              <CardContent className="p-4">
+                                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Reach</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatNumber(reach)}
+                                </p>
+                                {Array.isArray(benchmarks) && (() => {
+                                  const reachBenchmark = benchmarks.find((b: any) => 
+                                    b.metric?.toLowerCase() === 'reach' && 
+                                    b.linkedInCampaignName === selectedCampaignDetails.name
+                                  );
+                                  if (reachBenchmark) {
+                                    return renderPerformanceBadge('reach', reach, 'higher-better');
+                                  }
+                                  return null;
+                                })()}
+                              </CardContent>
+                            </Card>
+                          )}
+                          
+                          {/* Video Views */}
+                          {videoViews > 0 && (
+                            <Card>
+                              <CardContent className="p-4">
+                                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Video Views</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatNumber(videoViews)}
+                                </p>
+                                {Array.isArray(benchmarks) && (() => {
+                                  const videoViewsBenchmark = benchmarks.find((b: any) => 
+                                    b.metric?.toLowerCase() === 'videoviews' && 
+                                    b.linkedInCampaignName === selectedCampaignDetails.name
+                                  );
+                                  if (videoViewsBenchmark) {
+                                    return renderPerformanceBadge('videoviews', videoViews, 'higher-better');
+                                  }
+                                  return null;
+                                })()}
+                              </CardContent>
+                            </Card>
+                          )}
+                          
+                          {/* Viral Impressions */}
+                          {viralImpressions > 0 && (
+                            <Card>
+                              <CardContent className="p-4">
+                                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Viral Impressions</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatNumber(viralImpressions)}
+                                </p>
+                                {Array.isArray(benchmarks) && (() => {
+                                  const viralBenchmark = benchmarks.find((b: any) => 
+                                    b.metric?.toLowerCase() === 'viralimpressions' && 
+                                    b.linkedInCampaignName === selectedCampaignDetails.name
+                                  );
+                                  if (viralBenchmark) {
+                                    return renderPerformanceBadge('viralimpressions', viralImpressions, 'higher-better');
+                                  }
+                                  return null;
+                                })()}
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
 
-                {/* Performance Metrics with Badges */}
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Performance Metrics</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {/* Derived Metrics Section */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Derived Metrics</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {/* CTR */}
                     <Card>
                       <CardContent className="p-4">
@@ -6301,14 +6437,13 @@ export default function LinkedInAnalytics() {
                       </CardContent>
                     </Card>
 
-                    {/* ER */}
+                    {/* ER (Engagement Rate) */}
                     <Card>
                       <CardContent className="p-4">
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ER</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ER (Engagement Rate)</p>
                         <p className="text-xl font-bold text-slate-900 dark:text-white">
                           {formatPercentage(er)}
                         </p>
-                        {/* Campaign-specific ER badge */}
                         {Array.isArray(benchmarks) && (() => {
                           const erBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'er' && 
@@ -6321,63 +6456,84 @@ export default function LinkedInAnalytics() {
                         })()}
                       </CardContent>
                     </Card>
-
-                    {/* Conversions */}
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Conversions</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">
-                          {formatNumber(conversions)}
-                        </p>
-                        {/* Campaign-specific conversions badge */}
-                        {Array.isArray(benchmarks) && (() => {
-                          const conversionsBenchmark = benchmarks.find((b: any) => 
-                            b.metric?.toLowerCase() === 'conversions' && 
-                            b.linkedInCampaignName === selectedCampaignDetails.name
-                          );
-                          if (conversionsBenchmark) {
-                            return renderPerformanceBadge('conversions', conversions, 'higher-better');
-                          }
-                          return null;
-                        })()}
-                      </CardContent>
-                    </Card>
                   </div>
                 </div>
 
-                {/* Engagement Breakdown */}
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Engagement Details</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Total Engagements</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">
-                          {formatNumber(engagements)}
-                        </p>
-                        {/* Campaign-specific engagements badge */}
-                        {Array.isArray(benchmarks) && (() => {
-                          const engagementsBenchmark = benchmarks.find((b: any) => 
-                            b.metric?.toLowerCase() === 'engagements' && 
-                            b.linkedInCampaignName === selectedCampaignDetails.name
-                          );
-                          if (engagementsBenchmark) {
-                            return renderPerformanceBadge('engagements', engagements, 'higher-better');
-                          }
-                          return null;
-                        })()}
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Engagement Rate</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">
-                          {formatPercentage(er)}
-                        </p>
-                      </CardContent>
-                      </Card>
+                {/* Revenue Metrics Section - Only if conversion value is set */}
+                {aggregated?.hasRevenueTracking === 1 && (() => {
+                  const conversionValue = aggregated.conversionValue || 0;
+                  const revenue = conversions * conversionValue;
+                  const profit = revenue - spend;
+                  const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+                  const roas = spend > 0 ? revenue / spend : 0;
+                  
+                  return (
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Revenue Metrics</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Revenue */}
+                        <Card>
+                          <CardContent className="p-4">
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Revenue</p>
+                            <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                              {formatCurrency(revenue)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                        
+                        {/* ROI */}
+                        <Card>
+                          <CardContent className="p-4">
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROI</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatPercentage(roi)}
+                            </p>
+                            {Array.isArray(benchmarks) && (() => {
+                              const roiBenchmark = benchmarks.find((b: any) => 
+                                b.metric?.toLowerCase() === 'roi' && 
+                                b.linkedInCampaignName === selectedCampaignDetails.name
+                              );
+                              if (roiBenchmark) {
+                                return renderPerformanceBadge('roi', roi, 'higher-better');
+                              }
+                              return null;
+                            })()}
+                          </CardContent>
+                        </Card>
+                        
+                        {/* ROAS */}
+                        <Card>
+                          <CardContent className="p-4">
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROAS</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {roas.toFixed(2)}x
+                            </p>
+                            {Array.isArray(benchmarks) && (() => {
+                              const roasBenchmark = benchmarks.find((b: any) => 
+                                b.metric?.toLowerCase() === 'roas' && 
+                                b.linkedInCampaignName === selectedCampaignDetails.name
+                              );
+                              if (roasBenchmark) {
+                                return renderPerformanceBadge('roas', roas, 'higher-better');
+                              }
+                              return null;
+                            })()}
+                          </CardContent>
+                        </Card>
+                        
+                        {/* Profit */}
+                        <Card>
+                          <CardContent className="p-4">
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit</p>
+                            <p className={`text-2xl font-bold ${profit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                              {formatCurrency(profit)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
                     </div>
-                  </div>
+                  );
+                })()}
                     </>
                   );
                 } catch (error) {

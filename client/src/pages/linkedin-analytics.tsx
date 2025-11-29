@@ -264,12 +264,13 @@ export default function LinkedInAnalytics() {
   });
   // Helper function to get benchmark for a metric
   const getBenchmarkForMetric = (metricName: string) => {
-    console.log('Looking for benchmark:', metricName);
-    console.log('Available benchmarks:', benchmarks);
+    console.log('[getBenchmarkForMetric] Looking for benchmark:', metricName);
+    console.log('[getBenchmarkForMetric] Available benchmarks:', benchmarks);
+    console.log('[getBenchmarkForMetric] Is array?', Array.isArray(benchmarks));
     
-    // Check if benchmarks is an array first
+    // CRITICAL: Check if benchmarks is an array first to prevent undefined errors
     if (!Array.isArray(benchmarks)) {
-      console.log('Benchmarks is not an array, returning null');
+      console.log('[getBenchmarkForMetric] Benchmarks is not an array, returning null');
       return null;
     }
     

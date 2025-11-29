@@ -6064,30 +6064,15 @@ export default function LinkedInAnalytics() {
             </DialogDescription>
           </DialogHeader>
 
-          {(() => {
-            console.log('[Campaign Details Modal] selectedCampaignDetails:', selectedCampaignDetails);
-            console.log('[Campaign Details Modal] Has metrics?', selectedCampaignDetails?.metrics);
-            
-            if (!selectedCampaignDetails) {
-              console.log('[Campaign Details Modal] No campaign selected');
-              return (
-                <div className="flex items-center justify-center py-12">
-                  <p className="text-slate-500">No campaign selected</p>
-                </div>
-              );
-            }
-            
-            if (!selectedCampaignDetails.metrics) {
-              console.log('[Campaign Details Modal] No metrics available');
-              return (
-                <div className="flex items-center justify-center py-12">
-                  <p className="text-slate-500">No metrics available for this campaign</p>
-                </div>
-              );
-            }
-            
-            console.log('[Campaign Details Modal] Rendering full content...');
-            
+          {!selectedCampaignDetails ? (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-lg text-slate-500">No campaign selected</p>
+            </div>
+          ) : !selectedCampaignDetails.metrics ? (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-lg text-slate-500">No metrics available for this campaign</p>
+            </div>
+          ) : (() => {
             // Calculate metrics for this campaign
             const impressions = selectedCampaignDetails.metrics.impressions || 0;
             const clicks = selectedCampaignDetails.metrics.clicks || 0;

@@ -1,13 +1,12 @@
-import { db } from './server/db.js';
-import { benchmarks } from './shared/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { db } from './server/db';
+import { benchmarks, campaigns as campaignsTable } from './shared/schema';
+import { eq, and, or } from 'drizzle-orm';
 
 async function cleanupRevenueBenchmarks() {
   console.log('🧹 Cleaning up ROI/ROAS benchmarks from campaigns without conversion value...\n');
 
   try {
     // Get all campaigns
-    const { campaigns: campaignsTable } = await import('./shared/schema.js');
     const allCampaigns = await db.select().from(campaignsTable);
     
     console.log(`Found ${allCampaigns.length} campaigns\n`);
@@ -26,12 +25,7 @@ async function cleanupRevenueBenchmarks() {
         const revenueBenchmarks = await db
           .select()
           .from(benchmarks)
-          .where(
-            and(
-              eq(benchmarks.campaignId, campaign.id),
-              // Match ROI or ROAS metrics (case insensitive)
-            )
-          );
+          .where(eq(benchmarks.campaignId, campaign.id));
         
         // Filter to only ROI/ROAS
         const toDelete = revenueBenchmarks.filter(b => 

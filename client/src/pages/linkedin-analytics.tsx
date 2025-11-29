@@ -323,8 +323,18 @@ export default function LinkedInAnalytics() {
       return null;
     }
     
-    const performanceLevel = getPerformanceLevel(currentValue, parseFloat(benchmark.benchmarkValue), metricType);
-    console.log(`Performance level for ${metricName}: ${performanceLevel} (current=${currentValue}, benchmark=${benchmark.benchmarkValue})`);
+    // If benchmark is campaign-specific, use campaign-specific metric value instead of aggregated
+    let valueToCompare = currentValue;
+    if (benchmark.linkedInCampaignName && benchmark.specificCampaignId) {
+      const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
+      if (campaignMetrics && campaignMetrics[metricName] !== undefined) {
+        valueToCompare = campaignMetrics[metricName];
+        console.log(`[Badge] Using campaign-specific value for ${metricName}: ${valueToCompare} (was ${currentValue})`);
+      }
+    }
+    
+    const performanceLevel = getPerformanceLevel(valueToCompare, parseFloat(benchmark.benchmarkValue), metricType);
+    console.log(`Performance level for ${metricName}: ${performanceLevel} (current=${valueToCompare}, benchmark=${benchmark.benchmarkValue})`);
     
     return (
       <Badge 
@@ -3303,7 +3313,18 @@ export default function LinkedInAnalytics() {
                                   Your Performance
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
-                                  {benchmark.currentValue || '0'}{benchmark.unit || ''}
+                                  {(() => {
+                                    // If campaign-specific, show the campaign-specific metric value
+                                    if (benchmark.linkedInCampaignName && benchmark.specificCampaignId) {
+                                      const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
+                                      if (campaignMetrics && campaignMetrics[benchmark.metric] !== undefined) {
+                                        const value = campaignMetrics[benchmark.metric];
+                                        return `${typeof value === 'number' ? value.toFixed(2) : value}${benchmark.unit || ''}`;
+                                      }
+                                    }
+                                    // Otherwise use stored currentValue
+                                    return `${benchmark.currentValue || '0'}${benchmark.unit || ''}`;
+                                  })()}
                                 </div>
                               </div>
 
@@ -3334,7 +3355,17 @@ export default function LinkedInAnalytics() {
                                     Performance vs Benchmark:
                                   </span>
                                   {(() => {
-                                    const current = parseFloat(benchmark.currentValue);
+                                    // Use campaign-specific value if applicable
+                                    let currentVal = parseFloat(benchmark.currentValue);
+                                    if (benchmark.linkedInCampaignName && benchmark.specificCampaignId) {
+                                      const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
+                                      if (campaignMetrics && campaignMetrics[benchmark.metric] !== undefined) {
+                                        currentVal = campaignMetrics[benchmark.metric];
+                                        console.log(`[Performance Comparison] Using campaign-specific ${benchmark.metric}: ${currentVal}`);
+                                      }
+                                    }
+                                    
+                                    const current = currentVal;
                                     const benchmarkVal = parseFloat(benchmark.benchmarkValue || benchmark.targetValue);
                                     const diff = current - benchmarkVal;
                                     const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';

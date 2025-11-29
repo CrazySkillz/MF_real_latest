@@ -2478,6 +2478,9 @@ export default function LinkedInAnalytics() {
                             }
                           })
                           .map((linkedInCampaign: any, index: number) => {
+                            // Capture campaign name in a const to avoid scope issues
+                            const campaignName = linkedInCampaign.name;
+                            
                             // Calculate derived metrics
                             const impressions = linkedInCampaign.metrics.impressions || 0;
                             const clicks = linkedInCampaign.metrics.clicks || 0;
@@ -2529,7 +2532,7 @@ export default function LinkedInAnalytics() {
                                       {Array.isArray(benchmarks) && (() => {
                                         const impressionsBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'impressions' && 
-                                          b.linkedInCampaignName === linkedInCampaign.name
+                                          b.linkedInCampaignName === campaignName
                                         );
                                         if (impressionsBenchmark) {
                                           return renderPerformanceBadge('impressions', impressions, 'higher-better');
@@ -2546,7 +2549,7 @@ export default function LinkedInAnalytics() {
                                       {Array.isArray(benchmarks) && (() => {
                                         const clicksBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'clicks' && 
-                                          b.linkedInCampaignName === linkedInCampaign.name
+                                          b.linkedInCampaignName === campaignName
                                         );
                                         if (clicksBenchmark) {
                                           return renderPerformanceBadge('clicks', clicks, 'higher-better');
@@ -2563,7 +2566,7 @@ export default function LinkedInAnalytics() {
                                       {Array.isArray(benchmarks) && (() => {
                                         const spendBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'spend' && 
-                                          b.linkedInCampaignName === linkedInCampaign.name
+                                          b.linkedInCampaignName === campaignName
                                         );
                                         if (spendBenchmark) {
                                           return renderPerformanceBadge('spend', spend, 'lower-better');
@@ -2580,7 +2583,7 @@ export default function LinkedInAnalytics() {
                                       {Array.isArray(benchmarks) && (() => {
                                         const conversionsBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'conversions' && 
-                                          b.linkedInCampaignName === linkedInCampaign.name
+                                          b.linkedInCampaignName === campaignName
                                         );
                                         if (conversionsBenchmark) {
                                           return renderPerformanceBadge('conversions', conversions, 'higher-better');
@@ -2601,7 +2604,7 @@ export default function LinkedInAnalytics() {
                                       {Array.isArray(benchmarks) && (() => {
                                         const ctrBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'ctr' && 
-                                          b.linkedInCampaignName === linkedInCampaign.name
+                                          b.linkedInCampaignName === campaignName
                                         );
                                         if (ctrBenchmark) {
                                           return renderPerformanceBadge('ctr', ctr, 'higher-better');
@@ -2618,7 +2621,7 @@ export default function LinkedInAnalytics() {
                                       {Array.isArray(benchmarks) && (() => {
                                         const cpcBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'cpc' && 
-                                          b.linkedInCampaignName === linkedInCampaign.name
+                                          b.linkedInCampaignName === campaignName
                                         );
                                         if (cpcBenchmark) {
                                           return renderPerformanceBadge('cpc', cpc, 'lower-better');
@@ -2635,7 +2638,7 @@ export default function LinkedInAnalytics() {
                                       {Array.isArray(benchmarks) && (() => {
                                         const cpmBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'cpm' && 
-                                          b.linkedInCampaignName === linkedInCampaign.name
+                                          b.linkedInCampaignName === campaignName
                                         );
                                         if (cpmBenchmark) {
                                           return renderPerformanceBadge('cpm', cpm, 'lower-better');
@@ -2652,7 +2655,7 @@ export default function LinkedInAnalytics() {
                                       {Array.isArray(benchmarks) && (() => {
                                         const cvrBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'cvr' && 
-                                          b.linkedInCampaignName === linkedInCampaign.name
+                                          b.linkedInCampaignName === campaignName
                                         );
                                         if (cvrBenchmark) {
                                           return renderPerformanceBadge('cvr', convRate, 'higher-better');
@@ -2669,7 +2672,7 @@ export default function LinkedInAnalytics() {
                                       {Array.isArray(benchmarks) && (() => {
                                         const cpaBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'cpa' && 
-                                          b.linkedInCampaignName === linkedInCampaign.name
+                                          b.linkedInCampaignName === campaignName
                                         );
                                         if (cpaBenchmark) {
                                           return renderPerformanceBadge('cpa', cpa, 'lower-better');
@@ -2741,7 +2744,7 @@ export default function LinkedInAnalytics() {
                                         {Array.isArray(benchmarks) && (() => {
                                           const erBenchmark = benchmarks.find((b: any) => 
                                             b.metric?.toLowerCase() === 'er' && 
-                                            b.linkedInCampaignName === linkedInCampaign.name
+                                            b.linkedInCampaignName === campaignName
                                           );
                                           if (erBenchmark) {
                                             return renderPerformanceBadge('er', engagementRate, 'higher-better');
@@ -2753,7 +2756,7 @@ export default function LinkedInAnalytics() {
                                         {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
                                           const roiBenchmark = benchmarks.find((b: any) => 
                                             b.metric?.toLowerCase() === 'roi' && 
-                                            b.linkedInCampaignName === linkedInCampaign.name
+                                            b.linkedInCampaignName === campaignName
                                           );
                                           if (roiBenchmark) {
                                             const campaignRevenue = conversions * (aggregated.conversionValue || 0);
@@ -2767,7 +2770,7 @@ export default function LinkedInAnalytics() {
                                         {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
                                           const roasBenchmark = benchmarks.find((b: any) => 
                                             b.metric?.toLowerCase() === 'roas' && 
-                                            b.linkedInCampaignName === linkedInCampaign.name
+                                            b.linkedInCampaignName === campaignName
                                           );
                                           if (roasBenchmark) {
                                             const campaignRevenue = conversions * (aggregated.conversionValue || 0);
@@ -5191,7 +5194,7 @@ export default function LinkedInAnalytics() {
                         {Array.isArray(benchmarks) && (() => {
                           const erBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'er' && 
-                            b.linkedInCampaignName === linkedInCampaign.name
+                            b.linkedInCampaignName === campaignName
                           );
                           if (erBenchmark) {
                             return renderPerformanceBadge('er', engagementRate, 'higher-better');
@@ -5203,7 +5206,7 @@ export default function LinkedInAnalytics() {
                         {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
                           const roiBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'roi' && 
-                            b.linkedInCampaignName === linkedInCampaign.name
+                            b.linkedInCampaignName === campaignName
                           );
                           if (roiBenchmark) {
                             const campaignRevenue = conversions * (aggregated.conversionValue || 0);
@@ -5217,7 +5220,7 @@ export default function LinkedInAnalytics() {
                         {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
                           const roasBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'roas' && 
-                            b.linkedInCampaignName === linkedInCampaign.name
+                            b.linkedInCampaignName === campaignName
                           );
                           if (roasBenchmark) {
                             const campaignRevenue = conversions * (aggregated.conversionValue || 0);

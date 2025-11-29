@@ -263,6 +263,53 @@ export default function LinkedInAnalytics() {
     cacheTime: 0, // Don't cache at all
   });
 
+  // Helper function to get benchmark value fallback (hardcoded industry benchmarks)
+  const getBenchmarkValueFallback = (industry: string, metric: string): { value: number; unit: string } | null => {
+    // Hardcoded fallback benchmarks for all industries
+    const fallbackBenchmarks: Record<string, Record<string, { value: number; unit: string }>> = {
+      'ecommerce': {
+        'impressions': { value: 75000, unit: '' },
+        'clicks': { value: 1350, unit: '' },
+        'spend': { value: 4000, unit: '$' },
+        'conversions': { value: 35, unit: '' },
+        'leads': { value: 60, unit: '' },
+        'engagements': { value: 2250, unit: '' },
+        'ctr': { value: 1.8, unit: '%' },
+        'cpc': { value: 2.5, unit: '$' },
+        'cpm': { value: 25, unit: '$' },
+        'cvr': { value: 2.5, unit: '%' },
+        'cpa': { value: 80, unit: '$' },
+        'cpl': { value: 65, unit: '$' },
+        'er': { value: 3.0, unit: '%' },
+        'roi': { value: 350, unit: '%' },
+        'roas': { value: 4.5, unit: 'x' }
+      },
+      'technology': {
+        'impressions': { value: 50000, unit: '' },
+        'clicks': { value: 1000, unit: '' },
+        'spend': { value: 5000, unit: '$' },
+        'conversions': { value: 30, unit: '' },
+        'leads': { value: 50, unit: '' },
+        'engagements': { value: 1500, unit: '' },
+        'ctr': { value: 2.0, unit: '%' },
+        'cpc': { value: 3.5, unit: '$' },
+        'cpm': { value: 30, unit: '$' },
+        'cvr': { value: 3.0, unit: '%' },
+        'cpa': { value: 100, unit: '$' },
+        'cpl': { value: 80, unit: '$' },
+        'er': { value: 2.5, unit: '%' },
+        'roi': { value: 300, unit: '%' },
+        'roas': { value: 4.0, unit: 'x' }
+      },
+      // Add more industries as needed...
+    };
+    
+    const industryData = fallbackBenchmarks[industry.toLowerCase()];
+    if (!industryData) return null;
+    
+    return industryData[metric.toLowerCase()] || null;
+  };
+
   // Helper function to get benchmark for a metric
   const getBenchmarkForMetric = (metricName: string) => {
     console.log('Looking for benchmark:', metricName);
@@ -4444,7 +4491,51 @@ export default function LinkedInAnalytics() {
                       }
                     }
                     console.log('[Metric Selection] Auto-filled currentValue:', currentValue, unit);
-                    setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue, unit });
+                    
+                    // Update form with metric, currentValue, and unit
+                    const updatedForm = { ...benchmarkForm, metric: value, currentValue, unit };
+                    setBenchmarkForm(updatedForm);
+                    
+                    // If industry is already selected, also auto-fill benchmark value
+                    if (benchmarkForm.industry && benchmarkForm.industry !== 'none' && benchmarkForm.industry !== 'other') {
+                      console.log('[Metric Selection] Industry already selected, fetching benchmark value...');
+                      (async () => {
+                        try {
+                          const response = await fetch(`/api/industry-benchmarks/${benchmarkForm.industry}/${value}`);
+                          if (response.ok) {
+                            const data = await response.json();
+                            console.log('[Metric Selection] Benchmark data from API:', data);
+                            setBenchmarkForm(prev => ({
+                              ...prev,
+                              benchmarkValue: String(data.value),
+                              unit: data.unit || prev.unit
+                            }));
+                          } else {
+                            // Fallback to hardcoded values
+                            const fallbackData = getBenchmarkValueFallback(benchmarkForm.industry, value);
+                            if (fallbackData) {
+                              console.log('[Metric Selection] Using fallback benchmark data:', fallbackData);
+                              setBenchmarkForm(prev => ({
+                                ...prev,
+                                benchmarkValue: String(fallbackData.value),
+                                unit: fallbackData.unit || prev.unit
+                              }));
+                            }
+                          }
+                        } catch (error) {
+                          console.error('[Metric Selection] Failed to fetch benchmark value:', error);
+                          const fallbackData = getBenchmarkValueFallback(benchmarkForm.industry, value);
+                          if (fallbackData) {
+                            console.log('[Metric Selection] Using fallback benchmark data after error:', fallbackData);
+                            setBenchmarkForm(prev => ({
+                              ...prev,
+                              benchmarkValue: String(fallbackData.value),
+                              unit: fallbackData.unit || prev.unit
+                            }));
+                          }
+                        }
+                      })();
+                    }
                   }}
                 >
                   <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">

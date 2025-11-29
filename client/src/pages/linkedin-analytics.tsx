@@ -2059,6 +2059,17 @@ export default function LinkedInAnalytics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {format(value)}
                                 </p>
+                                {/* Show badge for raw metrics if benchmark exists (global only) */}
+                                {(() => {
+                                  const benchmark = getBenchmarkForMetric(metricKey);
+                                  if (benchmark && !benchmark.linkedInCampaignName) {
+                                    // Determine if higher or lower is better for this metric
+                                    const higherBetterMetrics = ['impressions', 'clicks', 'conversions', 'leads', 'engagements', 'reach'];
+                                    const metricType = higherBetterMetrics.includes(metricKey) ? 'higher-better' : 'lower-better';
+                                    return renderPerformanceBadge(metricKey, value, metricType);
+                                  }
+                                  return null;
+                                })()}
                               </CardContent>
                             </Card>
                           );
@@ -2505,24 +2516,68 @@ export default function LinkedInAnalytics() {
                                       <p className="text-lg font-bold text-slate-900 dark:text-white">
                                         {formatNumber(impressions)}
                                       </p>
+                                      {/* Badge for campaign-specific impressions benchmark */}
+                                      {(() => {
+                                        const impressionsBenchmark = benchmarks.find((b: any) => 
+                                          b.metric?.toLowerCase() === 'impressions' && 
+                                          b.linkedInCampaignName === linkedInCampaign.name
+                                        );
+                                        if (impressionsBenchmark) {
+                                          return renderPerformanceBadge('impressions', impressions, 'higher-better');
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
                                       <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Clicks</p>
                                       <p className="text-lg font-bold text-slate-900 dark:text-white">
                                         {formatNumber(clicks)}
                                       </p>
+                                      {/* Badge for campaign-specific clicks benchmark */}
+                                      {(() => {
+                                        const clicksBenchmark = benchmarks.find((b: any) => 
+                                          b.metric?.toLowerCase() === 'clicks' && 
+                                          b.linkedInCampaignName === linkedInCampaign.name
+                                        );
+                                        if (clicksBenchmark) {
+                                          return renderPerformanceBadge('clicks', clicks, 'higher-better');
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
                                       <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Spend</p>
                                       <p className="text-lg font-bold text-slate-900 dark:text-white">
                                         {formatCurrency(spend)}
                                       </p>
+                                      {/* Badge for campaign-specific spend benchmark */}
+                                      {(() => {
+                                        const spendBenchmark = benchmarks.find((b: any) => 
+                                          b.metric?.toLowerCase() === 'spend' && 
+                                          b.linkedInCampaignName === linkedInCampaign.name
+                                        );
+                                        if (spendBenchmark) {
+                                          return renderPerformanceBadge('spend', spend, 'lower-better');
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
                                       <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Conversions</p>
                                       <p className="text-lg font-bold text-slate-900 dark:text-white">
                                         {formatNumber(conversions)}
                                       </p>
+                                      {/* Badge for campaign-specific conversions benchmark */}
+                                      {(() => {
+                                        const conversionsBenchmark = benchmarks.find((b: any) => 
+                                          b.metric?.toLowerCase() === 'conversions' && 
+                                          b.linkedInCampaignName === linkedInCampaign.name
+                                        );
+                                        if (conversionsBenchmark) {
+                                          return renderPerformanceBadge('conversions', conversions, 'higher-better');
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                   </div>
 
@@ -6093,6 +6148,17 @@ export default function LinkedInAnalytics() {
                       <p className="text-2xl font-bold text-slate-900 dark:text-white">
                         {formatNumber(impressions)}
                       </p>
+                      {/* Campaign-specific impressions badge */}
+                      {(() => {
+                        const impressionsBenchmark = benchmarks.find((b: any) => 
+                          b.metric?.toLowerCase() === 'impressions' && 
+                          b.linkedInCampaignName === selectedCampaignDetails.name
+                        );
+                        if (impressionsBenchmark) {
+                          return renderPerformanceBadge('impressions', impressions, 'higher-better');
+                        }
+                        return null;
+                      })()}
                     </CardContent>
                   </Card>
                   <Card>
@@ -6101,6 +6167,17 @@ export default function LinkedInAnalytics() {
                       <p className="text-2xl font-bold text-slate-900 dark:text-white">
                         {formatNumber(clicks)}
                       </p>
+                      {/* Campaign-specific clicks badge */}
+                      {(() => {
+                        const clicksBenchmark = benchmarks.find((b: any) => 
+                          b.metric?.toLowerCase() === 'clicks' && 
+                          b.linkedInCampaignName === selectedCampaignDetails.name
+                        );
+                        if (clicksBenchmark) {
+                          return renderPerformanceBadge('clicks', clicks, 'higher-better');
+                        }
+                        return null;
+                      })()}
                     </CardContent>
                   </Card>
                   <Card>
@@ -6109,6 +6186,17 @@ export default function LinkedInAnalytics() {
                       <p className="text-2xl font-bold text-slate-900 dark:text-white">
                         {formatCurrency(spend)}
                       </p>
+                      {/* Campaign-specific spend badge */}
+                      {(() => {
+                        const spendBenchmark = benchmarks.find((b: any) => 
+                          b.metric?.toLowerCase() === 'spend' && 
+                          b.linkedInCampaignName === selectedCampaignDetails.name
+                        );
+                        if (spendBenchmark) {
+                          return renderPerformanceBadge('spend', spend, 'lower-better');
+                        }
+                        return null;
+                      })()}
                     </CardContent>
                   </Card>
                 </div>
@@ -6271,6 +6359,17 @@ export default function LinkedInAnalytics() {
                         <p className="text-xl font-bold text-slate-900 dark:text-white">
                           {formatNumber(conversions)}
                         </p>
+                        {/* Campaign-specific conversions badge */}
+                        {(() => {
+                          const conversionsBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'conversions' && 
+                            b.linkedInCampaignName === selectedCampaignDetails.name
+                          );
+                          if (conversionsBenchmark) {
+                            return renderPerformanceBadge('conversions', conversions, 'higher-better');
+                          }
+                          return null;
+                        })()}
                       </CardContent>
                     </Card>
                   </div>
@@ -6286,6 +6385,17 @@ export default function LinkedInAnalytics() {
                         <p className="text-xl font-bold text-slate-900 dark:text-white">
                           {formatNumber(engagements)}
                         </p>
+                        {/* Campaign-specific engagements badge */}
+                        {(() => {
+                          const engagementsBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'engagements' && 
+                            b.linkedInCampaignName === selectedCampaignDetails.name
+                          );
+                          if (engagementsBenchmark) {
+                            return renderPerformanceBadge('engagements', engagements, 'higher-better');
+                          }
+                          return null;
+                        })()}
                       </CardContent>
                     </Card>
                     <Card>

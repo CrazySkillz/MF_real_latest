@@ -16,6 +16,57 @@ export interface IndustryBenchmarks {
 
 export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   technology: {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 50000,
+      poor: 10000,
+      fair: 30000,
+      good: 50000,
+      excellent: 100000,
+      unit: ''
+    },
+    clicks: {
+      target: 1000,
+      poor: 200,
+      fair: 600,
+      good: 1000,
+      excellent: 2000,
+      unit: ''
+    },
+    spend: {
+      target: 5000,
+      poor: 1000,
+      fair: 3000,
+      good: 5000,
+      excellent: 10000,
+      unit: '$'
+    },
+    conversions: {
+      target: 30,
+      poor: 5,
+      fair: 15,
+      good: 30,
+      excellent: 60,
+      unit: ''
+    },
+    leads: {
+      target: 50,
+      poor: 10,
+      fair: 25,
+      good: 50,
+      excellent: 100,
+      unit: ''
+    },
+    engagements: {
+      target: 1500,
+      poor: 300,
+      fair: 900,
+      good: 1500,
+      excellent: 3000,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 2.0,
       poor: 1.0,
@@ -91,6 +142,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   ecommerce: {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 75000,
+      poor: 15000,
+      fair: 45000,
+      good: 75000,
+      excellent: 150000,
+      unit: ''
+    },
+    clicks: {
+      target: 1350,
+      poor: 270,
+      fair: 810,
+      good: 1350,
+      excellent: 2700,
+      unit: ''
+    },
+    spend: {
+      target: 4000,
+      poor: 800,
+      fair: 2400,
+      good: 4000,
+      excellent: 8000,
+      unit: '$'
+    },
+    conversions: {
+      target: 35,
+      poor: 7,
+      fair: 21,
+      good: 35,
+      excellent: 70,
+      unit: ''
+    },
+    leads: {
+      target: 60,
+      poor: 12,
+      fair: 36,
+      good: 60,
+      excellent: 120,
+      unit: ''
+    },
+    engagements: {
+      target: 2250,
+      poor: 450,
+      fair: 1350,
+      good: 2250,
+      excellent: 4500,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.8,
       poor: 0.8,
@@ -166,6 +268,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   healthcare: {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 40000,
+      poor: 8000,
+      fair: 24000,
+      good: 40000,
+      excellent: 80000,
+      unit: ''
+    },
+    clicks: {
+      target: 600,
+      poor: 120,
+      fair: 360,
+      good: 600,
+      excellent: 1200,
+      unit: ''
+    },
+    spend: {
+      target: 6000,
+      poor: 1200,
+      fair: 3600,
+      good: 6000,
+      excellent: 12000,
+      unit: '$'
+    },
+    conversions: {
+      target: 12,
+      poor: 2,
+      fair: 7,
+      good: 12,
+      excellent: 24,
+      unit: ''
+    },
+    leads: {
+      target: 20,
+      poor: 4,
+      fair: 12,
+      good: 20,
+      excellent: 40,
+      unit: ''
+    },
+    engagements: {
+      target: 800,
+      poor: 160,
+      fair: 480,
+      good: 800,
+      excellent: 1600,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.5,
       poor: 0.7,
@@ -241,6 +394,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   finance: {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 35000,
+      poor: 7000,
+      fair: 21000,
+      good: 35000,
+      excellent: 70000,
+      unit: ''
+    },
+    clicks: {
+      target: 420,
+      poor: 84,
+      fair: 252,
+      good: 420,
+      excellent: 840,
+      unit: ''
+    },
+    spend: {
+      target: 7500,
+      poor: 1500,
+      fair: 4500,
+      good: 7500,
+      excellent: 15000,
+      unit: '$'
+    },
+    conversions: {
+      target: 8,
+      poor: 2,
+      fair: 5,
+      good: 8,
+      excellent: 16,
+      unit: ''
+    },
+    leads: {
+      target: 15,
+      poor: 3,
+      fair: 9,
+      good: 15,
+      excellent: 30,
+      unit: ''
+    },
+    engagements: {
+      target: 525,
+      poor: 105,
+      fair: 315,
+      good: 525,
+      excellent: 1050,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.2,
       poor: 0.5,
@@ -316,6 +520,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   education: {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 60000,
+      poor: 12000,
+      fair: 36000,
+      good: 60000,
+      excellent: 120000,
+      unit: ''
+    },
+    clicks: {
+      target: 1320,
+      poor: 264,
+      fair: 792,
+      good: 1320,
+      excellent: 2640,
+      unit: ''
+    },
+    spend: {
+      target: 4500,
+      poor: 900,
+      fair: 2700,
+      good: 4500,
+      excellent: 9000,
+      unit: '$'
+    },
+    conversions: {
+      target: 45,
+      poor: 9,
+      fair: 27,
+      good: 45,
+      excellent: 90,
+      unit: ''
+    },
+    leads: {
+      target: 70,
+      poor: 14,
+      fair: 42,
+      good: 70,
+      excellent: 140,
+      unit: ''
+    },
+    engagements: {
+      target: 2100,
+      poor: 420,
+      fair: 1260,
+      good: 2100,
+      excellent: 4200,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 2.2,
       poor: 1.0,
@@ -391,6 +646,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'real-estate': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 45000,
+      poor: 9000,
+      fair: 27000,
+      good: 45000,
+      excellent: 90000,
+      unit: ''
+    },
+    clicks: {
+      target: 720,
+      poor: 144,
+      fair: 432,
+      good: 720,
+      excellent: 1440,
+      unit: ''
+    },
+    spend: {
+      target: 5500,
+      poor: 1100,
+      fair: 3300,
+      good: 5500,
+      excellent: 11000,
+      unit: '$'
+    },
+    conversions: {
+      target: 16,
+      poor: 3,
+      fair: 10,
+      good: 16,
+      excellent: 32,
+      unit: ''
+    },
+    leads: {
+      target: 25,
+      poor: 5,
+      fair: 15,
+      good: 25,
+      excellent: 50,
+      unit: ''
+    },
+    engagements: {
+      target: 990,
+      poor: 198,
+      fair: 594,
+      good: 990,
+      excellent: 1980,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.6,
       poor: 0.7,
@@ -466,6 +772,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'professional-services': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 42000,
+      poor: 8400,
+      fair: 25200,
+      good: 42000,
+      excellent: 84000,
+      unit: ''
+    },
+    clicks: {
+      target: 800,
+      poor: 160,
+      fair: 480,
+      good: 800,
+      excellent: 1600,
+      unit: ''
+    },
+    spend: {
+      target: 4800,
+      poor: 960,
+      fair: 2880,
+      good: 4800,
+      excellent: 9600,
+      unit: '$'
+    },
+    conversions: {
+      target: 22,
+      poor: 4,
+      fair: 13,
+      good: 22,
+      excellent: 44,
+      unit: ''
+    },
+    leads: {
+      target: 35,
+      poor: 7,
+      fair: 21,
+      good: 35,
+      excellent: 70,
+      unit: ''
+    },
+    engagements: {
+      target: 1176,
+      poor: 235,
+      fair: 706,
+      good: 1176,
+      excellent: 2352,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.9,
       poor: 0.9,
@@ -541,6 +898,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   retail: {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 70000,
+      poor: 14000,
+      fair: 42000,
+      good: 70000,
+      excellent: 140000,
+      unit: ''
+    },
+    clicks: {
+      target: 1470,
+      poor: 294,
+      fair: 882,
+      good: 1470,
+      excellent: 2940,
+      unit: ''
+    },
+    spend: {
+      target: 4200,
+      poor: 840,
+      fair: 2520,
+      good: 4200,
+      excellent: 8400,
+      unit: '$'
+    },
+    conversions: {
+      target: 47,
+      poor: 9,
+      fair: 28,
+      good: 47,
+      excellent: 94,
+      unit: ''
+    },
+    leads: {
+      target: 75,
+      poor: 15,
+      fair: 45,
+      good: 75,
+      excellent: 150,
+      unit: ''
+    },
+    engagements: {
+      target: 2240,
+      poor: 448,
+      fair: 1344,
+      good: 2240,
+      excellent: 4480,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 2.1,
       poor: 1.0,
@@ -616,6 +1024,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'saas': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 55000,
+      poor: 11000,
+      fair: 33000,
+      good: 55000,
+      excellent: 110000,
+      unit: ''
+    },
+    clicks: {
+      target: 1265,
+      poor: 253,
+      fair: 759,
+      good: 1265,
+      excellent: 2530,
+      unit: ''
+    },
+    spend: {
+      target: 5200,
+      poor: 1040,
+      fair: 3120,
+      good: 5200,
+      excellent: 10400,
+      unit: '$'
+    },
+    conversions: {
+      target: 44,
+      poor: 9,
+      fair: 26,
+      good: 44,
+      excellent: 88,
+      unit: ''
+    },
+    leads: {
+      target: 65,
+      poor: 13,
+      fair: 39,
+      good: 65,
+      excellent: 130,
+      unit: ''
+    },
+    engagements: {
+      target: 1540,
+      poor: 308,
+      fair: 924,
+      good: 1540,
+      excellent: 3080,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 2.3,
       poor: 1.1,
@@ -691,6 +1150,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'hospitality': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 48000,
+      poor: 9600,
+      fair: 28800,
+      good: 48000,
+      excellent: 96000,
+      unit: ''
+    },
+    clicks: {
+      target: 816,
+      poor: 163,
+      fair: 490,
+      good: 816,
+      excellent: 1632,
+      unit: ''
+    },
+    spend: {
+      target: 4400,
+      poor: 880,
+      fair: 2640,
+      good: 4400,
+      excellent: 8800,
+      unit: '$'
+    },
+    conversions: {
+      target: 19,
+      poor: 4,
+      fair: 11,
+      good: 19,
+      excellent: 38,
+      unit: ''
+    },
+    leads: {
+      target: 30,
+      poor: 6,
+      fair: 18,
+      good: 30,
+      excellent: 60,
+      unit: ''
+    },
+    engagements: {
+      target: 1248,
+      poor: 250,
+      fair: 749,
+      good: 1248,
+      excellent: 2496,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.7,
       poor: 0.8,
@@ -766,6 +1276,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'automotive': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 38000,
+      poor: 7600,
+      fair: 22800,
+      good: 38000,
+      excellent: 76000,
+      unit: ''
+    },
+    clicks: {
+      target: 532,
+      poor: 106,
+      fair: 319,
+      good: 532,
+      excellent: 1064,
+      unit: ''
+    },
+    spend: {
+      target: 6200,
+      poor: 1240,
+      fair: 3720,
+      good: 6200,
+      excellent: 12400,
+      unit: '$'
+    },
+    conversions: {
+      target: 10,
+      poor: 2,
+      fair: 6,
+      good: 10,
+      excellent: 20,
+      unit: ''
+    },
+    leads: {
+      target: 18,
+      poor: 4,
+      fair: 11,
+      good: 18,
+      excellent: 36,
+      unit: ''
+    },
+    engagements: {
+      target: 684,
+      poor: 137,
+      fair: 411,
+      good: 684,
+      excellent: 1368,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.4,
       poor: 0.6,
@@ -841,6 +1402,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'manufacturing': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 32000,
+      poor: 6400,
+      fair: 19200,
+      good: 32000,
+      excellent: 64000,
+      unit: ''
+    },
+    clicks: {
+      target: 416,
+      poor: 83,
+      fair: 250,
+      good: 416,
+      excellent: 832,
+      unit: ''
+    },
+    spend: {
+      target: 6800,
+      poor: 1360,
+      fair: 4080,
+      good: 6800,
+      excellent: 13600,
+      unit: '$'
+    },
+    conversions: {
+      target: 7,
+      poor: 1,
+      fair: 4,
+      good: 7,
+      excellent: 14,
+      unit: ''
+    },
+    leads: {
+      target: 12,
+      poor: 2,
+      fair: 7,
+      good: 12,
+      excellent: 24,
+      unit: ''
+    },
+    engagements: {
+      target: 512,
+      poor: 102,
+      fair: 307,
+      good: 512,
+      excellent: 1024,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.3,
       poor: 0.6,
@@ -916,6 +1528,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'nonprofit': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 65000,
+      poor: 13000,
+      fair: 39000,
+      good: 65000,
+      excellent: 130000,
+      unit: ''
+    },
+    clicks: {
+      target: 1625,
+      poor: 325,
+      fair: 975,
+      good: 1625,
+      excellent: 3250,
+      unit: ''
+    },
+    spend: {
+      target: 3500,
+      poor: 700,
+      fair: 2100,
+      good: 3500,
+      excellent: 7000,
+      unit: '$'
+    },
+    conversions: {
+      target: 65,
+      poor: 13,
+      fair: 39,
+      good: 65,
+      excellent: 130,
+      unit: ''
+    },
+    leads: {
+      target: 100,
+      poor: 20,
+      fair: 60,
+      good: 100,
+      excellent: 200,
+      unit: ''
+    },
+    engagements: {
+      target: 2730,
+      poor: 546,
+      fair: 1638,
+      good: 2730,
+      excellent: 5460,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 2.5,
       poor: 1.2,
@@ -991,6 +1654,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'legal': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 30000,
+      poor: 6000,
+      fair: 18000,
+      good: 30000,
+      excellent: 60000,
+      unit: ''
+    },
+    clicks: {
+      target: 330,
+      poor: 66,
+      fair: 198,
+      good: 330,
+      excellent: 660,
+      unit: ''
+    },
+    spend: {
+      target: 8500,
+      poor: 1700,
+      fair: 5100,
+      good: 8500,
+      excellent: 17000,
+      unit: '$'
+    },
+    conversions: {
+      target: 5,
+      poor: 1,
+      fair: 3,
+      good: 5,
+      excellent: 10,
+      unit: ''
+    },
+    leads: {
+      target: 10,
+      poor: 2,
+      fair: 6,
+      good: 10,
+      excellent: 20,
+      unit: ''
+    },
+    engagements: {
+      target: 390,
+      poor: 78,
+      fair: 234,
+      good: 390,
+      excellent: 780,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.1,
       poor: 0.5,
@@ -1066,6 +1780,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'insurance': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 36000,
+      poor: 7200,
+      fair: 21600,
+      good: 36000,
+      excellent: 72000,
+      unit: ''
+    },
+    clicks: {
+      target: 468,
+      poor: 94,
+      fair: 281,
+      good: 468,
+      excellent: 936,
+      unit: ''
+    },
+    spend: {
+      target: 7200,
+      poor: 1440,
+      fair: 4320,
+      good: 7200,
+      excellent: 14400,
+      unit: '$'
+    },
+    conversions: {
+      target: 7,
+      poor: 1,
+      fair: 4,
+      good: 7,
+      excellent: 14,
+      unit: ''
+    },
+    leads: {
+      target: 13,
+      poor: 3,
+      fair: 8,
+      good: 13,
+      excellent: 26,
+      unit: ''
+    },
+    engagements: {
+      target: 504,
+      poor: 101,
+      fair: 302,
+      good: 504,
+      excellent: 1008,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.3,
       poor: 0.6,
@@ -1141,6 +1906,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'telecommunications': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 52000,
+      poor: 10400,
+      fair: 31200,
+      good: 52000,
+      excellent: 104000,
+      unit: ''
+    },
+    clicks: {
+      target: 832,
+      poor: 166,
+      fair: 499,
+      good: 832,
+      excellent: 1664,
+      unit: ''
+    },
+    spend: {
+      target: 5400,
+      poor: 1080,
+      fair: 3240,
+      good: 5400,
+      excellent: 10800,
+      unit: '$'
+    },
+    conversions: {
+      target: 17,
+      poor: 3,
+      fair: 10,
+      good: 17,
+      excellent: 34,
+      unit: ''
+    },
+    leads: {
+      target: 28,
+      poor: 6,
+      fair: 17,
+      good: 28,
+      excellent: 56,
+      unit: ''
+    },
+    engagements: {
+      target: 1040,
+      poor: 208,
+      fair: 624,
+      good: 1040,
+      excellent: 2080,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 1.6,
       poor: 0.7,
@@ -1216,6 +2032,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'entertainment': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 80000,
+      poor: 16000,
+      fair: 48000,
+      good: 80000,
+      excellent: 160000,
+      unit: ''
+    },
+    clicks: {
+      target: 1920,
+      poor: 384,
+      fair: 1152,
+      good: 1920,
+      excellent: 3840,
+      unit: ''
+    },
+    spend: {
+      target: 3800,
+      poor: 760,
+      fair: 2280,
+      good: 3800,
+      excellent: 7600,
+      unit: '$'
+    },
+    conversions: {
+      target: 73,
+      poor: 15,
+      fair: 44,
+      good: 73,
+      excellent: 146,
+      unit: ''
+    },
+    leads: {
+      target: 110,
+      poor: 22,
+      fair: 66,
+      good: 110,
+      excellent: 220,
+      unit: ''
+    },
+    engagements: {
+      target: 3600,
+      poor: 720,
+      fair: 2160,
+      good: 3600,
+      excellent: 7200,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 2.4,
       poor: 1.1,
@@ -1291,6 +2158,57 @@ export const INDUSTRY_BENCHMARKS: Record<string, IndustryBenchmarks> = {
   },
   
   'food-beverage': {
+    // Raw Metrics (Volume-based)
+    impressions: {
+      target: 68000,
+      poor: 13600,
+      fair: 40800,
+      good: 68000,
+      excellent: 136000,
+      unit: ''
+    },
+    clicks: {
+      target: 1360,
+      poor: 272,
+      fair: 816,
+      good: 1360,
+      excellent: 2720,
+      unit: ''
+    },
+    spend: {
+      target: 4100,
+      poor: 820,
+      fair: 2460,
+      good: 4100,
+      excellent: 8200,
+      unit: '$'
+    },
+    conversions: {
+      target: 45,
+      poor: 9,
+      fair: 27,
+      good: 45,
+      excellent: 90,
+      unit: ''
+    },
+    leads: {
+      target: 70,
+      poor: 14,
+      fair: 42,
+      good: 70,
+      excellent: 140,
+      unit: ''
+    },
+    engagements: {
+      target: 2448,
+      poor: 490,
+      fair: 1469,
+      good: 2448,
+      excellent: 4896,
+      unit: ''
+    },
+    
+    // Derived Metrics (Performance-based)
     ctr: {
       target: 2.0,
       poor: 0.9,

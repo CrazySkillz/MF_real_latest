@@ -2517,7 +2517,7 @@ export default function LinkedInAnalytics() {
                                         {formatNumber(impressions)}
                                       </p>
                                       {/* Badge for campaign-specific impressions benchmark */}
-                                      {(() => {
+                                      {Array.isArray(benchmarks) && (() => {
                                         const impressionsBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'impressions' && 
                                           b.linkedInCampaignName === linkedInCampaign.name
@@ -2534,7 +2534,7 @@ export default function LinkedInAnalytics() {
                                         {formatNumber(clicks)}
                                       </p>
                                       {/* Badge for campaign-specific clicks benchmark */}
-                                      {(() => {
+                                      {Array.isArray(benchmarks) && (() => {
                                         const clicksBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'clicks' && 
                                           b.linkedInCampaignName === linkedInCampaign.name
@@ -2551,7 +2551,7 @@ export default function LinkedInAnalytics() {
                                         {formatCurrency(spend)}
                                       </p>
                                       {/* Badge for campaign-specific spend benchmark */}
-                                      {(() => {
+                                      {Array.isArray(benchmarks) && (() => {
                                         const spendBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'spend' && 
                                           b.linkedInCampaignName === linkedInCampaign.name
@@ -2568,7 +2568,7 @@ export default function LinkedInAnalytics() {
                                         {formatNumber(conversions)}
                                       </p>
                                       {/* Badge for campaign-specific conversions benchmark */}
-                                      {(() => {
+                                      {Array.isArray(benchmarks) && (() => {
                                         const conversionsBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'conversions' && 
                                           b.linkedInCampaignName === linkedInCampaign.name
@@ -2589,7 +2589,7 @@ export default function LinkedInAnalytics() {
                                         {formatPercentage(ctr)}
                                       </p>
                                       {/* Badge for campaign-specific CTR benchmark */}
-                                      {(() => {
+                                      {Array.isArray(benchmarks) && (() => {
                                         const ctrBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'ctr' && 
                                           b.linkedInCampaignName === linkedInCampaign.name
@@ -2606,7 +2606,7 @@ export default function LinkedInAnalytics() {
                                         {formatCurrency(cpc)}
                                       </p>
                                       {/* Badge for campaign-specific CPC benchmark */}
-                                      {(() => {
+                                      {Array.isArray(benchmarks) && (() => {
                                         const cpcBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'cpc' && 
                                           b.linkedInCampaignName === linkedInCampaign.name
@@ -2623,7 +2623,7 @@ export default function LinkedInAnalytics() {
                                         {formatCurrency(cpm)}
                                       </p>
                                       {/* Badge for campaign-specific CPM benchmark */}
-                                      {(() => {
+                                      {Array.isArray(benchmarks) && (() => {
                                         const cpmBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'cpm' && 
                                           b.linkedInCampaignName === linkedInCampaign.name
@@ -2640,7 +2640,7 @@ export default function LinkedInAnalytics() {
                                         {formatPercentage(convRate)}
                                       </p>
                                       {/* Badge for campaign-specific CVR benchmark */}
-                                      {(() => {
+                                      {Array.isArray(benchmarks) && (() => {
                                         const cvrBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'cvr' && 
                                           b.linkedInCampaignName === linkedInCampaign.name
@@ -2657,7 +2657,7 @@ export default function LinkedInAnalytics() {
                                         {formatCurrency(costPerConv)}
                                       </p>
                                       {/* Render badge for campaign-specific CPA benchmark */}
-                                      {(() => {
+                                      {Array.isArray(benchmarks) && (() => {
                                         const cpaBenchmark = benchmarks.find((b: any) => 
                                           b.metric?.toLowerCase() === 'cpa' && 
                                           b.linkedInCampaignName === linkedInCampaign.name

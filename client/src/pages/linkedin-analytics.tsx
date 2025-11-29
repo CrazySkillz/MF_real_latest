@@ -2729,7 +2729,7 @@ export default function LinkedInAnalytics() {
                                       <div className="flex items-center gap-3 flex-wrap">
                                         {/* Performance Indicators - Using Benchmark System */}
                                         {/* ER (Engagement Rate) Badge */}
-                                        {(() => {
+                                        {Array.isArray(benchmarks) && (() => {
                                           const erBenchmark = benchmarks.find((b: any) => 
                                             b.metric?.toLowerCase() === 'er' && 
                                             b.linkedInCampaignName === linkedInCampaign.name
@@ -2741,7 +2741,7 @@ export default function LinkedInAnalytics() {
                                         })()}
                                         
                                         {/* ROI Badge */}
-                                        {aggregated?.hasRevenueTracking === 1 && (() => {
+                                        {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
                                           const roiBenchmark = benchmarks.find((b: any) => 
                                             b.metric?.toLowerCase() === 'roi' && 
                                             b.linkedInCampaignName === linkedInCampaign.name
@@ -2755,7 +2755,7 @@ export default function LinkedInAnalytics() {
                                         })()}
                                         
                                         {/* ROAS Badge */}
-                                        {aggregated?.hasRevenueTracking === 1 && (() => {
+                                        {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
                                           const roasBenchmark = benchmarks.find((b: any) => 
                                             b.metric?.toLowerCase() === 'roas' && 
                                             b.linkedInCampaignName === linkedInCampaign.name
@@ -5179,7 +5179,7 @@ export default function LinkedInAnalytics() {
                         {/* Performance Indicators - Using Benchmark System */}
                         {/* Note: This is a summary view - individual metric badges are shown above in the Secondary Metrics section */}
                         {/* ER (Engagement Rate) Badge */}
-                        {(() => {
+                        {Array.isArray(benchmarks) && (() => {
                           const erBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'er' && 
                             b.linkedInCampaignName === linkedInCampaign.name
@@ -5191,7 +5191,7 @@ export default function LinkedInAnalytics() {
                         })()}
                         
                         {/* ROI Badge */}
-                        {aggregated?.hasRevenueTracking === 1 && (() => {
+                        {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
                           const roiBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'roi' && 
                             b.linkedInCampaignName === linkedInCampaign.name
@@ -5205,7 +5205,7 @@ export default function LinkedInAnalytics() {
                         })()}
                         
                         {/* ROAS Badge */}
-                        {aggregated?.hasRevenueTracking === 1 && (() => {
+                        {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
                           const roasBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'roas' && 
                             b.linkedInCampaignName === linkedInCampaign.name

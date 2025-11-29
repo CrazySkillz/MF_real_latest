@@ -267,6 +267,12 @@ export default function LinkedInAnalytics() {
     console.log('Looking for benchmark:', metricName);
     console.log('Available benchmarks:', benchmarks);
     
+    // Check if benchmarks is an array first
+    if (!Array.isArray(benchmarks)) {
+      console.log('Benchmarks is not an array, returning null');
+      return null;
+    }
+    
     // STRICT MATCHING: Only match by metric field, NOT by name
     // This prevents wrong benchmarks from being used
     const found = benchmarks.find((b: any) => {

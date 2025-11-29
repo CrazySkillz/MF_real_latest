@@ -6012,6 +6012,254 @@ export default function LinkedInAnalytics() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Campaign Details Modal */}
+      <Dialog open={isCampaignDetailsModalOpen} onOpenChange={setIsCampaignDetailsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Campaign Details: {selectedCampaignDetails?.name}</DialogTitle>
+            <DialogDescription>
+              Detailed metrics and performance indicators for this LinkedIn campaign
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedCampaignDetails && (() => {
+            // Calculate metrics for this campaign
+            const impressions = selectedCampaignDetails.metrics.impressions || 0;
+            const clicks = selectedCampaignDetails.metrics.clicks || 0;
+            const spend = selectedCampaignDetails.metrics.spend || 0;
+            const conversions = selectedCampaignDetails.metrics.conversions || 0;
+            const engagements = selectedCampaignDetails.metrics.engagements || 0;
+            const leads = selectedCampaignDetails.metrics.leads || 0;
+            
+            const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+            const cpc = clicks > 0 ? spend / clicks : 0;
+            const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+            const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+            const cpa = conversions > 0 ? spend / conversions : 0;
+            const cpl = leads > 0 ? spend / leads : 0;
+            const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
+            
+            return (
+              <div className="space-y-6">
+                {/* Core Metrics Grid */}
+                <div className="grid grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Impressions</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {formatNumber(impressions)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Clicks</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {formatNumber(clicks)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Spend</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(spend)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Performance Metrics with Badges */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Performance Metrics</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* CTR */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CTR</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {formatPercentage(ctr)}
+                        </p>
+                        {/* Campaign-specific CTR badge */}
+                        {(() => {
+                          const ctrBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'ctr' && 
+                            b.linkedInCampaignName === selectedCampaignDetails.name
+                          );
+                          if (ctrBenchmark) {
+                            return renderPerformanceBadge('ctr', ctr, 'higher-better');
+                          }
+                          return null;
+                        })()}
+                      </CardContent>
+                    </Card>
+
+                    {/* CPC */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPC</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {formatCurrency(cpc)}
+                        </p>
+                        {/* Campaign-specific CPC badge */}
+                        {(() => {
+                          const cpcBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'cpc' && 
+                            b.linkedInCampaignName === selectedCampaignDetails.name
+                          );
+                          if (cpcBenchmark) {
+                            return renderPerformanceBadge('cpc', cpc, 'lower-better');
+                          }
+                          return null;
+                        })()}
+                      </CardContent>
+                    </Card>
+
+                    {/* CPM */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPM</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {formatCurrency(cpm)}
+                        </p>
+                        {/* Campaign-specific CPM badge */}
+                        {(() => {
+                          const cpmBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'cpm' && 
+                            b.linkedInCampaignName === selectedCampaignDetails.name
+                          );
+                          if (cpmBenchmark) {
+                            return renderPerformanceBadge('cpm', cpm, 'lower-better');
+                          }
+                          return null;
+                        })()}
+                      </CardContent>
+                    </Card>
+
+                    {/* CVR */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CVR</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {formatPercentage(cvr)}
+                        </p>
+                        {/* Campaign-specific CVR badge */}
+                        {(() => {
+                          const cvrBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'cvr' && 
+                            b.linkedInCampaignName === selectedCampaignDetails.name
+                          );
+                          if (cvrBenchmark) {
+                            return renderPerformanceBadge('cvr', cvr, 'higher-better');
+                          }
+                          return null;
+                        })()}
+                      </CardContent>
+                    </Card>
+
+                    {/* CPA */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPA</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {formatCurrency(cpa)}
+                        </p>
+                        {/* Campaign-specific CPA badge */}
+                        {(() => {
+                          const cpaBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'cpa' && 
+                            b.linkedInCampaignName === selectedCampaignDetails.name
+                          );
+                          if (cpaBenchmark) {
+                            return renderPerformanceBadge('cpa', cpa, 'lower-better');
+                          }
+                          return null;
+                        })()}
+                      </CardContent>
+                    </Card>
+
+                    {/* CPL */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPL</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {formatCurrency(cpl)}
+                        </p>
+                        {/* Campaign-specific CPL badge */}
+                        {(() => {
+                          const cplBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'cpl' && 
+                            b.linkedInCampaignName === selectedCampaignDetails.name
+                          );
+                          if (cplBenchmark) {
+                            return renderPerformanceBadge('cpl', cpl, 'lower-better');
+                          }
+                          return null;
+                        })()}
+                      </CardContent>
+                    </Card>
+
+                    {/* ER */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ER</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {formatPercentage(er)}
+                        </p>
+                        {/* Campaign-specific ER badge */}
+                        {(() => {
+                          const erBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'er' && 
+                            b.linkedInCampaignName === selectedCampaignDetails.name
+                          );
+                          if (erBenchmark) {
+                            return renderPerformanceBadge('er', er, 'higher-better');
+                          }
+                          return null;
+                        })()}
+                      </CardContent>
+                    </Card>
+
+                    {/* Conversions */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Conversions</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {formatNumber(conversions)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Engagement Breakdown */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Engagement Details</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Total Engagements</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {formatNumber(engagements)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Engagement Rate</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {formatPercentage(er)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

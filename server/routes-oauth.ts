@@ -76,16 +76,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const industryBenchmarks = getIndustryBenchmarks(validatedData.industry);
           
           if (industryBenchmarks) {
-            console.log(`[Benchmarks] Generating ${Object.keys(industryBenchmarks).length} benchmarks...`);
+            // Filter out revenue metrics (ROI, ROAS) if no conversion value is set
+            const hasConversionValue = validatedData.conversionValue !== null && validatedData.conversionValue !== undefined;
+            const revenueMetrics = ['roi', 'roas'];
             
-            for (const [metricKey, thresholds] of Object.entries(industryBenchmarks)) {
+            const metricsToCreate = Object.entries(industryBenchmarks).filter(([metricKey]) => {
+              // If no conversion value, exclude revenue metrics
+              if (!hasConversionValue && revenueMetrics.includes(metricKey.toLowerCase())) {
+                console.log(`[Benchmarks] Skipping ${metricKey} (no conversion value set)`);
+                return false;
+              }
+              return true;
+            });
+            
+            console.log(`[Benchmarks] Generating ${metricsToCreate.length} benchmarks (${hasConversionValue ? 'with' : 'without'} revenue metrics)...`);
+            
+            for (const [metricKey, thresholds] of metricsToCreate) {
               await storage.createBenchmark({
                 campaignId: campaign.id,
                 platformType: 'linkedin',
                 category: 'performance',
                 name: `${metricKey.toUpperCase()} Target`,
                 metric: metricKey,
-                description: `Technology industry average for ${metricKey}`,
+                description: `${validatedData.industry} industry average for ${metricKey}`,
                 benchmarkValue: thresholds.target.toString(),
                 currentValue: '0',
                 unit: thresholds.unit,
@@ -96,7 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
             
-            console.log(`[Benchmarks] ✅ Created ${Object.keys(industryBenchmarks).length} benchmarks for campaign ${campaign.id}`);
+            console.log(`[Benchmarks] ✅ Created ${metricsToCreate.length} benchmarks for campaign ${campaign.id}`);
           }
         } catch (benchmarkError) {
           console.error('[Benchmarks] ⚠️ Failed to generate benchmarks:', benchmarkError);

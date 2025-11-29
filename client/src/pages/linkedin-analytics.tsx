@@ -6115,7 +6115,7 @@ export default function LinkedInAnalytics() {
                         {formatNumber(impressions)}
                       </p>
                       {/* Campaign-specific impressions badge */}
-                      {(() => {
+                      {Array.isArray(benchmarks) && (() => {
                         const impressionsBenchmark = benchmarks.find((b: any) => 
                           b.metric?.toLowerCase() === 'impressions' && 
                           b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6134,7 +6134,7 @@ export default function LinkedInAnalytics() {
                         {formatNumber(clicks)}
                       </p>
                       {/* Campaign-specific clicks badge */}
-                      {(() => {
+                      {Array.isArray(benchmarks) && (() => {
                         const clicksBenchmark = benchmarks.find((b: any) => 
                           b.metric?.toLowerCase() === 'clicks' && 
                           b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6153,7 +6153,7 @@ export default function LinkedInAnalytics() {
                         {formatCurrency(spend)}
                       </p>
                       {/* Campaign-specific spend badge */}
-                      {(() => {
+                      {Array.isArray(benchmarks) && (() => {
                         const spendBenchmark = benchmarks.find((b: any) => 
                           b.metric?.toLowerCase() === 'spend' && 
                           b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6179,7 +6179,7 @@ export default function LinkedInAnalytics() {
                           {formatPercentage(ctr)}
                         </p>
                         {/* Campaign-specific CTR badge */}
-                        {(() => {
+                        {Array.isArray(benchmarks) && (() => {
                           const ctrBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'ctr' && 
                             b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6200,7 +6200,7 @@ export default function LinkedInAnalytics() {
                           {formatCurrency(cpc)}
                         </p>
                         {/* Campaign-specific CPC badge */}
-                        {(() => {
+                        {Array.isArray(benchmarks) && (() => {
                           const cpcBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'cpc' && 
                             b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6221,7 +6221,7 @@ export default function LinkedInAnalytics() {
                           {formatCurrency(cpm)}
                         </p>
                         {/* Campaign-specific CPM badge */}
-                        {(() => {
+                        {Array.isArray(benchmarks) && (() => {
                           const cpmBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'cpm' && 
                             b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6242,7 +6242,7 @@ export default function LinkedInAnalytics() {
                           {formatPercentage(cvr)}
                         </p>
                         {/* Campaign-specific CVR badge */}
-                        {(() => {
+                        {Array.isArray(benchmarks) && (() => {
                           const cvrBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'cvr' && 
                             b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6263,7 +6263,7 @@ export default function LinkedInAnalytics() {
                           {formatCurrency(cpa)}
                         </p>
                         {/* Campaign-specific CPA badge */}
-                        {(() => {
+                        {Array.isArray(benchmarks) && (() => {
                           const cpaBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'cpa' && 
                             b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6284,7 +6284,7 @@ export default function LinkedInAnalytics() {
                           {formatCurrency(cpl)}
                         </p>
                         {/* Campaign-specific CPL badge */}
-                        {(() => {
+                        {Array.isArray(benchmarks) && (() => {
                           const cplBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'cpl' && 
                             b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6305,7 +6305,7 @@ export default function LinkedInAnalytics() {
                           {formatPercentage(er)}
                         </p>
                         {/* Campaign-specific ER badge */}
-                        {(() => {
+                        {Array.isArray(benchmarks) && (() => {
                           const erBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'er' && 
                             b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6326,7 +6326,7 @@ export default function LinkedInAnalytics() {
                           {formatNumber(conversions)}
                         </p>
                         {/* Campaign-specific conversions badge */}
-                        {(() => {
+                        {Array.isArray(benchmarks) && (() => {
                           const conversionsBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'conversions' && 
                             b.linkedInCampaignName === selectedCampaignDetails.name
@@ -6352,7 +6352,7 @@ export default function LinkedInAnalytics() {
                           {formatNumber(engagements)}
                         </p>
                         {/* Campaign-specific engagements badge */}
-                        {(() => {
+                        {Array.isArray(benchmarks) && (() => {
                           const engagementsBenchmark = benchmarks.find((b: any) => 
                             b.metric?.toLowerCase() === 'engagements' && 
                             b.linkedInCampaignName === selectedCampaignDetails.name

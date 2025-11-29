@@ -387,6 +387,48 @@ export default function LinkedInAnalytics() {
     return campaign?.name || campaignId;
   };
 
+  // Helper to get campaign-specific metrics from adsData
+  const getCampaignSpecificMetrics = (linkedInCampaignName: string) => {
+    if (!adsData || !Array.isArray(adsData)) return null;
+    
+    // Filter ads for this specific LinkedIn campaign
+    const campaignAds = adsData.filter((ad: any) => ad.campaignName === linkedInCampaignName);
+    if (campaignAds.length === 0) return null;
+    
+    // Aggregate metrics for this campaign
+    const totals = campaignAds.reduce((acc: any, ad: any) => ({
+      impressions: (acc.impressions || 0) + (ad.impressions || 0),
+      clicks: (acc.clicks || 0) + (ad.clicks || 0),
+      spend: (acc.spend || 0) + parseFloat(ad.spend || 0),
+      conversions: (acc.conversions || 0) + (ad.conversions || 0),
+      leads: (acc.leads || 0) + (ad.leads || 0),
+      engagements: (acc.engagements || 0) + (ad.engagements || 0),
+      reach: (acc.reach || 0) + (ad.reach || 0),
+      videoViews: (acc.videoViews || 0) + (ad.videoViews || 0),
+      viralImpressions: (acc.viralImpressions || 0) + (ad.viralImpressions || 0),
+    }), {});
+    
+    // Calculate derived metrics
+    const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
+    const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
+    const cpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0;
+    const cvr = totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : 0;
+    const cpa = totals.conversions > 0 ? totals.spend / totals.conversions : 0;
+    const cpl = totals.leads > 0 ? totals.spend / totals.leads : 0;
+    const er = totals.impressions > 0 ? (totals.engagements / totals.impressions) * 100 : 0;
+    
+    return {
+      ...totals,
+      ctr,
+      cpc,
+      cpm,
+      cvr,
+      cpa,
+      cpl,
+      er
+    };
+  };
+
   // Fetch LinkedIn reports filtered by campaignId
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
     queryKey: ['/api/platforms/linkedin/reports', campaignId],
@@ -4197,78 +4239,90 @@ export default function LinkedInAnalytics() {
                 <Select
                   value={benchmarkForm.metric || undefined}
                   onValueChange={(value) => {
-                    setBenchmarkForm({ ...benchmarkForm, metric: value });
-                    // Auto-populate current value from aggregated LinkedIn metrics
+                    // Determine which metrics to use based on scope
+                    let metricsSource = aggregated;
+                    
+                    // If campaign-specific is selected and a LinkedIn campaign is chosen, use campaign-specific metrics
+                    if (benchmarkForm.applyTo === 'specific' && benchmarkForm.specificCampaignId) {
+                      const campaignMetrics = getCampaignSpecificMetrics(benchmarkForm.specificCampaignId);
+                      if (campaignMetrics) {
+                        metricsSource = campaignMetrics;
+                        console.log('[Metric Selection] Using campaign-specific metrics for:', benchmarkForm.specificCampaignId);
+                      }
+                    }
+                    
+                    // Auto-populate current value from metrics
                     let currentValue = '';
                     let unit = '';
-                    if (aggregated) {
+                    if (metricsSource) {
                       switch(value) {
                         case 'impressions':
-                          currentValue = String(aggregated.totalImpressions || 0);
+                          currentValue = String(metricsSource.impressions || metricsSource.totalImpressions || 0);
                           break;
                         case 'reach':
-                          currentValue = String(aggregated.totalReach || 0);
+                          currentValue = String(metricsSource.reach || metricsSource.totalReach || 0);
                           break;
                         case 'clicks':
-                          currentValue = String(aggregated.totalClicks || 0);
+                          currentValue = String(metricsSource.clicks || metricsSource.totalClicks || 0);
                           break;
                         case 'engagements':
-                          currentValue = String(aggregated.totalEngagements || 0);
+                          currentValue = String(metricsSource.engagements || metricsSource.totalEngagements || 0);
                           break;
                         case 'spend':
-                          currentValue = String(aggregated.totalSpend || 0);
+                          currentValue = String(metricsSource.spend || metricsSource.totalSpend || 0);
                           unit = '$';
                           break;
                         case 'conversions':
-                          currentValue = String(aggregated.totalConversions || 0);
+                          currentValue = String(metricsSource.conversions || metricsSource.totalConversions || 0);
                           break;
                         case 'leads':
-                          currentValue = String(aggregated.totalLeads || 0);
+                          currentValue = String(metricsSource.leads || metricsSource.totalLeads || 0);
                           break;
                         case 'videoViews':
-                          currentValue = String(aggregated.totalVideoViews || 0);
+                          currentValue = String(metricsSource.videoViews || metricsSource.totalVideoViews || 0);
                           break;
                         case 'viralImpressions':
-                          currentValue = String(aggregated.totalViralImpressions || 0);
+                          currentValue = String(metricsSource.viralImpressions || metricsSource.totalViralImpressions || 0);
                           break;
                         case 'ctr':
-                          currentValue = String(aggregated.ctr || 0);
+                          currentValue = String(metricsSource.ctr || 0);
                           unit = '%';
                           break;
                         case 'cpc':
-                          currentValue = String(aggregated.cpc || 0);
+                          currentValue = String(metricsSource.cpc || 0);
                           unit = '$';
                           break;
                         case 'cpm':
-                          currentValue = String(aggregated.cpm || 0);
+                          currentValue = String(metricsSource.cpm || 0);
                           unit = '$';
                           break;
                         case 'cvr':
-                          currentValue = String(aggregated.cvr || 0);
+                          currentValue = String(metricsSource.cvr || 0);
                           unit = '%';
                           break;
                         case 'cpa':
-                          currentValue = String(aggregated.cpa || 0);
+                          currentValue = String(metricsSource.cpa || 0);
                           unit = '$';
                           break;
                         case 'cpl':
-                          currentValue = String(aggregated.cpl || 0);
+                          currentValue = String(metricsSource.cpl || 0);
                           unit = '$';
                           break;
                         case 'er':
-                          currentValue = String(aggregated.er || 0);
+                          currentValue = String(metricsSource.er || 0);
                           unit = '%';
                           break;
                         case 'roi':
-                          currentValue = String(aggregated.roi || 0);
+                          currentValue = String(metricsSource.roi || 0);
                           unit = '%';
                           break;
                         case 'roas':
-                          currentValue = String(aggregated.roas || 0);
+                          currentValue = String(metricsSource.roas || 0);
                           unit = 'x';
                           break;
                       }
                     }
+                    console.log('[Metric Selection] Auto-filled currentValue:', currentValue, unit);
                     setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue, unit });
                   }}
                 >
@@ -4343,7 +4397,44 @@ export default function LinkedInAnalytics() {
                     value={benchmarkForm.specificCampaignId}
                     onValueChange={(value) => {
                       console.log('[Dropdown] Selected campaign:', value);
-                      setBenchmarkForm({ ...benchmarkForm, specificCampaignId: value });
+                      
+                      // Update the form with the selected campaign
+                      const updatedForm = { ...benchmarkForm, specificCampaignId: value };
+                      
+                      // If a metric is already selected, recalculate currentValue for this campaign
+                      if (benchmarkForm.metric && value) {
+                        const campaignMetrics = getCampaignSpecificMetrics(value);
+                        if (campaignMetrics) {
+                          let currentValue = '';
+                          const metric = benchmarkForm.metric;
+                          
+                          switch(metric) {
+                            case 'impressions': currentValue = String(campaignMetrics.impressions || 0); break;
+                            case 'reach': currentValue = String(campaignMetrics.reach || 0); break;
+                            case 'clicks': currentValue = String(campaignMetrics.clicks || 0); break;
+                            case 'engagements': currentValue = String(campaignMetrics.engagements || 0); break;
+                            case 'spend': currentValue = String(campaignMetrics.spend || 0); break;
+                            case 'conversions': currentValue = String(campaignMetrics.conversions || 0); break;
+                            case 'leads': currentValue = String(campaignMetrics.leads || 0); break;
+                            case 'videoViews': currentValue = String(campaignMetrics.videoViews || 0); break;
+                            case 'viralImpressions': currentValue = String(campaignMetrics.viralImpressions || 0); break;
+                            case 'ctr': currentValue = String(campaignMetrics.ctr || 0); break;
+                            case 'cpc': currentValue = String(campaignMetrics.cpc || 0); break;
+                            case 'cpm': currentValue = String(campaignMetrics.cpm || 0); break;
+                            case 'cvr': currentValue = String(campaignMetrics.cvr || 0); break;
+                            case 'cpa': currentValue = String(campaignMetrics.cpa || 0); break;
+                            case 'cpl': currentValue = String(campaignMetrics.cpl || 0); break;
+                            case 'er': currentValue = String(campaignMetrics.er || 0); break;
+                          }
+                          
+                          if (currentValue) {
+                            updatedForm.currentValue = currentValue;
+                            console.log('[Campaign Selection] Updated currentValue to:', currentValue);
+                          }
+                        }
+                      }
+                      
+                      setBenchmarkForm(updatedForm);
                     }}
                   >
                     <SelectTrigger id="benchmark-campaign" data-testid="select-benchmark-campaign">

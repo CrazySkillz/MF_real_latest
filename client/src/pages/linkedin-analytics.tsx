@@ -3277,7 +3277,11 @@ export default function LinkedInAnalytics() {
                           </CardContent>
                         </Card>
                       );
-                    })}
+                        } catch (error) {
+                          console.error('[Benchmark Card] Error rendering:', error);
+                          return null;
+                        }
+                      })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-slate-500">

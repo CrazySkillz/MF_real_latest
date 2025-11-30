@@ -121,6 +121,7 @@ export default function LinkedInAnalytics() {
     unit: '',
     benchmarkValue: '',
     currentValue: '',
+    benchmarkType: 'custom', // 'industry' or 'custom'
     industry: '',
     description: '',
     applyTo: 'all', // 'all' or 'specific'
@@ -646,6 +647,7 @@ export default function LinkedInAnalytics() {
         unit: '',
         benchmarkValue: '',
         currentValue: '',
+        benchmarkType: 'custom',
         industry: '',
         description: '',
         applyTo: 'all',
@@ -696,6 +698,7 @@ export default function LinkedInAnalytics() {
         unit: '',
         benchmarkValue: '',
         currentValue: '',
+        benchmarkType: 'custom',
         industry: '',
         description: '',
         applyTo: 'all',
@@ -4739,27 +4742,65 @@ export default function LinkedInAnalytics() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="benchmark-industry">Industry (Optional)</Label>
+              <Label htmlFor="benchmark-type">Benchmark Type</Label>
               <Select
-                value={benchmarkForm.industry}
-                onValueChange={async (value) => {
-                  // Update industry
-                  setBenchmarkForm({ ...benchmarkForm, industry: value });
-                  
-                  // If industry selected and metric selected, auto-fill benchmark value
-                  if (value && value !== 'other' && value !== 'none' && benchmarkForm.metric) {
-                    try {
-                      // Try API first
-                      const response = await fetch(`/api/industry-benchmarks/${value}/${benchmarkForm.metric}`);
-                      if (response.ok) {
-                        const data = await response.json();
-                        setBenchmarkForm(prev => ({
-                          ...prev,
-                          benchmarkValue: String(data.value),
-                          unit: data.unit
-                        }));
-                      } else {
-                        // Fallback to hardcoded values
+                value={benchmarkForm.benchmarkType || 'custom'}
+                onValueChange={(value) => {
+                  setBenchmarkForm({ 
+                    ...benchmarkForm, 
+                    benchmarkType: value,
+                    // Clear industry and benchmark value when switching types
+                    industry: value === 'custom' ? '' : benchmarkForm.industry,
+                    benchmarkValue: value === 'custom' ? '' : benchmarkForm.benchmarkValue
+                  });
+                }}
+              >
+                <SelectTrigger id="benchmark-type" data-testid="select-benchmark-type">
+                  <SelectValue placeholder="Select benchmark type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="industry">Industry Standard</SelectItem>
+                  <SelectItem value="custom">Custom Value</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Industry Selection - Only shown when "Industry Standard" is selected */}
+            {benchmarkForm.benchmarkType === 'industry' && (
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-industry">Select Industry</Label>
+                <Select
+                  value={benchmarkForm.industry}
+                  onValueChange={async (value) => {
+                    // Update industry
+                    setBenchmarkForm({ ...benchmarkForm, industry: value });
+                    
+                    // Auto-fill benchmark value if metric is selected
+                    if (value && benchmarkForm.metric) {
+                      try {
+                        // Try API first
+                        const response = await fetch(`/api/industry-benchmarks/${value}/${benchmarkForm.metric}`);
+                        if (response.ok) {
+                          const data = await response.json();
+                          setBenchmarkForm(prev => ({
+                            ...prev,
+                            benchmarkValue: String(data.value),
+                            unit: data.unit
+                          }));
+                        } else {
+                          // Fallback to hardcoded values
+                          const fallbackData = getBenchmarkValueFallback(value, benchmarkForm.metric);
+                          if (fallbackData) {
+                            setBenchmarkForm(prev => ({
+                              ...prev,
+                              benchmarkValue: String(fallbackData.value),
+                              unit: fallbackData.unit
+                            }));
+                          }
+                        }
+                      } catch (error) {
+                        console.error('Failed to fetch benchmark value, using fallback:', error);
+                        // Use fallback on error
                         const fallbackData = getBenchmarkValueFallback(value, benchmarkForm.metric);
                         if (fallbackData) {
                           setBenchmarkForm(prev => ({
@@ -4769,38 +4810,25 @@ export default function LinkedInAnalytics() {
                           }));
                         }
                       }
-                    } catch (error) {
-                      console.error('Failed to fetch benchmark value, using fallback:', error);
-                      // Use fallback on error
-                      const fallbackData = getBenchmarkValueFallback(value, benchmarkForm.metric);
-                      if (fallbackData) {
-                        setBenchmarkForm(prev => ({
-                          ...prev,
-                          benchmarkValue: String(fallbackData.value),
-                          unit: fallbackData.unit
-                        }));
-                      }
                     }
-                  }
-                }}
-              >
-                <SelectTrigger id="benchmark-industry" data-testid="select-benchmark-industry">
-                  <SelectValue placeholder="Select industry for auto-fill or leave blank" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None (Enter custom value)</SelectItem>
-                  {industries.map((industry) => (
-                    <SelectItem key={industry.value} value={industry.value}>
-                      {industry.label}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="other">Other (Custom value)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                💡 Select an industry to auto-fill benchmark value, or leave blank to enter custom value
-              </p>
-            </div>
+                  }}
+                >
+                  <SelectTrigger id="benchmark-industry" data-testid="select-benchmark-industry">
+                    <SelectValue placeholder="Choose an industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {industries.map((industry) => (
+                      <SelectItem key={industry.value} value={industry.value}>
+                        {industry.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  💡 Benchmark value will be auto-filled based on industry standards
+                </p>
+              </div>
+            )}
 
             {/* Email Alerts Section */}
             <div className="space-y-4 pt-4 border-t">
@@ -4883,17 +4911,14 @@ export default function LinkedInAnalytics() {
                   setBenchmarkForm({
                     metric: '',
                     name: '',
-                    benchmarkType: '',
                     unit: '',
                     benchmarkValue: '',
                     currentValue: '',
+                    benchmarkType: 'custom',
                     industry: '',
                     description: '',
-                    source: '',
-                    geographicLocation: '',
-                    period: 'monthly',
-                    confidenceLevel: '',
-                    competitorName: '',
+                    applyTo: 'all',
+                    specificCampaignId: '',
                     alertsEnabled: false,
                     alertThreshold: '',
                     alertCondition: 'below',

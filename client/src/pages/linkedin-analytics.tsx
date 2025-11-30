@@ -4038,6 +4038,39 @@ export default function LinkedInAnalytics() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Conversion Value Required Alert */}
+            {!aggregated?.hasRevenueTracking && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">
+                      Revenue Metrics Unavailable
+                    </h3>
+                    <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">
+                      To create KPIs for ROI, ROAS, Total Revenue, Profit, Profit Margin, or Revenue Per Lead, you need to add a conversion value to your campaign first.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setIsKPIModalOpen(false);
+                        setLocation('/campaigns');
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit Campaign & Add Conversion Value
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="kpi-name">KPI Name *</Label>
@@ -4054,6 +4087,17 @@ export default function LinkedInAnalytics() {
                 <Select
                   value={kpiForm.metric || ''}
                   onValueChange={(value) => {
+                    // Check if revenue metric is selected but conversion value is not set
+                    const revenueMetrics = ['roi', 'roas', 'totalRevenue', 'profit', 'profitMargin', 'revenuePerLead'];
+                    if (revenueMetrics.includes(value) && !aggregated?.hasRevenueTracking) {
+                      toast({
+                        title: "Conversion Value Required",
+                        description: "Revenue metrics require a conversion value. Please edit your campaign and add a conversion value to track ROI, ROAS, Revenue, and Profit.",
+                        variant: "destructive",
+                      });
+                      return; // Don't select this metric
+                    }
+                    
                     // Auto-populate current value from LinkedIn aggregated metrics
                     let currentValue = '';
                     let unit = '';
@@ -4123,6 +4167,22 @@ export default function LinkedInAnalytics() {
                           currentValue = String(aggregated.roas || 0);
                           unit = 'x';
                           break;
+                        case 'totalRevenue':
+                          currentValue = String(aggregated.totalRevenue || 0);
+                          unit = '$';
+                          break;
+                        case 'profit':
+                          currentValue = String(aggregated.profit || 0);
+                          unit = '$';
+                          break;
+                        case 'profitMargin':
+                          currentValue = String(aggregated.profitMargin || 0);
+                          unit = '%';
+                          break;
+                        case 'revenuePerLead':
+                          currentValue = String(aggregated.revenuePerLead || 0);
+                          unit = '$';
+                          break;
                       }
                     }
                     setKpiForm({ ...kpiForm, metric: value, currentValue, unit });
@@ -4132,25 +4192,40 @@ export default function LinkedInAnalytics() {
                     <SelectValue placeholder="Select metric to track" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="impressions">Impressions (from metrics)</SelectItem>
-                    <SelectItem value="reach">Reach (from metrics)</SelectItem>
-                    <SelectItem value="clicks">Clicks (from metrics)</SelectItem>
-                    <SelectItem value="engagements">Engagements (from metrics)</SelectItem>
-                    <SelectItem value="spend">Spend (from metrics)</SelectItem>
-                    <SelectItem value="conversions">Conversions (from metrics)</SelectItem>
-                    <SelectItem value="leads">Leads (from metrics)</SelectItem>
-                    <SelectItem value="videoViews">Video Views (from metrics)</SelectItem>
-                    <SelectItem value="viralImpressions">Viral Impressions (from metrics)</SelectItem>
-                    <SelectItem value="ctr">CTR - Click-Through Rate (from metrics)</SelectItem>
-                    <SelectItem value="cpc">CPC - Cost Per Click (from metrics)</SelectItem>
-                    <SelectItem value="cpm">CPM - Cost Per Mille (from metrics)</SelectItem>
-                    <SelectItem value="cvr">CVR - Conversion Rate (from metrics)</SelectItem>
-                    <SelectItem value="cpa">CPA - Cost Per Acquisition (from metrics)</SelectItem>
-                    <SelectItem value="cpl">CPL - Cost Per Lead (from metrics)</SelectItem>
-                    <SelectItem value="er">ER - Engagement Rate (from metrics)</SelectItem>
-                    <SelectItem value="roi">ROI - Return on Investment (from metrics)</SelectItem>
-                    <SelectItem value="roas">ROAS - Return on Ad Spend (from metrics)</SelectItem>
-                    <SelectItem value="custom">Custom Value</SelectItem>
+                    <SelectItem value="impressions">Impressions</SelectItem>
+                    <SelectItem value="reach">Reach</SelectItem>
+                    <SelectItem value="clicks">Clicks</SelectItem>
+                    <SelectItem value="engagements">Engagements</SelectItem>
+                    <SelectItem value="spend">Spend</SelectItem>
+                    <SelectItem value="conversions">Conversions</SelectItem>
+                    <SelectItem value="leads">Leads</SelectItem>
+                    <SelectItem value="videoViews">Video Views</SelectItem>
+                    <SelectItem value="viralImpressions">Viral Impressions</SelectItem>
+                    <SelectItem value="ctr">Click-Through Rate (CTR)</SelectItem>
+                    <SelectItem value="cpc">Cost Per Click (CPC)</SelectItem>
+                    <SelectItem value="cpm">Cost Per Mille (CPM)</SelectItem>
+                    <SelectItem value="cvr">Conversion Rate (CVR)</SelectItem>
+                    <SelectItem value="cpa">Cost Per Acquisition (CPA)</SelectItem>
+                    <SelectItem value="cpl">Cost Per Lead (CPL)</SelectItem>
+                    <SelectItem value="er">Engagement Rate (ER)</SelectItem>
+                    <SelectItem value="roi" disabled={!aggregated?.hasRevenueTracking}>
+                      Return on Investment (ROI) {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
+                    <SelectItem value="roas" disabled={!aggregated?.hasRevenueTracking}>
+                      Return on Ad Spend (ROAS) {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
+                    <SelectItem value="totalRevenue" disabled={!aggregated?.hasRevenueTracking}>
+                      Total Revenue {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
+                    <SelectItem value="profit" disabled={!aggregated?.hasRevenueTracking}>
+                      Profit {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
+                    <SelectItem value="profitMargin" disabled={!aggregated?.hasRevenueTracking}>
+                      Profit Margin {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
+                    <SelectItem value="revenuePerLead" disabled={!aggregated?.hasRevenueTracking}>
+                      Revenue Per Lead {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

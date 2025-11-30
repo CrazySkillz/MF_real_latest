@@ -3086,7 +3086,14 @@ export default function LinkedInAnalytics() {
                                   Current
                                 </div>
                                 <div className="text-xl font-bold text-slate-900 dark:text-white">
-                                  {kpi.currentValue || '0'}{kpi.unit || ''}
+                                  {(() => {
+                                    const value = parseFloat(kpi.currentValue || '0');
+                                    const formatted = value.toLocaleString('en-US', { 
+                                      minimumFractionDigits: 2, 
+                                      maximumFractionDigits: 2 
+                                    });
+                                    return kpi.unit === '$' ? `$${formatted}` : `${formatted}${kpi.unit || ''}`;
+                                  })()}
                                 </div>
                               </div>
                               <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -3094,7 +3101,14 @@ export default function LinkedInAnalytics() {
                                   Target
                                 </div>
                                 <div className="text-xl font-bold text-slate-900 dark:text-white">
-                                  {kpi.targetValue || '0'}{kpi.unit || ''}
+                                  {(() => {
+                                    const value = parseFloat(kpi.targetValue || '0');
+                                    const formatted = value.toLocaleString('en-US', { 
+                                      minimumFractionDigits: 2, 
+                                      maximumFractionDigits: 2 
+                                    });
+                                    return kpi.unit === '$' ? `$${formatted}` : `${formatted}${kpi.unit || ''}`;
+                                  })()}
                                 </div>
                               </div>
                             </div>
@@ -3150,7 +3164,6 @@ export default function LinkedInAnalytics() {
                                 <div className="space-y-3">
                                   {/* Performance Badge */}
                                   <div className="flex items-center justify-between">
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">Performance</span>
                                     <Badge 
                                       variant={
                                         performanceLevel === 'excellent' ? 'default' :
@@ -3169,11 +3182,9 @@ export default function LinkedInAnalytics() {
                                       {performanceLevel === 'fair' && '🟡 Fair'}
                                       {performanceLevel === 'poor' && '🔴 Poor'}
                                     </Badge>
-                                  </div>
-                                  
-                                  {/* Gap Analysis */}
-                                  <div className="text-xs text-slate-500 dark:text-slate-500">
-                                    {gapText}
+                                    <span className="text-xs text-slate-500 dark:text-slate-500">
+                                      {gapText}
+                                    </span>
                                   </div>
 
                                   {/* Timeframe Indicator */}
@@ -3186,12 +3197,6 @@ export default function LinkedInAnalytics() {
                                 </div>
                               );
                             })()}
-                            
-                            {kpi.category && (
-                              <div className="text-sm text-slate-600 dark:text-slate-400">
-                                Category: <span className="font-medium">{kpi.category}</span>
-                              </div>
-                            )}
                           </CardContent>
                         </Card>
                       ))}

@@ -3295,7 +3295,7 @@ export default function LinkedInAnalytics() {
                 ) : benchmarksData && Array.isArray(benchmarksData) && (benchmarksData as any[]).length > 0 ? (
                   <>
                     {/* Benchmark Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       <Card>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
@@ -3320,20 +3320,6 @@ export default function LinkedInAnalytics() {
                               </p>
                             </div>
                             <CheckCircle2 className="w-8 h-8 text-green-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Categories</p>
-                              <p className="text-2xl font-bold text-purple-600">
-                                {new Set((benchmarksData as any[]).map((b: any) => b.category)).size}
-                              </p>
-                            </div>
-                            <BarChart3 className="w-8 h-8 text-purple-500" />
                           </div>
                         </CardContent>
                       </Card>

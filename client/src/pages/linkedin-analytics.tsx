@@ -322,49 +322,10 @@ export default function LinkedInAnalytics() {
     return result;
   };
 
-  // Helper function to render performance badge
+  // Helper function to render performance badge - DISABLED FOR SIMPLIFICATION
   const renderPerformanceBadge = (metricName: string, currentValue: number | undefined, metricType: 'higher-better' | 'lower-better' = 'higher-better') => {
-    const benchmark = getBenchmarkForMetric(metricName);
-    console.log(`renderPerformanceBadge for ${metricName}: benchmark=`, benchmark, `currentValue=${currentValue}`);
-    
-    if (!benchmark || currentValue === undefined) {
-      console.log(`No badge for ${metricName}: benchmark=${!!benchmark}, currentValue=${currentValue}`);
-      return null;
-    }
-    
-    // If benchmark is campaign-specific, use campaign-specific metric value instead of aggregated
-    let valueToCompare = currentValue;
-    if (benchmark.linkedInCampaignName && benchmark.specificCampaignId) {
-      const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
-      if (campaignMetrics && campaignMetrics[metricName] !== undefined) {
-        valueToCompare = campaignMetrics[metricName];
-        console.log(`[Badge] Using campaign-specific value for ${metricName}: ${valueToCompare} (was ${currentValue})`);
-      }
-    }
-    
-    const performanceLevel = getPerformanceLevel(valueToCompare, parseFloat(benchmark.benchmarkValue), metricType);
-    console.log(`Performance level for ${metricName}: ${performanceLevel} (current=${valueToCompare}, benchmark=${benchmark.benchmarkValue})`);
-    
-    return (
-      <Badge 
-        variant={
-          performanceLevel === 'excellent' ? 'default' :
-          performanceLevel === 'good' ? 'secondary' :
-          performanceLevel === 'fair' ? 'outline' : 'destructive'
-        }
-        className={`mt-2 ${
-          performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-          performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-          performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-        }`}
-      >
-        {performanceLevel === 'excellent' && '🟢 Excellent'}
-        {performanceLevel === 'good' && '🔵 Good'}
-        {performanceLevel === 'fair' && '🟡 Fair'}
-        {performanceLevel === 'poor' && '🔴 Poor'}
-      </Badge>
-    );
+    // Badges removed for platform simplification
+    return null;
   };
 
   // Fetch import session data

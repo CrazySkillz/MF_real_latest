@@ -2922,12 +2922,17 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Exceeding Target</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Excellent</p>
                               <p className="text-2xl font-bold text-green-600">
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
                                   const target = parseFloat(k.targetValue || '0');
-                                  return target > 0 && current >= target * 1.2;
+                                  if (target === 0) return false;
+                                  const ratio = current / target;
+                                  const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(m => 
+                                    k.metric?.toLowerCase().includes(m) || k.name?.toLowerCase().includes(m)
+                                  );
+                                  return lowerIsBetter ? ratio <= 0.8 : ratio >= 1.2;
                                 }).length}
                               </p>
                             </div>
@@ -2940,16 +2945,23 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Meeting Target</p>
-                              <p className="text-2xl font-bold text-amber-600">
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Good</p>
+                              <p className="text-2xl font-bold text-blue-600">
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
                                   const target = parseFloat(k.targetValue || '0');
-                                  return target > 0 && current >= target && current < target * 1.2;
+                                  if (target === 0) return false;
+                                  const ratio = current / target;
+                                  const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(m => 
+                                    k.metric?.toLowerCase().includes(m) || k.name?.toLowerCase().includes(m)
+                                  );
+                                  return lowerIsBetter 
+                                    ? (ratio > 0.8 && ratio <= 1.0)
+                                    : (ratio >= 1.0 && ratio < 1.2);
                                 }).length}
                               </p>
                             </div>
-                            <CheckCircle2 className="w-8 h-8 text-amber-500" />
+                            <CheckCircle2 className="w-8 h-8 text-blue-500" />
                           </div>
                         </CardContent>
                       </Card>
@@ -2958,16 +2970,24 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
-                              <p className="text-2xl font-bold text-red-600">
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
+                              <p className="text-2xl font-bold text-amber-600">
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
                                   const target = parseFloat(k.targetValue || '0');
-                                  return target > 0 && current < target;
+                                  if (target === 0) return false;
+                                  const ratio = current / target;
+                                  const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(m => 
+                                    k.metric?.toLowerCase().includes(m) || k.name?.toLowerCase().includes(m)
+                                  );
+                                  // Fair or Poor combined
+                                  return lowerIsBetter 
+                                    ? ratio > 1.0
+                                    : ratio < 1.0;
                                 }).length}
                               </p>
                             </div>
-                            <AlertCircle className="w-8 h-8 text-red-500" />
+                            <AlertCircle className="w-8 h-8 text-amber-500" />
                           </div>
                         </CardContent>
                       </Card>
@@ -3079,34 +3099,81 @@ export default function LinkedInAnalytics() {
                               </div>
                             </div>
                             
-                            {/* Progress Tracker */}
+                            {/* Performance Assessment */}
                             {kpi.targetValue && kpi.currentValue && (() => {
-                              const actualProgress = (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100;
-                              const progressBarWidth = Math.min(actualProgress, 100);
-                              const isOutperforming = actualProgress >= 100;
+                              const currentVal = parseFloat(kpi.currentValue);
+                              const targetVal = parseFloat(kpi.targetValue);
+                              const ratio = currentVal / targetVal;
+                              
+                              // Determine if this is a "lower is better" metric (cost metrics)
+                              const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(m => 
+                                kpi.metric?.toLowerCase().includes(m) || kpi.name?.toLowerCase().includes(m)
+                              );
+                              
+                              // Calculate performance level using same logic as Benchmarks
+                              let performanceLevel: 'excellent' | 'good' | 'fair' | 'poor';
+                              let gapText = '';
+                              
+                              if (lowerIsBetter) {
+                                // For cost metrics, lower is better
+                                if (ratio <= 0.8) {
+                                  performanceLevel = 'excellent';
+                                  gapText = `${Math.round((1 - ratio) * 100)}% below target`;
+                                } else if (ratio <= 1.0) {
+                                  performanceLevel = 'good';
+                                  gapText = `${Math.round((1 - ratio) * 100)}% below target`;
+                                } else if (ratio <= 1.2) {
+                                  performanceLevel = 'fair';
+                                  gapText = `${Math.round((ratio - 1) * 100)}% above target`;
+                                } else {
+                                  performanceLevel = 'poor';
+                                  gapText = `${Math.round((ratio - 1) * 100)}% above target`;
+                                }
+                              } else {
+                                // For performance metrics, higher is better
+                                if (ratio >= 1.2) {
+                                  performanceLevel = 'excellent';
+                                  gapText = `${Math.round((ratio - 1) * 100)}% above target`;
+                                } else if (ratio >= 1.0) {
+                                  performanceLevel = 'good';
+                                  gapText = `${Math.round((ratio - 1) * 100)}% above target`;
+                                } else if (ratio >= 0.8) {
+                                  performanceLevel = 'fair';
+                                  gapText = `${Math.round((1 - ratio) * 100)}% below target`;
+                                } else {
+                                  performanceLevel = 'poor';
+                                  gapText = `${Math.round((1 - ratio) * 100)}% below target`;
+                                }
+                              }
                               
                               return (
                                 <div className="space-y-3">
-                                  {/* Progress to Target */}
-                                  <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-sm">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-slate-600 dark:text-slate-400">Progress to Target</span>
-                                        {isOutperforming && <TrendingUp className="w-4 h-4 text-green-600" />}
-                                        {!isOutperforming && actualProgress > 0 && <Activity className="w-4 h-4 text-blue-600" />}
-                                      </div>
-                                      <span className="font-semibold text-slate-900 dark:text-white">
-                                        {Math.round(actualProgress)}%
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
-                                      <div 
-                                        className={`h-2.5 rounded-full transition-all ${
-                                          isOutperforming ? 'bg-green-500' : 'bg-blue-500'
-                                        }`}
-                                        style={{ width: `${Math.round(progressBarWidth)}%` }}
-                                      ></div>
-                                    </div>
+                                  {/* Performance Badge */}
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-slate-600 dark:text-slate-400">Performance</span>
+                                    <Badge 
+                                      variant={
+                                        performanceLevel === 'excellent' ? 'default' :
+                                        performanceLevel === 'good' ? 'secondary' :
+                                        performanceLevel === 'fair' ? 'outline' : 'destructive'
+                                      }
+                                      className={
+                                        performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                        performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                        performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                        'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                      }
+                                    >
+                                      {performanceLevel === 'excellent' && '🟢 Excellent'}
+                                      {performanceLevel === 'good' && '🔵 Good'}
+                                      {performanceLevel === 'fair' && '🟡 Fair'}
+                                      {performanceLevel === 'poor' && '🔴 Poor'}
+                                    </Badge>
+                                  </div>
+                                  
+                                  {/* Gap Analysis */}
+                                  <div className="text-xs text-slate-500 dark:text-slate-500">
+                                    {gapText}
                                   </div>
 
                                   {/* Timeframe Indicator */}

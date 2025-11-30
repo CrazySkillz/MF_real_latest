@@ -3276,7 +3276,7 @@ export default function LinkedInAnalytics() {
                             </div>
                           </CardContent>
                         </Card>
-                      );
+                          );
                         } catch (error) {
                           console.error('[Benchmark Card] Error rendering:', error);
                           return null;

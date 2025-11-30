@@ -2049,7 +2049,7 @@ export default function LinkedInAnalytics() {
                               Add a conversion value to unlock revenue metrics including ROI, ROAS, Revenue, and Profit calculations for this campaign.
                             </p>
                             <button
-                              onClick={() => navigate('/campaigns')}
+                              onClick={() => setLocation('/campaigns')}
                               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1615,32 +1615,6 @@ export default function Campaigns() {
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="industry">Industry (Optional)</Label>
-                      <Select
-                        value={form.watch("industry") || undefined}
-                        onValueChange={(value) => form.setValue("industry", value === "none" ? undefined : value)}
-                      >
-                        <SelectTrigger id="industry">
-                          <SelectValue placeholder="Select industry for benchmark recommendations" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          <SelectItem value="technology">Technology</SelectItem>
-                          <SelectItem value="ecommerce">E-commerce</SelectItem>
-                          <SelectItem value="healthcare">Healthcare</SelectItem>
-                          <SelectItem value="finance">Finance</SelectItem>
-                          <SelectItem value="education">Education</SelectItem>
-                          <SelectItem value="real-estate">Real Estate</SelectItem>
-                          <SelectItem value="professional-services">Professional Services</SelectItem>
-                          <SelectItem value="retail">Retail</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        💡 <strong>Smart Benchmarks:</strong> We'll automatically set industry-standard performance targets for metrics like CTR, CPC, CVR, and ROI. You can customize them later in the Benchmarks tab.
-                      </p>
-                    </div>
-                    
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="startDate">Start Date (optional)</Label>

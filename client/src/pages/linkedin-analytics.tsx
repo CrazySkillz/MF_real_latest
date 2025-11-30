@@ -263,6 +263,109 @@ export default function LinkedInAnalytics() {
     refetchOnWindowFocus: true,
     cacheTime: 0, // Don't cache at all
   });
+  // Helper function to get benchmark for a metric
+  const getBenchmarkForMetric = (metricName: string) => {
+    console.log('[getBenchmarkForMetric] Looking for benchmark:', metricName);
+    console.log('[getBenchmarkForMetric] Available benchmarks:', benchmarks);
+    console.log('[getBenchmarkForMetric] Type:', typeof benchmarks);
+    console.log('[getBenchmarkForMetric] Is array?', Array.isArray(benchmarks));
+    console.log('[getBenchmarkForMetric] Length:', benchmarks?.length);
+    
+    // CRITICAL: Check if benchmarks exists and is an array first to prevent undefined errors
+    if (!benchmarks || !Array.isArray(benchmarks) || benchmarks.length === 0) {
+      console.log('[getBenchmarkForMetric] Benchmarks is not valid, returning null');
+      return null;
+    }
+    
+    // STRICT MATCHING: Only match by metric field, NOT by name
+    // This prevents wrong benchmarks from being used
+    const found = benchmarks.find((b: any) => {
+      const metricMatch = b.metric?.toLowerCase() === metricName.toLowerCase();
+      console.log(`Checking benchmark: metric="${b.metric}", name="${b.name}", metricMatch=${metricMatch}`);
+      return metricMatch; // Only return if metric field matches exactly
+    });
+    
+    console.log('Found benchmark:', found);
+    return found;
+  };
+
+  // Helper function to calculate performance level based on benchmark
+  const getPerformanceLevel = (currentValue: number, benchmarkValue: number, metricType: 'higher-better' | 'lower-better' = 'higher-better'): 'excellent' | 'good' | 'fair' | 'poor' => {
+    console.log(`getPerformanceLevel: current=${currentValue}, benchmark=${benchmarkValue}, type=${metricType}`);
+    
+    if (!benchmarkValue || benchmarkValue === 0) {
+      console.log('No benchmark value, returning fair');
+      return 'fair';
+    }
+    
+    const ratio = currentValue / benchmarkValue;
+    console.log(`Ratio: ${ratio} (${currentValue} / ${benchmarkValue})`);
+    
+    let result: 'excellent' | 'good' | 'fair' | 'poor';
+    
+    if (metricType === 'higher-better') {
+      // For metrics where higher is better (CTR, CVR, ER, ROI, ROAS)
+      if (ratio >= 1.2) result = 'excellent';
+      else if (ratio >= 1.0) result = 'good';
+      else if (ratio >= 0.8) result = 'fair';
+      else result = 'poor';
+      console.log(`Higher-better logic: ratio ${ratio} >= 1.2? ${ratio >= 1.2}, >= 1.0? ${ratio >= 1.0}, >= 0.8? ${ratio >= 0.8} → ${result}`);
+    } else {
+      // For metrics where lower is better (CPC, CPM, CPA, CPL)
+      if (ratio <= 0.8) result = 'excellent';
+      else if (ratio <= 1.0) result = 'good';
+      else if (ratio <= 1.2) result = 'fair';
+      else result = 'poor';
+      console.log(`Lower-better logic: ratio ${ratio} <= 0.8? ${ratio <= 0.8}, <= 1.0? ${ratio <= 1.0}, <= 1.2? ${ratio <= 1.2} → ${result}`);
+    }
+    
+    return result;
+  };
+
+  // Helper function to render performance badge
+  const renderPerformanceBadge = (metricName: string, currentValue: number | undefined, metricType: 'higher-better' | 'lower-better' = 'higher-better') => {
+    const benchmark = getBenchmarkForMetric(metricName);
+    console.log(`renderPerformanceBadge for ${metricName}: benchmark=`, benchmark, `currentValue=${currentValue}`);
+    
+    if (!benchmark || currentValue === undefined) {
+      console.log(`No badge for ${metricName}: benchmark=${!!benchmark}, currentValue=${currentValue}`);
+      return null;
+    }
+    
+    // If benchmark is campaign-specific, use campaign-specific metric value instead of aggregated
+    let valueToCompare = currentValue;
+    if (benchmark.linkedInCampaignName && benchmark.specificCampaignId) {
+      const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
+      if (campaignMetrics && campaignMetrics[metricName] !== undefined) {
+        valueToCompare = campaignMetrics[metricName];
+        console.log(`[Badge] Using campaign-specific value for ${metricName}: ${valueToCompare} (was ${currentValue})`);
+      }
+    }
+    
+    const performanceLevel = getPerformanceLevel(valueToCompare, parseFloat(benchmark.benchmarkValue), metricType);
+    console.log(`Performance level for ${metricName}: ${performanceLevel} (current=${valueToCompare}, benchmark=${benchmark.benchmarkValue})`);
+    
+    return (
+      <Badge 
+        variant={
+          performanceLevel === 'excellent' ? 'default' :
+          performanceLevel === 'good' ? 'secondary' :
+          performanceLevel === 'fair' ? 'outline' : 'destructive'
+        }
+        className={`mt-2 ${
+          performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+          performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+          performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+        }`}
+      >
+        {performanceLevel === 'excellent' && '🟢 Excellent'}
+        {performanceLevel === 'good' && '🔵 Good'}
+        {performanceLevel === 'fair' && '🟡 Fair'}
+        {performanceLevel === 'poor' && '🔴 Poor'}
+      </Badge>
+    );
+  };
 
   // Fetch import session data
   const { data: sessionData, isLoading: sessionLoading } = useQuery({
@@ -303,6 +406,47 @@ export default function LinkedInAnalytics() {
     return campaign?.name || campaignId;
   };
 
+  // Helper to get campaign-specific metrics from adsData
+  const getCampaignSpecificMetrics = (linkedInCampaignName: string) => {
+    if (!adsData || !Array.isArray(adsData)) return null;
+    
+    // Filter ads for this specific LinkedIn campaign
+    const campaignAds = adsData.filter((ad: any) => ad.campaignName === linkedInCampaignName);
+    if (campaignAds.length === 0) return null;
+    
+    // Aggregate metrics for this campaign
+    const totals = campaignAds.reduce((acc: any, ad: any) => ({
+      impressions: (acc.impressions || 0) + (ad.impressions || 0),
+      clicks: (acc.clicks || 0) + (ad.clicks || 0),
+      spend: (acc.spend || 0) + parseFloat(ad.spend || 0),
+      conversions: (acc.conversions || 0) + (ad.conversions || 0),
+      leads: (acc.leads || 0) + (ad.leads || 0),
+      engagements: (acc.engagements || 0) + (ad.engagements || 0),
+      reach: (acc.reach || 0) + (ad.reach || 0),
+      videoViews: (acc.videoViews || 0) + (ad.videoViews || 0),
+      viralImpressions: (acc.viralImpressions || 0) + (ad.viralImpressions || 0),
+    }), {});
+    
+    // Calculate derived metrics
+    const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
+    const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
+    const cpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0;
+    const cvr = totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : 0;
+    const cpa = totals.conversions > 0 ? totals.spend / totals.conversions : 0;
+    const cpl = totals.leads > 0 ? totals.spend / totals.leads : 0;
+    const er = totals.impressions > 0 ? (totals.engagements / totals.impressions) * 100 : 0;
+    
+    return {
+      ...totals,
+      ctr,
+      cpc,
+      cpm,
+      cvr,
+      cpa,
+      cpl,
+      er
+    };
+  };
 
   // Fetch LinkedIn reports filtered by campaignId
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
@@ -1957,7 +2101,17 @@ export default function LinkedInAnalytics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {format(value)}
                                 </p>
-                                
+                                {/* Show badge for raw metrics if benchmark exists (global only) */}
+                                {(() => {
+                                  const benchmark = getBenchmarkForMetric(metricKey);
+                                  if (benchmark && !benchmark.linkedInCampaignName) {
+                                    // Determine if higher or lower is better for this metric
+                                    const higherBetterMetrics = ['impressions', 'clicks', 'conversions', 'leads', 'engagements', 'reach'];
+                                    const metricType = higherBetterMetrics.includes(metricKey) ? 'higher-better' : 'lower-better';
+                                    return renderPerformanceBadge(metricKey, value, metricType);
+                                  }
+                                  return null;
+                                })()}
                               </CardContent>
                             </Card>
                           );
@@ -1985,7 +2139,13 @@ export default function LinkedInAnalytics() {
                                 {formatPercentage(aggregated.ctr)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
-                              
+                              {(() => {
+                                const ctrBenchmark = getBenchmarkForMetric('ctr');
+                                if (ctrBenchmark && !ctrBenchmark.linkedInCampaignName) {
+                                  return renderPerformanceBadge('ctr', aggregated.ctr, 'higher-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                         )}
@@ -2004,7 +2164,13 @@ export default function LinkedInAnalytics() {
                                 {formatCurrency(aggregated.cpc)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
-                              
+                              {(() => {
+                                const cpcBenchmark = getBenchmarkForMetric('cpc');
+                                if (cpcBenchmark && !cpcBenchmark.linkedInCampaignName) {
+                                  return renderPerformanceBadge('cpc', aggregated.cpc, 'lower-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                         )}
@@ -2023,7 +2189,13 @@ export default function LinkedInAnalytics() {
                                 {formatCurrency(aggregated.cpm)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
-                              
+                              {(() => {
+                                const cpmBenchmark = getBenchmarkForMetric('cpm');
+                                if (cpmBenchmark && !cpmBenchmark.linkedInCampaignName) {
+                                  return renderPerformanceBadge('cpm', aggregated.cpm, 'lower-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                         )}
@@ -2042,7 +2214,13 @@ export default function LinkedInAnalytics() {
                                 {formatPercentage(aggregated.cvr)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
-                              
+                              {(() => {
+                                const cvrBenchmark = getBenchmarkForMetric('cvr');
+                                if (cvrBenchmark && !cvrBenchmark.linkedInCampaignName) {
+                                  return renderPerformanceBadge('cvr', aggregated.cvr, 'higher-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                         )}
@@ -2061,7 +2239,13 @@ export default function LinkedInAnalytics() {
                                 {formatCurrency(aggregated.cpa)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns, not campaign-specific */}
-                              
+                              {(() => {
+                                const cpaBenchmark = getBenchmarkForMetric('cpa');
+                                if (cpaBenchmark && !cpaBenchmark.linkedInCampaignName) {
+                                  return renderPerformanceBadge('cpa', aggregated.cpa, 'lower-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                         )}
@@ -2079,6 +2263,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(aggregated.cpl)}
                               </p>
+                              {renderPerformanceBadge('cpl', aggregated.cpl, 'lower-better')}
                             </CardContent>
                           </Card>
                         )}
@@ -2096,6 +2281,7 @@ export default function LinkedInAnalytics() {
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(aggregated.er)}
                               </p>
+                              {renderPerformanceBadge('er', aggregated.er, 'higher-better')}
                             </CardContent>
                           </Card>
                         )}
@@ -2382,6 +2568,7 @@ export default function LinkedInAnalytics() {
                                           b.linkedInCampaignName === campaignName
                                         );
                                         if (impressionsBenchmark) {
+                                          return renderPerformanceBadge('impressions', impressions, 'higher-better');
                                         }
                                         return null;
                                       })()}
@@ -2398,6 +2585,7 @@ export default function LinkedInAnalytics() {
                                           b.linkedInCampaignName === campaignName
                                         );
                                         if (clicksBenchmark) {
+                                          return renderPerformanceBadge('clicks', clicks, 'higher-better');
                                         }
                                         return null;
                                       })()}
@@ -2414,6 +2602,7 @@ export default function LinkedInAnalytics() {
                                           b.linkedInCampaignName === campaignName
                                         );
                                         if (spendBenchmark) {
+                                          return renderPerformanceBadge('spend', spend, 'lower-better');
                                         }
                                         return null;
                                       })()}
@@ -2430,6 +2619,7 @@ export default function LinkedInAnalytics() {
                                           b.linkedInCampaignName === campaignName
                                         );
                                         if (conversionsBenchmark) {
+                                          return renderPerformanceBadge('conversions', conversions, 'higher-better');
                                         }
                                         return null;
                                       })()}
@@ -2450,6 +2640,7 @@ export default function LinkedInAnalytics() {
                                           b.linkedInCampaignName === campaignName
                                         );
                                         if (ctrBenchmark) {
+                                          return renderPerformanceBadge('ctr', ctr, 'higher-better');
                                         }
                                         return null;
                                       })()}
@@ -2466,6 +2657,7 @@ export default function LinkedInAnalytics() {
                                           b.linkedInCampaignName === campaignName
                                         );
                                         if (cpcBenchmark) {
+                                          return renderPerformanceBadge('cpc', cpc, 'lower-better');
                                         }
                                         return null;
                                       })()}
@@ -2482,6 +2674,7 @@ export default function LinkedInAnalytics() {
                                           b.linkedInCampaignName === campaignName
                                         );
                                         if (cpmBenchmark) {
+                                          return renderPerformanceBadge('cpm', cpm, 'lower-better');
                                         }
                                         return null;
                                       })()}
@@ -2498,6 +2691,7 @@ export default function LinkedInAnalytics() {
                                           b.linkedInCampaignName === campaignName
                                         );
                                         if (cvrBenchmark) {
+                                          return renderPerformanceBadge('cvr', convRate, 'higher-better');
                                         }
                                         return null;
                                       })()}
@@ -2514,6 +2708,7 @@ export default function LinkedInAnalytics() {
                                           b.linkedInCampaignName === campaignName
                                         );
                                         if (cpaBenchmark) {
+                                          return renderPerformanceBadge('cpa', cpa, 'lower-better');
                                         }
                                         return null;
                                       })()}
@@ -2585,6 +2780,7 @@ export default function LinkedInAnalytics() {
                                             b.linkedInCampaignName === campaignName
                                           );
                                           if (erBenchmark) {
+                                            return renderPerformanceBadge('er', engagementRate, 'higher-better');
                                           }
                                           return null;
                                         })()}
@@ -2598,6 +2794,7 @@ export default function LinkedInAnalytics() {
                                           if (roiBenchmark) {
                                             const campaignRevenue = conversions * (aggregated.conversionValue || 0);
                                             const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;
+                                            return renderPerformanceBadge('roi', campaignROI, 'higher-better');
                                           }
                                           return null;
                                         })()}
@@ -2611,6 +2808,7 @@ export default function LinkedInAnalytics() {
                                           if (roasBenchmark) {
                                             const campaignRevenue = conversions * (aggregated.conversionValue || 0);
                                             const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
+                                            return renderPerformanceBadge('roas', campaignROAS, 'higher-better');
                                           }
                                           return null;
                                         })()}
@@ -3262,49 +3460,1828 @@ export default function LinkedInAnalytics() {
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
                                   {(() => {
-                                    // Use campaign-specific value if applicable
-                                    let currentVal = parseFloat(benchmark.currentValue);
-                                    
-                                    const benchmarkVal = parseFloat(benchmark.benchmarkValue);
-                                    const difference = currentVal - benchmarkVal;
-                                    const percentDiff = benchmarkVal !== 0 ? (difference / benchmarkVal) * 100 : 0;
-                                    
-                                    return `${typeof currentVal === 'number' ? currentVal.toFixed(2) : currentVal}${benchmark.unit || ''}`;
+                                    // If campaign-specific, show the campaign-specific metric value
+                                    if (benchmark.linkedInCampaignName && benchmark.specificCampaignId) {
+                                      const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
+                                      if (campaignMetrics && campaignMetrics[benchmark.metric] !== undefined) {
+                                        const value = campaignMetrics[benchmark.metric];
+                                        return `${typeof value === 'number' ? value.toFixed(2) : value}${benchmark.unit || ''}`;
+                                      }
+                                    }
+                                    // Otherwise use stored currentValue
+                                    return `${benchmark.currentValue || '0'}${benchmark.unit || ''}`;
                                   })()}
                                 </div>
+                              </div>
+
+                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                  Benchmark Value
+                                </div>
+                                <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                  {benchmark.benchmarkValue || benchmark.targetValue || '0'}{benchmark.unit || ''}
+                                </div>
+                              </div>
+
+                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                  Benchmark Source
+                                </div>
+                                <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                  {benchmark.industry ? `Industry Standard (${benchmark.industry})` : benchmark.source || 'Custom'}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Performance Comparison */}
+                            {benchmark.currentValue && benchmark.benchmarkValue && (
+                              <div className="mt-4 flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                    Performance vs Benchmark:
+                                  </span>
+                                  {(() => {
+                                    // Use campaign-specific value if applicable
+                                    let currentVal = parseFloat(benchmark.currentValue);
+                                    if (benchmark.linkedInCampaignName && benchmark.specificCampaignId) {
+                                      const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
+                                      if (campaignMetrics && campaignMetrics[benchmark.metric] !== undefined) {
+                                        currentVal = campaignMetrics[benchmark.metric];
+                                        console.log(`[Performance Comparison] Using campaign-specific ${benchmark.metric}: ${currentVal}`);
+                                      }
+                                    }
+                                    
+                                    const current = currentVal;
+                                    const benchmarkVal = parseFloat(benchmark.benchmarkValue || benchmark.targetValue);
+                                    const diff = current - benchmarkVal;
+                                    const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';
+                                    const isAbove = current > benchmarkVal;
+                                    
+                                    // Determine if metric is "lower is better" (cost metrics)
+                                    const metricLower = benchmark.metric?.toLowerCase() || '';
+                                    const isLowerBetter = ['cpc', 'cpm', 'cpa', 'cpl'].includes(metricLower) || 
+                                                         benchmark.category === 'cost' ||
+                                                         benchmark.unit === '$';
+                                    
+                                    // For lower-better metrics, flip the logic
+                                    const isGoodPerformance = isLowerBetter ? !isAbove : isAbove;
+                                    
+                                    return (
+                                      <>
+                                        <Badge 
+                                          variant={isGoodPerformance ? "default" : "secondary"}
+                                          className={isGoodPerformance ? "bg-green-600" : "bg-red-600"}
+                                        >
+                                          {isAbove ? (
+                                            <>
+                                              <TrendingUp className="w-3 h-3 mr-1" />
+                                              {percentDiff}% Above
+                                            </>
+                                          ) : (
+                                            <>
+                                              <TrendingDown className="w-3 h-3 mr-1" />
+                                              {Math.abs(parseFloat(percentDiff))}% Below
+                                            </>
+                                          )}
+                                        </Badge>
+                                        <span className="text-xs text-slate-500">
+                                          {isGoodPerformance ? '🎉 Outperforming!' : '⚠️ Needs improvement'}
+                                        </span>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                        );
+                        } catch (error) {
+                          console.error(`[MAPPING ERROR] Failed to render benchmark ${index + 1}:`, error);
+                          console.error('[MAPPING ERROR] Benchmark data:', benchmark);
+                          return <div key={benchmark.id} className="text-red-500 p-4 border border-red-500">Error rendering benchmark: {benchmark.name}</div>;
+                        }
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {console.log('[ELSE BLOCK] Showing empty state')}
+                    {console.log('[ELSE BLOCK] benchmarksData:', benchmarksData)}
+                    {console.log('[ELSE BLOCK] benchmarksLoading:', benchmarksLoading)}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="w-5 h-5" />
+                          LinkedIn Benchmarks
+                        </CardTitle>
+                        <CardDescription>
+                          Compare your performance against industry benchmarks
+                        </CardDescription>
+                      </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-8">
+                        <p className="text-slate-600 dark:text-slate-400 mb-4">
+                          No benchmarks have been created for this campaign yet.
+                        </p>
+                        <Button 
+                          onClick={() => {
+                            setEditingBenchmark(null);
+                            setBenchmarkForm({
+                              metric: '',
+                              name: '',
+                              unit: '',
+                              benchmarkValue: '',
+                              currentValue: '',
+                              industry: '',
+                              description: '',
+                              applyTo: 'all',
+                              specificCampaignId: '',
+                              alertsEnabled: false,
+                              alertThreshold: '',
+                              alertCondition: 'below',
+                              emailRecipients: ''
+                            });
+                            setIsBenchmarkModalOpen(true);
+                          }}
+                          data-testid="button-create-benchmark"
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Benchmark
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  </>
+                )}
+              </TabsContent>
+
+              {/* Ad Comparison Tab */}
+              <TabsContent value="ads" className="space-y-6" data-testid="content-ads">
+                {adsLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-96 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  </div>
+                ) : adsData && (adsData as any[]).length > 0 ? (
+                  (() => {
+                    const sortedAds = [...(adsData as any[])].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
+                    const topAd = sortedAds[0];
+                    
+                    // Get selected metrics from session to ensure consistency with Overview tab
+                    const selectedMetricKeys = session?.selectedMetricKeys || [];
+                    
+                    // Map of all possible metrics with their display properties
+                    const allMetricsMap: Record<string, { key: string, label: string, format: (v: any) => string }> = {
+                      impressions: { key: 'impressions', label: 'Impressions', format: formatNumber },
+                      clicks: { key: 'clicks', label: 'Clicks', format: formatNumber },
+                      spend: { key: 'spend', label: 'Spend', format: formatCurrency },
+                      ctr: { key: 'ctr', label: 'CTR', format: formatPercentage },
+                      cpc: { key: 'cpc', label: 'CPC', format: formatCurrency },
+                      cpm: { key: 'cpm', label: 'CPM', format: formatCurrency },
+                      conversions: { key: 'conversions', label: 'Conversions', format: formatNumber },
+                      revenue: { key: 'revenue', label: 'Revenue', format: formatCurrency },
+                      leads: { key: 'leads', label: 'Leads', format: formatNumber },
+                      engagements: { key: 'engagements', label: 'Engagements', format: formatNumber },
+                      reach: { key: 'reach', label: 'Reach', format: formatNumber },
+                      videoViews: { key: 'videoViews', label: 'Video Views', format: formatNumber },
+                      viralImpressions: { key: 'viralImpressions', label: 'Viral Impressions', format: formatNumber }
+                    };
+                    
+                    // Filter available metrics based on what was actually selected during import
+                    // Include both core metrics and their derived versions (e.g., if 'clicks' is selected, also show 'ctr', 'cpc')
+                    type MetricInfo = { key: string, label: string, format: (v: any) => string };
+                    const availableMetrics = selectedMetricKeys
+                      .map((key: string) => {
+                        // Add the core metric if it exists in the map
+                        const metrics: MetricInfo[] = [];
+                        if (allMetricsMap[key]) {
+                          metrics.push(allMetricsMap[key]);
+                        }
+                        
+                        // Add derived metrics based on selected core metrics
+                        if (key === 'impressions' && allMetricsMap.cpm && selectedMetricKeys.includes('spend')) {
+                          metrics.push(allMetricsMap.cpm);
+                        }
+                        if (key === 'clicks' && selectedMetricKeys.includes('impressions') && allMetricsMap.ctr) {
+                          metrics.push(allMetricsMap.ctr);
+                        }
+                        if (key === 'clicks' && selectedMetricKeys.includes('spend') && allMetricsMap.cpc) {
+                          metrics.push(allMetricsMap.cpc);
+                        }
+                        
+                        return metrics;
+                      })
+                      .flat()
+                      .filter((metric: MetricInfo, index: number, self: MetricInfo[]) => 
+                        // Remove duplicates
+                        index === self.findIndex((m: MetricInfo) => m.key === metric.key)
+                      );
+
+                    // Colors for each ad line
+                    const adColors = [
+                      '#3b82f6', // blue
+                      '#10b981', // green
+                      '#ef4444', // red
+                      '#a855f7', // purple
+                      '#f97316', // orange
+                      '#6366f1', // indigo
+                      '#ec4899', // pink
+                      '#14b8a6', // teal
+                      '#f59e0b', // amber
+                      '#8b5cf6', // violet
+                    ];
+
+                    // Get the current selected metric or default to first available metric
+                    const currentMetric = availableMetrics.find((m: MetricInfo) => m.key === selectedMetric) || availableMetrics[0];
+                    
+                    // If no metrics are available, show a message
+                    if (!currentMetric || availableMetrics.length === 0) {
+                      return (
+                        <Card data-testid="no-metrics-message">
+                          <CardContent className="py-12">
+                            <div className="text-center">
+                              <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                                No Metrics Available
+                              </h3>
+                              <p className="text-slate-600 dark:text-slate-400">
+                                The selected campaigns don't have metrics data for ad-level comparison.
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    }
+
+                    // Transform data: Create chart data for the selected metric only
+                    // X-axis will be ad names, Y-axis will be the metric value
+                    const chartData = sortedAds.map((ad, index) => {
+                      const value = currentMetric.key === 'spend' || currentMetric.key === 'ctr' || currentMetric.key === 'cpc' || currentMetric.key === 'revenue' || currentMetric.key === 'cpm'
+                        ? parseFloat((ad as any)[currentMetric.key] || '0')
+                        : (ad as any)[currentMetric.key] || 0;
+                      
+                      return {
+                        name: ad.adName,
+                        value: value,
+                        color: adColors[index % adColors.length],
+                      };
+                    });
+
+                    return (
+                      <div className="space-y-6">
+                        {/* Top Performer Banner */}
+                        <Card className="bg-gradient-to-r from-green-500 to-emerald-600 text-white" data-testid="top-performer-banner">
+                          <CardContent className="py-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Trophy className="w-8 h-8" />
+                                <div>
+                                  <p className="text-sm opacity-90">Top Revenue Driver</p>
+                                  <p className="text-xl font-bold">{topAd.adName}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-3xl font-bold">{formatCurrency(parseFloat(topAd.revenue || '0'))}</p>
+                                <p className="text-sm opacity-90">in revenue</p>
                               </div>
                             </div>
                           </CardContent>
                         </Card>
-                          );
-                        } catch (error) {
-                          console.error('[Benchmark Card] Error rendering:', error);
-                          return null;
-                        }
-                      })}
+
+                        {/* Visual Performance Comparison */}
+                        <Card data-testid="comparison-chart">
+                          <CardHeader>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                              <div>
+                                <CardTitle>Ad Performance Comparison</CardTitle>
+                                <CardDescription>
+                                  Select a metric to compare across all ads
+                                </CardDescription>
+                              </div>
+                              <Select value={selectedMetric} onValueChange={setSelectedMetric}>
+                                <SelectTrigger className="w-[200px]" data-testid="select-metric">
+                                  <SelectValue placeholder="Select metric" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableMetrics.map((metric: MetricInfo) => (
+                                    <SelectItem key={metric.key} value={metric.key}>
+                                      {metric.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <ResponsiveContainer width="100%" height={450}>
+                              <BarChart 
+                                data={chartData}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis 
+                                  dataKey="name" 
+                                  tick={{ fontSize: 12 }} 
+                                  angle={-45}
+                                  textAnchor="end"
+                                  height={100}
+                                />
+                                <YAxis 
+                                  tick={{ fontSize: 12 }}
+                                  tickFormatter={(value) => currentMetric.format(value)}
+                                />
+                                <Tooltip 
+                                  formatter={(value: any) => currentMetric.format(value)}
+                                  labelStyle={{ color: '#000' }}
+                                />
+                                <Bar 
+                                  dataKey="value" 
+                                  name={currentMetric.label}
+                                  radius={[8, 8, 0, 0]}
+                                >
+                                  {chartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                            
+                            {/* Ad Details Cards */}
+                            <div className="mt-6 space-y-3">
+                              {sortedAds.map((ad, index) => {
+                                const revenue = parseFloat(ad.revenue || '0');
+                                const isTop = index === 0;
+                                const isBottom = index === sortedAds.length - 1 && sortedAds.length > 2;
+
+                                return (
+                                  <div 
+                                    key={ad.id}
+                                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                                      isTop ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 
+                                      isBottom ? 'border-red-500 bg-red-50 dark:bg-red-950/20' : 
+                                      'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'
+                                    }`}
+                                    data-testid={`ad-detail-${index}`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div 
+                                        className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white"
+                                        style={{ backgroundColor: adColors[index % adColors.length] }}
+                                      >
+                                        {index + 1}
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <h4 className="font-semibold text-slate-900 dark:text-white">{ad.adName}</h4>
+                                          {isTop && <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded">TOP</span>}
+                                        </div>
+                                        <p className="text-sm text-slate-500">{ad.campaignName}</p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm text-slate-500">Revenue</p>
+                                      <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(revenue)}</p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Quick Stats Summary */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <Card data-testid="total-revenue-stat">
+                            <CardContent className="pt-6">
+                              <p className="text-sm text-slate-500 mb-1">Total Revenue</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(sortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0))}
+                              </p>
+                            </CardContent>
+                          </Card>
+                          <Card data-testid="avg-revenue-stat">
+                            <CardContent className="pt-6">
+                              <p className="text-sm text-slate-500 mb-1">Average Revenue/Ad</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(sortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0) / sortedAds.length)}
+                              </p>
+                            </CardContent>
+                          </Card>
+                          <Card data-testid="total-ads-stat">
+                            <CardContent className="pt-6">
+                              <p className="text-sm text-slate-500 mb-1">Total Ads Compared</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">{sortedAds.length}</p>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <p className="text-slate-500">No ad performance data available</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Reports Tab */}
+              <TabsContent value="reports" className="space-y-6" data-testid="content-reports">
+                {/* Header with Create Button */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Reports</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Create, schedule, and manage analytics reports
+                    </p>
+                  </div>
+                  <Button 
+                    data-testid="button-create-report" 
+                    className="gap-2"
+                    onClick={() => {
+                      setEditingReportId(null);
+                      setReportModalStep('standard');
+                      setReportForm({
+                        name: '',
+                        description: '',
+                        reportType: '',
+                        configuration: null,
+                        scheduleEnabled: false,
+                        scheduleFrequency: 'weekly',
+                        scheduleDayOfWeek: 'monday',
+                        scheduleTime: '9:00 AM',
+                        emailRecipients: '',
+                        status: 'draft'
+                      });
+                      setCustomReportConfig({
+                        coreMetrics: [],
+                        derivedMetrics: [],
+                        kpis: [],
+                        benchmarks: [],
+                        includeAdComparison: false
+                      });
+                      setIsReportModalOpen(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create Report
+                  </Button>
+                </div>
+
+                {/* Reports List */}
+                {reportsLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  </div>
+                ) : reportsData && Array.isArray(reportsData) && reportsData.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4">
+                    {reportsData.map((report: any) => (
+                      <Card key={report.id} data-testid={`report-${report.id}`}>
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+                                {report.name}
+                              </h3>
+                              {report.description && (
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                                  {report.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-4 text-sm">
+                                <Badge variant="outline">{report.reportType}</Badge>
+                                {report.scheduleFrequency && (
+                                  <span className="text-slate-500 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {report.scheduleFrequency}
+                                  </span>
+                                )}
+                                <span className="text-slate-400">
+                                  Created {new Date(report.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" size="sm" data-testid={`button-download-${report.id}`}>
+                                Download
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                data-testid={`button-edit-${report.id}`}
+                                onClick={() => handleEditReport(report)}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    data-testid={`button-delete-${report.id}`}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Report</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{report.name}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteReportMutation.mutate(report.id)}
+                                      className="bg-red-600 hover:bg-red-700 text-white"
+                                      data-testid={`confirm-delete-${report.id}`}
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-500">
-                    No benchmarks created yet. Click "Create Benchmark" to get started.
-                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Report Library</CardTitle>
+                      <CardDescription>
+                        View and manage your saved reports
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-12">
+                        <BarChart3 className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                        <p className="text-slate-500 dark:text-slate-400">No reports created yet</p>
+                        <p className="text-sm text-slate-400 dark:text-slate-500 mt-2">
+                          Create your first report to get started
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
               </TabsContent>
             </Tabs>
           </div>
-        </TabsContent>
+        </main>
+      </div>
 
-        {/* KPIs Tab */}
-        <TabsContent value="kpis" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
-              <p className="text-slate-600 dark:text-slate-400">Track and monitor your LinkedIn campaign KPIs</p>
+      {/* Create LinkedIn KPI Modal */}
+      <Dialog open={isKPIModalOpen} onOpenChange={(open) => {
+        setIsKPIModalOpen(open);
+        if (!open) {
+          setModalStep('configuration');
+          setSelectedTemplate(null);
+          setEditingKPI(null);
+          setKpiForm({
+            name: '',
+            unit: '',
+            description: '',
+            metric: '',
+            targetValue: '',
+            currentValue: '',
+            priority: 'high',
+            status: 'active',
+            category: '',
+            timeframe: 'monthly',
+            trackingPeriod: '30',
+            emailNotifications: false,
+            alertThreshold: '',
+            alertCondition: 'below',
+            emailRecipients: ''
+          });
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingKPI ? 'Edit KPI' : 'Create New KPI'}</DialogTitle>
+            <DialogDescription>
+              {editingKPI 
+                ? 'Update the KPI details below. The current value can be auto-populated from your LinkedIn metrics data.'
+                : 'Define a new KPI for your LinkedIn campaign. You can select metrics from the selected campaign as current values.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-name">KPI Name *</Label>
+                <Input
+                  id="kpi-name"
+                  placeholder="e.g., LinkedIn CTR Target"
+                  value={kpiForm.name}
+                  onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
+                  data-testid="input-kpi-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-metric">Metric Source</Label>
+                <Select
+                  value={kpiForm.metric || ''}
+                  onValueChange={(value) => {
+                    // Auto-populate current value from LinkedIn aggregated metrics
+                    let currentValue = '';
+                    let unit = '';
+                    if (aggregated) {
+                      switch(value) {
+                        case 'impressions':
+                          currentValue = String(aggregated.totalImpressions || 0);
+                          break;
+                        case 'reach':
+                          currentValue = String(aggregated.totalReach || 0);
+                          break;
+                        case 'clicks':
+                          currentValue = String(aggregated.totalClicks || 0);
+                          break;
+                        case 'engagements':
+                          currentValue = String(aggregated.totalEngagements || 0);
+                          break;
+                        case 'spend':
+                          currentValue = String(aggregated.totalSpend || 0);
+                          unit = '$';
+                          break;
+                        case 'conversions':
+                          currentValue = String(aggregated.totalConversions || 0);
+                          break;
+                        case 'leads':
+                          currentValue = String(aggregated.totalLeads || 0);
+                          break;
+                        case 'videoViews':
+                          currentValue = String(aggregated.totalVideoViews || 0);
+                          break;
+                        case 'viralImpressions':
+                          currentValue = String(aggregated.totalViralImpressions || 0);
+                          break;
+                        case 'ctr':
+                          currentValue = String(aggregated.ctr || 0);
+                          unit = '%';
+                          break;
+                        case 'cpc':
+                          currentValue = String(aggregated.cpc || 0);
+                          unit = '$';
+                          break;
+                        case 'cpm':
+                          currentValue = String(aggregated.cpm || 0);
+                          unit = '$';
+                          break;
+                        case 'cvr':
+                          currentValue = String(aggregated.cvr || 0);
+                          unit = '%';
+                          break;
+                        case 'cpa':
+                          currentValue = String(aggregated.cpa || 0);
+                          unit = '$';
+                          break;
+                        case 'cpl':
+                          currentValue = String(aggregated.cpl || 0);
+                          unit = '$';
+                          break;
+                        case 'er':
+                          currentValue = String(aggregated.er || 0);
+                          unit = '%';
+                          break;
+                        case 'roi':
+                          currentValue = String(aggregated.roi || 0);
+                          unit = '%';
+                          break;
+                        case 'roas':
+                          currentValue = String(aggregated.roas || 0);
+                          unit = 'x';
+                          break;
+                      }
+                    }
+                    setKpiForm({ ...kpiForm, metric: value, currentValue, unit });
+                  }}
+                >
+                  <SelectTrigger id="kpi-metric" data-testid="select-kpi-metric">
+                    <SelectValue placeholder="Select metric to track" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="impressions">Impressions (from metrics)</SelectItem>
+                    <SelectItem value="reach">Reach (from metrics)</SelectItem>
+                    <SelectItem value="clicks">Clicks (from metrics)</SelectItem>
+                    <SelectItem value="engagements">Engagements (from metrics)</SelectItem>
+                    <SelectItem value="spend">Spend (from metrics)</SelectItem>
+                    <SelectItem value="conversions">Conversions (from metrics)</SelectItem>
+                    <SelectItem value="leads">Leads (from metrics)</SelectItem>
+                    <SelectItem value="videoViews">Video Views (from metrics)</SelectItem>
+                    <SelectItem value="viralImpressions">Viral Impressions (from metrics)</SelectItem>
+                    <SelectItem value="ctr">CTR - Click-Through Rate (from metrics)</SelectItem>
+                    <SelectItem value="cpc">CPC - Cost Per Click (from metrics)</SelectItem>
+                    <SelectItem value="cpm">CPM - Cost Per Mille (from metrics)</SelectItem>
+                    <SelectItem value="cvr">CVR - Conversion Rate (from metrics)</SelectItem>
+                    <SelectItem value="cpa">CPA - Cost Per Acquisition (from metrics)</SelectItem>
+                    <SelectItem value="cpl">CPL - Cost Per Lead (from metrics)</SelectItem>
+                    <SelectItem value="er">ER - Engagement Rate (from metrics)</SelectItem>
+                    <SelectItem value="roi">ROI - Return on Investment (from metrics)</SelectItem>
+                    <SelectItem value="roas">ROAS - Return on Ad Spend (from metrics)</SelectItem>
+                    <SelectItem value="custom">Custom Value</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <Button onClick={() => setIsKPIModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Create KPI
-            </Button>
+
+            <div className="space-y-2">
+              <Label htmlFor="kpi-description">Description</Label>
+              <Textarea
+                id="kpi-description"
+                placeholder="Describe what this KPI measures and why it's important"
+                value={kpiForm.description}
+                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
+                rows={3}
+                data-testid="input-kpi-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-current">Current Value</Label>
+                <Input
+                  id="kpi-current"
+                  type="text"
+                  placeholder="0"
+                  value={kpiForm.currentValue ? parseFloat(kpiForm.currentValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setKpiForm({ ...kpiForm, currentValue: value });
+                    }
+                  }}
+                  data-testid="input-kpi-current"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-target">Target Value *</Label>
+                <Input
+                  id="kpi-target"
+                  type="text"
+                  placeholder="0"
+                  value={kpiForm.targetValue ? parseFloat(kpiForm.targetValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setKpiForm({ ...kpiForm, targetValue: value });
+                    }
+                  }}
+                  data-testid="input-kpi-target"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kpi-unit">Unit</Label>
+                <Input
+                  id="kpi-unit"
+                  placeholder="%, $, etc."
+                  value={kpiForm.unit}
+                  onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
+                  data-testid="input-kpi-unit"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-priority">Priority</Label>
+                <Select
+                  value={kpiForm.priority}
+                  onValueChange={(value) => setKpiForm({ ...kpiForm, priority: value })}
+                >
+                  <SelectTrigger id="kpi-priority" data-testid="select-kpi-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="kpi-timeframe">Timeframe</Label>
+                <Select
+                  value={kpiForm.timeframe}
+                  onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
+                >
+                  <SelectTrigger id="kpi-timeframe" data-testid="select-kpi-timeframe">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily (24 hours)</SelectItem>
+                    <SelectItem value="weekly">Weekly (7 days)</SelectItem>
+                    <SelectItem value="monthly">Monthly (30 days)</SelectItem>
+                    <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
+                    <SelectItem value="yearly">Yearly (365 days)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  How often to measure progress toward your target
+                </p>
+              </div>
+            </div>
+
+            {/* Alert Settings Section */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="kpi-alerts-enabled"
+                  checked={kpiForm.emailNotifications}
+                  onCheckedChange={(checked) => setKpiForm({ ...kpiForm, emailNotifications: checked as boolean })}
+                  data-testid="checkbox-kpi-alerts"
+                />
+                <Label htmlFor="kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                  Enable Email Alerts
+                </Label>
+              </div>
+
+              {kpiForm.emailNotifications && (
+                <div className="space-y-4 pl-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="kpi-alert-threshold">Alert Threshold *</Label>
+                      <Input
+                        id="kpi-alert-threshold"
+                        type="text"
+                        placeholder="e.g., 80"
+                        value={kpiForm.alertThreshold}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/,/g, '');
+                          if (value === '' || !isNaN(parseFloat(value))) {
+                            setKpiForm({ ...kpiForm, alertThreshold: value });
+                          }
+                        }}
+                        data-testid="input-kpi-alert-threshold"
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Value at which to trigger the alert
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="kpi-alert-condition">Alert When</Label>
+                      <Select
+                        value={kpiForm.alertCondition}
+                        onValueChange={(value) => setKpiForm({ ...kpiForm, alertCondition: value })}
+                      >
+                        <SelectTrigger id="kpi-alert-condition" data-testid="select-kpi-alert-condition">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="below">Value Goes Below</SelectItem>
+                          <SelectItem value="above">Value Goes Above</SelectItem>
+                          <SelectItem value="equals">Value Equals</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="kpi-email-recipients">Email Recipients *</Label>
+                    <Input
+                      id="kpi-email-recipients"
+                      type="text"
+                      placeholder="email1@example.com, email2@example.com"
+                      value={kpiForm.emailRecipients}
+                      onChange={(e) => setKpiForm({ ...kpiForm, emailRecipients: e.target.value })}
+                      data-testid="input-kpi-email-recipients"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Comma-separated email addresses for alert notifications
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsKPIModalOpen(false)}
+                data-testid="button-cancel-kpi"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreateKPI}
+                className="bg-purple-600 hover:bg-purple-700"
+                data-testid="button-create-kpi"
+              >
+                {editingKPI ? 'Update KPI' : 'Create KPI'}
+              </Button>
+            </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Benchmark Modal */}
+      <Dialog open={isBenchmarkModalOpen} onOpenChange={setIsBenchmarkModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingBenchmark ? 'Edit Benchmark' : 'Create New Benchmark'}</DialogTitle>
+            <DialogDescription>
+              {editingBenchmark 
+                ? 'Update the benchmark details below. The current value can be auto-populated from your LinkedIn metrics data.'
+                : 'Define a new benchmark for your LinkedIn campaigns. You can select metrics from the Overview tab as current values.'}
+            </DialogDescription>
+          </DialogHeader>
+          {!sessionData ? (
+            <div className="flex items-center justify-center py-8">
+              <p className="text-slate-500">Loading...</p>
+            </div>
+          ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-name">Benchmark Name *</Label>
+              <Input
+                id="benchmark-name"
+                placeholder="e.g., LinkedIn CTR Benchmark"
+                value={benchmarkForm.name}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
+                data-testid="input-benchmark-name"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-metric">Metric Source</Label>
+                <Select
+                  value={benchmarkForm.metric || undefined}
+                  onValueChange={(value) => {
+                    // Determine which metrics to use based on scope
+                    let metricsSource = aggregated;
+                    
+                    // If campaign-specific is selected and a LinkedIn campaign is chosen, use campaign-specific metrics
+                    if (benchmarkForm.applyTo === 'specific' && benchmarkForm.specificCampaignId) {
+                      const campaignMetrics = getCampaignSpecificMetrics(benchmarkForm.specificCampaignId);
+                      if (campaignMetrics) {
+                        metricsSource = campaignMetrics;
+                        console.log('[Metric Selection] Using campaign-specific metrics for:', benchmarkForm.specificCampaignId);
+                      }
+                    }
+                    
+                    // Auto-populate current value from metrics
+                    let currentValue = '';
+                    let unit = '';
+                    if (metricsSource) {
+                      switch(value) {
+                        case 'impressions':
+                          currentValue = String(metricsSource.impressions || metricsSource.totalImpressions || 0);
+                          break;
+                        case 'reach':
+                          currentValue = String(metricsSource.reach || metricsSource.totalReach || 0);
+                          break;
+                        case 'clicks':
+                          currentValue = String(metricsSource.clicks || metricsSource.totalClicks || 0);
+                          break;
+                        case 'engagements':
+                          currentValue = String(metricsSource.engagements || metricsSource.totalEngagements || 0);
+                          break;
+                        case 'spend':
+                          currentValue = String(metricsSource.spend || metricsSource.totalSpend || 0);
+                          unit = '$';
+                          break;
+                        case 'conversions':
+                          currentValue = String(metricsSource.conversions || metricsSource.totalConversions || 0);
+                          break;
+                        case 'leads':
+                          currentValue = String(metricsSource.leads || metricsSource.totalLeads || 0);
+                          break;
+                        case 'videoViews':
+                          currentValue = String(metricsSource.videoViews || metricsSource.totalVideoViews || 0);
+                          break;
+                        case 'viralImpressions':
+                          currentValue = String(metricsSource.viralImpressions || metricsSource.totalViralImpressions || 0);
+                          break;
+                        case 'ctr':
+                          currentValue = String(metricsSource.ctr || 0);
+                          unit = '%';
+                          break;
+                        case 'cpc':
+                          currentValue = String(metricsSource.cpc || 0);
+                          unit = '$';
+                          break;
+                        case 'cpm':
+                          currentValue = String(metricsSource.cpm || 0);
+                          unit = '$';
+                          break;
+                        case 'cvr':
+                          currentValue = String(metricsSource.cvr || 0);
+                          unit = '%';
+                          break;
+                        case 'cpa':
+                          currentValue = String(metricsSource.cpa || 0);
+                          unit = '$';
+                          break;
+                        case 'cpl':
+                          currentValue = String(metricsSource.cpl || 0);
+                          unit = '$';
+                          break;
+                        case 'er':
+                          currentValue = String(metricsSource.er || 0);
+                          unit = '%';
+                          break;
+                        case 'roi':
+                          currentValue = String(metricsSource.roi || 0);
+                          unit = '%';
+                          break;
+                        case 'roas':
+                          currentValue = String(metricsSource.roas || 0);
+                          unit = 'x';
+                          break;
+                      }
+                    }
+                    console.log('[Metric Selection] Auto-filled currentValue:', currentValue, unit);
+                    
+                    // Update form with metric, currentValue, and unit
+                    const updatedForm = { ...benchmarkForm, metric: value, currentValue, unit };
+                    setBenchmarkForm(updatedForm);
+                    
+                    // If industry is already selected, also auto-fill benchmark value
+                    if (benchmarkForm.industry && benchmarkForm.industry !== 'none' && benchmarkForm.industry !== 'other') {
+                      console.log('[Metric Selection] Industry already selected, fetching benchmark value...');
+                      (async () => {
+                        try {
+                          const response = await fetch(`/api/industry-benchmarks/${benchmarkForm.industry}/${value}`);
+                          if (response.ok) {
+                            const data = await response.json();
+                            console.log('[Metric Selection] Benchmark data from API:', data);
+                            setBenchmarkForm(prev => ({
+                              ...prev,
+                              benchmarkValue: String(data.value),
+                              unit: data.unit || prev.unit
+                            }));
+                          } else {
+                            // Fallback to hardcoded values
+                            const fallbackData = getBenchmarkValueFallback(benchmarkForm.industry, value);
+                            if (fallbackData) {
+                              console.log('[Metric Selection] Using fallback benchmark data:', fallbackData);
+                              setBenchmarkForm(prev => ({
+                                ...prev,
+                                benchmarkValue: String(fallbackData.value),
+                                unit: fallbackData.unit || prev.unit
+                              }));
+                            }
+                          }
+                        } catch (error) {
+                          console.error('[Metric Selection] Failed to fetch benchmark value:', error);
+                          const fallbackData = getBenchmarkValueFallback(benchmarkForm.industry, value);
+                          if (fallbackData) {
+                            console.log('[Metric Selection] Using fallback benchmark data after error:', fallbackData);
+                            setBenchmarkForm(prev => ({
+                              ...prev,
+                              benchmarkValue: String(fallbackData.value),
+                              unit: fallbackData.unit || prev.unit
+                            }));
+                          }
+                        }
+                      })();
+                    }
+                  }}
+                >
+                  <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
+                    <SelectValue placeholder="Select metric to benchmark" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="impressions">Impressions</SelectItem>
+                    <SelectItem value="reach">Reach</SelectItem>
+                    <SelectItem value="clicks">Clicks</SelectItem>
+                    <SelectItem value="engagements">Engagements</SelectItem>
+                    <SelectItem value="spend">Spend</SelectItem>
+                    <SelectItem value="conversions">Conversions</SelectItem>
+                    <SelectItem value="leads">Leads</SelectItem>
+                    <SelectItem value="videoViews">Video Views</SelectItem>
+                    <SelectItem value="viralImpressions">Viral Impressions</SelectItem>
+                    <SelectItem value="ctr">Click-Through Rate (CTR)</SelectItem>
+                    <SelectItem value="cpc">Cost Per Click (CPC)</SelectItem>
+                    <SelectItem value="cpm">Cost Per Mille (CPM)</SelectItem>
+                    <SelectItem value="cvr">Conversion Rate (CVR)</SelectItem>
+                    <SelectItem value="cpa">Cost Per Acquisition (CPA)</SelectItem>
+                    <SelectItem value="cpl">Cost Per Lead (CPL)</SelectItem>
+                    <SelectItem value="er">Engagement Rate (ER)</SelectItem>
+                    <SelectItem value="roi">Return on Investment (ROI)</SelectItem>
+                    <SelectItem value="roas">Return on Ad Spend (ROAS)</SelectItem>
+                    <SelectItem value="custom">Custom Value</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-description">Description</Label>
+              <Textarea
+                id="benchmark-description"
+                placeholder="Describe this benchmark and why it's important"
+                value={benchmarkForm.description}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, description: e.target.value })}
+                rows={3}
+                data-testid="input-benchmark-description"
+              />
+            </div>
+
+            {/* Apply To Section */}
+            <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-apply-to" className="text-base font-semibold">
+                  Apply Benchmark To
+                </Label>
+                <Select
+                  value={benchmarkForm.applyTo}
+                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, applyTo: value, specificCampaignId: value === 'all' ? '' : benchmarkForm.specificCampaignId })}
+                >
+                  <SelectTrigger id="benchmark-apply-to" data-testid="select-benchmark-apply-to">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Campaigns (Aggregate)</SelectItem>
+                    <SelectItem value="specific">Specific Campaign</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  Choose whether this benchmark applies to all campaigns combined or a specific individual campaign
+                </p>
+              </div>
+
+              {/* Campaign Selector - Only show if 'specific' is selected */}
+              {benchmarkForm.applyTo === 'specific' && (
+                <div className="space-y-2">
+                  <Label htmlFor="benchmark-campaign">Select Campaign *</Label>
+                  <Select
+                    value={benchmarkForm.specificCampaignId}
+                    onValueChange={(value) => {
+                      console.log('[Dropdown] Selected campaign:', value);
+                      
+                      // Update the form with the selected campaign
+                      const updatedForm = { ...benchmarkForm, specificCampaignId: value };
+                      
+                      // If a metric is already selected, recalculate currentValue for this campaign
+                      if (benchmarkForm.metric && value) {
+                        const campaignMetrics = getCampaignSpecificMetrics(value);
+                        if (campaignMetrics) {
+                          let currentValue = '';
+                          const metric = benchmarkForm.metric;
+                          
+                          switch(metric) {
+                            case 'impressions': currentValue = String(campaignMetrics.impressions || 0); break;
+                            case 'reach': currentValue = String(campaignMetrics.reach || 0); break;
+                            case 'clicks': currentValue = String(campaignMetrics.clicks || 0); break;
+                            case 'engagements': currentValue = String(campaignMetrics.engagements || 0); break;
+                            case 'spend': currentValue = String(campaignMetrics.spend || 0); break;
+                            case 'conversions': currentValue = String(campaignMetrics.conversions || 0); break;
+                            case 'leads': currentValue = String(campaignMetrics.leads || 0); break;
+                            case 'videoViews': currentValue = String(campaignMetrics.videoViews || 0); break;
+                            case 'viralImpressions': currentValue = String(campaignMetrics.viralImpressions || 0); break;
+                            case 'ctr': currentValue = String(campaignMetrics.ctr || 0); break;
+                            case 'cpc': currentValue = String(campaignMetrics.cpc || 0); break;
+                            case 'cpm': currentValue = String(campaignMetrics.cpm || 0); break;
+                            case 'cvr': currentValue = String(campaignMetrics.cvr || 0); break;
+                            case 'cpa': currentValue = String(campaignMetrics.cpa || 0); break;
+                            case 'cpl': currentValue = String(campaignMetrics.cpl || 0); break;
+                            case 'er': currentValue = String(campaignMetrics.er || 0); break;
+                          }
+                          
+                          if (currentValue) {
+                            updatedForm.currentValue = currentValue;
+                            console.log('[Campaign Selection] Updated currentValue to:', currentValue);
+                          }
+                        }
+                      }
+                      
+                      setBenchmarkForm(updatedForm);
+                    }}
+                  >
+                    <SelectTrigger id="benchmark-campaign" data-testid="select-benchmark-campaign">
+                      <SelectValue placeholder="Choose a campaign" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCampaigns.length > 0 ? (
+                        availableCampaigns.map((campaign) => (
+                          <SelectItem key={campaign.name} value={campaign.linkedInCampaignName || campaign.name}>
+                            {campaign.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-campaigns" disabled>
+                          No campaigns available
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Select the specific LinkedIn campaign this benchmark applies to
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-current">Current Value</Label>
+                <Input
+                  id="benchmark-current"
+                  type="text"
+                  placeholder="0"
+                  value={benchmarkForm.currentValue ? parseFloat(benchmarkForm.currentValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setBenchmarkForm({ ...benchmarkForm, currentValue: value });
+                    }
+                  }}
+                  data-testid="input-benchmark-current"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-value">Benchmark Value *</Label>
+                <Input
+                  id="benchmark-value"
+                  type="text"
+                  placeholder="0"
+                  value={benchmarkForm.benchmarkValue ? parseFloat(benchmarkForm.benchmarkValue).toLocaleString('en-US') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      setBenchmarkForm({ ...benchmarkForm, benchmarkValue: value });
+                    }
+                  }}
+                  data-testid="input-benchmark-value"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-unit">Unit</Label>
+                <Input
+                  id="benchmark-unit"
+                  placeholder="%, $, etc."
+                  value={benchmarkForm.unit}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, unit: e.target.value })}
+                  data-testid="input-benchmark-unit"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-type">Benchmark Type</Label>
+              <Select
+                value={benchmarkForm.benchmarkType || 'industry'}
+                onValueChange={(value) => {
+                  setBenchmarkForm({ 
+                    ...benchmarkForm, 
+                    benchmarkType: value,
+                    // Clear industry and benchmark value when switching types
+                    industry: value === 'custom' ? '' : benchmarkForm.industry,
+                    benchmarkValue: value === 'custom' ? '' : benchmarkForm.benchmarkValue
+                  });
+                }}
+              >
+                <SelectTrigger id="benchmark-type" data-testid="select-benchmark-type">
+                  <SelectValue placeholder="Select benchmark type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="industry">Industry Standard</SelectItem>
+                  <SelectItem value="custom">Custom Value</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Industry Selection - Only shown when "Industry Standard" is selected */}
+            {benchmarkForm.benchmarkType === 'industry' && (
+              <div className="space-y-2">
+                <Label htmlFor="benchmark-industry">Select Industry</Label>
+                <Select
+                  value={benchmarkForm.industry}
+                  onValueChange={async (value) => {
+                    // Update industry
+                    setBenchmarkForm({ ...benchmarkForm, industry: value });
+                    
+                    // Auto-fill benchmark value if metric is selected
+                    if (value && benchmarkForm.metric) {
+                      try {
+                        // Try API first
+                        const response = await fetch(`/api/industry-benchmarks/${value}/${benchmarkForm.metric}`);
+                        if (response.ok) {
+                          const data = await response.json();
+                          setBenchmarkForm(prev => ({
+                            ...prev,
+                            benchmarkValue: String(data.value),
+                            unit: data.unit
+                          }));
+                        } else {
+                          // Fallback to hardcoded values
+                          const fallbackData = getBenchmarkValueFallback(value, benchmarkForm.metric);
+                          if (fallbackData) {
+                            setBenchmarkForm(prev => ({
+                              ...prev,
+                              benchmarkValue: String(fallbackData.value),
+                              unit: fallbackData.unit
+                            }));
+                          }
+                        }
+                      } catch (error) {
+                        console.error('Failed to fetch benchmark value, using fallback:', error);
+                        // Use fallback on error
+                        const fallbackData = getBenchmarkValueFallback(value, benchmarkForm.metric);
+                        if (fallbackData) {
+                          setBenchmarkForm(prev => ({
+                            ...prev,
+                            benchmarkValue: String(fallbackData.value),
+                            unit: fallbackData.unit
+                          }));
+                        }
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger id="benchmark-industry" data-testid="select-benchmark-industry">
+                    <SelectValue placeholder="Choose an industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {industries.map((industry) => (
+                      <SelectItem key={industry.value} value={industry.value}>
+                        {industry.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  💡 Benchmark value will be auto-filled based on industry standards
+                </p>
+              </div>
+            )}
+
+            {/* Email Alerts Section */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="benchmark-alerts-enabled"
+                  checked={benchmarkForm.alertsEnabled}
+                  onCheckedChange={(checked) => setBenchmarkForm({ ...benchmarkForm, alertsEnabled: checked as boolean })}
+                  data-testid="checkbox-benchmark-alerts"
+                />
+                <Label htmlFor="benchmark-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                  Enable Email Alerts
+                </Label>
+              </div>
+
+              {benchmarkForm.alertsEnabled && (
+                <div className="space-y-4 pl-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="benchmark-alert-threshold">Alert Threshold *</Label>
+                      <Input
+                        id="benchmark-alert-threshold"
+                        type="text"
+                        placeholder="e.g., 80"
+                        value={benchmarkForm.alertThreshold}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/,/g, '');
+                          if (value === '' || !isNaN(parseFloat(value))) {
+                            setBenchmarkForm({ ...benchmarkForm, alertThreshold: value });
+                          }
+                        }}
+                        data-testid="input-benchmark-alert-threshold"
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Value at which to trigger the alert
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="benchmark-alert-condition">Alert When</Label>
+                      <Select
+                        value={benchmarkForm.alertCondition}
+                        onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, alertCondition: value })}
+                      >
+                        <SelectTrigger id="benchmark-alert-condition" data-testid="select-benchmark-alert-condition">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="below">Value Goes Below</SelectItem>
+                          <SelectItem value="above">Value Goes Above</SelectItem>
+                          <SelectItem value="equals">Value Equals</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="benchmark-email-recipients">Email Recipients *</Label>
+                    <Input
+                      id="benchmark-email-recipients"
+                      type="text"
+                      placeholder="email1@example.com, email2@example.com"
+                      value={benchmarkForm.emailRecipients}
+                      onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
+                      data-testid="input-benchmark-email-recipients"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Comma-separated email addresses for alert notifications
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsBenchmarkModalOpen(false);
+                  setEditingBenchmark(null);
+                  setBenchmarkForm({
+                    metric: '',
+                    name: '',
+                    unit: '',
+                    benchmarkValue: '',
+                    currentValue: '',
+                    benchmarkType: 'custom',
+                    industry: '',
+                    description: '',
+                    applyTo: 'all',
+                    specificCampaignId: '',
+                    alertsEnabled: false,
+                    alertThreshold: '',
+                    alertCondition: 'below',
+                    emailRecipients: ''
+                  });
+                }}
+                data-testid="button-benchmark-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateBenchmark}
+                disabled={!benchmarkForm.name || !benchmarkForm.benchmarkValue}
+                className="bg-blue-600 hover:bg-blue-700"
+                data-testid="button-benchmark-submit"
+              >
+                {editingBenchmark ? 'Update Benchmark' : 'Create Benchmark'}
+              </Button>
+            </div>
+          </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Campaign Details Modal */}
+      <Dialog open={isCampaignDetailsModalOpen} onOpenChange={setIsCampaignDetailsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              {selectedCampaignDetails?.name}
+            </DialogTitle>
+            <DialogDescription>
+              <Badge 
+                variant={selectedCampaignDetails?.status === 'active' ? 'default' : 'secondary'}
+                className={selectedCampaignDetails?.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
+              >
+                {selectedCampaignDetails?.status}
+              </Badge>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* Core Metrics Section */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Core Metrics</h4>
+              <div className="grid grid-cols-3 gap-4">
+                {/* Impressions */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Impressions</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.impressions || 0)}
+                  </p>
+                </div>
+                {/* Reach */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Reach</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.reach || 0)}
+                  </p>
+                </div>
+                {/* Clicks */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Clicks</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.clicks || 0)}
+                  </p>
+                </div>
+                {/* Engagements */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Engagements</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.engagements || 0)}
+                  </p>
+                </div>
+                {/* Spend */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Spend</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatCurrency(selectedCampaignDetails?.metrics.spend || 0)}
+                  </p>
+                </div>
+                {/* Conversions */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Conversions</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.conversions || 0)}
+                  </p>
+                </div>
+                {/* Leads */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Leads</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.leads || 0)}
+                  </p>
+                </div>
+                {/* Video Views */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Video Views</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.videoviews || selectedCampaignDetails?.metrics.videoViews || 0)}
+                  </p>
+                </div>
+                {/* Viral Impressions */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Viral Impressions</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {formatNumber(selectedCampaignDetails?.metrics.viralimpressions || selectedCampaignDetails?.metrics.viralImpressions || 0)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Derived Metrics Section */}
+            <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Derived Metrics</h4>
+              <div className="grid grid-cols-3 gap-4">
+                {/* CTR */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CTR (Click-Through Rate)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatPercentage(
+                      selectedCampaignDetails?.metrics.impressions > 0
+                        ? (selectedCampaignDetails?.metrics.clicks / selectedCampaignDetails?.metrics.impressions) * 100
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* CPC */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPC (Cost Per Click)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatCurrency(
+                      selectedCampaignDetails?.metrics.clicks > 0
+                        ? selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.clicks
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* CPM */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPM (Cost Per Mille)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatCurrency(
+                      selectedCampaignDetails?.metrics.impressions > 0
+                        ? (selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.impressions) * 1000
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* CVR */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CVR (Conversion Rate)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatPercentage(
+                      selectedCampaignDetails?.metrics.clicks > 0
+                        ? (selectedCampaignDetails?.metrics.conversions / selectedCampaignDetails?.metrics.clicks) * 100
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* CPA */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPA (Cost Per Acquisition)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatCurrency(
+                      selectedCampaignDetails?.metrics.conversions > 0
+                        ? selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.conversions
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* CPL */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPL (Cost Per Lead)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatCurrency(
+                      selectedCampaignDetails?.metrics.leads > 0
+                        ? selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.leads
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {/* ER */}
+                <div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ER (Engagement Rate)</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatPercentage(
+                      selectedCampaignDetails?.metrics.impressions > 0
+                        ? (selectedCampaignDetails?.metrics.engagements / selectedCampaignDetails?.metrics.impressions) * 100
+                        : 0
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Revenue Analytics Section - Only shown if conversion value is set */}
+            {aggregated?.hasRevenueTracking === 1 && selectedCampaignDetails && (() => {
+              const campaignConversions = selectedCampaignDetails.metrics.conversions || 0;
+              const campaignSpend = selectedCampaignDetails.metrics.spend || 0;
+              const campaignLeads = selectedCampaignDetails.metrics.leads || 0;
+              const conversionValue = aggregated.conversionValue || 0;
+              
+              const campaignRevenue = campaignConversions * conversionValue;
+              const campaignProfit = campaignRevenue - campaignSpend;
+              const campaignROAS = campaignSpend > 0 ? campaignRevenue / campaignSpend : 0;
+              const campaignROI = campaignSpend > 0 ? ((campaignRevenue - campaignSpend) / campaignSpend) * 100 : 0;
+              const campaignProfitMargin = campaignRevenue > 0 ? (campaignProfit / campaignRevenue) * 100 : 0;
+              const campaignRevenuePerLead = campaignLeads > 0 ? campaignRevenue / campaignLeads : 0;
+              
+              return (
+                <div className="space-y-3 pt-4 border-t border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Revenue Analytics</h4>
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      💰 {formatCurrency(conversionValue)}/conversion
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    {/* Total Revenue */}
+                    <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Total Revenue</p>
+                      <p className="text-lg font-bold text-green-700 dark:text-green-400">
+                        {formatCurrency(campaignRevenue)}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        {campaignConversions.toLocaleString()} conversions × {formatCurrency(conversionValue)}
+                      </p>
+                    </div>
+                    
+                    {/* ROAS */}
+                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROAS (Return on Ad Spend)</p>
+                      <p className="text-lg font-bold text-blue-700 dark:text-blue-400">
+                        {campaignROAS.toFixed(2)}x
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        {formatCurrency(campaignRevenue)} / {formatCurrency(campaignSpend)}
+                      </p>
+                    </div>
+                    
+                    {/* ROI */}
+                    <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROI (Return on Investment)</p>
+                      <p className="text-lg font-bold text-purple-700 dark:text-purple-400">
+                        {campaignROI.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        {campaignROI >= 0 ? 'Profitable' : 'Loss'}
+                      </p>
+                    </div>
+                    
+                    {/* Profit */}
+                    <div className={`p-4 rounded-lg border ${
+                      campaignProfit >= 0 
+                        ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800' 
+                        : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+                    }`}>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit</p>
+                      <p className={`text-lg font-bold ${
+                        campaignProfit >= 0 
+                          ? 'text-green-700 dark:text-green-400' 
+                          : 'text-red-700 dark:text-red-400'
+                      }`}>
+                        {formatCurrency(campaignProfit)}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        Revenue - Spend
+                      </p>
+                    </div>
+                    
+                    {/* Profit Margin */}
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit Margin</p>
+                      <p className={`text-lg font-bold ${
+                        campaignProfitMargin >= 0 
+                          ? 'text-slate-900 dark:text-white' 
+                          : 'text-red-700 dark:text-red-400'
+                      }`}>
+                        {campaignProfitMargin.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        Profit / Revenue
+                      </p>
+                    </div>
+                    
+                    {/* Revenue Per Lead */}
+                    {campaignLeads > 0 && (
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Revenue Per Lead</p>
+                        <p className="text-lg font-bold text-slate-900 dark:text-white">
+                          {formatCurrency(campaignRevenuePerLead)}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                          {campaignLeads.toLocaleString()} leads
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Performance Indicators - Only shown when industry is selected */}
+            {campaignData?.industry && selectedCampaignDetails && (
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Performance Analysis</h4>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {(() => {
+                    // This section uses selectedCampaignDetails, not linkedInCampaign
+                    const campaignName = selectedCampaignDetails.name;
+                    
+                    const impressions = selectedCampaignDetails.metrics.impressions || 0;
+                    const clicks = selectedCampaignDetails.metrics.clicks || 0;
+                    const spend = selectedCampaignDetails.metrics.spend || 0;
+                    const conversions = selectedCampaignDetails.metrics.conversions || 0;
+                    const engagements = selectedCampaignDetails.metrics.engagements || 0;
+                    
+                    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+                    const convRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
+                    const cpa = conversions > 0 ? spend / conversions : 0;
+                    const engagementRate = impressions > 0 ? (engagements / impressions) * 100 : 0;
+                    const roas = aggregated?.roas || 0;
+                    
+                    return (
+                      <>
+                        {/* Performance Indicators - Using Benchmark System */}
+                        {/* Note: This is a summary view - individual metric badges are shown above in the Secondary Metrics section */}
+                        {/* ER (Engagement Rate) Badge */}
+                        {Array.isArray(benchmarks) && (() => {
+                          const erBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'er' && 
+                            b.linkedInCampaignName === campaignName
+                          );
+                          if (erBenchmark) {
+                            return renderPerformanceBadge('er', engagementRate, 'higher-better');
+                          }
+                          return null;
+                        })()}
+                        
+                        {/* ROI Badge */}
+                        {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
+                          const roiBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'roi' && 
+                            b.linkedInCampaignName === campaignName
+                          );
+                          if (roiBenchmark) {
+                            const campaignRevenue = conversions * (aggregated.conversionValue || 0);
+                            const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;
+                            return renderPerformanceBadge('roi', campaignROI, 'higher-better');
+                          }
+                          return null;
+                        })()}
+                        
+                        {/* ROAS Badge */}
+                        {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
+                          const roasBenchmark = benchmarks.find((b: any) => 
+                            b.metric?.toLowerCase() === 'roas' && 
+                            b.linkedInCampaignName === campaignName
+                          );
+                          if (roasBenchmark) {
+                            const campaignRevenue = conversions * (aggregated.conversionValue || 0);
+                            const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
+                            return renderPerformanceBadge('roas', campaignROAS, 'higher-better');
+                          }
+                          return null;
+                        })()}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Report Modal */}
       <Dialog open={isReportModalOpen} onOpenChange={(open) => {
@@ -4154,7 +6131,52 @@ export default function LinkedInAnalytics() {
           ) : (
             // Render campaign metrics
             <div className="space-y-6">
-              
+              {(() => {
+                try {
+                  // Calculate metrics for this campaign
+                  const impressions = selectedCampaignDetails.metrics?.impressions || 0;
+                  const clicks = selectedCampaignDetails.metrics?.clicks || 0;
+                  const spend = selectedCampaignDetails.metrics?.spend || 0;
+                  const conversions = selectedCampaignDetails.metrics?.conversions || 0;
+                  const engagements = selectedCampaignDetails.metrics?.engagements || 0;
+                  const leads = selectedCampaignDetails.metrics?.leads || 0;
+                  
+                  const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+                  const cpc = clicks > 0 ? spend / clicks : 0;
+                  const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+                  const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+                  const cpa = conversions > 0 ? spend / conversions : 0;
+                  const cpl = leads > 0 ? spend / leads : 0;
+                  const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
+                  
+                  // Calculate additional metrics
+                  const reach = selectedCampaignDetails.metrics?.reach || 0;
+                  const videoViews = selectedCampaignDetails.metrics?.videoViews || 0;
+                  const viralImpressions = selectedCampaignDetails.metrics?.viralImpressions || 0;
+                  
+                  return (
+                    <>
+                      {/* Core Metrics Section */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Core Metrics</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                          {/* Impressions */}
+                          <Card>
+                            <CardContent className="p-4">
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Impressions</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatNumber(impressions)}
+                              </p>
+                              {Array.isArray(benchmarks) && (() => {
+                                const impressionsBenchmark = benchmarks.find((b: any) => 
+                                  b.metric?.toLowerCase() === 'impressions' && 
+                                  b.linkedInCampaignName === selectedCampaignDetails.name
+                                );
+                                if (impressionsBenchmark) {
+                                  return renderPerformanceBadge('impressions', impressions, 'higher-better');
+                                }
+                                return null;
+                              })()}
                             </CardContent>
                           </Card>
                           
@@ -4171,6 +6193,7 @@ export default function LinkedInAnalytics() {
                                   b.linkedInCampaignName === selectedCampaignDetails.name
                                 );
                                 if (clicksBenchmark) {
+                                  return renderPerformanceBadge('clicks', clicks, 'higher-better');
                                 }
                                 return null;
                               })()}
@@ -4190,6 +6213,7 @@ export default function LinkedInAnalytics() {
                                   b.linkedInCampaignName === selectedCampaignDetails.name
                                 );
                                 if (spendBenchmark) {
+                                  return renderPerformanceBadge('spend', spend, 'lower-better');
                                 }
                                 return null;
                               })()}
@@ -4209,6 +6233,7 @@ export default function LinkedInAnalytics() {
                                   b.linkedInCampaignName === selectedCampaignDetails.name
                                 );
                                 if (conversionsBenchmark) {
+                                  return renderPerformanceBadge('conversions', conversions, 'higher-better');
                                 }
                                 return null;
                               })()}
@@ -4228,6 +6253,7 @@ export default function LinkedInAnalytics() {
                                   b.linkedInCampaignName === selectedCampaignDetails.name
                                 );
                                 if (leadsBenchmark) {
+                                  return renderPerformanceBadge('leads', leads, 'higher-better');
                                 }
                                 return null;
                               })()}
@@ -4247,6 +6273,7 @@ export default function LinkedInAnalytics() {
                                   b.linkedInCampaignName === selectedCampaignDetails.name
                                 );
                                 if (engagementsBenchmark) {
+                                  return renderPerformanceBadge('engagements', engagements, 'higher-better');
                                 }
                                 return null;
                               })()}
@@ -4267,6 +6294,7 @@ export default function LinkedInAnalytics() {
                                     b.linkedInCampaignName === selectedCampaignDetails.name
                                   );
                                   if (reachBenchmark) {
+                                    return renderPerformanceBadge('reach', reach, 'higher-better');
                                   }
                                   return null;
                                 })()}
@@ -4288,6 +6316,7 @@ export default function LinkedInAnalytics() {
                                     b.linkedInCampaignName === selectedCampaignDetails.name
                                   );
                                   if (videoViewsBenchmark) {
+                                    return renderPerformanceBadge('videoviews', videoViews, 'higher-better');
                                   }
                                   return null;
                                 })()}
@@ -4309,6 +6338,7 @@ export default function LinkedInAnalytics() {
                                     b.linkedInCampaignName === selectedCampaignDetails.name
                                   );
                                   if (viralBenchmark) {
+                                    return renderPerformanceBadge('viralimpressions', viralImpressions, 'higher-better');
                                   }
                                   return null;
                                 })()}
@@ -4336,6 +6366,7 @@ export default function LinkedInAnalytics() {
                             b.linkedInCampaignName === selectedCampaignDetails.name
                           );
                           if (ctrBenchmark) {
+                            return renderPerformanceBadge('ctr', ctr, 'higher-better');
                           }
                           return null;
                         })()}
@@ -4356,6 +6387,7 @@ export default function LinkedInAnalytics() {
                             b.linkedInCampaignName === selectedCampaignDetails.name
                           );
                           if (cpcBenchmark) {
+                            return renderPerformanceBadge('cpc', cpc, 'lower-better');
                           }
                           return null;
                         })()}
@@ -4376,6 +6408,7 @@ export default function LinkedInAnalytics() {
                             b.linkedInCampaignName === selectedCampaignDetails.name
                           );
                           if (cpmBenchmark) {
+                            return renderPerformanceBadge('cpm', cpm, 'lower-better');
                           }
                           return null;
                         })()}
@@ -4396,6 +6429,7 @@ export default function LinkedInAnalytics() {
                             b.linkedInCampaignName === selectedCampaignDetails.name
                           );
                           if (cvrBenchmark) {
+                            return renderPerformanceBadge('cvr', cvr, 'higher-better');
                           }
                           return null;
                         })()}
@@ -4416,6 +6450,7 @@ export default function LinkedInAnalytics() {
                             b.linkedInCampaignName === selectedCampaignDetails.name
                           );
                           if (cpaBenchmark) {
+                            return renderPerformanceBadge('cpa', cpa, 'lower-better');
                           }
                           return null;
                         })()}
@@ -4436,6 +6471,7 @@ export default function LinkedInAnalytics() {
                             b.linkedInCampaignName === selectedCampaignDetails.name
                           );
                           if (cplBenchmark) {
+                            return renderPerformanceBadge('cpl', cpl, 'lower-better');
                           }
                           return null;
                         })()}
@@ -4455,6 +6491,7 @@ export default function LinkedInAnalytics() {
                             b.linkedInCampaignName === selectedCampaignDetails.name
                           );
                           if (erBenchmark) {
+                            return renderPerformanceBadge('er', er, 'higher-better');
                           }
                           return null;
                         })()}
@@ -4498,6 +6535,7 @@ export default function LinkedInAnalytics() {
                                 b.linkedInCampaignName === selectedCampaignDetails.name
                               );
                               if (roiBenchmark) {
+                                return renderPerformanceBadge('roi', roi, 'higher-better');
                               }
                               return null;
                             })()}
@@ -4517,6 +6555,7 @@ export default function LinkedInAnalytics() {
                                 b.linkedInCampaignName === selectedCampaignDetails.name
                               );
                               if (roasBenchmark) {
+                                return renderPerformanceBadge('roas', roas, 'higher-better');
                               }
                               return null;
                             })()}

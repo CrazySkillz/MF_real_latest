@@ -263,109 +263,6 @@ export default function LinkedInAnalytics() {
     refetchOnWindowFocus: true,
     cacheTime: 0, // Don't cache at all
   });
-  // Helper function to get benchmark for a metric
-  const getBenchmarkForMetric = (metricName: string) => {
-    console.log('[getBenchmarkForMetric] Looking for benchmark:', metricName);
-    console.log('[getBenchmarkForMetric] Available benchmarks:', benchmarks);
-    console.log('[getBenchmarkForMetric] Type:', typeof benchmarks);
-    console.log('[getBenchmarkForMetric] Is array?', Array.isArray(benchmarks));
-    console.log('[getBenchmarkForMetric] Length:', benchmarks?.length);
-    
-    // CRITICAL: Check if benchmarks exists and is an array first to prevent undefined errors
-    if (!benchmarks || !Array.isArray(benchmarks) || benchmarks.length === 0) {
-      console.log('[getBenchmarkForMetric] Benchmarks is not valid, returning null');
-      return null;
-    }
-    
-    // STRICT MATCHING: Only match by metric field, NOT by name
-    // This prevents wrong benchmarks from being used
-    const found = benchmarks.find((b: any) => {
-      const metricMatch = b.metric?.toLowerCase() === metricName.toLowerCase();
-      console.log(`Checking benchmark: metric="${b.metric}", name="${b.name}", metricMatch=${metricMatch}`);
-      return metricMatch; // Only return if metric field matches exactly
-    });
-    
-    console.log('Found benchmark:', found);
-    return found;
-  };
-
-  // Helper function to calculate performance level based on benchmark
-  const getPerformanceLevel = (currentValue: number, benchmarkValue: number, metricType: 'higher-better' | 'lower-better' = 'higher-better'): 'excellent' | 'good' | 'fair' | 'poor' => {
-    console.log(`getPerformanceLevel: current=${currentValue}, benchmark=${benchmarkValue}, type=${metricType}`);
-    
-    if (!benchmarkValue || benchmarkValue === 0) {
-      console.log('No benchmark value, returning fair');
-      return 'fair';
-    }
-    
-    const ratio = currentValue / benchmarkValue;
-    console.log(`Ratio: ${ratio} (${currentValue} / ${benchmarkValue})`);
-    
-    let result: 'excellent' | 'good' | 'fair' | 'poor';
-    
-    if (metricType === 'higher-better') {
-      // For metrics where higher is better (CTR, CVR, ER, ROI, ROAS)
-      if (ratio >= 1.2) result = 'excellent';
-      else if (ratio >= 1.0) result = 'good';
-      else if (ratio >= 0.8) result = 'fair';
-      else result = 'poor';
-      console.log(`Higher-better logic: ratio ${ratio} >= 1.2? ${ratio >= 1.2}, >= 1.0? ${ratio >= 1.0}, >= 0.8? ${ratio >= 0.8} → ${result}`);
-    } else {
-      // For metrics where lower is better (CPC, CPM, CPA, CPL)
-      if (ratio <= 0.8) result = 'excellent';
-      else if (ratio <= 1.0) result = 'good';
-      else if (ratio <= 1.2) result = 'fair';
-      else result = 'poor';
-      console.log(`Lower-better logic: ratio ${ratio} <= 0.8? ${ratio <= 0.8}, <= 1.0? ${ratio <= 1.0}, <= 1.2? ${ratio <= 1.2} → ${result}`);
-    }
-    
-    return result;
-  };
-
-  // Helper function to render performance badge
-  const renderPerformanceBadge = (metricName: string, currentValue: number | undefined, metricType: 'higher-better' | 'lower-better' = 'higher-better') => {
-    const benchmark = getBenchmarkForMetric(metricName);
-    console.log(`renderPerformanceBadge for ${metricName}: benchmark=`, benchmark, `currentValue=${currentValue}`);
-    
-    if (!benchmark || currentValue === undefined) {
-      console.log(`No badge for ${metricName}: benchmark=${!!benchmark}, currentValue=${currentValue}`);
-      return null;
-    }
-    
-    // If benchmark is campaign-specific, use campaign-specific metric value instead of aggregated
-    let valueToCompare = currentValue;
-    if (benchmark.linkedInCampaignName && benchmark.specificCampaignId) {
-      const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
-      if (campaignMetrics && campaignMetrics[metricName] !== undefined) {
-        valueToCompare = campaignMetrics[metricName];
-        console.log(`[Badge] Using campaign-specific value for ${metricName}: ${valueToCompare} (was ${currentValue})`);
-      }
-    }
-    
-    const performanceLevel = getPerformanceLevel(valueToCompare, parseFloat(benchmark.benchmarkValue), metricType);
-    console.log(`Performance level for ${metricName}: ${performanceLevel} (current=${valueToCompare}, benchmark=${benchmark.benchmarkValue})`);
-    
-    return (
-      <Badge 
-        variant={
-          performanceLevel === 'excellent' ? 'default' :
-          performanceLevel === 'good' ? 'secondary' :
-          performanceLevel === 'fair' ? 'outline' : 'destructive'
-        }
-        className={`mt-2 ${
-          performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-          performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-          performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-        }`}
-      >
-        {performanceLevel === 'excellent' && '🟢 Excellent'}
-        {performanceLevel === 'good' && '🔵 Good'}
-        {performanceLevel === 'fair' && '🟡 Fair'}
-        {performanceLevel === 'poor' && '🔴 Poor'}
-      </Badge>
-    );
-  };
 
   // Fetch import session data
   const { data: sessionData, isLoading: sessionLoading } = useQuery({
@@ -406,47 +303,6 @@ export default function LinkedInAnalytics() {
     return campaign?.name || campaignId;
   };
 
-  // Helper to get campaign-specific metrics from adsData
-  const getCampaignSpecificMetrics = (linkedInCampaignName: string) => {
-    if (!adsData || !Array.isArray(adsData)) return null;
-    
-    // Filter ads for this specific LinkedIn campaign
-    const campaignAds = adsData.filter((ad: any) => ad.campaignName === linkedInCampaignName);
-    if (campaignAds.length === 0) return null;
-    
-    // Aggregate metrics for this campaign
-    const totals = campaignAds.reduce((acc: any, ad: any) => ({
-      impressions: (acc.impressions || 0) + (ad.impressions || 0),
-      clicks: (acc.clicks || 0) + (ad.clicks || 0),
-      spend: (acc.spend || 0) + parseFloat(ad.spend || 0),
-      conversions: (acc.conversions || 0) + (ad.conversions || 0),
-      leads: (acc.leads || 0) + (ad.leads || 0),
-      engagements: (acc.engagements || 0) + (ad.engagements || 0),
-      reach: (acc.reach || 0) + (ad.reach || 0),
-      videoViews: (acc.videoViews || 0) + (ad.videoViews || 0),
-      viralImpressions: (acc.viralImpressions || 0) + (ad.viralImpressions || 0),
-    }), {});
-    
-    // Calculate derived metrics
-    const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
-    const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
-    const cpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0;
-    const cvr = totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : 0;
-    const cpa = totals.conversions > 0 ? totals.spend / totals.conversions : 0;
-    const cpl = totals.leads > 0 ? totals.spend / totals.leads : 0;
-    const er = totals.impressions > 0 ? (totals.engagements / totals.impressions) * 100 : 0;
-    
-    return {
-      ...totals,
-      ctr,
-      cpc,
-      cpm,
-      cvr,
-      cpa,
-      cpl,
-      er
-    };
-  };
 
   // Fetch LinkedIn reports filtered by campaignId
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
@@ -2101,17 +1957,7 @@ export default function LinkedInAnalytics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {format(value)}
                                 </p>
-                                {/* Show badge for raw metrics if benchmark exists (global only) */}
-                                {(() => {
-                                  const benchmark = getBenchmarkForMetric(metricKey);
-                                  if (benchmark && !benchmark.linkedInCampaignName) {
-                                    // Determine if higher or lower is better for this metric
-                                    const higherBetterMetrics = ['impressions', 'clicks', 'conversions', 'leads', 'engagements', 'reach'];
-                                    const metricType = higherBetterMetrics.includes(metricKey) ? 'higher-better' : 'lower-better';
-                                    return renderPerformanceBadge(metricKey, value, metricType);
-                                  }
-                                  return null;
-                                })()}
+                                
                               </CardContent>
                             </Card>
                           );
@@ -2139,13 +1985,7 @@ export default function LinkedInAnalytics() {
                                 {formatPercentage(aggregated.ctr)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
-                              {(() => {
-                                const ctrBenchmark = getBenchmarkForMetric('ctr');
-                                if (ctrBenchmark && !ctrBenchmark.linkedInCampaignName) {
-                                  return renderPerformanceBadge('ctr', aggregated.ctr, 'higher-better');
-                                }
-                                return null;
-                              })()}
+                              
                             </CardContent>
                           </Card>
                         )}
@@ -2164,13 +2004,7 @@ export default function LinkedInAnalytics() {
                                 {formatCurrency(aggregated.cpc)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
-                              {(() => {
-                                const cpcBenchmark = getBenchmarkForMetric('cpc');
-                                if (cpcBenchmark && !cpcBenchmark.linkedInCampaignName) {
-                                  return renderPerformanceBadge('cpc', aggregated.cpc, 'lower-better');
-                                }
-                                return null;
-                              })()}
+                              
                             </CardContent>
                           </Card>
                         )}
@@ -2189,13 +2023,7 @@ export default function LinkedInAnalytics() {
                                 {formatCurrency(aggregated.cpm)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
-                              {(() => {
-                                const cpmBenchmark = getBenchmarkForMetric('cpm');
-                                if (cpmBenchmark && !cpmBenchmark.linkedInCampaignName) {
-                                  return renderPerformanceBadge('cpm', aggregated.cpm, 'lower-better');
-                                }
-                                return null;
-                              })()}
+                              
                             </CardContent>
                           </Card>
                         )}
@@ -2214,13 +2042,7 @@ export default function LinkedInAnalytics() {
                                 {formatPercentage(aggregated.cvr)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
-                              {(() => {
-                                const cvrBenchmark = getBenchmarkForMetric('cvr');
-                                if (cvrBenchmark && !cvrBenchmark.linkedInCampaignName) {
-                                  return renderPerformanceBadge('cvr', aggregated.cvr, 'higher-better');
-                                }
-                                return null;
-                              })()}
+                              
                             </CardContent>
                           </Card>
                         )}
@@ -2239,13 +2061,7 @@ export default function LinkedInAnalytics() {
                                 {formatCurrency(aggregated.cpa)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns, not campaign-specific */}
-                              {(() => {
-                                const cpaBenchmark = getBenchmarkForMetric('cpa');
-                                if (cpaBenchmark && !cpaBenchmark.linkedInCampaignName) {
-                                  return renderPerformanceBadge('cpa', aggregated.cpa, 'lower-better');
-                                }
-                                return null;
-                              })()}
+                              
                             </CardContent>
                           </Card>
                         )}

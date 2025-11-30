@@ -121,7 +121,7 @@ export default function LinkedInAnalytics() {
     unit: '',
     benchmarkValue: '',
     currentValue: '',
-    benchmarkType: 'custom', // 'industry' or 'custom'
+    benchmarkType: 'industry', // 'industry' or 'custom'
     industry: '',
     description: '',
     applyTo: 'all', // 'all' or 'specific'
@@ -647,7 +647,7 @@ export default function LinkedInAnalytics() {
         unit: '',
         benchmarkValue: '',
         currentValue: '',
-        benchmarkType: 'custom',
+        benchmarkType: 'industry',
         industry: '',
         description: '',
         applyTo: 'all',
@@ -4744,7 +4744,7 @@ export default function LinkedInAnalytics() {
             <div className="space-y-2">
               <Label htmlFor="benchmark-type">Benchmark Type</Label>
               <Select
-                value={benchmarkForm.benchmarkType || 'custom'}
+                value={benchmarkForm.benchmarkType || 'industry'}
                 onValueChange={(value) => {
                   setBenchmarkForm({ 
                     ...benchmarkForm, 

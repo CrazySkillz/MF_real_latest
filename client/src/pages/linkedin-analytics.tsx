@@ -3261,42 +3261,46 @@ export default function LinkedInAnalytics() {
                                   Your Performance
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
-                                  
-                        
-                        {/* ROI Badge */}
-                        {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
-                          const roiBenchmark = benchmarks.find((b: any) => 
-                            b.metric?.toLowerCase() === 'roi' && 
-                            b.linkedInCampaignName === campaignName
-                          );
-                          if (roiBenchmark) {
-                            const campaignRevenue = conversions * (aggregated.conversionValue || 0);
-                            const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;
-                          }
-                          return null;
-                        })()}
-                        
-                        {/* ROAS Badge */}
-                        {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
-                          const roasBenchmark = benchmarks.find((b: any) => 
-                            b.metric?.toLowerCase() === 'roas' && 
-                            b.linkedInCampaignName === campaignName
-                          );
-                          if (roasBenchmark) {
-                            const campaignRevenue = conversions * (aggregated.conversionValue || 0);
-                            const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
-                          }
-                          return null;
-                        })()}
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-            )}
+                                  {(() => {
+                                    // Use campaign-specific value if applicable
+                                    let currentVal = parseFloat(benchmark.currentValue);
+                                    
+                                    const benchmarkVal = parseFloat(benchmark.benchmarkValue);
+                                    const difference = currentVal - benchmarkVal;
+                                    const percentDiff = benchmarkVal !== 0 ? (difference / benchmarkVal) * 100 : 0;
+                                    
+                                    return `${typeof currentVal === 'number' ? currentVal.toFixed(2) : currentVal}${benchmark.unit || ''}`;
+                                  })()}
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    No benchmarks created yet. Click "Create Benchmark" to get started.
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
-        </DialogContent>
-      </Dialog>
+        </TabsContent>
+
+        {/* KPIs Tab */}
+        <TabsContent value="kpis" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
+              <p className="text-slate-600 dark:text-slate-400">Track and monitor your LinkedIn campaign KPIs</p>
+            </div>
+            <Button onClick={() => setIsKPIModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Create KPI
+            </Button>
+          </div>
 
       {/* Create Report Modal */}
       <Dialog open={isReportModalOpen} onOpenChange={(open) => {

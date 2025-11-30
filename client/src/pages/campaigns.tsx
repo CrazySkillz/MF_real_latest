@@ -1858,7 +1858,7 @@ export default function Campaigns() {
 
       {/* Edit Campaign Dialog */}
       <Dialog open={!!editingCampaign} onOpenChange={() => setEditingCampaign(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-blue-500" />

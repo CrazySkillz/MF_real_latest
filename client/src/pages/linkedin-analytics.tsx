@@ -4380,6 +4380,17 @@ export default function LinkedInAnalytics() {
                 <Select
                   value={benchmarkForm.metric || undefined}
                   onValueChange={(value) => {
+                    // Check if revenue metric is selected but conversion value is not set
+                    const revenueMetrics = ['roi', 'roas', 'totalRevenue', 'profit', 'profitMargin', 'revenuePerLead'];
+                    if (revenueMetrics.includes(value) && !aggregated?.hasRevenueTracking) {
+                      toast({
+                        title: "Conversion Value Required",
+                        description: "Revenue metrics require a conversion value. Please edit your campaign and add a conversion value to track ROI, ROAS, Revenue, and Profit.",
+                        variant: "destructive",
+                      });
+                      return; // Don't select this metric
+                    }
+                    
                     // Determine which metrics to use based on scope
                     let metricsSource = aggregated;
                     
@@ -4547,12 +4558,24 @@ export default function LinkedInAnalytics() {
                     <SelectItem value="cpa">Cost Per Acquisition (CPA)</SelectItem>
                     <SelectItem value="cpl">Cost Per Lead (CPL)</SelectItem>
                     <SelectItem value="er">Engagement Rate (ER)</SelectItem>
-                    <SelectItem value="roi">Return on Investment (ROI)</SelectItem>
-                    <SelectItem value="roas">Return on Ad Spend (ROAS)</SelectItem>
-                    <SelectItem value="totalRevenue">Total Revenue</SelectItem>
-                    <SelectItem value="profit">Profit</SelectItem>
-                    <SelectItem value="profitMargin">Profit Margin</SelectItem>
-                    <SelectItem value="revenuePerLead">Revenue Per Lead</SelectItem>
+                    <SelectItem value="roi" disabled={!aggregated?.hasRevenueTracking}>
+                      Return on Investment (ROI) {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
+                    <SelectItem value="roas" disabled={!aggregated?.hasRevenueTracking}>
+                      Return on Ad Spend (ROAS) {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
+                    <SelectItem value="totalRevenue" disabled={!aggregated?.hasRevenueTracking}>
+                      Total Revenue {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
+                    <SelectItem value="profit" disabled={!aggregated?.hasRevenueTracking}>
+                      Profit {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
+                    <SelectItem value="profitMargin" disabled={!aggregated?.hasRevenueTracking}>
+                      Profit Margin {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
+                    <SelectItem value="revenuePerLead" disabled={!aggregated?.hasRevenueTracking}>
+                      Revenue Per Lead {!aggregated?.hasRevenueTracking && '(Requires Conversion Value)'}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

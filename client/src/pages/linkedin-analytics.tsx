@@ -4553,12 +4553,8 @@ export default function LinkedInAnalytics() {
                     <SelectItem value="profit">Profit</SelectItem>
                     <SelectItem value="profitMargin">Profit Margin</SelectItem>
                     <SelectItem value="revenuePerLead">Revenue Per Lead</SelectItem>
-                    <SelectItem value="custom">Custom Value</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  💡 <strong>Tip:</strong> ROAS, ROI, Profit Margin, and Revenue Per Lead are normalized metrics ideal for comparing campaigns. Total Revenue and Profit work best for campaign-specific targets.
-                </p>
               </div>
             </div>
 

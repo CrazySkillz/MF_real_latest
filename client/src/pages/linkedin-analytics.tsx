@@ -30,7 +30,10 @@ const getCategoryFromMetric = (metric: string): string => {
   if (['cpc', 'cpm', 'cpa', 'cpl'].some(m => metricLower.includes(m))) return 'cost';
   
   // Performance metrics (higher is better)
-  if (['ctr', 'cvr', 'er', 'roi', 'roas'].some(m => metricLower.includes(m))) return 'performance';
+  if (['ctr', 'cvr', 'er', 'roi', 'roas', 'profitmargin', 'revenueperlead'].some(m => metricLower.includes(m))) return 'performance';
+  
+  // Revenue metrics (higher is better)
+  if (['revenue', 'profit'].some(m => metricLower.includes(m))) return 'revenue';
   
   // Conversion metrics
   if (['conversions', 'leads'].some(m => metricLower.includes(m))) return 'conversion';
@@ -4458,6 +4461,22 @@ export default function LinkedInAnalytics() {
                           currentValue = String(metricsSource.roas || 0);
                           unit = 'x';
                           break;
+                        case 'totalRevenue':
+                          currentValue = String(metricsSource.totalRevenue || 0);
+                          unit = '$';
+                          break;
+                        case 'profit':
+                          currentValue = String(metricsSource.profit || 0);
+                          unit = '$';
+                          break;
+                        case 'profitMargin':
+                          currentValue = String(metricsSource.profitMargin || 0);
+                          unit = '%';
+                          break;
+                        case 'revenuePerLead':
+                          currentValue = String(metricsSource.revenuePerLead || 0);
+                          unit = '$';
+                          break;
                       }
                     }
                     console.log('[Metric Selection] Auto-filled currentValue:', currentValue, unit);
@@ -4530,9 +4549,16 @@ export default function LinkedInAnalytics() {
                     <SelectItem value="er">Engagement Rate (ER)</SelectItem>
                     <SelectItem value="roi">Return on Investment (ROI)</SelectItem>
                     <SelectItem value="roas">Return on Ad Spend (ROAS)</SelectItem>
+                    <SelectItem value="totalRevenue">Total Revenue</SelectItem>
+                    <SelectItem value="profit">Profit</SelectItem>
+                    <SelectItem value="profitMargin">Profit Margin</SelectItem>
+                    <SelectItem value="revenuePerLead">Revenue Per Lead</SelectItem>
                     <SelectItem value="custom">Custom Value</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  💡 <strong>Tip:</strong> ROAS, ROI, Profit Margin, and Revenue Per Lead are normalized metrics ideal for comparing campaigns. Total Revenue and Profit work best for campaign-specific targets.
+                </p>
               </div>
             </div>
 

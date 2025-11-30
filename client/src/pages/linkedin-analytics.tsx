@@ -569,7 +569,7 @@ export default function LinkedInAnalytics() {
       priority: kpiForm.priority,
       timeframe: kpiForm.timeframe,
       trackingPeriod: parseInt(kpiForm.trackingPeriod),
-      status: 'tracking',
+      status: 'active',
       rollingAverage: '7day',
       alertsEnabled: true,
       emailNotifications: false,
@@ -3000,7 +3000,15 @@ export default function LinkedInAnalytics() {
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                                  {/* Metric Badge */}
+                                  {kpi.metric && (
+                                    <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">
+                                      {kpi.metric.toUpperCase()}
+                                    </Badge>
+                                  )}
+                                </div>
                                 <CardDescription className="text-sm">
                                   {kpi.description || 'No description provided'}
                                 </CardDescription>

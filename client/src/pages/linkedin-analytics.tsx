@@ -111,6 +111,7 @@ export default function LinkedInAnalytics() {
     category: '',
     timeframe: 'monthly',
     trackingPeriod: '30',
+    alertsEnabled: false,
     emailNotifications: false,
     alertThreshold: '',
     alertCondition: 'below',
@@ -451,10 +452,13 @@ export default function LinkedInAnalytics() {
         category: '',
         timeframe: 'monthly',
         trackingPeriod: '30',
+        alertsEnabled: false,
         emailNotifications: false,
         alertThreshold: '',
         alertCondition: 'below',
-        emailRecipients: ''
+        emailRecipients: '',
+        applyTo: 'all',
+        specificCampaignId: ''
       });
     },
     onError: (error: any) => {
@@ -576,10 +580,12 @@ export default function LinkedInAnalytics() {
       trackingPeriod: parseInt(kpiForm.trackingPeriod),
       status: 'active',
       rollingAverage: '7day',
-      alertsEnabled: true,
+      alertsEnabled: kpiForm.alertsEnabled || false, // Use form value instead of hardcoded true
       emailNotifications: false,
       slackNotifications: false,
       alertFrequency: 'daily',
+      alertThreshold: kpiForm.alertThreshold || null, // Include alert threshold
+      alertCondition: kpiForm.alertCondition || 'below', // Include alert condition
       applyTo: kpiForm.applyTo,
       specificCampaignId: kpiForm.applyTo === 'specific' ? kpiForm.specificCampaignId : null
     };
@@ -3087,6 +3093,7 @@ export default function LinkedInAnalytics() {
                                       category: kpi.category || '',
                                       timeframe: kpi.timeframe || 'monthly',
                                       trackingPeriod: kpi.trackingPeriod?.toString() || '30',
+                                      alertsEnabled: kpi.alertsEnabled || false,
                                       emailNotifications: kpi.emailNotifications || false,
                                       alertThreshold: kpi.alertThreshold || '',
                                       alertCondition: kpi.alertCondition || 'below',

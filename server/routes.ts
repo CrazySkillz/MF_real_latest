@@ -1734,6 +1734,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get latest period for a KPI
+  app.get("/api/kpis/:kpiId/latest-period", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      const latestPeriod = await storage.getLatestKPIPeriod(kpiId);
+      res.json(latestPeriod || null);
+    } catch (error) {
+      console.error('Latest KPI period fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch latest KPI period" });
+    }
+  });
+
   // Platform-level Benchmark routes
   app.get("/api/platforms/:platformType/benchmarks", async (req, res) => {
     try {

@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes-oauth";
 import { setupVite, serveStatic, log } from "./vite";
 import { snapshotScheduler } from "./scheduler";
+import { startKPIScheduler } from "./kpi-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
@@ -136,6 +137,13 @@ app.use('/api', (req, res, next) => {
           snapshotScheduler.start();
         } catch (error) {
           console.error('Failed to start snapshot scheduler:', error);
+        }
+        
+        // Start KPI scheduler
+        try {
+          startKPIScheduler();
+        } catch (error) {
+          console.error('Failed to start KPI scheduler:', error);
         }
       }, 5000); // 5 second delay
     });

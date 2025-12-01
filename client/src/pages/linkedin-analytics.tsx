@@ -3055,7 +3055,40 @@ export default function LinkedInAnalytics() {
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                                  <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                                  <div className="flex items-center gap-2">
+                                    <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                                    {/* Red Dot Indicator for Active Alerts */}
+                                    {kpi.alertsEnabled && (() => {
+                                      const currentValue = parseFloat(kpi.currentValue);
+                                      const alertThreshold = kpi.alertThreshold ? parseFloat(kpi.alertThreshold.toString()) : null;
+                                      const alertCondition = kpi.alertCondition || 'below';
+                                      
+                                      let hasActiveAlert = false;
+                                      if (alertThreshold !== null) {
+                                        switch (alertCondition) {
+                                          case 'below':
+                                            hasActiveAlert = currentValue < alertThreshold;
+                                            break;
+                                          case 'above':
+                                            hasActiveAlert = currentValue > alertThreshold;
+                                            break;
+                                          case 'equals':
+                                            hasActiveAlert = Math.abs(currentValue - alertThreshold) < 0.01;
+                                            break;
+                                        }
+                                      }
+                                      
+                                      return hasActiveAlert ? (
+                                        <div 
+                                          className="relative flex items-center justify-center"
+                                          title="Active alert - threshold breached"
+                                        >
+                                          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                          <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                                        </div>
+                                      ) : null;
+                                    })()}
+                                  </div>
                                   {/* Metric Badge */}
                                   {kpi.metric && (
                                     <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">

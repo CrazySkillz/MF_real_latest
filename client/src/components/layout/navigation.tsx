@@ -1,8 +1,19 @@
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import type { Notification } from "@shared/schema";
 
 export default function Navigation() {
+  // Fetch notifications to get unread count
+  const { data: notifications = [] } = useQuery<Notification[]>({
+    queryKey: ["/api/notifications"],
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
   return (
     <nav className="gradient-card border-b border-border px-6 py-4 backdrop-blur-md">
       <div className="flex items-center justify-between">
@@ -19,7 +30,13 @@ export default function Navigation() {
           <Link href="/notifications">
             <Button variant="ghost" size="sm" className="relative" data-testid="button-notifications">
               <Bell className="w-4 h-4" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+              {unreadCount > 0 && (
+                <Badge 
+                  className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center p-0 px-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold"
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Badge>
+              )}
             </Button>
           </Link>
           

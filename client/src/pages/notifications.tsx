@@ -136,6 +136,13 @@ export default function Notifications() {
     setCurrentPage(1);
   }, [searchTerm, typeFilter, priorityFilter, readFilter, campaignFilter, dateFilter]);
 
+  // Adjust current page if it's now out of bounds (after deletion)
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [filteredNotifications.length, currentPage, totalPages]);
+
   // Get notification type icon
   const getTypeIcon = (type: string) => {
     switch (type) {

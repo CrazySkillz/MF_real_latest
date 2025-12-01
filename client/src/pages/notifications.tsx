@@ -58,14 +58,26 @@ export default function Notifications() {
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (notificationId: string) => {
+      console.log('[Delete] Deleting notification:', notificationId);
       const response = await apiRequest("DELETE", `/api/notifications/${notificationId}`);
-      return response.json();
+      const result = await response.json();
+      console.log('[Delete] Result:', result);
+      return result;
     },
     onSuccess: () => {
+      console.log('[Delete] Success, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       toast({
         title: "Notification deleted",
         description: "The notification has been deleted.",
+      });
+    },
+    onError: (error) => {
+      console.error('[Delete] Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete notification",
+        variant: "destructive",
       });
     },
   });
@@ -387,17 +399,34 @@ export default function Notifications() {
                           {(() => {
                             try {
                               const metadata = notification.metadata ? JSON.parse(notification.metadata) : null;
+                              console.log('[View KPI] Notification:', notification.id, 'Metadata:', metadata, 'CampaignId:', notification.campaignId);
                               if (metadata?.kpiId) {
                                 return (
                                   <Button
                                     variant="default"
                                     size="sm"
                                     onClick={() => {
+                                      console.log('[View KPI] Clicked for notification:', notification.id);
+                                      console.log('[View KPI] Campaign ID:', notification.campaignId);
+                                      console.log('[View KPI] Metadata:', metadata);
+                                      
                                       markAsReadMutation.mutate(notification.id);
+                                      
                                       // Navigate to LinkedIn Analytics KPIs tab
-                                      const campaignId = notification.campaignId || metadata.campaignId;
+                                      const campaignId = notification.campaignId;
+                                      console.log('[View KPI] Using campaignId:', campaignId);
+                                      
                                       if (campaignId) {
-                                        setLocation(`/campaigns/${campaignId}/linkedin-analytics?tab=kpis`);
+                                        const url = `/campaigns/${campaignId}/linkedin-analytics?tab=kpis`;
+                                        console.log('[View KPI] Navigating to:', url);
+                                        setLocation(url);
+                                      } else {
+                                        console.error('[View KPI] No campaignId found!');
+                                        toast({
+                                          title: "Error",
+                                          description: "Cannot navigate to KPI - campaign not found",
+                                          variant: "destructive",
+                                        });
                                       }
                                     }}
                                     className="bg-purple-600 hover:bg-purple-700"
@@ -408,7 +437,7 @@ export default function Notifications() {
                                 );
                               }
                             } catch (e) {
-                              // Invalid JSON, skip
+                              console.error('[View KPI] Error parsing metadata:', e);
                             }
                             return null;
                           })()}

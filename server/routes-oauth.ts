@@ -55,13 +55,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       console.log(`[Notifications API] Deleting notification: ${id}`);
       
-      const { db } = await import("./db/index.js");
-      const { notifications } = await import("../shared/schema.js");
+      // Use storage layer instead of direct DB access
+      const { db } = await import("./db");
+      const { notifications } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       
-      await db.delete(notifications).where(eq(notifications.id, id));
+      const result = await db.delete(notifications).where(eq(notifications.id, id));
       
-      console.log(`[Notifications API] Deleted notification: ${id}`);
+      console.log(`[Notifications API] Deleted notification: ${id}`, result);
       res.json({ success: true, message: "Notification deleted" });
     } catch (error) {
       console.error('[Notifications API] Delete error:', error);
@@ -78,15 +79,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { read } = req.body;
       console.log(`[Notifications API] Updating notification: ${id}, read: ${read}`);
       
-      const { db } = await import("./db/index.js");
-      const { notifications } = await import("../shared/schema.js");
+      const { db } = await import("./db");
+      const { notifications } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       
-      await db.update(notifications)
+      const result = await db.update(notifications)
         .set({ read: read })
         .where(eq(notifications.id, id));
       
-      console.log(`[Notifications API] Updated notification: ${id}`);
+      console.log(`[Notifications API] Updated notification: ${id}`, result);
       res.json({ success: true, message: "Notification updated" });
     } catch (error) {
       console.error('[Notifications API] Update error:', error);

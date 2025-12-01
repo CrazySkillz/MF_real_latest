@@ -56,17 +56,49 @@ async function testKPINotifications() {
     console.log('📊 Step 2: Creating test period snapshots...');
     
     for (const kpi of activeKPIs) {
-      // Create a "previous month" snapshot
+      // Create a snapshot based on KPI timeframe
       const today = new Date();
-      const lastMonth = new Date(today);
-      lastMonth.setMonth(lastMonth.getMonth() - 1);
+      let periodStart: Date;
+      let periodEnd: Date;
+      let periodLabel: string;
       
-      const periodStart = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
-      const periodEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+      const timeframe = kpi.timeframe || 'monthly';
       
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                          'July', 'August', 'September', 'October', 'November', 'December'];
-      const periodLabel = `${monthNames[lastMonth.getMonth()]} ${lastMonth.getFullYear()}`;
+      if (timeframe === 'daily') {
+        // Create "yesterday" snapshot for daily KPIs
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        periodStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
+        periodEnd = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
+        
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        periodLabel = `${monthNames[yesterday.getMonth()]} ${yesterday.getDate()}, ${yesterday.getFullYear()}`;
+      } else if (timeframe === 'weekly') {
+        // Create "last week" snapshot for weekly KPIs
+        const lastWeek = new Date(today);
+        lastWeek.setDate(lastWeek.getDate() - 7);
+        
+        periodStart = new Date(lastWeek);
+        periodStart.setDate(periodStart.getDate() - periodStart.getDay()); // Start of week (Sunday)
+        
+        periodEnd = new Date(periodStart);
+        periodEnd.setDate(periodEnd.getDate() + 6); // End of week (Saturday)
+        
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        periodLabel = `Week of ${monthNames[periodStart.getMonth()]} ${periodStart.getDate()}, ${periodStart.getFullYear()}`;
+      } else {
+        // Create "last month" snapshot for monthly KPIs
+        const lastMonth = new Date(today);
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        
+        periodStart = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+        periodEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+        
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                            'July', 'August', 'September', 'October', 'November', 'December'];
+        periodLabel = `${monthNames[lastMonth.getMonth()]} ${lastMonth.getFullYear()}`;
+      }
       
       // Simulate previous period performance (slightly different from current)
       const currentValue = parseFloat(kpi.currentValue);
@@ -93,7 +125,7 @@ async function testKPINotifications() {
         kpiId: kpi.id,
         periodStart,
         periodEnd,
-        periodType: kpi.timeframe,
+        periodType: timeframe,
         periodLabel,
         finalValue: previousValue.toFixed(2),
         targetValue: targetValue.toFixed(2),

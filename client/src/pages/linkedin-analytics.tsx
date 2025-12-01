@@ -4721,11 +4721,6 @@ export default function LinkedInAnalytics() {
                 : 'Define a new benchmark for your LinkedIn campaigns. You can select metrics from the Overview tab as current values.'}
             </DialogDescription>
           </DialogHeader>
-          {!sessionData ? (
-            <div className="flex items-center justify-center py-8">
-              <p className="text-slate-500">Loading...</p>
-            </div>
-          ) : (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="benchmark-name">Benchmark Name *</Label>
@@ -5328,7 +5323,6 @@ export default function LinkedInAnalytics() {
               </Button>
             </div>
           </div>
-          )}
         </DialogContent>
       </Dialog>
 

@@ -4439,7 +4439,7 @@ export default function LinkedInAnalytics() {
                   }}
                 >
                   <SelectTrigger id="kpi-apply-to">
-                    <SelectValue />
+                    <SelectValue placeholder="All Campaigns (Aggregate)" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Campaigns (Aggregate)</SelectItem>

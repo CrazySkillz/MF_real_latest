@@ -64,9 +64,10 @@ export default function Notifications() {
       console.log('[Delete] Result:', result);
       return result;
     },
-    onSuccess: () => {
-      console.log('[Delete] Success, invalidating queries');
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    onSuccess: async () => {
+      console.log('[Delete] Success, refetching notifications');
+      await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/notifications"] });
       toast({
         title: "Notification deleted",
         description: "The notification has been deleted.",
@@ -405,8 +406,11 @@ export default function Notifications() {
                                   <Button
                                     variant="default"
                                     size="sm"
-                                    onClick={() => {
-                                      console.log('[View KPI] Clicked for notification:', notification.id);
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      console.log('[View KPI] ===== BUTTON CLICKED =====');
+                                      console.log('[View KPI] Notification ID:', notification.id);
                                       console.log('[View KPI] Campaign ID:', notification.campaignId);
                                       console.log('[View KPI] Metadata:', metadata);
                                       
@@ -417,9 +421,14 @@ export default function Notifications() {
                                       console.log('[View KPI] Using campaignId:', campaignId);
                                       
                                       if (campaignId) {
-                                        const url = `/campaigns/${campaignId}/linkedin-analytics?tab=kpis`;
+                                        const url = `/campaigns/${campaignId}/linkedin-analytics`;
                                         console.log('[View KPI] Navigating to:', url);
                                         setLocation(url);
+                                        // Force navigation
+                                        setTimeout(() => {
+                                          console.log('[View KPI] Setting tab to kpis');
+                                          window.location.hash = '#kpis';
+                                        }, 100);
                                       } else {
                                         console.error('[View KPI] No campaignId found!');
                                         toast({

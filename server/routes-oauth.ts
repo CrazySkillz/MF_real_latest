@@ -98,6 +98,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Industry benchmarks routes
+  app.get("/api/industry-benchmarks", async (req, res) => {
+    try {
+      const { getIndustries, getIndustryDisplayName, getBenchmarkValue } = await import('./data/industry-benchmarks.js');
+      const industries = getIndustries();
+      
+      // Return list of industries with display names
+      const industryList = industries.map(key => ({
+        value: key,
+        label: getIndustryDisplayName(key)
+      }));
+      
+      res.json({ industries: industryList });
+    } catch (error) {
+      console.error('Industry benchmarks fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch industry benchmarks" });
+    }
+  });
+
+  // Get benchmark value for specific industry and metric
+  app.get("/api/industry-benchmarks/:industry/:metric", async (req, res) => {
+    try {
+      const { industry, metric } = req.params;
+      const { getBenchmarkValue } = await import('./data/industry-benchmarks.js');
+      
+      const benchmarkData = getBenchmarkValue(industry, metric);
+      
+      if (!benchmarkData) {
+        return res.status(404).json({ 
+          message: "Benchmark not found for this industry/metric combination" 
+        });
+      }
+      
+      res.json(benchmarkData);
+    } catch (error) {
+      console.error('Industry benchmark fetch error:', error);
+      res.status(500).json({ message: "Failed to fetch industry benchmark" });
+    }
+  });
+
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {

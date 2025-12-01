@@ -22,6 +22,8 @@ export default function Notifications() {
   const [readFilter, setReadFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { toast } = useToast();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
@@ -107,6 +109,17 @@ export default function Notifications() {
 
   // Get unique campaign names for filter dropdown
   const uniqueCampaigns = Array.from(new Set(notifications.map(n => n.campaignName).filter(Boolean)));
+
+  // Pagination
+  const totalPages = Math.ceil(filteredNotifications.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedNotifications = filteredNotifications.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, typeFilter, priorityFilter, readFilter, campaignFilter, dateFilter]);
 
   // Get notification type icon
   const getTypeIcon = (type: string) => {
@@ -321,8 +334,9 @@ export default function Notifications() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
-                {filteredNotifications.map((notification) => (
+              <>
+                <div className="space-y-4">
+                  {paginatedNotifications.map((notification) => (
                   <Card
                     key={notification.id}
                     className={`transition-all hover:shadow-md ${
@@ -423,8 +437,49 @@ export default function Notifications() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+                  ))}
+                </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 px-4">
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                      Showing {startIndex + 1}-{Math.min(endIndex, filteredNotifications.length)} of {filteredNotifications.length} notifications
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className="w-10"
+                          >
+                            {page}
+                          </Button>
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </main>

@@ -709,6 +709,8 @@ export const insertKPISchema = createInsertSchema(kpis).pick({
   emailNotifications: true,
   slackNotifications: true,
   alertFrequency: true,
+  applyTo: true,
+  specificCampaignId: true,
 });
 
 export const insertKPIProgressSchema = createInsertSchema(kpiProgress).pick({

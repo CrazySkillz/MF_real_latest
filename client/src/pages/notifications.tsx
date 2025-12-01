@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export default function Notifications() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -366,11 +368,6 @@ export default function Notifications() {
                             </p>
                             
                             <div className="flex items-center space-x-4 text-xs text-slate-500">
-                              <div className="flex items-center space-x-1">
-                                <Clock className="w-3 h-3" />
-                                <span>{formatNotificationDate(notification.createdAt)}</span>
-                              </div>
-                              
                               {notification.campaignName && (
                                 <div className="flex items-center space-x-1">
                                   <span>Campaign:</span>
@@ -390,14 +387,18 @@ export default function Notifications() {
                           {(() => {
                             try {
                               const metadata = notification.metadata ? JSON.parse(notification.metadata) : null;
-                              if (metadata?.kpiId && metadata?.actionUrl) {
+                              if (metadata?.kpiId) {
                                 return (
                                   <Button
                                     variant="default"
                                     size="sm"
                                     onClick={() => {
                                       markAsReadMutation.mutate(notification.id);
-                                      window.location.href = metadata.actionUrl;
+                                      // Navigate to LinkedIn Analytics KPIs tab
+                                      const campaignId = notification.campaignId || metadata.campaignId;
+                                      if (campaignId) {
+                                        setLocation(`/campaigns/${campaignId}/linkedin-analytics?tab=kpis`);
+                                      }
                                     }}
                                     className="bg-purple-600 hover:bg-purple-700"
                                     data-testid={`button-view-kpi-${notification.id}`}

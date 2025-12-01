@@ -442,10 +442,7 @@ export default function Notifications() {
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-6 px-4">
-                    <div className="text-sm text-slate-600 dark:text-slate-400">
-                      Showing {startIndex + 1}-{Math.min(endIndex, filteredNotifications.length)} of {filteredNotifications.length} notifications
-                    </div>
+                  <div className="flex items-center justify-center mt-6 px-4">
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
@@ -481,26 +478,11 @@ export default function Notifications() {
                                 ...
                               </span>
                             );
-                          } else if (totalPages > 1) {
-                            // Show page 2 if we're near the start
-                            if (totalPages >= 2) {
-                              pages.push(
-                                <Button
-                                  key={2}
-                                  variant={currentPage === 2 ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => setCurrentPage(2)}
-                                  className="w-10"
-                                >
-                                  2
-                                </Button>
-                              );
-                            }
                           }
 
                           // Show current page and neighbors (if not first or last)
-                          const start = Math.max(2, currentPage - 1);
-                          const end = Math.min(totalPages - 1, currentPage + 1);
+                          const start = Math.max(2, Math.min(currentPage - 1, 2));
+                          const end = Math.min(totalPages - 1, Math.max(currentPage + 1, 3));
                           
                           for (let i = start; i <= end; i++) {
                             if (i !== 1 && i !== totalPages) {
@@ -525,21 +507,6 @@ export default function Notifications() {
                                 ...
                               </span>
                             );
-                          } else if (totalPages > 2) {
-                            // Show second-to-last page if we're near the end
-                            if (totalPages >= 3 && currentPage < totalPages - 1) {
-                              pages.push(
-                                <Button
-                                  key={totalPages - 1}
-                                  variant={currentPage === totalPages - 1 ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => setCurrentPage(totalPages - 1)}
-                                  className="w-10"
-                                >
-                                  {totalPages - 1}
-                                </Button>
-                              );
-                            }
                           }
 
                           // Always show last page (if more than 1 page)

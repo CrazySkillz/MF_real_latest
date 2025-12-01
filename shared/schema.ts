@@ -272,6 +272,9 @@ export const kpis = pgTable("kpis", {
   slackNotifications: boolean("slack_notifications").notNull().default(false),
   alertFrequency: text("alert_frequency").notNull().default("daily"), // 'immediate', 'daily', 'weekly'
   lastAlertSent: timestamp("last_alert_sent"),
+  // Campaign scope fields
+  applyTo: text("apply_to").default("all"), // 'all' for aggregate, 'specific' for individual campaign
+  specificCampaignId: text("specific_campaign_id"), // LinkedIn campaign name when applyTo is 'specific'
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

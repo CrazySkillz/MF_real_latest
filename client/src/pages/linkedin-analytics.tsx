@@ -114,7 +114,9 @@ export default function LinkedInAnalytics() {
     emailNotifications: false,
     alertThreshold: '',
     alertCondition: 'below',
-    emailRecipients: ''
+    emailRecipients: '',
+    applyTo: 'all',
+    specificCampaignId: ''
   });
 
   // Benchmark Form State
@@ -515,7 +517,9 @@ export default function LinkedInAnalytics() {
         emailNotifications: false,
         alertThreshold: '',
         alertCondition: 'below',
-        emailRecipients: ''
+        emailRecipients: '',
+        applyTo: 'all',
+        specificCampaignId: ''
       });
     },
     onError: (error: any) => {
@@ -575,7 +579,9 @@ export default function LinkedInAnalytics() {
       alertsEnabled: true,
       emailNotifications: false,
       slackNotifications: false,
-      alertFrequency: 'daily'
+      alertFrequency: 'daily',
+      applyTo: kpiForm.applyTo,
+      specificCampaignId: kpiForm.applyTo === 'specific' ? kpiForm.specificCampaignId : null
     };
     
     if (editingKPI) {
@@ -3013,6 +3019,14 @@ export default function LinkedInAnalytics() {
                                 <CardDescription className="text-sm">
                                   {kpi.description || 'No description provided'}
                                 </CardDescription>
+                                {/* Campaign Scope Badge */}
+                                {kpi.applyTo === 'specific' && kpi.specificCampaignId && (
+                                  <div className="mt-2">
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                                      Campaign: {kpi.specificCampaignId}
+                                    </Badge>
+                                  </div>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge variant={kpi.status === 'active' ? 'default' : 'secondary'}>
@@ -3048,7 +3062,9 @@ export default function LinkedInAnalytics() {
                                       emailNotifications: kpi.emailNotifications || false,
                                       alertThreshold: kpi.alertThreshold || '',
                                       alertCondition: kpi.alertCondition || 'below',
-                                      emailRecipients: kpi.emailRecipients || ''
+                                      emailRecipients: kpi.emailRecipients || '',
+                                      applyTo: kpi.applyTo || 'all',
+                                      specificCampaignId: kpi.specificCampaignId || ''
                                     });
                                     setIsKPIModalOpen(true);
                                   }}
@@ -4105,7 +4121,9 @@ export default function LinkedInAnalytics() {
             emailNotifications: false,
             alertThreshold: '',
             alertCondition: 'below',
-            emailRecipients: ''
+            emailRecipients: '',
+            applyTo: 'all',
+            specificCampaignId: ''
           });
         }
       }}>
@@ -4408,6 +4426,56 @@ export default function LinkedInAnalytics() {
                   How often to measure progress toward your target
                 </p>
               </div>
+            </div>
+
+            {/* Apply To Section */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpi-apply-to">Apply To</Label>
+                <Select
+                  value={kpiForm.applyTo}
+                  onValueChange={(value) => {
+                    setKpiForm({ ...kpiForm, applyTo: value, specificCampaignId: value === 'all' ? '' : kpiForm.specificCampaignId });
+                  }}
+                >
+                  <SelectTrigger id="kpi-apply-to">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Campaigns (Aggregate)</SelectItem>
+                    <SelectItem value="specific">Specific Campaign</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Track KPI across all campaigns or for a specific campaign
+                </p>
+              </div>
+
+              {kpiForm.applyTo === 'specific' && (
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-campaign">Select Campaign</Label>
+                  <Select
+                    value={kpiForm.specificCampaignId}
+                    onValueChange={(value) => {
+                      setKpiForm({ ...kpiForm, specificCampaignId: value });
+                    }}
+                  >
+                    <SelectTrigger id="kpi-campaign">
+                      <SelectValue placeholder="Choose a campaign..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCampaigns.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.linkedInCampaignName}>
+                          {campaign.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    KPI will track metrics for this campaign only
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Alert Settings Section */}

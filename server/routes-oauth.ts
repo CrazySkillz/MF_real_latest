@@ -50,6 +50,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/notifications/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      console.log(`[Notifications API] Deleting notification: ${id}`);
+      
+      const { db } = await import("./db/index.js");
+      const { notifications } = await import("../shared/schema.js");
+      const { eq } = await import("drizzle-orm");
+      
+      await db.delete(notifications).where(eq(notifications.id, id));
+      
+      console.log(`[Notifications API] Deleted notification: ${id}`);
+      res.json({ success: true, message: "Notification deleted" });
+    } catch (error) {
+      console.error('[Notifications API] Delete error:', error);
+      res.status(500).json({ 
+        message: "Failed to delete notification",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.patch("/api/notifications/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { read } = req.body;
+      console.log(`[Notifications API] Updating notification: ${id}, read: ${read}`);
+      
+      const { db } = await import("./db/index.js");
+      const { notifications } = await import("../shared/schema.js");
+      const { eq } = await import("drizzle-orm");
+      
+      await db.update(notifications)
+        .set({ read: read })
+        .where(eq(notifications.id, id));
+      
+      console.log(`[Notifications API] Updated notification: ${id}`);
+      res.json({ success: true, message: "Notification updated" });
+    } catch (error) {
+      console.error('[Notifications API] Update error:', error);
+      res.status(500).json({ 
+        message: "Failed to update notification",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {

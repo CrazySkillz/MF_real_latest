@@ -372,6 +372,32 @@ export default function Notifications() {
                         </div>
                         
                         <div className="flex items-center space-x-2">
+                          {/* View KPI Button - if notification has KPI metadata */}
+                          {(() => {
+                            try {
+                              const metadata = notification.metadata ? JSON.parse(notification.metadata) : null;
+                              if (metadata?.kpiId && metadata?.actionUrl) {
+                                return (
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => {
+                                      markAsReadMutation.mutate(notification.id);
+                                      window.location.href = metadata.actionUrl;
+                                    }}
+                                    className="bg-purple-600 hover:bg-purple-700"
+                                    data-testid={`button-view-kpi-${notification.id}`}
+                                  >
+                                    View KPI →
+                                  </Button>
+                                );
+                              }
+                            } catch (e) {
+                              // Invalid JSON, skip
+                            }
+                            return null;
+                          })()}
+                          
                           {!notification.read && (
                             <Button
                               variant="ghost"

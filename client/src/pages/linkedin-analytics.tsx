@@ -3219,6 +3219,14 @@ export default function LinkedInAnalytics() {
                                       {kpi.timeframe || 'Monthly'}
                                     </span>
                                   </div>
+
+                                  {/* Period Comparison - Placeholder for now */}
+                                  {/* Will be populated by scheduler after first period ends */}
+                                  <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                                      Period tracking active. Historical comparison will appear after first {kpi.timeframe || 'monthly'} period completes.
+                                    </div>
+                                  </div>
                                 </div>
                               );
                             })()}

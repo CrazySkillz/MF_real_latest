@@ -3427,19 +3427,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Notifications routes
   app.get("/api/notifications", async (req, res) => {
     try {
-      const { db } = await import("./db/index.js");
-      const { notifications } = await import("../shared/schema.js");
-      const { desc } = await import("drizzle-orm");
-      
-      // Fetch all notifications, ordered by most recent first
-      const allNotifications = await db
-        .select()
-        .from(notifications)
-        .orderBy(desc(notifications.createdAt));
-      
+      console.log('[Notifications API] Fetching all notifications...');
+      const allNotifications = await storage.getNotifications();
+      console.log(`[Notifications API] Found ${allNotifications.length} notifications`);
       res.json(allNotifications);
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      console.error('[Notifications API] Error:', error);
       res.status(500).json({ 
         message: "Failed to fetch notifications",
         error: error instanceof Error ? error.message : "Unknown error"

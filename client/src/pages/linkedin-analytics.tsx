@@ -4605,8 +4605,8 @@ export default function LinkedInAnalytics() {
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="kpi-alerts-enabled"
-                    checked={kpiForm.emailNotifications}
-                    onCheckedChange={(checked) => setKpiForm({ ...kpiForm, emailNotifications: checked as boolean })}
+                    checked={kpiForm.alertsEnabled}
+                    onCheckedChange={(checked) => setKpiForm({ ...kpiForm, alertsEnabled: checked as boolean })}
                     data-testid="checkbox-kpi-alerts"
                   />
                   <Label htmlFor="kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">

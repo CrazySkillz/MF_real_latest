@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes-oauth";
 import { setupVite, serveStatic, log } from "./vite";
 import { snapshotScheduler } from "./scheduler";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 const app = express();
 
@@ -76,8 +78,24 @@ app.use('/api', (req, res, next) => {
     server.listen(port, "0.0.0.0", () => {
       log(`serving on port ${port}`);
       
-      // Start automated snapshot scheduler after a delay to ensure DB connection is ready
-      setTimeout(() => {
+      // Run database migrations on startup
+      setTimeout(async () => {
+        try {
+          log('Running database migrations...');
+          
+          // Add KPI campaign scope columns
+          await db.execute(sql`
+            ALTER TABLE kpis 
+            ADD COLUMN IF NOT EXISTS apply_to TEXT DEFAULT 'all',
+            ADD COLUMN IF NOT EXISTS specific_campaign_id TEXT;
+          `);
+          
+          log('✅ Database migrations completed successfully');
+        } catch (error) {
+          console.error('⚠️  Migration warning (may already exist):', error.message);
+        }
+        
+        // Start automated snapshot scheduler
         try {
           snapshotScheduler.start();
         } catch (error) {

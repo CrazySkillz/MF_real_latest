@@ -1654,7 +1654,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Platform KPI creation error:', error);
-      res.status(500).json({ message: "Failed to create platform KPI" });
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        cause: error.cause
+      });
+      if (error instanceof z.ZodError) {
+        console.error('Validation errors:', error.errors);
+        res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
+      } else {
+        res.status(500).json({ 
+          message: "Failed to create platform KPI",
+          error: error.message,
+          details: error.toString()
+        });
+      }
     }
   });
 

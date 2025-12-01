@@ -173,6 +173,31 @@ export async function checkMonthlyReminders(): Promise<void> {
 }
 
 /**
+ * Check and send daily reminders
+ */
+export async function checkDailyReminders(): Promise<void> {
+  console.log('[KPI Scheduler] Checking daily reminders...');
+
+  try {
+    const dailyKPIs = await db.select()
+      .from(kpis)
+      .where(and(
+        eq(kpis.timeframe, 'daily'),
+        eq(kpis.status, 'active'),
+        eq(kpis.alertsEnabled, true)
+      ));
+
+    console.log(`[KPI Scheduler] Found ${dailyKPIs.length} daily KPIs with alerts enabled`);
+
+    for (const kpi of dailyKPIs) {
+      await createKPIReminder(kpi);
+    }
+  } catch (error) {
+    console.error('[KPI Scheduler] Error checking daily reminders:', error);
+  }
+}
+
+/**
  * Check and send weekly reminders
  */
 export async function checkWeeklyReminders(): Promise<void> {
@@ -234,6 +259,9 @@ export async function captureEndOfPeriod(): Promise<void> {
   console.log('[KPI Scheduler] Checking for end-of-period snapshots...');
 
   try {
+    // Capture daily KPIs (runs every day at midnight)
+    await capturePeriodSnapshots('daily');
+
     // Check monthly KPIs
     if (isLastOfMonth()) {
       await capturePeriodSnapshots('monthly');
@@ -361,8 +389,9 @@ export async function runDailyKPIJobs(): Promise<void> {
   console.log('[KPI Scheduler] Running daily KPI jobs...');
 
   try {
-    await checkMonthlyReminders();
+    await checkDailyReminders();
     await checkWeeklyReminders();
+    await checkMonthlyReminders();
     await checkPerformanceAlerts();
     await captureEndOfPeriod();
 

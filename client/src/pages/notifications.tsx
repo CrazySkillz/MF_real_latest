@@ -456,17 +456,109 @@ export default function Notifications() {
                         Previous
                       </Button>
                       <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                          <Button
-                            key={page}
-                            variant={currentPage === page ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setCurrentPage(page)}
-                            className="w-10"
-                          >
-                            {page}
-                          </Button>
-                        ))}
+                        {(() => {
+                          const pages = [];
+                          const showEllipsisStart = currentPage > 3;
+                          const showEllipsisEnd = currentPage < totalPages - 2;
+
+                          // Always show first page
+                          pages.push(
+                            <Button
+                              key={1}
+                              variant={currentPage === 1 ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(1)}
+                              className="w-10"
+                            >
+                              1
+                            </Button>
+                          );
+
+                          // Show ellipsis or pages near start
+                          if (showEllipsisStart) {
+                            pages.push(
+                              <span key="ellipsis-start" className="px-2 text-slate-400">
+                                ...
+                              </span>
+                            );
+                          } else if (totalPages > 1) {
+                            // Show page 2 if we're near the start
+                            if (totalPages >= 2) {
+                              pages.push(
+                                <Button
+                                  key={2}
+                                  variant={currentPage === 2 ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setCurrentPage(2)}
+                                  className="w-10"
+                                >
+                                  2
+                                </Button>
+                              );
+                            }
+                          }
+
+                          // Show current page and neighbors (if not first or last)
+                          const start = Math.max(2, currentPage - 1);
+                          const end = Math.min(totalPages - 1, currentPage + 1);
+                          
+                          for (let i = start; i <= end; i++) {
+                            if (i !== 1 && i !== totalPages) {
+                              pages.push(
+                                <Button
+                                  key={i}
+                                  variant={currentPage === i ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setCurrentPage(i)}
+                                  className="w-10"
+                                >
+                                  {i}
+                                </Button>
+                              );
+                            }
+                          }
+
+                          // Show ellipsis or pages near end
+                          if (showEllipsisEnd) {
+                            pages.push(
+                              <span key="ellipsis-end" className="px-2 text-slate-400">
+                                ...
+                              </span>
+                            );
+                          } else if (totalPages > 2) {
+                            // Show second-to-last page if we're near the end
+                            if (totalPages >= 3 && currentPage < totalPages - 1) {
+                              pages.push(
+                                <Button
+                                  key={totalPages - 1}
+                                  variant={currentPage === totalPages - 1 ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setCurrentPage(totalPages - 1)}
+                                  className="w-10"
+                                >
+                                  {totalPages - 1}
+                                </Button>
+                              );
+                            }
+                          }
+
+                          // Always show last page (if more than 1 page)
+                          if (totalPages > 1) {
+                            pages.push(
+                              <Button
+                                key={totalPages}
+                                variant={currentPage === totalPages ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setCurrentPage(totalPages)}
+                                className="w-10"
+                              >
+                                {totalPages}
+                              </Button>
+                            );
+                          }
+
+                          return pages;
+                        })()}
                       </div>
                       <Button
                         variant="outline"

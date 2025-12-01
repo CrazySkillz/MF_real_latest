@@ -83,11 +83,47 @@ app.use('/api', (req, res, next) => {
         try {
           log('Running database migrations...');
           
-          // Add KPI campaign scope columns
+          // Migration 1: Add KPI campaign scope columns
           await db.execute(sql`
             ALTER TABLE kpis 
             ADD COLUMN IF NOT EXISTS apply_to TEXT DEFAULT 'all',
             ADD COLUMN IF NOT EXISTS specific_campaign_id TEXT;
+          `);
+          
+          // Migration 2: Add notifications metadata column
+          await db.execute(sql`
+            ALTER TABLE notifications 
+            ADD COLUMN IF NOT EXISTS metadata TEXT;
+          `);
+          
+          // Migration 3: Create KPI periods table
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS kpi_periods (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              kpi_id TEXT NOT NULL,
+              period_start TIMESTAMP NOT NULL,
+              period_end TIMESTAMP NOT NULL,
+              period_type TEXT NOT NULL,
+              period_label TEXT NOT NULL,
+              final_value DECIMAL(10, 2) NOT NULL,
+              target_value DECIMAL(10, 2) NOT NULL,
+              unit TEXT NOT NULL,
+              target_achieved BOOLEAN NOT NULL,
+              performance_percentage DECIMAL(5, 2),
+              performance_level TEXT,
+              previous_period_value DECIMAL(10, 2),
+              change_amount DECIMAL(10, 2),
+              change_percentage DECIMAL(5, 2),
+              trend_direction TEXT,
+              notes TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+          
+          // Create indexes
+          await db.execute(sql`
+            CREATE INDEX IF NOT EXISTS idx_kpi_periods_kpi_id ON kpi_periods(kpi_id);
           `);
           
           log('✅ Database migrations completed successfully');

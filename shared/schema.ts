@@ -80,6 +80,7 @@ export const notifications = pgTable("notifications", {
   campaignName: text("campaign_name"), // Denormalized for faster filtering
   read: boolean("read").notNull().default(false),
   priority: text("priority").notNull().default("normal"), // 'low', 'normal', 'high', 'urgent'
+  metadata: text("metadata"), // JSON string for action URLs and KPI context
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -275,6 +276,33 @@ export const kpis = pgTable("kpis", {
   // Campaign scope fields
   applyTo: text("apply_to").default("all"), // 'all' for aggregate, 'specific' for individual campaign
   specificCampaignId: text("specific_campaign_id"), // LinkedIn campaign name when applyTo is 'specific'
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const kpiPeriods = pgTable("kpi_periods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  kpiId: text("kpi_id").notNull(),
+  // Period information
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  periodType: text("period_type").notNull(), // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
+  periodLabel: text("period_label").notNull(), // 'March 2024', 'Q1 2024', 'Week 12 2024'
+  // Snapshot values at end of period
+  finalValue: decimal("final_value", { precision: 10, scale: 2 }).notNull(),
+  targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
+  unit: text("unit").notNull(),
+  // Performance metrics
+  targetAchieved: boolean("target_achieved").notNull(),
+  performancePercentage: decimal("performance_percentage", { precision: 5, scale: 2 }),
+  performanceLevel: text("performance_level"), // 'excellent', 'good', 'fair', 'poor'
+  // Comparison with previous period
+  previousPeriodValue: decimal("previous_period_value", { precision: 10, scale: 2 }),
+  changeAmount: decimal("change_amount", { precision: 10, scale: 2 }),
+  changePercentage: decimal("change_percentage", { precision: 5, scale: 2 }),
+  trendDirection: text("trend_direction"), // 'up', 'down', 'stable'
+  // Metadata
+  notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -821,6 +849,26 @@ export const insertNotificationSchema = createInsertSchema(notifications).pick({
   campaignName: true,
   read: true,
   priority: true,
+  metadata: true,
+});
+
+export const insertKPIPeriodSchema = createInsertSchema(kpiPeriods).pick({
+  kpiId: true,
+  periodStart: true,
+  periodEnd: true,
+  periodType: true,
+  periodLabel: true,
+  finalValue: true,
+  targetValue: true,
+  unit: true,
+  targetAchieved: true,
+  performancePercentage: true,
+  performanceLevel: true,
+  previousPeriodValue: true,
+  changeAmount: true,
+  changePercentage: true,
+  trendDirection: true,
+  notes: true,
 });
 
 export const insertABTestSchema = createInsertSchema(abTests).pick({
@@ -1029,6 +1077,8 @@ export type Benchmark = typeof benchmarks.$inferSelect;
 export type InsertBenchmark = z.infer<typeof insertBenchmarkSchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type KPIPeriod = typeof kpiPeriods.$inferSelect;
+export type InsertKPIPeriod = z.infer<typeof insertKPIPeriodSchema>;
 export type BenchmarkHistory = typeof benchmarkHistory.$inferSelect;
 export type InsertBenchmarkHistory = z.infer<typeof insertBenchmarkHistorySchema>;
 export type MetricSnapshot = typeof metricSnapshots.$inferSelect;

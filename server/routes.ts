@@ -1636,7 +1636,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignId: req.body.campaignId, // Explicitly include campaignId
         alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
         targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
-        currentValue: req.body.currentValue === '' ? null : req.body.currentValue
+        currentValue: req.body.currentValue === '' ? null : req.body.currentValue,
+        // Set defaults for new fields in case migration hasn't run
+        applyTo: req.body.applyTo || 'all',
+        specificCampaignId: req.body.specificCampaignId || null
       };
       
       const validatedKPI = insertKPISchema.parse(cleanedData);

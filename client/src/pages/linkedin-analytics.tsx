@@ -1824,6 +1824,34 @@ export default function LinkedInAnalytics() {
     enabled: !!campaignId,
   });
 
+  // Fetch latest period for each KPI for period comparison
+  const { data: kpiPeriods = {} } = useQuery<Record<string, any>>({
+    queryKey: ['/api/kpis/periods', kpisData],
+    queryFn: async () => {
+      if (!kpisData || !Array.isArray(kpisData) || kpisData.length === 0) return {};
+      
+      const periods: Record<string, any> = {};
+      
+      // Fetch latest period for each KPI
+      await Promise.all(
+        kpisData.map(async (kpi: any) => {
+          try {
+            const res = await apiRequest('GET', `/api/kpis/${kpi.id}/latest-period`);
+            const period = await res.json();
+            if (period) {
+              periods[kpi.id] = period;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch period for KPI ${kpi.id}:`, error);
+          }
+        })
+      );
+      
+      return periods;
+    },
+    enabled: !!kpisData && Array.isArray(kpisData) && kpisData.length > 0
+  });
+
   // Fetch platform-level LinkedIn Benchmarks filtered by campaignId
   const { data: benchmarksData, isLoading: benchmarksLoading, refetch: refetchBenchmarksTab } = useQuery({
     queryKey: [`/api/campaigns/${campaignId}/benchmarks`],
@@ -3220,13 +3248,91 @@ export default function LinkedInAnalytics() {
                                     </span>
                                   </div>
 
-                                  {/* Period Comparison - Placeholder for now */}
-                                  {/* Will be populated by scheduler after first period ends */}
-                                  <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                                      Period tracking active. Historical comparison will appear after first {kpi.timeframe || 'monthly'} period completes.
-                                    </div>
-                                  </div>
+                                  {/* Period Comparison - Full Featured */}
+                                  {(() => {
+                                    const latestPeriod = kpiPeriods?.[kpi.id];
+                                    
+                                    if (!latestPeriod) {
+                                      return (
+                                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                                            Period tracking active. Historical comparison will appear after first {kpi.timeframe || 'monthly'} period completes.
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    
+                                    // Parse values
+                                    const previousValue = parseFloat(latestPeriod.finalValue);
+                                    const previousTarget = parseFloat(latestPeriod.targetValue);
+                                    const changePercentage = latestPeriod.changePercentage 
+                                      ? parseFloat(latestPeriod.changePercentage) 
+                                      : null;
+                                    const trendDirection = latestPeriod.trendDirection;
+                                    
+                                    return (
+                                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                                        <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
+                                          Previous Period ({latestPeriod.periodLabel})
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-2">
+                                          <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                                            <div className="text-xs text-slate-500 mb-1">Final</div>
+                                            <div className="text-sm font-semibold">
+                                              {(() => {
+                                                const formatted = previousValue.toLocaleString('en-US', { 
+                                                  minimumFractionDigits: 2, 
+                                                  maximumFractionDigits: 2 
+                                                });
+                                                return kpi.unit === '$' ? `$${formatted}` : `${formatted}${kpi.unit}`;
+                                              })()}
+                                            </div>
+                                          </div>
+                                          
+                                          <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                                            <div className="text-xs text-slate-500 mb-1">Target</div>
+                                            <div className="text-sm font-semibold">
+                                              {(() => {
+                                                const formatted = previousTarget.toLocaleString('en-US', { 
+                                                  minimumFractionDigits: 2, 
+                                                  maximumFractionDigits: 2 
+                                                });
+                                                return kpi.unit === '$' ? `$${formatted}` : `${formatted}${kpi.unit}`;
+                                              })()}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        
+                                        <div className="mt-2 flex items-center justify-between">
+                                          <Badge 
+                                            variant={latestPeriod.targetAchieved ? 'default' : 'outline'}
+                                            className={latestPeriod.targetAchieved 
+                                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                            }
+                                          >
+                                            {latestPeriod.targetAchieved ? '✓ Target Achieved' : '✗ Target Missed'}
+                                          </Badge>
+                                          
+                                          {changePercentage !== null && (
+                                            <div className="flex items-center gap-1 text-xs">
+                                              {trendDirection === 'up' && (
+                                                <span className="text-green-600 font-medium">↑ {Math.abs(changePercentage).toFixed(1)}%</span>
+                                              )}
+                                              {trendDirection === 'down' && (
+                                                <span className="text-red-600 font-medium">↓ {Math.abs(changePercentage).toFixed(1)}%</span>
+                                              )}
+                                              {trendDirection === 'stable' && (
+                                                <span className="text-slate-500">→ Stable</span>
+                                              )}
+                                              <span className="text-slate-500">vs previous</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               );
                             })()}

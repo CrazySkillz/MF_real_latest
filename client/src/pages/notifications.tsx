@@ -421,14 +421,9 @@ export default function Notifications() {
                                       console.log('[View KPI] Using campaignId:', campaignId);
                                       
                                       if (campaignId) {
-                                        const url = `/campaigns/${campaignId}/linkedin-analytics`;
+                                        const url = `/campaigns/${campaignId}/linkedin-analytics?tab=kpis`;
                                         console.log('[View KPI] Navigating to:', url);
                                         setLocation(url);
-                                        // Force navigation
-                                        setTimeout(() => {
-                                          console.log('[View KPI] Setting tab to kpis');
-                                          window.location.hash = '#kpis';
-                                        }, 100);
                                       } else {
                                         console.error('[View KPI] No campaignId found!');
                                         toast({

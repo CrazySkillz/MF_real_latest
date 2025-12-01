@@ -83,9 +83,22 @@ export default function LinkedInAnalytics() {
   const [, params] = useRoute("/campaigns/:id/linkedin-analytics");
   const [location, setLocation] = useLocation();
   const sessionId = new URLSearchParams(window.location.search).get('session');
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabParam = urlParams.get('tab');
+  const [activeTab, setActiveTab] = useState<string>(tabParam || 'overview');
   const [selectedMetric, setSelectedMetric] = useState<string>('impressions');
   const [sortBy, setSortBy] = useState<string>('name');
   const [filterBy, setFilterBy] = useState<string>('all');
+
+  // Update active tab when URL changes
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab) {
+      console.log('[Tab Navigation] Setting active tab to:', tab);
+      setActiveTab(tab);
+    }
+  }, [location]);
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
@@ -2012,7 +2025,7 @@ export default function LinkedInAnalytics() {
             </div>
 
             {/* Tabs */}
-            <Tabs defaultValue="overview" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-5" data-testid="tabs-list">
                 <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
                 <TabsTrigger value="kpis" data-testid="tab-kpis">KPIs</TabsTrigger>

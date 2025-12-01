@@ -4619,7 +4619,7 @@ export default function LinkedInAnalytics() {
                 </p>
               </div>
 
-              {kpiForm.emailNotifications && (
+              {kpiForm.alertsEnabled && (
                 <div className="space-y-4 pl-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">

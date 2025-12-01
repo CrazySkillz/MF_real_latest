@@ -562,6 +562,7 @@ export default function LinkedInAnalytics() {
       // platformType is extracted from URL by backend, don't send it
       campaignId: campaignId, // Include campaignId for data isolation
       name: kpiForm.name,
+      metric: kpiForm.metric, // Include metric field
       targetValue: kpiForm.targetValue,
       currentValue: kpiForm.currentValue || '0',
       unit: kpiForm.unit,

@@ -34,6 +34,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ga4RateLimiter 
   } = await import('./middleware/rateLimiter');
 
+  // Notifications routes
+  app.get("/api/notifications", async (req, res) => {
+    try {
+      console.log('[Notifications API] Fetching all notifications...');
+      const allNotifications = await storage.getNotifications();
+      console.log(`[Notifications API] Found ${allNotifications.length} notifications`);
+      res.json(allNotifications);
+    } catch (error) {
+      console.error('[Notifications API] Error:', error);
+      res.status(500).json({ 
+        message: "Failed to fetch notifications",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {

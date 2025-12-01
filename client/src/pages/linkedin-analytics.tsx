@@ -4480,16 +4480,22 @@ export default function LinkedInAnalytics() {
 
             {/* Alert Settings Section */}
             <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="kpi-alerts-enabled"
-                  checked={kpiForm.emailNotifications}
-                  onCheckedChange={(checked) => setKpiForm({ ...kpiForm, emailNotifications: checked as boolean })}
-                  data-testid="checkbox-kpi-alerts"
-                />
-                <Label htmlFor="kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
-                  Enable Email Alerts
-                </Label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="kpi-alerts-enabled"
+                    checked={kpiForm.emailNotifications}
+                    onCheckedChange={(checked) => setKpiForm({ ...kpiForm, emailNotifications: checked as boolean })}
+                    data-testid="checkbox-kpi-alerts"
+                  />
+                  <Label htmlFor="kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                    Enable Alerts & Reminders
+                  </Label>
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-400 pl-6">
+                  Receive in-app notifications for KPI reviews, performance alerts, and period summaries. 
+                  Reminders appear in your Notifications center based on your selected timeframe.
+                </p>
               </div>
 
               {kpiForm.emailNotifications && (

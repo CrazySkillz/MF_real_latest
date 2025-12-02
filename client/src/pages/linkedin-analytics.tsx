@@ -3286,40 +3286,24 @@ export default function LinkedInAnalytics() {
                                 <div className="space-y-3">
                                   {/* Performance Badge */}
                                   <div className="flex items-center justify-between">
-                                    <UITooltip>
-                                      <TooltipTrigger asChild>
-                                        <Badge 
-                                          variant={
-                                            performanceLevel === 'excellent' ? 'default' :
-                                            performanceLevel === 'good' ? 'secondary' :
-                                            performanceLevel === 'fair' ? 'outline' : 'destructive'
-                                          }
-                                          className={`cursor-help ${
-                                            performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                            performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                            performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                          }`}
-                                        >
-                                          {performanceLevel === 'excellent' && '🟢 Excellent'}
-                                          {performanceLevel === 'good' && '🔵 Good'}
-                                          {performanceLevel === 'fair' && '🟡 Fair'}
-                                          {performanceLevel === 'poor' && '🔴 Poor'}
-                                        </Badge>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                        <div className="space-y-2">
-                                          <p className="font-semibold text-blue-400">Target Performance</p>
-                                          <div className="text-xs space-y-1">
-                                            <p><span className="text-slate-400">Current:</span> {kpi.currentValue}{kpi.unit}</p>
-                                            <p><span className="text-slate-400">Target:</span> {kpi.targetValue}{kpi.unit}</p>
-                                          </div>
-                                          <p className="text-xs text-slate-300 pt-1 border-t border-slate-700">
-                                            Shows progress toward your goal. Independent of alert thresholds.
-                                          </p>
-                                        </div>
-                                      </TooltipContent>
-                                    </UITooltip>
+                                    <Badge 
+                                      variant={
+                                        performanceLevel === 'excellent' ? 'default' :
+                                        performanceLevel === 'good' ? 'secondary' :
+                                        performanceLevel === 'fair' ? 'outline' : 'destructive'
+                                      }
+                                      className={
+                                        performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                        performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                        performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                        'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                      }
+                                    >
+                                      {performanceLevel === 'excellent' && '🟢 Excellent'}
+                                      {performanceLevel === 'good' && '🔵 Good'}
+                                      {performanceLevel === 'fair' && '🟡 Fair'}
+                                      {performanceLevel === 'poor' && '🔴 Poor'}
+                                    </Badge>
                                     <span className="text-xs text-slate-500 dark:text-slate-500">
                                       {gapText}
                                     </span>

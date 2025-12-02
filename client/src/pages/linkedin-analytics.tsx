@@ -3877,50 +3877,91 @@ export default function LinkedInAnalytics() {
                     const selectedMetricKeys = session?.selectedMetricKeys || [];
                     
                     // Map of all possible metrics with their display properties
-                    const allMetricsMap: Record<string, { key: string, label: string, format: (v: any) => string }> = {
-                      impressions: { key: 'impressions', label: 'Impressions', format: formatNumber },
-                      clicks: { key: 'clicks', label: 'Clicks', format: formatNumber },
-                      spend: { key: 'spend', label: 'Spend', format: formatCurrency },
-                      ctr: { key: 'ctr', label: 'CTR', format: formatPercentage },
-                      cpc: { key: 'cpc', label: 'CPC', format: formatCurrency },
-                      cpm: { key: 'cpm', label: 'CPM', format: formatCurrency },
-                      conversions: { key: 'conversions', label: 'Conversions', format: formatNumber },
-                      revenue: { key: 'revenue', label: 'Revenue', format: formatCurrency },
-                      leads: { key: 'leads', label: 'Leads', format: formatNumber },
-                      engagements: { key: 'engagements', label: 'Engagements', format: formatNumber },
-                      reach: { key: 'reach', label: 'Reach', format: formatNumber },
-                      videoViews: { key: 'videoViews', label: 'Video Views', format: formatNumber },
-                      viralImpressions: { key: 'viralImpressions', label: 'Viral Impressions', format: formatNumber }
+                    // Matches Overview tab structure: Core Metrics, Derived Metrics, Revenue Metrics
+                    const allMetricsMap: Record<string, { key: string, label: string, format: (v: any) => string, category: 'core' | 'derived' | 'revenue' }> = {
+                      // Core Metrics
+                      impressions: { key: 'impressions', label: 'Impressions', format: formatNumber, category: 'core' },
+                      clicks: { key: 'clicks', label: 'Clicks', format: formatNumber, category: 'core' },
+                      spend: { key: 'spend', label: 'Spend', format: formatCurrency, category: 'core' },
+                      conversions: { key: 'conversions', label: 'Conversions', format: formatNumber, category: 'core' },
+                      leads: { key: 'leads', label: 'Leads', format: formatNumber, category: 'core' },
+                      engagements: { key: 'engagements', label: 'Engagements', format: formatNumber, category: 'core' },
+                      reach: { key: 'reach', label: 'Reach', format: formatNumber, category: 'core' },
+                      videoViews: { key: 'videoViews', label: 'Video Views', format: formatNumber, category: 'core' },
+                      viralImpressions: { key: 'viralImpressions', label: 'Viral Impressions', format: formatNumber, category: 'core' },
+                      // Derived Metrics
+                      ctr: { key: 'ctr', label: 'CTR (Click-Through Rate)', format: formatPercentage, category: 'derived' },
+                      cpc: { key: 'cpc', label: 'CPC (Cost Per Click)', format: formatCurrency, category: 'derived' },
+                      cpm: { key: 'cpm', label: 'CPM (Cost Per Mille)', format: formatCurrency, category: 'derived' },
+                      cvr: { key: 'cvr', label: 'CVR (Conversion Rate)', format: formatPercentage, category: 'derived' },
+                      cpa: { key: 'cpa', label: 'CPA (Cost Per Acquisition)', format: formatCurrency, category: 'derived' },
+                      cpl: { key: 'cpl', label: 'CPL (Cost Per Lead)', format: formatCurrency, category: 'derived' },
+                      er: { key: 'er', label: 'ER (Engagement Rate)', format: formatPercentage, category: 'derived' },
+                      // Revenue Metrics (only if conversion value is set)
+                      totalRevenue: { key: 'totalRevenue', label: 'Total Revenue', format: formatCurrency, category: 'revenue' },
+                      roas: { key: 'roas', label: 'ROAS', format: (v: any) => `${parseFloat(v || 0).toFixed(2)}x`, category: 'revenue' },
+                      roi: { key: 'roi', label: 'ROI', format: (v: any) => `${parseFloat(v || 0).toFixed(1)}%`, category: 'revenue' },
+                      profit: { key: 'profit', label: 'Profit', format: formatCurrency, category: 'revenue' },
+                      profitMargin: { key: 'profitMargin', label: 'Profit Margin', format: (v: any) => `${parseFloat(v || 0).toFixed(1)}%`, category: 'revenue' },
+                      revenuePerLead: { key: 'revenuePerLead', label: 'Revenue Per Lead', format: formatCurrency, category: 'revenue' }
                     };
                     
                     // Filter available metrics based on what was actually selected during import
-                    // Include both core metrics and their derived versions (e.g., if 'clicks' is selected, also show 'ctr', 'cpc')
-                    type MetricInfo = { key: string, label: string, format: (v: any) => string };
-                    const availableMetrics = selectedMetricKeys
-                      .map((key: string) => {
-                        // Add the core metric if it exists in the map
-                        const metrics: MetricInfo[] = [];
-                        if (allMetricsMap[key]) {
-                          metrics.push(allMetricsMap[key]);
-                        }
-                        
-                        // Add derived metrics based on selected core metrics
-                        if (key === 'impressions' && allMetricsMap.cpm && selectedMetricKeys.includes('spend')) {
-                          metrics.push(allMetricsMap.cpm);
-                        }
-                        if (key === 'clicks' && selectedMetricKeys.includes('impressions') && allMetricsMap.ctr) {
-                          metrics.push(allMetricsMap.ctr);
-                        }
-                        if (key === 'clicks' && selectedMetricKeys.includes('spend') && allMetricsMap.cpc) {
-                          metrics.push(allMetricsMap.cpc);
-                        }
-                        
-                        return metrics;
-                      })
-                      .flat()
-                      .filter((metric: MetricInfo, index: number, self: MetricInfo[]) => 
-                        // Remove duplicates
-                        index === self.findIndex((m: MetricInfo) => m.key === metric.key)
+                    // Include core metrics, derived metrics, and revenue metrics (if available)
+                    type MetricInfo = { key: string, label: string, format: (v: any) => string, category: 'core' | 'derived' | 'revenue' };
+                    const availableMetrics: MetricInfo[] = [];
+                    
+                    // 1. Add selected core metrics
+                    selectedMetricKeys.forEach((key: string) => {
+                      if (allMetricsMap[key] && allMetricsMap[key].category === 'core') {
+                        availableMetrics.push(allMetricsMap[key]);
+                      }
+                    });
+                    
+                    // 2. Add derived metrics based on available core metrics
+                    if (selectedMetricKeys.includes('clicks') && selectedMetricKeys.includes('impressions')) {
+                      availableMetrics.push(allMetricsMap.ctr);
+                    }
+                    if (selectedMetricKeys.includes('clicks') && selectedMetricKeys.includes('spend')) {
+                      availableMetrics.push(allMetricsMap.cpc);
+                    }
+                    if (selectedMetricKeys.includes('impressions') && selectedMetricKeys.includes('spend')) {
+                      availableMetrics.push(allMetricsMap.cpm);
+                    }
+                    if (selectedMetricKeys.includes('conversions') && selectedMetricKeys.includes('clicks')) {
+                      availableMetrics.push(allMetricsMap.cvr);
+                    }
+                    if (selectedMetricKeys.includes('conversions') && selectedMetricKeys.includes('spend')) {
+                      availableMetrics.push(allMetricsMap.cpa);
+                    }
+                    if (selectedMetricKeys.includes('leads') && selectedMetricKeys.includes('spend')) {
+                      availableMetrics.push(allMetricsMap.cpl);
+                    }
+                    if (selectedMetricKeys.includes('engagements') && selectedMetricKeys.includes('impressions')) {
+                      availableMetrics.push(allMetricsMap.er);
+                    }
+                    
+                    // 3. Add revenue metrics if conversion value is set
+                    if (aggregated?.hasRevenueTracking === 1) {
+                      availableMetrics.push(
+                        allMetricsMap.totalRevenue,
+                        allMetricsMap.roas,
+                        allMetricsMap.roi,
+                        allMetricsMap.profit,
+                        allMetricsMap.profitMargin
+                      );
+                      
+                      // Only add Revenue Per Lead if leads are tracked
+                      if (selectedMetricKeys.includes('leads')) {
+                        availableMetrics.push(allMetricsMap.revenuePerLead);
+                      }
+                    }
+                    
+                    // Remove any undefined metrics and duplicates
+                    const filteredMetrics = availableMetrics
+                      .filter(m => m !== undefined)
+                      .filter((metric, index, self) => 
+                        index === self.findIndex((m) => m.key === metric.key)
                       );
 
                     // Colors for each ad line
@@ -3938,10 +3979,10 @@ export default function LinkedInAnalytics() {
                     ];
 
                     // Get the current selected metric or default to first available metric
-                    const currentMetric = availableMetrics.find((m: MetricInfo) => m.key === selectedMetric) || availableMetrics[0];
+                    const currentMetric = filteredMetrics.find((m: MetricInfo) => m.key === selectedMetric) || filteredMetrics[0];
                     
                     // If no metrics are available, show a message
-                    if (!currentMetric || availableMetrics.length === 0) {
+                    if (!currentMetric || filteredMetrics.length === 0) {
                       return (
                         <Card data-testid="no-metrics-message">
                           <CardContent className="py-12">
@@ -4009,7 +4050,7 @@ export default function LinkedInAnalytics() {
                                   <SelectValue placeholder="Select metric" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {availableMetrics.map((metric: MetricInfo) => (
+                                  {filteredMetrics.map((metric: MetricInfo) => (
                                     <SelectItem key={metric.key} value={metric.key}>
                                       {metric.label}
                                     </SelectItem>

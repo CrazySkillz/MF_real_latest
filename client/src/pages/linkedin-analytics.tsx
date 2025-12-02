@@ -2121,24 +2121,31 @@ export default function LinkedInAnalytics() {
   // Helper function to get metric icon and formatted value
   const getMetricDisplay = (metricKey: string, value: number | string) => {
     const metricConfig: Record<string, { icon: any; format: (v: number | string) => string; label: string }> = {
+      // Core Metrics
       'impressions': { icon: Eye, format: formatNumber, label: 'Impressions' },
       'reach': { icon: Users, format: formatNumber, label: 'Reach' },
       'clicks': { icon: MousePointerClick, format: formatNumber, label: 'Clicks' },
-      'ctr': { icon: TrendingUp, format: formatPercentage, label: 'Click-Through Rate (CTR)' },
       'engagements': { icon: Activity, format: formatNumber, label: 'Engagements' },
       'spend': { icon: DollarSign, format: formatCurrency, label: 'Spend' },
-      'cpc': { icon: DollarSign, format: formatCurrency, label: 'Cost Per Click (CPC)' },
-      'cpm': { icon: DollarSign, format: formatCurrency, label: 'Cost Per Mille (CPM)' },
       'conversions': { icon: Target, format: formatNumber, label: 'Conversions' },
       'leads': { icon: Users, format: formatNumber, label: 'Leads' },
       'videoviews': { icon: Play, format: formatNumber, label: 'Video Views' },
       'viralimpressions': { icon: Activity, format: formatNumber, label: 'Viral Impressions' },
+      // Derived Metrics
+      'ctr': { icon: TrendingUp, format: formatPercentage, label: 'Click-Through Rate (CTR)' },
+      'cpc': { icon: DollarSign, format: formatCurrency, label: 'Cost Per Click (CPC)' },
+      'cpm': { icon: DollarSign, format: formatCurrency, label: 'Cost Per Mille (CPM)' },
       'cvr': { icon: Target, format: formatPercentage, label: 'Conversion Rate (CVR)' },
       'cpa': { icon: DollarSign, format: formatCurrency, label: 'Cost per Acquisition (CPA)' },
       'cpl': { icon: DollarSign, format: formatCurrency, label: 'Cost per Lead (CPL)' },
       'er': { icon: Activity, format: formatPercentage, label: 'Engagement Rate (ER)' },
-      'roi': { icon: TrendingUp, format: formatPercentage, label: 'Return on Investment (ROI)' },
+      // Revenue Metrics
+      'totalrevenue': { icon: DollarSign, format: formatCurrency, label: 'Total Revenue' },
       'roas': { icon: TrendingUp, format: (v: number | string) => `${typeof v === 'number' ? v.toFixed(2) : v}x`, label: 'Return on Ad Spend (ROAS)' },
+      'roi': { icon: TrendingUp, format: formatPercentage, label: 'Return on Investment (ROI)' },
+      'profit': { icon: DollarSign, format: formatCurrency, label: 'Profit' },
+      'profitmargin': { icon: Percent, format: (v: number | string) => `${typeof v === 'number' ? v.toFixed(1) : v}%`, label: 'Profit Margin' },
+      'revenueperlead': { icon: DollarSign, format: formatCurrency, label: 'Revenue Per Lead' },
     };
 
     return metricConfig[metricKey] || { icon: BarChart3, format: formatNumber, label: metricKey };

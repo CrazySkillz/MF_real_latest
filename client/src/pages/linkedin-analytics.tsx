@@ -6246,9 +6246,9 @@ export default function LinkedInAnalytics() {
                                   setReportForm({ ...reportForm, scheduleDayOfMonth: value })
                                 }
                               >
-                                <SelectTrigger id="schedule-day-month" data-testid="select-day-month">
-                                  <SelectValue />
-                                </SelectTrigger>
+                              <SelectTrigger id="schedule-day-month" data-testid="select-day-month">
+                                <SelectValue placeholder="1st (First day of month)" />
+                              </SelectTrigger>
                                 <SelectContent className="max-h-[300px]">
                                   {/* Common Business Options */}
                                   <SelectItem value="first">1st (First day of month)</SelectItem>
@@ -6730,9 +6730,9 @@ export default function LinkedInAnalytics() {
                             value={reportForm.scheduleDayOfMonth}
                             onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfMonth: value })}
                           >
-                            <SelectTrigger id="schedule-day-month" data-testid="select-day-month">
-                              <SelectValue />
-                            </SelectTrigger>
+                              <SelectTrigger id="schedule-day-month" data-testid="select-day-month">
+                                <SelectValue placeholder="1st (First day of month)" />
+                              </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
                               {/* Common Business Options */}
                               <SelectItem value="first">1st (First day of month)</SelectItem>

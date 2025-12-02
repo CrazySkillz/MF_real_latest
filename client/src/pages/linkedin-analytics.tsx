@@ -6355,10 +6355,10 @@ export default function LinkedInAnalytics() {
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Select Metrics</h3>
                   
                   <Accordion type="multiple" className="w-full">
-                    {/* LinkedIn Ad Metrics */}
-                    <AccordionItem value="linkedin-ad-metrics">
+                    {/* LinkedIn Core Metrics */}
+                    <AccordionItem value="linkedin-core-metrics">
                       <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                        LinkedIn Ad Metrics
+                        LinkedIn Core Metrics
                       </AccordionTrigger>
                       <AccordionContent>
                         <div className="grid grid-cols-2 gap-3 pt-2">
@@ -6404,14 +6404,14 @@ export default function LinkedInAnalytics() {
                       </AccordionContent>
                     </AccordionItem>
 
-                    {/* LinkedIn Calculated Metrics */}
-                    <AccordionItem value="linkedin-calculated-metrics">
+                    {/* LinkedIn Derived Metrics */}
+                    <AccordionItem value="linkedin-derived-metrics">
                       <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                        LinkedIn Calculated Metrics
+                        LinkedIn Derived Metrics
                       </AccordionTrigger>
                       <AccordionContent>
                         <div className="grid grid-cols-2 gap-3 pt-2">
-                          {['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er', 'roi', 'roas'].map((metric) => {
+                          {['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er'].map((metric) => {
                             const labels: Record<string, string> = {
                               ctr: 'CTR (Click-Through Rate)',
                               cpc: 'CPC (Cost Per Click)',
@@ -6419,9 +6419,7 @@ export default function LinkedInAnalytics() {
                               cvr: 'CVR (Conversion Rate)',
                               cpa: 'CPA (Cost Per Acquisition)',
                               cpl: 'CPL (Cost Per Lead)',
-                              er: 'ER (Engagement Rate)',
-                              roi: 'ROI (Return on Investment)',
-                              roas: 'ROAS (Return on Ad Spend)'
+                              er: 'ER (Engagement Rate)'
                             };
                             return (
                               <div key={metric} className="flex items-center space-x-2">
@@ -6452,6 +6450,54 @@ export default function LinkedInAnalytics() {
                         </div>
                       </AccordionContent>
                     </AccordionItem>
+
+                    {/* LinkedIn Revenue Metrics - Only shown if conversion value is set */}
+                    {aggregated?.hasRevenueTracking === 1 && (
+                      <AccordionItem value="linkedin-revenue-metrics">
+                        <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          LinkedIn Revenue Metrics
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            {['totalrevenue', 'roas', 'roi', 'profit', 'profitmargin', 'revenueperlead'].map((metric) => {
+                              const labels: Record<string, string> = {
+                                totalrevenue: 'Total Revenue',
+                                roas: 'ROAS (Return on Ad Spend)',
+                                roi: 'ROI (Return on Investment)',
+                                profit: 'Profit',
+                                profitmargin: 'Profit Margin',
+                                revenueperlead: 'Revenue Per Lead'
+                              };
+                              return (
+                                <div key={metric} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`revenue-${metric}`}
+                                    checked={customReportConfig.derivedMetrics.includes(metric)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setCustomReportConfig({
+                                          ...customReportConfig,
+                                          derivedMetrics: [...customReportConfig.derivedMetrics, metric]
+                                        });
+                                      } else {
+                                        setCustomReportConfig({
+                                          ...customReportConfig,
+                                          derivedMetrics: customReportConfig.derivedMetrics.filter(m => m !== metric)
+                                        });
+                                      }
+                                    }}
+                                    data-testid={`checkbox-revenue-${metric}`}
+                                  />
+                                  <Label htmlFor={`revenue-${metric}`} className="text-sm cursor-pointer">
+                                    {labels[metric]}
+                                  </Label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    )}
 
                     {/* KPIs */}
                     <AccordionItem value="kpis">

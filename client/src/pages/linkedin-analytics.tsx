@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
@@ -1987,11 +1988,12 @@ export default function LinkedInAnalytics() {
   const { session, metrics, aggregated } = (sessionData as any) || {};
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Navigation />
-      
-      <div className="flex">
-        <Sidebar />
+    <TooltipProvider>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Navigation />
+        
+        <div className="flex">
+          <Sidebar />
         
         <main className="flex-1 p-8">
           <div className="max-w-7xl mx-auto space-y-6">
@@ -3079,13 +3081,27 @@ export default function LinkedInAnalytics() {
                                       }
                                       
                                       return hasActiveAlert ? (
-                                        <div 
-                                          className="relative flex items-center justify-center group cursor-help"
-                                          title={`⚠️ Alert Threshold Breached!\n\nCurrent: ${kpi.currentValue}${kpi.unit}\nAlert Threshold: ${alertThreshold}${kpi.unit}\nCondition: ${alertCondition}\n\nThis is your early warning system. The red dot indicates your alert threshold has been crossed, which may be different from your target goal. Check notifications for details.`}
-                                        >
-                                          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                          <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
-                                        </div>
+                                        <UITooltip>
+                                          <TooltipTrigger asChild>
+                                            <div className="relative flex items-center justify-center cursor-help">
+                                              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                              <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                                            </div>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                            <div className="space-y-2">
+                                              <p className="font-semibold text-red-400">⚠️ Alert Threshold Breached</p>
+                                              <div className="text-xs space-y-1">
+                                                <p><span className="text-slate-400">Current:</span> {kpi.currentValue}{kpi.unit}</p>
+                                                <p><span className="text-slate-400">Alert Threshold:</span> {alertThreshold}{kpi.unit}</p>
+                                                <p><span className="text-slate-400">Condition:</span> {alertCondition}</p>
+                                              </div>
+                                              <p className="text-xs text-slate-300 pt-1 border-t border-slate-700">
+                                                Early warning system. Check notifications for details.
+                                              </p>
+                                            </div>
+                                          </TooltipContent>
+                                        </UITooltip>
                                       ) : null;
                                     })()}
                                   </div>
@@ -3270,25 +3286,40 @@ export default function LinkedInAnalytics() {
                                 <div className="space-y-3">
                                   {/* Performance Badge */}
                                   <div className="flex items-center justify-between">
-                                    <Badge 
-                                      variant={
-                                        performanceLevel === 'excellent' ? 'default' :
-                                        performanceLevel === 'good' ? 'secondary' :
-                                        performanceLevel === 'fair' ? 'outline' : 'destructive'
-                                      }
-                                      className={`cursor-help ${
-                                        performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                        performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                        performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                        'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                      }`}
-                                      title={`Target Performance Assessment\n\nCurrent: ${kpi.currentValue}${kpi.unit}\nTarget: ${kpi.targetValue}${kpi.unit}\n\nThis badge shows how close you are to your target goal. It's independent of alert thresholds.`}
-                                    >
-                                      {performanceLevel === 'excellent' && '🟢 Excellent'}
-                                      {performanceLevel === 'good' && '🔵 Good'}
-                                      {performanceLevel === 'fair' && '🟡 Fair'}
-                                      {performanceLevel === 'poor' && '🔴 Poor'}
-                                    </Badge>
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge 
+                                          variant={
+                                            performanceLevel === 'excellent' ? 'default' :
+                                            performanceLevel === 'good' ? 'secondary' :
+                                            performanceLevel === 'fair' ? 'outline' : 'destructive'
+                                          }
+                                          className={`cursor-help ${
+                                            performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                            performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                            performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                          }`}
+                                        >
+                                          {performanceLevel === 'excellent' && '🟢 Excellent'}
+                                          {performanceLevel === 'good' && '🔵 Good'}
+                                          {performanceLevel === 'fair' && '🟡 Fair'}
+                                          {performanceLevel === 'poor' && '🔴 Poor'}
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                        <div className="space-y-2">
+                                          <p className="font-semibold text-blue-400">Target Performance</p>
+                                          <div className="text-xs space-y-1">
+                                            <p><span className="text-slate-400">Current:</span> {kpi.currentValue}{kpi.unit}</p>
+                                            <p><span className="text-slate-400">Target:</span> {kpi.targetValue}{kpi.unit}</p>
+                                          </div>
+                                          <p className="text-xs text-slate-300 pt-1 border-t border-slate-700">
+                                            Shows progress toward your goal. Independent of alert thresholds.
+                                          </p>
+                                        </div>
+                                      </TooltipContent>
+                                    </UITooltip>
                                     <span className="text-xs text-slate-500 dark:text-slate-500">
                                       {gapText}
                                     </span>
@@ -7022,6 +7053,7 @@ export default function LinkedInAnalytics() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

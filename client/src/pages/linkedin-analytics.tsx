@@ -222,6 +222,7 @@ export default function LinkedInAnalytics() {
     scheduleEnabled: false,
     scheduleFrequency: 'weekly',
     scheduleDayOfWeek: 'monday',
+    scheduleDayOfMonth: '1',  // For monthly/quarterly scheduling
     scheduleTime: '9:00 AM',
     emailRecipients: '',
     status: 'draft' as const
@@ -262,6 +263,17 @@ export default function LinkedInAnalytics() {
       return timeZonePart?.value || userTimeZone;
     } catch (e) {
       return userTimeZone;
+    }
+  };
+
+  // Helper function for ordinal suffixes (1st, 2nd, 3rd, etc.)
+  const getOrdinalSuffix = (day: number) => {
+    if (day > 3 && day < 21) return 'th';
+    switch (day % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
     }
   };
 
@@ -858,6 +870,7 @@ export default function LinkedInAnalytics() {
         scheduleEnabled: false,
         scheduleFrequency: 'weekly',
         scheduleDayOfWeek: 'monday',
+        scheduleDayOfMonth: '1',
         scheduleTime: '9:00 AM',
         emailRecipients: '',
         status: 'draft'
@@ -916,6 +929,7 @@ export default function LinkedInAnalytics() {
         scheduleEnabled: false,
         scheduleFrequency: 'weekly',
         scheduleDayOfWeek: 'monday',
+        scheduleDayOfMonth: '1',
         scheduleTime: '9:00 AM',
         emailRecipients: '',
         status: 'draft'
@@ -986,6 +1000,7 @@ export default function LinkedInAnalytics() {
       scheduleEnabled: scheduleEnabled,
       scheduleFrequency: report.scheduleFrequency || 'weekly',
       scheduleDayOfWeek: config?.scheduleDayOfWeek || report.scheduleDayOfWeek || 'monday',
+      scheduleDayOfMonth: config?.scheduleDayOfMonth || report.scheduleDayOfMonth || '1',
       scheduleTime: config?.scheduleTime || report.scheduleTime || '9:00 AM',
       emailRecipients: emailRecipientsString,
       status: report.status || 'draft'
@@ -1027,6 +1042,7 @@ export default function LinkedInAnalytics() {
           ...reportForm.configuration,
           scheduleEnabled: reportForm.scheduleEnabled,
           scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
+          scheduleDayOfMonth: reportForm.scheduleDayOfMonth,
           scheduleTime: reportForm.scheduleTime
         },
         scheduleFrequency: reportForm.scheduleFrequency,
@@ -1146,6 +1162,7 @@ export default function LinkedInAnalytics() {
           customReportConfig,
           scheduleEnabled: reportForm.scheduleEnabled,
           scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
+          scheduleDayOfMonth: reportForm.scheduleDayOfMonth,
           scheduleTime: reportForm.scheduleTime
         },
         scheduleFrequency: reportForm.scheduleFrequency,
@@ -6224,20 +6241,43 @@ export default function LinkedInAnalytics() {
                             <div className="space-y-2">
                               <Label htmlFor="schedule-day-month">Day of Month</Label>
                               <Select
-                                value={reportForm.scheduleDayOfWeek}
+                                value={reportForm.scheduleDayOfMonth}
                                 onValueChange={(value) => 
-                                  setReportForm({ ...reportForm, scheduleDayOfWeek: value })
+                                  setReportForm({ ...reportForm, scheduleDayOfMonth: value })
                                 }
                               >
                                 <SelectTrigger id="schedule-day-month" data-testid="select-day-month">
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
-                                    <SelectItem key={day} value={day.toString()}>{day}</SelectItem>
-                                  ))}
+                                <SelectContent className="max-h-[300px]">
+                                  {/* Common Business Options */}
+                                  <SelectItem value="first">1st (First day of month)</SelectItem>
+                                  <SelectItem value="last">Last day of month</SelectItem>
+                                  <SelectItem value="15">15th (Mid-month)</SelectItem>
+                                  
+                                  {/* Separator */}
+                                  <div className="border-t my-1"></div>
+                                  <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Specific Days</div>
+                                  
+                                  {/* Regular Days with smart highlighting */}
+                                  {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
+                                    const suffix = getOrdinalSuffix(day);
+                                    const isCommon = [1, 5, 10, 15, 20, 25].includes(day);
+                                    return (
+                                      <SelectItem 
+                                        key={day} 
+                                        value={day.toString()}
+                                        className={isCommon ? 'font-medium' : ''}
+                                      >
+                                        {day}{suffix} {isCommon && '⭐'}
+                                      </SelectItem>
+                                    );
+                                  })}
                                 </SelectContent>
                               </Select>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                For months with fewer days, the report will run on the last available day
+                              </p>
                             </div>
                           )}
 
@@ -6687,18 +6727,41 @@ export default function LinkedInAnalytics() {
                         <div className="space-y-2">
                           <Label htmlFor="schedule-day-month">Day of Month</Label>
                           <Select
-                            value={reportForm.scheduleDayOfWeek}
-                            onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfWeek: value })}
+                            value={reportForm.scheduleDayOfMonth}
+                            onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfMonth: value })}
                           >
                             <SelectTrigger id="schedule-day-month" data-testid="select-day-month">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
-                                <SelectItem key={day} value={day.toString()}>{day}</SelectItem>
-                              ))}
+                            <SelectContent className="max-h-[300px]">
+                              {/* Common Business Options */}
+                              <SelectItem value="first">1st (First day of month)</SelectItem>
+                              <SelectItem value="last">Last day of month</SelectItem>
+                              <SelectItem value="15">15th (Mid-month)</SelectItem>
+                              
+                              {/* Separator */}
+                              <div className="border-t my-1"></div>
+                              <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Specific Days</div>
+                              
+                              {/* Regular Days with smart highlighting */}
+                              {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
+                                const suffix = getOrdinalSuffix(day);
+                                const isCommon = [1, 5, 10, 15, 20, 25].includes(day);
+                                return (
+                                  <SelectItem 
+                                    key={day} 
+                                    value={day.toString()}
+                                    className={isCommon ? 'font-medium' : ''}
+                                  >
+                                    {day}{suffix} {isCommon && '⭐'}
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            For months with fewer days, the report will run on the last available day
+                          </p>
                         </div>
                       )}
 

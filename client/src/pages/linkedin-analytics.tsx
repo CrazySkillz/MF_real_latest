@@ -222,7 +222,7 @@ export default function LinkedInAnalytics() {
     scheduleEnabled: false,
     scheduleFrequency: 'weekly',
     scheduleDayOfWeek: 'monday',
-    scheduleDayOfMonth: '1',  // For monthly/quarterly scheduling
+    scheduleDayOfMonth: 'first',  // Default: 1st (First day of month)
     scheduleTime: '9:00 AM',
     emailRecipients: '',
     status: 'draft' as const
@@ -870,7 +870,7 @@ export default function LinkedInAnalytics() {
         scheduleEnabled: false,
         scheduleFrequency: 'weekly',
         scheduleDayOfWeek: 'monday',
-        scheduleDayOfMonth: '1',
+        scheduleDayOfMonth: 'first',
         scheduleTime: '9:00 AM',
         emailRecipients: '',
         status: 'draft'
@@ -929,7 +929,7 @@ export default function LinkedInAnalytics() {
         scheduleEnabled: false,
         scheduleFrequency: 'weekly',
         scheduleDayOfWeek: 'monday',
-        scheduleDayOfMonth: '1',
+        scheduleDayOfMonth: 'first',
         scheduleTime: '9:00 AM',
         emailRecipients: '',
         status: 'draft'
@@ -1000,7 +1000,7 @@ export default function LinkedInAnalytics() {
       scheduleEnabled: scheduleEnabled,
       scheduleFrequency: report.scheduleFrequency || 'weekly',
       scheduleDayOfWeek: config?.scheduleDayOfWeek || report.scheduleDayOfWeek || 'monday',
-      scheduleDayOfMonth: config?.scheduleDayOfMonth || report.scheduleDayOfMonth || '1',
+      scheduleDayOfMonth: config?.scheduleDayOfMonth || report.scheduleDayOfMonth || 'first',
       scheduleTime: config?.scheduleTime || report.scheduleTime || '9:00 AM',
       emailRecipients: emailRecipientsString,
       status: report.status || 'draft'

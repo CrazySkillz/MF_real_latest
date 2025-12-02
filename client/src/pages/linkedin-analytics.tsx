@@ -3870,7 +3870,11 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : adsData && (adsData as any[]).length > 0 ? (
                   (() => {
-                    const sortedAds = [...(adsData as any[])].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
+                    // Sort all ads by revenue and limit to top 15
+                    const allSortedAds = [...(adsData as any[])].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
+                    const totalAds = allSortedAds.length;
+                    const sortedAds = allSortedAds.slice(0, 15); // Limit to top 15 ads
+                    const isLimited = totalAds > 15;
                     const topAd = sortedAds[0];
                     
                     // Get selected metrics from session to ensure consistency with Overview tab
@@ -4035,6 +4039,17 @@ export default function LinkedInAnalytics() {
                           </CardContent>
                         </Card>
 
+                        {/* Ad Limit Indicator */}
+                        {isLimited && (
+                          <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+                            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <AlertDescription className="text-blue-800 dark:text-blue-300">
+                              <span className="font-semibold">Showing top 15 of {totalAds} ads by revenue.</span>
+                              {' '}Focus on optimizing your best performers for maximum ROI!
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
                         {/* Visual Performance Comparison */}
                         <Card data-testid="comparison-chart">
                           <CardHeader>
@@ -4140,24 +4155,27 @@ export default function LinkedInAnalytics() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <Card data-testid="total-revenue-stat">
                             <CardContent className="pt-6">
-                              <p className="text-sm text-slate-500 mb-1">Total Revenue</p>
+                              <p className="text-sm text-slate-500 mb-1">Total Revenue {isLimited && '(All Ads)'}</p>
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(sortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0))}
+                                {formatCurrency(allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0))}
                               </p>
                             </CardContent>
                           </Card>
                           <Card data-testid="avg-revenue-stat">
                             <CardContent className="pt-6">
-                              <p className="text-sm text-slate-500 mb-1">Average Revenue/Ad</p>
+                              <p className="text-sm text-slate-500 mb-1">Average Revenue/Ad {isLimited && '(All Ads)'}</p>
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(sortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0) / sortedAds.length)}
+                                {formatCurrency(allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0) / allSortedAds.length)}
                               </p>
                             </CardContent>
                           </Card>
                           <Card data-testid="total-ads-stat">
                             <CardContent className="pt-6">
-                              <p className="text-sm text-slate-500 mb-1">Total Ads Compared</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">{sortedAds.length}</p>
+                              <p className="text-sm text-slate-500 mb-1">Total Ads {isLimited ? 'Available' : 'Compared'}</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalAds}</p>
+                              {isLimited && (
+                                <p className="text-xs text-slate-500 mt-1">Showing top 15</p>
+                              )}
                             </CardContent>
                           </Card>
                         </div>

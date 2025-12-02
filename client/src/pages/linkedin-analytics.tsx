@@ -3080,8 +3080,8 @@ export default function LinkedInAnalytics() {
                                       
                                       return hasActiveAlert ? (
                                         <div 
-                                          className="relative flex items-center justify-center"
-                                          title="Active alert - threshold breached"
+                                          className="relative flex items-center justify-center group cursor-help"
+                                          title={`⚠️ Alert Threshold Breached!\n\nCurrent: ${kpi.currentValue}${kpi.unit}\nAlert Threshold: ${alertThreshold}${kpi.unit}\nCondition: ${alertCondition}\n\nThis is your early warning system. The red dot indicates your alert threshold has been crossed, which may be different from your target goal. Check notifications for details.`}
                                         >
                                           <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                                           <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
@@ -3276,12 +3276,13 @@ export default function LinkedInAnalytics() {
                                         performanceLevel === 'good' ? 'secondary' :
                                         performanceLevel === 'fair' ? 'outline' : 'destructive'
                                       }
-                                      className={
+                                      className={`cursor-help ${
                                         performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                                         performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                                         performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                                         'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                      }
+                                      }`}
+                                      title={`Target Performance Assessment\n\nCurrent: ${kpi.currentValue}${kpi.unit}\nTarget: ${kpi.targetValue}${kpi.unit}\n\nThis badge shows how close you are to your target goal. It's independent of alert thresholds.`}
                                     >
                                       {performanceLevel === 'excellent' && '🟢 Excellent'}
                                       {performanceLevel === 'good' && '🔵 Good'}

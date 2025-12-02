@@ -496,37 +496,11 @@ export default function Notifications() {
                       <div className="flex items-center gap-1">
                         {(() => {
                           const pages = [];
-                          const showEllipsisStart = currentPage > 3;
-                          const showEllipsisEnd = currentPage < totalPages - 2;
-
-                          // Always show first page
-                          pages.push(
-                            <Button
-                              key={1}
-                              variant={currentPage === 1 ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setCurrentPage(1)}
-                              className="w-10"
-                            >
-                              1
-                            </Button>
-                          );
-
-                          // Show ellipsis or pages near start
-                          if (showEllipsisStart) {
-                            pages.push(
-                              <span key="ellipsis-start" className="px-2 text-slate-400">
-                                ...
-                              </span>
-                            );
-                          }
-
-                          // Show current page and neighbors (if not first or last)
-                          const start = Math.max(2, Math.min(currentPage - 1, 2));
-                          const end = Math.min(totalPages - 1, Math.max(currentPage + 1, 3));
                           
-                          for (let i = start; i <= end; i++) {
-                            if (i !== 1 && i !== totalPages) {
+                          // Smart pagination: 1 2 3 ... 10 or 1 ... 8 9 10
+                          if (totalPages <= 7) {
+                            // Show all pages if 7 or fewer
+                            for (let i = 1; i <= totalPages; i++) {
                               pages.push(
                                 <Button
                                   key={i}
@@ -539,19 +513,70 @@ export default function Notifications() {
                                 </Button>
                               );
                             }
-                          }
-
-                          // Show ellipsis or pages near end
-                          if (showEllipsisEnd) {
+                          } else {
+                            // Always show first page
                             pages.push(
-                              <span key="ellipsis-end" className="px-2 text-slate-400">
-                                ...
-                              </span>
+                              <Button
+                                key={1}
+                                variant={currentPage === 1 ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setCurrentPage(1)}
+                                className="w-10"
+                              >
+                                1
+                              </Button>
                             );
-                          }
 
-                          // Always show last page (if more than 1 page)
-                          if (totalPages > 1) {
+                            // Show pages around current page
+                            let startPage = Math.max(2, currentPage - 1);
+                            let endPage = Math.min(totalPages - 1, currentPage + 1);
+
+                            // Adjust if near start
+                            if (currentPage <= 3) {
+                              startPage = 2;
+                              endPage = Math.min(4, totalPages - 1);
+                            }
+
+                            // Adjust if near end
+                            if (currentPage >= totalPages - 2) {
+                              startPage = Math.max(2, totalPages - 3);
+                              endPage = totalPages - 1;
+                            }
+
+                            // Show ellipsis after first page if needed
+                            if (startPage > 2) {
+                              pages.push(
+                                <span key="ellipsis-start" className="px-2 text-slate-400">
+                                  ...
+                                </span>
+                              );
+                            }
+
+                            // Show middle pages
+                            for (let i = startPage; i <= endPage; i++) {
+                              pages.push(
+                                <Button
+                                  key={i}
+                                  variant={currentPage === i ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setCurrentPage(i)}
+                                  className="w-10"
+                                >
+                                  {i}
+                                </Button>
+                              );
+                            }
+
+                            // Show ellipsis before last page if needed
+                            if (endPage < totalPages - 1) {
+                              pages.push(
+                                <span key="ellipsis-end" className="px-2 text-slate-400">
+                                  ...
+                                </span>
+                              );
+                            }
+
+                            // Always show last page
                             pages.push(
                               <Button
                                 key={totalPages}

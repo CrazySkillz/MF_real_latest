@@ -1259,17 +1259,26 @@ export default function LinkedInAnalytics() {
       return;
     }
     
-    // Separate core and derived metrics
-    const derivedMetrics = ['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er', 'roi', 'roas'];
+    // Separate core, derived, and revenue metrics
+    const derivedMetrics = ['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er'];
+    const revenueMetrics = ['totalrevenue', 'roas', 'roi', 'profit', 'profitmargin', 'revenueperlead'];
+    const excludeMetrics = ['hasrevenuetracking', 'conversionvalue'];
     const coreMetricsData: any[] = [];
     const derivedMetricsData: any[] = [];
+    const revenueMetricsData: any[] = [];
     
     Object.entries(aggregated).forEach(([key, value]: [string, any]) => {
       const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
+      
+      // Skip excluded metrics
+      if (excludeMetrics.includes(metricKey)) return;
+      
       const { label, format } = getMetricDisplay(metricKey, value);
       const formattedValue = format(value);
       
-      if (derivedMetrics.includes(metricKey)) {
+      if (revenueMetrics.includes(metricKey)) {
+        revenueMetricsData.push({ label, value: formattedValue });
+      } else if (derivedMetrics.includes(metricKey)) {
         derivedMetricsData.push({ label, value: formattedValue });
       } else {
         coreMetricsData.push({ label, value: formattedValue });
@@ -1284,6 +1293,10 @@ export default function LinkedInAnalytics() {
       doc.setFont(undefined, 'normal');
       
       coreMetricsData.forEach((metric: any) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
         doc.setFont(undefined, 'bold');
         doc.text(`${metric.label}:`, 20, y);
         doc.setFont(undefined, 'normal');
@@ -1296,10 +1309,38 @@ export default function LinkedInAnalytics() {
     
     // Derived Metrics Section
     if (derivedMetricsData.length > 0) {
-      y = addPDFSection(doc, 'Derived Metrics', y, [255, 159, 64]);
+      if (y > 250) {
+        doc.addPage();
+        y = 20;
+      }
+      y = addPDFSection(doc, 'Performance Metrics', y, [255, 159, 64]);
       doc.setTextColor(50, 50, 50);
       
       derivedMetricsData.forEach((metric: any) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFont(undefined, 'bold');
+        doc.text(`${metric.label}:`, 20, y);
+        doc.setFont(undefined, 'normal');
+        doc.text(`${metric.value}`, 120, y);
+        y += 8;
+      });
+      
+      y += 10;
+    }
+    
+    // Revenue Metrics Section - Only if revenue tracking is enabled
+    if (revenueMetricsData.length > 0 && aggregated.hasRevenueTracking === 1) {
+      if (y > 250) {
+        doc.addPage();
+        y = 20;
+      }
+      y = addPDFSection(doc, 'Revenue Analytics', y, [16, 185, 129]);
+      doc.setTextColor(50, 50, 50);
+      
+      revenueMetricsData.forEach((metric: any) => {
         if (y > 270) {
           doc.addPage();
           y = 20;
@@ -1330,25 +1371,52 @@ export default function LinkedInAnalytics() {
     
     if (kpisData && Array.isArray(kpisData) && kpisData.length > 0) {
       kpisData.forEach((kpi: any) => {
-        if (y > 260) {
+        if (y > 240) {
           doc.addPage();
           y = 20;
         }
         
-        // KPI Box - increased height for progress bar
+        // KPI Box - increased height for all details
         doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(20, y - 5, 170, 38, 3, 3, 'S');
+        doc.roundedRect(20, y - 5, 170, 55, 3, 3, 'S');
         
-        // Metric name
+        // KPI name with metric badge
         doc.setFont(undefined, 'bold');
-        doc.setFontSize(10);
-        doc.text(`Metric: ${kpi.metricName || kpi.name}`, 25, y + 2);
+        doc.setFontSize(11);
+        doc.text(kpi.name, 25, y + 2);
+        
+        // Metric badge
+        if (kpi.metric) {
+          doc.setFillColor(66, 139, 202);
+          doc.roundedRect(25, y + 6, 30, 6, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.text(kpi.metric.toUpperCase(), 40, y + 10, { align: 'center' });
+          doc.setTextColor(50, 50, 50);
+        }
+        
+        // Apply To badge (if campaign-specific)
+        if (kpi.applyTo === 'campaign' && kpi.specificCampaignId) {
+          doc.setFillColor(139, 92, 246);
+          doc.roundedRect(58, y + 6, 35, 6, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.text('CAMPAIGN', 75.5, y + 10, { align: 'center' });
+          doc.setTextColor(50, 50, 50);
+        }
         
         // Current and Target values
         doc.setFont(undefined, 'normal');
         doc.setFontSize(10);
-        doc.text(`Current: ${kpi.currentValue || 'N/A'}`, 25, y + 10);
-        doc.text(`Target: ${kpi.targetValue}`, 100, y + 10);
+        doc.text(`Current: ${formatNumber(parseFloat(kpi.currentValue) || 0)}${kpi.unit || ''}`, 25, y + 18);
+        doc.text(`Target: ${formatNumber(parseFloat(kpi.targetValue) || 0)}${kpi.unit || ''}`, 100, y + 18);
+        
+        // Timeframe and Priority
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Timeframe: ${kpi.timeframe || 'monthly'}`, 25, y + 25);
+        doc.text(`Priority: ${kpi.priority || 'medium'}`, 100, y + 25);
+        doc.setTextColor(50, 50, 50);
         
         // Progress bar
         const current = parseFloat(kpi.currentValue) || 0;
@@ -1357,25 +1425,33 @@ export default function LinkedInAnalytics() {
         
         // Progress bar background (gray)
         doc.setFillColor(230, 230, 230);
-        doc.roundedRect(25, y + 18, 160, 8, 2, 2, 'F');
+        doc.roundedRect(25, y + 32, 160, 8, 2, 2, 'F');
         
         // Progress bar fill (green if >= 100%, blue otherwise)
         if (progress > 0) {
           const fillColor = progress >= 100 ? [52, 168, 83] : [66, 139, 202];
           doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
           const barWidth = (160 * progress) / 100;
-          doc.roundedRect(25, y + 18, barWidth, 8, 2, 2, 'F');
+          doc.roundedRect(25, y + 32, barWidth, 8, 2, 2, 'F');
         }
         
         // Progress percentage text - white and bold for visibility
         doc.setFontSize(9);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(255, 255, 255);
-        doc.text(`${progress.toFixed(1)}%`, 105, y + 23, { align: 'center' });
+        doc.text(`${progress.toFixed(1)}%`, 105, y + 37, { align: 'center' });
         doc.setFont(undefined, 'normal');
         doc.setTextColor(50, 50, 50);
         
-        y += 46;
+        // Alerts status
+        if (kpi.alertsEnabled) {
+          doc.setFontSize(8);
+          doc.setTextColor(220, 38, 38);
+          doc.text('🔔 Alerts Enabled', 25, y + 46);
+          doc.setTextColor(50, 50, 50);
+        }
+        
+        y += 63;
       });
     } else {
       doc.text('No KPIs configured yet', 20, y);
@@ -1398,47 +1474,75 @@ export default function LinkedInAnalytics() {
     
     if (benchmarksData && Array.isArray(benchmarksData) && benchmarksData.length > 0) {
       benchmarksData.forEach((benchmark: any) => {
-        if (y > 230) {
+        if (y > 210) {
           doc.addPage();
           y = 20;
         }
         
         // Benchmark Box - increased height for all content
         doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(20, y - 5, 170, 60, 3, 3, 'S');
+        doc.roundedRect(20, y - 5, 170, 75, 3, 3, 'S');
         
-        // Benchmark title
+        // Benchmark title with metric badge
         doc.setFont(undefined, 'bold');
         doc.setFontSize(12);
         doc.text(benchmark.name, 25, y + 2);
+        
+        // Metric badge
+        if (benchmark.metric) {
+          doc.setFillColor(255, 99, 132);
+          doc.roundedRect(25, y + 6, 30, 6, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.text(benchmark.metric.toUpperCase(), 40, y + 10, { align: 'center' });
+          doc.setTextColor(50, 50, 50);
+        }
+        
+        // Apply To badge (if campaign-specific)
+        if (benchmark.applyTo === 'campaign' && benchmark.linkedInCampaignName) {
+          doc.setFillColor(139, 92, 246);
+          doc.roundedRect(58, y + 6, 35, 6, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.text('CAMPAIGN', 75.5, y + 10, { align: 'center' });
+          doc.setTextColor(50, 50, 50);
+          
+          // Campaign name
+          doc.setFontSize(8);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Campaign: ${benchmark.linkedInCampaignName}`, 25, y + 16);
+          doc.setTextColor(50, 50, 50);
+        }
         
         // Description
         doc.setFont(undefined, 'normal');
         doc.setFontSize(9);
         doc.setTextColor(100, 100, 100);
-        doc.text(benchmark.description || 'No description provided', 25, y + 9);
+        const descY = benchmark.applyTo === 'campaign' ? y + 22 : y + 16;
+        doc.text(benchmark.description || 'No description provided', 25, descY);
         
-        // Context line (industry • period • type)
-        const contextParts = [
-          benchmark.industry || benchmark.source || '',
-          benchmark.period || '',
-          benchmark.benchmarkType || ''
-        ].filter(p => p).join(' • ');
-        doc.text(contextParts, 25, y + 15);
+        // Benchmark Type (Industry or Custom)
+        const typeY = descY + 6;
+        if (benchmark.industry) {
+          doc.text(`Type: Industry (${benchmark.industry})`, 25, typeY);
+        } else {
+          doc.text('Type: Custom Value', 25, typeY);
+        }
         doc.setTextColor(50, 50, 50);
         
         // Values section
+        const valuesY = typeY + 8;
         doc.setFontSize(10);
         doc.setFont(undefined, 'bold');
-        doc.text('Your Performance', 25, y + 23);
-        doc.text('Benchmark Value', 85, y + 23);
-        doc.text('Source', 145, y + 23);
+        doc.text('Your Performance', 25, valuesY);
+        doc.text('Benchmark Value', 85, valuesY);
+        doc.text('Status', 145, valuesY);
         
         doc.setFont(undefined, 'normal');
         doc.setFontSize(11);
-        doc.text(`${benchmark.currentValue || '0'}${benchmark.unit || ''}`, 25, y + 31);
-        doc.text(`${benchmark.benchmarkValue || '0'}${benchmark.unit || ''}`, 85, y + 31);
-        doc.text(benchmark.source || 'LinkedIn', 145, y + 31);
+        doc.text(`${formatNumber(parseFloat(benchmark.currentValue) || 0)}${benchmark.unit || ''}`, 25, valuesY + 8);
+        doc.text(`${formatNumber(parseFloat(benchmark.benchmarkValue) || 0)}${benchmark.unit || ''}`, 85, valuesY + 8);
+        doc.text(benchmark.status === 'active' ? 'Active' : 'Inactive', 145, valuesY + 8);
         
         // Performance vs Benchmark
         if (benchmark.currentValue && benchmark.benchmarkValue) {
@@ -1446,29 +1550,37 @@ export default function LinkedInAnalytics() {
           const benchmarkVal = parseFloat(benchmark.benchmarkValue);
           const diff = current - benchmarkVal;
           const percentDiff = benchmarkVal > 0 ? Math.abs((diff / benchmarkVal) * 100).toFixed(0) : '0';
-          const status = current > benchmarkVal ? 'Above' : current < benchmarkVal ? 'Below' : 'At';
-          const statusColor = current >= benchmarkVal ? [52, 168, 83] : [220, 38, 38]; // green or red
           
+          // Determine if higher or lower is better
+          const lowerBetterMetrics = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'];
+          const metricKey = (benchmark.metric || '').toLowerCase();
+          const isLowerBetter = lowerBetterMetrics.includes(metricKey);
+          
+          const isGood = isLowerBetter ? current < benchmarkVal : current > benchmarkVal;
+          const status = current > benchmarkVal ? 'Above' : current < benchmarkVal ? 'Below' : 'At';
+          const statusColor = isGood ? [52, 168, 83] : [220, 38, 38]; // green or red
+          
+          const perfY = valuesY + 18;
           doc.setFontSize(9);
           doc.setFont(undefined, 'bold');
-          doc.text('Performance vs Benchmark:', 25, y + 41);
+          doc.text('Performance vs Benchmark:', 25, perfY);
           
           // Status badge
           doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-          doc.roundedRect(25, y + 44, 35, 8, 2, 2, 'F');
+          doc.roundedRect(25, perfY + 3, 35, 8, 2, 2, 'F');
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(8);
-          doc.text(`${percentDiff}% ${status}`, 42.5, y + 49, { align: 'center' });
+          doc.text(`${percentDiff}% ${status}`, 42.5, perfY + 8, { align: 'center' });
           
           // Status text
           doc.setTextColor(100, 100, 100);
           doc.setFont(undefined, 'normal');
-          const statusText = current >= benchmarkVal ? 'Exceeds benchmark' : 'Needs improvement';
-          doc.text(statusText, 63, y + 49);
+          const statusText = isGood ? 'Exceeds benchmark' : 'Needs improvement';
+          doc.text(statusText, 63, perfY + 8);
           doc.setTextColor(50, 50, 50);
         }
         
-        y += 68;
+        y += 83;
       });
     } else {
       doc.text('No benchmarks configured yet', 20, y);
@@ -1484,38 +1596,112 @@ export default function LinkedInAnalytics() {
     addPDFHeader(doc, reportForm.name, 'LinkedIn Metrics');
     
     let y = 70;
-    y = addPDFSection(doc, 'Ad Performance Comparison', y, [54, 162, 235]);
     
-    doc.setTextColor(50, 50, 50);
-    doc.setFontSize(11);
-    
-    if (adsData && Array.isArray(adsData) && adsData.length > 0) {
-      adsData.forEach((ad: any, index: number) => {
-        if (y > 250) {
-          doc.addPage();
-          y = 20;
-        }
-        
-        doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(20, y - 5, 170, 42, 3, 3, 'S');
-        
-        doc.setFont(undefined, 'bold');
-        doc.setFontSize(12);
-        doc.text(`Ad #${index + 1}: ${ad.adName || ad.name || 'Unnamed Ad'}`, 25, y + 2);
-        
-        doc.setFont(undefined, 'normal');
-        doc.setFontSize(10);
-        doc.text(`Impressions: ${ad.impressions || 0}`, 25, y + 12);
-        doc.text(`Clicks: ${ad.clicks || 0}`, 100, y + 12);
-        doc.text(`CTR: ${ad.ctr || 0}%`, 25, y + 20);
-        doc.text(`Spend: $${ad.spend || 0}`, 100, y + 20);
-        doc.text(`Conversions: ${ad.conversions || 0}`, 25, y + 28);
-        
-        y += 50;
-      });
-    } else {
+    // Check if we have ads data
+    if (!adsData || !Array.isArray(adsData) || adsData.length === 0) {
+      y = addPDFSection(doc, 'Ad Performance Comparison', y, [54, 162, 235]);
+      doc.setTextColor(100, 100, 100);
+      doc.setFontSize(12);
       doc.text('No ad data available', 20, y);
+      return;
     }
+    
+    // Sort ads by revenue (top 15 only, matching the UI)
+    const allSortedAds = [...(adsData as any[])].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
+    const totalAds = allSortedAds.length;
+    const isLimited = totalAds > 15;
+    const sortedAds = isLimited ? allSortedAds.slice(0, 15) : allSortedAds;
+    
+    // Summary section
+    y = addPDFSection(doc, 'Ad Performance Summary', y, [54, 162, 235]);
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(10);
+    
+    const totalRevenue = allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0);
+    const avgRevenue = totalRevenue / totalAds;
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Total Ads:', 25, y);
+    doc.setFont(undefined, 'normal');
+    doc.text(`${totalAds}${isLimited ? ' (showing top 15)' : ''}`, 100, y);
+    y += 8;
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Total Revenue:', 25, y);
+    doc.setFont(undefined, 'normal');
+    doc.text(formatCurrency(totalRevenue), 100, y);
+    y += 8;
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Avg Revenue/Ad:', 25, y);
+    doc.setFont(undefined, 'normal');
+    doc.text(formatCurrency(avgRevenue), 100, y);
+    y += 15;
+    
+    // Individual ads section
+    y = addPDFSection(doc, 'Individual Ad Performance', y, [54, 162, 235]);
+    doc.setTextColor(50, 50, 50);
+    
+    sortedAds.forEach((ad: any, index: number) => {
+      if (y > 220) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      // Ad box with ranking indicator
+      const isTop = index === 0;
+      const borderColor = isTop ? [52, 168, 83] : [200, 200, 200]; // green for top performer
+      doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+      doc.setLineWidth(isTop ? 0.5 : 0.3);
+      doc.roundedRect(20, y - 5, 170, 52, 3, 3, 'S');
+      doc.setLineWidth(0.3);
+      
+      // Rank badge
+      doc.setFillColor(isTop ? 52 : 66, isTop ? 168 : 139, isTop ? 83 : 202);
+      doc.circle(28, y, 4, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(8);
+      doc.text(`${index + 1}`, 28, y + 1.5, { align: 'center' });
+      
+      // Ad name
+      doc.setTextColor(50, 50, 50);
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(11);
+      doc.text(ad.adName || ad.name || 'Unnamed Ad', 35, y + 2);
+      
+      // Core metrics - Row 1
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(9);
+      doc.text(`Impressions: ${formatNumber(parseFloat(ad.impressions || 0))}`, 25, y + 12);
+      doc.text(`Clicks: ${formatNumber(parseFloat(ad.clicks || 0))}`, 85, y + 12);
+      doc.text(`Spend: ${formatCurrency(parseFloat(ad.spend || 0))}`, 135, y + 12);
+      
+      // Core metrics - Row 2
+      doc.text(`Conversions: ${formatNumber(parseFloat(ad.conversions || 0))}`, 25, y + 20);
+      doc.text(`Leads: ${formatNumber(parseFloat(ad.leads || 0))}`, 85, y + 20);
+      doc.text(`Engagements: ${formatNumber(parseFloat(ad.engagements || 0))}`, 135, y + 20);
+      
+      // Derived metrics - Row 3
+      doc.text(`CTR: ${(parseFloat(ad.ctr || 0)).toFixed(2)}%`, 25, y + 28);
+      doc.text(`CPC: ${formatCurrency(parseFloat(ad.cpc || 0))}`, 85, y + 28);
+      doc.text(`CPM: ${formatCurrency(parseFloat(ad.cpm || 0))}`, 135, y + 28);
+      
+      // Revenue metrics - Row 4 (if available)
+      if (ad.revenue && parseFloat(ad.revenue) > 0) {
+        doc.setFont(undefined, 'bold');
+        doc.text(`Revenue: ${formatCurrency(parseFloat(ad.revenue || 0))}`, 25, y + 36);
+        doc.setFont(undefined, 'normal');
+        if (ad.roas) {
+          doc.text(`ROAS: ${(parseFloat(ad.roas || 0)).toFixed(2)}x`, 85, y + 36);
+        }
+        if (ad.roi) {
+          doc.text(`ROI: ${(parseFloat(ad.roi || 0)).toFixed(1)}%`, 135, y + 36);
+        }
+      }
+      
+      y += 60;
+    });
     
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);

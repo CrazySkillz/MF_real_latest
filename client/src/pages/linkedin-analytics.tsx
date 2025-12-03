@@ -1087,8 +1087,14 @@ export default function LinkedInAnalytics() {
         },
         scheduleFrequency: reportForm.scheduleFrequency,
         scheduleRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
+        scheduleEnabled: reportForm.scheduleEnabled, // Add at top level for toast logic
         status: 'active'
       };
+      
+      console.log('[Report Creation - Before Mutation] reportData:', reportData);
+      console.log('[Report Creation - Before Mutation] emailRecipientsArray:', emailRecipientsArray);
+      console.log('[Report Creation - Before Mutation] scheduleEnabled:', reportForm.scheduleEnabled);
+      
       createReportMutation.mutate(reportData);
     } else {
       // Generate and download report immediately
@@ -1116,18 +1122,27 @@ export default function LinkedInAnalytics() {
               customReportConfig,
               scheduleEnabled: reportForm.scheduleEnabled,
               scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
+              scheduleDayOfMonth: reportForm.scheduleDayOfMonth,
+              quarterTiming: reportForm.quarterTiming,
               scheduleTime: reportForm.scheduleTime
             }
           : {
               ...reportForm.configuration,
               scheduleEnabled: reportForm.scheduleEnabled,
               scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
+              scheduleDayOfMonth: reportForm.scheduleDayOfMonth,
+              quarterTiming: reportForm.quarterTiming,
               scheduleTime: reportForm.scheduleTime
             },
         scheduleFrequency: reportForm.scheduleFrequency,
         scheduleRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
+        scheduleEnabled: reportForm.scheduleEnabled, // Add at top level for toast logic
         status: reportForm.status || 'active'
       };
+      
+      console.log('[Report Update - Before Mutation] reportData:', reportData);
+      console.log('[Report Update - Before Mutation] emailRecipientsArray:', emailRecipientsArray);
+      
       updateReportMutation.mutate({ reportId: editingReportId, reportData });
     } else {
       // If schedule is disabled, just download the report
@@ -1210,8 +1225,13 @@ export default function LinkedInAnalytics() {
         },
         scheduleFrequency: reportForm.scheduleFrequency,
         scheduleRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
+        scheduleEnabled: reportForm.scheduleEnabled, // Add at top level for toast logic
         status: 'active'
       };
+      
+      console.log('[Custom Report Creation - Before Mutation] reportData:', reportData);
+      console.log('[Custom Report Creation - Before Mutation] emailRecipientsArray:', emailRecipientsArray);
+      
       createReportMutation.mutate(reportData);
     } else {
       // Generate and download custom report immediately

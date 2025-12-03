@@ -2358,7 +2358,7 @@ export default function LinkedInAnalytics() {
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <BarChart3 className="w-5 h-5 text-slate-600" />
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Performance Metrics</h3>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Derived Metrics</h3>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {/* CTR */}

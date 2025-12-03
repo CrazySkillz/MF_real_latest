@@ -1713,17 +1713,24 @@ export default function LinkedInAnalytics() {
     doc.setTextColor(50, 50, 50);
     
     sortedAds.forEach((ad: any, index: number) => {
-      if (y > 220) {
+      // Check if we need a new page (account for taller boxes with revenue metrics)
+      const hasRevenue = ad.revenue && parseFloat(ad.revenue) > 0;
+      const requiredSpace = hasRevenue ? 84 : 68; // Box height + spacing
+      
+      if (y + requiredSpace > 270) {
         doc.addPage();
         y = 20;
       }
       
-      // Ad box with ranking indicator
+      // Ad box with ranking indicator - increased height for all metrics
       const isTop = index === 0;
       const borderColor = isTop ? [52, 168, 83] : [200, 200, 200]; // green for top performer
+      const hasRevenue = ad.revenue && parseFloat(ad.revenue) > 0;
+      const boxHeight = hasRevenue ? 76 : 60; // Taller box when revenue metrics exist
+      
       doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
       doc.setLineWidth(isTop ? 0.5 : 0.3);
-      doc.roundedRect(20, y - 5, 170, 52, 3, 3, 'S');
+      doc.roundedRect(20, y - 5, 170, boxHeight, 3, 3, 'S');
       doc.setLineWidth(0.3);
       
       // Rank badge
@@ -1740,37 +1747,53 @@ export default function LinkedInAnalytics() {
       doc.setFontSize(11);
       doc.text(ad.adName || ad.name || 'Unnamed Ad', 35, y + 2);
       
-      // Core metrics - Row 1
+      // Core Metrics Section
       doc.setFont(undefined, 'normal');
       doc.setFontSize(9);
+      
+      // Core metrics - Row 1
       doc.text(`Impressions: ${formatNumber(parseFloat(ad.impressions || 0))}`, 25, y + 12);
-      doc.text(`Clicks: ${formatNumber(parseFloat(ad.clicks || 0))}`, 85, y + 12);
-      doc.text(`Spend: ${formatCurrency(parseFloat(ad.spend || 0))}`, 135, y + 12);
+      doc.text(`Reach: ${formatNumber(parseFloat(ad.reach || 0))}`, 85, y + 12);
+      doc.text(`Clicks: ${formatNumber(parseFloat(ad.clicks || 0))}`, 135, y + 12);
       
       // Core metrics - Row 2
-      doc.text(`Conversions: ${formatNumber(parseFloat(ad.conversions || 0))}`, 25, y + 20);
-      doc.text(`Leads: ${formatNumber(parseFloat(ad.leads || 0))}`, 85, y + 20);
-      doc.text(`Engagements: ${formatNumber(parseFloat(ad.engagements || 0))}`, 135, y + 20);
+      doc.text(`Spend: ${formatCurrency(parseFloat(ad.spend || 0))}`, 25, y + 20);
+      doc.text(`Conversions: ${formatNumber(parseFloat(ad.conversions || 0))}`, 85, y + 20);
+      doc.text(`Leads: ${formatNumber(parseFloat(ad.leads || 0))}`, 135, y + 20);
       
-      // Derived metrics - Row 3
-      doc.text(`CTR: ${(parseFloat(ad.ctr || 0)).toFixed(2)}%`, 25, y + 28);
-      doc.text(`CPC: ${formatCurrency(parseFloat(ad.cpc || 0))}`, 85, y + 28);
-      doc.text(`CPM: ${formatCurrency(parseFloat(ad.cpm || 0))}`, 135, y + 28);
+      // Core metrics - Row 3
+      doc.text(`Engagements: ${formatNumber(parseFloat(ad.engagements || 0))}`, 25, y + 28);
       
-      // Revenue metrics - Row 4 (if available)
-      if (ad.revenue && parseFloat(ad.revenue) > 0) {
+      // Derived Metrics Section
+      // Derived metrics - Row 4
+      doc.text(`CTR: ${(parseFloat(ad.ctr || 0)).toFixed(2)}%`, 25, y + 36);
+      doc.text(`CPC: ${formatCurrency(parseFloat(ad.cpc || 0))}`, 85, y + 36);
+      doc.text(`CPM: ${formatCurrency(parseFloat(ad.cpm || 0))}`, 135, y + 36);
+      
+      // Derived metrics - Row 5
+      doc.text(`CVR: ${(parseFloat(ad.cvr || 0)).toFixed(2)}%`, 25, y + 44);
+      doc.text(`CPA: ${formatCurrency(parseFloat(ad.cpa || 0))}`, 85, y + 44);
+      doc.text(`CPL: ${formatCurrency(parseFloat(ad.cpl || 0))}`, 135, y + 44);
+      
+      // Derived metrics - Row 6
+      doc.text(`ER: ${(parseFloat(ad.er || 0)).toFixed(2)}%`, 25, y + 52);
+      
+      // Revenue Metrics Section (if available)
+      if (hasRevenue) {
+        // Revenue metrics - Row 7
         doc.setFont(undefined, 'bold');
-        doc.text(`Revenue: ${formatCurrency(parseFloat(ad.revenue || 0))}`, 25, y + 36);
+        doc.text(`Revenue: ${formatCurrency(parseFloat(ad.revenue || 0))}`, 25, y + 60);
         doc.setFont(undefined, 'normal');
-        if (ad.roas) {
-          doc.text(`ROAS: ${(parseFloat(ad.roas || 0)).toFixed(2)}x`, 85, y + 36);
-        }
-        if (ad.roi) {
-          doc.text(`ROI: ${(parseFloat(ad.roi || 0)).toFixed(1)}%`, 135, y + 36);
-        }
+        doc.text(`ROAS: ${(parseFloat(ad.roas || 0)).toFixed(2)}x`, 85, y + 60);
+        doc.text(`ROI: ${(parseFloat(ad.roi || 0)).toFixed(1)}%`, 135, y + 60);
+        
+        // Revenue metrics - Row 8
+        doc.text(`Profit: ${formatCurrency(parseFloat(ad.profit || 0))}`, 25, y + 68);
+        doc.text(`Margin: ${(parseFloat(ad.profitMargin || 0)).toFixed(1)}%`, 85, y + 68);
+        doc.text(`Rev/Lead: ${formatCurrency(parseFloat(ad.revenuePerLead || 0))}`, 135, y + 68);
       }
       
-      y += 60;
+      y += boxHeight + 8;
     });
     
     doc.setFontSize(8);

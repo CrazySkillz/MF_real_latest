@@ -6752,11 +6752,11 @@ export default function LinkedInAnalytics() {
                               data-testid="checkbox-ad-comparison"
                             />
                             <Label htmlFor="include-ad-comparison" className="text-sm cursor-pointer">
-                              Include side-by-side ad performance comparison
+                              Include Ad Performance Breakdown
                             </Label>
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400 pl-6">
-                            Compare performance metrics across all ads in your LinkedIn campaigns
+                            Shows individual ad details (top 15 by revenue) with core metrics and revenue data to identify your best-performing creative
                           </p>
                         </div>
                       </AccordionContent>

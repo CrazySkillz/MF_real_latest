@@ -1725,7 +1725,6 @@ export default function LinkedInAnalytics() {
       // Ad box with ranking indicator - increased height for all metrics
       const isTop = index === 0;
       const borderColor = isTop ? [52, 168, 83] : [200, 200, 200]; // green for top performer
-      const hasRevenue = ad.revenue && parseFloat(ad.revenue) > 0;
       const boxHeight = hasRevenue ? 76 : 60; // Taller box when revenue metrics exist
       
       doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);

@@ -2321,12 +2321,17 @@ export default function LinkedInAnalytics() {
     return countMetrics.includes(metricKey.toLowerCase());
   };
   
-  const formatNumber = (num: number | string, shouldRound: boolean = false) => {
+  // Smart number formatter that auto-rounds count metrics
+  const formatNumber = (num: number | string, metricKey?: string) => {
     const n = typeof num === 'string' ? parseFloat(num) : num;
     const value = isNaN(n) ? 0 : n;
-    // Round to whole number if specified (for count-based metrics)
+    // Auto-round count-based metrics to whole numbers
+    const shouldRound = metricKey ? isCountMetric(metricKey) : false;
     const finalValue = shouldRound ? Math.round(value) : value;
-    return finalValue.toLocaleString();
+    return finalValue.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: shouldRound ? 0 : 2
+    });
   };
   
   const formatCurrency = (num: number | string, currencyCode?: string) => {
@@ -2360,16 +2365,16 @@ export default function LinkedInAnalytics() {
   // Helper function to get metric icon and formatted value
   const getMetricDisplay = (metricKey: string, value: number | string) => {
     const metricConfig: Record<string, { icon: any; format: (v: number | string) => string; label: string }> = {
-      // Core Metrics
-      'impressions': { icon: Eye, format: formatNumber, label: 'Impressions' },
-      'reach': { icon: Users, format: formatNumber, label: 'Reach' },
-      'clicks': { icon: MousePointerClick, format: formatNumber, label: 'Clicks' },
-      'engagements': { icon: Activity, format: formatNumber, label: 'Engagements' },
+      // Core Metrics (count-based - auto-rounded to whole numbers)
+      'impressions': { icon: Eye, format: (v) => formatNumber(v, 'impressions'), label: 'Impressions' },
+      'reach': { icon: Users, format: (v) => formatNumber(v, 'reach'), label: 'Reach' },
+      'clicks': { icon: MousePointerClick, format: (v) => formatNumber(v, 'clicks'), label: 'Clicks' },
+      'engagements': { icon: Activity, format: (v) => formatNumber(v, 'engagements'), label: 'Engagements' },
       'spend': { icon: DollarSign, format: formatCurrency, label: 'Spend' },
-      'conversions': { icon: Target, format: formatNumber, label: 'Conversions' },
-      'leads': { icon: Users, format: formatNumber, label: 'Leads' },
-      'videoviews': { icon: Play, format: formatNumber, label: 'Video Views' },
-      'viralimpressions': { icon: Activity, format: formatNumber, label: 'Viral Impressions' },
+      'conversions': { icon: Target, format: (v) => formatNumber(v, 'conversions'), label: 'Conversions' },
+      'leads': { icon: Users, format: (v) => formatNumber(v, 'leads'), label: 'Leads' },
+      'videoviews': { icon: Play, format: (v) => formatNumber(v, 'videoviews'), label: 'Video Views' },
+      'viralimpressions': { icon: Activity, format: (v) => formatNumber(v, 'viralimpressions'), label: 'Viral Impressions' },
       // Derived Metrics
       'ctr': { icon: TrendingUp, format: formatPercentage, label: 'Click-Through Rate (CTR)' },
       'cpc': { icon: DollarSign, format: formatCurrency, label: 'Cost Per Click (CPC)' },

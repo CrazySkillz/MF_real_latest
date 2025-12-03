@@ -853,14 +853,29 @@ export default function LinkedInAnalytics() {
   const createReportMutation = useMutation({
     mutationFn: async (reportData: any) => {
       const res = await apiRequest('POST', '/api/linkedin/reports', reportData);
-      return res.json();
+      return { data: await res.json(), reportData };
     },
-    onSuccess: () => {
+    onSuccess: ({ data, reportData }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/reports', campaignId] });
-      toast({
-        title: "Report Created",
-        description: "Your LinkedIn report has been created successfully.",
-      });
+      
+      // Check if scheduling is enabled
+      if (reportData.scheduleEnabled && reportData.scheduleRecipients && reportData.scheduleRecipients.length > 0) {
+        const recipientCount = reportData.scheduleRecipients.length;
+        const recipientText = recipientCount === 1 
+          ? reportData.scheduleRecipients[0] 
+          : `${recipientCount} recipients`;
+        
+        toast({
+          title: "Report Created & Scheduled",
+          description: `Your report has been created successfully. Automated emails will be sent to ${recipientText} based on your schedule (${reportData.scheduleFrequency}).`,
+        });
+      } else {
+        toast({
+          title: "Report Created",
+          description: "Your LinkedIn report has been created successfully.",
+        });
+      }
+      
       setIsReportModalOpen(false);
       setReportModalStep('standard');
       setReportForm({
@@ -913,14 +928,29 @@ export default function LinkedInAnalytics() {
   const updateReportMutation = useMutation({
     mutationFn: async ({ reportId, reportData }: { reportId: string, reportData: any }) => {
       const res = await apiRequest('PUT', `/api/linkedin/reports/${reportId}`, reportData);
-      return res.json();
+      return { data: await res.json(), reportData };
     },
-    onSuccess: () => {
+    onSuccess: ({ data, reportData }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/reports', campaignId] });
-      toast({
-        title: "Report Updated",
-        description: "Your report has been updated successfully.",
-      });
+      
+      // Check if scheduling is enabled
+      if (reportData.scheduleEnabled && reportData.scheduleRecipients && reportData.scheduleRecipients.length > 0) {
+        const recipientCount = reportData.scheduleRecipients.length;
+        const recipientText = recipientCount === 1 
+          ? reportData.scheduleRecipients[0] 
+          : `${recipientCount} recipients`;
+        
+        toast({
+          title: "Report Updated & Scheduled",
+          description: `Your report has been updated successfully. Automated emails will be sent to ${recipientText} based on your schedule (${reportData.scheduleFrequency}).`,
+        });
+      } else {
+        toast({
+          title: "Report Updated",
+          description: "Your report has been updated successfully.",
+        });
+      }
+      
       setIsReportModalOpen(false);
       setEditingReportId(null);
       setReportForm({
@@ -6426,7 +6456,7 @@ export default function LinkedInAnalytics() {
                       </div>
                     </div>
 
-                    {/* Schedule Automatic Reports */}
+                    {/* Schedule Automated Reports */}
                     <div className="pt-4 border-t mt-4">
                       <div className="flex items-center gap-2 mb-4">
                         <Checkbox
@@ -6441,7 +6471,7 @@ export default function LinkedInAnalytics() {
                           htmlFor="schedule-reports" 
                           className="text-base font-semibold cursor-pointer"
                         >
-                          Schedule Automatic Reports
+                          Schedule Automated Reports
                         </Label>
                       </div>
 
@@ -6955,7 +6985,7 @@ export default function LinkedInAnalytics() {
                   </Accordion>
                 </div>
 
-                {/* Schedule Automatic Reports Section */}
+                {/* Schedule Automated Reports Section */}
                 <div className="space-y-4 pt-4 border-t">
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -6970,7 +7000,7 @@ export default function LinkedInAnalytics() {
                       data-testid="checkbox-schedule-reports"
                     />
                     <Label htmlFor="schedule-reports" className="text-base cursor-pointer font-semibold">
-                      Schedule Automatic Reports
+                      Schedule Automated Reports
                     </Label>
                   </div>
 

@@ -1403,6 +1403,31 @@ export default function LinkedInAnalytics() {
     doc.setTextColor(50, 50, 50);
     doc.setFontSize(11);
     
+    // Helper function to calculate performance level
+    const getKPIPerformanceLevel = (kpi: any): { level: string, color: number[] } => {
+      const current = parseFloat(kpi.currentValue || '0');
+      const target = parseFloat(kpi.targetValue || '0');
+      
+      if (target === 0) return { level: 'N/A', color: [150, 150, 150] };
+      
+      const ratio = current / target;
+      const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some((m: string) => 
+        kpi.metric?.toLowerCase().includes(m) || kpi.name?.toLowerCase().includes(m)
+      );
+      
+      if (lowerIsBetter) {
+        if (ratio <= 0.8) return { level: 'Excellent', color: [52, 168, 83] };
+        if (ratio <= 1.0) return { level: 'Good', color: [66, 139, 202] };
+        if (ratio <= 1.2) return { level: 'Fair', color: [255, 193, 7] };
+        return { level: 'Poor', color: [220, 53, 69] };
+      } else {
+        if (ratio >= 1.2) return { level: 'Excellent', color: [52, 168, 83] };
+        if (ratio >= 1.0) return { level: 'Good', color: [66, 139, 202] };
+        if (ratio >= 0.8) return { level: 'Fair', color: [255, 193, 7] };
+        return { level: 'Poor', color: [220, 53, 69] };
+      }
+    };
+    
     if (kpisData && Array.isArray(kpisData) && kpisData.length > 0) {
       kpisData.forEach((kpi: any) => {
         if (y > 240) {
@@ -1410,9 +1435,9 @@ export default function LinkedInAnalytics() {
           y = 20;
         }
         
-        // KPI Box - increased height for all details
+        // KPI Box - increased height for performance indicator
         doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(20, y - 5, 170, 55, 3, 3, 'S');
+        doc.roundedRect(20, y - 5, 170, 60, 3, 3, 'S');
         
         // KPI name with metric badge
         doc.setFont(undefined, 'bold');
@@ -1477,15 +1502,26 @@ export default function LinkedInAnalytics() {
         doc.setFont(undefined, 'normal');
         doc.setTextColor(50, 50, 50);
         
-        // Alerts status
+        // Performance Level Badge
+        const { level, color } = getKPIPerformanceLevel(kpi);
+        doc.setFillColor(color[0], color[1], color[2]);
+        doc.roundedRect(25, y + 45, 40, 7, 2, 2, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'bold');
+        doc.text(level, 45, y + 50, { align: 'center' });
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(50, 50, 50);
+        
+        // Alerts status (no emoji)
         if (kpi.alertsEnabled) {
           doc.setFontSize(8);
           doc.setTextColor(220, 38, 38);
-          doc.text('🔔 Alerts Enabled', 25, y + 46);
+          doc.text('Alerts Enabled', 70, y + 50);
           doc.setTextColor(50, 50, 50);
         }
         
-        y += 63;
+        y += 68;
       });
     } else {
       doc.text('No KPIs configured yet', 20, y);

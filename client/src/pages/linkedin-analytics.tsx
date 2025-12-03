@@ -858,6 +858,11 @@ export default function LinkedInAnalytics() {
     onSuccess: ({ data, reportData }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/reports', campaignId] });
       
+      // Debug logging
+      console.log('[Report Creation] scheduleEnabled:', reportData.scheduleEnabled);
+      console.log('[Report Creation] scheduleRecipients:', reportData.scheduleRecipients);
+      console.log('[Report Creation] scheduleFrequency:', reportData.scheduleFrequency);
+      
       // Check if scheduling is enabled
       if (reportData.scheduleEnabled && reportData.scheduleRecipients && reportData.scheduleRecipients.length > 0) {
         const recipientCount = reportData.scheduleRecipients.length;
@@ -1166,8 +1171,10 @@ export default function LinkedInAnalytics() {
       reportType: '',
       configuration: null,
       scheduleEnabled: false,
-      scheduleFrequency: 'weekly',
+      scheduleFrequency: 'daily',
       scheduleDayOfWeek: 'monday',
+      scheduleDayOfMonth: 'first',
+      quarterTiming: 'end',
       scheduleTime: '9:00 AM',
       emailRecipients: '',
       status: 'draft'

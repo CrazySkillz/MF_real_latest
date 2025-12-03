@@ -2301,8 +2301,15 @@ export default function LinkedInAnalytics() {
                       </div>
                     )}
 
-                    {/* LinkedIn Metrics Grid - 3 columns - Core Metrics Only */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {/* Core Metrics Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-5 h-5 text-slate-600" />
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Core Metrics</h3>
+                      </div>
+                      
+                      {/* LinkedIn Metrics Grid - 3 columns - Core Metrics Only */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {Object.entries(aggregated)
                         .filter(([key]) => {
                           // Only show core metrics, exclude derived metrics and revenue tracking flag
@@ -2352,6 +2359,7 @@ export default function LinkedInAnalytics() {
                             </Card>
                           );
                         })}
+                      </div>
                     </div>
 
                     {/* Derived Metrics with Performance Indicators */}
@@ -2529,7 +2537,7 @@ export default function LinkedInAnalytics() {
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           <DollarSign className="w-5 h-5 text-green-600" />
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue Analytics</h3>
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue Metrics</h3>
                           <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                             💰 Revenue Tracking Enabled
                           </Badge>

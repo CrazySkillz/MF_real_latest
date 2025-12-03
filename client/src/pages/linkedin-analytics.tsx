@@ -2020,7 +2020,7 @@ export default function LinkedInAnalytics() {
         }
         
         doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(20, y - 5, 170, 35, 3, 3, 'S');
+        doc.roundedRect(20, y - 5, 170, 43, 3, 3, 'S');
         
         doc.setFont(undefined, 'bold');
         doc.setFontSize(11);
@@ -2060,7 +2060,58 @@ export default function LinkedInAnalytics() {
           doc.text(progressText, textX, barY + 4.5);
         }
         
-        y += 45;
+        // Performance Level Assessment
+        if (targetValue > 0) {
+          const ratio = currentValue / targetValue;
+          const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some((m: string) => 
+            kpi.metric?.toLowerCase().includes(m) || kpi.name?.toLowerCase().includes(m)
+          );
+          
+          let performanceLevel: string;
+          let performanceColor: number[];
+          
+          if (lowerIsBetter) {
+            if (ratio <= 0.8) {
+              performanceLevel = 'Excellent';
+              performanceColor = [52, 168, 83];
+            } else if (ratio <= 1.0) {
+              performanceLevel = 'Good';
+              performanceColor = [66, 139, 202];
+            } else if (ratio <= 1.2) {
+              performanceLevel = 'Fair';
+              performanceColor = [255, 193, 7];
+            } else {
+              performanceLevel = 'Poor';
+              performanceColor = [220, 53, 69];
+            }
+          } else {
+            if (ratio >= 1.2) {
+              performanceLevel = 'Excellent';
+              performanceColor = [52, 168, 83];
+            } else if (ratio >= 1.0) {
+              performanceLevel = 'Good';
+              performanceColor = [66, 139, 202];
+            } else if (ratio >= 0.8) {
+              performanceLevel = 'Fair';
+              performanceColor = [255, 193, 7];
+            } else {
+              performanceLevel = 'Poor';
+              performanceColor = [220, 53, 69];
+            }
+          }
+          
+          // Performance badge
+          doc.setFillColor(performanceColor[0], performanceColor[1], performanceColor[2]);
+          doc.roundedRect(25, y + 31, 40, 7, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(8);
+          doc.setFont(undefined, 'bold');
+          doc.text(performanceLevel, 45, y + 36, { align: 'center' });
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(50, 50, 50);
+        }
+        
+        y += 53;
       });
     }
 

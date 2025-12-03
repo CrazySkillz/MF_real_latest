@@ -1808,6 +1808,32 @@ export default function LinkedInAnalytics() {
     
     let y = 70;
     
+    // Helper function to find the correct aggregated key
+    const findAggregatedKey = (metricKey: string): any => {
+      if (!aggregated) return null;
+      
+      // Try exact match first
+      if (aggregated[metricKey] !== undefined) return aggregated[metricKey];
+      
+      // Try with 'total' prefix (e.g., impressions → totalImpressions)
+      const totalKey = 'total' + metricKey.charAt(0).toUpperCase() + metricKey.slice(1);
+      if (aggregated[totalKey] !== undefined) return aggregated[totalKey];
+      
+      // Try with 'avg' prefix
+      const avgKey = 'avg' + metricKey.charAt(0).toUpperCase() + metricKey.slice(1);
+      if (aggregated[avgKey] !== undefined) return aggregated[avgKey];
+      
+      // Try lowercase variations
+      const lowerKey = metricKey.toLowerCase();
+      if (aggregated[lowerKey] !== undefined) return aggregated[lowerKey];
+      
+      // Try uppercase first letter
+      const capitalKey = metricKey.charAt(0).toUpperCase() + metricKey.slice(1);
+      if (aggregated[capitalKey] !== undefined) return aggregated[capitalKey];
+      
+      return null;
+    };
+    
     // Helper function to get metric label
     const getMetricLabel = (key: string): string => {
       const labels: Record<string, string> = {
@@ -1819,7 +1845,8 @@ export default function LinkedInAnalytics() {
         engagements: 'Engagements',
         videoviews: 'Video Views',
         leads: 'Leads',
-        revenue: 'Revenue',
+        totalrevenue: 'Total Revenue',
+        revenue: 'Total Revenue',
         ctr: 'CTR',
         cpc: 'CPC',
         cpm: 'CPM',
@@ -1828,23 +1855,26 @@ export default function LinkedInAnalytics() {
         cpl: 'CPL',
         er: 'Engagement Rate',
         roi: 'ROI',
-        roas: 'ROAS'
+        roas: 'ROAS',
+        profit: 'Profit',
+        profitmargin: 'Profit Margin',
+        revenueperlead: 'Revenue Per Lead'
       };
-      return labels[key] || key;
+      return labels[key.toLowerCase()] || key;
     };
 
     // Helper function to format metric value
     const formatMetricValue = (key: string, value: any): string => {
       if (!value && value !== 0) return 'N/A';
       
-      const percentageMetrics = ['ctr', 'cvr', 'er', 'roi'];
-      const currencyMetrics = ['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'revenue'];
+      const percentageMetrics = ['ctr', 'cvr', 'er', 'roi', 'profitmargin'];
+      const currencyMetrics = ['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'revenue', 'totalrevenue', 'profit', 'revenueperlead'];
       
-      if (percentageMetrics.includes(key)) {
+      if (percentageMetrics.includes(key.toLowerCase())) {
         return `${parseFloat(value).toFixed(2)}%`;
-      } else if (currencyMetrics.includes(key)) {
-        return `$${parseFloat(value).toFixed(2)}`;
-      } else if (key === 'roas') {
+      } else if (currencyMetrics.includes(key.toLowerCase())) {
+        return `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      } else if (key.toLowerCase() === 'roas') {
         return `${parseFloat(value).toFixed(2)}x`;
       } else {
         return parseFloat(value).toLocaleString();
@@ -1875,8 +1905,8 @@ export default function LinkedInAnalytics() {
           }
           
           const label = getMetricLabel(metric);
-          const value = aggregated?.[metric] || 0;
-          const formattedValue = formatMetricValue(metric, value);
+          const value = findAggregatedKey(metric);
+          const formattedValue = formatMetricValue(metric, value !== null ? value : 0);
           
           doc.text(`${label}: ${formattedValue}`, 25, y);
           y += 8;
@@ -1885,8 +1915,16 @@ export default function LinkedInAnalytics() {
         y += 5;
       }
       
-      // Derived Metrics
-      if (customReportConfig.derivedMetrics.length > 0) {
+      // Derived Metrics (filter out revenue metrics)
+      const revenueMetricKeys = ['totalrevenue', 'revenue', 'roas', 'roi', 'profit', 'profitmargin', 'revenueperlead'];
+      const actualDerivedMetrics = customReportConfig.derivedMetrics.filter(
+        m => !revenueMetricKeys.includes(m.toLowerCase())
+      );
+      const actualRevenueMetrics = customReportConfig.derivedMetrics.filter(
+        m => revenueMetricKeys.includes(m.toLowerCase())
+      );
+      
+      if (actualDerivedMetrics.length > 0) {
         if (y > 260) {
           doc.addPage();
           y = 20;
@@ -1901,15 +1939,48 @@ export default function LinkedInAnalytics() {
         doc.setFont(undefined, 'normal');
         doc.setFontSize(10);
         
-        customReportConfig.derivedMetrics.forEach((metric, index) => {
+        actualDerivedMetrics.forEach((metric, index) => {
           if (y > 260) {
             doc.addPage();
             y = 20;
           }
           
           const label = getMetricLabel(metric);
-          const value = aggregated?.[metric] || 0;
-          const formattedValue = formatMetricValue(metric, value);
+          const value = findAggregatedKey(metric);
+          const formattedValue = formatMetricValue(metric, value !== null ? value : 0);
+          
+          doc.text(`${label}: ${formattedValue}`, 25, y);
+          y += 8;
+        });
+        
+        y += 10;
+      }
+      
+      // Revenue Metrics (separated from Derived Metrics)
+      if (actualRevenueMetrics.length > 0) {
+        if (y > 260) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(50, 50, 50);
+        doc.text('Revenue Metrics', 20, y);
+        y += 10;
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        
+        actualRevenueMetrics.forEach((metric, index) => {
+          if (y > 260) {
+            doc.addPage();
+            y = 20;
+          }
+          
+          const label = getMetricLabel(metric);
+          const value = findAggregatedKey(metric);
+          const formattedValue = formatMetricValue(metric, value !== null ? value : 0);
           
           doc.text(`${label}: ${formattedValue}`, 25, y);
           y += 8;
@@ -1948,8 +2019,8 @@ export default function LinkedInAnalytics() {
         doc.setFontSize(10);
         doc.text(`Metric: ${getMetricLabel(kpi.metric)}`, 25, y + 10);
         
-        const currentValue = aggregated?.[kpi.metric] || 0;
-        const targetValue = kpi.targetValue || 0;
+        const currentValue = kpi.currentValue ? parseFloat(kpi.currentValue) : (findAggregatedKey(kpi.metric) || 0);
+        const targetValue = parseFloat(kpi.targetValue) || 0;
         const progress = targetValue > 0 ? Math.min((currentValue / targetValue) * 100, 100) : 0;
         
         doc.text(`Current: ${formatMetricValue(kpi.metric, currentValue)}`, 25, y + 18);
@@ -2015,8 +2086,8 @@ export default function LinkedInAnalytics() {
         doc.setTextColor(50, 50, 50);
         doc.text(`Metric: ${getMetricLabel(benchmark.metric)}`, 25, y + 20);
         
-        const currentValue = aggregated?.[benchmark.metric] || 0;
-        const benchmarkValue = benchmark.benchmarkValue || 0;
+        const currentValue = benchmark.currentValue ? parseFloat(benchmark.currentValue) : (findAggregatedKey(benchmark.metric) || 0);
+        const benchmarkValue = parseFloat(benchmark.benchmarkValue) || 0;
         
         doc.text(`Performance: ${formatMetricValue(benchmark.metric, currentValue)}`, 25, y + 28);
         doc.text(`Benchmark: ${formatMetricValue(benchmark.metric, benchmarkValue)}`, 100, y + 28);

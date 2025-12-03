@@ -2311,9 +2311,22 @@ export default function LinkedInAnalytics() {
     });
   }
 
-  const formatNumber = (num: number | string) => {
+  // Helper to identify count-based metrics that should always be whole numbers
+  const isCountMetric = (metricKey: string): boolean => {
+    const countMetrics = [
+      'impressions', 'clicks', 'conversions', 'leads', 'engagements', 
+      'reach', 'videoviews', 'viralimpressions', 'shares', 'comments', 
+      'likes', 'reactions', 'follows'
+    ];
+    return countMetrics.includes(metricKey.toLowerCase());
+  };
+  
+  const formatNumber = (num: number | string, shouldRound: boolean = false) => {
     const n = typeof num === 'string' ? parseFloat(num) : num;
-    return (isNaN(n) ? 0 : n).toLocaleString();
+    const value = isNaN(n) ? 0 : n;
+    // Round to whole number if specified (for count-based metrics)
+    const finalValue = shouldRound ? Math.round(value) : value;
+    return finalValue.toLocaleString();
   };
   
   const formatCurrency = (num: number | string, currencyCode?: string) => {
@@ -4140,11 +4153,22 @@ export default function LinkedInAnalytics() {
                                       const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
                                       if (campaignMetrics && campaignMetrics[benchmark.metric] !== undefined) {
                                         const value = campaignMetrics[benchmark.metric];
-                                        return `${typeof value === 'number' ? value.toFixed(2) : value}${benchmark.unit || ''}`;
+                                        if (typeof value === 'number') {
+                                          // Round count-based metrics to whole numbers
+                                          const formattedValue = isCountMetric(benchmark.metric) 
+                                            ? Math.round(value).toLocaleString()
+                                            : value.toFixed(2);
+                                          return `${formattedValue}${benchmark.unit || ''}`;
+                                        }
+                                        return `${value}${benchmark.unit || ''}`;
                                       }
                                     }
-                                    // Otherwise use stored currentValue
-                                    return `${benchmark.currentValue || '0'}${benchmark.unit || ''}`;
+                                    // Otherwise use stored currentValue, round if count metric
+                                    const currentVal = parseFloat(benchmark.currentValue || '0');
+                                    const formattedCurrentVal = isCountMetric(benchmark.metric)
+                                      ? Math.round(currentVal).toLocaleString()
+                                      : currentVal.toFixed(2);
+                                    return `${formattedCurrentVal}${benchmark.unit || ''}`;
                                   })()}
                                 </div>
                               </div>
@@ -4154,7 +4178,13 @@ export default function LinkedInAnalytics() {
                                   Benchmark Value
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
-                                  {benchmark.benchmarkValue || benchmark.targetValue || '0'}{benchmark.unit || ''}
+                                  {(() => {
+                                    const benchVal = parseFloat(benchmark.benchmarkValue || benchmark.targetValue || '0');
+                                    const formattedBenchVal = isCountMetric(benchmark.metric)
+                                      ? Math.round(benchVal).toLocaleString()
+                                      : benchVal.toFixed(2);
+                                    return `${formattedBenchVal}${benchmark.unit || ''}`;
+                                  })()}
                                 </div>
                               </div>
 

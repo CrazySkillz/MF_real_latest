@@ -1812,7 +1812,19 @@ export default function LinkedInAnalytics() {
     const findAggregatedKey = (metricKey: string): any => {
       if (!aggregated) return null;
       
-      // Try exact match first
+      // Direct mapping for known problematic keys (revenue metrics with camelCase)
+      const keyMappings: Record<string, string> = {
+        'totalrevenue': 'totalRevenue',
+        'profitmargin': 'profitMargin',
+        'revenueperlead': 'revenuePerLead',
+        'videoviews': 'videoViews'
+      };
+      
+      // Try mapped key first
+      const mappedKey = keyMappings[metricKey.toLowerCase()];
+      if (mappedKey && aggregated[mappedKey] !== undefined) return aggregated[mappedKey];
+      
+      // Try exact match
       if (aggregated[metricKey] !== undefined) return aggregated[metricKey];
       
       // Try with 'total' prefix (e.g., impressions → totalImpressions)

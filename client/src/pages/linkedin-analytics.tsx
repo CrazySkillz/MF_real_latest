@@ -220,7 +220,7 @@ export default function LinkedInAnalytics() {
     reportType: '',
     configuration: null as any,
     scheduleEnabled: false,
-    scheduleFrequency: 'weekly',
+    scheduleFrequency: 'daily',  // Default: Daily (most common for automated reports)
     scheduleDayOfWeek: 'monday',
     scheduleDayOfMonth: 'first',  // Default: 1st (First day of month)
     quarterTiming: 'end',  // Default: End of Quarter (most common for business reports)
@@ -869,7 +869,7 @@ export default function LinkedInAnalytics() {
         reportType: '',
         configuration: null,
         scheduleEnabled: false,
-        scheduleFrequency: 'weekly',
+        scheduleFrequency: 'daily',
         scheduleDayOfWeek: 'monday',
         scheduleDayOfMonth: 'first',
         quarterTiming: 'end',
@@ -929,7 +929,7 @@ export default function LinkedInAnalytics() {
         reportType: '',
         configuration: null,
         scheduleEnabled: false,
-        scheduleFrequency: 'weekly',
+        scheduleFrequency: 'daily',
         scheduleDayOfWeek: 'monday',
         scheduleDayOfMonth: 'first',
         quarterTiming: 'end',
@@ -6277,7 +6277,7 @@ export default function LinkedInAnalytics() {
                                 }
                               >
                                 <SelectTrigger id="schedule-day-month" data-testid="select-day-month">
-                                  <SelectValue placeholder="1st (First day of month)" />
+                                  <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[300px]">
                                   {reportForm.scheduleFrequency === 'quarterly' ? (

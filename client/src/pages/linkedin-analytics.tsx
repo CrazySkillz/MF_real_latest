@@ -3149,8 +3149,10 @@ export default function LinkedInAnalytics() {
                               reportType: 'kpis',
                               configuration: {},
                               scheduleEnabled: false,
-                              scheduleFrequency: 'weekly',
+                              scheduleFrequency: 'daily',
                               scheduleDayOfWeek: 'monday',
+                              scheduleDayOfMonth: 'first',
+                              quarterTiming: 'end',
                               scheduleTime: '9:00 AM',
                               emailRecipients: '',
                               status: 'draft'
@@ -3647,8 +3649,10 @@ export default function LinkedInAnalytics() {
                               reportType: 'kpis',
                               configuration: {},
                               scheduleEnabled: false,
-                              scheduleFrequency: 'weekly',
+                              scheduleFrequency: 'daily',
                               scheduleDayOfWeek: 'monday',
+                              scheduleDayOfMonth: 'first',
+                              quarterTiming: 'end',
                               scheduleTime: '9:00 AM',
                               emailRecipients: '',
                               status: 'draft'
@@ -4429,8 +4433,10 @@ export default function LinkedInAnalytics() {
                         reportType: '',
                         configuration: null,
                         scheduleEnabled: false,
-                        scheduleFrequency: 'weekly',
+                        scheduleFrequency: 'daily',
                         scheduleDayOfWeek: 'monday',
+                        scheduleDayOfMonth: 'first',
+                        quarterTiming: 'end',
                         scheduleTime: '9:00 AM',
                         emailRecipients: '',
                         status: 'draft'
@@ -6253,7 +6259,7 @@ export default function LinkedInAnalytics() {
                                 }
                               >
                                 <SelectTrigger id="quarter-timing" data-testid="select-quarter-timing">
-                                  <SelectValue placeholder="End of Quarter" />
+                                  <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="end">End of Quarter (Mar, Jun, Sep, Dec)</SelectItem>

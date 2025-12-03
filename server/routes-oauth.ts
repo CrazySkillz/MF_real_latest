@@ -4725,6 +4725,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send test report email
+  app.post("/api/platforms/:platformType/reports/:reportId/send-test", async (req, res) => {
+    try {
+      const { reportId } = req.params;
+      
+      const { sendTestReport } = await import('./report-scheduler.js');
+      const sent = await sendTestReport(reportId);
+      
+      if (sent) {
+        res.json({ 
+          message: "Test report email sent successfully", 
+          success: true 
+        });
+      } else {
+        res.status(500).json({ 
+          message: "Failed to send test report email", 
+          success: false 
+        });
+      }
+    } catch (error) {
+      console.error('Test report send error:', error);
+      res.status(500).json({ message: "Failed to send test report" });
+    }
+  });
+
   // Get single benchmark
   app.get("/api/benchmarks/:id", async (req, res) => {
     try {

@@ -1285,13 +1285,24 @@ export default function LinkedInAnalytics() {
     // Separate core, derived, and revenue metrics
     const derivedMetrics = ['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er'];
     const revenueMetrics = ['totalrevenue', 'roas', 'roi', 'profit', 'profitmargin', 'revenueperlead'];
-    const excludeMetrics = ['hasrevenuetracking', 'conversionvalue'];
+    const excludeMetrics = ['hasrevenuetracking', 'conversionvalue', 'revenue', 'performanceindicators'];
     const coreMetricsData: any[] = [];
     const derivedMetricsData: any[] = [];
     const revenueMetricsData: any[] = [];
     
     Object.entries(aggregated).forEach(([key, value]: [string, any]) => {
-      const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
+      // Normalize the key - be careful to preserve revenue metric names
+      let metricKey = key.toLowerCase();
+      
+      // Only strip 'total' prefix if it's not 'totalrevenue' (a revenue metric)
+      if (metricKey.startsWith('total') && metricKey !== 'totalrevenue') {
+        metricKey = metricKey.substring(5); // Remove 'total' prefix
+      }
+      
+      // Strip 'avg' prefix
+      if (metricKey.startsWith('avg')) {
+        metricKey = metricKey.substring(3); // Remove 'avg' prefix
+      }
       
       // Skip excluded metrics
       if (excludeMetrics.includes(metricKey)) return;
@@ -1336,7 +1347,7 @@ export default function LinkedInAnalytics() {
         doc.addPage();
         y = 20;
       }
-      y = addPDFSection(doc, 'Performance Metrics', y, [255, 159, 64]);
+      y = addPDFSection(doc, 'Derived Metrics', y, [255, 159, 64]);
       doc.setTextColor(50, 50, 50);
       
       derivedMetricsData.forEach((metric: any) => {
@@ -1360,7 +1371,7 @@ export default function LinkedInAnalytics() {
         doc.addPage();
         y = 20;
       }
-      y = addPDFSection(doc, 'Revenue Analytics', y, [16, 185, 129]);
+      y = addPDFSection(doc, 'Revenue Metrics', y, [16, 185, 129]);
       doc.setTextColor(50, 50, 50);
       
       revenueMetricsData.forEach((metric: any) => {

@@ -223,6 +223,7 @@ export default function LinkedInAnalytics() {
     scheduleFrequency: 'weekly',
     scheduleDayOfWeek: 'monday',
     scheduleDayOfMonth: 'first',  // Default: 1st (First day of month)
+    quarterTiming: 'end',  // Default: End of Quarter (most common for business reports)
     scheduleTime: '9:00 AM',
     emailRecipients: '',
     status: 'draft' as const
@@ -871,6 +872,7 @@ export default function LinkedInAnalytics() {
         scheduleFrequency: 'weekly',
         scheduleDayOfWeek: 'monday',
         scheduleDayOfMonth: 'first',
+        quarterTiming: 'end',
         scheduleTime: '9:00 AM',
         emailRecipients: '',
         status: 'draft'
@@ -930,6 +932,7 @@ export default function LinkedInAnalytics() {
         scheduleFrequency: 'weekly',
         scheduleDayOfWeek: 'monday',
         scheduleDayOfMonth: 'first',
+        quarterTiming: 'end',
         scheduleTime: '9:00 AM',
         emailRecipients: '',
         status: 'draft'
@@ -1001,6 +1004,7 @@ export default function LinkedInAnalytics() {
       scheduleFrequency: report.scheduleFrequency || 'weekly',
       scheduleDayOfWeek: config?.scheduleDayOfWeek || report.scheduleDayOfWeek || 'monday',
       scheduleDayOfMonth: config?.scheduleDayOfMonth || report.scheduleDayOfMonth || 'first',
+      quarterTiming: config?.quarterTiming || report.quarterTiming || 'end',
       scheduleTime: config?.scheduleTime || report.scheduleTime || '9:00 AM',
       emailRecipients: emailRecipientsString,
       status: report.status || 'draft'
@@ -1043,6 +1047,7 @@ export default function LinkedInAnalytics() {
           scheduleEnabled: reportForm.scheduleEnabled,
           scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
           scheduleDayOfMonth: reportForm.scheduleDayOfMonth,
+          quarterTiming: reportForm.quarterTiming,
           scheduleTime: reportForm.scheduleTime
         },
         scheduleFrequency: reportForm.scheduleFrequency,
@@ -1163,6 +1168,7 @@ export default function LinkedInAnalytics() {
           scheduleEnabled: reportForm.scheduleEnabled,
           scheduleDayOfWeek: reportForm.scheduleDayOfWeek,
           scheduleDayOfMonth: reportForm.scheduleDayOfMonth,
+          quarterTiming: reportForm.quarterTiming,
           scheduleTime: reportForm.scheduleTime
         },
         scheduleFrequency: reportForm.scheduleFrequency,
@@ -6236,6 +6242,30 @@ export default function LinkedInAnalytics() {
                             </div>
                           )}
 
+                          {/* Quarter Timing - Only for Quarterly */}
+                          {reportForm.scheduleFrequency === 'quarterly' && (
+                            <div className="space-y-2">
+                              <Label htmlFor="quarter-timing">Quarter Timing</Label>
+                              <Select
+                                value={reportForm.quarterTiming}
+                                onValueChange={(value) => 
+                                  setReportForm({ ...reportForm, quarterTiming: value })
+                                }
+                              >
+                                <SelectTrigger id="quarter-timing" data-testid="select-quarter-timing">
+                                  <SelectValue placeholder="End of Quarter" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="end">End of Quarter (Mar, Jun, Sep, Dec)</SelectItem>
+                                  <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Choose whether to run reports at the start or end of each quarter
+                              </p>
+                            </div>
+                          )}
+
                           {/* Day of Month - Only for Monthly and Quarterly */}
                           {(reportForm.scheduleFrequency === 'monthly' || reportForm.scheduleFrequency === 'quarterly') && (
                             <div className="space-y-2">
@@ -6719,6 +6749,30 @@ export default function LinkedInAnalytics() {
                               <SelectItem value="sunday">Sunday</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+                      )}
+
+                      {/* Quarter Timing - Only for Quarterly */}
+                      {reportForm.scheduleFrequency === 'quarterly' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="quarter-timing">Quarter Timing</Label>
+                          <Select
+                            value={reportForm.quarterTiming}
+                            onValueChange={(value) => 
+                              setReportForm({ ...reportForm, quarterTiming: value })
+                            }
+                          >
+                            <SelectTrigger id="quarter-timing" data-testid="select-quarter-timing">
+                              <SelectValue placeholder="End of Quarter" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="end">End of Quarter (Mar, Jun, Sep, Dec)</SelectItem>
+                              <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Choose whether to run reports at the start or end of each quarter
+                          </p>
                         </div>
                       )}
 

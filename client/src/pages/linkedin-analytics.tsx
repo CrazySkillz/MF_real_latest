@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent, Mail } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -930,26 +930,6 @@ export default function LinkedInAnalytics() {
   });
 
   // Send test report email mutation
-  const sendTestEmailMutation = useMutation({
-    mutationFn: async (reportId: string) => {
-      const res = await apiRequest('POST', `/api/platforms/linkedin/reports/${reportId}/send-test`);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Test Email Sent",
-        description: "The test report email has been sent successfully. Check your inbox!",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send test email",
-        variant: "destructive",
-      });
-    }
-  });
-
   // Update Report mutation
   const updateReportMutation = useMutation({
     mutationFn: async ({ reportId, reportData }: { reportId: string, reportData: any }) => {
@@ -1220,6 +1200,69 @@ export default function LinkedInAnalytics() {
       title: "Report Downloaded",
       description: "Your PDF report has been downloaded successfully.",
     });
+  };
+
+  // Handle downloading saved report from library
+  const handleDownloadSavedReport = async (report: any) => {
+    try {
+      const reportName = report.name || 'LinkedIn Report';
+      
+      // Dynamically import jsPDF
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+      
+      // Generate PDF based on type
+      switch (report.reportType) {
+        case 'overview':
+          generateOverviewPDF(doc);
+          break;
+        case 'kpis':
+          generateKPIsPDF(doc);
+          break;
+        case 'benchmarks':
+          generateBenchmarksPDF(doc);
+          break;
+        case 'ads':
+          generateAdComparisonPDF(doc);
+          break;
+        case 'custom':
+          // For custom reports, use the stored configuration
+          if (report.configuration && typeof report.configuration === 'object') {
+            const config = report.configuration.customReportConfig || report.configuration;
+            generateCustomReportPDF(doc, config);
+          } else {
+            toast({
+              title: "Error",
+              description: "Custom report configuration not found.",
+              variant: "destructive",
+            });
+            return;
+          }
+          break;
+        default:
+          toast({
+            title: "Error",
+            description: "Unknown report type.",
+            variant: "destructive",
+          });
+          return;
+      }
+
+      // Download the PDF
+      doc.save(`${reportName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+      toast({
+        title: "Report Downloaded",
+        description: `${reportName} has been downloaded successfully.`,
+      });
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      toast({
+        title: "Error",
+        description: "Failed to download report.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle custom report creation/download
@@ -4815,23 +4858,15 @@ export default function LinkedInAnalytics() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button variant="outline" size="sm" data-testid={`button-download-${report.id}`}>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                data-testid={`button-download-${report.id}`}
+                                onClick={() => handleDownloadSavedReport(report)}
+                              >
+                                <Download className="w-4 h-4 mr-2" />
                                 Download
                               </Button>
-                              {/* Show Send Test Email button only for scheduled reports with recipients */}
-                              {report.scheduleFrequency && report.scheduleRecipients && report.scheduleRecipients.length > 0 && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  data-testid={`button-test-email-${report.id}`}
-                                  onClick={() => sendTestEmailMutation.mutate(report.id)}
-                                  disabled={sendTestEmailMutation.isPending}
-                                  className="gap-2"
-                                >
-                                  <Mail className="w-4 h-4" />
-                                  {sendTestEmailMutation.isPending ? 'Sending...' : 'Send Test Email'}
-                                </Button>
-                              )}
                               <Button 
                                 variant="ghost" 
                                 size="sm" 

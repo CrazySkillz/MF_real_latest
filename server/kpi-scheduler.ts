@@ -240,11 +240,24 @@ export async function checkPerformanceAlerts(): Promise<void> {
         eq(kpis.alertsEnabled, true)
       ));
 
-    console.log(`[KPI Scheduler] Checking ${activeKPIs.length} active KPIs for alerts`);
+    console.log(`[KPI Scheduler] Found ${activeKPIs.length} active KPIs with alerts enabled`);
 
     for (const kpi of activeKPIs) {
+      const currentValue = parseFloat(kpi.currentValue);
+      const alertThreshold = kpi.alertThreshold ? parseFloat(kpi.alertThreshold.toString()) : null;
+      const alertCondition = kpi.alertCondition || 'below';
+      
+      console.log(`[KPI Scheduler] Checking KPI: ${kpi.name}`);
+      console.log(`  - Current Value: ${currentValue}`);
+      console.log(`  - Alert Threshold: ${alertThreshold}`);
+      console.log(`  - Alert Condition: ${alertCondition}`);
+      console.log(`  - Should Trigger: ${shouldTriggerAlert(kpi)}`);
+      
       if (shouldTriggerAlert(kpi)) {
+        console.log(`[KPI Scheduler] ✅ TRIGGERING ALERT for: ${kpi.name}`);
         await createKPIAlert(kpi);
+      } else {
+        console.log(`[KPI Scheduler] ❌ No alert needed for: ${kpi.name}`);
       }
     }
   } catch (error) {

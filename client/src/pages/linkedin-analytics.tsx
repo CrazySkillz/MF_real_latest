@@ -376,23 +376,24 @@ export default function LinkedInAnalytics() {
     enabled: !!sessionId,
   });
 
-  // Extract unique campaigns from ads data
+  // Extract unique campaigns from sessionData.metrics (same source as auto-fill)
   const availableCampaigns = useMemo(() => {
-    if (!adsData || !Array.isArray(adsData)) return [];
+    const { metrics } = (sessionData as any) || {};
+    if (!metrics || !Array.isArray(metrics)) return [];
     
     const campaignMap = new Map();
-    adsData.forEach((ad: any) => {
-      if (ad.campaignName) {
-        campaignMap.set(ad.campaignName, {
-          name: ad.campaignName,
-          linkedInCampaignName: ad.campaignName, // Store the LinkedIn campaign name
-          id: campaignId  // Parent database campaign ID
+    metrics.forEach((m: any) => {
+      if (m.campaignName) {
+        campaignMap.set(m.campaignName, {
+          name: m.campaignName,
+          linkedInCampaignName: m.campaignName,
+          id: campaignId
         });
       }
     });
     
     return Array.from(campaignMap.values());
-  }, [adsData, campaignId]);
+  }, [sessionData, campaignId]);
 
   // Helper to get campaign name from ID
   const getCampaignName = (campaignId: string): string => {
@@ -5068,11 +5069,16 @@ export default function LinkedInAnalytics() {
                       let currentValue = '';
                       let unit = '';
                       
-                      // Check if specific campaign is selected
+                      // Check if specific campaign is selected - log for debugging
+                      console.log('[KPI Metric Select] applyTo:', kpiForm.applyTo);
+                      console.log('[KPI Metric Select] specificCampaignId:', kpiForm.specificCampaignId);
+                      
                       if (kpiForm.applyTo === 'specific' && kpiForm.specificCampaignId) {
                         // Get campaign-specific metrics from sessionData.metrics
                         const { metrics } = (sessionData as any) || {};
+                        console.log('[KPI Metric Select] sessionData metrics count:', metrics?.length);
                         const campaignMetric = metrics?.find((m: any) => m.campaignName === kpiForm.specificCampaignId);
+                        console.log('[KPI Metric Select] Found campaign metric:', campaignMetric);
                         
                         // Calculate derived metrics from raw campaign data
                         let campaignData = null;

@@ -384,16 +384,17 @@ async function capturePeriodSnapshots(timeframe: string): Promise<void> {
 /**
  * Main daily job runner
  * Call this once per day (e.g., at midnight)
+ * 
+ * SIMPLIFIED FOR OPTION C (Hybrid Notifications):
+ * Only runs performance alerts (below/above target notifications)
+ * Removed: Monthly reminders, period complete, trend alerts
  */
 export async function runDailyKPIJobs(): Promise<void> {
-  console.log('[KPI Scheduler] Running daily KPI jobs...');
+  console.log('[KPI Scheduler] Running simplified KPI jobs (Option C: Performance alerts only)...');
 
   try {
-    await checkDailyReminders();
-    await checkWeeklyReminders();
-    await checkMonthlyReminders();
+    // Only check for performance alerts (below/above target)
     await checkPerformanceAlerts();
-    await captureEndOfPeriod();
 
     console.log('[KPI Scheduler] Daily KPI jobs completed successfully');
   } catch (error) {

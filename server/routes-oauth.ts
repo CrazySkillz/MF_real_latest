@@ -4730,23 +4730,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { reportId } = req.params;
       
+      console.log(`[API] Test report email requested for: ${reportId}`);
+      
+      // Check email configuration first
+      const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
+      const hasEmailConfig = 
+        (emailProvider === 'mailgun' && process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS) ||
+        (emailProvider === 'sendgrid' && process.env.SENDGRID_API_KEY) ||
+        (emailProvider === 'smtp' && process.env.SMTP_USER && process.env.SMTP_PASS);
+      
+      if (!hasEmailConfig) {
+        console.error(`[API] Email not configured. Provider: ${emailProvider}`);
+        return res.status(500).json({ 
+          message: `Email service not configured. Please set up ${emailProvider.toUpperCase()} credentials in environment variables.`,
+          success: false,
+          emailProvider
+        });
+      }
+      
       const { sendTestReport } = await import('./report-scheduler.js');
       const sent = await sendTestReport(reportId);
       
       if (sent) {
+        console.log(`[API] ✅ Test email sent successfully for report: ${reportId}`);
         res.json({ 
-          message: "Test report email sent successfully", 
+          message: "Test report email sent successfully! Check your inbox.", 
           success: true 
         });
       } else {
+        console.error(`[API] ❌ Failed to send test email for report: ${reportId}`);
         res.status(500).json({ 
-          message: "Failed to send test report email", 
+          message: "Failed to send test report email. Check server logs for details.", 
           success: false 
         });
       }
     } catch (error) {
-      console.error('Test report send error:', error);
-      res.status(500).json({ message: "Failed to send test report" });
+      console.error('[API] Test report send error:', error);
+      res.status(500).json({ 
+        message: `Error: ${error instanceof Error ? error.message : 'Failed to send test report'}`,
+        success: false
+      });
     }
   });
 

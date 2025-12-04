@@ -381,6 +381,22 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
   try {
     console.log(`[Report Scheduler] Sending test report: ${reportId}`);
     
+    // Check email configuration
+    const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
+    const hasEmailConfig = 
+      (emailProvider === 'mailgun' && process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS) ||
+      (emailProvider === 'sendgrid' && process.env.SENDGRID_API_KEY) ||
+      (emailProvider === 'smtp' && process.env.SMTP_USER && process.env.SMTP_PASS);
+    
+    if (!hasEmailConfig) {
+      console.error(`[Report Scheduler] ❌ Email provider configured as "${emailProvider}" but credentials are missing`);
+      console.error('[Report Scheduler] Please configure email environment variables on Render:');
+      console.error('  - For Mailgun: MAILGUN_SMTP_USER, MAILGUN_SMTP_PASS');
+      console.error('  - For SendGrid: SENDGRID_API_KEY');
+      console.error('  - For SMTP: SMTP_USER, SMTP_PASS');
+      return false;
+    }
+    
     const allReports = await storage.getPlatformReports('linkedin');
     const report = allReports.find(r => r.id === reportId);
 
@@ -389,6 +405,10 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       return false;
     }
 
+    console.log(`[Report Scheduler] Found report: ${report.name}`);
+    console.log(`[Report Scheduler] Report type: ${report.reportType}`);
+    console.log(`[Report Scheduler] Schedule recipients:`, report.scheduleRecipients);
+
     const recipients = report.scheduleRecipients || [];
     
     if (recipients.length === 0) {
@@ -396,9 +416,14 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       return false;
     }
 
-    return await sendReportEmail(report, recipients);
+    console.log(`[Report Scheduler] Attempting to send test email to: ${recipients.join(', ')}`);
+    const result = await sendReportEmail(report, recipients);
+    console.log(`[Report Scheduler] Send result: ${result ? 'SUCCESS ✅' : 'FAILED ❌'}`);
+    
+    return result;
   } catch (error) {
     console.error('[Report Scheduler] Error sending test report:', error);
+    console.error('[Report Scheduler] Error details:', error instanceof Error ? error.message : String(error));
     return false;
   }
 }

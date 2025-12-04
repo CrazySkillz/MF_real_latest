@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { notifications, kpis } from "../shared/schema";
+import { eq } from "drizzle-orm";
 import type { KPI, InsertNotification } from "../shared/schema";
 
 /**
@@ -38,6 +39,31 @@ export async function createKPIReminder(kpi: KPI): Promise<void> {
  * Triggered when current value breaches alert threshold
  */
 export async function createKPIAlert(kpi: KPI): Promise<void> {
+  // Check if an alert for this KPI already exists today (prevent duplicates)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const existingAlerts = await db.select()
+    .from(notifications)
+    .where(eq(notifications.type, 'performance-alert'));
+  
+  // Check if there's already an alert for this KPI today
+  const hasRecentAlert = existingAlerts.some(n => {
+    if (!n.metadata) return false;
+    try {
+      const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
+      const createdAt = new Date(n.createdAt);
+      return meta.kpiId === kpi.id && createdAt >= today;
+    } catch {
+      return false;
+    }
+  });
+  
+  if (hasRecentAlert) {
+    console.log(`[KPI Notification] Skipping duplicate alert for KPI: ${kpi.name} (already alerted today)`);
+    return;
+  }
+
   const currentValue = parseFloat(kpi.currentValue);
   const alertThreshold = kpi.alertThreshold ? parseFloat(kpi.alertThreshold.toString()) : null;
   const targetValue = parseFloat(kpi.targetValue);

@@ -5063,94 +5063,217 @@ export default function LinkedInAnalytics() {
                       return; // Don't select this metric
                     }
                     
-                    // Auto-populate current value from LinkedIn aggregated metrics
-                    let currentValue = '';
-                    let unit = '';
-                    if (aggregated) {
-                      switch(value) {
-                        case 'impressions':
-                          currentValue = String(aggregated.totalImpressions || 0);
-                          break;
-                        case 'reach':
-                          currentValue = String(aggregated.totalReach || 0);
-                          break;
-                        case 'clicks':
-                          currentValue = String(aggregated.totalClicks || 0);
-                          break;
-                        case 'engagements':
-                          currentValue = String(aggregated.totalEngagements || 0);
-                          break;
-                        case 'spend':
-                          currentValue = String(aggregated.totalSpend || 0);
-                          unit = '$';
-                          break;
-                        case 'conversions':
-                          currentValue = String(aggregated.totalConversions || 0);
-                          break;
-                        case 'leads':
-                          currentValue = String(aggregated.totalLeads || 0);
-                          break;
-                        case 'videoViews':
-                          currentValue = String(aggregated.totalVideoViews || 0);
-                          break;
-                        case 'viralImpressions':
-                          currentValue = String(aggregated.totalViralImpressions || 0);
-                          break;
-                        case 'ctr':
-                          currentValue = String(aggregated.ctr || 0);
-                          unit = '%';
-                          break;
-                        case 'cpc':
-                          currentValue = String(aggregated.cpc || 0);
-                          unit = '$';
-                          break;
-                        case 'cpm':
-                          currentValue = String(aggregated.cpm || 0);
-                          unit = '$';
-                          break;
-                        case 'cvr':
-                          currentValue = String(aggregated.cvr || 0);
-                          unit = '%';
-                          break;
-                        case 'cpa':
-                          currentValue = String(aggregated.cpa || 0);
-                          unit = '$';
-                          break;
-                        case 'cpl':
-                          currentValue = String(aggregated.cpl || 0);
-                          unit = '$';
-                          break;
-                        case 'er':
-                          currentValue = String(aggregated.er || 0);
-                          unit = '%';
-                          break;
-                        case 'roi':
-                          currentValue = String(aggregated.roi || 0);
-                          unit = '%';
-                          break;
-                        case 'roas':
-                          currentValue = String(aggregated.roas || 0);
-                          unit = 'x';
-                          break;
-                        case 'totalRevenue':
-                          currentValue = String(aggregated.totalRevenue || 0);
-                          unit = '$';
-                          break;
-                        case 'profit':
-                          currentValue = String(aggregated.profit || 0);
-                          unit = '$';
-                          break;
-                        case 'profitMargin':
-                          currentValue = String(aggregated.profitMargin || 0);
-                          unit = '%';
-                          break;
-                        case 'revenuePerLead':
-                          currentValue = String(aggregated.revenuePerLead || 0);
-                          unit = '$';
-                          break;
+                    // Helper function to get metric value based on scope
+                    const getMetricValue = (metricKey: string): { value: string; unit: string } => {
+                      let currentValue = '';
+                      let unit = '';
+                      
+                      // Check if specific campaign is selected
+                      if (kpiForm.applyTo === 'specific' && kpiForm.specificCampaignId && metrics) {
+                        // Find campaign-specific metrics
+                        const campaignData = metrics.find((m: any) => m.campaignName === kpiForm.specificCampaignId);
+                        
+                        if (campaignData) {
+                          const impressions = parseFloat(campaignData.impressions || '0');
+                          const clicks = parseFloat(campaignData.clicks || '0');
+                          const spend = parseFloat(campaignData.spend || '0');
+                          const conversions = parseFloat(campaignData.conversions || '0');
+                          const leads = parseFloat(campaignData.leads || '0');
+                          const engagements = parseFloat(campaignData.engagements || '0');
+                          
+                          switch(metricKey) {
+                            case 'impressions':
+                              currentValue = String(impressions);
+                              break;
+                            case 'reach':
+                              currentValue = String(parseFloat(campaignData.reach || '0'));
+                              break;
+                            case 'clicks':
+                              currentValue = String(clicks);
+                              break;
+                            case 'engagements':
+                              currentValue = String(engagements);
+                              break;
+                            case 'spend':
+                              currentValue = String(spend);
+                              unit = '$';
+                              break;
+                            case 'conversions':
+                              currentValue = String(conversions);
+                              break;
+                            case 'leads':
+                              currentValue = String(leads);
+                              break;
+                            case 'videoViews':
+                              currentValue = String(parseFloat(campaignData.videoViews || '0'));
+                              break;
+                            case 'viralImpressions':
+                              currentValue = String(parseFloat(campaignData.viralImpressions || '0'));
+                              break;
+                            case 'ctr':
+                              currentValue = impressions > 0 ? String((clicks / impressions) * 100) : '0';
+                              unit = '%';
+                              break;
+                            case 'cpc':
+                              currentValue = clicks > 0 ? String(spend / clicks) : '0';
+                              unit = '$';
+                              break;
+                            case 'cpm':
+                              currentValue = impressions > 0 ? String((spend / impressions) * 1000) : '0';
+                              unit = '$';
+                              break;
+                            case 'cvr':
+                              currentValue = clicks > 0 ? String((conversions / clicks) * 100) : '0';
+                              unit = '%';
+                              break;
+                            case 'cpa':
+                              currentValue = conversions > 0 ? String(spend / conversions) : '0';
+                              unit = '$';
+                              break;
+                            case 'cpl':
+                              currentValue = leads > 0 ? String(spend / leads) : '0';
+                              unit = '$';
+                              break;
+                            case 'er':
+                              currentValue = impressions > 0 ? String((engagements / impressions) * 100) : '0';
+                              unit = '%';
+                              break;
+                            case 'roi':
+                              if (aggregated?.hasRevenueTracking) {
+                                const revenue = conversions * (aggregated.conversionValue || 0);
+                                const profit = revenue - spend;
+                                currentValue = spend > 0 ? String((profit / spend) * 100) : '0';
+                                unit = '%';
+                              }
+                              break;
+                            case 'roas':
+                              if (aggregated?.hasRevenueTracking) {
+                                const revenue = conversions * (aggregated.conversionValue || 0);
+                                currentValue = spend > 0 ? String(revenue / spend) : '0';
+                                unit = 'x';
+                              }
+                              break;
+                            case 'totalRevenue':
+                              if (aggregated?.hasRevenueTracking) {
+                                currentValue = String(conversions * (aggregated.conversionValue || 0));
+                                unit = '$';
+                              }
+                              break;
+                            case 'profit':
+                              if (aggregated?.hasRevenueTracking) {
+                                const revenue = conversions * (aggregated.conversionValue || 0);
+                                currentValue = String(revenue - spend);
+                                unit = '$';
+                              }
+                              break;
+                            case 'profitMargin':
+                              if (aggregated?.hasRevenueTracking) {
+                                const revenue = conversions * (aggregated.conversionValue || 0);
+                                const profit = revenue - spend;
+                                currentValue = revenue > 0 ? String((profit / revenue) * 100) : '0';
+                                unit = '%';
+                              }
+                              break;
+                            case 'revenuePerLead':
+                              if (aggregated?.hasRevenueTracking) {
+                                const revenue = conversions * (aggregated.conversionValue || 0);
+                                currentValue = leads > 0 ? String(revenue / leads) : '0';
+                                unit = '$';
+                              }
+                              break;
+                          }
+                        }
+                      } else if (aggregated) {
+                        // Use aggregated metrics for "All Campaigns"
+                        switch(metricKey) {
+                          case 'impressions':
+                            currentValue = String(aggregated.totalImpressions || 0);
+                            break;
+                          case 'reach':
+                            currentValue = String(aggregated.totalReach || 0);
+                            break;
+                          case 'clicks':
+                            currentValue = String(aggregated.totalClicks || 0);
+                            break;
+                          case 'engagements':
+                            currentValue = String(aggregated.totalEngagements || 0);
+                            break;
+                          case 'spend':
+                            currentValue = String(aggregated.totalSpend || 0);
+                            unit = '$';
+                            break;
+                          case 'conversions':
+                            currentValue = String(aggregated.totalConversions || 0);
+                            break;
+                          case 'leads':
+                            currentValue = String(aggregated.totalLeads || 0);
+                            break;
+                          case 'videoViews':
+                            currentValue = String(aggregated.totalVideoViews || 0);
+                            break;
+                          case 'viralImpressions':
+                            currentValue = String(aggregated.totalViralImpressions || 0);
+                            break;
+                          case 'ctr':
+                            currentValue = String(aggregated.ctr || 0);
+                            unit = '%';
+                            break;
+                          case 'cpc':
+                            currentValue = String(aggregated.cpc || 0);
+                            unit = '$';
+                            break;
+                          case 'cpm':
+                            currentValue = String(aggregated.cpm || 0);
+                            unit = '$';
+                            break;
+                          case 'cvr':
+                            currentValue = String(aggregated.cvr || 0);
+                            unit = '%';
+                            break;
+                          case 'cpa':
+                            currentValue = String(aggregated.cpa || 0);
+                            unit = '$';
+                            break;
+                          case 'cpl':
+                            currentValue = String(aggregated.cpl || 0);
+                            unit = '$';
+                            break;
+                          case 'er':
+                            currentValue = String(aggregated.er || 0);
+                            unit = '%';
+                            break;
+                          case 'roi':
+                            currentValue = String(aggregated.roi || 0);
+                            unit = '%';
+                            break;
+                          case 'roas':
+                            currentValue = String(aggregated.roas || 0);
+                            unit = 'x';
+                            break;
+                          case 'totalRevenue':
+                            currentValue = String(aggregated.totalRevenue || 0);
+                            unit = '$';
+                            break;
+                          case 'profit':
+                            currentValue = String(aggregated.profit || 0);
+                            unit = '$';
+                            break;
+                          case 'profitMargin':
+                            currentValue = String(aggregated.profitMargin || 0);
+                            unit = '%';
+                            break;
+                          case 'revenuePerLead':
+                            currentValue = String(aggregated.revenuePerLead || 0);
+                            unit = '$';
+                            break;
+                        }
                       }
-                    }
-                    setKpiForm({ ...kpiForm, metric: value, currentValue, unit });
+                      
+                      return { value: currentValue, unit };
+                    };
+                    
+                    const result = getMetricValue(value);
+                    setKpiForm({ ...kpiForm, metric: value, currentValue: result.value, unit: result.unit });
                   }}
                 >
                   <SelectTrigger id="kpi-metric" data-testid="select-kpi-metric">
@@ -5301,7 +5424,104 @@ export default function LinkedInAnalytics() {
                 <Select
                   value={kpiForm.applyTo}
                   onValueChange={(value) => {
-                    setKpiForm({ ...kpiForm, applyTo: value, specificCampaignId: value === 'all' ? '' : kpiForm.specificCampaignId });
+                    // Update apply to and clear campaign if switching to 'all'
+                    const updatedForm = { 
+                      ...kpiForm, 
+                      applyTo: value, 
+                      specificCampaignId: value === 'all' ? '' : kpiForm.specificCampaignId 
+                    };
+                    setKpiForm(updatedForm);
+                    
+                    // Re-calculate current value if metric is already selected and switching to 'all'
+                    if (value === 'all' && kpiForm.metric && aggregated) {
+                      let currentValue = '';
+                      let unit = kpiForm.unit || '';
+                      
+                      switch(kpiForm.metric) {
+                        case 'impressions':
+                          currentValue = String(aggregated.totalImpressions || 0);
+                          break;
+                        case 'reach':
+                          currentValue = String(aggregated.totalReach || 0);
+                          break;
+                        case 'clicks':
+                          currentValue = String(aggregated.totalClicks || 0);
+                          break;
+                        case 'engagements':
+                          currentValue = String(aggregated.totalEngagements || 0);
+                          break;
+                        case 'spend':
+                          currentValue = String(aggregated.totalSpend || 0);
+                          unit = '$';
+                          break;
+                        case 'conversions':
+                          currentValue = String(aggregated.totalConversions || 0);
+                          break;
+                        case 'leads':
+                          currentValue = String(aggregated.totalLeads || 0);
+                          break;
+                        case 'videoViews':
+                          currentValue = String(aggregated.totalVideoViews || 0);
+                          break;
+                        case 'viralImpressions':
+                          currentValue = String(aggregated.totalViralImpressions || 0);
+                          break;
+                        case 'ctr':
+                          currentValue = String(aggregated.ctr || 0);
+                          unit = '%';
+                          break;
+                        case 'cpc':
+                          currentValue = String(aggregated.cpc || 0);
+                          unit = '$';
+                          break;
+                        case 'cpm':
+                          currentValue = String(aggregated.cpm || 0);
+                          unit = '$';
+                          break;
+                        case 'cvr':
+                          currentValue = String(aggregated.cvr || 0);
+                          unit = '%';
+                          break;
+                        case 'cpa':
+                          currentValue = String(aggregated.cpa || 0);
+                          unit = '$';
+                          break;
+                        case 'cpl':
+                          currentValue = String(aggregated.cpl || 0);
+                          unit = '$';
+                          break;
+                        case 'er':
+                          currentValue = String(aggregated.er || 0);
+                          unit = '%';
+                          break;
+                        case 'roi':
+                          currentValue = String(aggregated.roi || 0);
+                          unit = '%';
+                          break;
+                        case 'roas':
+                          currentValue = String(aggregated.roas || 0);
+                          unit = 'x';
+                          break;
+                        case 'totalRevenue':
+                          currentValue = String(aggregated.totalRevenue || 0);
+                          unit = '$';
+                          break;
+                        case 'profit':
+                          currentValue = String(aggregated.profit || 0);
+                          unit = '$';
+                          break;
+                        case 'profitMargin':
+                          currentValue = String(aggregated.profitMargin || 0);
+                          unit = '%';
+                          break;
+                        case 'revenuePerLead':
+                          currentValue = String(aggregated.revenuePerLead || 0);
+                          unit = '$';
+                          break;
+                      }
+                      
+                      setKpiForm(prev => ({ ...prev, applyTo: value, specificCampaignId: '', currentValue, unit }));
+                    }
                   }}
                 >
                   <SelectTrigger id="kpi-apply-to">
@@ -5323,7 +5543,129 @@ export default function LinkedInAnalytics() {
                   <Select
                     value={kpiForm.specificCampaignId}
                     onValueChange={(value) => {
+                      // Update campaign and re-calculate current value if metric is already selected
                       setKpiForm({ ...kpiForm, specificCampaignId: value });
+                      
+                      // Trigger metric auto-fill if a metric is already selected
+                      if (kpiForm.metric && metrics) {
+                        const campaignData = metrics.find((m: any) => m.campaignName === value);
+                        
+                        if (campaignData) {
+                          let currentValue = '';
+                          let unit = kpiForm.unit || '';
+                          
+                          const impressions = parseFloat(campaignData.impressions || '0');
+                          const clicks = parseFloat(campaignData.clicks || '0');
+                          const spend = parseFloat(campaignData.spend || '0');
+                          const conversions = parseFloat(campaignData.conversions || '0');
+                          const leads = parseFloat(campaignData.leads || '0');
+                          const engagements = parseFloat(campaignData.engagements || '0');
+                          
+                          switch(kpiForm.metric) {
+                            case 'impressions':
+                              currentValue = String(impressions);
+                              break;
+                            case 'reach':
+                              currentValue = String(parseFloat(campaignData.reach || '0'));
+                              break;
+                            case 'clicks':
+                              currentValue = String(clicks);
+                              break;
+                            case 'engagements':
+                              currentValue = String(engagements);
+                              break;
+                            case 'spend':
+                              currentValue = String(spend);
+                              unit = '$';
+                              break;
+                            case 'conversions':
+                              currentValue = String(conversions);
+                              break;
+                            case 'leads':
+                              currentValue = String(leads);
+                              break;
+                            case 'videoViews':
+                              currentValue = String(parseFloat(campaignData.videoViews || '0'));
+                              break;
+                            case 'viralImpressions':
+                              currentValue = String(parseFloat(campaignData.viralImpressions || '0'));
+                              break;
+                            case 'ctr':
+                              currentValue = impressions > 0 ? String((clicks / impressions) * 100) : '0';
+                              unit = '%';
+                              break;
+                            case 'cpc':
+                              currentValue = clicks > 0 ? String(spend / clicks) : '0';
+                              unit = '$';
+                              break;
+                            case 'cpm':
+                              currentValue = impressions > 0 ? String((spend / impressions) * 1000) : '0';
+                              unit = '$';
+                              break;
+                            case 'cvr':
+                              currentValue = clicks > 0 ? String((conversions / clicks) * 100) : '0';
+                              unit = '%';
+                              break;
+                            case 'cpa':
+                              currentValue = conversions > 0 ? String(spend / conversions) : '0';
+                              unit = '$';
+                              break;
+                            case 'cpl':
+                              currentValue = leads > 0 ? String(spend / leads) : '0';
+                              unit = '$';
+                              break;
+                            case 'er':
+                              currentValue = impressions > 0 ? String((engagements / impressions) * 100) : '0';
+                              unit = '%';
+                              break;
+                            case 'roi':
+                              if (aggregated?.hasRevenueTracking) {
+                                const revenue = conversions * (aggregated.conversionValue || 0);
+                                const profit = revenue - spend;
+                                currentValue = spend > 0 ? String((profit / spend) * 100) : '0';
+                                unit = '%';
+                              }
+                              break;
+                            case 'roas':
+                              if (aggregated?.hasRevenueTracking) {
+                                const revenue = conversions * (aggregated.conversionValue || 0);
+                                currentValue = spend > 0 ? String(revenue / spend) : '0';
+                                unit = 'x';
+                              }
+                              break;
+                            case 'totalRevenue':
+                              if (aggregated?.hasRevenueTracking) {
+                                currentValue = String(conversions * (aggregated.conversionValue || 0));
+                                unit = '$';
+                              }
+                              break;
+                            case 'profit':
+                              if (aggregated?.hasRevenueTracking) {
+                                const revenue = conversions * (aggregated.conversionValue || 0);
+                                currentValue = String(revenue - spend);
+                                unit = '$';
+                              }
+                              break;
+                            case 'profitMargin':
+                              if (aggregated?.hasRevenueTracking) {
+                                const revenue = conversions * (aggregated.conversionValue || 0);
+                                const profit = revenue - spend;
+                                currentValue = revenue > 0 ? String((profit / revenue) * 100) : '0';
+                                unit = '%';
+                              }
+                              break;
+                            case 'revenuePerLead':
+                              if (aggregated?.hasRevenueTracking) {
+                                const revenue = conversions * (aggregated.conversionValue || 0);
+                                currentValue = leads > 0 ? String(revenue / leads) : '0';
+                                unit = '$';
+                              }
+                              break;
+                          }
+                          
+                          setKpiForm(prev => ({ ...prev, specificCampaignId: value, currentValue, unit }));
+                        }
+                      }
                     }}
                   >
                     <SelectTrigger id="kpi-campaign">

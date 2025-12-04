@@ -72,10 +72,15 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   const gap = ((targetValue - currentValue) / targetValue) * 100;
   const gapText = gap > 0 ? `${Math.abs(gap).toFixed(1)}% below` : `${Math.abs(gap).toFixed(1)}% above`;
 
+  // Build the correct URL based on whether KPI is campaign-specific
+  const actionUrl = kpi.campaignId 
+    ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
+    : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
+  
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'performance-alert',
-    actionUrl: `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
+    actionUrl
   });
 
   const notification: InsertNotification = {

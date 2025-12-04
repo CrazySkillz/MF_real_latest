@@ -148,11 +148,12 @@ export function shouldTriggerAlert(kpi: KPI): boolean {
   const alertThreshold = parseFloat(kpi.alertThreshold.toString());
   const alertCondition = kpi.alertCondition || 'below';
 
+  // Trigger when threshold is MET or crossed (using <= and >=)
   switch (alertCondition) {
     case 'below':
-      return currentValue < alertThreshold;
+      return currentValue <= alertThreshold;  // Triggers when at or below threshold
     case 'above':
-      return currentValue > alertThreshold;
+      return currentValue >= alertThreshold;  // Triggers when at or above threshold
     case 'equals':
       return Math.abs(currentValue - alertThreshold) < 0.01;
     default:

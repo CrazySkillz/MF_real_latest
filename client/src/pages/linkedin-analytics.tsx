@@ -5069,30 +5069,30 @@ export default function LinkedInAnalytics() {
                       let unit = '';
                       
                       // Check if specific campaign is selected
-                      if (kpiForm.applyTo === 'specific' && kpiForm.specificCampaignId && metrics) {
-                        // Find campaign-specific metrics
-                        const campaignData = metrics.find((m: any) => m.campaignName === kpiForm.specificCampaignId);
+                      if (kpiForm.applyTo === 'specific' && kpiForm.specificCampaignId) {
+                        // Get campaign-specific metrics using the helper function
+                        const campaignData = getCampaignSpecificMetrics(kpiForm.specificCampaignId);
                         
                         if (campaignData) {
-                          const impressions = parseFloat(campaignData.impressions || '0');
-                          const clicks = parseFloat(campaignData.clicks || '0');
-                          const spend = parseFloat(campaignData.spend || '0');
-                          const conversions = parseFloat(campaignData.conversions || '0');
-                          const leads = parseFloat(campaignData.leads || '0');
-                          const engagements = parseFloat(campaignData.engagements || '0');
+                          // Use pre-calculated values from getCampaignSpecificMetrics
+                          const impressions = campaignData.impressions || 0;
+                          const clicks = campaignData.clicks || 0;
+                          const spend = campaignData.spend || 0;
+                          const conversions = campaignData.conversions || 0;
+                          const leads = campaignData.leads || 0;
                           
                           switch(metricKey) {
                             case 'impressions':
                               currentValue = String(impressions);
                               break;
                             case 'reach':
-                              currentValue = String(parseFloat(campaignData.reach || '0'));
+                              currentValue = String(campaignData.reach || 0);
                               break;
                             case 'clicks':
                               currentValue = String(clicks);
                               break;
                             case 'engagements':
-                              currentValue = String(engagements);
+                              currentValue = String(campaignData.engagements || 0);
                               break;
                             case 'spend':
                               currentValue = String(spend);
@@ -5105,37 +5105,37 @@ export default function LinkedInAnalytics() {
                               currentValue = String(leads);
                               break;
                             case 'videoViews':
-                              currentValue = String(parseFloat(campaignData.videoViews || '0'));
+                              currentValue = String(campaignData.videoViews || 0);
                               break;
                             case 'viralImpressions':
-                              currentValue = String(parseFloat(campaignData.viralImpressions || '0'));
+                              currentValue = String(campaignData.viralImpressions || 0);
                               break;
                             case 'ctr':
-                              currentValue = impressions > 0 ? String((clicks / impressions) * 100) : '0';
+                              currentValue = String(campaignData.ctr || 0);
                               unit = '%';
                               break;
                             case 'cpc':
-                              currentValue = clicks > 0 ? String(spend / clicks) : '0';
+                              currentValue = String(campaignData.cpc || 0);
                               unit = '$';
                               break;
                             case 'cpm':
-                              currentValue = impressions > 0 ? String((spend / impressions) * 1000) : '0';
+                              currentValue = String(campaignData.cpm || 0);
                               unit = '$';
                               break;
                             case 'cvr':
-                              currentValue = clicks > 0 ? String((conversions / clicks) * 100) : '0';
+                              currentValue = String(campaignData.cvr || 0);
                               unit = '%';
                               break;
                             case 'cpa':
-                              currentValue = conversions > 0 ? String(spend / conversions) : '0';
+                              currentValue = String(campaignData.cpa || 0);
                               unit = '$';
                               break;
                             case 'cpl':
-                              currentValue = leads > 0 ? String(spend / leads) : '0';
+                              currentValue = String(campaignData.cpl || 0);
                               unit = '$';
                               break;
                             case 'er':
-                              currentValue = impressions > 0 ? String((engagements / impressions) * 100) : '0';
+                              currentValue = String(campaignData.er || 0);
                               unit = '%';
                               break;
                             case 'roi':

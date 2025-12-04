@@ -5547,8 +5547,8 @@ export default function LinkedInAnalytics() {
                       setKpiForm({ ...kpiForm, specificCampaignId: value });
                       
                       // Trigger metric auto-fill if a metric is already selected
-                      if (kpiForm.metric && metrics) {
-                        const campaignData = metrics.find((m: any) => m.campaignName === value);
+                      if (kpiForm.metric) {
+                        const campaignData = getCampaignSpecificMetrics(value);
                         
                         if (campaignData) {
                           let currentValue = '';

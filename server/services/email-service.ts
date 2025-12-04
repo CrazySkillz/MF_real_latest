@@ -44,12 +44,15 @@ class EmailService {
       case 'mailgun':
         this.transporter = nodemailer.createTransport({
           host: process.env.MAILGUN_SMTP_HOST || 'smtp.mailgun.org',
-          port: 587,
+          port: parseInt(process.env.MAILGUN_SMTP_PORT || '587'),
           secure: false,
           auth: {
             user: process.env.MAILGUN_SMTP_USER,
             pass: process.env.MAILGUN_SMTP_PASS || process.env.EMAIL_SERVICE_API_KEY,
           },
+          connectionTimeout: 10000, // 10 seconds
+          greetingTimeout: 10000,
+          socketTimeout: 10000,
         });
         break;
       

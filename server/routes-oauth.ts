@@ -3269,6 +3269,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Connect Meta/Facebook Ads account in test mode
    * For production, this would be replaced with real OAuth flow
    */
+  // Test endpoint to trigger KPI alerts manually
+  app.post("/api/kpis/test-alerts", async (req, res) => {
+    try {
+      const { checkPerformanceAlerts } = await import("./kpi-scheduler");
+      await checkPerformanceAlerts();
+      res.json({ success: true, message: "Alert check completed - check bell icon for notifications" });
+    } catch (error) {
+      console.error("[Test Alerts] Error:", error);
+      res.status(500).json({ success: false, error: String(error) });
+    }
+  });
+
   app.post("/api/meta/:campaignId/connect-test", async (req, res) => {
     try {
       const { campaignId } = req.params;

@@ -50,6 +50,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete ALL notifications (for cleanup/reset)
+  app.delete("/api/notifications/all/clear", async (req, res) => {
+    try {
+      console.log(`[Notifications API] Deleting ALL notifications...`);
+      
+      const { db } = await import("./db");
+      const { notifications } = await import("../shared/schema");
+      
+      // Count before deletion
+      const before = await db.select().from(notifications);
+      const beforeCount = before.length;
+      
+      // Delete all notifications
+      await db.delete(notifications);
+      
+      console.log(`[Notifications API] ✅ Deleted ${beforeCount} notifications`);
+      
+      res.json({ 
+        success: true, 
+        message: `Deleted ${beforeCount} notifications`,
+        deletedCount: beforeCount
+      });
+    } catch (error) {
+      console.error('[Notifications API] Error deleting all notifications:', error);
+      res.status(500).json({ message: "Failed to delete all notifications" });
+    }
+  });
+  
   app.delete("/api/notifications/:id", async (req, res) => {
     try {
       const { id } = req.params;

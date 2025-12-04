@@ -61,6 +61,20 @@ export default function Navigation() {
     },
   });
   
+  // Delete all notifications mutation
+  const deleteAllNotificationsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/notifications/all/clear', {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete all notifications');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    },
+  });
+  
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'alert':
@@ -121,16 +135,32 @@ export default function Navigation() {
             <PopoverContent className="w-[400px] p-0" align="end">
               <div className="flex items-center justify-between p-4 border-b">
                 <h3 className="font-semibold text-sm">Notifications</h3>
-                {unreadCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs"
-                    onClick={() => markAllAsReadMutation.mutate()}
-                  >
-                    Mark all as read
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => markAllAsReadMutation.mutate()}
+                    >
+                      Mark all as read
+                    </Button>
+                  )}
+                  {notifications.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                      onClick={() => {
+                        if (confirm(`Delete all ${notifications.length} notifications? This cannot be undone.`)) {
+                          deleteAllNotificationsMutation.mutate();
+                        }
+                      }}
+                    >
+                      Clear all
+                    </Button>
+                  )}
+                </div>
               </div>
               <ScrollArea className="h-[400px]">
                 {notifications.length === 0 ? (

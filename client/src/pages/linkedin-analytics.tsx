@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent, Mail } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -924,6 +924,27 @@ export default function LinkedInAnalytics() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete report",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Send test report email mutation
+  const sendTestEmailMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const res = await apiRequest('POST', `/api/platforms/linkedin/reports/${reportId}/send-test`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Test Email Sent",
+        description: "The test report email has been sent successfully. Check your inbox!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test email",
         variant: "destructive",
       });
     }
@@ -4797,6 +4818,20 @@ export default function LinkedInAnalytics() {
                               <Button variant="outline" size="sm" data-testid={`button-download-${report.id}`}>
                                 Download
                               </Button>
+                              {/* Show Send Test Email button only for scheduled reports with recipients */}
+                              {report.scheduleFrequency && report.scheduleRecipients && report.scheduleRecipients.length > 0 && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  data-testid={`button-test-email-${report.id}`}
+                                  onClick={() => sendTestEmailMutation.mutate(report.id)}
+                                  disabled={sendTestEmailMutation.isPending}
+                                  className="gap-2"
+                                >
+                                  <Mail className="w-4 h-4" />
+                                  {sendTestEmailMutation.isPending ? 'Sending...' : 'Send Test Email'}
+                                </Button>
+                              )}
                               <Button 
                                 variant="ghost" 
                                 size="sm" 

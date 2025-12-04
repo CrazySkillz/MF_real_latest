@@ -55,7 +55,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   const notification: InsertNotification = {
     title: `⚠️ KPI Alert: ${kpi.name}`,
     message: `Current value (${kpi.currentValue}${kpi.unit}) is ${gapText} your target (${kpi.targetValue}${kpi.unit}). ${alertThreshold ? `Alert threshold: ${alertThreshold}${kpi.unit}` : ''}`,
-    type: 'warning',
+    type: 'performance-alert',
     priority: kpi.priority === 'high' ? 'high' : 'normal',
     campaignId: kpi.campaignId || undefined,
     campaignName: undefined,

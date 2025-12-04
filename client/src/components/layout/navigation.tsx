@@ -3,14 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useState } from "react";
 import type { Notification } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 
 export default function Navigation() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const [showClearAllDialog, setShowClearAllDialog] = useState(false);
   
   // Fetch notifications to get unread count
   const { data: allNotifications = [] } = useQuery<Notification[]>({
@@ -97,9 +109,19 @@ export default function Navigation() {
       markAsReadMutation.mutate(notification.id);
     }
     
+    // Parse metadata if it's a string
+    let metadata = notification.metadata;
+    if (typeof metadata === 'string') {
+      try {
+        metadata = JSON.parse(metadata);
+      } catch (e) {
+        console.error('Failed to parse notification metadata:', e);
+      }
+    }
+    
     // Navigate to KPI if metadata has actionUrl
-    if (notification.metadata && typeof notification.metadata === 'object' && 'actionUrl' in notification.metadata) {
-      const actionUrl = notification.metadata.actionUrl as string;
+    if (metadata && typeof metadata === 'object' && 'actionUrl' in metadata) {
+      const actionUrl = metadata.actionUrl as string;
       setLocation(actionUrl);
     } else {
       setLocation('/linkedin-analytics?tab=kpis');
@@ -151,11 +173,7 @@ export default function Navigation() {
                       variant="ghost"
                       size="sm"
                       className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
-                      onClick={() => {
-                        if (confirm(`Delete all ${notifications.length} notifications? This cannot be undone.`)) {
-                          deleteAllNotificationsMutation.mutate();
-                        }
-                      }}
+                      onClick={() => setShowClearAllDialog(true)}
                     >
                       Clear all
                     </Button>
@@ -219,6 +237,30 @@ export default function Navigation() {
           </div>
         </div>
       </div>
+      
+      {/* Clear All Confirmation Dialog */}
+      <AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all notifications?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all {notifications.length} notifications. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                deleteAllNotificationsMutation.mutate();
+                setShowClearAllDialog(false);
+              }}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </nav>
   );
 }

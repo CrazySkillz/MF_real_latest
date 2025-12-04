@@ -331,11 +331,29 @@ export async function checkScheduledReports(): Promise<void> {
   try {
     console.log('[Report Scheduler] Checking for scheduled reports...');
 
-    // Get all active reports with schedules
-    const allReports = await storage.getPlatformReports('linkedin');
+    // Get all active reports with schedules - try both storage methods
+    let allReports: any[] = [];
     
-    if (!allReports || allReports.length === 0) {
-      console.log('[Report Scheduler] No reports found');
+    try {
+      // Try LinkedIn-specific reports first
+      const linkedInReports = await storage.getLinkedInReports();
+      allReports = allReports.concat(linkedInReports);
+      console.log(`[Report Scheduler] Found ${linkedInReports.length} LinkedIn reports`);
+    } catch (error) {
+      console.log('[Report Scheduler] No LinkedIn reports found');
+    }
+    
+    try {
+      // Also check platform reports
+      const platformReports = await storage.getPlatformReports('linkedin');
+      allReports = allReports.concat(platformReports);
+      console.log(`[Report Scheduler] Found ${platformReports.length} platform reports`);
+    } catch (error) {
+      console.log('[Report Scheduler] No platform reports found');
+    }
+    
+    if (allReports.length === 0) {
+      console.log('[Report Scheduler] No reports found in either storage');
       return;
     }
 
@@ -397,11 +415,44 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       return false;
     }
     
-    const allReports = await storage.getPlatformReports('linkedin');
-    const report = allReports.find(r => r.id === reportId);
+    // Try both storage methods - LinkedIn-specific first, then platform-generic
+    console.log(`[Report Scheduler] Fetching report from storage...`);
+    
+    let report;
+    try {
+      // First try LinkedIn-specific reports (used by /api/linkedin/reports)
+      report = await storage.getLinkedInReport(reportId);
+      console.log(`[Report Scheduler] Found report via getLinkedInReport: ${report ? 'YES' : 'NO'}`);
+    } catch (error) {
+      console.log(`[Report Scheduler] LinkedIn report fetch failed, trying platform reports...`);
+    }
+    
+    // If not found, try platform reports
+    if (!report) {
+      const allReports = await storage.getPlatformReports('linkedin');
+      report = allReports.find(r => r.id === reportId);
+      console.log(`[Report Scheduler] Found report via getPlatformReports: ${report ? 'YES' : 'NO'}`);
+    }
 
     if (!report) {
-      console.error(`[Report Scheduler] Report not found: ${reportId}`);
+      console.error(`[Report Scheduler] Report not found in either storage method: ${reportId}`);
+      
+      // Debug: List all available reports
+      try {
+        const linkedInReports = await storage.getLinkedInReports();
+        const platformReports = await storage.getPlatformReports('linkedin');
+        console.log(`[Report Scheduler] DEBUG - Available LinkedIn reports: ${linkedInReports.length}`);
+        console.log(`[Report Scheduler] DEBUG - Available platform reports: ${platformReports.length}`);
+        if (linkedInReports.length > 0) {
+          console.log(`[Report Scheduler] DEBUG - LinkedIn report IDs:`, linkedInReports.map(r => r.id));
+        }
+        if (platformReports.length > 0) {
+          console.log(`[Report Scheduler] DEBUG - Platform report IDs:`, platformReports.map(r => r.id));
+        }
+      } catch (debugError) {
+        console.error(`[Report Scheduler] DEBUG - Error listing reports:`, debugError);
+      }
+      
       return false;
     }
 

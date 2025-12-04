@@ -3655,60 +3655,6 @@ export default function LinkedInAnalytics() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 flex-wrap mb-1">
                                   <div className="flex items-center gap-2">
-                                    {/* Color-coded Status Indicator */}
-                                    {(() => {
-                                      const currentVal = parseFloat(kpi.currentValue || '0');
-                                      const targetVal = parseFloat(kpi.targetValue || '0');
-                                      if (targetVal === 0) return null;
-                                      
-                                      const ratio = currentVal / targetVal;
-                                      const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(m => 
-                                        kpi.metric?.toLowerCase().includes(m) || kpi.name?.toLowerCase().includes(m)
-                                      );
-                                      
-                                      let statusColor = '';
-                                      let statusIcon = '';
-                                      
-                                      if (lowerIsBetter) {
-                                        if (ratio <= 0.8) {
-                                          statusColor = 'text-green-500';
-                                          statusIcon = '🟢';
-                                        } else if (ratio <= 1.0) {
-                                          statusColor = 'text-blue-500';
-                                          statusIcon = '🔵';
-                                        } else if (ratio <= 1.2) {
-                                          statusColor = 'text-yellow-500';
-                                          statusIcon = '🟡';
-                                        } else {
-                                          statusColor = 'text-red-500';
-                                          statusIcon = '🔴';
-                                        }
-                                      } else {
-                                        if (ratio >= 1.2) {
-                                          statusColor = 'text-green-500';
-                                          statusIcon = '🟢';
-                                        } else if (ratio >= 1.0) {
-                                          statusColor = 'text-blue-500';
-                                          statusIcon = '🔵';
-                                        } else if (ratio >= 0.8) {
-                                          statusColor = 'text-yellow-500';
-                                          statusIcon = '🟡';
-                                        } else {
-                                          statusColor = 'text-red-500';
-                                          statusIcon = '🔴';
-                                        }
-                                      }
-                                      
-                                      return (
-                                        <span className={`text-xl ${statusColor}`} title={
-                                          ratio >= 1.2 || (lowerIsBetter && ratio <= 0.8) ? 'Excellent' :
-                                          ratio >= 1.0 || (lowerIsBetter && ratio <= 1.0) ? 'Good' :
-                                          ratio >= 0.8 || (lowerIsBetter && ratio <= 1.2) ? 'Fair' : 'Poor'
-                                        }>
-                                          {statusIcon}
-                                        </span>
-                                      );
-                                    })()}
                                     <CardTitle className="text-lg">{kpi.name}</CardTitle>
                                     {/* Red Dot Indicator for Active Alerts */}
                                     {kpi.alertsEnabled && (() => {

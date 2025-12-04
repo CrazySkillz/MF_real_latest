@@ -28,6 +28,8 @@ class EmailService {
   private initializeTransporter() {
     const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
     
+    console.log(`[Email Service] Initializing with provider: ${emailProvider}`);
+    
     switch (emailProvider.toLowerCase()) {
       case 'sendgrid':
         this.transporter = nodemailer.createTransport({
@@ -42,12 +44,22 @@ class EmailService {
         break;
       
       case 'mailgun':
+        const smtpHost = process.env.MAILGUN_SMTP_HOST || 'smtp.mailgun.org';
+        const smtpPort = parseInt(process.env.MAILGUN_SMTP_PORT || '587');
+        const smtpUser = process.env.MAILGUN_SMTP_USER;
+        
+        console.log(`[Email Service] Mailgun SMTP Config:`);
+        console.log(`  Host: ${smtpHost}`);
+        console.log(`  Port: ${smtpPort}`);
+        console.log(`  User: ${smtpUser ? smtpUser.substring(0, 20) + '...' : 'NOT SET'}`);
+        console.log(`  Pass: ${process.env.MAILGUN_SMTP_PASS ? '***SET***' : 'NOT SET'}`);
+        
         this.transporter = nodemailer.createTransport({
-          host: process.env.MAILGUN_SMTP_HOST || 'smtp.mailgun.org',
-          port: parseInt(process.env.MAILGUN_SMTP_PORT || '587'),
+          host: smtpHost,
+          port: smtpPort,
           secure: false,
           auth: {
-            user: process.env.MAILGUN_SMTP_USER,
+            user: smtpUser,
             pass: process.env.MAILGUN_SMTP_PASS || process.env.EMAIL_SERVICE_API_KEY,
           },
           connectionTimeout: 10000, // 10 seconds
@@ -75,6 +87,14 @@ class EmailService {
     try {
       const from = process.env.EMAIL_FROM_ADDRESS || 'alerts@performancecore.app';
       
+      // Try Mailgun HTTP API first if configured (more reliable than SMTP)
+      if (process.env.EMAIL_PROVIDER === 'mailgun' && process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) {
+        console.log('[Email Service] Using Mailgun HTTP API');
+        return await this.sendViaMailgunAPI(from, options);
+      }
+      
+      // Fall back to SMTP
+      console.log('[Email Service] Using SMTP transport');
       const mailOptions = {
         from,
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
@@ -84,10 +104,52 @@ class EmailService {
       };
 
       await this.transporter.sendMail(mailOptions);
-      console.log(`Email sent successfully to ${mailOptions.to}`);
+      console.log(`[Email Service] ✅ Email sent successfully to ${mailOptions.to}`);
       return true;
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error('[Email Service] ❌ Error sending email:', error);
+      return false;
+    }
+  }
+
+  private async sendViaMailgunAPI(from: string, options: EmailOptions): Promise<boolean> {
+    try {
+      const domain = process.env.MAILGUN_DOMAIN;
+      const apiKey = process.env.MAILGUN_API_KEY;
+      const region = process.env.MAILGUN_REGION || 'us'; // 'us' or 'eu'
+      const baseUrl = region === 'eu' 
+        ? 'https://api.eu.mailgun.net/v3'
+        : 'https://api.mailgun.net/v3';
+
+      const formData = new URLSearchParams();
+      formData.append('from', from);
+      formData.append('to', Array.isArray(options.to) ? options.to.join(',') : options.to);
+      formData.append('subject', options.subject);
+      formData.append('html', options.html);
+      if (options.text) {
+        formData.append('text', options.text);
+      }
+
+      const response = await fetch(`${baseUrl}/${domain}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${Buffer.from(`api:${apiKey}`).toString('base64')}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: formData.toString()
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Email Service] Mailgun HTTP API error:', response.status, errorText);
+        return false;
+      }
+
+      const result = await response.json();
+      console.log(`[Email Service] ✅ Email sent via Mailgun HTTP API:`, result.id);
+      return true;
+    } catch (error) {
+      console.error('[Email Service] ❌ Mailgun HTTP API error:', error);
       return false;
     }
   }

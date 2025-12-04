@@ -5070,11 +5070,39 @@ export default function LinkedInAnalytics() {
                       
                       // Check if specific campaign is selected
                       if (kpiForm.applyTo === 'specific' && kpiForm.specificCampaignId) {
-                        // Get campaign-specific metrics using the helper function
-                        console.log('[KPI Auto-fill] Looking for campaign:', kpiForm.specificCampaignId);
-                        console.log('[KPI Auto-fill] adsData:', adsData);
-                        const campaignData = getCampaignSpecificMetrics(kpiForm.specificCampaignId);
-                        console.log('[KPI Auto-fill] Campaign data found:', campaignData);
+                        // Get campaign-specific metrics from sessionData.metrics
+                        const { metrics } = (sessionData as any) || {};
+                        const campaignMetric = metrics?.find((m: any) => m.campaignName === kpiForm.specificCampaignId);
+                        
+                        // Calculate derived metrics from raw campaign data
+                        let campaignData = null;
+                        if (campaignMetric) {
+                          const imp = parseFloat(campaignMetric.impressions || 0);
+                          const clk = parseFloat(campaignMetric.clicks || 0);
+                          const spd = parseFloat(campaignMetric.spend || 0);
+                          const conv = parseFloat(campaignMetric.conversions || 0);
+                          const lds = parseFloat(campaignMetric.leads || 0);
+                          const eng = parseFloat(campaignMetric.engagements || 0);
+                          
+                          campaignData = {
+                            impressions: imp,
+                            clicks: clk,
+                            spend: spd,
+                            conversions: conv,
+                            leads: lds,
+                            engagements: eng,
+                            reach: parseFloat(campaignMetric.reach || 0),
+                            videoViews: parseFloat(campaignMetric.videoViews || 0),
+                            viralImpressions: parseFloat(campaignMetric.viralImpressions || 0),
+                            ctr: imp > 0 ? (clk / imp) * 100 : 0,
+                            cpc: clk > 0 ? spd / clk : 0,
+                            cpm: imp > 0 ? (spd / imp) * 1000 : 0,
+                            cvr: clk > 0 ? (conv / clk) * 100 : 0,
+                            cpa: conv > 0 ? spd / conv : 0,
+                            cpl: lds > 0 ? spd / lds : 0,
+                            er: imp > 0 ? (eng / imp) * 100 : 0
+                          };
+                        }
                         
                         if (campaignData) {
                           // Use pre-calculated values from getCampaignSpecificMetrics
@@ -5551,10 +5579,34 @@ export default function LinkedInAnalytics() {
                       
                       // Trigger metric auto-fill if a metric is already selected
                       if (kpiForm.metric) {
-                        console.log('[KPI Campaign Select] Selected campaign:', value);
-                        console.log('[KPI Campaign Select] adsData available:', !!adsData, Array.isArray(adsData) ? adsData.length : 0);
-                        const campaignData = getCampaignSpecificMetrics(value);
-                        console.log('[KPI Campaign Select] Campaign data:', campaignData);
+                        // Get campaign-specific metrics from sessionData.metrics
+                        const { metrics } = (sessionData as any) || {};
+                        const campaignMetric = metrics?.find((m: any) => m.campaignName === value);
+                        
+                        // Calculate derived metrics
+                        let campaignData = null;
+                        if (campaignMetric) {
+                          const imp = parseFloat(campaignMetric.impressions || 0);
+                          const clk = parseFloat(campaignMetric.clicks || 0);
+                          const spd = parseFloat(campaignMetric.spend || 0);
+                          const conv = parseFloat(campaignMetric.conversions || 0);
+                          const lds = parseFloat(campaignMetric.leads || 0);
+                          const eng = parseFloat(campaignMetric.engagements || 0);
+                          
+                          campaignData = {
+                            impressions: imp, clicks: clk, spend: spd, conversions: conv, leads: lds, engagements: eng,
+                            reach: parseFloat(campaignMetric.reach || 0),
+                            videoViews: parseFloat(campaignMetric.videoViews || 0),
+                            viralImpressions: parseFloat(campaignMetric.viralImpressions || 0),
+                            ctr: imp > 0 ? (clk / imp) * 100 : 0,
+                            cpc: clk > 0 ? spd / clk : 0,
+                            cpm: imp > 0 ? (spd / imp) * 1000 : 0,
+                            cvr: clk > 0 ? (conv / clk) * 100 : 0,
+                            cpa: conv > 0 ? spd / conv : 0,
+                            cpl: lds > 0 ? spd / lds : 0,
+                            er: imp > 0 ? (eng / imp) * 100 : 0
+                          };
+                        }
                         
                         if (campaignData) {
                           let currentValue = '';

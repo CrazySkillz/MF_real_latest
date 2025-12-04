@@ -6467,8 +6467,7 @@ export default function LinkedInAnalytics() {
                           </p>
                           <div className="flex gap-2 mt-3">
                             <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Overview</span>
-                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Platforms</span>
-                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Trends</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Metrics</span>
                             <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Insights</span>
                           </div>
                         </div>

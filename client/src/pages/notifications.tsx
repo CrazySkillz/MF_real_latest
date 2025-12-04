@@ -257,6 +257,7 @@ export default function Notifications() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="performance-alert">KPI Alerts</SelectItem>
                         <SelectItem value="info">Info</SelectItem>
                         <SelectItem value="success">Success</SelectItem>
                         <SelectItem value="warning">Warning</SelectItem>
@@ -398,6 +399,17 @@ export default function Notifications() {
                               )}
                               
                               <div>{getPriorityBadge(notification.priority)}</div>
+                              
+                              <div className="flex items-center space-x-1">
+                                <Clock className="w-3 h-3" />
+                                <span>
+                                  {isToday(new Date(notification.createdAt))
+                                    ? `Today at ${format(new Date(notification.createdAt), 'h:mm a')}`
+                                    : isYesterday(new Date(notification.createdAt))
+                                    ? `Yesterday at ${format(new Date(notification.createdAt), 'h:mm a')}`
+                                    : format(new Date(notification.createdAt), 'MMM d, yyyy h:mm a')}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -423,21 +435,25 @@ export default function Notifications() {
                                       
                                       markAsReadMutation.mutate(notification.id);
                                       
-                                      // Navigate to LinkedIn Analytics KPIs tab
-                                      const campaignId = notification.campaignId;
-                                      console.log('[View KPI] Using campaignId:', campaignId);
-                                      
-                                      if (campaignId) {
-                                        const url = `/campaigns/${campaignId}/linkedin-analytics?tab=kpis`;
-                                        console.log('[View KPI] Navigating to:', url);
-                                        setLocation(url);
+                                      // Use actionUrl from metadata if available, otherwise fallback
+                                      if (metadata?.actionUrl) {
+                                        console.log('[View KPI] Navigating to:', metadata.actionUrl);
+                                        setLocation(metadata.actionUrl);
                                       } else {
-                                        console.error('[View KPI] No campaignId found!');
-                                        toast({
-                                          title: "Error",
-                                          description: "Cannot navigate to KPI - campaign not found",
-                                          variant: "destructive",
-                                        });
+                                        // Fallback to campaign-based navigation
+                                        const campaignId = notification.campaignId;
+                                        if (campaignId) {
+                                          const url = `/campaigns/${campaignId}/linkedin-analytics?tab=kpis&highlight=${metadata?.kpiId || ''}`;
+                                          console.log('[View KPI] Fallback navigation to:', url);
+                                          setLocation(url);
+                                        } else {
+                                          console.error('[View KPI] No actionUrl or campaignId found!');
+                                          toast({
+                                            title: "Error",
+                                            description: "Cannot navigate to KPI - link not available",
+                                            variant: "destructive",
+                                          });
+                                        }
                                       }
                                     }}
                                     className="bg-purple-600 hover:bg-purple-700"

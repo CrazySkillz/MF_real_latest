@@ -13,10 +13,16 @@ export default function Navigation() {
   const [, setLocation] = useLocation();
   
   // Fetch notifications to get unread count
-  const { data: notifications = [] } = useQuery<Notification[]>({
+  const { data: allNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  // Filter to only show performance alerts (Option C: Hybrid)
+  // Hide old notification types: reminder, period-complete, trend-alert
+  const notifications = allNotifications.filter(n => 
+    n.type === 'alert' || n.type === 'performance-alert'
+  );
 
   const unreadCount = notifications.filter(n => !n.read).length;
   

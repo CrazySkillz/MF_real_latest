@@ -123,6 +123,7 @@ async function sendReportEmail(report: ReportWithCampaign, recipients: string[])
 
     const reportLabel = reportTypeLabels[report.reportType] || 'LinkedIn Analytics Report';
     const viewUrl = getReportViewUrl(report);
+    const baseUrl = process.env.APP_URL || 'https://performancecore.app';
 
     const frequencyLabels: Record<string, string> = {
       daily: 'Daily',

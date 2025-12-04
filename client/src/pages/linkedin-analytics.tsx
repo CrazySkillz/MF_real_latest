@@ -3009,7 +3009,7 @@ export default function LinkedInAnalytics() {
                             <ArrowUpDown className="w-4 h-4 text-slate-500" />
                             <span className="text-sm text-slate-600 dark:text-slate-400">Sort by:</span>
                             <Select value={sortBy} onValueChange={setSortBy}>
-                              <SelectTrigger className="w-[140px] h-9">
+                              <SelectTrigger className="w-[180px] h-9">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -3021,6 +3021,14 @@ export default function LinkedInAnalytics() {
                                 <SelectItem value="ctr">CTR (High to Low)</SelectItem>
                                 <SelectItem value="cpa">CPA (Low to High)</SelectItem>
                                 <SelectItem value="cvr">CVR (High to Low)</SelectItem>
+                                {/* Revenue-based sorting options - only show when conversion value is set */}
+                                {aggregated?.hasRevenueTracking === 1 && (
+                                  <>
+                                    <SelectItem value="revenue">Total Revenue (High to Low)</SelectItem>
+                                    <SelectItem value="roas">ROAS (High to Low)</SelectItem>
+                                    <SelectItem value="roi">ROI (High to Low)</SelectItem>
+                                  </>
+                                )}
                               </SelectContent>
                             </Select>
                           </div>
@@ -3092,6 +3100,30 @@ export default function LinkedInAnalytics() {
                                 const cvrA = (a.metrics.clicks || 0) > 0 ? ((a.metrics.conversions || 0) / (a.metrics.clicks || 0)) * 100 : 0;
                                 const cvrB = (b.metrics.clicks || 0) > 0 ? ((b.metrics.conversions || 0) / (b.metrics.clicks || 0)) * 100 : 0;
                                 return cvrB - cvrA;
+                              case 'revenue':
+                                // Total Revenue = Conversions × Conversion Value
+                                const conversionValue = aggregated?.conversionValue || 0;
+                                const revenueA = (a.metrics.conversions || 0) * conversionValue;
+                                const revenueB = (b.metrics.conversions || 0) * conversionValue;
+                                return revenueB - revenueA;
+                              case 'roas':
+                                // ROAS = Revenue / Spend
+                                const roasConversionValue = aggregated?.conversionValue || 0;
+                                const roasRevenueA = (a.metrics.conversions || 0) * roasConversionValue;
+                                const roasRevenueB = (b.metrics.conversions || 0) * roasConversionValue;
+                                const roasA = (a.metrics.spend || 0) > 0 ? roasRevenueA / (a.metrics.spend || 0) : 0;
+                                const roasB = (b.metrics.spend || 0) > 0 ? roasRevenueB / (b.metrics.spend || 0) : 0;
+                                return roasB - roasA;
+                              case 'roi':
+                                // ROI = ((Revenue - Spend) / Spend) × 100
+                                const roiConversionValue = aggregated?.conversionValue || 0;
+                                const roiRevenueA = (a.metrics.conversions || 0) * roiConversionValue;
+                                const roiRevenueB = (b.metrics.conversions || 0) * roiConversionValue;
+                                const roiProfitA = roiRevenueA - (a.metrics.spend || 0);
+                                const roiProfitB = roiRevenueB - (b.metrics.spend || 0);
+                                const roiA = (a.metrics.spend || 0) > 0 ? (roiProfitA / (a.metrics.spend || 0)) * 100 : 0;
+                                const roiB = (b.metrics.spend || 0) > 0 ? (roiProfitB / (b.metrics.spend || 0)) * 100 : 0;
+                                return roiB - roiA;
                               default:
                                 return 0;
                             }

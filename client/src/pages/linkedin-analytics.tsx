@@ -376,14 +376,14 @@ export default function LinkedInAnalytics() {
     enabled: !!sessionId,
   });
 
-  // Extract unique campaigns from sessionData.metrics (same source as auto-fill)
+  // Extract unique campaigns from sessionData.metrics (each metric is separate entry)
   const availableCampaigns = useMemo(() => {
-    const { metrics } = (sessionData as any) || {};
-    if (!metrics || !Array.isArray(metrics)) return [];
+    const { metrics: rawMetrics } = (sessionData as any) || {};
+    if (!rawMetrics || !Array.isArray(rawMetrics)) return [];
     
     const campaignMap = new Map();
-    metrics.forEach((m: any) => {
-      if (m.campaignName) {
+    rawMetrics.forEach((m: any) => {
+      if (m.campaignName && !campaignMap.has(m.campaignName)) {
         campaignMap.set(m.campaignName, {
           name: m.campaignName,
           linkedInCampaignName: m.campaignName,
@@ -5069,45 +5069,42 @@ export default function LinkedInAnalytics() {
                       let currentValue = '';
                       let unit = '';
                       
-                      // Check if specific campaign is selected - log for debugging
-                      console.log('[KPI Metric Select] applyTo:', kpiForm.applyTo);
-                      console.log('[KPI Metric Select] specificCampaignId:', kpiForm.specificCampaignId);
-                      
                       if (kpiForm.applyTo === 'specific' && kpiForm.specificCampaignId) {
-                        // Get campaign-specific metrics from sessionData.metrics
-                        const { metrics } = (sessionData as any) || {};
-                        console.log('[KPI Metric Select] sessionData metrics count:', metrics?.length);
-                        const campaignMetric = metrics?.find((m: any) => m.campaignName === kpiForm.specificCampaignId);
-                        console.log('[KPI Metric Select] Found campaign metric:', campaignMetric);
-                        
-                        // Calculate derived metrics from raw campaign data
+                        // Aggregate metrics by campaign name (each metric is a separate entry)
+                        const { metrics: rawMetrics } = (sessionData as any) || {};
                         let campaignData = null;
-                        if (campaignMetric) {
-                          const imp = parseFloat(campaignMetric.impressions || 0);
-                          const clk = parseFloat(campaignMetric.clicks || 0);
-                          const spd = parseFloat(campaignMetric.spend || 0);
-                          const conv = parseFloat(campaignMetric.conversions || 0);
-                          const lds = parseFloat(campaignMetric.leads || 0);
-                          const eng = parseFloat(campaignMetric.engagements || 0);
+                        
+                        if (rawMetrics && Array.isArray(rawMetrics)) {
+                          // Aggregate all metrics for this campaign
+                          const campaignMetrics: any = {};
+                          rawMetrics.forEach((m: any) => {
+                            if (m.campaignName === kpiForm.specificCampaignId) {
+                              campaignMetrics[m.metricKey] = parseFloat(m.metricValue || 0);
+                            }
+                          });
                           
-                          campaignData = {
-                            impressions: imp,
-                            clicks: clk,
-                            spend: spd,
-                            conversions: conv,
-                            leads: lds,
-                            engagements: eng,
-                            reach: parseFloat(campaignMetric.reach || 0),
-                            videoViews: parseFloat(campaignMetric.videoViews || 0),
-                            viralImpressions: parseFloat(campaignMetric.viralImpressions || 0),
-                            ctr: imp > 0 ? (clk / imp) * 100 : 0,
-                            cpc: clk > 0 ? spd / clk : 0,
-                            cpm: imp > 0 ? (spd / imp) * 1000 : 0,
-                            cvr: clk > 0 ? (conv / clk) * 100 : 0,
-                            cpa: conv > 0 ? spd / conv : 0,
-                            cpl: lds > 0 ? spd / lds : 0,
-                            er: imp > 0 ? (eng / imp) * 100 : 0
-                          };
+                          if (Object.keys(campaignMetrics).length > 0) {
+                            const imp = campaignMetrics.impressions || 0;
+                            const clk = campaignMetrics.clicks || 0;
+                            const spd = campaignMetrics.spend || 0;
+                            const conv = campaignMetrics.conversions || 0;
+                            const lds = campaignMetrics.leads || 0;
+                            const eng = campaignMetrics.engagements || 0;
+                            
+                            campaignData = {
+                              impressions: imp, clicks: clk, spend: spd, conversions: conv, leads: lds, engagements: eng,
+                              reach: campaignMetrics.reach || 0,
+                              videoViews: campaignMetrics.videoViews || 0,
+                              viralImpressions: campaignMetrics.viralImpressions || 0,
+                              ctr: imp > 0 ? (clk / imp) * 100 : 0,
+                              cpc: clk > 0 ? spd / clk : 0,
+                              cpm: imp > 0 ? (spd / imp) * 1000 : 0,
+                              cvr: clk > 0 ? (conv / clk) * 100 : 0,
+                              cpa: conv > 0 ? spd / conv : 0,
+                              cpl: lds > 0 ? spd / lds : 0,
+                              er: imp > 0 ? (eng / imp) * 100 : 0
+                            };
+                          }
                         }
                         
                         if (campaignData) {
@@ -5585,33 +5582,40 @@ export default function LinkedInAnalytics() {
                       
                       // Trigger metric auto-fill if a metric is already selected
                       if (kpiForm.metric) {
-                        // Get campaign-specific metrics from sessionData.metrics
-                        const { metrics } = (sessionData as any) || {};
-                        const campaignMetric = metrics?.find((m: any) => m.campaignName === value);
-                        
-                        // Calculate derived metrics
+                        // Aggregate metrics by campaign name
+                        const { metrics: rawMetrics } = (sessionData as any) || {};
                         let campaignData = null;
-                        if (campaignMetric) {
-                          const imp = parseFloat(campaignMetric.impressions || 0);
-                          const clk = parseFloat(campaignMetric.clicks || 0);
-                          const spd = parseFloat(campaignMetric.spend || 0);
-                          const conv = parseFloat(campaignMetric.conversions || 0);
-                          const lds = parseFloat(campaignMetric.leads || 0);
-                          const eng = parseFloat(campaignMetric.engagements || 0);
+                        
+                        if (rawMetrics && Array.isArray(rawMetrics)) {
+                          const campaignMetrics: any = {};
+                          rawMetrics.forEach((m: any) => {
+                            if (m.campaignName === value) {
+                              campaignMetrics[m.metricKey] = parseFloat(m.metricValue || 0);
+                            }
+                          });
                           
-                          campaignData = {
-                            impressions: imp, clicks: clk, spend: spd, conversions: conv, leads: lds, engagements: eng,
-                            reach: parseFloat(campaignMetric.reach || 0),
-                            videoViews: parseFloat(campaignMetric.videoViews || 0),
-                            viralImpressions: parseFloat(campaignMetric.viralImpressions || 0),
-                            ctr: imp > 0 ? (clk / imp) * 100 : 0,
-                            cpc: clk > 0 ? spd / clk : 0,
-                            cpm: imp > 0 ? (spd / imp) * 1000 : 0,
-                            cvr: clk > 0 ? (conv / clk) * 100 : 0,
-                            cpa: conv > 0 ? spd / conv : 0,
-                            cpl: lds > 0 ? spd / lds : 0,
-                            er: imp > 0 ? (eng / imp) * 100 : 0
-                          };
+                          if (Object.keys(campaignMetrics).length > 0) {
+                            const imp = campaignMetrics.impressions || 0;
+                            const clk = campaignMetrics.clicks || 0;
+                            const spd = campaignMetrics.spend || 0;
+                            const conv = campaignMetrics.conversions || 0;
+                            const lds = campaignMetrics.leads || 0;
+                            const eng = campaignMetrics.engagements || 0;
+                            
+                            campaignData = {
+                              impressions: imp, clicks: clk, spend: spd, conversions: conv, leads: lds, engagements: eng,
+                              reach: campaignMetrics.reach || 0,
+                              videoViews: campaignMetrics.videoViews || 0,
+                              viralImpressions: campaignMetrics.viralImpressions || 0,
+                              ctr: imp > 0 ? (clk / imp) * 100 : 0,
+                              cpc: clk > 0 ? spd / clk : 0,
+                              cpm: imp > 0 ? (spd / imp) * 1000 : 0,
+                              cvr: clk > 0 ? (conv / clk) * 100 : 0,
+                              cpa: conv > 0 ? spd / conv : 0,
+                              cpl: lds > 0 ? spd / lds : 0,
+                              er: imp > 0 ? (eng / imp) * 100 : 0
+                            };
+                          }
                         }
                         
                         if (campaignData) {

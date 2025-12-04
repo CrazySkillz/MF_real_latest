@@ -5071,7 +5071,10 @@ export default function LinkedInAnalytics() {
                       // Check if specific campaign is selected
                       if (kpiForm.applyTo === 'specific' && kpiForm.specificCampaignId) {
                         // Get campaign-specific metrics using the helper function
+                        console.log('[KPI Auto-fill] Looking for campaign:', kpiForm.specificCampaignId);
+                        console.log('[KPI Auto-fill] adsData:', adsData);
                         const campaignData = getCampaignSpecificMetrics(kpiForm.specificCampaignId);
+                        console.log('[KPI Auto-fill] Campaign data found:', campaignData);
                         
                         if (campaignData) {
                           // Use pre-calculated values from getCampaignSpecificMetrics
@@ -5548,7 +5551,10 @@ export default function LinkedInAnalytics() {
                       
                       // Trigger metric auto-fill if a metric is already selected
                       if (kpiForm.metric) {
+                        console.log('[KPI Campaign Select] Selected campaign:', value);
+                        console.log('[KPI Campaign Select] adsData available:', !!adsData, Array.isArray(adsData) ? adsData.length : 0);
                         const campaignData = getCampaignSpecificMetrics(value);
+                        console.log('[KPI Campaign Select] Campaign data:', campaignData);
                         
                         if (campaignData) {
                           let currentValue = '';

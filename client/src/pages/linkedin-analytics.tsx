@@ -5428,27 +5428,6 @@ export default function LinkedInAnalytics() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="kpi-timeframe">Timeframe</Label>
-                <Select
-                  value={kpiForm.timeframe}
-                  onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
-                >
-                  <SelectTrigger id="kpi-timeframe" data-testid="select-kpi-timeframe">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily (24 hours)</SelectItem>
-                    <SelectItem value="weekly">Weekly (7 days)</SelectItem>
-                    <SelectItem value="monthly">Monthly (30 days)</SelectItem>
-                    <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
-                    <SelectItem value="yearly">Yearly (365 days)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  How often to measure progress toward your target
-                </p>
-              </div>
             </div>
 
             {/* Apply To Section */}

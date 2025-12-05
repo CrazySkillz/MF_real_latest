@@ -2,6 +2,7 @@ import { db } from "./db";
 import { notifications, kpis } from "../shared/schema";
 import { eq } from "drizzle-orm";
 import type { KPI, InsertNotification } from "../shared/schema";
+import { storage } from "./storage";
 
 /**
  * KPI Notification Helper Functions
@@ -77,6 +78,17 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
     : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
   
+  // Fetch campaign name if campaignId exists
+  let campaignName: string | undefined = undefined;
+  if (kpi.campaignId) {
+    try {
+      const campaign = await storage.getCampaign(kpi.campaignId);
+      campaignName = campaign?.name;
+    } catch (error) {
+      console.error(`[KPI Notification] Failed to fetch campaign name for ${kpi.campaignId}:`, error);
+    }
+  }
+  
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'performance-alert',
@@ -89,7 +101,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     type: 'performance-alert',
     priority: kpi.priority === 'high' ? 'high' : 'normal',
     campaignId: kpi.campaignId || undefined,
-    campaignName: undefined,
+    campaignName: campaignName,
     read: false,
     metadata
   };

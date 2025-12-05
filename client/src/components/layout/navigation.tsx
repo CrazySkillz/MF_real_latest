@@ -210,9 +210,16 @@ export default function Navigation() {
                             <p className={`text-xs mt-0.5 ${!notification.read ? 'text-slate-600 dark:text-slate-400' : 'text-slate-500 dark:text-slate-500'}`}>
                               {notification.message}
                             </p>
-                            <p className="text-xs text-slate-400 mt-1">
-                              {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {notification.campaignName && (
+                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                  Campaign: {notification.campaignName}
+                                </span>
+                              )}
+                              <span className="text-xs text-slate-400">
+                                {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                              </span>
+                            </div>
                           </div>
                           {!notification.read && (
                             <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>

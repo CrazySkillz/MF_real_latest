@@ -233,22 +233,7 @@ export default function Notifications() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="search">Search</Label>
-                    <div className="relative">
-                      <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="search"
-                        placeholder="Search notifications..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-8"
-                        data-testid="input-search-notifications"
-                      />
-                    </div>
-                  </div>
-                  
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="type-filter">Type</Label>
                     <Select value={typeFilter} onValueChange={setTypeFilter}>

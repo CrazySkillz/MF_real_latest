@@ -3920,13 +3920,7 @@ export default function LinkedInAnalytics() {
                                     const latestPeriod = kpiPeriods?.[kpi.id];
                                     
                                     if (!latestPeriod) {
-                                      return (
-                                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                                            Period tracking active. Historical comparison will appear after first {kpi.timeframe || 'monthly'} period completes.
-                                          </div>
-                                        </div>
-                                      );
+                                      return null;
                                     }
                                     
                                     // Parse values
@@ -5703,8 +5697,7 @@ export default function LinkedInAnalytics() {
                   </Label>
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 pl-6">
-                  Receive in-app notifications for KPI reviews, performance alerts, and period summaries. 
-                  Reminders appear in your Notifications center based on your selected timeframe.
+                  Receive notifications for KPI performance alerts on the bell icon & in your Notifications center.
                 </p>
               </div>
 

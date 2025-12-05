@@ -3694,9 +3694,6 @@ export default function LinkedInAnalytics() {
                                                 <p><span className="text-slate-400">Alert Threshold:</span> {alertThreshold}{kpi.unit}</p>
                                                 <p><span className="text-slate-400">Condition:</span> {alertCondition}</p>
                                               </div>
-                                              <p className="text-xs text-slate-300 pt-1 border-t border-slate-700">
-                                                Early warning system. Check notifications for details.
-                                              </p>
                                             </div>
                                           </TooltipContent>
                                         </UITooltip>
@@ -3904,14 +3901,6 @@ export default function LinkedInAnalytics() {
                                     </Badge>
                                     <span className="text-xs text-slate-500 dark:text-slate-500">
                                       {gapText}
-                                    </span>
-                                  </div>
-
-                                  {/* Timeframe Indicator */}
-                                  <div className="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    <span className="capitalize">
-                                      {kpi.timeframe || 'Monthly'}
                                     </span>
                                   </div>
 

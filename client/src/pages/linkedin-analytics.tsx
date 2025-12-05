@@ -5382,10 +5382,11 @@ export default function LinkedInAnalytics() {
                   id="kpi-target"
                   type="text"
                   placeholder="0"
-                  value={kpiForm.targetValue ? parseFloat(kpiForm.targetValue).toLocaleString('en-US') : ''}
+                  value={kpiForm.targetValue}
                   onChange={(e) => {
                     const value = e.target.value.replace(/,/g, '');
-                    if (value === '' || !isNaN(parseFloat(value))) {
+                    // Allow decimal values (e.g., 75.5, 0.5, etc.)
+                    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
                       setKpiForm({ ...kpiForm, targetValue: value });
                     }
                   }}
@@ -5697,7 +5698,7 @@ export default function LinkedInAnalytics() {
                   </Label>
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 pl-6">
-                  Receive notifications for KPI performance alerts on the bell icon & in your Notifications center.
+                  Receive notifications for KPI performance alerts on the bell icon & in your Notifications center
                 </p>
               </div>
 
@@ -5739,21 +5740,6 @@ export default function LinkedInAnalytics() {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="kpi-email-recipients">Email Recipients *</Label>
-                    <Input
-                      id="kpi-email-recipients"
-                      type="text"
-                      placeholder="email1@example.com, email2@example.com"
-                      value={kpiForm.emailRecipients}
-                      onChange={(e) => setKpiForm({ ...kpiForm, emailRecipients: e.target.value })}
-                      data-testid="input-kpi-email-recipients"
-                    />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Comma-separated email addresses for alert notifications
-                    </p>
                   </div>
                 </div>
               )}

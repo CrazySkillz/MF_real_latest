@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, AlertTriangle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -3657,6 +3657,19 @@ export default function LinkedInAnalytics() {
                                 <div className="flex items-center gap-2 flex-wrap mb-1">
                                   <div className="flex items-center gap-2">
                                     <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                                    {/* Warning Triangle Icon for Alerts Enabled */}
+                                    {kpi.alertsEnabled && (
+                                      <UITooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="cursor-help">
+                                            <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="bg-slate-900 text-white border-slate-700">
+                                          <p className="text-sm">Alerts enabled</p>
+                                        </TooltipContent>
+                                      </UITooltip>
+                                    )}
                                     {/* Red Dot Indicator for Active Alerts */}
                                     {kpi.alertsEnabled && (() => {
                                       const currentValue = parseFloat(kpi.currentValue);

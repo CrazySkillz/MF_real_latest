@@ -8,7 +8,7 @@ If you're getting **"Connection timeout"** errors with SMTP, use Mailgun's HTTP 
 
 ### **Step 1: Get Your Mailgun API Key**
 
-1. Go to **Mailgun Dashboard**: https://app.mailgun.com
+1. Go to **Mailgun Dashboard**: https://rapp.mailgun.com
 2. Click **Settings** (left sidebar) → **API Keys**
 3. You'll see your **Private API Key** (starts with `key-...`)
 4. Click **"Copy"** or click the eye icon to reveal it

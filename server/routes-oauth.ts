@@ -5803,6 +5803,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('Created LinkedIn test mode connection for campaign:', campaignId);
       }
       
+      // Stage 1: Automatically refresh KPIs after LinkedIn import
+      try {
+        const { refreshKPIsForCampaign } = await import('./utils/kpi-refresh');
+        console.log(`[LinkedIn Import] Refreshing KPIs for campaign ${campaignId}...`);
+        await refreshKPIsForCampaign(campaignId);
+        console.log(`[LinkedIn Import] ✅ KPI refresh completed`);
+      } catch (kpiError) {
+        // Don't fail the import if KPI refresh fails - log and continue
+        console.error(`[LinkedIn Import] Warning: KPI refresh failed (import still succeeded):`, kpiError);
+      }
+      
       res.status(201).json({ success: true, sessionId: session.id });
     } catch (error) {
       console.error('LinkedIn import creation error:', error);

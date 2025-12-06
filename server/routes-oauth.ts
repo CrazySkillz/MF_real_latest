@@ -2798,40 +2798,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Automatic Conversion Value Calculation from Google Sheets
       // If Revenue and Conversions columns are detected, calculate and save conversion value
+      // Smart filtering: If Platform column exists, filter for LinkedIn rows only
       try {
-        // Look for Revenue column (case-insensitive, various names)
-        const revenueKeys = ['Revenue', 'revenue', 'Total Revenue', 'total revenue', 'Revenue (USD)', 'Sales Revenue', 'Revenue Amount'];
-        const conversionsKeys = ['Conversions', 'conversions', 'Total Conversions', 'total conversions', 'Orders', 'orders', 'Purchases', 'purchases'];
+        // Check if Platform column exists and filter for LinkedIn data
+        const headers = campaignData.headers || [];
+        const platformColumnIndex = headers.findIndex((h: string) => 
+          String(h || '').toLowerCase().includes('platform')
+        );
+        
+        let linkedInRows: any[] = [];
+        let allRows = rows.slice(1); // Skip header row
+        
+        // If Platform column exists, filter for LinkedIn rows only
+        if (platformColumnIndex >= 0) {
+          linkedInRows = allRows.filter((row: any[]) => {
+            const platformValue = String(row[platformColumnIndex] || '').toLowerCase();
+            return platformValue.includes('linkedin') || platformValue.includes('linked in');
+          });
+          
+          if (linkedInRows.length > 0) {
+            console.log(`[Auto Conversion Value] Platform column detected. Filtered ${linkedInRows.length} LinkedIn rows from ${allRows.length} total rows`);
+          } else {
+            console.log(`[Auto Conversion Value] Platform column detected but no LinkedIn rows found. Using all rows.`);
+            linkedInRows = allRows; // Fallback to all rows if no LinkedIn found
+          }
+        } else {
+          linkedInRows = allRows; // No Platform column, use all rows
+          console.log(`[Auto Conversion Value] No Platform column detected. Using all rows (assuming all are LinkedIn).`);
+        }
+        
+        // Find Revenue and Conversions column indices
+        const revenueColumnIndex = headers.findIndex((h: string) => {
+          const header = String(h || '').toLowerCase();
+          return header.includes('revenue') || header.includes('sales revenue') || header.includes('revenue amount');
+        });
+        
+        const conversionsColumnIndex = headers.findIndex((h: string) => {
+          const header = String(h || '').toLowerCase();
+          return header.includes('conversion') || header.includes('order') || header.includes('purchase');
+        });
         
         let totalRevenue = 0;
         let totalConversions = 0;
         
-        // Find revenue value
-        for (const key of revenueKeys) {
-          if (campaignData.metrics[key] !== undefined) {
-            totalRevenue = parseFloat(String(campaignData.metrics[key])) || 0;
-            if (totalRevenue > 0) break;
+        // Calculate from filtered LinkedIn rows
+        if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0) {
+          linkedInRows.forEach((row: any[]) => {
+            // Parse revenue
+            const revenueValue = String(row[revenueColumnIndex] || '').replace(/[$,]/g, '').trim();
+            const revenue = parseFloat(revenueValue) || 0;
+            totalRevenue += revenue;
+            
+            // Parse conversions
+            const conversionsValue = String(row[conversionsColumnIndex] || '').replace(/[$,]/g, '').trim();
+            const conversions = parseFloat(conversionsValue) || 0;
+            totalConversions += conversions;
+          });
+          
+          console.log(`[Auto Conversion Value] Calculated from ${linkedInRows.length} LinkedIn rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}`);
+        } else {
+          // Fallback: Try to find from aggregated metrics (if Platform filtering wasn't possible)
+          const revenueKeys = ['Revenue', 'revenue', 'Total Revenue', 'total revenue', 'Revenue (USD)', 'Sales Revenue', 'Revenue Amount'];
+          const conversionsKeys = ['Conversions', 'conversions', 'Total Conversions', 'total conversions', 'Orders', 'orders', 'Purchases', 'purchases'];
+          
+          // Find revenue value from aggregated metrics
+          for (const key of revenueKeys) {
+            if (campaignData.metrics[key] !== undefined) {
+              totalRevenue = parseFloat(String(campaignData.metrics[key])) || 0;
+              if (totalRevenue > 0) break;
+            }
           }
-        }
-        
-        // Find conversions value
-        for (const key of conversionsKeys) {
-          if (campaignData.metrics[key] !== undefined) {
-            totalConversions = parseFloat(String(campaignData.metrics[key])) || 0;
-            if (totalConversions > 0) break;
+          
+          // Find conversions value from aggregated metrics
+          for (const key of conversionsKeys) {
+            if (campaignData.metrics[key] !== undefined) {
+              totalConversions = parseFloat(String(campaignData.metrics[key])) || 0;
+              if (totalConversions > 0) break;
+            }
           }
-        }
-        
-        // Also check summary fields (legacy compatibility)
-        if (totalRevenue === 0) {
-          const summaryRevenue = campaignData.metrics['Revenue'] || campaignData.metrics['revenue'] || 0;
-          totalRevenue = parseFloat(String(summaryRevenue)) || 0;
-        }
-        
-        if (totalConversions === 0) {
-          // Try to get conversions from summary or calculate from data
-          const summaryConversions = campaignData.metrics['Conversions'] || campaignData.metrics['conversions'] || 0;
-          totalConversions = parseFloat(String(summaryConversions)) || 0;
+          
+          if (totalRevenue > 0 || totalConversions > 0) {
+            console.log(`[Auto Conversion Value] Using aggregated metrics (not filtered by Platform): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}`);
+          }
         }
         
         // Calculate conversion value if both revenue and conversions are available

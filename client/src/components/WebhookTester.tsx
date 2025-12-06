@@ -347,6 +347,48 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
         </Card>
       )}
 
+      {/* Connection to Conversion Value */}
+      <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2 text-green-700 dark:text-green-400">
+            <CheckCircle2 className="w-4 h-4" />
+            How This Connects to Conversion Value
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 text-sm">
+            <div>
+              <strong className="text-green-900 dark:text-green-200">1. Campaign Settings Field:</strong>
+              <p className="text-green-800 dark:text-green-300 mt-1">
+                In Campaign Settings, you see a "Conversion Value" field. You can manually enter a value (like $50) 
+                as a fallback, but...
+              </p>
+            </div>
+            <div>
+              <strong className="text-green-900 dark:text-green-200">2. Webhook Updates It Automatically:</strong>
+              <p className="text-green-800 dark:text-green-300 mt-1">
+                When you send webhook events (or real systems send them), MetricMind automatically calculates the 
+                <strong> average conversion value</strong> from recent events and <strong>updates the Campaign Settings field</strong>.
+              </p>
+            </div>
+            <div>
+              <strong className="text-green-900 dark:text-green-200">3. Revenue Uses Actual Values:</strong>
+              <p className="text-green-800 dark:text-green-300 mt-1">
+                Revenue calculations (ROI, ROAS, Total Revenue) use the <strong>actual values from webhook events</strong>, 
+                not the fixed conversion value. This is much more accurate!
+              </p>
+            </div>
+            <div className="bg-white dark:bg-slate-800 p-3 rounded border border-green-200 dark:border-green-700 mt-3">
+              <p className="text-xs font-mono text-green-900 dark:text-green-100">
+                <strong>Example:</strong> You send events: $29.99, $149.99, $5.00<br />
+                → Campaign's "Conversion Value" auto-updates to: $61.66 (average)<br />
+                → Revenue calculation uses: $29.99 + $149.99 + $5.00 = $184.98 (actual sum)
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Info Card */}
       <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
         <CardContent className="pt-6">
@@ -368,12 +410,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
                   This lets you verify the webhook works before connecting real systems.
                 </p>
                 <p>
-                  <strong>3. Conversion Value:</strong> Instead of using a fixed value (like "$50 per conversion"), 
-                  the webhook sends the <strong>actual order value</strong> (like "$149.99" or "$29.99"). 
-                  This makes revenue calculations much more accurate!
-                </p>
-                <p>
-                  <strong>4. Result:</strong> When you send a test event, MetricMind stores it just like a real conversion. 
+                  <strong>3. Result:</strong> When you send a test event, MetricMind stores it just like a real conversion. 
                   The campaign's average conversion value is automatically updated, and revenue metrics use the actual values.
                 </p>
               </div>

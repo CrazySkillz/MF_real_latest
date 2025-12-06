@@ -2796,6 +2796,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate intelligent insights from the data
       const insights = generateInsights(rows, campaignData.detectedColumns, campaignData.metrics);
 
+      // Automatic Conversion Value Calculation from Google Sheets
+      // If Revenue and Conversions columns are detected, calculate and save conversion value
+      try {
+        // Look for Revenue column (case-insensitive, various names)
+        const revenueKeys = ['Revenue', 'revenue', 'Total Revenue', 'total revenue', 'Revenue (USD)', 'Sales Revenue', 'Revenue Amount'];
+        const conversionsKeys = ['Conversions', 'conversions', 'Total Conversions', 'total conversions', 'Orders', 'orders', 'Purchases', 'purchases'];
+        
+        let totalRevenue = 0;
+        let totalConversions = 0;
+        
+        // Find revenue value
+        for (const key of revenueKeys) {
+          if (campaignData.metrics[key] !== undefined) {
+            totalRevenue = parseFloat(String(campaignData.metrics[key])) || 0;
+            if (totalRevenue > 0) break;
+          }
+        }
+        
+        // Find conversions value
+        for (const key of conversionsKeys) {
+          if (campaignData.metrics[key] !== undefined) {
+            totalConversions = parseFloat(String(campaignData.metrics[key])) || 0;
+            if (totalConversions > 0) break;
+          }
+        }
+        
+        // Also check summary fields (legacy compatibility)
+        if (totalRevenue === 0) {
+          const summaryRevenue = campaignData.metrics['Revenue'] || campaignData.metrics['revenue'] || 0;
+          totalRevenue = parseFloat(String(summaryRevenue)) || 0;
+        }
+        
+        if (totalConversions === 0) {
+          // Try to get conversions from summary or calculate from data
+          const summaryConversions = campaignData.metrics['Conversions'] || campaignData.metrics['conversions'] || 0;
+          totalConversions = parseFloat(String(summaryConversions)) || 0;
+        }
+        
+        // Calculate conversion value if both revenue and conversions are available
+        if (totalRevenue > 0 && totalConversions > 0) {
+          const calculatedConversionValue = (totalRevenue / totalConversions).toFixed(2);
+          
+          console.log(`[Auto Conversion Value] Detected Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}`);
+          console.log(`[Auto Conversion Value] Calculated: $${totalRevenue.toLocaleString()} ÷ ${totalConversions.toLocaleString()} = $${calculatedConversionValue}`);
+          
+          // Update campaign conversion value
+          const updatedCampaign = await storage.updateCampaign(campaignId, {
+            conversionValue: calculatedConversionValue
+          });
+          
+          if (updatedCampaign) {
+            console.log(`[Auto Conversion Value] ✅ Updated campaign ${campaignId} conversion value to $${calculatedConversionValue}`);
+            
+            // Also update LinkedIn import sessions if they exist (for consistency)
+            try {
+              const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+              if (linkedInSessions && linkedInSessions.length > 0) {
+                // Update the latest session
+                const latestSession = linkedInSessions.sort((a, b) => 
+                  new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
+                )[0];
+                
+                await storage.updateLinkedInImportSession(latestSession.id, {
+                  conversionValue: calculatedConversionValue
+                });
+                
+                console.log(`[Auto Conversion Value] ✅ Updated LinkedIn import session ${latestSession.id} conversion value to $${calculatedConversionValue}`);
+              }
+            } catch (sessionError) {
+              console.warn(`[Auto Conversion Value] Could not update LinkedIn sessions:`, sessionError);
+              // Don't fail the request if session update fails
+            }
+          } else {
+            console.warn(`[Auto Conversion Value] ⚠️ Could not update campaign ${campaignId}`);
+          }
+        } else {
+          if (totalRevenue === 0 && totalConversions === 0) {
+            console.log(`[Auto Conversion Value] ℹ️ No Revenue or Conversions columns detected in Google Sheets`);
+          } else if (totalRevenue === 0) {
+            console.log(`[Auto Conversion Value] ℹ️ Revenue column not found (Conversions: ${totalConversions})`);
+          } else if (totalConversions === 0) {
+            console.log(`[Auto Conversion Value] ℹ️ Conversions column not found (Revenue: $${totalRevenue})`);
+          }
+        }
+      } catch (calcError) {
+        console.error(`[Auto Conversion Value] ❌ Error calculating conversion value:`, calcError);
+        // Don't fail the request if auto-calculation fails
+      }
+
       res.json({
         success: true,
         spreadsheetName: connection.spreadsheetName || connection.spreadsheetId,

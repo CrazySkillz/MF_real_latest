@@ -136,11 +136,17 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
       </div>
 
       {/* Webhook URL Display */}
-      <Card>
+      <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
         <CardHeader>
-          <CardTitle className="text-sm">Webhook URL</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Send className="w-4 h-4 text-blue-600" />
+            Webhook URL (For External Systems)
+          </CardTitle>
           <CardDescription>
-            Use this URL to send conversion events from external systems
+            <strong>In production:</strong> Give this URL to external systems (Shopify, WooCommerce, Stripe, etc.) 
+            so they can automatically send conversion events when sales happen.
+            <br />
+            <strong>For testing:</strong> You can ignore this - just use the form below to simulate conversions.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -148,7 +154,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
             <Input
               value={`${window.location.origin}/api/webhook/conversion/${campaignId}`}
               readOnly
-              className="font-mono text-sm"
+              className="font-mono text-sm bg-white dark:bg-slate-800"
             />
             <Button
               variant="outline"
@@ -157,9 +163,12 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
               className="flex-shrink-0"
             >
               <Copy className="w-4 h-4 mr-1" />
-              Copy
+              Copy URL
             </Button>
           </div>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+            💡 Copy this URL when you're ready to connect real systems (Shopify, WooCommerce, etc.)
+          </p>
         </CardContent>
       </Card>
 
@@ -194,9 +203,13 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
       {/* Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Conversion Event Details</CardTitle>
+          <CardTitle className="text-sm">Test Conversion Event</CardTitle>
           <CardDescription>
-            Fill in the conversion event details and click "Send Test" to simulate a webhook call
+            <strong>What this does:</strong> Simulates what an external system (like Shopify) would send when a conversion happens.
+            <br />
+            <strong>Example:</strong> Customer buys a $149.99 product → Shopify sends {"{"}"value": 149.99{"}"} → MetricMind records it.
+            <br />
+            <strong>You're doing:</strong> Manually entering the data that would normally be sent automatically.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -335,21 +348,35 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
       )}
 
       {/* Info Card */}
-      <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+      <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
         <CardContent className="pt-6">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
-              <FlaskConical className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <FlaskConical className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div className="flex-1">
-              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">
-                Testing in Test Mode
+              <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-2">
+                How This Works in Real Life
               </h4>
-              <p className="text-xs text-blue-800 dark:text-blue-300">
-                This webhook tester works in test mode. All conversion events are stored in the database
-                and will be used for revenue calculations. The campaign's average conversion value will be
-                automatically updated based on recent events.
-              </p>
+              <div className="space-y-2 text-xs text-amber-800 dark:text-amber-300">
+                <p>
+                  <strong>1. In Production:</strong> External systems (Shopify, WooCommerce, Stripe) automatically send 
+                  conversion events to the webhook URL when sales happen. No manual work needed!
+                </p>
+                <p>
+                  <strong>2. What You're Testing:</strong> You're manually simulating what those external systems would do. 
+                  This lets you verify the webhook works before connecting real systems.
+                </p>
+                <p>
+                  <strong>3. Conversion Value:</strong> Instead of using a fixed value (like "$50 per conversion"), 
+                  the webhook sends the <strong>actual order value</strong> (like "$149.99" or "$29.99"). 
+                  This makes revenue calculations much more accurate!
+                </p>
+                <p>
+                  <strong>4. Result:</strong> When you send a test event, MetricMind stores it just like a real conversion. 
+                  The campaign's average conversion value is automatically updated, and revenue metrics use the actual values.
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>

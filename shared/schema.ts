@@ -192,6 +192,21 @@ export const customIntegrations = pgTable("custom_integrations", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Conversion Events - Stores actual conversion values from webhooks, APIs, or tracking
+export const conversionEvents = pgTable("conversion_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  conversionId: text("conversion_id"), // External conversion ID (e.g., order ID, transaction ID)
+  value: decimal("value", { precision: 10, scale: 2 }).notNull(), // Actual conversion value
+  currency: text("currency").notNull().default("USD"),
+  conversionType: text("conversion_type"), // e.g., 'purchase', 'lead', 'signup', 'download'
+  source: text("source").notNull(), // 'webhook', 'api', 'javascript', 'manual'
+  metadata: jsonb("metadata"), // Additional data (product info, customer info, etc.)
+  occurredAt: timestamp("occurred_at").notNull().default(sql`CURRENT_TIMESTAMP`), // When conversion actually happened
+  receivedAt: timestamp("received_at").notNull().default(sql`CURRENT_TIMESTAMP`), // When we received the event
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
@@ -1046,6 +1061,12 @@ export const insertCustomIntegrationSchema = createInsertSchema(customIntegratio
   createdAt: true,
 });
 
+export const insertConversionEventSchema = createInsertSchema(conversionEvents).omit({
+  id: true,
+  receivedAt: true,
+  createdAt: true,
+});
+
 export const insertCustomIntegrationMetricsSchema = createInsertSchema(customIntegrationMetrics).omit({
   id: true,
   uploadedAt: true,
@@ -1113,3 +1134,5 @@ export type CustomIntegration = typeof customIntegrations.$inferSelect;
 export type InsertCustomIntegration = z.infer<typeof insertCustomIntegrationSchema>;
 export type CustomIntegrationMetrics = typeof customIntegrationMetrics.$inferSelect;
 export type InsertCustomIntegrationMetrics = z.infer<typeof insertCustomIntegrationMetricsSchema>;
+export type ConversionEvent = typeof conversionEvents.$inferSelect;
+export type InsertConversionEvent = z.infer<typeof insertConversionEventSchema>;

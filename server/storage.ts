@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, or, isNull, desc } from "drizzle-orm";
@@ -94,6 +94,12 @@ export interface IStorage {
   getAllCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics[]>;
   createCustomIntegrationMetrics(metrics: InsertCustomIntegrationMetrics): Promise<CustomIntegrationMetrics>;
   getLatestCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
+  
+  // Conversion Events
+  getConversionEvents(campaignId: string, startDate?: Date, endDate?: Date): Promise<ConversionEvent[]>;
+  createConversionEvent(event: InsertConversionEvent): Promise<ConversionEvent>;
+  getConversionEventTotalValue(campaignId: string, startDate?: Date, endDate?: Date): Promise<number>;
+  getConversionEventCount(campaignId: string, startDate?: Date, endDate?: Date): Promise<number>;
   
   // KPIs
   getCampaignKPIs(campaignId: string): Promise<KPI[]>;
@@ -269,6 +275,7 @@ export class MemStorage implements IStorage {
   private kpiReports: Map<string, KPIReport>;
   private customIntegrations: Map<string, CustomIntegration>;
   private customIntegrationMetrics: Map<string, CustomIntegrationMetrics>;
+  private conversionEvents: Map<string, ConversionEvent>;
   private kpis: Map<string, KPI>;
   private kpiProgress: Map<string, KPIProgress>;
   private kpiAlerts: Map<string, KPIAlert>;
@@ -301,6 +308,7 @@ export class MemStorage implements IStorage {
     this.kpiReports = new Map();
     this.customIntegrations = new Map();
     this.customIntegrationMetrics = new Map();
+    this.conversionEvents = new Map();
     this.kpis = new Map();
     this.kpiProgress = new Map();
     this.kpiAlerts = new Map();
@@ -1291,6 +1299,50 @@ export class MemStorage implements IStorage {
     return allMetrics[0];
   }
 
+  // Conversion Events methods
+  async getConversionEvents(campaignId: string, startDate?: Date, endDate?: Date): Promise<ConversionEvent[]> {
+    let events = Array.from(this.conversionEvents.values()).filter(e => e.campaignId === campaignId);
+    
+    if (startDate) {
+      events = events.filter(e => new Date(e.occurredAt) >= startDate);
+    }
+    if (endDate) {
+      events = events.filter(e => new Date(e.occurredAt) <= endDate);
+    }
+    
+    return events.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+  }
+
+  async createConversionEvent(eventData: InsertConversionEvent): Promise<ConversionEvent> {
+    const id = randomUUID();
+    const event: ConversionEvent = {
+      id,
+      campaignId: eventData.campaignId,
+      conversionId: eventData.conversionId || null,
+      value: eventData.value,
+      currency: eventData.currency || "USD",
+      conversionType: eventData.conversionType || null,
+      source: eventData.source,
+      metadata: eventData.metadata || null,
+      occurredAt: eventData.occurredAt ? new Date(eventData.occurredAt) : new Date(),
+      receivedAt: new Date(),
+      createdAt: new Date(),
+    };
+    
+    this.conversionEvents.set(id, event);
+    return event;
+  }
+
+  async getConversionEventTotalValue(campaignId: string, startDate?: Date, endDate?: Date): Promise<number> {
+    const events = await this.getConversionEvents(campaignId, startDate, endDate);
+    return events.reduce((sum, event) => sum + parseFloat(event.value || "0"), 0);
+  }
+
+  async getConversionEventCount(campaignId: string, startDate?: Date, endDate?: Date): Promise<number> {
+    const events = await this.getConversionEvents(campaignId, startDate, endDate);
+    return events.length;
+  }
+
   // KPI methods
   async getCampaignKPIs(campaignId: string): Promise<KPI[]> {
     return Array.from(this.kpis.values()).filter(kpi => kpi.campaignId === campaignId);
@@ -2223,6 +2275,48 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(customIntegrationMetrics.uploadedAt))
       .limit(1);
     return metrics || undefined;
+  }
+
+  // Conversion Events methods
+  async getConversionEvents(campaignId: string, startDate?: Date, endDate?: Date): Promise<ConversionEvent[]> {
+    let query = db.select()
+      .from(conversionEvents)
+      .where(eq(conversionEvents.campaignId, campaignId));
+    
+    // Note: Date filtering would need to be added with proper SQL conditions
+    // For now, we'll filter in memory for MVP
+    const events = await query;
+    
+    let filtered = events;
+    if (startDate) {
+      filtered = filtered.filter(e => new Date(e.occurredAt) >= startDate);
+    }
+    if (endDate) {
+      filtered = filtered.filter(e => new Date(e.occurredAt) <= endDate);
+    }
+    
+    return filtered.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+  }
+
+  async createConversionEvent(eventData: InsertConversionEvent): Promise<ConversionEvent> {
+    const [event] = await db
+      .insert(conversionEvents)
+      .values({
+        ...eventData,
+        receivedAt: new Date(),
+      })
+      .returning();
+    return event;
+  }
+
+  async getConversionEventTotalValue(campaignId: string, startDate?: Date, endDate?: Date): Promise<number> {
+    const events = await this.getConversionEvents(campaignId, startDate, endDate);
+    return events.reduce((sum, event) => sum + parseFloat(event.value || "0"), 0);
+  }
+
+  async getConversionEventCount(campaignId: string, startDate?: Date, endDate?: Date): Promise<number> {
+    const events = await this.getConversionEvents(campaignId, startDate, endDate);
+    return events.length;
   }
 
   // KPI methods

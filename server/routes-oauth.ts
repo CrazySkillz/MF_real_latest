@@ -7826,6 +7826,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Conversion Value Webhook - MVP Implementation
+  // Accepts conversion events with actual values from e-commerce, CRM, or custom systems
+  app.post("/api/webhook/conversion/:campaignId", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { value, currency, conversionId, conversionType, occurredAt, metadata } = req.body;
+
+      // Validate campaign exists
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({
+          success: false,
+          error: "Campaign not found"
+        });
+      }
+
+      // Validate required fields
+      if (!value || isNaN(parseFloat(value))) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid or missing 'value' field. Must be a number."
+        });
+      }
+
+      // Create conversion event
+      const event = await storage.createConversionEvent({
+        campaignId,
+        conversionId: conversionId || null,
+        value: String(parseFloat(value).toFixed(2)),
+        currency: currency || "USD",
+        conversionType: conversionType || null,
+        source: "webhook",
+        metadata: metadata || null,
+        occurredAt: occurredAt ? new Date(occurredAt) : new Date(),
+      });
+
+      console.log(`[Conversion Webhook] Created event for campaign ${campaignId}:`, {
+        eventId: event.id,
+        value: event.value,
+        currency: event.currency,
+        conversionType: event.conversionType
+      });
+
+      // Optionally update campaign's average conversion value (for backward compatibility)
+      // Calculate average from recent events (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recentEvents = await storage.getConversionEvents(campaignId, thirtyDaysAgo);
+      
+      if (recentEvents.length > 0) {
+        const totalValue = recentEvents.reduce((sum, e) => sum + parseFloat(e.value || "0"), 0);
+        const avgValue = (totalValue / recentEvents.length).toFixed(2);
+        
+        // Update campaign's conversionValue with average (optional - for backward compatibility)
+        await storage.updateCampaign(campaignId, {
+          conversionValue: avgValue
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        event: {
+          id: event.id,
+          value: event.value,
+          currency: event.currency,
+          occurredAt: event.occurredAt
+        },
+        message: "Conversion event recorded successfully"
+      });
+    } catch (error) {
+      console.error("[Conversion Webhook] Error:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to process conversion event"
+      });
+    }
+  });
+
   const server = createServer(app);
   return server;
 }

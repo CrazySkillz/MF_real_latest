@@ -55,14 +55,13 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
       }
 
       // Send webhook request
-      const result = await apiRequest(`/api/webhook/conversion/${campaignId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
+      const response = await apiRequest(
+        "POST",
+        `/api/webhook/conversion/${campaignId}`,
+        body
+      );
 
+      const result = await response.json();
       setResponse(result);
       toast({
         title: "Webhook Test Successful!",

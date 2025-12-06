@@ -4483,8 +4483,22 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : adsData && (adsData as any[]).length > 0 ? (
                   (() => {
-                    // Sort all ads by revenue and limit to top 15
-                    const allSortedAds = [...(adsData as any[])].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
+                    // Check if revenue tracking is available (conversion value set)
+                    const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
+                    
+                    // Sort ads by appropriate metric based on revenue tracking availability
+                    // If revenue tracking is enabled, sort by revenue; otherwise sort by spend (or impressions if spend not available)
+                    const allSortedAds = [...(adsData as any[])].sort((a, b) => {
+                      if (hasRevenueTracking) {
+                        // Sort by revenue when conversion value is set
+                        return parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0');
+                      } else {
+                        // Sort by spend when no conversion value (fallback to impressions if spend not available)
+                        const aValue = parseFloat(a.spend || '0') || parseFloat(a.impressions || '0');
+                        const bValue = parseFloat(b.spend || '0') || parseFloat(b.impressions || '0');
+                        return bValue - aValue;
+                      }
+                    });
                     const totalAds = allSortedAds.length;
                     const sortedAds = allSortedAds.slice(0, 15); // Limit to top 15 ads
                     const isLimited = totalAds > 15;
@@ -4631,8 +4645,28 @@ export default function LinkedInAnalytics() {
                       };
                     });
 
+                    const topMetricValue = hasRevenueTracking 
+                      ? formatCurrency(parseFloat(topAd.revenue || '0'))
+                      : formatCurrency(parseFloat(topAd.spend || '0')) || formatNumber(parseInt(topAd.impressions || '0'));
+                    const topMetricLabel = hasRevenueTracking ? 'in revenue' : (topAd.spend ? 'in spend' : 'impressions');
+
                     return (
                       <div className="space-y-6">
+                        {/* Revenue Tracking Notice */}
+                        {!hasRevenueTracking && (
+                          <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+                            <CardContent className="py-4">
+                              <div className="flex items-start gap-3">
+                                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                <div className="text-amber-800 dark:text-amber-300">
+                                  <p className="font-semibold mb-1">Revenue metrics require a conversion value.</p>
+                                  <p className="text-sm">Add a conversion value to your campaign to see revenue, ROAS, ROI, and profit metrics in ad comparison.</p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
                         {/* Top Performer Banner */}
                         <Card className="bg-gradient-to-r from-green-500 to-emerald-600 text-white" data-testid="top-performer-banner">
                           <CardContent className="py-4">
@@ -4640,13 +4674,13 @@ export default function LinkedInAnalytics() {
                               <div className="flex items-center gap-3">
                                 <Trophy className="w-8 h-8" />
                                 <div>
-                                  <p className="text-sm opacity-90">Top Revenue Driver</p>
+                                  <p className="text-sm opacity-90">{hasRevenueTracking ? 'Top Revenue Driver' : 'Top Performer'}</p>
                                   <p className="text-xl font-bold">{topAd.adName}</p>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-3xl font-bold">{formatCurrency(parseFloat(topAd.revenue || '0'))}</p>
-                                <p className="text-sm opacity-90">in revenue</p>
+                                <p className="text-3xl font-bold">{topMetricValue}</p>
+                                <p className="text-sm opacity-90">{topMetricLabel}</p>
                               </div>
                             </div>
                           </CardContent>
@@ -4654,13 +4688,17 @@ export default function LinkedInAnalytics() {
 
                         {/* Ad Limit Indicator */}
                         {isLimited && (
-                          <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
-                            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                            <AlertDescription className="text-blue-800 dark:text-blue-300">
-                              <span className="font-semibold">Showing top 15 of {totalAds} ads by revenue.</span>
-                              {' '}Focus on optimizing your best performers for maximum ROI!
-                            </AlertDescription>
-                          </Alert>
+                          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+                            <CardContent className="py-4">
+                              <div className="flex items-start gap-3">
+                                <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                                <div className="text-blue-800 dark:text-blue-300">
+                                  <p className="font-semibold">Showing top 15 of {totalAds} ads {hasRevenueTracking ? 'by revenue' : 'by spend'}.</p>
+                                  <p className="text-sm mt-1">Focus on optimizing your best performers for maximum ROI!</p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
                         )}
 
                         {/* Visual Performance Comparison */}
@@ -4724,9 +4762,14 @@ export default function LinkedInAnalytics() {
                             {/* Ad Details Cards */}
                             <div className="mt-6 space-y-3">
                               {sortedAds.map((ad, index) => {
-                                const revenue = parseFloat(ad.revenue || '0');
                                 const isTop = index === 0;
                                 const isBottom = index === sortedAds.length - 1 && sortedAds.length > 2;
+                                // Show revenue if available, otherwise show spend or impressions
+                                const displayValue = hasRevenueTracking 
+                                  ? parseFloat(ad.revenue || '0')
+                                  : (parseFloat(ad.spend || '0') || parseInt(ad.impressions || '0'));
+                                const displayLabel = hasRevenueTracking ? 'Revenue' : (ad.spend ? 'Spend' : 'Impressions');
+                                const displayFormat = hasRevenueTracking || ad.spend ? formatCurrency : formatNumber;
 
                                 return (
                                   <div 
@@ -4754,8 +4797,10 @@ export default function LinkedInAnalytics() {
                                       </div>
                                     </div>
                                     <div className="text-right">
-                                      <p className="text-sm text-slate-500">Revenue</p>
-                                      <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(revenue)}</p>
+                                      <p className="text-sm text-slate-500">{displayLabel}</p>
+                                      <p className={`text-xl font-bold ${hasRevenueTracking ? 'text-green-600 dark:text-green-400' : 'text-slate-900 dark:text-white'}`}>
+                                        {displayFormat(displayValue)}
+                                      </p>
                                     </div>
                                   </div>
                                 );
@@ -4766,22 +4811,45 @@ export default function LinkedInAnalytics() {
 
                         {/* Quick Stats Summary */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <Card data-testid="total-revenue-stat">
-                            <CardContent className="pt-6">
-                              <p className="text-sm text-slate-500 mb-1">Total Revenue {isLimited && '(All Ads)'}</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0))}
-                              </p>
-                            </CardContent>
-                          </Card>
-                          <Card data-testid="avg-revenue-stat">
-                            <CardContent className="pt-6">
-                              <p className="text-sm text-slate-500 mb-1">Average Revenue/Ad {isLimited && '(All Ads)'}</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0) / allSortedAds.length)}
-                              </p>
-                            </CardContent>
-                          </Card>
+                          {hasRevenueTracking ? (
+                            <>
+                              <Card data-testid="total-revenue-stat">
+                                <CardContent className="pt-6">
+                                  <p className="text-sm text-slate-500 mb-1">Total Revenue {isLimited && '(All Ads)'}</p>
+                                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {formatCurrency(allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0))}
+                                  </p>
+                                </CardContent>
+                              </Card>
+                              <Card data-testid="avg-revenue-stat">
+                                <CardContent className="pt-6">
+                                  <p className="text-sm text-slate-500 mb-1">Average Revenue/Ad {isLimited && '(All Ads)'}</p>
+                                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {formatCurrency(allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0) / allSortedAds.length)}
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            </>
+                          ) : (
+                            <>
+                              <Card data-testid="total-spend-stat">
+                                <CardContent className="pt-6">
+                                  <p className="text-sm text-slate-500 mb-1">Total Spend {isLimited && '(All Ads)'}</p>
+                                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {formatCurrency(allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.spend || '0'), 0))}
+                                  </p>
+                                </CardContent>
+                              </Card>
+                              <Card data-testid="total-conversions-stat">
+                                <CardContent className="pt-6">
+                                  <p className="text-sm text-slate-500 mb-1">Total Conversions {isLimited && '(All Ads)'}</p>
+                                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {formatNumber(allSortedAds.reduce((sum, ad) => sum + parseInt(ad.conversions || '0'), 0))}
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            </>
+                          )}
                           <Card data-testid="total-ads-stat">
                             <CardContent className="pt-6">
                               <p className="text-sm text-slate-500 mb-1">Total Ads {isLimited ? 'Available' : 'Compared'}</p>

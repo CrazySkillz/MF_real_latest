@@ -2,15 +2,24 @@
 
 ## What is Conversion Value?
 
-**Conversion Value = Average Revenue Per Conversion**
+**Conversion Value = Revenue Per Conversion**
 
-It's **NOT** the price of a single item. It's the **average dollar amount** you earn from each conversion.
+It represents the dollar amount you earn from each conversion. This can be:
+- **The price of an item** (if selling a single product)
+- **Average Order Value** (if selling multiple products)
+- **Average Deal Value** (B2B/SaaS)
+- **Average Value Per Lead** (lead generation)
 
 ---
 
 ## Examples by Business Type
 
-### E-commerce Store
+### Single Product E-commerce
+- **Conversion Value:** Price of the Item
+- **Example:** Selling only one product at $29.99
+  - Conversion Value = **$29.99** (the price of the item)
+
+### Multi-Product E-commerce Store
 - **Conversion Value:** Average Order Value (AOV)
 - **Example:** If customers buy $29.99, $149.99, and $5.00 products
   - Average = ($29.99 + $149.99 + $5.00) / 3 = **$61.66**
@@ -227,9 +236,10 @@ After:  Profit Margin = ((Sum of Webhook Values) - Ad Spend) / (Sum of Webhook V
 ## Summary
 
 ### Conversion Value Definition:
-- **NOT** the price of a single item
-- **IS** the average revenue per conversion
-- Can be: Average Order Value, Average Deal Value, Average Lead Value, etc.
+- **IS** the revenue per conversion
+- **CAN BE** the price of an item (if selling a single product)
+- **CAN BE** the average revenue per conversion (if selling multiple products or services)
+- Examples: Item Price, Average Order Value, Average Deal Value, Average Lead Value
 
 ### How It's Used:
 1. **Campaign Settings Field:** Stores average (manual or auto-calculated)

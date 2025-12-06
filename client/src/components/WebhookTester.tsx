@@ -139,13 +139,13 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Send className="w-4 h-4 text-blue-600" />
-            Webhook URL (For External Systems)
+            Webhook URL (For Production Setup)
           </CardTitle>
           <CardDescription>
-            <strong>In production:</strong> Give this URL to external systems (Shopify, WooCommerce, Stripe, etc.) 
-            so they can automatically send conversion events when sales happen.
+            <strong>How it works:</strong> Copy this URL and configure it in your external system (Shopify, WooCommerce, Stripe, etc.) 
+            <strong> once</strong>. After that, conversion values are sent automatically - no manual entry needed!
             <br />
-            <strong>For testing:</strong> You can ignore this - just use the form below to simulate conversions.
+            <strong>For testing:</strong> Use the form below to simulate what external systems would send automatically.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -165,9 +165,20 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
               Copy URL
             </Button>
           </div>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-            💡 Copy this URL when you're ready to connect real systems (Shopify, WooCommerce, etc.)
-          </p>
+          <div className="mt-3 p-3 bg-white dark:bg-slate-800 rounded border border-blue-200 dark:border-blue-700">
+            <p className="text-xs font-semibold text-blue-900 dark:text-blue-200 mb-2">
+              📋 Production Setup Steps:
+            </p>
+            <ol className="text-xs text-blue-800 dark:text-blue-300 space-y-1 list-decimal list-inside">
+              <li>Copy the webhook URL above</li>
+              <li>Go to your e-commerce platform (Shopify, WooCommerce, etc.)</li>
+              <li>Configure webhook to send to this URL (or use Zapier/Make.com)</li>
+              <li>Done! Conversion values will be sent automatically forever</li>
+            </ol>
+            <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
+              💡 <strong>No manual data entry needed after setup!</strong> External systems send conversion values automatically.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

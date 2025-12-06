@@ -129,6 +129,32 @@ app.use('/api', (req, res, next) => {
             CREATE INDEX IF NOT EXISTS idx_kpi_periods_kpi_id ON kpi_periods(kpi_id);
           `);
           
+          // Migration 4: Create conversion_events table
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS conversion_events (
+              id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              conversion_id TEXT,
+              value DECIMAL(10, 2) NOT NULL,
+              currency TEXT NOT NULL DEFAULT 'USD',
+              conversion_type TEXT,
+              source TEXT NOT NULL,
+              metadata JSONB,
+              occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+          
+          // Create index for conversion_events
+          await db.execute(sql`
+            CREATE INDEX IF NOT EXISTS idx_conversion_events_campaign_id ON conversion_events(campaign_id);
+          `);
+          
+          await db.execute(sql`
+            CREATE INDEX IF NOT EXISTS idx_conversion_events_occurred_at ON conversion_events(occurred_at);
+          `);
+          
           log('✅ Database migrations completed successfully');
         } catch (error) {
           console.error('⚠️  Migration warning (may already exist):', error.message);

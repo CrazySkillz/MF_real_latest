@@ -29,6 +29,7 @@ import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { ABTestManager } from "@/components/ABTestManager";
+import { WebhookTester } from "@/components/WebhookTester";
 import { AttributionDashboard } from "@/components/AttributionDashboard";
 
 interface Campaign {
@@ -4675,7 +4676,7 @@ export default function CampaignDetail() {
 
           {/* Tabs Navigation */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
               <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
@@ -4683,6 +4684,7 @@ export default function CampaignDetail() {
               <TabsTrigger value="ab-testing">A/B Tests</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
+              <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
@@ -5011,6 +5013,12 @@ export default function CampaignDetail() {
 
             <TabsContent value="insights" className="space-y-6">
               <CampaignInsightsChat campaign={campaign} />
+            </TabsContent>
+
+            <TabsContent value="webhooks" className="space-y-6">
+              {campaign && (
+                <WebhookTester campaignId={campaign.id} campaignName={campaign.name} />
+              )}
             </TabsContent>
           </Tabs>
         </main>

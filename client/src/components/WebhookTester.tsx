@@ -1,0 +1,360 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Send, CheckCircle2, XCircle, Copy, FlaskConical } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+
+interface WebhookTesterProps {
+  campaignId: string;
+  campaignName?: string;
+}
+
+export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [response, setResponse] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Form state
+  const [value, setValue] = useState("29.99");
+  const [currency, setCurrency] = useState("USD");
+  const [conversionId, setConversionId] = useState("");
+  const [conversionType, setConversionType] = useState("purchase");
+  const [occurredAt, setOccurredAt] = useState("");
+  const [metadata, setMetadata] = useState("");
+
+  const handleTest = async () => {
+    setIsLoading(true);
+    setError(null);
+    setResponse(null);
+
+    try {
+      // Build request body
+      const body: any = {
+        value: parseFloat(value),
+        currency: currency || "USD",
+      };
+
+      if (conversionId) body.conversionId = conversionId;
+      if (conversionType) body.conversionType = conversionType;
+      if (occurredAt) body.occurredAt = occurredAt;
+      if (metadata) {
+        try {
+          body.metadata = JSON.parse(metadata);
+        } catch (e) {
+          throw new Error("Invalid JSON in metadata field");
+        }
+      }
+
+      // Send webhook request
+      const result = await apiRequest(`/api/webhook/conversion/${campaignId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      setResponse(result);
+      toast({
+        title: "Webhook Test Successful!",
+        description: `Conversion event recorded: $${result.event?.value || value} ${result.event?.currency || currency}`,
+      });
+    } catch (err: any) {
+      const errorMessage = err.message || "Failed to send webhook request";
+      setError(errorMessage);
+      toast({
+        title: "Webhook Test Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopyWebhookUrl = () => {
+    const url = `${window.location.origin}/api/webhook/conversion/${campaignId}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Webhook URL Copied!",
+      description: "The webhook URL has been copied to your clipboard.",
+    });
+  };
+
+  const handleQuickFill = (type: "purchase" | "lead" | "signup") => {
+    switch (type) {
+      case "purchase":
+        setValue("149.99");
+        setCurrency("USD");
+        setConversionType("purchase");
+        setConversionId(`order-${Date.now()}`);
+        setMetadata(JSON.stringify({ orderId: `order-${Date.now()}`, items: 2 }, null, 2));
+        break;
+      case "lead":
+        setValue("50.00");
+        setCurrency("USD");
+        setConversionType("lead");
+        setConversionId(`lead-${Date.now()}`);
+        setMetadata(JSON.stringify({ leadSource: "contact-form", leadScore: 85 }, null, 2));
+        break;
+      case "signup":
+        setValue("99.00");
+        setCurrency("USD");
+        setConversionType("signup");
+        setConversionId(`subscription-${Date.now()}`);
+        setMetadata(JSON.stringify({ plan: "pro", billingCycle: "monthly" }, null, 2));
+        break;
+    }
+    setOccurredAt(new Date().toISOString());
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <FlaskConical className="w-5 h-5 text-blue-600" />
+            Test Conversion Webhook
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Send test conversion events to verify webhook integration
+          </p>
+        </div>
+        <Badge variant="outline" className="flex items-center gap-1">
+          <FlaskConical className="w-3 h-3" />
+          Test Mode
+        </Badge>
+      </div>
+
+      {/* Webhook URL Display */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Webhook URL</CardTitle>
+          <CardDescription>
+            Use this URL to send conversion events from external systems
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <Input
+              value={`${window.location.origin}/api/webhook/conversion/${campaignId}`}
+              readOnly
+              className="font-mono text-sm"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyWebhookUrl}
+              className="flex-shrink-0"
+            >
+              <Copy className="w-4 h-4 mr-1" />
+              Copy
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Fill Buttons */}
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleQuickFill("purchase")}
+          className="flex-1"
+        >
+          Quick Fill: Purchase
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleQuickFill("lead")}
+          className="flex-1"
+        >
+          Quick Fill: Lead
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleQuickFill("signup")}
+          className="flex-1"
+        >
+          Quick Fill: Signup
+        </Button>
+      </div>
+
+      {/* Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Conversion Event Details</CardTitle>
+          <CardDescription>
+            Fill in the conversion event details and click "Send Test" to simulate a webhook call
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="value">
+                Value * <span className="text-xs text-slate-500">(Required)</span>
+              </Label>
+              <Input
+                id="value"
+                type="number"
+                step="0.01"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="29.99"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger id="currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="GBP">GBP</SelectItem>
+                  <SelectItem value="CAD">CAD</SelectItem>
+                  <SelectItem value="AUD">AUD</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="conversionId">Conversion ID</Label>
+              <Input
+                id="conversionId"
+                value={conversionId}
+                onChange={(e) => setConversionId(e.target.value)}
+                placeholder="order-123"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="conversionType">Conversion Type</Label>
+              <Select value={conversionType} onValueChange={setConversionType}>
+                <SelectTrigger id="conversionType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="purchase">Purchase</SelectItem>
+                  <SelectItem value="lead">Lead</SelectItem>
+                  <SelectItem value="signup">Signup</SelectItem>
+                  <SelectItem value="download">Download</SelectItem>
+                  <SelectItem value="trial">Trial</SelectItem>
+                  <SelectItem value="subscription">Subscription</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="occurredAt">Occurred At</Label>
+            <Input
+              id="occurredAt"
+              type="datetime-local"
+              value={occurredAt}
+              onChange={(e) => {
+                const date = new Date(e.target.value);
+                setOccurredAt(date.toISOString());
+              }}
+            />
+            <p className="text-xs text-slate-500">
+              Leave empty to use current time
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="metadata">Metadata (JSON)</Label>
+            <Textarea
+              id="metadata"
+              value={metadata}
+              onChange={(e) => setMetadata(e.target.value)}
+              placeholder='{"orderId": "123", "customerId": "456"}'
+              rows={4}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-slate-500">
+              Optional: Additional data as JSON object
+            </p>
+          </div>
+
+          <Button
+            onClick={handleTest}
+            disabled={isLoading || !value}
+            className="w-full"
+            size="lg"
+          >
+            <Send className="w-4 h-4 mr-2" />
+            {isLoading ? "Sending..." : "Send Test Webhook"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Response Display */}
+      {response && (
+        <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2 text-green-700 dark:text-green-400">
+              <CheckCircle2 className="w-4 h-4" />
+              Success Response
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="text-xs bg-white dark:bg-slate-800 p-3 rounded border overflow-auto max-h-64">
+              {JSON.stringify(response, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
+
+      {error && (
+        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2 text-red-700 dark:text-red-400">
+              <XCircle className="w-4 h-4" />
+              Error Response
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Info Card */}
+      <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <FlaskConical className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">
+                Testing in Test Mode
+              </h4>
+              <p className="text-xs text-blue-800 dark:text-blue-300">
+                This webhook tester works in test mode. All conversion events are stored in the database
+                and will be used for revenue calculations. The campaign's average conversion value will be
+                automatically updated based on recent events.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+

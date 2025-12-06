@@ -47,10 +47,33 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
     const engagements = aggregated.engagements || 0;
     const reach = aggregated.reach || 0;
 
-    // Calculate revenue from conversion value
-    if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0 && conversions > 0) {
-      const conversionValue = parseFloat(latestSession.conversionValue);
-      aggregated.totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+    // Calculate revenue - prioritize webhook events (actual values) over fixed conversion value
+    let totalRevenue = 0;
+    let conversionValue = 0;
+    
+    // First, try to get revenue from webhook conversion events (most accurate)
+    try {
+      const conversionEvents = await storage.getConversionEvents(campaignId);
+      if (conversionEvents.length > 0) {
+        // Use actual values from webhook events
+        totalRevenue = conversionEvents.reduce((sum, e) => sum + parseFloat(e.value || "0"), 0);
+        conversionValue = totalRevenue / conversionEvents.length; // Average for reference
+        console.log(`[KPI Refresh] Using webhook events for revenue: ${conversionEvents.length} events, total: $${totalRevenue.toFixed(2)}`);
+      }
+    } catch (error) {
+      console.warn(`[KPI Refresh] Could not fetch conversion events, falling back to fixed value:`, error);
+    }
+    
+    // Fallback to fixed conversion value if no webhook events exist
+    if (totalRevenue === 0 && latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0 && conversions > 0) {
+      conversionValue = parseFloat(latestSession.conversionValue);
+      totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+      console.log(`[KPI Refresh] Using fixed conversion value for revenue: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
+    }
+    
+    // Set revenue metrics if we have a value
+    if (totalRevenue > 0) {
+      aggregated.totalRevenue = parseFloat(totalRevenue.toFixed(2));
       aggregated.revenue = aggregated.totalRevenue; // Alias
       aggregated.conversionValue = conversionValue;
 

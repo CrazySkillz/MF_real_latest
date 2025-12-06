@@ -5377,7 +5377,7 @@ export default function LinkedInAnalytics() {
                   <SelectTrigger id="kpi-metric" data-testid="select-kpi-metric">
                     <SelectValue placeholder="Select metric to track" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="scroll-smooth max-h-[300px]">
                     <SelectItem value="impressions">Impressions</SelectItem>
                     <SelectItem value="reach">Reach</SelectItem>
                     <SelectItem value="clicks">Clicks</SelectItem>
@@ -5847,18 +5847,7 @@ export default function LinkedInAnalytics() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="benchmark-name">Benchmark Name *</Label>
-              <Input
-                id="benchmark-name"
-                placeholder="e.g., LinkedIn CTR Benchmark"
-                value={benchmarkForm.name}
-                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
-                data-testid="input-benchmark-name"
-              />
-            </div>
-
-            {/* Conversion Value Required Alert */}
+            {/* Conversion Value Required Alert - Moved above Benchmark Name */}
             {!aggregated?.hasRevenueTracking && (
               <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                 <div className="flex items-start gap-3">
@@ -5890,6 +5879,17 @@ export default function LinkedInAnalytics() {
                 </div>
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-name">Benchmark Name *</Label>
+              <Input
+                id="benchmark-name"
+                placeholder="e.g., LinkedIn CTR Benchmark"
+                value={benchmarkForm.name}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
+                data-testid="input-benchmark-name"
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -6111,27 +6111,26 @@ export default function LinkedInAnalytics() {
             </div>
 
             {/* Apply To Section */}
-            <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-apply-to" className="text-base font-semibold">
-                  Apply Benchmark To
-                </Label>
-                <Select
-                  value={benchmarkForm.applyTo}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, applyTo: value, specificCampaignId: value === 'all' ? '' : benchmarkForm.specificCampaignId })}
-                >
-                  <SelectTrigger id="benchmark-apply-to" data-testid="select-benchmark-apply-to">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Campaigns (Aggregate)</SelectItem>
-                    <SelectItem value="specific">Specific Campaign</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Choose whether this benchmark applies to all campaigns combined or a specific individual campaign
-                </p>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-apply-to" className="text-base font-semibold">
+                Apply Benchmark To
+              </Label>
+              <Select
+                value={benchmarkForm.applyTo}
+                onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, applyTo: value, specificCampaignId: value === 'all' ? '' : benchmarkForm.specificCampaignId })}
+              >
+                <SelectTrigger id="benchmark-apply-to" data-testid="select-benchmark-apply-to">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Campaigns (Aggregate)</SelectItem>
+                  <SelectItem value="specific">Specific Campaign</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Choose whether this benchmark applies to all campaigns combined or a specific individual campaign
+              </p>
+            </div>
 
               {/* Campaign Selector - Only show if 'specific' is selected */}
               {benchmarkForm.applyTo === 'specific' && (
@@ -6203,7 +6202,6 @@ export default function LinkedInAnalytics() {
                   </p>
                 </div>
               )}
-            </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">

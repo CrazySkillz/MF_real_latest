@@ -1,177 +1,41 @@
 /**
  * KPI Refresh Utility
- * Automatically refreshes KPI currentValue from latest LinkedIn metrics
- * 
- * This is used after LinkedIn data imports to ensure KPIs stay in sync
+ * Automatically updates KPI currentValue from latest LinkedIn metrics
  */
 
 import { storage } from "../storage";
 import type { KPI } from "../../shared/schema";
 
 /**
- * Calculate metric value from LinkedIn data
- */
-function calculateMetricValue(
-  metricKey: string,
-  aggregated: any,
-  campaignData?: any
-): { value: string; unit: string } {
-  let currentValue = '0';
-  let unit = '';
-
-  // Use campaign-specific data if provided, otherwise use aggregated
-  const data = campaignData || aggregated;
-  
-  const impressions = data?.impressions || data?.totalImpressions || 0;
-  const clicks = data?.clicks || data?.totalClicks || 0;
-  const spend = data?.spend || data?.totalSpend || 0;
-  const conversions = data?.conversions || data?.totalConversions || 0;
-  const leads = data?.leads || data?.totalLeads || 0;
-  const engagements = data?.engagements || data?.totalEngagements || 0;
-  const reach = data?.reach || data?.totalReach || 0;
-  const videoViews = data?.videoViews || data?.totalVideoViews || 0;
-  const viralImpressions = data?.viralImpressions || data?.totalViralImpressions || 0;
-  const conversionValue = aggregated?.conversionValue || aggregated?.conversion_value || 0;
-
-  switch (metricKey.toLowerCase()) {
-    // Core metrics
-    case 'impressions':
-      currentValue = String(Math.round(impressions));
-      break;
-    case 'reach':
-      currentValue = String(Math.round(reach));
-      break;
-    case 'clicks':
-      currentValue = String(Math.round(clicks));
-      break;
-    case 'engagements':
-      currentValue = String(Math.round(engagements));
-      break;
-    case 'spend':
-      currentValue = spend.toFixed(2);
-      unit = '$';
-      break;
-    case 'conversions':
-      currentValue = String(Math.round(conversions));
-      break;
-    case 'leads':
-      currentValue = String(Math.round(leads));
-      break;
-    case 'videoviews':
-      currentValue = String(Math.round(videoViews));
-      break;
-    case 'viralimpressions':
-      currentValue = String(Math.round(viralImpressions));
-      break;
-
-    // Derived metrics
-    case 'ctr':
-      currentValue = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : '0';
-      unit = '%';
-      break;
-    case 'cpc':
-      currentValue = clicks > 0 ? (spend / clicks).toFixed(2) : '0';
-      unit = '$';
-      break;
-    case 'cpm':
-      currentValue = impressions > 0 ? ((spend / impressions) * 1000).toFixed(2) : '0';
-      unit = '$';
-      break;
-    case 'cvr':
-      currentValue = clicks > 0 ? ((conversions / clicks) * 100).toFixed(2) : '0';
-      unit = '%';
-      break;
-    case 'cpa':
-      currentValue = conversions > 0 ? (spend / conversions).toFixed(2) : '0';
-      unit = '$';
-      break;
-    case 'cpl':
-      currentValue = leads > 0 ? (spend / leads).toFixed(2) : '0';
-      unit = '$';
-      break;
-    case 'er':
-      currentValue = impressions > 0 ? ((engagements / impressions) * 100).toFixed(2) : '0';
-      unit = '%';
-      break;
-
-    // Revenue metrics (require conversion value)
-    case 'roi':
-      if (conversionValue > 0 && conversions > 0) {
-        const revenue = conversions * conversionValue;
-        const profit = revenue - spend;
-        currentValue = spend > 0 ? ((profit / spend) * 100).toFixed(2) : '0';
-        unit = '%';
-      }
-      break;
-    case 'roas':
-      if (conversionValue > 0 && conversions > 0) {
-        const revenue = conversions * conversionValue;
-        currentValue = spend > 0 ? (revenue / spend).toFixed(2) : '0';
-        unit = 'x';
-      }
-      break;
-    case 'totalrevenue':
-    case 'total_revenue':
-      if (conversionValue > 0 && conversions > 0) {
-        const revenue = conversions * conversionValue;
-        currentValue = revenue.toFixed(2);
-        unit = '$';
-      }
-      break;
-    case 'profit':
-      if (conversionValue > 0 && conversions > 0) {
-        const revenue = conversions * conversionValue;
-        const profit = revenue - spend;
-        currentValue = profit.toFixed(2);
-        unit = '$';
-      }
-      break;
-    case 'profitmargin':
-    case 'profit_margin':
-      if (conversionValue > 0 && conversions > 0) {
-        const revenue = conversions * conversionValue;
-        const profit = revenue - spend;
-        currentValue = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : '0';
-        unit = '%';
-      }
-      break;
-    case 'revenueperlead':
-    case 'revenue_per_lead':
-      if (conversionValue > 0 && conversions > 0 && leads > 0) {
-        const revenue = conversions * conversionValue;
-        currentValue = (revenue / leads).toFixed(2);
-        unit = '$';
-      }
-      break;
-  }
-
-  return { value: currentValue, unit };
-}
-
-/**
  * Get aggregated LinkedIn metrics for a campaign
+ * Returns all core, derived, and revenue metrics
  */
-async function getAggregatedMetrics(campaignId: string): Promise<any> {
+async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<string, number> | null> {
   try {
-    // Get latest import session
+    // Get the latest import session for this campaign
     const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
     if (!sessions || sessions.length === 0) {
+      console.log(`[KPI Refresh] No LinkedIn import sessions found for campaign ${campaignId}`);
       return null;
     }
 
+    // Get the most recent session
     const latestSession = sessions.sort((a: any, b: any) => 
       new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
     )[0];
 
     // Get metrics for this session
     const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
-    
+
     // Aggregate metrics
     const aggregated: Record<string, number> = {};
-    metrics.forEach((m: any) => {
-      const key = m.metricKey.toLowerCase();
-      const value = parseFloat(m.metricValue || '0');
-      aggregated[key] = (aggregated[key] || 0) + value;
+    const selectedMetrics = Array.from(new Set(metrics.map((m: any) => m.metricKey)));
+
+    selectedMetrics.forEach((metricKey: string) => {
+      const total = metrics
+        .filter((m: any) => m.metricKey === metricKey)
+        .reduce((sum: number, m: any) => sum + parseFloat(m.metricValue || '0'), 0);
+      aggregated[metricKey] = parseFloat(total.toFixed(2));
     });
 
     // Calculate derived metrics
@@ -181,64 +45,77 @@ async function getAggregatedMetrics(campaignId: string): Promise<any> {
     const conversions = aggregated.conversions || 0;
     const leads = aggregated.leads || 0;
     const engagements = aggregated.engagements || 0;
+    const reach = aggregated.reach || 0;
 
-    // Add derived metrics
-    if (impressions > 0) {
-      aggregated.ctr = (clicks / impressions) * 100;
-      aggregated.cpm = (spend / impressions) * 1000;
-      aggregated.er = (engagements / impressions) * 100;
-    }
-    if (clicks > 0) {
-      aggregated.cpc = spend / clicks;
-      aggregated.cvr = (conversions / clicks) * 100;
-    }
-    if (conversions > 0) {
-      aggregated.cpa = spend / conversions;
-    }
-    if (leads > 0) {
-      aggregated.cpl = spend / leads;
-    }
-
-    // Add revenue metrics if conversion value exists
-    if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
+    // Calculate revenue from conversion value
+    if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0 && conversions > 0) {
       const conversionValue = parseFloat(latestSession.conversionValue);
+      aggregated.totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+      aggregated.revenue = aggregated.totalRevenue; // Alias
       aggregated.conversionValue = conversionValue;
-      aggregated.hasRevenueTracking = true;
-      
-      if (conversions > 0) {
-        const revenue = conversions * conversionValue;
-        aggregated.totalRevenue = revenue;
-        aggregated.profit = revenue - spend;
-        
-        if (spend > 0) {
-          aggregated.roas = revenue / spend;
-          aggregated.roi = ((revenue - spend) / spend) * 100;
-        }
-        if (revenue > 0) {
-          aggregated.profitMargin = ((revenue - spend) / revenue) * 100;
-        }
+
+      // Calculate ROI and ROAS if revenue is available
+      if (spend > 0) {
+        aggregated.roas = parseFloat((aggregated.totalRevenue / spend).toFixed(2));
+        aggregated.roi = parseFloat((((aggregated.totalRevenue - spend) / spend) * 100).toFixed(2));
+        aggregated.profit = parseFloat((aggregated.totalRevenue - spend).toFixed(2));
+        aggregated.profitMargin = parseFloat(((aggregated.profit / aggregated.totalRevenue) * 100).toFixed(2));
         if (leads > 0) {
-          aggregated.revenuePerLead = revenue / leads;
+          aggregated.revenuePerLead = parseFloat((aggregated.totalRevenue / leads).toFixed(2));
         }
       }
     }
 
+    // CTR: (Clicks / Impressions) * 100
+    if (impressions > 0) {
+      aggregated.ctr = parseFloat(((clicks / impressions) * 100).toFixed(2));
+    }
+
+    // CPC: Spend / Clicks
+    if (clicks > 0) {
+      aggregated.cpc = parseFloat((spend / clicks).toFixed(2));
+    }
+
+    // CPM: (Spend / Impressions) * 1000
+    if (impressions > 0) {
+      aggregated.cpm = parseFloat(((spend / impressions) * 1000).toFixed(2));
+    }
+
+    // CVR (Conversion Rate): (Conversions / Clicks) * 100
+    if (clicks > 0) {
+      aggregated.cvr = parseFloat(((conversions / clicks) * 100).toFixed(2));
+    }
+
+    // CPA (Cost per Acquisition): Spend / Conversions
+    if (conversions > 0) {
+      aggregated.cpa = parseFloat((spend / conversions).toFixed(2));
+    }
+
+    // CPL (Cost per Lead): Spend / Leads
+    if (leads > 0) {
+      aggregated.cpl = parseFloat((spend / leads).toFixed(2));
+    }
+
+    // ER (Engagement Rate): (Engagements / Impressions) * 100
+    if (impressions > 0) {
+      aggregated.er = parseFloat(((engagements / impressions) * 100).toFixed(2));
+    }
+
     return aggregated;
   } catch (error) {
-    console.error(`[KPI Refresh] Error getting aggregated metrics for campaign ${campaignId}:`, error);
+    console.error(`[KPI Refresh] Error fetching LinkedIn metrics for campaign ${campaignId}:`, error);
     return null;
   }
 }
 
 /**
- * Get campaign-specific metrics for a LinkedIn campaign
+ * Get campaign-specific metrics for a specific LinkedIn campaign
  */
 async function getCampaignSpecificMetrics(
   campaignId: string,
   linkedInCampaignName: string
-): Promise<any> {
+): Promise<Record<string, number> | null> {
   try {
-    // Get latest import session
     const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
     if (!sessions || sessions.length === 0) {
       return null;
@@ -251,152 +128,228 @@ async function getCampaignSpecificMetrics(
     // Get ads for this session
     const ads = await storage.getLinkedInAdPerformance(latestSession.id);
     
-    // Filter ads for this specific LinkedIn campaign
+    // Filter ads for the specific campaign
     const campaignAds = ads.filter((ad: any) => ad.campaignName === linkedInCampaignName);
+    
     if (campaignAds.length === 0) {
+      console.log(`[KPI Refresh] No ads found for LinkedIn campaign: ${linkedInCampaignName}`);
       return null;
     }
 
-    // Aggregate metrics for this campaign
-    const totals = campaignAds.reduce((acc: any, ad: any) => ({
-      impressions: (acc.impressions || 0) + (ad.impressions || 0),
-      clicks: (acc.clicks || 0) + (ad.clicks || 0),
-      spend: (acc.spend || 0) + parseFloat(ad.spend || 0),
-      conversions: (acc.conversions || 0) + (ad.conversions || 0),
-      leads: (acc.leads || 0) + (ad.leads || 0),
-      engagements: (acc.engagements || 0) + (ad.engagements || 0),
-      reach: (acc.reach || 0) + (ad.reach || 0),
-      videoViews: (acc.videoViews || 0) + (ad.videoViews || 0),
-      viralImpressions: (acc.viralImpressions || 0) + (ad.viralImpressions || 0),
-    }), {});
-
-    // Calculate derived metrics
-    const impressions = totals.impressions || 0;
-    const clicks = totals.clicks || 0;
-    const spend = totals.spend || 0;
-    const conversions = totals.conversions || 0;
-    const leads = totals.leads || 0;
-    const engagements = totals.engagements || 0;
-
-    const campaignData = {
-      ...totals,
-      ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
-      cpc: clicks > 0 ? spend / clicks : 0,
-      cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
-      cvr: clicks > 0 ? (conversions / clicks) * 100 : 0,
-      cpa: conversions > 0 ? spend / conversions : 0,
-      cpl: leads > 0 ? spend / leads : 0,
-      er: impressions > 0 ? (engagements / impressions) * 100 : 0
+    // Aggregate metrics from all ads in this campaign
+    const aggregated: Record<string, number> = {
+      impressions: 0,
+      clicks: 0,
+      spend: 0,
+      conversions: 0,
+      leads: 0,
+      engagements: 0,
+      reach: 0,
     };
 
-    // Add revenue metrics if conversion value exists
-    if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
+    campaignAds.forEach((ad: any) => {
+      aggregated.impressions += ad.impressions || 0;
+      aggregated.clicks += ad.clicks || 0;
+      aggregated.spend += parseFloat(ad.spend || '0');
+      aggregated.conversions += ad.conversions || 0;
+      aggregated.leads += ad.leads || 0;
+      aggregated.engagements += ad.engagements || 0;
+      aggregated.reach += ad.reach || 0;
+    });
+
+    // Calculate derived metrics (same logic as aggregate)
+    const impressions = aggregated.impressions || 0;
+    const clicks = aggregated.clicks || 0;
+    const spend = aggregated.spend || 0;
+    const conversions = aggregated.conversions || 0;
+    const leads = aggregated.leads || 0;
+    const engagements = aggregated.engagements || 0;
+
+    // Get conversion value from session
+    if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0 && conversions > 0) {
       const conversionValue = parseFloat(latestSession.conversionValue);
-      if (conversions > 0) {
-        const revenue = conversions * conversionValue;
-        campaignData.totalRevenue = revenue;
-        campaignData.profit = revenue - spend;
-        
-        if (spend > 0) {
-          campaignData.roas = revenue / spend;
-          campaignData.roi = ((revenue - spend) / spend) * 100;
-        }
-        if (revenue > 0) {
-          campaignData.profitMargin = ((revenue - spend) / revenue) * 100;
-        }
+      aggregated.totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+      aggregated.revenue = aggregated.totalRevenue;
+      
+      if (spend > 0) {
+        aggregated.roas = parseFloat((aggregated.totalRevenue / spend).toFixed(2));
+        aggregated.roi = parseFloat((((aggregated.totalRevenue - spend) / spend) * 100).toFixed(2));
+        aggregated.profit = parseFloat((aggregated.totalRevenue - spend).toFixed(2));
+        aggregated.profitMargin = parseFloat(((aggregated.profit / aggregated.totalRevenue) * 100).toFixed(2));
         if (leads > 0) {
-          campaignData.revenuePerLead = revenue / leads;
+          aggregated.revenuePerLead = parseFloat((aggregated.totalRevenue / leads).toFixed(2));
         }
       }
     }
 
-    return campaignData;
+    if (impressions > 0) {
+      aggregated.ctr = parseFloat(((clicks / impressions) * 100).toFixed(2));
+    }
+    if (clicks > 0) {
+      aggregated.cpc = parseFloat((spend / clicks).toFixed(2));
+    }
+    if (impressions > 0) {
+      aggregated.cpm = parseFloat(((spend / impressions) * 1000).toFixed(2));
+    }
+    if (clicks > 0) {
+      aggregated.cvr = parseFloat(((conversions / clicks) * 100).toFixed(2));
+    }
+    if (conversions > 0) {
+      aggregated.cpa = parseFloat((spend / conversions).toFixed(2));
+    }
+    if (leads > 0) {
+      aggregated.cpl = parseFloat((spend / leads).toFixed(2));
+    }
+    if (impressions > 0) {
+      aggregated.er = parseFloat(((engagements / impressions) * 100).toFixed(2));
+    }
+
+    return aggregated;
   } catch (error) {
-    console.error(`[KPI Refresh] Error getting campaign-specific metrics:`, error);
+    console.error(`[KPI Refresh] Error fetching campaign-specific metrics:`, error);
     return null;
   }
 }
 
 /**
- * Refresh KPI currentValue from latest LinkedIn metrics
- * This is called after LinkedIn data is imported
+ * Map KPI metric name to LinkedIn metric key
  */
-export async function refreshKPIsForCampaign(campaignId: string): Promise<void> {
-  try {
-    console.log(`[KPI Refresh] Refreshing KPIs for campaign ${campaignId}`);
+function mapKPIMetricToLinkedInKey(kpiMetric: string): string {
+  const metricMap: Record<string, string> = {
+    // Core metrics
+    'impressions': 'impressions',
+    'reach': 'reach',
+    'clicks': 'clicks',
+    'engagements': 'engagements',
+    'spend': 'spend',
+    'conversions': 'conversions',
+    'leads': 'leads',
+    
+    // Derived metrics
+    'ctr': 'ctr',
+    'cpc': 'cpc',
+    'cpm': 'cpm',
+    'cvr': 'cvr',
+    'cpa': 'cpa',
+    'cpl': 'cpl',
+    'er': 'er',
+    
+    // Revenue metrics
+    'totalrevenue': 'totalRevenue',
+    'total revenue': 'totalRevenue',
+    'revenue': 'totalRevenue',
+    'roas': 'roas',
+    'roi': 'roi',
+    'profit': 'profit',
+    'profitmargin': 'profitMargin',
+    'profit margin': 'profitMargin',
+    'revenueperlead': 'revenuePerLead',
+    'revenue per lead': 'revenuePerLead',
+  };
 
+  const normalized = kpiMetric.toLowerCase().trim();
+  return metricMap[normalized] || normalized;
+}
+
+/**
+ * Calculate currentValue for a KPI from LinkedIn metrics
+ */
+function calculateKPIValue(kpi: KPI, metrics: Record<string, number>): string | null {
+  if (!kpi.metric) {
+    console.log(`[KPI Refresh] KPI ${kpi.name} has no metric field, skipping`);
+    return null;
+  }
+
+  const metricKey = mapKPIMetricToLinkedInKey(kpi.metric);
+  const value = metrics[metricKey];
+
+  if (value === undefined || value === null) {
+    console.log(`[KPI Refresh] Metric ${metricKey} not found in LinkedIn data for KPI ${kpi.name}`);
+    return null;
+  }
+
+  // Format value based on unit
+  if (kpi.unit === '%') {
+    return value.toFixed(2);
+  } else if (kpi.unit === '$') {
+    return value.toFixed(2);
+  } else {
+    return value.toString();
+  }
+}
+
+/**
+ * Refresh all KPIs for a campaign from latest LinkedIn metrics
+ */
+export async function refreshKPIsForCampaign(campaignId: string): Promise<{ updated: number; errors: number }> {
+  console.log(`[KPI Refresh] Starting refresh for campaign ${campaignId}`);
+  
+  let updated = 0;
+  let errors = 0;
+
+  try {
     // Get all LinkedIn KPIs for this campaign
     const kpis = await storage.getPlatformKPIs('linkedin', campaignId);
+    
     if (!kpis || kpis.length === 0) {
       console.log(`[KPI Refresh] No KPIs found for campaign ${campaignId}`);
-      return;
+      return { updated: 0, errors: 0 };
     }
 
     console.log(`[KPI Refresh] Found ${kpis.length} KPIs to refresh`);
 
-    // Get aggregated metrics
-    const aggregated = await getAggregatedMetrics(campaignId);
-    if (!aggregated) {
-      console.log(`[KPI Refresh] No LinkedIn data found for campaign ${campaignId}`);
-      return;
+    // Get latest LinkedIn metrics
+    const aggregatedMetrics = await getLatestLinkedInMetrics(campaignId);
+    
+    if (!aggregatedMetrics) {
+      console.log(`[KPI Refresh] No LinkedIn metrics found for campaign ${campaignId}, skipping refresh`);
+      return { updated: 0, errors: 0 };
     }
 
     // Refresh each KPI
     for (const kpi of kpis) {
       try {
-        // Skip if KPI doesn't have a metric field
-        if (!kpi.metric) {
-          console.log(`[KPI Refresh] Skipping KPI ${kpi.id} - no metric field`);
-          continue;
-        }
-
-        // Skip if KPI is not for LinkedIn platform
-        if (kpi.platformType !== 'linkedin') {
-          console.log(`[KPI Refresh] Skipping KPI ${kpi.id} - not LinkedIn platform`);
-          continue;
-        }
-
-        let metricValue: { value: string; unit: string };
-
-        // Check if KPI is campaign-specific
+        let metrics = aggregatedMetrics;
+        
+        // If KPI is campaign-specific, get campaign-specific metrics
         if (kpi.applyTo === 'specific' && kpi.specificCampaignId) {
-          // Get campaign-specific metrics
-          const campaignData = await getCampaignSpecificMetrics(campaignId, kpi.specificCampaignId);
-          if (campaignData) {
-            metricValue = calculateMetricValue(kpi.metric, aggregated, campaignData);
+          const campaignMetrics = await getCampaignSpecificMetrics(campaignId, kpi.specificCampaignId);
+          if (campaignMetrics) {
+            metrics = campaignMetrics;
           } else {
-            console.log(`[KPI Refresh] No campaign-specific data for ${kpi.specificCampaignId}`);
-            continue;
+            console.log(`[KPI Refresh] Using aggregate metrics for campaign-specific KPI ${kpi.name} (campaign not found)`);
           }
-        } else {
-          // Use aggregated metrics
-          metricValue = calculateMetricValue(kpi.metric, aggregated);
         }
 
-        // Update KPI if value changed
-        const newValue = metricValue.value;
-        if (newValue !== kpi.currentValue) {
-          console.log(`[KPI Refresh] Updating KPI ${kpi.id} (${kpi.name}): ${kpi.currentValue} → ${newValue}`);
-          
-          await storage.updateKPI(kpi.id, {
-            currentValue: newValue,
-            unit: metricValue.unit || kpi.unit
-          });
+        const newCurrentValue = calculateKPIValue(kpi, metrics);
+        
+        if (newCurrentValue === null) {
+          console.log(`[KPI Refresh] Could not calculate value for KPI ${kpi.name}, skipping update`);
+          errors++;
+          continue;
+        }
 
-          console.log(`[KPI Refresh] ✅ Updated KPI ${kpi.id}`);
+        // Only update if value has changed
+        if (kpi.currentValue !== newCurrentValue) {
+          await storage.updateKPI(kpi.id, {
+            currentValue: newCurrentValue
+          });
+          
+          console.log(`[KPI Refresh] Updated KPI ${kpi.name}: ${kpi.currentValue} → ${newCurrentValue}`);
+          updated++;
         } else {
-          console.log(`[KPI Refresh] KPI ${kpi.id} value unchanged: ${newValue}`);
+          console.log(`[KPI Refresh] KPI ${kpi.name} value unchanged: ${newCurrentValue}`);
         }
       } catch (error) {
         console.error(`[KPI Refresh] Error refreshing KPI ${kpi.id}:`, error);
-        // Continue with other KPIs even if one fails
+        errors++;
       }
     }
 
-    console.log(`[KPI Refresh] ✅ Completed refreshing KPIs for campaign ${campaignId}`);
+    console.log(`[KPI Refresh] Completed: ${updated} updated, ${errors} errors`);
+    return { updated, errors };
   } catch (error) {
     console.error(`[KPI Refresh] Error refreshing KPIs for campaign ${campaignId}:`, error);
-    throw error;
+    return { updated: 0, errors: 0 };
   }
 }
-

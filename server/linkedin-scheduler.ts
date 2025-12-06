@@ -1,0 +1,456 @@
+/**
+ * LinkedIn Data Refresh Scheduler
+ * Automatically refreshes LinkedIn metrics for all campaigns with LinkedIn connections
+ * Supports both test mode and production mode
+ */
+
+import { storage } from "./storage";
+import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
+import { checkPerformanceAlerts } from "./kpi-scheduler";
+import { db } from "./db";
+import { linkedinConnections } from "../shared/schema";
+
+/**
+ * Generate mock LinkedIn data for test mode
+ * Reuses the same logic as the import endpoint
+ */
+async function generateMockLinkedInData(
+  campaignId: string,
+  connection: any
+): Promise<void> {
+  console.log(`[LinkedIn Scheduler] TEST MODE: Generating mock data for campaign ${campaignId}`);
+
+  // Get the latest import session to reuse selected campaigns and metrics
+  const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+  if (!sessions || sessions.length === 0) {
+    console.log(`[LinkedIn Scheduler] No previous import sessions found for test mode campaign ${campaignId}`);
+    return;
+  }
+
+  const latestSession = sessions.sort((a: any, b: any) => 
+    new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
+  )[0];
+
+  // Create a new import session with the same configuration
+  const newSession = await storage.createLinkedInImportSession({
+    campaignId,
+    adAccountId: connection.adAccountId,
+    adAccountName: connection.adAccountName || '',
+    selectedCampaignsCount: latestSession.selectedCampaignsCount || 1,
+    selectedMetricsCount: latestSession.selectedMetricsCount || 0,
+    selectedMetricKeys: latestSession.selectedMetricKeys || [],
+    conversionValue: latestSession.conversionValue
+  });
+
+  // Get the selected metric keys
+  const selectedMetricKeys = latestSession.selectedMetricKeys || [];
+
+  // Generate mock metrics (simplified - in real implementation, you'd want to preserve campaign structure)
+  for (const metricKey of selectedMetricKeys) {
+    // Generate slightly varied values to simulate real data changes
+    const baseValue = Math.random() * 10000 + 1000;
+    const variation = 0.8 + (Math.random() * 0.4); // ±20% variation
+    const metricValue = (baseValue * variation).toFixed(2);
+
+    await storage.createLinkedInImportMetric({
+      sessionId: newSession.id,
+      campaignUrn: `test-campaign-${Date.now()}`,
+      campaignName: 'Test Campaign',
+      campaignStatus: 'active',
+      metricKey,
+      metricValue
+    });
+  }
+
+  // Generate mock ad performance data
+  const numAds = Math.floor(Math.random() * 2) + 2;
+  for (let i = 0; i < numAds; i++) {
+    const adData: any = {
+      sessionId: newSession.id,
+      adId: `ad-${campaignId}-${Date.now()}-${i + 1}`,
+      adName: `Ad ${i + 1} - Test Campaign`,
+      campaignUrn: `test-campaign-${Date.now()}`,
+      campaignName: 'Test Campaign',
+      campaignSelectedMetrics: selectedMetricKeys,
+      impressions: 0,
+      clicks: 0,
+      spend: "0",
+      conversions: 0,
+      revenue: "0",
+      ctr: "0",
+      cpc: "0",
+      conversionRate: "0"
+    };
+
+    // Populate selected metrics with mock data
+    if (selectedMetricKeys.includes('impressions')) {
+      adData.impressions = Math.floor(Math.random() * 50000) + 10000;
+    }
+    if (selectedMetricKeys.includes('reach')) {
+      adData.reach = Math.floor(Math.random() * 40000) + 8000;
+    }
+    if (selectedMetricKeys.includes('clicks')) {
+      adData.clicks = Math.floor(Math.random() * 2000) + 500;
+    }
+    if (selectedMetricKeys.includes('engagements')) {
+      adData.engagements = Math.floor(Math.random() * 3000) + 600;
+    }
+    if (selectedMetricKeys.includes('spend')) {
+      adData.spend = (Math.random() * 5000 + 1000).toFixed(2);
+    }
+    if (selectedMetricKeys.includes('conversions')) {
+      adData.conversions = Math.floor(Math.random() * 100) + 10;
+    }
+    if (selectedMetricKeys.includes('leads')) {
+      adData.leads = Math.floor(Math.random() * 80) + 5;
+    }
+
+    // Calculate derived metrics
+    const spend = parseFloat(adData.spend);
+    if (selectedMetricKeys.includes('clicks') && selectedMetricKeys.includes('impressions') && adData.impressions > 0) {
+      adData.ctr = ((adData.clicks / adData.impressions) * 100).toFixed(2);
+    }
+    if (selectedMetricKeys.includes('spend') && selectedMetricKeys.includes('clicks') && adData.clicks > 0) {
+      adData.cpc = (spend / adData.clicks).toFixed(2);
+    }
+    if (selectedMetricKeys.includes('conversions') && selectedMetricKeys.includes('clicks') && adData.clicks > 0) {
+      adData.cvr = ((adData.conversions / adData.clicks) * 100).toFixed(2);
+      adData.conversionRate = adData.cvr;
+    }
+
+    await storage.createLinkedInAdPerformance(adData);
+  }
+
+  console.log(`[LinkedIn Scheduler] ✅ Mock data generated for campaign ${campaignId}`);
+}
+
+/**
+ * Fetch real LinkedIn data from API
+ * Reuses the same logic as the manual import endpoint
+ */
+async function fetchRealLinkedInData(
+  campaignId: string,
+  connection: any
+): Promise<void> {
+  console.log(`[LinkedIn Scheduler] PRODUCTION MODE: Fetching real data for campaign ${campaignId}`);
+
+  if (!connection.accessToken) {
+    console.error(`[LinkedIn Scheduler] No access token found for campaign ${campaignId}`);
+    return;
+  }
+
+  try {
+    // Get the latest import session to know which campaigns and metrics were selected
+    const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+    if (!sessions || sessions.length === 0) {
+      console.log(`[LinkedIn Scheduler] No previous import sessions found for campaign ${campaignId} - skipping scheduled refresh`);
+      return;
+    }
+
+    const latestSession = sessions.sort((a: any, b: any) => 
+      new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
+    )[0];
+
+    // Get the campaigns that were previously imported
+    const previousMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
+    const previousCampaigns = Array.from(new Set(previousMetrics.map((m: any) => ({
+      id: m.campaignUrn,
+      name: m.campaignName,
+      status: m.campaignStatus,
+      selectedMetrics: latestSession.selectedMetricKeys || []
+    }))));
+
+    if (previousCampaigns.length === 0) {
+      console.log(`[LinkedIn Scheduler] No previous campaigns found for campaign ${campaignId}`);
+      return;
+    }
+
+    // Import LinkedIn client
+    const { LinkedInClient } = await import('./linkedinClient');
+    const linkedInClient = new LinkedInClient(connection.accessToken);
+
+    // Get all campaigns from LinkedIn to match with previous imports
+    const allLinkedInCampaigns = await linkedInClient.getCampaigns(connection.adAccountId);
+    
+    if (!allLinkedInCampaigns || allLinkedInCampaigns.length === 0) {
+      console.log(`[LinkedIn Scheduler] No campaigns found for ad account ${connection.adAccountId}`);
+      return;
+    }
+
+    // Match previous campaigns with current LinkedIn campaigns
+    const campaignsToRefresh = previousCampaigns.map(prevCampaign => {
+      const linkedInCampaign = allLinkedInCampaigns.find((c: any) => 
+        c.id === prevCampaign.id || c.id.includes(prevCampaign.id) || prevCampaign.id.includes(c.id)
+      );
+      return linkedInCampaign ? {
+        id: linkedInCampaign.id,
+        name: linkedInCampaign.name || prevCampaign.name,
+        status: linkedInCampaign.status || prevCampaign.status,
+        selectedMetrics: prevCampaign.selectedMetrics
+      } : null;
+    }).filter(Boolean) as any[];
+
+    if (campaignsToRefresh.length === 0) {
+      console.log(`[LinkedIn Scheduler] No matching campaigns found for campaign ${campaignId}`);
+      return;
+    }
+
+    // Get date range (last 30 days)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+
+    const campaignIds = campaignsToRefresh.map(c => c.id);
+
+    // Fetch campaign analytics
+    const campaignAnalytics = await linkedInClient.getCampaignAnalytics(
+      campaignIds,
+      startDate.toISOString().split('T')[0],
+      endDate.toISOString().split('T')[0]
+    );
+
+    // Fetch creatives (ads) for each campaign
+    const creatives = await linkedInClient.getCreatives(campaignIds);
+
+    // Fetch creative analytics
+    const creativeAnalytics = await linkedInClient.getCreativeAnalytics(
+      campaignIds,
+      startDate.toISOString().split('T')[0],
+      endDate.toISOString().split('T')[0]
+    );
+
+    // Count selected metrics
+    const selectedMetricsCount = campaignsToRefresh.reduce((sum, c) => 
+      sum + (c.selectedMetrics?.length || 0), 0
+    );
+
+    // Create new import session
+    const session = await storage.createLinkedInImportSession({
+      campaignId,
+      adAccountId: connection.adAccountId,
+      adAccountName: connection.adAccountName || '',
+      selectedCampaignsCount: campaignsToRefresh.length,
+      selectedMetricsCount,
+      selectedMetricKeys: latestSession.selectedMetricKeys || [],
+      conversionValue: latestSession.conversionValue
+    });
+
+    // Store campaign metrics (same logic as manual import)
+    for (const campaign of campaignsToRefresh) {
+      if (!campaign.selectedMetrics || !Array.isArray(campaign.selectedMetrics) || campaign.selectedMetrics.length === 0) {
+        continue;
+      }
+
+      const campAnalytics = campaignAnalytics.find((a: any) => 
+        a.pivotValues?.includes(campaign.id) || 
+        a.pivotValues?.some((pv: string) => pv.includes(campaign.id) || campaign.id.includes(pv))
+      ) || {};
+
+      // Filter out calculated metrics (CTR, CPC, CPM) - these should only be calculated, not imported
+      const coreMetrics = campaign.selectedMetrics.filter((m: string) => 
+        !['ctr', 'cpc', 'cpm'].includes(m.toLowerCase())
+      );
+
+      for (const metricKey of coreMetrics) {
+        let metricValue = '0';
+        
+        switch (metricKey.toLowerCase()) {
+          case 'impressions':
+            metricValue = String(campAnalytics.impressions || 0);
+            break;
+          case 'clicks':
+            metricValue = String(campAnalytics.clicks || 0);
+            break;
+          case 'spend':
+            metricValue = String(campAnalytics.costInLocalCurrency || 0);
+            break;
+          case 'conversions':
+            metricValue = String(campAnalytics.externalWebsiteConversions || 0);
+            break;
+          case 'leads':
+            metricValue = String(campAnalytics.leadGenerationMailContactInfoShares || campAnalytics.leadGenerationMailInterestedClicks || 0);
+            break;
+          case 'likes':
+            metricValue = String(campAnalytics.likes || campAnalytics.reactions || 0);
+            break;
+          case 'comments':
+            metricValue = String(campAnalytics.comments || 0);
+            break;
+          case 'shares':
+            metricValue = String(campAnalytics.shares || 0);
+            break;
+          case 'totalengagements':
+          case 'engagements':
+            const engagements = (campAnalytics.likes || 0) + (campAnalytics.comments || 0) + (campAnalytics.shares || 0) + (campAnalytics.clicks || 0);
+            metricValue = String(engagements);
+            break;
+          case 'reach':
+            metricValue = String(campAnalytics.approximateUniqueImpressions || campAnalytics.impressions || 0);
+            break;
+          case 'videoviews':
+          case 'videoViews':
+            metricValue = String(campAnalytics.videoViews || campAnalytics.videoStarts || 0);
+            break;
+          case 'viralimpressions':
+          case 'viralImpressions':
+            metricValue = String(campAnalytics.viralImpressions || 0);
+            break;
+        }
+        
+        await storage.createLinkedInImportMetric({
+          sessionId: session.id,
+          campaignUrn: campaign.id,
+          campaignName: campaign.name,
+          campaignStatus: campaign.status || "active",
+          metricKey,
+          metricValue
+        });
+      }
+
+      // Store ad/creative performance
+      const campaignCreatives = creatives.filter((c: any) => 
+        c.campaignId === campaign.id || 
+        (c.campaign && (c.campaign.id === campaign.id || c.campaign.includes(campaign.id)))
+      );
+      
+      for (const creative of campaignCreatives) {
+        const creativeStats = creativeAnalytics.find((a: any) => 
+          a.pivotValues?.includes(creative.id) ||
+          a.pivotValues?.some((pv: string) => pv.includes(creative.id) || creative.id.includes(pv))
+        ) || {};
+        
+        const impressions = creativeStats.impressions || 0;
+        const clicks = creativeStats.clicks || 0;
+        const spend = String(creativeStats.costInLocalCurrency || 0);
+        const conversions = creativeStats.externalWebsiteConversions || 0;
+        
+        // Calculate conversion value if available
+        const conversionValue = latestSession.conversionValue ? parseFloat(latestSession.conversionValue) : 150;
+        const revenue = String(conversions * conversionValue);
+        
+        const ctr = impressions > 0 ? String((clicks / impressions) * 100) : '0';
+        const cpc = clicks > 0 ? String(parseFloat(spend) / clicks) : '0';
+        const conversionRate = clicks > 0 ? String((conversions / clicks) * 100) : '0';
+        
+        await storage.createLinkedInAdPerformance({
+          sessionId: session.id,
+          adId: creative.id,
+          adName: creative.name || `Creative ${creative.id}`,
+          campaignUrn: campaign.id,
+          campaignName: campaign.name,
+          campaignSelectedMetrics: campaign.selectedMetrics || [],
+          impressions,
+          clicks,
+          spend,
+          conversions,
+          revenue,
+          ctr,
+          cpc,
+          conversionRate
+        });
+      }
+    }
+
+    console.log(`[LinkedIn Scheduler] ✅ Real data fetched and stored for campaign ${campaignId}`);
+  } catch (error: any) {
+    console.error(`[LinkedIn Scheduler] Error fetching real LinkedIn data for campaign ${campaignId}:`, error);
+    // Don't throw - log and continue with other campaigns
+  }
+}
+
+/**
+ * Refresh LinkedIn data for a single campaign
+ */
+async function refreshLinkedInDataForCampaign(
+  campaignId: string,
+  connection?: any
+): Promise<void> {
+  try {
+    // Get connection if not provided
+    if (!connection) {
+      connection = await storage.getLinkedInConnection(campaignId);
+    }
+    
+    if (!connection) {
+      console.log(`[LinkedIn Scheduler] No LinkedIn connection found for campaign ${campaignId}`);
+      return;
+    }
+
+    // Detect test mode: connection.method === 'test' or global env variable
+    const isTestMode = connection.method === 'test' || process.env.LINKEDIN_TEST_MODE === 'true';
+
+    if (isTestMode) {
+      await generateMockLinkedInData(campaignId, connection);
+    } else {
+      await fetchRealLinkedInData(campaignId, connection);
+    }
+
+    // After data refresh, refresh KPIs
+    console.log(`[LinkedIn Scheduler] Refreshing KPIs for campaign ${campaignId}...`);
+    await refreshKPIsForCampaign(campaignId);
+
+    // Immediately check for alerts after KPI refresh
+    console.log(`[LinkedIn Scheduler] Checking performance alerts for campaign ${campaignId}...`);
+    await checkPerformanceAlerts();
+
+    console.log(`[LinkedIn Scheduler] ✅ Completed refresh for campaign ${campaignId}`);
+  } catch (error: any) {
+    console.error(`[LinkedIn Scheduler] Error refreshing campaign ${campaignId}:`, error);
+    // Don't throw - continue with other campaigns
+  }
+}
+
+/**
+ * Refresh LinkedIn data for all campaigns with LinkedIn connections
+ */
+export async function refreshAllLinkedInData(): Promise<void> {
+  console.log('[LinkedIn Scheduler] Starting scheduled LinkedIn data refresh...');
+
+  try {
+    // Get all LinkedIn connections from database
+    const allConnections = await db.select().from(linkedinConnections);
+    
+    if (!allConnections || allConnections.length === 0) {
+      console.log('[LinkedIn Scheduler] No LinkedIn connections found');
+      return;
+    }
+
+    console.log(`[LinkedIn Scheduler] Found ${allConnections.length} LinkedIn connection(s) to refresh`);
+
+    // Refresh data for each campaign
+    for (const connection of allConnections) {
+      await refreshLinkedInDataForCampaign(connection.campaignId, connection);
+    }
+    
+    console.log('[LinkedIn Scheduler] ✅ LinkedIn data refresh completed for all campaigns');
+  } catch (error: any) {
+    console.error('[LinkedIn Scheduler] Error in scheduled refresh:', error);
+  }
+}
+
+/**
+ * Start the LinkedIn scheduler
+ * Runs every 4-6 hours (configurable via environment variable)
+ */
+export function startLinkedInScheduler(): void {
+  console.log('[LinkedIn Scheduler] Starting LinkedIn data refresh scheduler...');
+
+  // Get refresh interval from environment (default: 4 hours = 6x daily)
+  // Enterprise recommendation: 4-6 hours (4 hours = 6x daily, 6 hours = 4x daily)
+  const refreshIntervalHours = parseInt(process.env.LINKEDIN_REFRESH_INTERVAL_HOURS || '4', 10);
+  const refreshIntervalMs = refreshIntervalHours * 60 * 60 * 1000;
+
+  console.log(`[LinkedIn Scheduler] Refresh interval: ${refreshIntervalHours} hours (${24 / refreshIntervalHours}x daily)`);
+  console.log(`[LinkedIn Scheduler] Next refresh: ${new Date(Date.now() + refreshIntervalMs).toLocaleString()}`);
+
+  // Don't run immediately on startup - wait for first scheduled interval
+  // This prevents unnecessary API calls on server restart
+
+  // Schedule regular refreshes
+  setInterval(() => {
+    refreshAllLinkedInData();
+  }, refreshIntervalMs);
+
+  console.log('[LinkedIn Scheduler] ✅ LinkedIn scheduler started successfully');
+}
+

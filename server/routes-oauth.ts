@@ -5809,6 +5809,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[LinkedIn Import] Refreshing KPIs for campaign ${campaignId}...`);
         await refreshKPIsForCampaign(campaignId);
         console.log(`[LinkedIn Import] ✅ KPI refresh completed`);
+        
+        // Stage 2: Immediately check for alerts after KPI refresh (enterprise-grade)
+        try {
+          const { checkPerformanceAlerts } = await import('./kpi-scheduler');
+          console.log(`[LinkedIn Import] Checking performance alerts immediately...`);
+          await checkPerformanceAlerts();
+          console.log(`[LinkedIn Import] ✅ Alert check completed`);
+        } catch (alertError) {
+          // Don't fail the import if alert check fails - log and continue
+          console.error(`[LinkedIn Import] Warning: Alert check failed (import still succeeded):`, alertError);
+        }
       } catch (kpiError) {
         // Don't fail the import if KPI refresh fails - log and continue
         console.error(`[LinkedIn Import] Warning: KPI refresh failed (import still succeeded):`, kpiError);

@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { snapshotScheduler } from "./scheduler";
 import { startKPIScheduler } from "./kpi-scheduler";
 import { startReportScheduler } from "./report-scheduler";
+import { startLinkedInScheduler } from "./linkedin-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
@@ -152,6 +153,13 @@ app.use('/api', (req, res, next) => {
           startReportScheduler();
         } catch (error) {
           console.error('Failed to start report scheduler:', error);
+        }
+        
+        // Start LinkedIn data refresh scheduler
+        try {
+          startLinkedInScheduler();
+        } catch (error) {
+          console.error('Failed to start LinkedIn scheduler:', error);
         }
       }, 5000); // 5 second delay
     });

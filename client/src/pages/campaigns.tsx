@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink, Shield, Upload, Mail } from "lucide-react";
+import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink, Shield, Upload, Mail, Info } from "lucide-react";
 import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -1417,7 +1417,16 @@ export default function Campaigns() {
                   {!showConnectorsStep ? (
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Campaign Name *</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="name">Campaign Name *</Label>
+                        <div className="group relative">
+                          <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-2 bg-slate-900 text-white text-xs rounded shadow-lg">
+                            <p className="font-medium mb-1">Campaign Name Tip</p>
+                            <p>Using the same campaign name across all data sources (Google Sheets, LinkedIn, etc.) improves automatic conversion value calculation accuracy.</p>
+                          </div>
+                        </div>
+                      </div>
                       <Input
                         id="name"
                         placeholder="Enter campaign name"

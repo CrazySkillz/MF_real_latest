@@ -3395,7 +3395,8 @@ export default function CampaignDetail() {
         spreadsheetName: data.spreadsheetName,
         totalRows: data.totalRows,
         headers: data.headers,
-        lastUpdated: data.lastUpdated
+        lastUpdated: data.lastUpdated,
+        matchingInfo: data.matchingInfo // Include matching information
       };
     },
   });
@@ -4841,8 +4842,64 @@ export default function CampaignDetail() {
                   {platform.connected && (
                     <div className="px-3 pb-3">
                       <div className="space-y-4">
-                        {platform.analyticsPath && (
+                        {/* Google Sheets Matching Status */}
+                        {platform.platform === "Google Sheets" && sheetsData?.matchingInfo && (
                           <div className="pt-2 border-t">
+                            <div className="space-y-2">
+                              {sheetsData.matchingInfo.method === 'campaign_name_platform' && (
+                                <div className="flex items-start gap-2 text-sm">
+                                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="font-medium text-green-700 dark:text-green-400">Campaign matched successfully</p>
+                                    {sheetsData.matchingInfo.matchedCampaigns.length > 0 && (
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                        Matched: {sheetsData.matchingInfo.matchedCampaigns.join(', ')}
+                                      </p>
+                                    )}
+                                    {sheetsData.matchingInfo.unmatchedCampaigns.length > 0 && (
+                                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                                        Other campaigns in sheet: {sheetsData.matchingInfo.unmatchedCampaigns.join(', ')}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              {sheetsData.matchingInfo.method === 'platform_only' && (
+                                <div className="flex items-start gap-2 text-sm">
+                                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="font-medium text-amber-700 dark:text-amber-400">Using all LinkedIn data</p>
+                                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                      {sheetsData.matchingInfo.unmatchedCampaigns.length > 1 ? (
+                                        <>
+                                          Found {sheetsData.matchingInfo.unmatchedCampaigns.length} LinkedIn campaigns. 
+                                          <span className="block mt-1 text-amber-600 dark:text-amber-400">
+                                            Tip: Use the same campaign name in Google Sheets for more accurate conversion value calculation.
+                                          </span>
+                                        </>
+                                      ) : (
+                                        'No campaign name match found. Using all LinkedIn rows.'
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              {sheetsData.matchingInfo.method === 'all_rows' && (
+                                <div className="flex items-start gap-2 text-sm">
+                                  <AlertCircle className="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="font-medium text-slate-700 dark:text-slate-300">Using all rows</p>
+                                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                      No Platform column detected. Using all rows from the sheet.
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {platform.analyticsPath && (
+                          <div className={platform.platform === "Google Sheets" && sheetsData?.matchingInfo ? "pt-2 border-t" : "pt-2"}>
                             <Link href={platform.analyticsPath}>
                               <Button
                                 variant="outline"

@@ -2798,34 +2798,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Automatic Conversion Value Calculation from Google Sheets
       // If Revenue and Conversions columns are detected, calculate and save conversion value
-      // Smart filtering: If Platform column exists, filter for LinkedIn rows only
+      // Smart matching: Campaign Name + Platform (best) → Platform only (fallback) → All rows (last resort)
+      let matchingInfo = {
+        method: 'all_rows',
+        matchedCampaigns: [] as string[],
+        unmatchedCampaigns: [] as string[],
+        totalLinkedInRows: 0,
+        totalRows: 0
+      };
+      
       try {
-        // Check if Platform column exists and filter for LinkedIn data
+        // Get MetricMind campaign name for matching
+        const campaign = await storage.getCampaign(campaignId);
+        const campaignName = campaign?.name || '';
+        
         const headers = campaignData.headers || [];
         const platformColumnIndex = headers.findIndex((h: string) => 
           String(h || '').toLowerCase().includes('platform')
         );
+        const campaignNameColumnIndex = headers.findIndex((h: string) => 
+          String(h || '').toLowerCase().includes('campaign name')
+        );
         
         let linkedInRows: any[] = [];
         let allRows = rows.slice(1); // Skip header row
+        let matchingMethod = 'all_rows'; // Track which method was used
+        let matchedCampaigns: string[] = [];
+        let unmatchedCampaigns: string[] = [];
         
-        // If Platform column exists, filter for LinkedIn rows only
-        if (platformColumnIndex >= 0) {
+        // Strategy 1: Campaign Name + Platform matching (most accurate)
+        if (platformColumnIndex >= 0 && campaignNameColumnIndex >= 0 && campaignName) {
+          linkedInRows = allRows.filter((row: any[]) => {
+            const platformValue = String(row[platformColumnIndex] || '').toLowerCase();
+            const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
+            const isLinkedIn = platformValue.includes('linkedin') || platformValue.includes('linked in');
+            const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
+                                   campaignName.toLowerCase().includes(campaignNameValue);
+            return isLinkedIn && matchesCampaign;
+          });
+          
+          if (linkedInRows.length > 0) {
+            matchingMethod = 'campaign_name_platform';
+            // Collect matched and unmatched campaign names for feedback
+            const uniqueCampaignNames = new Set<string>();
+            allRows.forEach((row: any[]) => {
+              const platformValue = String(row[platformColumnIndex] || '').toLowerCase();
+              const campaignNameValue = String(row[campaignNameColumnIndex] || '').trim();
+              if ((platformValue.includes('linkedin') || platformValue.includes('linked in')) && campaignNameValue) {
+                uniqueCampaignNames.add(campaignNameValue);
+              }
+            });
+            
+            linkedInRows.forEach((row: any[]) => {
+              const name = String(row[campaignNameColumnIndex] || '').trim();
+              if (name && !matchedCampaigns.includes(name)) matchedCampaigns.push(name);
+            });
+            
+            Array.from(uniqueCampaignNames).forEach(name => {
+              if (!matchedCampaigns.includes(name)) unmatchedCampaigns.push(name);
+            });
+            
+            console.log(`[Auto Conversion Value] ✅ Campaign Name + Platform matching: Found ${linkedInRows.length} matching rows for "${campaignName}"`);
+            console.log(`[Auto Conversion Value] Matched campaigns: ${matchedCampaigns.join(', ')}`);
+            if (unmatchedCampaigns.length > 0) {
+              console.log(`[Auto Conversion Value] Other LinkedIn campaigns found: ${unmatchedCampaigns.join(', ')}`);
+            }
+          }
+        }
+        
+        // Strategy 2: Platform-only filtering (fallback)
+        if (linkedInRows.length === 0 && platformColumnIndex >= 0) {
           linkedInRows = allRows.filter((row: any[]) => {
             const platformValue = String(row[platformColumnIndex] || '').toLowerCase();
             return platformValue.includes('linkedin') || platformValue.includes('linked in');
           });
           
           if (linkedInRows.length > 0) {
-            console.log(`[Auto Conversion Value] Platform column detected. Filtered ${linkedInRows.length} LinkedIn rows from ${allRows.length} total rows`);
+            matchingMethod = 'platform_only';
+            // Collect all LinkedIn campaign names for feedback
+            if (campaignNameColumnIndex >= 0) {
+              const uniqueCampaignNames = new Set<string>();
+              linkedInRows.forEach((row: any[]) => {
+                const name = String(row[campaignNameColumnIndex] || '').trim();
+                if (name) uniqueCampaignNames.add(name);
+              });
+              unmatchedCampaigns = Array.from(uniqueCampaignNames);
+            }
+            
+            console.log(`[Auto Conversion Value] ⚠️ Platform-only matching: Using ${linkedInRows.length} LinkedIn rows (no Campaign Name match found)`);
+            if (unmatchedCampaigns.length > 0) {
+              console.log(`[Auto Conversion Value] Found LinkedIn campaigns: ${unmatchedCampaigns.join(', ')}`);
+            }
           } else {
             console.log(`[Auto Conversion Value] Platform column detected but no LinkedIn rows found. Using all rows.`);
             linkedInRows = allRows; // Fallback to all rows if no LinkedIn found
+            matchingMethod = 'all_rows';
           }
-        } else {
-          linkedInRows = allRows; // No Platform column, use all rows
-          console.log(`[Auto Conversion Value] No Platform column detected. Using all rows (assuming all are LinkedIn).`);
         }
+        
+        // Strategy 3: All rows (last resort)
+        if (linkedInRows.length === 0) {
+          linkedInRows = allRows;
+          matchingMethod = 'all_rows';
+          console.log(`[Auto Conversion Value] ℹ️ No Platform column detected. Using all rows (assuming all are LinkedIn).`);
+        }
+        
+        // Update matchingInfo with final results
+        matchingInfo = {
+          method: matchingMethod,
+          matchedCampaigns: matchedCampaigns,
+          unmatchedCampaigns: unmatchedCampaigns,
+          totalLinkedInRows: linkedInRows.length,
+          totalRows: allRows.length
+        };
         
         // Find Revenue and Conversions column indices
         const revenueColumnIndex = headers.findIndex((h: string) => {
@@ -2954,6 +3039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })()
         },
         insights: insights,
+        matchingInfo: matchingInfo, // Add matching information for UX feedback
         lastUpdated: new Date().toISOString()
       });
 

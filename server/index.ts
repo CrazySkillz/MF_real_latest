@@ -5,6 +5,7 @@ import { snapshotScheduler } from "./scheduler";
 import { startKPIScheduler } from "./kpi-scheduler";
 import { startReportScheduler } from "./report-scheduler";
 import { startLinkedInScheduler } from "./linkedin-scheduler";
+import { startGoogleSheetsTokenScheduler } from "./google-sheets-token-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
@@ -186,6 +187,13 @@ app.use('/api', (req, res, next) => {
           startLinkedInScheduler();
         } catch (error) {
           console.error('Failed to start LinkedIn scheduler:', error);
+        }
+        
+        // Start Google Sheets token refresh scheduler
+        try {
+          startGoogleSheetsTokenScheduler();
+        } catch (error) {
+          console.error('Failed to start Google Sheets token refresh scheduler:', error);
         }
       }, 5000); // 5 second delay
     });

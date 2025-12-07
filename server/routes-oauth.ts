@@ -2867,10 +2867,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           filteredRows = allRows.filter((row: any[]) => {
             const platformValue = String(row[platformColumnIndex] || '');
             const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
-            const matchesPlatform = matchesPlatform(platformValue, platformKeywords);
+            const platformMatches = matchesPlatform(platformValue, platformKeywords);
             const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
                                    campaignName.toLowerCase().includes(campaignNameValue);
-            return matchesPlatform && matchesCampaign;
+            return platformMatches && matchesCampaign;
           });
           
           if (filteredRows.length > 0) {

@@ -257,13 +257,7 @@ export default function GoogleSheetsData() {
             </div>
           </div>
 
-          {sheetsLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-              ))}
-            </div>
-          ) : sheetsError ? (
+          {sheetsError ? (
             <Card className="mb-8">
               <CardContent className="text-center py-12">
                 <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
@@ -289,6 +283,41 @@ export default function GoogleSheetsData() {
                 </div>
               </CardContent>
             </Card>
+          ) : sheetsLoading ? (
+            // Show loading state with tabs structure while data is being fetched
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                ))}
+              </div>
+              <Tabs defaultValue="data" className="space-y-6">
+                <TabsList>
+                  <TabsTrigger value="data">Raw Data</TabsTrigger>
+                  <TabsTrigger value="summary">Summary</TabsTrigger>
+                  <TabsTrigger value="insights">Insights</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="data" className="mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                        Spreadsheet Data
+                      </CardTitle>
+                      <CardDescription>Loading data from Google Sheets...</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {[...Array(5)].map((_, i) => (
+                          <div key={i} className="h-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </>
           ) : sheetsData ? (
             <>
               <Tabs defaultValue="data" className="space-y-6">
@@ -310,13 +339,7 @@ export default function GoogleSheetsData() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {sheetsLoading ? (
-                        <div className="space-y-3">
-                          {[...Array(5)].map((_, i) => (
-                            <div key={i} className="h-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                          ))}
-                        </div>
-                      ) : sheetsData.data && sheetsData.data.length > 0 ? (
+                      {sheetsData.data && sheetsData.data.length > 0 ? (
                         <div className="grid grid-cols-1 gap-6">
                           <div className="overflow-x-auto">
                             <table className="w-full caption-bottom text-sm">

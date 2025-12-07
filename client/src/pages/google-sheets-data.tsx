@@ -107,7 +107,7 @@ export default function GoogleSheetsData() {
     enabled: !!campaignId,
   });
 
-  const { data: sheetsData, isLoading: sheetsLoading, error: sheetsError, refetch } = useQuery<GoogleSheetsData>({
+  const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
     refetchInterval: 300000, // Auto-refresh every 5 minutes
@@ -124,6 +124,11 @@ export default function GoogleSheetsData() {
       return response.json();
     },
   });
+  
+  // Determine if we're in a loading state (initial load or refetch)
+  // Show loading if: actively loading, fetching without data, or query is pending (hasn't started yet)
+  // Priority: Always show loading if we don't have data yet and there's no error (prevents "No Data Available" flash)
+  const isDataLoading = sheetsLoading || sheetsFetching || (sheetsStatus === 'pending' && !sheetsError) || (!sheetsData && !sheetsError && !!campaignId && sheetsStatus !== 'error');
 
 
   // Debug data structure
@@ -283,7 +288,7 @@ export default function GoogleSheetsData() {
                 </div>
               </CardContent>
             </Card>
-          ) : sheetsLoading ? (
+          ) : isDataLoading ? (
             // Show loading state with tabs structure while data is being fetched
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">

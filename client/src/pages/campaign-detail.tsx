@@ -4901,17 +4901,19 @@ export default function CampaignDetail() {
                                 <div className="flex items-start gap-2 text-sm">
                                   <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                                   <div className="flex-1">
-                                    <p className="font-medium text-amber-700 dark:text-amber-400">Using all LinkedIn data</p>
+                                    <p className="font-medium text-amber-700 dark:text-amber-400">
+                                      Using all {sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'platform'} data
+                                    </p>
                                     <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                                       {sheetsData.matchingInfo.unmatchedCampaigns.length > 1 ? (
                                         <>
-                                          Found {sheetsData.matchingInfo.unmatchedCampaigns.length} LinkedIn campaigns. 
+                                          Found {sheetsData.matchingInfo.unmatchedCampaigns.length} {sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'platform'} campaigns. 
                                           <span className="block mt-1 text-amber-600 dark:text-amber-400">
                                             Tip: Use the same campaign name in Google Sheets for more accurate conversion value calculation.
                                           </span>
                                         </>
                                       ) : (
-                                        'No campaign name match found. Using all LinkedIn rows.'
+                                        `No campaign name match found. Using all ${sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'platform'} rows.`
                                       )}
                                     </p>
                                   </div>

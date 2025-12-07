@@ -2365,6 +2365,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return expiresAt <= fiveMinutesFromNow;
   }
 
+  // Helper function to map MetricMind platform values to Google Sheets platform keywords
+  function getPlatformKeywords(platform: string | null | undefined): string[] {
+    if (!platform) return [];
+    
+    const platformLower = platform.toLowerCase();
+    const platformMapping: Record<string, string[]> = {
+      'linkedin': ['linkedin', 'linked in', 'linkedin ads'],
+      'google_ads': ['google ads', 'google', 'google adwords', 'google advertising'],
+      'facebook_ads': ['facebook ads', 'facebook', 'meta', 'meta ads', 'meta advertising'],
+      'twitter_ads': ['twitter ads', 'twitter', 'x ads', 'x advertising'],
+      'instagram_ads': ['instagram ads', 'instagram', 'ig ads'],
+      'tiktok_ads': ['tiktok ads', 'tiktok', 'tik tok ads'],
+      'snapchat_ads': ['snapchat ads', 'snapchat'],
+      'pinterest_ads': ['pinterest ads', 'pinterest'],
+      'youtube_ads': ['youtube ads', 'youtube', 'google video ads'],
+      'bing_ads': ['bing ads', 'bing', 'microsoft ads', 'microsoft advertising'],
+      'amazon_ads': ['amazon ads', 'amazon', 'amazon advertising'],
+    };
+    
+    // Return mapped keywords or use platform name as fallback
+    return platformMapping[platformLower] || [platformLower];
+  }
+
+  // Helper function to check if a platform value matches any of the keywords
+  function matchesPlatform(platformValue: string, keywords: string[]): boolean {
+    const valueLower = platformValue.toLowerCase();
+    return keywords.some(keyword => valueLower.includes(keyword));
+  }
+
   // Helper function to generate intelligent insights from spreadsheet data
   function generateInsights(
     rows: any[][], 
@@ -2799,18 +2828,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Automatic Conversion Value Calculation from Google Sheets
       // If Revenue and Conversions columns are detected, calculate and save conversion value
       // Smart matching: Campaign Name + Platform (best) → Platform only (fallback) → All rows (last resort)
+      // NOW SUPPORTS MULTI-PLATFORM: LinkedIn, Google Ads, Facebook Ads, Twitter Ads, etc.
       let matchingInfo = {
         method: 'all_rows',
         matchedCampaigns: [] as string[],
         unmatchedCampaigns: [] as string[],
-        totalLinkedInRows: 0,
-        totalRows: 0
+        totalFilteredRows: 0,
+        totalRows: 0,
+        platform: null as string | null
       };
       
       try {
-        // Get MetricMind campaign name for matching
+        // Get MetricMind campaign name and platform for matching
         const campaign = await storage.getCampaign(campaignId);
         const campaignName = campaign?.name || '';
+        const campaignPlatform = campaign?.platform || null;
+        
+        // Get platform keywords for matching
+        const platformKeywords = getPlatformKeywords(campaignPlatform);
+        const platformDisplayName = campaignPlatform || 'unknown';
         
         const headers = campaignData.headers || [];
         const platformColumnIndex = headers.findIndex((h: string) => 
@@ -2820,36 +2856,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           String(h || '').toLowerCase().includes('campaign name')
         );
         
-        let linkedInRows: any[] = [];
+        let filteredRows: any[] = [];
         let allRows = rows.slice(1); // Skip header row
         let matchingMethod = 'all_rows'; // Track which method was used
         let matchedCampaigns: string[] = [];
         let unmatchedCampaigns: string[] = [];
         
         // Strategy 1: Campaign Name + Platform matching (most accurate)
-        if (platformColumnIndex >= 0 && campaignNameColumnIndex >= 0 && campaignName) {
-          linkedInRows = allRows.filter((row: any[]) => {
-            const platformValue = String(row[platformColumnIndex] || '').toLowerCase();
+        if (platformColumnIndex >= 0 && campaignNameColumnIndex >= 0 && campaignName && platformKeywords.length > 0) {
+          filteredRows = allRows.filter((row: any[]) => {
+            const platformValue = String(row[platformColumnIndex] || '');
             const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
-            const isLinkedIn = platformValue.includes('linkedin') || platformValue.includes('linked in');
+            const matchesPlatform = matchesPlatform(platformValue, platformKeywords);
             const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
                                    campaignName.toLowerCase().includes(campaignNameValue);
-            return isLinkedIn && matchesCampaign;
+            return matchesPlatform && matchesCampaign;
           });
           
-          if (linkedInRows.length > 0) {
+          if (filteredRows.length > 0) {
             matchingMethod = 'campaign_name_platform';
-            // Collect matched and unmatched campaign names for feedback
+            // Collect matched and unmatched campaign names for feedback (for this platform only)
             const uniqueCampaignNames = new Set<string>();
             allRows.forEach((row: any[]) => {
-              const platformValue = String(row[platformColumnIndex] || '').toLowerCase();
+              const platformValue = String(row[platformColumnIndex] || '');
               const campaignNameValue = String(row[campaignNameColumnIndex] || '').trim();
-              if ((platformValue.includes('linkedin') || platformValue.includes('linked in')) && campaignNameValue) {
+              if (matchesPlatform(platformValue, platformKeywords) && campaignNameValue) {
                 uniqueCampaignNames.add(campaignNameValue);
               }
             });
             
-            linkedInRows.forEach((row: any[]) => {
+            filteredRows.forEach((row: any[]) => {
               const name = String(row[campaignNameColumnIndex] || '').trim();
               if (name && !matchedCampaigns.includes(name)) matchedCampaigns.push(name);
             });
@@ -2858,49 +2894,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (!matchedCampaigns.includes(name)) unmatchedCampaigns.push(name);
             });
             
-            console.log(`[Auto Conversion Value] ✅ Campaign Name + Platform matching: Found ${linkedInRows.length} matching rows for "${campaignName}"`);
+            console.log(`[Auto Conversion Value] ✅ Campaign Name + Platform matching: Found ${filteredRows.length} matching ${platformDisplayName} rows for "${campaignName}"`);
             console.log(`[Auto Conversion Value] Matched campaigns: ${matchedCampaigns.join(', ')}`);
             if (unmatchedCampaigns.length > 0) {
-              console.log(`[Auto Conversion Value] Other LinkedIn campaigns found: ${unmatchedCampaigns.join(', ')}`);
+              console.log(`[Auto Conversion Value] Other ${platformDisplayName} campaigns found: ${unmatchedCampaigns.join(', ')}`);
             }
           }
         }
         
         // Strategy 2: Platform-only filtering (fallback)
-        if (linkedInRows.length === 0 && platformColumnIndex >= 0) {
-          linkedInRows = allRows.filter((row: any[]) => {
-            const platformValue = String(row[platformColumnIndex] || '').toLowerCase();
-            return platformValue.includes('linkedin') || platformValue.includes('linked in');
+        if (filteredRows.length === 0 && platformColumnIndex >= 0 && platformKeywords.length > 0) {
+          filteredRows = allRows.filter((row: any[]) => {
+            const platformValue = String(row[platformColumnIndex] || '');
+            return matchesPlatform(platformValue, platformKeywords);
           });
           
-          if (linkedInRows.length > 0) {
+          if (filteredRows.length > 0) {
             matchingMethod = 'platform_only';
-            // Collect all LinkedIn campaign names for feedback
+            // Collect all platform campaign names for feedback
             if (campaignNameColumnIndex >= 0) {
               const uniqueCampaignNames = new Set<string>();
-              linkedInRows.forEach((row: any[]) => {
+              filteredRows.forEach((row: any[]) => {
                 const name = String(row[campaignNameColumnIndex] || '').trim();
                 if (name) uniqueCampaignNames.add(name);
               });
               unmatchedCampaigns = Array.from(uniqueCampaignNames);
             }
             
-            console.log(`[Auto Conversion Value] ⚠️ Platform-only matching: Using ${linkedInRows.length} LinkedIn rows (no Campaign Name match found)`);
+            console.log(`[Auto Conversion Value] ⚠️ Platform-only matching: Using ${filteredRows.length} ${platformDisplayName} rows (no Campaign Name match found)`);
             if (unmatchedCampaigns.length > 0) {
-              console.log(`[Auto Conversion Value] Found LinkedIn campaigns: ${unmatchedCampaigns.join(', ')}`);
+              console.log(`[Auto Conversion Value] Found ${platformDisplayName} campaigns: ${unmatchedCampaigns.join(', ')}`);
             }
           } else {
-            console.log(`[Auto Conversion Value] Platform column detected but no LinkedIn rows found. Using all rows.`);
-            linkedInRows = allRows; // Fallback to all rows if no LinkedIn found
+            console.log(`[Auto Conversion Value] Platform column detected but no ${platformDisplayName} rows found. Using all rows.`);
+            filteredRows = allRows; // Fallback to all rows if no platform match found
             matchingMethod = 'all_rows';
           }
         }
         
         // Strategy 3: All rows (last resort)
-        if (linkedInRows.length === 0) {
-          linkedInRows = allRows;
+        if (filteredRows.length === 0) {
+          filteredRows = allRows;
           matchingMethod = 'all_rows';
-          console.log(`[Auto Conversion Value] ℹ️ No Platform column detected. Using all rows (assuming all are LinkedIn).`);
+          if (campaignPlatform) {
+            console.log(`[Auto Conversion Value] ℹ️ No Platform column detected or no ${platformDisplayName} match. Using all rows.`);
+          } else {
+            console.log(`[Auto Conversion Value] ℹ️ No Platform column detected and campaign has no platform set. Using all rows.`);
+          }
         }
         
         // Update matchingInfo with final results
@@ -2908,8 +2948,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           method: matchingMethod,
           matchedCampaigns: matchedCampaigns,
           unmatchedCampaigns: unmatchedCampaigns,
-          totalLinkedInRows: linkedInRows.length,
-          totalRows: allRows.length
+          totalFilteredRows: filteredRows.length,
+          totalRows: allRows.length,
+          platform: campaignPlatform
         };
         
         // Find Revenue and Conversions column indices
@@ -2926,9 +2967,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let totalRevenue = 0;
         let totalConversions = 0;
         
-        // Calculate from filtered LinkedIn rows
+        // Calculate from filtered platform rows
         if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0) {
-          linkedInRows.forEach((row: any[]) => {
+          filteredRows.forEach((row: any[]) => {
             // Parse revenue
             const revenueValue = String(row[revenueColumnIndex] || '').replace(/[$,]/g, '').trim();
             const revenue = parseFloat(revenueValue) || 0;
@@ -2940,7 +2981,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalConversions += conversions;
           });
           
-          console.log(`[Auto Conversion Value] Calculated from ${linkedInRows.length} LinkedIn rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}`);
+          const platformLabel = campaignPlatform ? `${campaignPlatform} ` : '';
+          console.log(`[Auto Conversion Value] Calculated from ${filteredRows.length} ${platformLabel}rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}`);
         } else {
           // Fallback: Try to find from aggregated metrics (if Platform filtering wasn't possible)
           const revenueKeys = ['Revenue', 'revenue', 'Total Revenue', 'total revenue', 'Revenue (USD)', 'Sales Revenue', 'Revenue Amount'];
@@ -2982,24 +3024,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (updatedCampaign) {
             console.log(`[Auto Conversion Value] ✅ Updated campaign ${campaignId} conversion value to $${calculatedConversionValue}`);
             
-            // Also update LinkedIn import sessions if they exist (for consistency)
-            try {
-              const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-              if (linkedInSessions && linkedInSessions.length > 0) {
-                // Update the latest session
-                const latestSession = linkedInSessions.sort((a, b) => 
-                  new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-                )[0];
-                
-                await storage.updateLinkedInImportSession(latestSession.id, {
-                  conversionValue: calculatedConversionValue
-                });
-                
-                console.log(`[Auto Conversion Value] ✅ Updated LinkedIn import session ${latestSession.id} conversion value to $${calculatedConversionValue}`);
+            // Also update LinkedIn import sessions if they exist AND campaign is LinkedIn (for consistency)
+            if (campaignPlatform && campaignPlatform.toLowerCase() === 'linkedin') {
+              try {
+                const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+                if (linkedInSessions && linkedInSessions.length > 0) {
+                  // Update the latest session
+                  const latestSession = linkedInSessions.sort((a, b) => 
+                    new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
+                  )[0];
+                  
+                  await storage.updateLinkedInImportSession(latestSession.id, {
+                    conversionValue: calculatedConversionValue
+                  });
+                  
+                  console.log(`[Auto Conversion Value] ✅ Updated LinkedIn import session ${latestSession.id} conversion value to $${calculatedConversionValue}`);
+                }
+              } catch (sessionError) {
+                console.warn(`[Auto Conversion Value] Could not update LinkedIn sessions:`, sessionError);
+                // Don't fail the request if session update fails
               }
-            } catch (sessionError) {
-              console.warn(`[Auto Conversion Value] Could not update LinkedIn sessions:`, sessionError);
-              // Don't fail the request if session update fails
             }
           } else {
             console.warn(`[Auto Conversion Value] ⚠️ Could not update campaign ${campaignId}`);

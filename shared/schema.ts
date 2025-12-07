@@ -108,6 +108,7 @@ export const linkedinConnections = pgTable("linkedin_connections", {
   clientId: text("client_id"),
   clientSecret: text("client_secret"),
   method: text("method").notNull(), // 'oauth' or 'manual_token'
+  conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Platform-specific conversion value from Google Sheets/webhook
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -121,6 +122,7 @@ export const metaConnections = pgTable("meta_connections", {
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   method: text("method").notNull(), // 'oauth' or 'test_mode'
+  conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Platform-specific conversion value from Google Sheets/webhook
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),

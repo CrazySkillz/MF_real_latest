@@ -156,6 +156,17 @@ app.use('/api', (req, res, next) => {
             CREATE INDEX IF NOT EXISTS idx_conversion_events_occurred_at ON conversion_events(occurred_at);
           `);
           
+          // Migration 5: Add conversionValue to platform connection tables
+          await db.execute(sql`
+            ALTER TABLE linkedin_connections 
+            ADD COLUMN IF NOT EXISTS conversion_value DECIMAL(10, 2);
+          `);
+          
+          await db.execute(sql`
+            ALTER TABLE meta_connections 
+            ADD COLUMN IF NOT EXISTS conversion_value DECIMAL(10, 2);
+          `);
+          
           log('✅ Database migrations completed successfully');
         } catch (error) {
           console.error('⚠️  Migration warning (may already exist):', error.message);

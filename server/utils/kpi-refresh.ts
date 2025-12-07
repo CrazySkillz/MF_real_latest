@@ -47,7 +47,7 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
     const engagements = aggregated.engagements || 0;
     const reach = aggregated.reach || 0;
 
-    // Calculate revenue - prioritize webhook events (actual values) over fixed conversion value
+    // Calculate revenue - prioritize webhook events (actual values) over platform-specific conversion value
     let totalRevenue = 0;
     let conversionValue = 0;
     
@@ -61,14 +61,40 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
         console.log(`[KPI Refresh] Using webhook events for revenue: ${conversionEvents.length} events, total: $${totalRevenue.toFixed(2)}`);
       }
     } catch (error) {
-      console.warn(`[KPI Refresh] Could not fetch conversion events, falling back to fixed value:`, error);
+      console.warn(`[KPI Refresh] Could not fetch conversion events, falling back to platform connection value:`, error);
     }
     
-    // Fallback to fixed conversion value if no webhook events exist
-    if (totalRevenue === 0 && latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0 && conversions > 0) {
-      conversionValue = parseFloat(latestSession.conversionValue);
-      totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-      console.log(`[KPI Refresh] Using fixed conversion value for revenue: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
+    // Fallback to platform-specific conversion value from LinkedIn connection (if no webhook events)
+    if (totalRevenue === 0 && conversions > 0) {
+      try {
+        // Try to get conversion value from LinkedIn connection (platform-specific)
+        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+        if (linkedInConnection?.conversionValue && parseFloat(linkedInConnection.conversionValue) > 0) {
+          conversionValue = parseFloat(linkedInConnection.conversionValue);
+          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+          console.log(`[KPI Refresh] Using LinkedIn connection conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
+        } else if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
+          // Fallback to session conversion value
+          conversionValue = parseFloat(latestSession.conversionValue);
+          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+          console.log(`[KPI Refresh] Using LinkedIn session conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
+        } else {
+          // Last fallback: campaign conversion value
+          const campaign = await storage.getCampaign(campaignId);
+          if (campaign?.conversionValue && parseFloat(campaign.conversionValue) > 0) {
+            conversionValue = parseFloat(campaign.conversionValue);
+            totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+            console.log(`[KPI Refresh] Using campaign conversion value (fallback): ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
+          }
+        }
+      } catch (error) {
+        console.warn(`[KPI Refresh] Could not fetch platform connection, using session/campaign value:`, error);
+        // Final fallback to session or campaign value
+        if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
+          conversionValue = parseFloat(latestSession.conversionValue);
+          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+        }
+      }
     }
     
     // Set revenue metrics if we have a value
@@ -205,11 +231,37 @@ async function getCampaignSpecificMetrics(
       console.warn(`[KPI Refresh] Campaign-specific: Could not fetch conversion events, falling back to fixed value:`, error);
     }
     
-    // Fallback to fixed conversion value if no webhook events exist
-    if (totalRevenue === 0 && latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0 && conversions > 0) {
-      conversionValue = parseFloat(latestSession.conversionValue);
-      totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-      console.log(`[KPI Refresh] Campaign-specific: Using fixed conversion value for revenue: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
+    // Fallback to platform-specific conversion value from LinkedIn connection (if no webhook events)
+    if (totalRevenue === 0 && conversions > 0) {
+      try {
+        // Try to get conversion value from LinkedIn connection (platform-specific)
+        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+        if (linkedInConnection?.conversionValue && parseFloat(linkedInConnection.conversionValue) > 0) {
+          conversionValue = parseFloat(linkedInConnection.conversionValue);
+          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+          console.log(`[KPI Refresh] Campaign-specific: Using LinkedIn connection conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
+        } else if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
+          // Fallback to session conversion value
+          conversionValue = parseFloat(latestSession.conversionValue);
+          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+          console.log(`[KPI Refresh] Campaign-specific: Using LinkedIn session conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
+        } else {
+          // Last fallback: campaign conversion value
+          const campaign = await storage.getCampaign(campaignId);
+          if (campaign?.conversionValue && parseFloat(campaign.conversionValue) > 0) {
+            conversionValue = parseFloat(campaign.conversionValue);
+            totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+            console.log(`[KPI Refresh] Campaign-specific: Using campaign conversion value (fallback): ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
+          }
+        }
+      } catch (error) {
+        console.warn(`[KPI Refresh] Could not fetch platform connection, using session/campaign value:`, error);
+        // Final fallback to session or campaign value
+        if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
+          conversionValue = parseFloat(latestSession.conversionValue);
+          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+        }
+      }
     }
     
     // Set revenue metrics if we have a value

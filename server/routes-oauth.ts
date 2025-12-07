@@ -2826,7 +2826,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const insights = generateInsights(rows, campaignData.detectedColumns, campaignData.metrics);
 
       // Automatic Conversion Value Calculation from Google Sheets
-      // If Revenue and Conversions columns are detected, calculate and save conversion value
+      // NEW: Calculates conversion value for EACH connected platform separately
+      // If Revenue and Conversions columns are detected, calculate and save conversion value per platform
       // Smart matching: Campaign Name + Platform (best) → Platform only (fallback) → All rows (last resort)
       // NOW SUPPORTS MULTI-PLATFORM: LinkedIn, Google Ads, Facebook Ads, Twitter Ads, etc.
       let matchingInfo = {
@@ -2844,7 +2845,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const campaignName = campaign?.name || '';
         const campaignPlatform = campaign?.platform || null;
         
-        // Get platform keywords for matching
+        // Get ALL platform connections for this campaign to calculate conversion value for each
+        const linkedInConnection = await storage.getLinkedInConnection(campaignId).catch(() => null);
+        const metaConnection = await storage.getMetaConnection(campaignId).catch(() => null);
+        // TODO: Add other platform connections when implemented (Google Ads, Twitter, etc.)
+        
+        // Determine which platforms are connected
+        const connectedPlatforms: Array<{platform: string, connection: any, keywords: string[]}> = [];
+        if (linkedInConnection) {
+          connectedPlatforms.push({
+            platform: 'linkedin',
+            connection: linkedInConnection,
+            keywords: getPlatformKeywords('linkedin')
+          });
+        }
+        if (metaConnection) {
+          connectedPlatforms.push({
+            platform: 'facebook_ads',
+            connection: metaConnection,
+            keywords: getPlatformKeywords('facebook_ads')
+          });
+        }
+        
+        // Get platform keywords for matching (use campaign platform as primary, but calculate for all)
         const platformKeywords = getPlatformKeywords(campaignPlatform);
         const platformDisplayName = campaignPlatform || 'unknown';
         
@@ -2964,25 +2987,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return header.includes('conversion') || header.includes('order') || header.includes('purchase');
         });
         
+        // NEW APPROACH: Calculate conversion value for EACH connected platform separately
+        // This ensures each platform gets its own accurate conversion value
+        if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0 && platformColumnIndex >= 0) {
+          // Calculate conversion value for each connected platform
+          for (const platformInfo of connectedPlatforms) {
+            try {
+              // Filter rows for this specific platform
+              let platformRows = allRows.filter((row: any[]) => {
+                const platformValue = String(row[platformColumnIndex] || '');
+                return matchesPlatform(platformValue, platformInfo.keywords);
+              });
+              
+              // Further filter by campaign name if available
+              if (campaignNameColumnIndex >= 0 && campaignName) {
+                platformRows = platformRows.filter((row: any[]) => {
+                  const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
+                  return campaignNameValue.includes(campaignName.toLowerCase()) ||
+                         campaignName.toLowerCase().includes(campaignNameValue);
+                });
+              }
+              
+              if (platformRows.length > 0) {
+                // Calculate revenue and conversions for this platform
+                let platformRevenue = 0;
+                let platformConversions = 0;
+                
+                platformRows.forEach((row: any[]) => {
+                  const revenueValue = String(row[revenueColumnIndex] || '').replace(/[$,]/g, '').trim();
+                  const revenue = parseFloat(revenueValue) || 0;
+                  platformRevenue += revenue;
+                  
+                  const conversionsValue = String(row[conversionsColumnIndex] || '').replace(/[$,]/g, '').trim();
+                  const conversions = parseFloat(conversionsValue) || 0;
+                  platformConversions += conversions;
+                });
+                
+                if (platformRevenue > 0 && platformConversions > 0) {
+                  const platformConversionValue = (platformRevenue / platformConversions).toFixed(2);
+                  
+                  console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: Revenue: $${platformRevenue.toLocaleString()}, Conversions: ${platformConversions.toLocaleString()}, CV: $${platformConversionValue}`);
+                  
+                  // Update the platform connection's conversion value
+                  if (platformInfo.platform === 'linkedin' && linkedInConnection) {
+                    await storage.updateLinkedInConnection(campaignId, {
+                      conversionValue: platformConversionValue
+                    });
+                    console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue}`);
+                  } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
+                    await storage.updateMetaConnection(campaignId, {
+                      conversionValue: platformConversionValue
+                    });
+                    console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${platformConversionValue}`);
+                  }
+                } else {
+                  console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No revenue/conversions data found`);
+                }
+              } else {
+                console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No matching rows found in Google Sheets`);
+              }
+            } catch (platformError) {
+              console.warn(`[Auto Conversion Value] Could not calculate conversion value for ${platformInfo.platform}:`, platformError);
+            }
+          }
+        }
+        
+        // Also calculate and update campaign-level conversion value (for backward compatibility and fallback)
+        // Use the primary platform's value or calculate from all filtered rows
         let totalRevenue = 0;
         let totalConversions = 0;
         
-        // Calculate from filtered platform rows
+        // Calculate from filtered platform rows (based on campaign.platform)
         if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0) {
           filteredRows.forEach((row: any[]) => {
-            // Parse revenue
             const revenueValue = String(row[revenueColumnIndex] || '').replace(/[$,]/g, '').trim();
             const revenue = parseFloat(revenueValue) || 0;
             totalRevenue += revenue;
             
-            // Parse conversions
             const conversionsValue = String(row[conversionsColumnIndex] || '').replace(/[$,]/g, '').trim();
             const conversions = parseFloat(conversionsValue) || 0;
             totalConversions += conversions;
           });
           
           const platformLabel = campaignPlatform ? `${campaignPlatform} ` : '';
-          console.log(`[Auto Conversion Value] Calculated from ${filteredRows.length} ${platformLabel}rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}`);
+          console.log(`[Auto Conversion Value] Campaign-level: Calculated from ${filteredRows.length} ${platformLabel}rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}`);
         } else {
           // Fallback: Try to find from aggregated metrics (if Platform filtering wasn't possible)
           const revenueKeys = ['Revenue', 'revenue', 'Total Revenue', 'total revenue', 'Revenue (USD)', 'Sales Revenue', 'Revenue Amount'];
@@ -3009,44 +3097,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Calculate conversion value if both revenue and conversions are available
+        // Update campaign conversion value as fallback/default (for backward compatibility)
         if (totalRevenue > 0 && totalConversions > 0) {
           const calculatedConversionValue = (totalRevenue / totalConversions).toFixed(2);
           
-          console.log(`[Auto Conversion Value] Detected Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}`);
-          console.log(`[Auto Conversion Value] Calculated: $${totalRevenue.toLocaleString()} ÷ ${totalConversions.toLocaleString()} = $${calculatedConversionValue}`);
+          console.log(`[Auto Conversion Value] Campaign-level: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}, CV: $${calculatedConversionValue}`);
           
-          // Update campaign conversion value
           const updatedCampaign = await storage.updateCampaign(campaignId, {
             conversionValue: calculatedConversionValue
           });
           
           if (updatedCampaign) {
-            console.log(`[Auto Conversion Value] ✅ Updated campaign ${campaignId} conversion value to $${calculatedConversionValue}`);
-            
-            // Also update LinkedIn import sessions if they exist AND campaign is LinkedIn (for consistency)
-            if (campaignPlatform && campaignPlatform.toLowerCase() === 'linkedin') {
-              try {
-                const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-                if (linkedInSessions && linkedInSessions.length > 0) {
-                  // Update the latest session
-                  const latestSession = linkedInSessions.sort((a, b) => 
-                    new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-                  )[0];
-                  
-                  await storage.updateLinkedInImportSession(latestSession.id, {
-                    conversionValue: calculatedConversionValue
-                  });
-                  
-                  console.log(`[Auto Conversion Value] ✅ Updated LinkedIn import session ${latestSession.id} conversion value to $${calculatedConversionValue}`);
-                }
-              } catch (sessionError) {
-                console.warn(`[Auto Conversion Value] Could not update LinkedIn sessions:`, sessionError);
-                // Don't fail the request if session update fails
+            console.log(`[Auto Conversion Value] ✅ Updated campaign ${campaignId} conversion value to $${calculatedConversionValue} (fallback/default)`);
+          }
+          
+          // Also update LinkedIn import sessions if they exist AND campaign is LinkedIn (for consistency)
+          if (campaignPlatform && campaignPlatform.toLowerCase() === 'linkedin') {
+            try {
+              const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+              if (linkedInSessions && linkedInSessions.length > 0) {
+                const latestSession = linkedInSessions.sort((a, b) => 
+                  new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
+                )[0];
+                
+                await storage.updateLinkedInImportSession(latestSession.id, {
+                  conversionValue: calculatedConversionValue
+                });
+                
+                console.log(`[Auto Conversion Value] ✅ Updated LinkedIn import session ${latestSession.id} conversion value to $${calculatedConversionValue}`);
               }
+            } catch (sessionError) {
+              console.warn(`[Auto Conversion Value] Could not update LinkedIn sessions:`, sessionError);
             }
-          } else {
-            console.warn(`[Auto Conversion Value] ⚠️ Could not update campaign ${campaignId}`);
           }
         } else {
           if (totalRevenue === 0 && totalConversions === 0) {

@@ -4894,11 +4894,6 @@ export default function CampaignDetail() {
                                         Matched: {sheetsData.matchingInfo.matchedCampaigns.join(', ')}
                                       </p>
                                     )}
-                                    {sheetsData.matchingInfo.unmatchedCampaigns.length > 0 && (
-                                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
-                                        Other campaigns in sheet: {sheetsData.matchingInfo.unmatchedCampaigns.join(', ')}
-                                      </p>
-                                    )}
                                   </div>
                                 </div>
                               )}

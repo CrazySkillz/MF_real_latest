@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -3375,14 +3375,28 @@ export default function CampaignDetail() {
   });
 
   // Fetch Google Sheets data
-  const { data: sheetsData, isLoading: sheetsLoading } = useQuery({
+  const { data: sheetsData, isLoading: sheetsLoading, error: sheetsError, refetch: refetchSheets } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId && !!sheetsConnection?.connected,
+    retry: false, // Don't retry on 401 errors (token expired)
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch Google Sheets data');
+        
+        // Handle token expiration gracefully
+        if (response.status === 401 && (errorData.error === 'REFRESH_TOKEN_EXPIRED' || errorData.error === 'ACCESS_TOKEN_EXPIRED' || errorData.requiresReauthorization)) {
+          // Invalidate the connection status so UI updates
+          queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+          
+          // Return a special error that we can handle in the UI
+          const error = new Error('TOKEN_EXPIRED') as any;
+          error.requiresReauthorization = true;
+          error.message = errorData.message || 'Google Sheets connection expired. Please reconnect.';
+          throw error;
+        }
+        
+        throw new Error(errorData.error || errorData.message || 'Failed to fetch Google Sheets data');
       }
       const data = await response.json();
       
@@ -4842,6 +4856,30 @@ export default function CampaignDetail() {
                   {platform.connected && (
                     <div className="px-3 pb-3">
                       <div className="space-y-4">
+                        {/* Google Sheets Connection Expired Warning */}
+                        {platform.platform === "Google Sheets" && sheetsError && (sheetsError as any).requiresReauthorization && (
+                          <div className="pt-2 border-t">
+                            <div className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="font-medium text-amber-800 dark:text-amber-200">Connection Expired</p>
+                                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                  Your Google Sheets connection has expired. Please reconnect to continue syncing data.
+                                </p>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-2 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                                  onClick={() => {
+                                    setExpandedPlatform("Google Sheets");
+                                  }}
+                                >
+                                  Reconnect Google Sheets
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         {/* Google Sheets Matching Status */}
                         {platform.platform === "Google Sheets" && sheetsData?.matchingInfo && (
                           <div className="pt-2 border-t">

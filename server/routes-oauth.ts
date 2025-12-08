@@ -2682,7 +2682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get spreadsheet data for a campaign
   app.get("/api/campaigns/:id/google-sheets-data", async (req, res) => {
-    const campaignId = req.params.id;
+      const campaignId = req.params.id;
     try {
       let connection = await storage.getGoogleSheetsConnection(campaignId);
       
@@ -3408,14 +3408,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stack: errorStack ? errorStack.split('\n').slice(0, 5).join('\n') : undefined
       });
       
-      // Return error in consistent format
+      // CRITICAL: Ensure we always send a response, even if headers were already sent
+      if (!res.headersSent) {
       res.status(500).json({
-        success: false,
+          success: false,
         error: 'Failed to fetch Google Sheets data',
-        message: errorMessage,
-        // Only include stack in development
-        ...(process.env.NODE_ENV === 'development' && errorStack ? { details: errorStack } : {})
+          message: errorMessage,
+          // Only include stack in development
+          ...(process.env.NODE_ENV === 'development' && errorStack ? { details: errorStack } : {})
       });
+      } else {
+        // If headers were already sent, log the error but can't send response
+        console.error('[Google Sheets Data] ⚠️ Response already sent, cannot send error response');
+      }
     }
   });
 

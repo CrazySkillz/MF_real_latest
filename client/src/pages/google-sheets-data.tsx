@@ -117,8 +117,26 @@ export default function GoogleSheetsData() {
     gcTime: 0, // Don't cache the data (TanStack Query v5)
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
+      
+      // Get response text first to check if it's valid JSON
+      const responseText = await response.text();
+      
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData: any = {};
+        
+        // Try to parse JSON, but handle empty or invalid responses
+        try {
+          if (responseText && responseText.trim()) {
+            errorData = JSON.parse(responseText);
+          }
+        } catch (parseError) {
+          // If JSON parsing fails, use status text or default message
+          console.error('Failed to parse error response:', parseError);
+          errorData = {
+            error: response.statusText || 'Unknown error',
+            message: responseText || `Server returned ${response.status} with no error details`
+          };
+        }
         
         // Handle token expiration
         if (response.status === 401 && (errorData.error === 'REFRESH_TOKEN_EXPIRED' || errorData.error === 'ACCESS_TOKEN_EXPIRED' || errorData.requiresReauthorization)) {
@@ -143,7 +161,17 @@ export default function GoogleSheetsData() {
         throw error;
       }
       
-      const data = await response.json();
+      // Parse successful response
+      let data: any;
+      try {
+        if (!responseText || !responseText.trim()) {
+          throw new Error('Empty response from server');
+        }
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse response JSON:', parseError, 'Response text:', responseText.substring(0, 200));
+        throw new Error(`Invalid response from server: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+      }
       
       // Check if response indicates failure
       if (data.success === false) {

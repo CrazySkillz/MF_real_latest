@@ -2344,23 +2344,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('🔄 Attempting to refresh Google Sheets access token for campaign:', connection.campaignId);
 
     // Add timeout to token refresh to prevent hanging
+    // Use Promise.race for timeout compatibility with older Node.js versions
     const fetchWithTimeout = async (url: string, options: any, timeoutMs: number = 15000) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      
       try {
-        const response = await fetch(url, {
-          ...options,
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        return response;
-      } catch (error: any) {
-        clearTimeout(timeoutId);
-        if (error.name === 'AbortError') {
-          throw new Error('Token refresh timeout: OAuth API did not respond within 15 seconds');
+        // Check if AbortController is available (Node 18+)
+        if (typeof AbortController !== 'undefined') {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+          
+          try {
+            const response = await fetch(url, {
+              ...options,
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            return response;
+          } catch (error: any) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+              throw new Error('Token refresh timeout: OAuth API did not respond within 15 seconds');
+            }
+            throw error;
+          }
+        } else {
+          // Fallback for older Node.js versions using Promise.race
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Token refresh timeout: OAuth API did not respond within 15 seconds')), timeoutMs);
+          });
+          
+          const fetchPromise = fetch(url, options);
+          return await Promise.race([fetchPromise, timeoutPromise]) as Response;
         }
-        throw error;
+      } catch (error: any) {
+        if (error.message && error.message.includes('timeout')) {
+          throw error;
+        }
+        throw new Error(`Failed to refresh token: ${error.message || 'Unknown error'}`);
       }
     };
 
@@ -2783,40 +2802,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Try to fetch spreadsheet data with timeout
+      // Use Promise.race for timeout compatibility with older Node.js versions
       const fetchWithTimeout = async (url: string, options: any, timeoutMs: number = 30000) => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        
         try {
-          const response = await fetch(url, {
-            ...options,
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          return response;
-        } catch (error: any) {
-          clearTimeout(timeoutId);
-          if (error.name === 'AbortError') {
-            throw new Error('Request timeout: Google Sheets API did not respond within 30 seconds');
-          }
-          throw error;
-        }
-      };
-
-      let sheetResponse = await fetchWithTimeout(
-        `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z1000`,
-        { headers: { 'Authorization': `Bearer ${accessToken}` } },
-        30000 // 30 second timeout
-      );
-
-      // If token expired despite proactive refresh, try reactive refresh
-      if (sheetResponse.status === 401 && connection.refreshToken) {
-        console.log('🔄 Access token expired, attempting automatic refresh...');
-        try {
-          accessToken = await refreshGoogleSheetsToken(connection);
-          
-          // Retry the request with new token (using same timeout helper)
-          const fetchWithTimeout = async (url: string, options: any, timeoutMs: number = 30000) => {
+          // Check if AbortController is available (Node 18+)
+          if (typeof AbortController !== 'undefined') {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             
@@ -2834,9 +2824,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               throw error;
             }
+          } else {
+            // Fallback for older Node.js versions using Promise.race
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Request timeout: Google Sheets API did not respond within 30 seconds')), timeoutMs);
+            });
+            
+            const fetchPromise = fetch(url, options);
+            return await Promise.race([fetchPromise, timeoutPromise]) as Response;
+          }
+        } catch (error: any) {
+          if (error.message && error.message.includes('timeout')) {
+            throw error;
+          }
+          throw new Error(`Failed to fetch from Google Sheets API: ${error.message || 'Unknown error'}`);
+        }
+      };
+
+      let sheetResponse = await fetchWithTimeout(
+        `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z1000`,
+        { headers: { 'Authorization': `Bearer ${accessToken}` } },
+        30000 // 30 second timeout
+      );
+
+      // If token expired despite proactive refresh, try reactive refresh
+      if (sheetResponse.status === 401 && connection.refreshToken) {
+        console.log('🔄 Access token expired, attempting automatic refresh...');
+        try {
+          accessToken = await refreshGoogleSheetsToken(connection);
+          
+          // Retry the request with new token (using same timeout helper)
+          const fetchWithTimeoutRetry = async (url: string, options: any, timeoutMs: number = 30000) => {
+            try {
+              // Check if AbortController is available (Node 18+)
+              if (typeof AbortController !== 'undefined') {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                
+                try {
+                  const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                  });
+                  clearTimeout(timeoutId);
+                  return response;
+                } catch (error: any) {
+                  clearTimeout(timeoutId);
+                  if (error.name === 'AbortError') {
+                    throw new Error('Request timeout: Google Sheets API did not respond within 30 seconds');
+                  }
+                  throw error;
+                }
+              } else {
+                // Fallback for older Node.js versions using Promise.race
+                const timeoutPromise = new Promise((_, reject) => {
+                  setTimeout(() => reject(new Error('Request timeout: Google Sheets API did not respond within 30 seconds')), timeoutMs);
+                });
+                
+                const fetchPromise = fetch(url, options);
+                return await Promise.race([fetchPromise, timeoutPromise]) as Response;
+              }
+            } catch (error: any) {
+              if (error.message && error.message.includes('timeout')) {
+                throw error;
+              }
+              throw new Error(`Failed to fetch from Google Sheets API: ${error.message || 'Unknown error'}`);
+            }
           };
 
-          sheetResponse = await fetchWithTimeout(
+          sheetResponse = await fetchWithTimeoutRetry(
             `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z1000`,
             { headers: { 'Authorization': `Bearer ${accessToken}` } },
             30000

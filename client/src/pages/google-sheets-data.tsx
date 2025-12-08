@@ -351,7 +351,9 @@ export default function GoogleSheetsData() {
                     ? 'Your Google Sheets connection has expired. Please reconnect to continue accessing your data.'
                     : sheetsError.message.includes('MISSING_SPREADSHEET') || sheetsError.message.includes('no spreadsheet')
                     ? 'Google Sheets connection exists but no spreadsheet is selected. Please go to the campaign settings and select a spreadsheet.'
-                    : sheetsError.message}
+                    : (sheetsError as any)?.isNetworkError
+                    ? `Network error: ${sheetsError.message}. The server may be restarting or unavailable. Please try again in a moment.`
+                    : sheetsError.message || 'Failed to fetch Google Sheets data'}
                 </p>
                 <div className="flex gap-3 justify-center">
                   {sheetsError.message.includes('TOKEN_EXPIRED') || sheetsError.message.includes('401') || (sheetsError as any)?.requiresReauthorization ? (

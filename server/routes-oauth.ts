@@ -2682,8 +2682,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get spreadsheet data for a campaign
   app.get("/api/campaigns/:id/google-sheets-data", async (req, res) => {
+    const campaignId = req.params.id;
     try {
-      const campaignId = req.params.id;
       let connection = await storage.getGoogleSheetsConnection(campaignId);
       
       if (!connection) {

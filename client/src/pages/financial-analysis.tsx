@@ -485,12 +485,25 @@ export default function FinancialAnalysis() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Estimated Revenue</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Estimated Revenue</p>
+                          {connectedPlatformsData?.statuses?.find(p => p.id === 'google-sheets' && p.connected) && (
+                            <Badge variant="outline" className="text-xs">Google Sheets</Badge>
+                          )}
+                        </div>
                         <div className="flex items-center justify-between">
                           <p className="text-2xl font-bold text-slate-900 dark:text-white">
                             {formatCurrency(estimatedRevenue)}
                           </p>
                           {historicalMetrics && renderTrendIndicator(calculateChange(estimatedRevenue, historicalMetrics.revenue))}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          {platformMetrics.linkedIn.conversions > 0 && linkedInConversionValue > 0 && (
+                            <div>LinkedIn: {platformMetrics.linkedIn.conversions.toLocaleString()} × ${linkedInConversionValue.toFixed(2)} = {formatCurrency(linkedInRevenue)}</div>
+                          )}
+                          {(platformMetrics.customIntegration.conversions > 0 || platformMetrics.sheets.conversions > 0) && fallbackAOV > 0 && (
+                            <div>Other: {(platformMetrics.customIntegration.conversions + platformMetrics.sheets.conversions).toLocaleString()} × ${fallbackAOV.toFixed(2)} = {formatCurrency(otherRevenue)}</div>
+                          )}
                         </div>
                       </div>
                       <TrendingUp className="w-8 h-8 text-green-500" />

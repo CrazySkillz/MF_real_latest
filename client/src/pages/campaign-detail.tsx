@@ -5151,8 +5151,8 @@ export default function CampaignDetail() {
                     </div>
                   )}
 
-                  {/* Connection Setup Dropdown - Only show when expanded and not connected */}
-                  {!platform.connected && expandedPlatform === platform.platform && (
+                  {/* Connection Setup Dropdown - Show when expanded and (not connected OR adding additional sheet) */}
+                  {expandedPlatform === platform.platform && (!platform.connected || (platform.platform === "Google Sheets" && canAddMoreSheets)) && (
                     <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-3">
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow 
@@ -5163,16 +5163,43 @@ export default function CampaignDetail() {
                           }}
                         />
                       ) : platform.platform === "Google Sheets" ? (
-                        <SimpleGoogleSheetsAuth 
-                          campaignId={campaign.id} 
-                          onSuccess={() => {
-                            setExpandedPlatform(null);
-                            window.location.reload();
-                          }}
-                          onError={(error) => {
-                            console.error("Google Sheets connection error:", error);
-                          }}
-                        />
+                        <>
+                          {!canAddMoreSheets && (
+                            <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                                    Connection Limit Reached
+                                  </p>
+                                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                    You have reached the maximum limit of {MAX_GOOGLE_SHEETS_CONNECTIONS} Google Sheets connections per campaign. Please remove an existing connection to add a new one.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          <SimpleGoogleSheetsAuth 
+                            campaignId={campaign.id} 
+                            onSuccess={() => {
+                              setExpandedPlatform(null);
+                              refetchGoogleSheetsConnections();
+                              queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                              toast({
+                                title: "Google Sheet Connected",
+                                description: "The Google Sheet has been connected successfully.",
+                              });
+                            }}
+                            onError={(error) => {
+                              console.error("Google Sheets connection error:", error);
+                              toast({
+                                title: "Connection Failed",
+                                description: error || "Failed to connect Google Sheet",
+                                variant: "destructive"
+                              });
+                            }}
+                          />
+                        </>
                       ) : platform.platform === "LinkedIn Ads" ? (
                         <LinkedInConnectionFlow 
                           campaignId={campaign.id} 

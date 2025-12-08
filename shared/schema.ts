@@ -96,8 +96,23 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
   expiresAt: timestamp("expires_at"),
   isPrimary: boolean("is_primary").notNull().default(false), // Primary sheet for this campaign
   isActive: boolean("is_active").notNull().default(true), // Whether this connection is active
+  columnMappings: text("column_mappings"), // JSON string of FieldMapping[]
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const mappingTemplates = pgTable("mapping_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  platform: text("platform").notNull(),
+  columnStructure: text("column_structure").notNull(), // JSON string
+  mappings: text("mappings").notNull(), // JSON string of FieldMapping[]
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  lastUsedAt: timestamp("last_used_at"),
+  usageCount: integer("usage_count").default(0),
+  createdBy: text("created_by"),
+  isShared: boolean("is_shared").default(false),
 });
 
 export const linkedinConnections = pgTable("linkedin_connections", {

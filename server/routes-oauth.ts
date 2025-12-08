@@ -10,6 +10,10 @@ import { parsePDFMetrics } from "./services/pdf-parser";
 import { nanoid } from "nanoid";
 import { randomBytes } from "crypto";
 import { snapshotScheduler } from "./scheduler";
+import { detectColumnTypes } from "./utils/column-detection";
+import { autoMapColumns, validateMappings, isMappingValid } from "./utils/auto-mapping";
+import { getPlatformFields, getRequiredFields } from "./utils/field-definitions";
+import { transformData, filterRowsByCampaignAndPlatform, calculateConversionValue } from "./utils/data-transformation";
 
 // Configure multer for PDF file uploads
 const upload = multer({
@@ -8727,6 +8731,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: "Failed to process conversion event"
       });
+    }
+  });
+
+  // ============================================
+  // FLEXIBLE DATA MAPPING API ENDPOINTS
+  // ============================================
+
+  // Get platform fields for a platform
+  app.get("/api/platforms/:platform/fields", async (req, res) => {
+    try {
+      const { platform } = req.params;
+      const fields = getPlatformFields(platform);
+      
+      res.json({
+        success: true,
+        platform,
+        fields: fields.map(f => ({
+          id: f.id,
+          name: f.name,
+          type: f.type,
+          required: f.required,
+          category: f.category,
+          description: f.description
+        }))
+      });
+    } catch (error: any) {
+      console.error('[Platform Fields] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to get platform fields' });
+    }
+  });
+
+  // Detect columns from Google Sheets
+  app.get("/api/campaigns/:id/google-sheets/detect-columns", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { spreadsheetId } = req.query;
+      
+      // Get connection
+      let connection: any;
+      if (spreadsheetId) {
+        connection = await storage.getGoogleSheetsConnection(campaignId, spreadsheetId as string);
+      } else {
+        connection = await storage.getPrimaryGoogleSheetsConnection(campaignId) || 
+                     await storage.getGoogleSheetsConnection(campaignId);
+      }
+      
+      if (!connection || !connection.accessToken) {
+        return res.status(404).json({ error: 'No Google Sheets connection found' });
+      }
+      
+      // Fetch first 100 rows for analysis
+      const sheetResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z100?valueRenderOption=UNFORMATTED_VALUE`,
+        { headers: { 'Authorization': `Bearer ${connection.accessToken}` } }
+      );
+      
+      if (!sheetResponse.ok) {
+        throw new Error(`Failed to fetch Google Sheets data: ${sheetResponse.statusText}`);
+      }
+      
+      const sheetData = await sheetResponse.json();
+      const rows = sheetData.values || [];
+      
+      if (rows.length === 0) {
+        return res.json({ success: true, columns: [] });
+      }
+      
+      // Detect columns
+      const detectedColumns = detectColumnTypes(rows);
+      
+      res.json({
+        success: true,
+        columns: detectedColumns,
+        totalRows: rows.length - 1 // Exclude header
+      });
+    } catch (error: any) {
+      console.error('[Detect Columns] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to detect columns' });
+    }
+  });
+
+  // Auto-map columns to platform fields
+  app.post("/api/campaigns/:id/google-sheets/auto-map", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { platform, columns } = req.body;
+      
+      if (!platform) {
+        return res.status(400).json({ error: 'Platform is required' });
+      }
+      
+      if (!columns || !Array.isArray(columns)) {
+        return res.status(400).json({ error: 'Columns array is required' });
+      }
+      
+      // Get platform fields
+      const platformFields = getPlatformFields(platform);
+      
+      // Auto-map
+      const mappings = autoMapColumns(columns, platformFields);
+      
+      res.json({
+        success: true,
+        mappings,
+        requiredFields: getRequiredFields(platform).map(f => f.id),
+        mappedFields: mappings.map(m => m.targetFieldId)
+      });
+    } catch (error: any) {
+      console.error('[Auto-Map] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to auto-map columns' });
+    }
+  });
+
+  // Save column mappings to connection
+  app.post("/api/campaigns/:id/google-sheets/save-mappings", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { connectionId, mappings, platform } = req.body;
+      
+      if (!connectionId || !mappings || !Array.isArray(mappings)) {
+        return res.status(400).json({ error: 'connectionId and mappings array are required' });
+      }
+      
+      // Validate mappings
+      const platformFields = getPlatformFields(platform || 'linkedin');
+      const errors = validateMappings(mappings, platformFields);
+      
+      if (errors.size > 0) {
+        return res.status(400).json({
+          error: 'Mapping validation failed',
+          errors: Object.fromEntries(errors)
+        });
+      }
+      
+      // Update connection with mappings
+      await storage.updateGoogleSheetsConnection(connectionId, {
+        columnMappings: JSON.stringify(mappings)
+      });
+      
+      res.json({
+        success: true,
+        message: 'Mappings saved successfully'
+      });
+    } catch (error: any) {
+      console.error('[Save Mappings] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to save mappings' });
+    }
+  });
+
+  // Get mappings for a connection
+  app.get("/api/campaigns/:id/google-sheets/mappings", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { connectionId } = req.query;
+      
+      let connection: any;
+      if (connectionId) {
+        connection = await storage.getGoogleSheetsConnection(campaignId, connectionId as string);
+      } else {
+        connection = await storage.getPrimaryGoogleSheetsConnection(campaignId);
+      }
+      
+      if (!connection) {
+        return res.status(404).json({ error: 'Connection not found' });
+      }
+      
+      const mappings = connection.columnMappings 
+        ? JSON.parse(connection.columnMappings)
+        : [];
+      
+      res.json({
+        success: true,
+        mappings,
+        hasMappings: mappings.length > 0
+      });
+    } catch (error: any) {
+      console.error('[Get Mappings] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to get mappings' });
     }
   });
 

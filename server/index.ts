@@ -185,7 +185,8 @@ process.on('uncaughtException', (error: Error) => {
           await db.execute(sql`
             ALTER TABLE google_sheets_connections 
             ADD COLUMN IF NOT EXISTS is_primary BOOLEAN DEFAULT false,
-            ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+            ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true,
+            ADD COLUMN IF NOT EXISTS column_mappings TEXT;
           `);
           
           // Set existing connections as primary and active (backward compatibility)
@@ -193,6 +194,23 @@ process.on('uncaughtException', (error: Error) => {
             UPDATE google_sheets_connections 
             SET is_primary = true, is_active = true 
             WHERE is_primary IS NULL OR is_active IS NULL;
+          `);
+          
+          // Migration 7: Create mapping_templates table
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS mapping_templates (
+              id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+              name TEXT NOT NULL,
+              description TEXT,
+              platform TEXT NOT NULL,
+              column_structure TEXT NOT NULL,
+              mappings TEXT NOT NULL,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              last_used_at TIMESTAMP,
+              usage_count INTEGER DEFAULT 0,
+              created_by TEXT,
+              is_shared BOOLEAN DEFAULT false
+            );
           `);
           
           log('✅ Database migrations completed successfully');

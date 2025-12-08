@@ -2945,7 +2945,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate intelligent insights from the data
-      const insights = generateInsights(rows, campaignData.detectedColumns, campaignData.metrics);
+      let insights;
+      try {
+        insights = generateInsights(rows, campaignData.detectedColumns, campaignData.metrics);
+      } catch (insightsError) {
+        console.error('[Google Sheets Data] Error generating insights:', insightsError);
+        // Don't fail the request if insights generation fails
+        insights = {
+          topPerformers: [],
+          bottomPerformers: [],
+          anomalies: [],
+          trends: [],
+          correlations: [],
+          recommendations: [],
+          dataQuality: {
+            completeness: 0,
+            missingValues: 0,
+            outliers: []
+          }
+        };
+      }
 
       // Automatic Conversion Value Calculation from Google Sheets
       // NEW: Calculates conversion value for EACH connected platform separately

@@ -3531,13 +3531,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // CRITICAL: Ensure we always send a response, even if headers were already sent
       if (!res.headersSent) {
-      res.status(500).json({
+        res.status(500).json({
           success: false,
-        error: 'Failed to fetch Google Sheets data',
+          error: 'Failed to fetch Google Sheets data',
           message: errorMessage,
           // Only include stack in development
           ...(process.env.NODE_ENV === 'development' && errorStack ? { details: errorStack } : {})
-      });
+        });
       } else {
         // If headers were already sent, log the error but can't send response
         console.error('[Google Sheets Data] ⚠️ Response already sent, cannot send error response');

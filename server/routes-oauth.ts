@@ -2790,6 +2790,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let accessToken = connection.accessToken;
 
+      // Check if token needs refresh (if expired or expiring soon)
+      const shouldRefreshToken = (conn: any) => {
+        if (!conn.expiresAt && !conn.tokenExpiresAt) return false;
+        const expiresAt = conn.expiresAt ? new Date(conn.expiresAt).getTime() : new Date(conn.tokenExpiresAt).getTime();
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+        return (expiresAt - now) < fiveMinutes;
+      };
+
       // Proactively refresh token if it's close to expiring
       if (shouldRefreshToken(connection) && connection.refreshToken) {
         console.log('🔄 Token expires soon, proactively refreshing...');

@@ -2778,7 +2778,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!sheetResponse.ok) {
         const errorText = await sheetResponse.text();
-        console.error('Google Sheets API error:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText };
+        }
+        
+        console.error('[Google Sheets Data] Google Sheets API error:', {
+          status: sheetResponse.status,
+          statusText: sheetResponse.statusText,
+          error: errorData,
+          spreadsheetId: connection.spreadsheetId
+        });
         
         // Handle token expiration - clear invalid connection and require re-authorization
         if (sheetResponse.status === 401) {
@@ -2788,6 +2800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.deleteGoogleSheetsConnection(campaignId);
           
           return res.status(401).json({ 
+            success: false,
             error: 'ACCESS_TOKEN_EXPIRED',
             message: 'Connection expired. Please reconnect your Google Sheets account.',
             requiresReauthorization: true,
@@ -2795,7 +2808,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        throw new Error(`Google Sheets API Error: ${errorText}`);
+        // Handle 403 (Forbidden) - might be permissions issue
+        if (sheetResponse.status === 403) {
+          console.error('[Google Sheets Data] Permission denied - check spreadsheet sharing settings');
+          return res.status(403).json({
+            success: false,
+            error: 'PERMISSION_DENIED',
+            message: 'Access denied. Please ensure the Google Sheet is shared with the connected Google account and that the Google Sheets API is enabled.',
+            requiresReauthorization: false
+          });
+        }
+        
+        // Handle 404 (Not Found) - spreadsheet might be deleted or ID is wrong
+        if (sheetResponse.status === 404) {
+          console.error('[Google Sheets Data] Spreadsheet not found');
+          return res.status(404).json({
+            success: false,
+            error: 'SPREADSHEET_NOT_FOUND',
+            message: 'Spreadsheet not found. The spreadsheet may have been deleted or the ID is incorrect. Please reconnect and select a valid spreadsheet.',
+            requiresReauthorization: false,
+            missingSpreadsheet: true
+          });
+        }
+        
+        // Generic API error
+        const errorMessage = errorData.error?.message || errorData.error || errorText || 'Unknown Google Sheets API error';
+        throw new Error(`Google Sheets API Error (${sheetResponse.status}): ${errorMessage}`);
       }
 
       const sheetData = await sheetResponse.json();

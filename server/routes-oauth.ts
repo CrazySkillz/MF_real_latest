@@ -3339,12 +3339,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error) {
-      console.error('[Google Sheets Data] Error fetching data:', error);
+      console.error('[Google Sheets Data] ❌ Error fetching data:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      
       console.error('[Google Sheets Data] Error details:', {
         campaignId,
         error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined
+        stack: errorStack ? errorStack.split('\n').slice(0, 5).join('\n') : undefined
       });
       
       // Return error in consistent format
@@ -3352,7 +3354,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: 'Failed to fetch Google Sheets data',
         message: errorMessage,
-        details: error instanceof Error ? error.stack : undefined
+        // Only include stack in development
+        ...(process.env.NODE_ENV === 'development' && errorStack ? { details: errorStack } : {})
       });
     }
   });

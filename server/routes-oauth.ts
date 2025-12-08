@@ -3055,6 +3055,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             
             filteredRows.forEach((row: any[]) => {
+              // Safety check: ensure row is an array and has enough elements
+              if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) {
+                return;
+              }
+              
               const name = String(row[campaignNameColumnIndex] || '').trim();
               if (name && !matchedCampaigns.includes(name)) matchedCampaigns.push(name);
             });

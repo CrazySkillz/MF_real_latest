@@ -181,6 +181,20 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS conversion_value DECIMAL(10, 2);
           `);
           
+          // Migration 6: Add isPrimary and isActive to google_sheets_connections for multiple sheets support
+          await db.execute(sql`
+            ALTER TABLE google_sheets_connections 
+            ADD COLUMN IF NOT EXISTS is_primary BOOLEAN DEFAULT false,
+            ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+          `);
+          
+          // Set existing connections as primary and active (backward compatibility)
+          await db.execute(sql`
+            UPDATE google_sheets_connections 
+            SET is_primary = true, is_active = true 
+            WHERE is_primary IS NULL OR is_active IS NULL;
+          `);
+          
           log('✅ Database migrations completed successfully');
         } catch (error) {
           console.error('⚠️  Migration warning (may already exist):', error.message);

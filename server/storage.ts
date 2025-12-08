@@ -36,10 +36,13 @@ export interface IStorage {
   deleteGA4Connection(connectionId: string): Promise<boolean>;
   
   // Google Sheets Connections
-  getGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined>;
+  getGoogleSheetsConnections(campaignId: string): Promise<GoogleSheetsConnection[]>;
+  getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined>;
+  getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined>;
   createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection>;
-  updateGoogleSheetsConnection(campaignId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined>;
-  deleteGoogleSheetsConnection(campaignId: string): Promise<boolean>;
+  updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined>;
+  setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string): Promise<boolean>;
+  deleteGoogleSheetsConnection(connectionId: string): Promise<boolean>;
   
   // LinkedIn Connections
   getLinkedInConnection(campaignId: string): Promise<LinkedInConnection | undefined>;
@@ -265,7 +268,7 @@ export class MemStorage implements IStorage {
   private integrations: Map<string, Integration>;
   private performanceData: Map<string, PerformanceData>;
   private ga4Connections: Map<string, GA4Connection>;
-  private googleSheetsConnections: Map<string, GoogleSheetsConnection>;
+  private googleSheetsConnections: Map<string, GoogleSheetsConnection>; // Key: connection.id
   private linkedinConnections: Map<string, LinkedInConnection>;
   private metaConnections: Map<string, MetaConnection>;
   private linkedinImportSessions: Map<string, LinkedInImportSession>;
@@ -883,12 +886,67 @@ export class MemStorage implements IStorage {
   }
 
   // Google Sheets Connection methods
-  async getGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {
-    return this.googleSheetsConnections.get(campaignId);
+  async getGoogleSheetsConnections(campaignId: string): Promise<GoogleSheetsConnection[]> {
+    const connections: GoogleSheetsConnection[] = [];
+    for (const connection of this.googleSheetsConnections.values()) {
+      if (connection.campaignId === campaignId && connection.isActive) {
+        connections.push(connection);
+      }
+    }
+    return connections.sort((a, b) => 
+      new Date(a.connectedAt).getTime() - new Date(b.connectedAt).getTime()
+    );
+  }
+
+  async getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined> {
+    if (spreadsheetId) {
+      for (const connection of this.googleSheetsConnections.values()) {
+        if (connection.campaignId === campaignId && 
+            connection.spreadsheetId === spreadsheetId && 
+            connection.isActive) {
+          return connection;
+        }
+      }
+      return undefined;
+    }
+    
+    // Return the primary connection if no spreadsheetId specified
+    for (const connection of this.googleSheetsConnections.values()) {
+      if (connection.campaignId === campaignId && 
+          connection.isPrimary && 
+          connection.isActive) {
+        return connection;
+      }
+    }
+    
+    // Fallback to first active connection if no primary
+    for (const connection of this.googleSheetsConnections.values()) {
+      if (connection.campaignId === campaignId && connection.isActive) {
+        return connection;
+      }
+    }
+    
+    return undefined;
+  }
+
+  async getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {
+    for (const connection of this.googleSheetsConnections.values()) {
+      if (connection.campaignId === campaignId && 
+          connection.isPrimary && 
+          connection.isActive) {
+        return connection;
+      }
+    }
+    return undefined;
   }
 
   async createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection> {
     const id = randomUUID();
+    
+    // Check if this is the first connection for this campaign - make it primary
+    const existingConnections = await this.getGoogleSheetsConnections(connection.campaignId);
+    const isPrimary = existingConnections.length === 0;
+    
     const sheetsConnection: GoogleSheetsConnection = {
       id,
       campaignId: connection.campaignId,
@@ -899,29 +957,66 @@ export class MemStorage implements IStorage {
       clientId: connection.clientId || null,
       clientSecret: connection.clientSecret || null,
       expiresAt: connection.expiresAt || null,
+      isPrimary: isPrimary,
+      isActive: true,
       connectedAt: new Date(),
       createdAt: new Date(),
     };
     
-    this.googleSheetsConnections.set(connection.campaignId, sheetsConnection);
+    this.googleSheetsConnections.set(id, sheetsConnection);
     return sheetsConnection;
   }
 
-  async updateGoogleSheetsConnection(campaignId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
-    const existing = this.googleSheetsConnections.get(campaignId);
+  async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
+    const existing = this.googleSheetsConnections.get(connectionId);
     if (!existing) return undefined;
     
     const updated: GoogleSheetsConnection = {
       ...existing,
       ...connection,
+      id: existing.id,
+      campaignId: existing.campaignId,
     };
     
-    this.googleSheetsConnections.set(campaignId, updated);
+    this.googleSheetsConnections.set(connectionId, updated);
     return updated;
   }
 
-  async deleteGoogleSheetsConnection(campaignId: string): Promise<boolean> {
-    return this.googleSheetsConnections.delete(campaignId);
+  async setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string): Promise<boolean> {
+    const connections = await this.getGoogleSheetsConnections(campaignId);
+    let found = false;
+    
+    // Set all connections for this campaign to non-primary, then set the specified one as primary
+    for (const conn of connections) {
+      const updated = { ...conn, isPrimary: conn.id === connectionId };
+      this.googleSheetsConnections.set(conn.id, updated);
+      if (conn.id === connectionId) found = true;
+    }
+    
+    return found;
+  }
+
+  async deleteGoogleSheetsConnection(connectionId: string): Promise<boolean> {
+    const connection = this.googleSheetsConnections.get(connectionId);
+    if (!connection) return false;
+    
+    // Soft delete by setting isActive to false
+    const updated: GoogleSheetsConnection = {
+      ...connection,
+      isActive: false
+    };
+    this.googleSheetsConnections.set(connectionId, updated);
+    
+    // If this was the primary connection, make the first remaining connection primary
+    if (connection.isPrimary) {
+      const remainingConnections = await this.getGoogleSheetsConnections(connection.campaignId);
+      if (remainingConnections.length > 0) {
+        const newPrimary = remainingConnections[0];
+        await this.setPrimaryGoogleSheetsConnection(connection.campaignId, newPrimary.id);
+      }
+    }
+    
+    return true;
   }
 
   // LinkedIn Connection methods
@@ -1961,33 +2056,123 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Google Sheets Connection methods
-  async getGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {
-    const [connection] = await db.select().from(googleSheetsConnections).where(eq(googleSheetsConnections.campaignId, campaignId));
-    return connection || undefined;
+  async getGoogleSheetsConnections(campaignId: string): Promise<GoogleSheetsConnection[]> {
+    return db.select().from(googleSheetsConnections)
+      .where(and(eq(googleSheetsConnections.campaignId, campaignId), eq(googleSheetsConnections.isActive, true)))
+      .orderBy(googleSheetsConnections.connectedAt);
+  }
+
+  async getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined> {
+    if (spreadsheetId) {
+      const [connection] = await db.select().from(googleSheetsConnections)
+        .where(and(
+          eq(googleSheetsConnections.campaignId, campaignId),
+          eq(googleSheetsConnections.spreadsheetId, spreadsheetId),
+          eq(googleSheetsConnections.isActive, true)
+        ));
+      return connection || undefined;
+    }
+    
+    // Return the primary connection if no spreadsheetId specified
+    const [primary] = await db.select().from(googleSheetsConnections)
+      .where(and(
+        eq(googleSheetsConnections.campaignId, campaignId),
+        eq(googleSheetsConnections.isPrimary, true),
+        eq(googleSheetsConnections.isActive, true)
+      ));
+    
+    if (primary) return primary;
+    
+    // Fallback to first active connection if no primary
+    const [first] = await db.select().from(googleSheetsConnections)
+      .where(and(
+        eq(googleSheetsConnections.campaignId, campaignId),
+        eq(googleSheetsConnections.isActive, true)
+      ))
+      .limit(1);
+    
+    return first || undefined;
+  }
+
+  async getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {
+    const [primary] = await db.select().from(googleSheetsConnections)
+      .where(and(
+        eq(googleSheetsConnections.campaignId, campaignId),
+        eq(googleSheetsConnections.isPrimary, true),
+        eq(googleSheetsConnections.isActive, true)
+      ));
+    return primary || undefined;
   }
 
   async createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection> {
+    // Check if this is the first connection for this campaign - make it primary
+    const existingConnections = await this.getGoogleSheetsConnections(connection.campaignId);
+    const isPrimary = existingConnections.length === 0;
+    
     const [sheetsConnection] = await db
       .insert(googleSheetsConnections)
-      .values(connection)
+      .values({
+        ...connection,
+        isPrimary: isPrimary,
+        isActive: true
+      })
       .returning();
     return sheetsConnection;
   }
 
-  async updateGoogleSheetsConnection(campaignId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
+  async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
     const [updated] = await db
       .update(googleSheetsConnections)
       .set(connection)
-      .where(eq(googleSheetsConnections.campaignId, campaignId))
+      .where(eq(googleSheetsConnections.id, connectionId))
       .returning();
     return updated || undefined;
   }
 
-  async deleteGoogleSheetsConnection(campaignId: string): Promise<boolean> {
-    const result = await db
-      .delete(googleSheetsConnections)
+  async setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string): Promise<boolean> {
+    // First, set all connections for this campaign to non-primary
+    await db
+      .update(googleSheetsConnections)
+      .set({ isPrimary: false })
       .where(eq(googleSheetsConnections.campaignId, campaignId));
+    
+    // Then set the specified connection as primary
+    const result = await db
+      .update(googleSheetsConnections)
+      .set({ isPrimary: true })
+      .where(and(
+        eq(googleSheetsConnections.id, connectionId),
+        eq(googleSheetsConnections.campaignId, campaignId)
+      ));
+    
     return (result.rowCount || 0) > 0;
+  }
+
+  async deleteGoogleSheetsConnection(connectionId: string): Promise<boolean> {
+    const connection = await db.select().from(googleSheetsConnections)
+      .where(eq(googleSheetsConnections.id, connectionId))
+      .limit(1);
+    
+    if (connection.length === 0) return false;
+    
+    const wasPrimary = connection[0].isPrimary;
+    const campaignId = connection[0].campaignId;
+    
+    // Soft delete by setting isActive to false
+    await db
+      .update(googleSheetsConnections)
+      .set({ isActive: false })
+      .where(eq(googleSheetsConnections.id, connectionId));
+    
+    // If this was the primary connection, make the first remaining connection primary
+    if (wasPrimary) {
+      const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
+      if (remainingConnections.length > 0) {
+        await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
+      }
+    }
+    
+    return true;
   }
 
   // LinkedIn Connection methods

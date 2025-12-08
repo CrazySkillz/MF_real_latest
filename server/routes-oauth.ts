@@ -796,11 +796,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn(`[Google Sheets] Connection missing OAuth credentials, attempting to add them...`);
         // Try to update with environment variables if available
         if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-          await storage.updateGoogleSheetsConnection(campaignId, {
+          await storage.updateGoogleSheetsConnection(connection.id, {
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET
           });
-          connection = await storage.getGoogleSheetsConnection(campaignId); // Refresh connection
+          connection = await storage.getGoogleSheetsConnection(campaignId, connection.spreadsheetId); // Refresh connection
         }
       }
 
@@ -822,7 +822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('🔄 Token expires soon, refreshing before Drive API call...');
         try {
           accessToken = await refreshGoogleSheetsToken(connection);
-          connection = await storage.getGoogleSheetsConnection(campaignId); // Get updated connection
+          connection = await storage.getGoogleSheetsConnection(campaignId, connection.spreadsheetId); // Get updated connection
         } catch (refreshError) {
           console.error('⚠️ Token refresh failed:', refreshError);
           // Continue with existing token, will retry if 401
@@ -909,9 +909,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/google-sheets/:campaignId/connection", async (req, res) => {
     try {
       const { campaignId } = req.params;
-      console.log(`[Google Sheets] Deleting connection for campaign ${campaignId}`);
+      const { connectionId } = req.query; // Optional: delete specific connection
+      
+      console.log(`[Google Sheets] Deleting connection for campaign ${campaignId}${connectionId ? ` (connectionId: ${connectionId})` : ''}`);
 
-      await storage.deleteGoogleSheetsConnection(campaignId);
+      if (connectionId) {
+        // Delete specific connection
+        await storage.deleteGoogleSheetsConnection(connectionId as string);
+      } else {
+        // Delete all connections for this campaign (backward compatibility)
+        const connections = await storage.getGoogleSheetsConnections(campaignId);
+        for (const conn of connections) {
+          await storage.deleteGoogleSheetsConnection(conn.id);
+        }
+      }
 
       console.log(`[Google Sheets] Connection deleted successfully`);
       res.json({ success: true, message: 'Connection deleted' });
@@ -933,14 +944,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[Google Sheets] Selecting spreadsheet ${spreadsheetId} for campaign ${campaignId}`);
 
-      const connection = await storage.getGoogleSheetsConnection(campaignId);
+      // Find existing connection with 'pending' spreadsheetId or create new one
+      let connection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
       
       if (!connection) {
-        return res.status(404).json({ error: 'No Google Sheets connection found' });
+        // Check if there's any connection for this campaign
+        const existingConnections = await storage.getGoogleSheetsConnections(campaignId);
+        if (existingConnections.length > 0) {
+          // Use the first connection or create a new one
+          connection = existingConnections[0];
+        } else {
+          return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
+        }
       }
 
       // Update connection with selected spreadsheet
-      await storage.updateGoogleSheetsConnection(campaignId, {
+      await storage.updateGoogleSheetsConnection(connection.id, {
         spreadsheetId,
       });
 
@@ -1546,17 +1565,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const [
         ga4Connections,
-        googleSheetsConnection,
+        googleSheetsConnections,
         linkedInConnection,
         metaConnection,
         customIntegration,
       ] = await Promise.all([
         storage.getGA4Connections(campaignId),
-        storage.getGoogleSheetsConnection(campaignId),
+        storage.getGoogleSheetsConnections(campaignId),
         storage.getLinkedInConnection(campaignId),
         storage.getMetaConnection(campaignId),
         storage.getCustomIntegration(campaignId),
       ]);
+      
+      // Get primary Google Sheets connection for backward compatibility
+      const googleSheetsConnection = googleSheetsConnections.find(c => c.isPrimary) || googleSheetsConnections[0];
 
       console.log(`[Connected Platforms] GA4 connections found: ${ga4Connections.length}`);
       if (ga4Connections.length > 0) {
@@ -2284,8 +2306,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedSpreadsheet = connection.spreadsheets?.find((s: any) => s.id === spreadsheetId);
       const spreadsheetName = selectedSpreadsheet?.name || `Spreadsheet ${spreadsheetId}`;
       
+      // Find existing connection with 'pending' spreadsheetId or create new one
+      let dbConnection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
+      
+      if (!dbConnection) {
+        // Check if there's any connection for this campaign
+        const existingConnections = await storage.getGoogleSheetsConnections(campaignId);
+        if (existingConnections.length > 0) {
+          // Use the first connection
+          dbConnection = existingConnections[0];
+        } else {
+          return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
+        }
+      }
+      
       // Update the database connection with the selected spreadsheet
-      await storage.updateGoogleSheetsConnection(campaignId, {
+      await storage.updateGoogleSheetsConnection(dbConnection.id, {
         spreadsheetId,
         spreadsheetName
       });
@@ -2307,27 +2343,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check Google Sheets connection status
+  // List all Google Sheets connections for a campaign
+  app.get("/api/campaigns/:id/google-sheets-connections", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      
+      res.json({
+        success: true,
+        connections: connections.map(conn => ({
+          id: conn.id,
+          spreadsheetId: conn.spreadsheetId,
+          spreadsheetName: conn.spreadsheetName,
+          isPrimary: conn.isPrimary,
+          isActive: conn.isActive,
+          connectedAt: conn.connectedAt
+        }))
+      });
+    } catch (error: any) {
+      console.error('List connections error:', error);
+      res.status(500).json({ error: error.message || 'Failed to list connections' });
+    }
+  });
+
+  // Set primary Google Sheets connection
+  app.post("/api/campaigns/:id/google-sheets-connections/:connectionId/set-primary", async (req, res) => {
+    try {
+      const { id: campaignId, connectionId } = req.params;
+      const success = await storage.setPrimaryGoogleSheetsConnection(campaignId, connectionId);
+      
+      if (!success) {
+        return res.status(404).json({ error: 'Connection not found' });
+      }
+      
+      res.json({ success: true, message: 'Primary connection updated' });
+    } catch (error: any) {
+      console.error('Set primary connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to set primary connection' });
+    }
+  });
+
   app.get("/api/google-sheets/check-connection/:campaignId", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
-      const connection = await storage.getGoogleSheetsConnection(campaignId);
+      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const primaryConnection = connections.find(c => c.isPrimary) || connections[0];
       
       // Check for both spreadsheetId AND accessToken - both are required for data fetching
       // Also check that spreadsheetId is not 'pending' (placeholder)
-      if (!connection || !connection.spreadsheetId || connection.spreadsheetId === 'pending' || !connection.accessToken) {
+      if (!primaryConnection || !primaryConnection.spreadsheetId || primaryConnection.spreadsheetId === 'pending' || !primaryConnection.accessToken) {
         console.log(`[Google Sheets Check] Connection check failed for ${campaignId}:`, {
-          hasConnection: !!connection,
-          hasSpreadsheetId: !!connection?.spreadsheetId,
-          spreadsheetId: connection?.spreadsheetId,
-          hasAccessToken: !!connection?.accessToken
+          hasConnection: !!primaryConnection,
+          hasSpreadsheetId: !!primaryConnection?.spreadsheetId,
+          spreadsheetId: primaryConnection?.spreadsheetId,
+          hasAccessToken: !!primaryConnection?.accessToken
         });
-        return res.json({ connected: false });
+        return res.json({ connected: false, totalConnections: connections.length });
       }
       
       res.json({
         connected: true,
-        spreadsheetId: connection.spreadsheetId,
-        spreadsheetName: connection.spreadsheetName
+        totalConnections: connections.length,
+        spreadsheetId: primaryConnection.spreadsheetId,
+        spreadsheetName: primaryConnection.spreadsheetName
       });
     } catch (error) {
       console.error('[Google Sheets Check] Error checking connection:', error);
@@ -2723,8 +2801,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get spreadsheet data for a campaign
   app.get("/api/campaigns/:id/google-sheets-data", async (req, res) => {
       const campaignId = req.params.id;
+      const { spreadsheetId } = req.query; // Optional: fetch from specific spreadsheet
     try {
-      let connection = await storage.getGoogleSheetsConnection(campaignId);
+      // If spreadsheetId is provided, fetch from that specific connection
+      // Otherwise, use the primary connection
+      let connection: any;
+      if (spreadsheetId) {
+        connection = await storage.getGoogleSheetsConnection(campaignId, spreadsheetId as string);
+      } else {
+        connection = await storage.getPrimaryGoogleSheetsConnection(campaignId) || 
+                     await storage.getGoogleSheetsConnection(campaignId);
+      }
       
       if (!connection) {
         console.error(`[Google Sheets Data] No connection found for campaign ${campaignId}`);
@@ -2753,14 +2840,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`[Google Sheets Data] Attempting to refresh missing access token...`);
             connection.accessToken = await refreshGoogleSheetsToken(connection);
             // Update the connection with the new token
-            await storage.updateGoogleSheetsConnection(campaignId, {
+            await storage.updateGoogleSheetsConnection(connection.id, {
               accessToken: connection.accessToken
             });
             console.log(`[Google Sheets Data] ✅ Successfully refreshed access token`);
           } catch (refreshError: any) {
             console.error(`[Google Sheets Data] Token refresh failed:`, refreshError);
             if (refreshError.message === 'REFRESH_TOKEN_EXPIRED') {
-              await storage.deleteGoogleSheetsConnection(campaignId);
+              await storage.deleteGoogleSheetsConnection(connection.id);
               return res.status(401).json({ 
                 success: false,
                 error: 'REFRESH_TOKEN_EXPIRED',
@@ -2778,7 +2865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           // No refresh token available, need to reconnect
           console.error(`[Google Sheets Data] No access token and no refresh token available`);
-          await storage.deleteGoogleSheetsConnection(campaignId);
+          await storage.deleteGoogleSheetsConnection(connection.id);
           return res.status(401).json({ 
             success: false,
             error: 'ACCESS_TOKEN_EXPIRED',

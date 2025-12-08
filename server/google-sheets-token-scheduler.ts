@@ -53,7 +53,7 @@ async function refreshGoogleSheetsToken(connection: any): Promise<string> {
     updateData.refreshToken = tokens.refresh_token;
   }
   
-  await storage.updateGoogleSheetsConnection(connection.campaignId, updateData);
+  await storage.updateGoogleSheetsConnection(connection.id, updateData);
 
   console.log(`[Token Scheduler] ✅ Token refreshed successfully for campaign: ${connection.campaignId}`);
   console.log(`[Token Scheduler]    New token expires at: ${expiresAt.toISOString()}`);
@@ -98,39 +98,46 @@ async function refreshAllGoogleSheetsTokens(): Promise<void> {
     
     for (const campaign of campaigns) {
       try {
-        const connection = await storage.getGoogleSheetsConnection(campaign.id);
+        const connections = await storage.getGoogleSheetsConnections(campaign.id);
         
-        if (!connection || !connection.accessToken || !connection.refreshToken) {
-          continue; // No connection or missing tokens
+        if (connections.length === 0) {
+          continue; // No connections for this campaign
         }
         
-        totalConnections++;
-        
-        // Check if token needs refresh
-        if (!shouldRefreshToken(connection)) {
-          const expiresAt = new Date(connection.expiresAt || 0);
-          const hoursUntilExpiry = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60);
-          console.log(`[Token Scheduler] ⏭️  Skipping campaign "${campaign.name}" (${campaign.id}) - token expires in ${hoursUntilExpiry.toFixed(1)} hours`);
-          skippedCount++;
-          continue;
-        }
-        
-        // Token needs refresh - attempt to refresh it
-        try {
-          await refreshGoogleSheetsToken(connection);
-          refreshedCount++;
-          console.log(`[Token Scheduler] ✅ Refreshed token for campaign "${campaign.name}" (${campaign.id})`);
-        } catch (refreshError: any) {
-          if (refreshError.message === 'REFRESH_TOKEN_EXPIRED') {
-            // Refresh token itself has expired - mark for reauthorization
-            console.log(`[Token Scheduler] ⚠️  Refresh token expired for campaign "${campaign.name}" (${campaign.id}) - requires reauthorization`);
-            expiredCount++;
-            
-            // Optionally: Mark connection as needing reauthorization (don't delete, let user reconnect)
-            // The connection will show as expired in the UI and user can reconnect
-          } else {
-            console.error(`[Token Scheduler] ❌ Failed to refresh token for campaign "${campaign.name}" (${campaign.id}):`, refreshError.message);
-            errorCount++;
+        // Process each connection for this campaign
+        for (const connection of connections) {
+          if (!connection.accessToken || !connection.refreshToken) {
+            continue; // Missing tokens
+          }
+          
+          totalConnections++;
+          
+          // Check if token needs refresh
+          if (!shouldRefreshToken(connection)) {
+            const expiresAt = new Date(connection.expiresAt || 0);
+            const hoursUntilExpiry = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60);
+            console.log(`[Token Scheduler] ⏭️  Skipping connection "${connection.spreadsheetName || connection.spreadsheetId}" for campaign "${campaign.name}" - token expires in ${hoursUntilExpiry.toFixed(1)} hours`);
+            skippedCount++;
+            continue;
+          }
+          
+          // Token needs refresh - attempt to refresh it
+          try {
+            await refreshGoogleSheetsToken(connection);
+            refreshedCount++;
+            console.log(`[Token Scheduler] ✅ Refreshed token for connection "${connection.spreadsheetName || connection.spreadsheetId}" in campaign "${campaign.name}"`);
+          } catch (refreshError: any) {
+            if (refreshError.message === 'REFRESH_TOKEN_EXPIRED') {
+              // Refresh token itself has expired - mark for reauthorization
+              console.log(`[Token Scheduler] ⚠️  Refresh token expired for connection "${connection.spreadsheetName || connection.spreadsheetId}" in campaign "${campaign.name}" - requires reauthorization`);
+              expiredCount++;
+              
+              // Optionally: Mark connection as needing reauthorization (don't delete, let user reconnect)
+              // The connection will show as expired in the UI and user can reconnect
+            } else {
+              console.error(`[Token Scheduler] ❌ Failed to refresh token for connection "${connection.spreadsheetName || connection.spreadsheetId}" in campaign "${campaign.name}":`, refreshError.message);
+              errorCount++;
+            }
           }
         }
       } catch (error: any) {

@@ -94,6 +94,8 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
   clientId: text("client_id"),
   clientSecret: text("client_secret"),
   expiresAt: timestamp("expires_at"),
+  isPrimary: boolean("is_primary").notNull().default(false), // Primary sheet for this campaign
+  isActive: boolean("is_active").notNull().default(true), // Whether this connection is active
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -707,6 +709,8 @@ export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheet
   clientId: true,
   clientSecret: true,
   expiresAt: true,
+  isPrimary: true,
+  isActive: true,
 });
 
 export const insertLinkedInConnectionSchema = createInsertSchema(linkedinConnections).pick({

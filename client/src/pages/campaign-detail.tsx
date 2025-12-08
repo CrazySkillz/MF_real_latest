@@ -5343,6 +5343,35 @@ export default function CampaignDetail() {
           </Tabs>
         </main>
       </div>
+
+      {/* Column Mapping Interface Dialog */}
+      {showMappingInterface && campaign && (
+        <Dialog open={showMappingInterface} onOpenChange={setShowMappingInterface}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Configure Column Mapping</DialogTitle>
+              <DialogDescription>
+                Map your Google Sheets columns to platform fields for accurate data processing.
+              </DialogDescription>
+            </DialogHeader>
+            <ColumnMappingInterface
+              campaignId={campaign.id}
+              connectionId={mappingConnectionId || undefined}
+              platform={campaign.platform || 'linkedin'}
+              onMappingComplete={() => {
+                setShowMappingInterface(false);
+                setMappingConnectionId(null);
+                refetchGoogleSheetsConnections();
+                queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+              }}
+              onCancel={() => {
+                setShowMappingInterface(false);
+                setMappingConnectionId(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

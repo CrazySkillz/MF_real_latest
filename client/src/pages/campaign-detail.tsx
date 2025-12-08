@@ -4986,6 +4986,18 @@ export default function CampaignDetail() {
                                         <Star className="w-3.5 h-3.5 text-slate-400 hover:text-blue-600" />
                                       </Button>
                                     )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-xs"
+                                      onClick={() => {
+                                        setMappingConnectionId(conn.id);
+                                        setShowMappingInterface(true);
+                                      }}
+                                      title="Configure column mapping"
+                                    >
+                                      Map
+                                    </Button>
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
                                         <Button

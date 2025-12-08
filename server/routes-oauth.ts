@@ -3042,6 +3042,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Collect matched and unmatched campaign names for feedback (for this platform only)
             const uniqueCampaignNames = new Set<string>();
             allRows.forEach((row: any[]) => {
+              // Safety check: ensure row is an array and has enough elements
+              if (!Array.isArray(row) || row.length <= Math.max(platformColumnIndex, campaignNameColumnIndex)) {
+                return;
+              }
+              
               const platformValue = String(row[platformColumnIndex] || '');
               const campaignNameValue = String(row[campaignNameColumnIndex] || '').trim();
               if (matchesPlatform(platformValue, platformKeywords) && campaignNameValue) {
@@ -3084,6 +3089,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (campaignNameColumnIndex >= 0) {
               const uniqueCampaignNames = new Set<string>();
               filteredRows.forEach((row: any[]) => {
+                // Safety check: ensure row is an array and has enough elements
+                if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) {
+                  return;
+                }
+                
                 const name = String(row[campaignNameColumnIndex] || '').trim();
                 if (name) uniqueCampaignNames.add(name);
               });
@@ -3155,6 +3165,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Further filter by campaign name if available
               if (campaignNameColumnIndex >= 0 && campaignName) {
                 platformRows = platformRows.filter((row: any[]) => {
+                  // Safety check: ensure row is an array and has enough elements
+                  if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) {
+                    return false;
+                  }
+                  
                   const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
                   return campaignNameValue.includes(campaignName.toLowerCase()) ||
                          campaignName.toLowerCase().includes(campaignNameValue);

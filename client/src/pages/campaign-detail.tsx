@@ -3284,13 +3284,20 @@ export default function CampaignDetail() {
   }, [campaignId, refetchGA4Connection]);
 
   // Check Google Sheets connection status
-  const { data: sheetsConnection } = useQuery({
+  const { data: sheetsConnection, refetch: refetchSheetsConnection } = useQuery({
     queryKey: ["/api/google-sheets/check-connection", campaignId],
     enabled: !!campaignId,
+    refetchOnMount: "always",
+    staleTime: 0,
     queryFn: async () => {
       const response = await fetch(`/api/google-sheets/check-connection/${campaignId}`);
-      if (!response.ok) return { connected: false };
-      return response.json();
+      if (!response.ok) {
+        console.log(`[Campaign Detail] Google Sheets check-connection failed for ${campaignId}:`, response.status);
+        return { connected: false };
+      }
+      const data = await response.json();
+      console.log(`[Campaign Detail] Google Sheets connection check for ${campaignId}:`, data);
+      return data;
     },
   });
 
@@ -3389,6 +3396,7 @@ export default function CampaignDetail() {
         if (response.status === 401 && (errorData.error === 'REFRESH_TOKEN_EXPIRED' || errorData.error === 'ACCESS_TOKEN_EXPIRED' || errorData.requiresReauthorization)) {
           // Invalidate the connection status so UI updates
           queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
           
           // Return a special error that we can handle in the UI
           const error = new Error('TOKEN_EXPIRED') as any;
@@ -3397,12 +3405,24 @@ export default function CampaignDetail() {
           throw error;
         }
         
+        // Handle missing spreadsheet
+        if (response.status === 400 && errorData.missingSpreadsheet) {
+          // Invalidate the connection status so UI updates
+          queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
+          
+          const error = new Error('MISSING_SPREADSHEET') as any;
+          error.message = errorData.error || 'No spreadsheet selected. Please select a spreadsheet.';
+          throw error;
+        }
+        
         throw new Error(errorData.error || errorData.message || 'Failed to fetch Google Sheets data');
       }
       const data = await response.json();
       
-      if (!data.success) {
-        throw new Error(data.error || 'Google Sheets data request failed');
+      // Check if response indicates failure (some endpoints return success: false)
+      if (data.success === false) {
+        throw new Error(data.error || data.message || 'Google Sheets data request failed');
       }
       
       return {

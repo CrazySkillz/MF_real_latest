@@ -2343,7 +2343,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     console.log('🔄 Attempting to refresh Google Sheets access token for campaign:', connection.campaignId);
 
-    const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+    // Add timeout to token refresh to prevent hanging
+    const fetchWithTimeout = async (url: string, options: any, timeoutMs: number = 15000) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          throw new Error('Token refresh timeout: OAuth API did not respond within 15 seconds');
+        }
+        throw error;
+      }
+    };
+
+    const refreshResponse = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -2352,7 +2373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         client_id: connection.clientId,
         client_secret: connection.clientSecret
       })
-    });
+    }, 15000); // 15 second timeout for token refresh
 
     if (!refreshResponse.ok) {
       const errorText = await refreshResponse.text();

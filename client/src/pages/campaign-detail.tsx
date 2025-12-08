@@ -4922,6 +4922,105 @@ export default function CampaignDetail() {
                             })()}
                           </div>
                         )}
+                        {/* Google Sheets Connections List */}
+                        {platform.platform === "Google Sheets" && googleSheetsConnections.length > 0 && (
+                          <div className="pt-2 border-t">
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                  Connected Sheets ({googleSheetsConnections.length}/{MAX_GOOGLE_SHEETS_CONNECTIONS})
+                                </p>
+                                {canAddMoreSheets && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setExpandedPlatform("Google Sheets");
+                                    }}
+                                    className="h-7 text-xs"
+                                  >
+                                    <Plus className="w-3 h-3 mr-1" />
+                                    Add Sheet
+                                  </Button>
+                                )}
+                                {!canAddMoreSheets && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Limit Reached
+                                  </Badge>
+                                )}
+                              </div>
+                              {googleSheetsConnections.map((conn) => (
+                                <div
+                                  key={conn.id}
+                                  className={`flex items-center justify-between p-2 rounded-lg border ${
+                                    conn.isPrimary
+                                      ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+                                      : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    {conn.isPrimary && (
+                                      <Star className="w-4 h-4 text-blue-600 dark:text-blue-400 fill-blue-600 dark:fill-blue-400 flex-shrink-0" />
+                                    )}
+                                    <FileSpreadsheet className="w-4 h-4 text-slate-500 dark:text-slate-400 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                                        {conn.spreadsheetName || `Sheet ${conn.spreadsheetId.slice(0, 8)}...`}
+                                      </p>
+                                      {conn.isPrimary && (
+                                        <p className="text-xs text-blue-600 dark:text-blue-400">Primary</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {!conn.isPrimary && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0"
+                                        onClick={() => setPrimaryMutation.mutate(conn.id)}
+                                        title="Set as primary"
+                                      >
+                                        <Star className="w-3.5 h-3.5 text-slate-400 hover:text-blue-600" />
+                                      </Button>
+                                    )}
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
+                                          title="Delete connection"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Delete Google Sheet Connection?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            This will remove the connection to "{conn.spreadsheetName || conn.spreadsheetId}". 
+                                            {conn.isPrimary && googleSheetsConnections.length > 1 && " Another sheet will be set as primary."}
+                                            This action cannot be undone.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={() => deleteConnectionMutation.mutate(conn.id)}
+                                            className="bg-red-600 hover:bg-red-700"
+                                          >
+                                            Delete
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {/* Google Sheets Connection Expired Warning */}
                         {platform.platform === "Google Sheets" && sheetsError && (sheetsError as any).requiresReauthorization && (
                           <div className="pt-2 border-t">

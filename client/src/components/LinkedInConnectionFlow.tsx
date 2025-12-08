@@ -553,9 +553,22 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
             </div>
             <div>
               <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Successfully Connected!</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-3">
                 Your LinkedIn ad data is now connected to this campaign. You can now access detailed analytics and campaign metrics.
               </p>
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-left">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">
+                      Conversion Value: Not available from API
+                    </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-500">
+                      LinkedIn doesn't provide revenue data. Connect other data sources (Google Sheets, webhooks, custom integration) to calculate conversion value automatically.
+                    </p>
+                  </div>
+                </div>
+              </div>
               {isTestMode && (
                 <Badge variant="outline" className="mt-3">
                   <FlaskConical className="w-3 h-3 mr-1" />

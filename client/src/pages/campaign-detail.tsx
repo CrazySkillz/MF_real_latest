@@ -48,6 +48,7 @@ interface Campaign {
 }
 
 interface ConnectedPlatformStatus {
+  conversionValue?: string | null;
   id: string;
   name: string;
   connected: boolean;
@@ -3410,7 +3411,8 @@ export default function CampaignDetail() {
         totalRows: data.totalRows,
         headers: data.headers,
         lastUpdated: data.lastUpdated,
-        matchingInfo: data.matchingInfo // Include matching information
+        matchingInfo: data.matchingInfo, // Include matching information
+        calculatedConversionValues: data.calculatedConversionValues || [] // Include calculated conversion values per platform
       };
     },
   });
@@ -4856,6 +4858,50 @@ export default function CampaignDetail() {
                   {platform.connected && (
                     <div className="px-3 pb-3">
                       <div className="space-y-4">
+                        {/* Conversion Value Status for LinkedIn and Facebook */}
+                        {(platform.platform === "LinkedIn Ads" || platform.platform === "Meta/Facebook Ads") && (
+                          <div className="pt-2 border-t">
+                            {(() => {
+                              const platformStatus = connectedPlatformStatuses.find(s => 
+                                (platform.platform === "LinkedIn Ads" && s.id === "linkedin") ||
+                                (platform.platform === "Meta/Facebook Ads" && s.id === "facebook")
+                              );
+                              const hasConversionValue = platformStatus?.conversionValue && parseFloat(platformStatus.conversionValue) > 0;
+                              
+                              if (hasConversionValue) {
+                                return (
+                                  <div className="flex items-start gap-2 text-sm bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                                    <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                      <p className="font-medium text-green-700 dark:text-green-400">
+                                        Conversion Value: ${parseFloat(platformStatus.conversionValue).toFixed(2)}
+                                      </p>
+                                      <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                                        Revenue metrics are available. Value calculated from connected data sources.
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                      <p className="font-medium text-amber-700 dark:text-amber-400">
+                                        Conversion Value: Not available from API
+                                      </p>
+                                      <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                                        {platform.platform === "LinkedIn Ads" 
+                                          ? "LinkedIn doesn't provide revenue data. Connect other data sources (Google Sheets, webhooks, custom integration) to calculate automatically."
+                                          : "Facebook Ads may provide conversion value if value tracking is enabled. Optional: Connect other data sources for more accurate calculations."}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            })()}
+                          </div>
+                        )}
                         {/* Google Sheets Connection Expired Warning */}
                         {platform.platform === "Google Sheets" && sheetsError && (sheetsError as any).requiresReauthorization && (
                           <div className="pt-2 border-t">
@@ -4880,10 +4926,44 @@ export default function CampaignDetail() {
                             </div>
                           </div>
                         )}
-                        {/* Google Sheets Matching Status */}
+                        {/* Google Sheets Matching Status & Conversion Value Calculation Feedback */}
                         {platform.platform === "Google Sheets" && sheetsData?.matchingInfo && (
                           <div className="pt-2 border-t">
-                            <div className="space-y-2">
+                            <div className="space-y-3">
+                              {/* Conversion Value Calculation Feedback */}
+                              {sheetsData.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0 && (
+                                <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                      <p className="font-medium text-green-700 dark:text-green-400 text-sm mb-2">
+                                        🎯 Conversion Values Calculated
+                                      </p>
+                                      <div className="space-y-1.5">
+                                        {sheetsData.calculatedConversionValues.map((cv: any, idx: number) => {
+                                          const platformName = cv.platform === 'linkedin' ? 'LinkedIn' : 
+                                                             cv.platform === 'facebook_ads' ? 'Facebook Ads' :
+                                                             cv.platform === 'google_ads' ? 'Google Ads' :
+                                                             cv.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+                                          return (
+                                            <div key={idx} className="text-xs text-slate-700 dark:text-slate-300">
+                                              <span className="font-medium">• {platformName}:</span> ${cv.conversionValue} 
+                                              <span className="text-slate-500 dark:text-slate-400 ml-1">
+                                                (from {cv.conversions.toLocaleString()} conversions)
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                      <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
+                                        ✅ Revenue metrics are now available!
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Matching Status */}
                               {sheetsData.matchingInfo.method === 'campaign_name_platform' && (
                                 <div className="flex items-start gap-2 text-sm">
                                   <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />

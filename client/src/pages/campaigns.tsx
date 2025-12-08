@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -1543,7 +1544,33 @@ export default function Campaigns() {
                     
                     <div className="grid grid-cols-3 gap-3">
                       <div className="col-span-2 space-y-2">
-                        <Label htmlFor="conversionValue">Conversion Value (optional)</Label>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="conversionValue">Conversion Value (optional)</Label>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button type="button" className="inline-flex items-center">
+                                  <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm">
+                                <div className="space-y-2 text-sm">
+                                  <p className="font-medium">Conversion Value Sources</p>
+                                  <p>This can be set automatically from:</p>
+                                  <ul className="list-disc list-inside space-y-1 ml-2">
+                                    <li>Google Sheets (auto-calculated from Revenue/Conversions)</li>
+                                    <li>Webhooks (real-time transaction values)</li>
+                                    <li>Custom Integration (uploaded data)</li>
+                                    <li>Platform APIs (Google Ads, Facebook - if value tracking enabled)</li>
+                                  </ul>
+                                  <p className="text-xs text-slate-400 mt-2">
+                                    You can also enter manually or leave blank to set up after connecting data sources.
+                                  </p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                         {(() => {
                           const conversionValueRegister = form.register("conversionValue");
                           return (
@@ -1587,9 +1614,14 @@ export default function Campaigns() {
                             />
                           );
                         })()}
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Average revenue per conversion for ROI calculations. You can update this later.
-                        </p>
+                        <div className="space-y-1">
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Average revenue per conversion for ROI calculations.
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            💡 Can be set automatically from connected data sources (Google Sheets, webhooks, custom integration). You can also enter manually or leave blank to set up later.
+                          </p>
+                        </div>
                         {form.formState.errors.conversionValue && (
                           <p className="text-sm text-destructive">{form.formState.errors.conversionValue.message}</p>
                         )}

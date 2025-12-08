@@ -1570,6 +1570,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Include conversion values in connection data for UI display
+      const linkedInConversionValue = linkedInConnection?.conversionValue || null;
+      const metaConversionValue = metaConnection?.conversionValue || null;
+
       const statuses = [
         {
           id: "google-analytics",
@@ -1596,6 +1600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connected: !!linkedInConnection,
           analyticsPath: linkedInAnalyticsPath,
           lastConnectedAt: linkedInConnection?.connectedAt,
+          conversionValue: linkedInConversionValue,
         },
         {
           id: "facebook",
@@ -1605,6 +1610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `/campaigns/${campaignId}/meta-analytics`
             : null,
           lastConnectedAt: metaConnection?.connectedAt,
+          conversionValue: metaConversionValue,
         },
         {
           id: "custom-integration",
@@ -2989,6 +2995,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // NEW APPROACH: Calculate conversion value for EACH connected platform separately
         // This ensures each platform gets its own accurate conversion value
+        const calculatedConversionValues: Array<{platform: string, conversionValue: string, revenue: number, conversions: number}> = [];
+        
         if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0 && platformColumnIndex >= 0) {
           // Calculate conversion value for each connected platform
           for (const platformInfo of connectedPlatforms) {
@@ -3027,6 +3035,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   const platformConversionValue = (platformRevenue / platformConversions).toFixed(2);
                   
                   console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: Revenue: $${platformRevenue.toLocaleString()}, Conversions: ${platformConversions.toLocaleString()}, CV: $${platformConversionValue}`);
+                  
+                  // Store calculated value for response
+                  calculatedConversionValues.push({
+                    platform: platformInfo.platform,
+                    conversionValue: platformConversionValue,
+                    revenue: platformRevenue,
+                    conversions: platformConversions
+                  });
                   
                   // Update the platform connection's conversion value
                   if (platformInfo.platform === 'linkedin' && linkedInConnection) {
@@ -3183,6 +3199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         insights: insights,
         matchingInfo: matchingInfo, // Add matching information for UX feedback
+        calculatedConversionValues: calculatedConversionValues, // Add calculated conversion values per platform
         lastUpdated: new Date().toISOString()
       });
 

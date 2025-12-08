@@ -116,10 +116,29 @@ export default function GoogleSheetsData() {
     staleTime: 0, // Always consider data stale - force fresh fetch
     gcTime: 0, // Don't cache the data (TanStack Query v5)
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
+      let response: Response;
+      try {
+        response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`, {
+          signal: AbortSignal.timeout(60000) // 60 second timeout for the entire request
+        });
+      } catch (fetchError: any) {
+        // Handle network errors, timeouts, etc.
+        console.error('[Google Sheets] Fetch error:', fetchError);
+        const error = new Error(fetchError.name === 'AbortError' 
+          ? 'Request timeout: Server did not respond within 60 seconds'
+          : fetchError.message || 'Network error: Failed to connect to server') as any;
+        error.isNetworkError = true;
+        throw error;
+      }
       
       // Get response text first to check if it's valid JSON
-      const responseText = await response.text();
+      let responseText: string;
+      try {
+        responseText = await response.text();
+      } catch (textError) {
+        console.error('[Google Sheets] Failed to read response:', textError);
+        throw new Error('Failed to read response from server');
+      }
       
       if (!response.ok) {
         let errorData: any = {};

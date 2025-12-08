@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink, Shield, Upload, Mail, Info } from "lucide-react";
+import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink, Shield, Upload, Mail, Info, AlertCircle } from "lucide-react";
 import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -901,6 +901,12 @@ export default function Campaigns() {
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
+  });
+
+  // Fetch connected platforms for edit dialog
+  const { data: editDialogPlatformsData } = useQuery<{ statuses: Array<{ id: string; name: string; connected: boolean; conversionValue?: string | null }> }>({
+    queryKey: ["/api/campaigns", editingCampaign?.id, "connected-platforms"],
+    enabled: !!editingCampaign?.id,
   });
 
 
@@ -1999,6 +2005,27 @@ export default function Campaigns() {
               <div className="col-span-2 space-y-2">
                 <Label htmlFor="edit-conversionValue">Conversion Value (optional)</Label>
                 {(() => {
+                  const connectedPlatforms = editDialogPlatformsData?.statuses?.filter(p => p.connected) || [];
+                  const hasMultiplePlatforms = connectedPlatforms.length > 1;
+                  
+                  // If multiple platforms, disable the field and show message
+                  if (hasMultiplePlatforms) {
+                    return (
+                      <div className="space-y-2">
+                        <Input
+                          id="edit-conversionValue"
+                          disabled
+                          placeholder="Multiple platforms - see status above"
+                          className="bg-slate-100 dark:bg-slate-800"
+                          data-testid="input-edit-conversion-value"
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          This field is disabled when multiple platforms are connected. Each platform has its own conversion value.
+                        </p>
+                      </div>
+                    );
+                  }
+                  
                   const conversionValueRegister = editForm.register("conversionValue");
                   return (
                     <Input

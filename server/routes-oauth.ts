@@ -3390,7 +3390,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           platform: campaignPlatform
         };
         
-        // Find Revenue and Conversions column indices
+        // Check if mappings exist for this connection (flexible mapping system)
+        let useMappings = false;
+        let mappings: any[] = [];
+        let transformedRows: any[] = [];
+        
+        if (connection.columnMappings) {
+          try {
+            mappings = JSON.parse(connection.columnMappings);
+            if (mappings && mappings.length > 0) {
+              useMappings = true;
+              console.log(`[Auto Conversion Value] Using saved column mappings (${mappings.length} mappings)`);
+              
+              // Transform data using mappings
+              const transformationResult = transformData(rows, mappings, campaignPlatform || 'linkedin');
+              transformedRows = transformationResult.transformedRows;
+              
+              if (transformationResult.errors.length > 0) {
+                console.warn(`[Auto Conversion Value] Transformation errors:`, transformationResult.errors.slice(0, 5));
+              }
+              
+              console.log(`[Auto Conversion Value] Transformed ${transformedRows.length} rows using mappings`);
+            }
+          } catch (mappingError) {
+            console.warn(`[Auto Conversion Value] Failed to parse mappings, falling back to column detection:`, mappingError);
+          }
+        }
+        
+        // Find Revenue and Conversions column indices (fallback for non-mapped data)
         const revenueColumnIndex = headers.findIndex((h: string) => {
           const header = String(h || '').toLowerCase();
           return header.includes('revenue') || header.includes('sales revenue') || header.includes('revenue amount');
@@ -3406,7 +3433,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Reset calculatedConversionValues for this calculation
         calculatedConversionValues = [];
         
-        if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0 && platformColumnIndex >= 0) {
+        // Use mapped data if available, otherwise use column indices
+        if (useMappings && transformedRows.length > 0) {
+          // Use transformed data with mappings
+          for (const platformInfo of connectedPlatforms) {
+            try {
+              // Filter transformed rows by platform and campaign
+              const platformRows = filterRowsByCampaignAndPlatform(
+                transformedRows,
+                campaignName,
+                platformInfo.platform
+              );
+              
+              if (platformRows.length > 0) {
+                // Calculate conversion value from transformed data
+                const conversionValue = calculateConversionValue(platformRows);
+                
+                if (conversionValue !== null) {
+                  const totalRevenue = platformRows.reduce((sum, row) => sum + (parseFloat(row.revenue) || 0), 0);
+                  const totalConversions = platformRows.reduce((sum, row) => sum + (parseInt(row.conversions) || 0), 0);
+                  
+                  console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()} (Mapped): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}, CV: $${conversionValue.toFixed(2)}`);
+                  
+                  calculatedConversionValues.push({
+                    platform: platformInfo.platform,
+                    conversionValue: conversionValue.toFixed(2),
+                    revenue: totalRevenue,
+                    conversions: totalConversions
+                  });
+                  
+                  // Update platform connection
+                  if (platformInfo.platform === 'linkedin' && linkedInConnection) {
+                    await storage.updateLinkedInConnection(campaignId, {
+                      conversionValue: conversionValue.toFixed(2)
+                    });
+                    console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${conversionValue.toFixed(2)} (using mappings)`);
+                  } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
+                    await storage.updateMetaConnection(campaignId, {
+                      conversionValue: conversionValue.toFixed(2)
+                    });
+                    console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${conversionValue.toFixed(2)} (using mappings)`);
+                  }
+                }
+              }
+            } catch (platformError) {
+              console.warn(`[Auto Conversion Value] Could not calculate conversion value for ${platformInfo.platform}:`, platformError);
+            }
+          }
+        } else if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0 && platformColumnIndex >= 0) {
+          // Fallback to existing column-based logic
           // Calculate conversion value for each connected platform
           for (const platformInfo of connectedPlatforms) {
             try {

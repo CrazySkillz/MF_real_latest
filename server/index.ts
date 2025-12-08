@@ -53,6 +53,20 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Global error handlers to prevent server crashes
+process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+  console.error('❌ Unhandled Promise Rejection:', reason);
+  console.error('Stack:', reason?.stack || 'No stack trace');
+  // Don't exit the process - let the server continue running
+});
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('❌ Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
+  // Don't exit the process - let the server continue running
+  // In production, you might want to gracefully shutdown here
+});
+
 (async () => {
   try {
     const server = await registerRoutes(app);

@@ -119,9 +119,31 @@ export default function GoogleSheetsData() {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch Google Sheets data');
+        
+        // Handle token expiration
+        if (response.status === 401 && (errorData.error === 'REFRESH_TOKEN_EXPIRED' || errorData.error === 'ACCESS_TOKEN_EXPIRED' || errorData.requiresReauthorization)) {
+          const error = new Error('TOKEN_EXPIRED') as any;
+          error.requiresReauthorization = true;
+          error.message = errorData.message || 'Google Sheets connection expired. Please reconnect.';
+          throw error;
+        }
+        
+        // Handle missing spreadsheet
+        if (response.status === 400 && errorData.missingSpreadsheet) {
+          const error = new Error('MISSING_SPREADSHEET') as any;
+          error.message = errorData.error || 'No spreadsheet selected. Please select a spreadsheet.';
+          throw error;
+        }
+        
+        throw new Error(errorData.error || errorData.message || 'Failed to fetch Google Sheets data');
       }
-      return response.json();
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Google Sheets data request failed');
+      }
+      
+      return data;
     },
   });
   
@@ -268,15 +290,23 @@ export default function GoogleSheetsData() {
                 <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
                 <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load Data</h3>
                 <p className="text-slate-500 dark:text-slate-400 mb-4">
-                  {sheetsError.message.includes('TOKEN_EXPIRED') || sheetsError.message.includes('401') 
+                  {sheetsError.message.includes('TOKEN_EXPIRED') || sheetsError.message.includes('401') || (sheetsError as any)?.requiresReauthorization
                     ? 'Your Google Sheets connection has expired. Please reconnect to continue accessing your data.'
+                    : sheetsError.message.includes('MISSING_SPREADSHEET') || sheetsError.message.includes('no spreadsheet')
+                    ? 'Google Sheets connection exists but no spreadsheet is selected. Please go to the campaign settings and select a spreadsheet.'
                     : sheetsError.message}
                 </p>
                 <div className="flex gap-3 justify-center">
-                  {sheetsError.message.includes('TOKEN_EXPIRED') || sheetsError.message.includes('401') ? (
-                    <Link href="/campaigns">
+                  {sheetsError.message.includes('TOKEN_EXPIRED') || sheetsError.message.includes('401') || (sheetsError as any)?.requiresReauthorization ? (
+                    <Link href={`/campaigns/${campaignId}`}>
                       <Button>
                         Reconnect Google Sheets
+                      </Button>
+                    </Link>
+                  ) : sheetsError.message.includes('MISSING_SPREADSHEET') || sheetsError.message.includes('no spreadsheet') ? (
+                    <Link href={`/campaigns/${campaignId}`}>
+                      <Button>
+                        Select Spreadsheet
                       </Button>
                     </Link>
                   ) : (

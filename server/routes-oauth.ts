@@ -3129,6 +3129,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platform: null as string | null
       };
       
+      // Initialize calculatedConversionValues to prevent ReferenceError
+      let calculatedConversionValues: Array<{platform: string, conversionValue: string, revenue: number, conversions: number}> = [];
+      
       try {
         // Get MetricMind campaign name and platform for matching
         const campaign = await storage.getCampaign(campaignId);

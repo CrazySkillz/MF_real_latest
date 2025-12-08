@@ -943,8 +943,15 @@ export class MemStorage implements IStorage {
   async createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection> {
     const id = randomUUID();
     
-    // Check if this is the first connection for this campaign - make it primary
+    // Check connection limit (5 sheets per campaign)
+    const MAX_CONNECTIONS = 5;
     const existingConnections = await this.getGoogleSheetsConnections(connection.campaignId);
+    
+    if (existingConnections.length >= MAX_CONNECTIONS) {
+      throw new Error(`Maximum limit of ${MAX_CONNECTIONS} Google Sheets connections per campaign reached. Please remove an existing connection first.`);
+    }
+    
+    // Check if this is the first connection for this campaign - make it primary
     const isPrimary = existingConnections.length === 0;
     
     const sheetsConnection: GoogleSheetsConnection = {

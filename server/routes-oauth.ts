@@ -730,15 +730,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store tokens temporarily (will be moved to real campaign later)
       // CRITICAL: Store clientId and clientSecret for token refresh
       // Use 'pending' as placeholder for spreadsheetId since schema requires notNull
-      await storage.createGoogleSheetsConnection({
-        campaignId,
-        spreadsheetId: 'pending', // Will be set when user selects spreadsheet
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        clientId: process.env.GOOGLE_CLIENT_ID || '',
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-        expiresAt: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : undefined,
-      });
+      try {
+        await storage.createGoogleSheetsConnection({
+          campaignId,
+          spreadsheetId: 'pending', // Will be set when user selects spreadsheet
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          clientId: process.env.GOOGLE_CLIENT_ID || '',
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+          expiresAt: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : undefined,
+        });
+      } catch (error: any) {
+        if (error.message && error.message.includes('Maximum limit')) {
+          return res.status(400).json({ 
+            error: error.message,
+            errorCode: 'CONNECTION_LIMIT_REACHED'
+          });
+        }
+        throw error;
+      }
 
       console.log(`[Google Sheets OAuth] Tokens stored for campaign ${campaignId}`);
 

@@ -3302,7 +3302,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // NEW APPROACH: Calculate conversion value for EACH connected platform separately
         // This ensures each platform gets its own accurate conversion value
-        const calculatedConversionValues: Array<{platform: string, conversionValue: string, revenue: number, conversions: number}> = [];
+        // Reset calculatedConversionValues for this calculation
+        calculatedConversionValues = [];
         
         if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0 && platformColumnIndex >= 0) {
           // Calculate conversion value for each connected platform

@@ -790,6 +790,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`[Google Sheets] No connection found for campaign ${campaignId}`);
         return res.status(404).json({ error: 'No Google Sheets connection found' });
       }
+      
+      // Check if clientId and clientSecret are stored (needed for token refresh)
+      if (!connection.clientId || !connection.clientSecret) {
+        console.warn(`[Google Sheets] Connection missing OAuth credentials, attempting to add them...`);
+        // Try to update with environment variables if available
+        if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+          await storage.updateGoogleSheetsConnection(campaignId, {
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET
+          });
+          connection = await storage.getGoogleSheetsConnection(campaignId); // Refresh connection
+        }
+      }
 
       console.log(`[Google Sheets] Found connection, access token exists: ${!!connection.accessToken}`);
 
@@ -797,8 +810,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if token needs refresh (if expired or expiring soon)
       const shouldRefreshToken = (conn: any) => {
-        if (!conn.tokenExpiresAt) return false;
-        const expiresAt = new Date(conn.tokenExpiresAt).getTime();
+        if (!conn.expiresAt && !conn.tokenExpiresAt) return false;
+        const expiresAt = conn.expiresAt ? new Date(conn.expiresAt).getTime() : new Date(conn.tokenExpiresAt).getTime();
         const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000;
         return (expiresAt - now) < fiveMinutes;
@@ -2209,7 +2222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
         await storage.createGoogleSheetsConnection({
           campaignId,
-          spreadsheetId: '', // Will be set when user selects spreadsheet
+          spreadsheetId: 'pending', // Will be set when user selects spreadsheet
           accessToken: access_token,
           refreshToken: refresh_token || null,
           clientId: clientId,
@@ -2300,10 +2313,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = await storage.getGoogleSheetsConnection(campaignId);
       
       // Check for both spreadsheetId AND accessToken - both are required for data fetching
-      if (!connection || !connection.spreadsheetId || !connection.accessToken) {
+      // Also check that spreadsheetId is not 'pending' (placeholder)
+      if (!connection || !connection.spreadsheetId || connection.spreadsheetId === 'pending' || !connection.accessToken) {
         console.log(`[Google Sheets Check] Connection check failed for ${campaignId}:`, {
           hasConnection: !!connection,
           hasSpreadsheetId: !!connection?.spreadsheetId,
+          spreadsheetId: connection?.spreadsheetId,
           hasAccessToken: !!connection?.accessToken
         });
         return res.json({ connected: false });
@@ -2680,7 +2695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      if (!connection.spreadsheetId) {
+      if (!connection.spreadsheetId || connection.spreadsheetId === 'pending') {
         console.error(`[Google Sheets Data] Connection exists but no spreadsheetId for campaign ${campaignId}`);
         return res.status(400).json({ 
           success: false,

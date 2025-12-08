@@ -3069,6 +3069,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Strategy 2: Platform-only filtering (fallback)
         if (filteredRows.length === 0 && platformColumnIndex >= 0 && platformKeywords.length > 0) {
           filteredRows = allRows.filter((row: any[]) => {
+            // Safety check: ensure row is an array and has enough elements
+            if (!Array.isArray(row) || row.length <= platformColumnIndex) {
+              return false;
+            }
+            
             const platformValue = String(row[platformColumnIndex] || '');
             return matchesPlatform(platformValue, platformKeywords);
           });
@@ -3138,6 +3143,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               // Filter rows for this specific platform
               let platformRows = allRows.filter((row: any[]) => {
+                // Safety check: ensure row is an array and has enough elements
+                if (!Array.isArray(row) || row.length <= platformColumnIndex) {
+                  return false;
+                }
+                
                 const platformValue = String(row[platformColumnIndex] || '');
                 return matchesPlatform(platformValue, platformInfo.keywords);
               });
@@ -3157,6 +3167,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 let platformConversions = 0;
                 
                 platformRows.forEach((row: any[]) => {
+                  // Safety check: ensure row is an array and has enough elements
+                  if (!Array.isArray(row) || row.length <= Math.max(revenueColumnIndex, conversionsColumnIndex)) {
+                    return; // Skip invalid rows
+                  }
+                  
                   const revenueValue = String(row[revenueColumnIndex] || '').replace(/[$,]/g, '').trim();
                   const revenue = parseFloat(revenueValue) || 0;
                   platformRevenue += revenue;
@@ -3214,6 +3229,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Calculate from filtered platform rows (based on campaign.platform)
           if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0) {
             filteredRows.forEach((row: any[]) => {
+              // Safety check: ensure row is an array and has enough elements
+              if (!Array.isArray(row) || row.length <= Math.max(revenueColumnIndex, conversionsColumnIndex)) {
+                return; // Skip invalid rows
+              }
+              
               const revenueValue = String(row[revenueColumnIndex] || '').replace(/[$,]/g, '').trim();
               const revenue = parseFloat(revenueValue) || 0;
               totalRevenue += revenue;

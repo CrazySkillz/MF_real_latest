@@ -135,12 +135,22 @@ export default function GoogleSheetsData() {
           throw error;
         }
         
-        throw new Error(errorData.error || errorData.message || 'Failed to fetch Google Sheets data');
+        // For other errors, include the full error message
+        const errorMessage = errorData.error || errorData.message || `Failed to fetch Google Sheets data (${response.status})`;
+        const error = new Error(errorMessage) as any;
+        error.status = response.status;
+        error.errorCode = errorData.error;
+        throw error;
       }
+      
       const data = await response.json();
       
-      if (!data.success) {
-        throw new Error(data.error || 'Google Sheets data request failed');
+      // Check if response indicates failure
+      if (data.success === false) {
+        const errorMessage = data.error || data.message || 'Google Sheets data request failed';
+        const error = new Error(errorMessage) as any;
+        error.errorCode = data.error;
+        throw error;
       }
       
       return data;

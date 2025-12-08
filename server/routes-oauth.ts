@@ -3267,10 +3267,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error) {
-      console.error('Google Sheets data error:', error);
+      console.error('[Google Sheets Data] Error fetching data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Google Sheets Data] Error details:', {
+        campaignId,
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      // Return error in consistent format
       res.status(500).json({
+        success: false,
         error: 'Failed to fetch Google Sheets data',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: errorMessage,
+        details: error instanceof Error ? error.stack : undefined
       });
     }
   });

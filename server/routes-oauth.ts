@@ -2836,8 +2836,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error(`Google Sheets API Error (${sheetResponse.status}): ${errorMessage}`);
       }
 
-      const sheetData = await sheetResponse.json();
+      let sheetData;
+      try {
+        sheetData = await sheetResponse.json();
+      } catch (jsonError) {
+        console.error('[Google Sheets Data] Failed to parse JSON response:', jsonError);
+        const responseText = await sheetResponse.text();
+        console.error('[Google Sheets Data] Response text:', responseText.substring(0, 500));
+        throw new Error(`Invalid JSON response from Google Sheets API: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`);
+      }
+      
+      if (!sheetData || typeof sheetData !== 'object') {
+        console.error('[Google Sheets Data] Invalid sheet data structure:', sheetData);
+        throw new Error('Invalid data structure received from Google Sheets API');
+      }
+      
       const rows = sheetData.values || [];
+      console.log(`[Google Sheets Data] Received ${rows.length} rows from Google Sheets`);
       
       // Process spreadsheet data to extract campaign metrics
       let campaignData = {

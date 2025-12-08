@@ -2295,7 +2295,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.campaignId;
       const connection = await storage.getGoogleSheetsConnection(campaignId);
       
-      if (!connection || !connection.spreadsheetId) {
+      // Check for both spreadsheetId AND accessToken - both are required for data fetching
+      if (!connection || !connection.spreadsheetId || !connection.accessToken) {
+        console.log(`[Google Sheets Check] Connection check failed for ${campaignId}:`, {
+          hasConnection: !!connection,
+          hasSpreadsheetId: !!connection?.spreadsheetId,
+          hasAccessToken: !!connection?.accessToken
+        });
         return res.json({ connected: false });
       }
       
@@ -2305,6 +2311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spreadsheetName: connection.spreadsheetName
       });
     } catch (error) {
+      console.error('[Google Sheets Check] Error checking connection:', error);
       res.json({ connected: false });
     }
   });
@@ -2660,10 +2667,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       let connection = await storage.getGoogleSheetsConnection(campaignId);
       
-      if (!connection || !connection.spreadsheetId || !connection.accessToken) {
+      if (!connection) {
+        console.error(`[Google Sheets Data] No connection found for campaign ${campaignId}`);
         return res.status(404).json({ 
-          error: "No Google Sheets connection found for this campaign" 
+          success: false,
+          error: "No Google Sheets connection found for this campaign",
+          requiresReauthorization: false
         });
+      }
+      
+      if (!connection.spreadsheetId) {
+        console.error(`[Google Sheets Data] Connection exists but no spreadsheetId for campaign ${campaignId}`);
+        return res.status(400).json({ 
+          success: false,
+          error: "Google Sheets connection exists but no spreadsheet is selected. Please select a spreadsheet in the connection settings.",
+          requiresReauthorization: false,
+          missingSpreadsheet: true
+        });
+      }
+      
+      if (!connection.accessToken) {
+        console.error(`[Google Sheets Data] Connection exists but no accessToken for campaign ${campaignId}`);
+        // Try to refresh if we have refresh token
+        if (connection.refreshToken && connection.clientId && connection.clientSecret) {
+          try {
+            console.log(`[Google Sheets Data] Attempting to refresh missing access token...`);
+            connection.accessToken = await refreshGoogleSheetsToken(connection);
+            // Update the connection with the new token
+            await storage.updateGoogleSheetsConnection(campaignId, {
+              accessToken: connection.accessToken
+            });
+            console.log(`[Google Sheets Data] ✅ Successfully refreshed access token`);
+          } catch (refreshError: any) {
+            console.error(`[Google Sheets Data] Token refresh failed:`, refreshError);
+            if (refreshError.message === 'REFRESH_TOKEN_EXPIRED') {
+              await storage.deleteGoogleSheetsConnection(campaignId);
+              return res.status(401).json({ 
+                success: false,
+                error: 'REFRESH_TOKEN_EXPIRED',
+                message: 'Connection expired. Please reconnect your Google Sheets account.',
+                requiresReauthorization: true
+              });
+            }
+            return res.status(401).json({ 
+              success: false,
+              error: 'ACCESS_TOKEN_EXPIRED',
+              message: 'Connection expired. Please reconnect your Google Sheets account.',
+              requiresReauthorization: true
+            });
+          }
+        } else {
+          // No refresh token available, need to reconnect
+          console.error(`[Google Sheets Data] No access token and no refresh token available`);
+          await storage.deleteGoogleSheetsConnection(campaignId);
+          return res.status(401).json({ 
+            success: false,
+            error: 'ACCESS_TOKEN_EXPIRED',
+            message: 'Connection expired. Please reconnect your Google Sheets account.',
+            requiresReauthorization: true
+          });
+        }
       }
 
       let accessToken = connection.accessToken;

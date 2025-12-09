@@ -2631,10 +2631,10 @@ export default function LinkedInAnalytics() {
                           </div>
                           <div className="flex-1">
                             <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">
-                              Revenue Tracking Not Enabled
+                              Conversion Value: Not available from API
                             </h3>
                             <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">
-                              Add a conversion value to unlock revenue metrics including ROI, ROAS, Revenue, and Profit calculations for this campaign.
+                              LinkedIn doesn't provide revenue data. Connect other sources with LinkedIn revenue or sales data (Google Sheets, CRM, webhooks, custom integration) to unlock LinkedIn revenue metrics including ROI, ROAS, Revenue, and Profit.
                             </p>
                             <button
                               onClick={() => setLocation('/campaigns')}
@@ -2643,7 +2643,7 @@ export default function LinkedInAnalytics() {
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
-                              Edit Campaign & Add Conversion Value
+                              Upload Additional Data
                             </button>
                           </div>
                         </div>
@@ -5140,7 +5140,7 @@ export default function LinkedInAnalytics() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
-                      Edit Campaign & Add Conversion Value
+                      Upload Additional Data
                     </button>
                   </div>
                 </div>
@@ -5919,7 +5919,7 @@ export default function LinkedInAnalytics() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
-                      Edit Campaign & Add Conversion Value
+                      Upload Additional Data
                     </button>
                   </div>
                 </div>

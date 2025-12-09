@@ -161,10 +161,11 @@ export function ColumnMappingInterface({
 
   // Auto-map on mount if columns are detected
   useEffect(() => {
-    if (detectedColumns.length > 0 && mappings.length === 0 && !autoMapMutation.isPending) {
+    if (detectedColumns.length > 0 && mappings.length === 0 && !autoMapMutation.isPending && !columnsLoading) {
       autoMapMutation.mutate();
     }
-  }, [detectedColumns.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detectedColumns.length, columnsLoading]);
 
   // Validate mappings
   useEffect(() => {

@@ -5358,15 +5358,15 @@ export default function CampaignDetail() {
       </div>
 
       {/* Column Mapping Interface Dialog */}
-      {showMappingInterface && campaign && (
-        <Dialog open={showMappingInterface} onOpenChange={setShowMappingInterface}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Configure Column Mapping</DialogTitle>
-              <DialogDescription>
-                Map your Google Sheets columns to platform fields for accurate data processing.
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={showMappingInterface} onOpenChange={setShowMappingInterface}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configure Column Mapping</DialogTitle>
+            <DialogDescription>
+              Map your Google Sheets columns to platform fields for accurate data processing.
+            </DialogDescription>
+          </DialogHeader>
+          {showMappingInterface && campaign && (
             <ColumnMappingInterface
               campaignId={campaign.id}
               connectionId={mappingConnectionId || undefined}
@@ -5382,9 +5382,9 @@ export default function CampaignDetail() {
                 setMappingConnectionId(null);
               }}
             />
-          </DialogContent>
-        </Dialog>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

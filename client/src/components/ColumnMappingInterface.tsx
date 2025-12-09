@@ -237,6 +237,17 @@ export function ColumnMappingInterface({
     );
   }
 
+  if (columnsError) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="w-4 h-4" />
+        <AlertDescription>
+          Failed to detect columns: {columnsError instanceof Error ? columnsError.message : 'Unknown error'}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   if (detectedColumns.length === 0) {
     return (
       <Alert>

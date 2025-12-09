@@ -3216,11 +3216,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
 
-      // Automatic Conversion Value Calculation from Google Sheets
-      // NEW: Calculates conversion value for EACH connected platform separately
-      // If Revenue and Conversions columns are detected, calculate and save conversion value per platform
-      // Smart matching: Campaign Name + Platform (best) → Platform only (fallback) → All rows (last resort)
-      // NOW SUPPORTS MULTI-PLATFORM: LinkedIn, Google Ads, Facebook Ads, Twitter Ads, etc.
+      // Automatic Conversion Value Calculation from Google Sheets - DISABLED
+      // TODO: Re-enable when new calculation logic is provided
+      const AUTO_CALCULATE_CONVERSION_VALUE = false;
+      
+      // Initialize calculatedConversionValues and matchingInfo (needed for response even when auto-calculation is disabled)
+      let calculatedConversionValues: Array<{platform: string, conversionValue: string, revenue: number, conversions: number}> = [];
       let matchingInfo = {
         method: 'all_rows',
         matchedCampaigns: [] as string[],
@@ -3230,8 +3231,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platform: null as string | null
       };
       
-      // Initialize calculatedConversionValues to prevent ReferenceError
-      let calculatedConversionValues: Array<{platform: string, conversionValue: string, revenue: number, conversions: number}> = [];
+      if (AUTO_CALCULATE_CONVERSION_VALUE) {
+      // Automatic Conversion Value Calculation from Google Sheets
+      // NEW: Calculates conversion value for EACH connected platform separately
+      // If Revenue and Conversions columns are detected, calculate and save conversion value per platform
+      // Smart matching: Campaign Name + Platform (best) → Platform only (fallback) → All rows (last resort)
+      // NOW SUPPORTS MULTI-PLATFORM: LinkedIn, Google Ads, Facebook Ads, Twitter Ads, etc.
       
       try {
         // Get MetricMind campaign name and platform for matching
@@ -3680,6 +3685,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`[Auto Conversion Value] ❌ Error calculating conversion value:`, calcError);
         // Don't fail the request if auto-calculation fails
       }
+      } // End of AUTO_CALCULATE_CONVERSION_VALUE check
 
       res.json({
         success: true,

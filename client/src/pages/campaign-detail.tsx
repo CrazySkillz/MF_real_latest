@@ -3302,6 +3302,66 @@ export default function CampaignDetail() {
     },
   });
 
+  // Fetch all Google Sheets connections for this campaign
+  const { data: googleSheetsConnectionsData, refetch: refetchGoogleSheetsConnections } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"],
+    enabled: !!campaignId,
+    refetchOnMount: "always",
+    staleTime: 0,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
+      if (!response.ok) {
+        console.log(`[Campaign Detail] Failed to fetch Google Sheets connections for ${campaignId}:`, response.status);
+        return { success: false, connections: [] };
+      }
+      const data = await response.json();
+      return data;
+    },
+  });
+
+  const googleSheetsConnections = googleSheetsConnectionsData?.connections || [];
+  const MAX_GOOGLE_SHEETS_CONNECTIONS = 5;
+  const canAddMoreSheets = googleSheetsConnections.length < MAX_GOOGLE_SHEETS_CONNECTIONS;
+
+  const queryClientHook = useQueryClient();
+
+  // Mutation to set primary connection
+  const setPrimaryMutation = useMutation({
+    mutationFn: async (connectionId: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections/${connectionId}/set-primary`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to set primary connection");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
+      queryClientHook.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
+      queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+    },
+  });
+
+  // Mutation to delete connection
+  const deleteConnectionMutation = useMutation({
+    mutationFn: async (connectionId: string) => {
+      const response = await fetch(`/api/google-sheets/${campaignId}/connection`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete connection");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
+      queryClientHook.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
+      queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+      refetchSheetsConnection();
+    },
+  });
+
   // Check LinkedIn connection status
   const { data: linkedInConnection } = useQuery({
     queryKey: ["/api/linkedin/check-connection", campaignId],

@@ -11,6 +11,9 @@ import { sql } from "drizzle-orm";
 
 const app = express();
 
+// Set Express environment mode based on NODE_ENV
+app.set("env", process.env.NODE_ENV || "development");
+
 // Conditionally apply body parsing - skip for webhook routes that use multer
 app.use((req, res, next) => {
   // Skip body parsing for Mailgun/SendGrid inbound webhooks (they use multer for multipart/form-data)

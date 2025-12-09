@@ -48,6 +48,7 @@ interface ColumnMappingInterfaceProps {
   platform: string;
   onMappingComplete?: () => void;
   onCancel?: () => void;
+  isOpen?: boolean; // Only fetch data when dialog is open
 }
 
 export function ColumnMappingInterface({

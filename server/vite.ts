@@ -68,18 +68,46 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  // Build outputs to dist/public according to vite.config.ts
+  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
-    );
+    log(`⚠️  Build directory not found: ${distPath}`, "serveStatic");
+    log(`   Make sure to run 'npm run build' before starting the server`, "serveStatic");
+    // Don't throw - allow server to start but log warning
+    // The catch-all route will handle missing files gracefully
+  } else {
+    log(`✅ Serving static files from: ${distPath}`, "serveStatic");
+    app.use(express.static(distPath, { 
+      maxAge: "1y",
+      etag: true,
+      lastModified: true
+    }));
   }
 
-  app.use(express.static(distPath));
-
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  // fall through to index.html if the file doesn't exist (SPA routing)
+  app.use("*", (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith("/api")) {
+      return next();
+    }
+    
+    const indexPath = path.resolve(distPath, "index.html");
+    
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(500).send(`
+        <html>
+          <head><title>Build Error</title></head>
+          <body>
+            <h1>Build Directory Not Found</h1>
+            <p>The application has not been built yet.</p>
+            <p>Expected path: ${distPath}</p>
+            <p>Please run: <code>npm run build</code></p>
+          </body>
+        </html>
+      `);
+    }
   });
 }

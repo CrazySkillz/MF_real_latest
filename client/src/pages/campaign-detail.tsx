@@ -26,7 +26,6 @@ import { reportStorage } from "@/lib/reportStorage";
 import { exportCampaignKPIsToPDF, exportCampaignBenchmarksToPDF } from "@/lib/pdfExport";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
-import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { ABTestManager } from "@/components/ABTestManager";

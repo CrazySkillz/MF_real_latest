@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
+import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -104,6 +105,7 @@ export default function LinkedInAnalytics() {
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isUploadDataModalOpen, setIsUploadDataModalOpen] = useState(false);
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
@@ -2637,7 +2639,7 @@ export default function LinkedInAnalytics() {
                               LinkedIn doesn't provide revenue data. Connect other sources with LinkedIn revenue or sales data (Google Sheets, CRM, webhooks, custom integration) to unlock LinkedIn revenue metrics including ROI, ROAS, Revenue, and Profit.
                             </p>
                             <button
-                              onClick={() => setLocation('/campaigns')}
+                              onClick={() => setIsUploadDataModalOpen(true)}
                               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5133,7 +5135,7 @@ export default function LinkedInAnalytics() {
                     <button
                       onClick={() => {
                         setIsKPIModalOpen(false);
-                        setLocation('/campaigns');
+                        setIsUploadDataModalOpen(true);
                       }}
                       className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                     >
@@ -5912,7 +5914,7 @@ export default function LinkedInAnalytics() {
                     <button
                       onClick={() => {
                         setIsBenchmarkModalOpen(false);
-                        setLocation('/campaigns');
+                        setIsUploadDataModalOpen(true);
                       }}
                       className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                     >
@@ -8326,6 +8328,19 @@ export default function LinkedInAnalytics() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Upload Additional Data Modal */}
+      {campaignId && (
+        <UploadAdditionalDataModal
+          isOpen={isUploadDataModalOpen}
+          onClose={() => setIsUploadDataModalOpen(false)}
+          campaignId={campaignId}
+          onDataConnected={() => {
+            // Refresh data after connection
+            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+          }}
+        />
+      )}
       </div>
     </TooltipProvider>
   );

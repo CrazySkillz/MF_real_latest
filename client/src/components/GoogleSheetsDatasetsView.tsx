@@ -1,0 +1,164 @@
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { FileSpreadsheet, Star, Map, CheckCircle2, AlertCircle } from "lucide-react";
+import { ColumnMappingInterface } from "./ColumnMappingInterface";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+interface GoogleSheetsConnection {
+  id: string;
+  spreadsheetId: string;
+  spreadsheetName: string;
+  isPrimary: boolean;
+  isActive: boolean;
+  columnMappings?: string | null;
+  connectedAt?: string;
+}
+
+interface GoogleSheetsDatasetsViewProps {
+  campaignId: string;
+  connections: GoogleSheetsConnection[];
+  onConnectionChange?: () => void;
+  platform?: string;
+}
+
+export function GoogleSheetsDatasetsView({
+  campaignId,
+  connections,
+  onConnectionChange,
+  platform = 'linkedin'
+}: GoogleSheetsDatasetsViewProps) {
+  const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
+  const [showMappingInterface, setShowMappingInterface] = useState(false);
+
+  const isMapped = (connection: GoogleSheetsConnection): boolean => {
+    if (!connection.columnMappings) return false;
+    try {
+      const mappings = JSON.parse(connection.columnMappings);
+      return Array.isArray(mappings) && mappings.length > 0;
+    } catch {
+      return false;
+    }
+  };
+
+  if (connections.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p className="text-slate-600 dark:text-slate-400">
+            No Google Sheets datasets connected yet.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+          Connected Datasets ({connections.length})
+        </h3>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Manage your Google Sheets connections and column mappings
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {connections.map((conn) => {
+          const mapped = isMapped(conn);
+          return (
+            <Card
+              key={conn.id}
+              className={`${
+                mapped
+                  ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"
+                  : "border-slate-200 dark:border-slate-700"
+              }`}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FileSpreadsheet className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium text-slate-900 dark:text-white truncate">
+                          {conn.spreadsheetName || `Sheet ${conn.spreadsheetId.slice(0, 8)}...`}
+                        </h4>
+                        {conn.isPrimary && (
+                          <Badge variant="default" className="text-xs bg-blue-600">
+                            <Star className="w-3 h-3 mr-1" />
+                            Primary
+                          </Badge>
+                        )}
+                        {mapped ? (
+                          <Badge variant="default" className="text-xs bg-green-600">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Mapped
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            Not Mapped
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {conn.spreadsheetId}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={mapped ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => {
+                        setMappingConnectionId(conn.id);
+                        setShowMappingInterface(true);
+                      }}
+                    >
+                      <Map className="w-4 h-4 mr-1" />
+                      {mapped ? "Edit Mapping" : "Map"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Column Mapping Interface Dialog */}
+      <Dialog open={showMappingInterface} onOpenChange={setShowMappingInterface}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configure Column Mapping</DialogTitle>
+            <DialogDescription>
+              Map your Google Sheets columns to platform fields for accurate data processing.
+            </DialogDescription>
+          </DialogHeader>
+          {showMappingInterface && mappingConnectionId && (
+            <ColumnMappingInterface
+              campaignId={campaignId}
+              connectionId={mappingConnectionId}
+              platform={platform}
+              onMappingComplete={() => {
+                setShowMappingInterface(false);
+                setMappingConnectionId(null);
+                if (onConnectionChange) {
+                  onConnectionChange();
+                }
+              }}
+              onCancel={() => {
+                setShowMappingInterface(false);
+                setMappingConnectionId(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+

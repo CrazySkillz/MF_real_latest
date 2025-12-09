@@ -4947,7 +4947,7 @@ export default function CampaignDetail() {
                             <div className="space-y-2">
                               <div className="flex items-center justify-between mb-2">
                                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                  Connected Sheets ({googleSheetsConnections.length}/{MAX_GOOGLE_SHEETS_CONNECTIONS})
+                                  Connected Datasets ({googleSheetsConnections.length}/{MAX_GOOGLE_SHEETS_CONNECTIONS})
                                 </p>
                                 {canAddMoreSheets && (
                                   <Button
@@ -4959,7 +4959,7 @@ export default function CampaignDetail() {
                                     className="h-7 text-xs"
                                   >
                                     <Plus className="w-3 h-3 mr-1" />
-                                    Add Sheet
+                                    Add Dataset
                                   </Button>
                                 )}
                                 {!canAddMoreSheets && (
@@ -4968,53 +4968,67 @@ export default function CampaignDetail() {
                                   </Badge>
                                 )}
                               </div>
-                              {googleSheetsConnections.map((conn) => (
-                                <div
-                                  key={conn.id}
-                                  className={`flex items-center justify-between p-2 rounded-lg border ${
-                                    conn.isPrimary
-                                      ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
-                                      : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    {conn.isPrimary && (
-                                      <Star className="w-4 h-4 text-blue-600 dark:text-blue-400 fill-blue-600 dark:fill-blue-400 flex-shrink-0" />
-                                    )}
-                                    <FileSpreadsheet className="w-4 h-4 text-slate-500 dark:text-slate-400 flex-shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                                        {conn.spreadsheetName || `Sheet ${conn.spreadsheetId.slice(0, 8)}...`}
-                                      </p>
+                              {googleSheetsConnections.map((conn) => {
+                                const isMapped = conn.columnMappings && JSON.parse(conn.columnMappings || '[]').length > 0;
+                                return (
+                                  <div
+                                    key={conn.id}
+                                    className={`flex items-center justify-between p-2 rounded-lg border ${
+                                      isMapped
+                                        ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+                                        : conn.isPrimary
+                                        ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+                                        : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
                                       {conn.isPrimary && (
-                                        <p className="text-xs text-blue-600 dark:text-blue-400">Primary</p>
+                                        <Star className="w-4 h-4 text-blue-600 dark:text-blue-400 fill-blue-600 dark:fill-blue-400 flex-shrink-0" />
                                       )}
+                                      <FileSpreadsheet className="w-4 h-4 text-slate-500 dark:text-slate-400 flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                                            {conn.spreadsheetName || `Sheet ${conn.spreadsheetId.slice(0, 8)}...`}
+                                          </p>
+                                          {isMapped && (
+                                            <Badge variant="default" className="text-xs bg-green-600">
+                                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                                              Mapped
+                                            </Badge>
+                                          )}
+                                          {conn.isPrimary && (
+                                            <Badge variant="default" className="text-xs bg-blue-600">
+                                              Primary
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    {!conn.isPrimary && (
+                                    <div className="flex items-center gap-1">
+                                      {!conn.isPrimary && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0"
+                                          onClick={() => setPrimaryMutation.mutate(conn.id)}
+                                          title="Set as primary"
+                                        >
+                                          <Star className="w-3.5 h-3.5 text-slate-400 hover:text-blue-600" />
+                                        </Button>
+                                      )}
                                       <Button
-                                        variant="ghost"
+                                        variant={isMapped ? "outline" : "default"}
                                         size="sm"
-                                        className="h-7 w-7 p-0"
-                                        onClick={() => setPrimaryMutation.mutate(conn.id)}
-                                        title="Set as primary"
+                                        className="h-7 px-2 text-xs"
+                                        onClick={() => {
+                                          setMappingConnectionId(conn.id);
+                                          setShowMappingInterface(true);
+                                        }}
+                                        title="Configure column mapping"
                                       >
-                                        <Star className="w-3.5 h-3.5 text-slate-400 hover:text-blue-600" />
+                                        {isMapped ? "Edit Mapping" : "Map"}
                                       </Button>
-                                    )}
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 px-2 text-xs"
-                                      onClick={() => {
-                                        setMappingConnectionId(conn.id);
-                                        setShowMappingInterface(true);
-                                      }}
-                                      title="Configure column mapping"
-                                    >
-                                      Map
-                                    </Button>
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
                                         <Button

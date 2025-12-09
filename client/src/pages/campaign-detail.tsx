@@ -3657,6 +3657,8 @@ export default function CampaignDetail() {
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [scheduleRecipients, setScheduleRecipients] = useState("");
   const [selectedSections, setSelectedSections] = useState<{[key: string]: string[]}>({});
+  const [showMappingInterface, setShowMappingInterface] = useState(false);
+  const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
 
 
 

@@ -45,6 +45,7 @@ interface FieldMapping {
 interface ColumnMappingInterfaceProps {
   campaignId: string;
   connectionId?: string;
+  spreadsheetId?: string; // Google Sheets spreadsheet ID (different from connectionId)
   platform: string;
   onMappingComplete?: () => void;
   onCancel?: () => void;
@@ -54,6 +55,7 @@ interface ColumnMappingInterfaceProps {
 export function ColumnMappingInterface({
   campaignId,
   connectionId,
+  spreadsheetId,
   platform,
   onMappingComplete,
   onCancel
@@ -77,10 +79,11 @@ export function ColumnMappingInterface({
   const platformFields = platformFieldsData?.fields || [];
 
   // Fetch detected columns
-  const { data: columnsData, isLoading: columnsLoading } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number }>({
-    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns"],
+  const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number }>({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", spreadsheetId],
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/detect-columns${connectionId ? `?spreadsheetId=${connectionId}` : ''}`);
+      const queryParam = spreadsheetId ? `?spreadsheetId=${spreadsheetId}` : '';
+      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/detect-columns${queryParam}`);
       if (!response.ok) throw new Error('Failed to detect columns');
       return response.json();
     },

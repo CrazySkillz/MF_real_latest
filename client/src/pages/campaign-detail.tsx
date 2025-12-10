@@ -3720,6 +3720,7 @@ export default function CampaignDetail() {
   const [selectedSections, setSelectedSections] = useState<{[key: string]: string[]}>({});
   const [showMappingInterface, setShowMappingInterface] = useState(false);
   const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
+  const [mappingSpreadsheetId, setMappingSpreadsheetId] = useState<string | null>(null);
 
 
 
@@ -5023,6 +5024,7 @@ export default function CampaignDetail() {
                                         className="h-7 px-2 text-xs"
                                         onClick={() => {
                                           setMappingConnectionId(conn.id);
+                                          setMappingSpreadsheetId(conn.spreadsheetId);
                                           setShowMappingInterface(true);
                                         }}
                                         title="Configure column mapping"
@@ -5401,16 +5403,19 @@ export default function CampaignDetail() {
             <ColumnMappingInterface
               campaignId={campaign.id}
               connectionId={mappingConnectionId || undefined}
+              spreadsheetId={mappingSpreadsheetId || undefined}
               platform={campaign.platform || 'linkedin'}
               onMappingComplete={() => {
                 setShowMappingInterface(false);
                 setMappingConnectionId(null);
+                setMappingSpreadsheetId(null);
                 refetchGoogleSheetsConnections();
                 queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
               }}
               onCancel={() => {
                 setShowMappingInterface(false);
                 setMappingConnectionId(null);
+                setMappingSpreadsheetId(null);
               }}
             />
           )}

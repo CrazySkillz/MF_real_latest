@@ -5062,7 +5062,8 @@ export default function CampaignDetail() {
                                     </AlertDialog>
                                   </div>
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         )}

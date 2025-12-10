@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, AlertCircle, Star, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertCircle, Star, Loader2, Info, Lightbulb, DollarSign, Calculator } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface DetectedColumn {
@@ -229,6 +229,20 @@ export function ColumnMappingInterface({
       mappings.some(m => m.targetFieldId === f.id)
     );
 
+  // Check conversion value calculation status
+  const revenueMapping = mappings.find(m => m.targetFieldId === 'revenue');
+  const conversionsMapping = mappings.find(m => m.targetFieldId === 'conversions');
+  const revenueField = platformFields.find(f => f.id === 'revenue');
+  const conversionsField = platformFields.find(f => f.id === 'conversions');
+  const platformLower = platform.toLowerCase();
+  const isLinkedIn = platformLower.includes('linkedin');
+  
+  // For LinkedIn: conversions come from API, only need revenue
+  // For other platforms: may need both revenue and conversions
+  const canCalculateConversionValue = isLinkedIn 
+    ? revenueMapping !== undefined // LinkedIn has conversions from API
+    : revenueMapping !== undefined && conversionsMapping !== undefined; // Other platforms need both
+
   if (columnsLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -271,6 +285,139 @@ export function ColumnMappingInterface({
           Map your Google Sheets columns to the required fields for {platform}
         </p>
       </div>
+
+      {/* Conversion Value Calculation Status */}
+      {(revenueField || conversionsField) && (
+        <Card className={`border-l-4 ${
+          canCalculateConversionValue 
+            ? "border-l-green-500 bg-green-50 dark:bg-green-950/20" 
+            : "border-l-amber-500 bg-amber-50 dark:bg-amber-950/20"
+        }`}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Calculator className={`w-5 h-5 ${
+                canCalculateConversionValue ? "text-green-600" : "text-amber-600"
+              }`} />
+              Conversion Value Calculation Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              {isLinkedIn ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">
+                      <strong>Conversions:</strong> Available from LinkedIn API
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {revenueMapping ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                          <strong>Revenue:</strong> Mapped from "{revenueMapping.sourceColumnName}"
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <span className="text-sm text-amber-800 dark:text-amber-300">
+                          <strong>Revenue:</strong> Not mapped - Map a Revenue column to unlock conversion value calculation
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    {conversionsMapping ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                          <strong>Conversions:</strong> Mapped from "{conversionsMapping.sourceColumnName}"
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <span className="text-sm text-amber-800 dark:text-amber-300">
+                          <strong>Conversions:</strong> Not mapped
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {revenueMapping ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                          <strong>Revenue:</strong> Mapped from "{revenueMapping.sourceColumnName}"
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <span className="text-sm text-amber-800 dark:text-amber-300">
+                          <strong>Revenue:</strong> Not mapped
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {canCalculateConversionValue ? (
+              <div className="pt-2 border-t border-green-200 dark:border-green-800">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-900 dark:text-green-200">
+                      ✓ Conversion Value Will Be Calculated
+                    </p>
+                    <p className="text-sm text-green-800 dark:text-green-300 mt-1">
+                      After saving mappings, the system will automatically calculate: <strong>Conversion Value = Revenue ÷ Conversions</strong>
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Badge variant="default" className="bg-green-600">
+                        ROI Available
+                      </Badge>
+                      <Badge variant="default" className="bg-green-600">
+                        ROAS Available
+                      </Badge>
+                      <Badge variant="default" className="bg-green-600">
+                        Revenue Available
+                      </Badge>
+                      <Badge variant="default" className="bg-green-600">
+                        Profit Available
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="pt-2 border-t border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                      ⚠️ Revenue Metrics Unavailable
+                    </p>
+                    <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
+                      {isLinkedIn 
+                        ? "Map a Revenue column to unlock conversion value calculation and revenue metrics (ROI, ROAS, Revenue, Profit)."
+                        : "Map both Revenue and Conversions columns to unlock conversion value calculation and revenue metrics (ROI, ROAS, Revenue, Profit)."
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Detected Columns */}
       <Card>
@@ -365,6 +512,12 @@ export function ColumnMappingInterface({
                             Optional
                           </Badge>
                         )}
+                        {(field.id === 'revenue' || field.id === 'conversions') && (
+                          <Badge variant="default" className="text-xs bg-blue-600">
+                            <DollarSign className="w-3 h-3 mr-1" />
+                            For Conversion Value
+                          </Badge>
+                        )}
                         <Badge variant="outline" className="text-xs">
                           {field.type}
                         </Badge>
@@ -374,6 +527,19 @@ export function ColumnMappingInterface({
                           </Badge>
                         )}
                       </div>
+                      {(field.id === 'revenue' || field.id === 'conversions') && (
+                        <div className="mt-1 flex items-start gap-2 text-xs text-blue-700 dark:text-blue-400">
+                          <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                          <span>
+                            {field.id === 'revenue' 
+                              ? isLinkedIn 
+                                ? "Map this field to calculate conversion value. LinkedIn provides conversions automatically."
+                                : "Map this field along with Conversions to calculate conversion value."
+                              : "Map this field along with Revenue to calculate conversion value."
+                            }
+                          </span>
+                        </div>
+                      )}
                       {field.description && (
                         <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
                           {field.description}

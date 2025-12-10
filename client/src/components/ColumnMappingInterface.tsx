@@ -565,16 +565,16 @@ export function ColumnMappingInterface({
                       )}
                     </div>
                     <Select
-                      value={mapping ? mapping.sourceColumnIndex.toString() : ""}
+                      value={mapping ? mapping.sourceColumnIndex.toString() : "none"}
                       onValueChange={(value) => {
-                        handleFieldMapping(field.id, value === "" ? null : parseInt(value));
+                        handleFieldMapping(field.id, value === "none" ? null : parseInt(value));
                       }}
                     >
                       <SelectTrigger className="w-[200px]">
                         <SelectValue placeholder="Select column..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">-- None --</SelectItem>
+                        <SelectItem value="none">-- None --</SelectItem>
                         {detectedColumns.map((column) => {
                           const isUsed = mappings.some(m => 
                             m.sourceColumnIndex === column.index && m.targetFieldId !== field.id

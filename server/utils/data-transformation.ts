@@ -221,15 +221,29 @@ function matchesPlatform(platformValue: string, keywords: string[]): boolean {
 
 /**
  * Calculate conversion value from transformed rows
+ * @param transformedRows - Transformed rows from Google Sheets
+ * @param linkedInConversions - Optional LinkedIn API conversions to use instead of Google Sheets conversions
+ * @returns Conversion value (Revenue / Conversions) or null if cannot calculate
  */
-export function calculateConversionValue(transformedRows: any[]): number | null {
+export function calculateConversionValue(
+  transformedRows: any[],
+  linkedInConversions?: number | null
+): number | null {
   const totalRevenue = transformedRows.reduce((sum, row) => {
     return sum + (parseFloat(row.revenue) || 0);
   }, 0);
   
-  const totalConversions = transformedRows.reduce((sum, row) => {
-    return sum + (parseInt(row.conversions) || 0);
-  }, 0);
+  // Use LinkedIn API conversions if provided, otherwise use Google Sheets conversions
+  let totalConversions: number;
+  if (linkedInConversions !== null && linkedInConversions !== undefined && linkedInConversions > 0) {
+    // Use LinkedIn API conversions (more accurate for LinkedIn campaigns)
+    totalConversions = linkedInConversions;
+  } else {
+    // Fallback to Google Sheets conversions
+    totalConversions = transformedRows.reduce((sum, row) => {
+      return sum + (parseInt(row.conversions) || 0);
+    }, 0);
+  }
   
   if (totalConversions > 0) {
     return totalRevenue / totalConversions;

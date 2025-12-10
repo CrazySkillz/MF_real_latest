@@ -3439,6 +3439,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Reset calculatedConversionValues for this calculation
         calculatedConversionValues = [];
         
+        // Helper function to get LinkedIn API conversions for a campaign
+        const getLinkedInApiConversions = async (campaignId: string): Promise<number | null> => {
+          try {
+            const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+            if (sessions && sessions.length > 0) {
+              const latestSession = sessions.sort((a: any, b: any) => 
+                new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
+              )[0];
+              const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
+              
+              // Sum all conversions from LinkedIn API
+              const totalConversions = metrics
+                .filter((m: any) => m.metricKey.toLowerCase() === 'conversions')
+                .reduce((sum: number, m: any) => sum + (parseFloat(m.metricValue || '0') || 0), 0);
+              
+              return totalConversions > 0 ? totalConversions : null;
+            }
+          } catch (error) {
+            console.warn(`[Auto Conversion Value] Could not fetch LinkedIn API conversions:`, error);
+          }
+          return null;
+        };
+
         // Use mapped data if available, otherwise use column indices
         if (useMappings && transformedRows.length > 0) {
           // Use transformed data with mappings
@@ -3452,20 +3475,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
               );
               
               if (platformRows.length > 0) {
+                // Get LinkedIn API conversions if this is a LinkedIn campaign
+                let linkedInConversions: number | null = null;
+                let conversionSource = 'Google Sheets';
+                if (platformInfo.platform === 'linkedin') {
+                  linkedInConversions = await getLinkedInApiConversions(campaignId);
+                  if (linkedInConversions !== null && linkedInConversions > 0) {
+                    conversionSource = 'LinkedIn API';
+                  }
+                }
+                
                 // Calculate conversion value from transformed data
-                const conversionValue = calculateConversionValue(platformRows);
+                // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
+                const conversionValue = calculateConversionValue(platformRows, linkedInConversions);
                 
                 if (conversionValue !== null) {
                   const totalRevenue = platformRows.reduce((sum, row) => sum + (parseFloat(row.revenue) || 0), 0);
-                  const totalConversions = platformRows.reduce((sum, row) => sum + (parseInt(row.conversions) || 0), 0);
+                  const conversionsUsed = linkedInConversions !== null && linkedInConversions > 0 
+                    ? linkedInConversions 
+                    : platformRows.reduce((sum, row) => sum + (parseInt(row.conversions) || 0), 0);
                   
-                  console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()} (Mapped): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}, CV: $${conversionValue.toFixed(2)}`);
+                  console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()} (Mapped): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsUsed.toLocaleString()} (${conversionSource}), CV: $${conversionValue.toFixed(2)}`);
                   
                   calculatedConversionValues.push({
                     platform: platformInfo.platform,
                     conversionValue: conversionValue.toFixed(2),
                     revenue: totalRevenue,
-                    conversions: totalConversions
+                    conversions: conversionsUsed
                   });
                   
                   // Update platform connection
@@ -3473,7 +3509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     await storage.updateLinkedInConnection(campaignId, {
                       conversionValue: conversionValue.toFixed(2)
                     });
-                    console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${conversionValue.toFixed(2)} (using mappings)`);
+                    console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${conversionValue.toFixed(2)} (using ${conversionSource} conversions)`);
                   } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
                     await storage.updateMetaConnection(campaignId, {
                       conversionValue: conversionValue.toFixed(2)
@@ -3517,7 +3553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               
               if (platformRows.length > 0) {
-                // Calculate revenue and conversions for this platform
+                // Calculate revenue from Google Sheets
                 let platformRevenue = 0;
                 let platformConversions = 0;
                 
@@ -3536,17 +3572,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   platformConversions += conversions;
                 });
                 
-                if (platformRevenue > 0 && platformConversions > 0) {
-                  const platformConversionValue = (platformRevenue / platformConversions).toFixed(2);
+                // Get LinkedIn API conversions if this is a LinkedIn campaign
+                let linkedInConversions: number | null = null;
+                let conversionSource = 'Google Sheets';
+                if (platformInfo.platform === 'linkedin') {
+                  linkedInConversions = await getLinkedInApiConversions(campaignId);
+                  if (linkedInConversions !== null && linkedInConversions > 0) {
+                    conversionSource = 'LinkedIn API';
+                  }
+                }
+                
+                // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
+                const conversionsToUse = (linkedInConversions !== null && linkedInConversions > 0) 
+                  ? linkedInConversions 
+                  : platformConversions;
+                
+                if (platformRevenue > 0 && conversionsToUse > 0) {
+                  const platformConversionValue = (platformRevenue / conversionsToUse).toFixed(2);
                   
-                  console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: Revenue: $${platformRevenue.toLocaleString()}, Conversions: ${platformConversions.toLocaleString()}, CV: $${platformConversionValue}`);
+                  console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: Revenue: $${platformRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource}), CV: $${platformConversionValue}`);
                   
                   // Store calculated value for response
                   calculatedConversionValues.push({
                     platform: platformInfo.platform,
                     conversionValue: platformConversionValue,
                     revenue: platformRevenue,
-                    conversions: platformConversions
+                    conversions: conversionsToUse
                   });
                   
                   // Update the platform connection's conversion value
@@ -3554,7 +3605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     await storage.updateLinkedInConnection(campaignId, {
                       conversionValue: platformConversionValue
                     });
-                    console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue}`);
+                    console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue} (using ${conversionSource} conversions)`);
                   } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
                     await storage.updateMetaConnection(campaignId, {
                       conversionValue: platformConversionValue
@@ -3598,8 +3649,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalConversions += conversions;
             });
             
+            // Get LinkedIn API conversions if this is a LinkedIn campaign
+            let linkedInConversions: number | null = null;
+            let conversionSource = 'Google Sheets';
+            if (connectedPlatforms[0]?.platform === 'linkedin') {
+              linkedInConversions = await getLinkedInApiConversions(campaignId);
+              if (linkedInConversions !== null && linkedInConversions > 0) {
+                conversionSource = 'LinkedIn API';
+              }
+            }
+            
+            // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
+            const conversionsToUse = (linkedInConversions !== null && linkedInConversions > 0) 
+              ? linkedInConversions 
+              : totalConversions;
+            
             const platformLabel = campaignPlatform ? `${campaignPlatform} ` : '';
-            console.log(`[Auto Conversion Value] Campaign-level: Calculated from ${filteredRows.length} ${platformLabel}rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}`);
+            console.log(`[Auto Conversion Value] Campaign-level: Calculated from ${filteredRows.length} ${platformLabel}rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource})`);
           } else {
             // Fallback: Try to find from aggregated metrics (if Platform filtering wasn't possible)
             const revenueKeys = ['Revenue', 'revenue', 'Total Revenue', 'total revenue', 'Revenue (USD)', 'Sales Revenue', 'Revenue Amount'];
@@ -3621,23 +3687,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
             
-            if (totalRevenue > 0 || totalConversions > 0) {
-              console.log(`[Auto Conversion Value] Using aggregated metrics (not filtered by Platform): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}`);
+            // Get LinkedIn API conversions if this is a LinkedIn campaign
+            let linkedInConversions: number | null = null;
+            let conversionSource = 'Google Sheets';
+            if (connectedPlatforms[0]?.platform === 'linkedin') {
+              linkedInConversions = await getLinkedInApiConversions(campaignId);
+              if (linkedInConversions !== null && linkedInConversions > 0) {
+                conversionSource = 'LinkedIn API';
+              }
+            }
+            
+            // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
+            const conversionsToUse = (linkedInConversions !== null && linkedInConversions > 0) 
+              ? linkedInConversions 
+              : totalConversions;
+            
+            if (totalRevenue > 0 || conversionsToUse > 0) {
+              console.log(`[Auto Conversion Value] Using aggregated metrics (not filtered by Platform): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource})`);
             }
           }
           
+          // Get LinkedIn API conversions for final calculation (if not already fetched)
+          let finalLinkedInConversions: number | null = null;
+          let finalConversionSource = 'Google Sheets';
+          if (connectedPlatforms[0]?.platform === 'linkedin') {
+            finalLinkedInConversions = await getLinkedInApiConversions(campaignId);
+            if (finalLinkedInConversions !== null && finalLinkedInConversions > 0) {
+              finalConversionSource = 'LinkedIn API';
+            }
+          }
+          
+          // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
+          const finalConversions = (finalLinkedInConversions !== null && finalLinkedInConversions > 0) 
+            ? finalLinkedInConversions 
+            : totalConversions;
+          
           // Update campaign conversion value (only when single platform)
-          if (totalRevenue > 0 && totalConversions > 0) {
-            const calculatedConversionValue = (totalRevenue / totalConversions).toFixed(2);
+          if (totalRevenue > 0 && finalConversions > 0) {
+            const calculatedConversionValue = (totalRevenue / finalConversions).toFixed(2);
             
-            console.log(`[Auto Conversion Value] Campaign-level: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${totalConversions.toLocaleString()}, CV: $${calculatedConversionValue}`);
+            console.log(`[Auto Conversion Value] Campaign-level: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${finalConversions.toLocaleString()} (${finalConversionSource}), CV: $${calculatedConversionValue}`);
             
             const updatedCampaign = await storage.updateCampaign(campaignId, {
               conversionValue: calculatedConversionValue
             });
             
             if (updatedCampaign) {
-              console.log(`[Auto Conversion Value] ✅ Updated campaign ${campaignId} conversion value to $${calculatedConversionValue} (single platform)`);
+              console.log(`[Auto Conversion Value] ✅ Updated campaign ${campaignId} conversion value to $${calculatedConversionValue} (single platform, using ${finalConversionSource} conversions)`);
             }
             
             // Also update LinkedIn import sessions if they exist AND campaign is LinkedIn (for consistency)

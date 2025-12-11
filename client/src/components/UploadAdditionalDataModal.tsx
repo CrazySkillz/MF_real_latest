@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, Building2, ShoppingCart, Code, Upload, CheckCircle2, Map, AlertCircle, Info, Lightbulb, DollarSign } from "lucide-react";
+import { FileSpreadsheet, Building2, ShoppingCart, Code, Upload, CheckCircle2, Map, Lightbulb, DollarSign } from "lucide-react";
 import { SimpleGoogleSheetsAuth } from "./SimpleGoogleSheetsAuth";
 import { GoogleSheetsDatasetsView } from "./GoogleSheetsDatasetsView";
 import { useToast } from "@/hooks/use-toast";
@@ -178,35 +178,11 @@ export function UploadAdditionalDataModal({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Lightbulb className="w-5 h-5 text-blue-600" />
-                  To Calculate Conversion Value & Unlock Revenue Metrics
+                  Conversion Value Calculation for LinkedIn
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
-                        What LinkedIn Provides:
-                      </p>
-                      <p className="text-sm text-blue-800 dark:text-blue-300">
-                        Impressions, Clicks, Spend, <strong>Conversions</strong>, Leads, Engagements
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                        What LinkedIn Doesn't Provide:
-                      </p>
-                      <p className="text-sm text-amber-800 dark:text-amber-300">
-                        <strong>Revenue</strong> or Conversion Value
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                <div className="pt-2">
                   <p className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
                     To calculate conversion value and unlock ROI, ROAS, Revenue, and Profit:
                   </p>

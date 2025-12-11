@@ -178,36 +178,30 @@ export function UploadAdditionalDataModal({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Lightbulb className="w-5 h-5 text-blue-600" />
-                  Conversion Value Calculation for LinkedIn
+                  To calculate conversion value and unlock ROI, ROAS, Revenue, and Profit:
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="pt-2">
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
-                    To calculate conversion value and unlock ROI, ROAS, Revenue, and Profit:
-                  </p>
-                  <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1 ml-4 list-disc">
-                    <li>Map a <strong>"Revenue"</strong> column (e.g., Deal Value, Sales, Total Revenue)</li>
-                    <li>Conversions are already available from LinkedIn API</li>
-                    <li>System will calculate: <strong>Conversion Value = Revenue ÷ Conversions</strong></li>
-                  </ul>
-                </div>
-                <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-1">
-                    Your Google Sheet should include:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="default" className="bg-green-600">
-                      ✓ Revenue column (required for conversion value)
-                    </Badge>
-                    <Badge variant="default" className="bg-green-600">
-                      ✓ Campaign Name column (to match with LinkedIn campaigns)
-                    </Badge>
-                    <Badge variant="secondary">
-                      Date column (optional, for time-based matching)
-                    </Badge>
-                  </div>
-                </div>
+                <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-3 ml-4 list-disc">
+                  <li>
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
+                      Your Google Sheet should include:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="default" className="bg-green-600">
+                        ✓ Revenue column (required for conversion value)
+                      </Badge>
+                      <Badge variant="default" className="bg-green-600">
+                        ✓ Campaign Name column (to match with LinkedIn campaigns)
+                      </Badge>
+                      <Badge variant="secondary">
+                        Date column (optional, for time-based matching)
+                      </Badge>
+                    </div>
+                  </li>
+                  <li>Map a <strong>"Revenue"</strong> column (e.g., Deal Value, Sales, Total Revenue)</li>
+                  <li>System will calculate: <strong>Conversion Value = Revenue ÷ Conversions</strong></li>
+                </ul>
               </CardContent>
             </Card>
             

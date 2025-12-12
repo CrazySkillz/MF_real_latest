@@ -7258,10 +7258,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.er = sanitizeCalculatedMetric('er', parseFloat(er.toFixed(2)));
       }
       
+      // Check if there are active Google Sheets connections
+      // If no active connections, don't use stored conversion values (they were likely from Google Sheets)
+      const googleSheetsConnections = await storage.getGoogleSheetsConnections(session.campaignId);
+      const hasActiveGoogleSheets = googleSheetsConnections.length > 0;
+      
       // Get conversion value from campaign (prioritize campaign, fallback to session)
-      const conversionValue = campaign?.conversionValue 
-        ? parseFloat(campaign.conversionValue.toString()) 
-        : parseFloat(session.conversionValue || '0');
+      // BUT only if Google Sheets is still connected, otherwise the value is stale
+      console.log('[LinkedIn Analytics OAuth] Active Google Sheets connections:', googleSheetsConnections.length);
+      
+      let conversionValue = 0;
+      if (hasActiveGoogleSheets) {
+        // Only use stored conversion value if Google Sheets is still connected
+        conversionValue = campaign?.conversionValue 
+          ? parseFloat(campaign.conversionValue.toString()) 
+          : parseFloat(session.conversionValue || '0');
+      } else {
+        // No active Google Sheets - check if conversion value is from LinkedIn connection (manual entry)
+        const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
+        if (linkedInConnection?.conversionValue) {
+          conversionValue = parseFloat(linkedInConnection.conversionValue);
+          console.log('[LinkedIn Analytics OAuth] Using LinkedIn connection conversion value (manual entry):', conversionValue);
+        } else {
+          console.log('[LinkedIn Analytics OAuth] No active Google Sheets and no LinkedIn connection conversion value - revenue tracking disabled');
+          conversionValue = 0;
+        }
+      }
       
       console.log('Final conversion value used:', conversionValue);
       

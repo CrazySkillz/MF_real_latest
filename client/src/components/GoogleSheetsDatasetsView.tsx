@@ -222,7 +222,10 @@ export function GoogleSheetsDatasetsView({
               connectionId={mappingConnectionId}
               platform={platform}
               onMappingComplete={() => {
-                // Don't close dialog immediately - wait for conversion values
+                // Close dialog and go back to datasets view
+                setShowMappingInterface(false);
+                setMappingConnectionId(null);
+                // Mark that mappings were just saved to show the link
                 setMappingsJustSaved(true);
                 if (onConnectionChange) {
                   onConnectionChange();

@@ -3359,6 +3359,8 @@ export default function CampaignDetail() {
       queryClientHook.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
       queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
       queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+      // Invalidate all LinkedIn import sessions to refresh hasRevenueTracking
+      queryClientHook.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
       refetchSheetsConnection();
     },
   });

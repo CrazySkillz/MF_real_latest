@@ -2860,11 +2860,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!connection) {
-        console.error(`[Google Sheets Data] No connection found for campaign ${campaignId}`);
-        return res.status(404).json({ 
-          success: false,
-          error: "No Google Sheets connection found for this campaign",
-          requiresReauthorization: false
+        console.log(`[Google Sheets Data] No connection found for campaign ${campaignId} - returning empty data`);
+        // Return empty data structure instead of 404 so frontend can handle it gracefully
+        return res.json({
+          success: true,
+          data: [],
+          transformedRows: [],
+          insights: null,
+          matchingInfo: {
+            method: 'none',
+            matchedCampaigns: [],
+            unmatchedCampaigns: [],
+            totalFilteredRows: 0,
+            totalRows: 0,
+            platform: null
+          },
+          calculatedConversionValues: [], // Empty array - no conversion values
+          lastUpdated: new Date().toISOString()
         });
       }
       

@@ -13,6 +13,7 @@ interface UploadAdditionalDataModalProps {
   isOpen: boolean;
   onClose: () => void;
   campaignId: string;
+  returnUrl?: string;
   onDataConnected?: () => void;
 }
 
@@ -22,6 +23,7 @@ export function UploadAdditionalDataModal({
   isOpen,
   onClose,
   campaignId,
+  returnUrl,
   onDataConnected
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(null);
@@ -29,8 +31,9 @@ export function UploadAdditionalDataModal({
   const [justConnected, setJustConnected] = useState(false);
   const { toast } = useToast();
   
-  // Store the original campaign ID on mount to ensure we return to the correct page
+  // Store the original campaign ID and return URL on mount
   const [originalCampaignId] = useState(campaignId);
+  const [originalReturnUrl] = useState(returnUrl || `/campaigns/${campaignId}/linkedin-analytics?tab=overview`);
 
   // Fetch Google Sheets connections
   const { data: googleSheetsConnections = [], refetch: refetchConnections } = useQuery({
@@ -249,10 +252,11 @@ export function UploadAdditionalDataModal({
                     }}
                     platform="linkedin"
                     onNavigateBack={() => {
-                      // Close modal first, then navigate
+                      // Close modal first, then navigate to the exact URL we came from
                       onClose();
                       setTimeout(() => {
-                        window.location.href = `/campaigns/${originalCampaignId}/linkedin-analytics?tab=overview`;
+                        console.log('[UploadAdditionalDataModal] Navigating to:', originalReturnUrl);
+                        window.location.href = originalReturnUrl;
                       }, 150);
                     }}
                   />

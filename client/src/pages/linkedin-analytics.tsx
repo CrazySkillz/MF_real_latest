@@ -8396,7 +8396,7 @@ export default function LinkedInAnalytics() {
           isOpen={isUploadDataModalOpen}
           onClose={() => setIsUploadDataModalOpen(false)}
           campaignId={campaignId}
-          returnUrl={`/campaigns/${campaignId}/linkedin-analytics?tab=overview`}
+          returnUrl={window.location.pathname + window.location.search}
           onDataConnected={() => {
             // Refresh data after connection
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });

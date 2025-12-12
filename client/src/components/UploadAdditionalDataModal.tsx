@@ -31,9 +31,18 @@ export function UploadAdditionalDataModal({
   const [justConnected, setJustConnected] = useState(false);
   const { toast } = useToast();
   
-  // Store the original campaign ID and return URL on mount
+  // Store the ACTUAL current URL when modal opens - this is where we came from
+  const [originalReturnUrl] = useState(() => {
+    if (returnUrl) {
+      console.log('[Modal Init] Using provided returnUrl:', returnUrl);
+      return returnUrl;
+    }
+    // Fallback: use current window location
+    const currentUrl = window.location.pathname + window.location.search;
+    console.log('[Modal Init] Using current URL as returnUrl:', currentUrl);
+    return currentUrl;
+  });
   const [originalCampaignId] = useState(campaignId);
-  const [originalReturnUrl] = useState(returnUrl || `/campaigns/${campaignId}/linkedin-analytics?tab=overview`);
 
   // Fetch Google Sheets connections
   const { data: googleSheetsConnections = [], refetch: refetchConnections } = useQuery({

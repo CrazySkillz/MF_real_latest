@@ -9,8 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, AlertCircle, Star, Loader2, Info, Lightbulb, DollarSign, Calculator } from "lucide-react";
+import { CheckCircle2, AlertCircle, Star, Loader2, Info, Lightbulb, DollarSign, Calculator, Plus, ArrowRight } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface DetectedColumn {
@@ -65,6 +66,7 @@ export function ColumnMappingInterface({
   
   const [mappings, setMappings] = useState<FieldMapping[]>([]);
   const [validationErrors, setValidationErrors] = useState<Map<string, string>>(new Map());
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
 
   // Fetch platform fields (with campaignId to check if LinkedIn API is connected)
   const { data: platformFieldsData } = useQuery<{ success: boolean; fields: PlatformField[] }>({
@@ -154,9 +156,8 @@ export function ColumnMappingInterface({
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets"] });
       // Refetch google-sheets-data to trigger conversion value calculation
       await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-      if (onMappingComplete) {
-        onMappingComplete();
-      }
+      // Show completion dialog with options
+      setShowCompletionDialog(true);
     },
     onError: (error: any) => {
       toast({
@@ -651,6 +652,72 @@ export function ColumnMappingInterface({
           </Button>
         </div>
       </div>
+
+      {/* Completion Dialog */}
+      <Dialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              Mappings Saved Successfully!
+            </DialogTitle>
+            <DialogDescription>
+              Your column mappings have been saved. Conversion value will be calculated automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <Button
+              className="w-full justify-start"
+              variant="outline"
+              onClick={() => {
+                setShowCompletionDialog(false);
+                // Close mapping interface and let parent handle showing connection flow
+                if (onCancel) {
+                  onCancel();
+                }
+                // Small delay to allow dialog to close, then trigger callback
+                setTimeout(() => {
+                  if (onMappingComplete) {
+                    onMappingComplete();
+                  }
+                }, 200);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Connect Another Google Sheet
+            </Button>
+            <Button
+              className="w-full justify-start"
+              variant="default"
+              onClick={() => {
+                setShowCompletionDialog(false);
+                // Close mapping interface
+                if (onMappingComplete) {
+                  onMappingComplete();
+                }
+                // Navigate to Overview tab
+                window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+              }}
+            >
+              <ArrowRight className="w-4 h-4 mr-2" />
+              Go to Overview Tab
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowCompletionDialog(false);
+                if (onMappingComplete) {
+                  onMappingComplete();
+                }
+              }}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

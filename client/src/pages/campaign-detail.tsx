@@ -5411,6 +5411,8 @@ export default function CampaignDetail() {
                 setMappingSpreadsheetId(null);
                 refetchGoogleSheetsConnections();
                 queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+                // If user wants to connect another sheet, expand Google Sheets section
+                // This will be handled by the completion dialog in ColumnMappingInterface
               }}
               onCancel={() => {
                 setShowMappingInterface(false);

@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -62,6 +63,7 @@ export function ColumnMappingInterface({
 }: ColumnMappingInterfaceProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   
   const [mappings, setMappings] = useState<FieldMapping[]>([]);
   const [validationErrors, setValidationErrors] = useState<Map<string, string>>(new Map());
@@ -701,7 +703,7 @@ export function ColumnMappingInterface({
                 variant="default"
                 className="w-full justify-center"
                 onClick={() => {
-                  window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+                  setLocation(`/campaigns/${campaignId}/linkedin-analytics?tab=overview`);
                 }}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />

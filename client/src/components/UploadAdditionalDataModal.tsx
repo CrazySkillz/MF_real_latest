@@ -261,12 +261,17 @@ export function UploadAdditionalDataModal({
                     }}
                     platform="linkedin"
                     onNavigateBack={() => {
-                      // Close modal first, then navigate to the exact URL we came from
+                      // Trigger data refresh BEFORE navigating back
+                      if (onDataConnected) {
+                        onDataConnected();
+                      }
+                      // Close modal
                       onClose();
+                      // Wait for backend to process data, then do a FULL page reload to ensure fresh data
                       setTimeout(() => {
-                        console.log('[UploadAdditionalDataModal] Navigating to:', originalReturnUrl);
+                        console.log('[UploadAdditionalDataModal] Reloading page:', originalReturnUrl);
                         window.location.href = originalReturnUrl;
-                      }, 150);
+                      }, 500);
                     }}
                   />
                 )}

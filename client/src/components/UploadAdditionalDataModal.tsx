@@ -197,22 +197,6 @@ export function UploadAdditionalDataModal({
             >
               ← Back to Options
             </Button>
-            
-            {/* Show "Next" button after successful connection */}
-            {justConnected && !showDatasetsView && (
-              <div className="flex justify-center">
-                <Button
-                  onClick={() => {
-                    setShowDatasetsView(true);
-                    setJustConnected(false);
-                  }}
-                  size="lg"
-                  className="w-full max-w-md"
-                >
-                  Next
-                </Button>
-              </div>
-            )}
 
             {/* Show datasets view and connection interface after clicking Next or if already viewing */}
             {showDatasetsView || (!justConnected && googleSheetsConnections.length > 0) ? (
@@ -312,6 +296,22 @@ export function UploadAdditionalDataModal({
                   onSuccess={handleGoogleSheetsSuccess}
                   onError={handleGoogleSheetsError}
                 />
+
+                {/* Show "Next" button after successful connection */}
+                {justConnected && !showDatasetsView && (
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      onClick={() => {
+                        setShowDatasetsView(true);
+                        setJustConnected(false);
+                      }}
+                      size="lg"
+                      className="w-full max-w-md"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
               </>
             )}
           </div>

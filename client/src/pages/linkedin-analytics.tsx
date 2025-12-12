@@ -2653,6 +2653,16 @@ export default function LinkedInAnalytics() {
                       const hasGoogleSheetsConversionValues = sheetsData?.calculatedConversionValues && Array.isArray(sheetsData.calculatedConversionValues) && sheetsData.calculatedConversionValues.length > 0;
                       const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
                       const shouldShowWarning = !hasGoogleSheetsConversionValues && !hasRevenueTracking;
+                      
+                      // Debug logging
+                      console.log('[LinkedIn Analytics Frontend] Debug:', {
+                        sheetsData: sheetsData ? { hasData: true, conversionValuesLength: sheetsData.calculatedConversionValues?.length || 0 } : null,
+                        hasGoogleSheetsConversionValues,
+                        hasRevenueTracking,
+                        aggregatedHasRevenueTracking: aggregated?.hasRevenueTracking,
+                        shouldShowWarning
+                      });
+                      
                       return shouldShowWarning;
                     })() && (
                       <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">

@@ -277,6 +277,13 @@ export function transformData(
         // Type conversion
         transformedValue = convertToType(transformedValue, field.type);
         
+        // Normalize specific fields for consistency (Phase 3: Normalization)
+        if (field.id === 'campaign_name' && transformedValue) {
+          transformedValue = normalizeCampaignName(transformedValue);
+        } else if (field.id === 'platform' && transformedValue) {
+          transformedValue = normalizePlatform(transformedValue);
+        }
+        
         transformedRow[field.id] = transformedValue;
         
       } catch (error: any) {

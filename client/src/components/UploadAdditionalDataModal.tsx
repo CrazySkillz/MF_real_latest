@@ -347,20 +347,6 @@ export function UploadAdditionalDataModal({
             </Card>
           </div>
         ) : null}
-
-        {/* Back to Campaign Overview Link */}
-        <div className="mt-6 pt-4 border-t">
-          <Button
-            variant="ghost"
-            className="w-full justify-center"
-            onClick={() => {
-              window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
-            }}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Campaign Overview
-          </Button>
-        </div>
       </DialogContent>
     </Dialog>
   );

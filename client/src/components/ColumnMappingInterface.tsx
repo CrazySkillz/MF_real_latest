@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, AlertCircle, Star, Loader2, Info, Lightbulb, DollarSign, Calculator } from "lucide-react";
+import { CheckCircle2, AlertCircle, Star, Loader2, Info, Lightbulb, DollarSign, Calculator, ArrowLeft } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface DetectedColumn {
@@ -65,6 +65,7 @@ export function ColumnMappingInterface({
   
   const [mappings, setMappings] = useState<FieldMapping[]>([]);
   const [validationErrors, setValidationErrors] = useState<Map<string, string>>(new Map());
+  const [mappingsJustSaved, setMappingsJustSaved] = useState(false);
 
   // Fetch platform fields (with campaignId to check if LinkedIn API is connected)
   const { data: platformFieldsData } = useQuery<{ success: boolean; fields: PlatformField[] }>({
@@ -154,6 +155,8 @@ export function ColumnMappingInterface({
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets"] });
       // Refetch google-sheets-data to trigger conversion value calculation
       await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+      // Mark that mappings were just saved
+      setMappingsJustSaved(true);
       // Call onMappingComplete to update parent
       if (onMappingComplete) {
         onMappingComplete();
@@ -653,6 +656,34 @@ export function ColumnMappingInterface({
         </div>
       </div>
 
+      {/* Back to Campaign Overview Link - Only show after mappings are saved and conversion values exist */}
+      {mappingsJustSaved && hasConversionValues && (
+        <div className="mt-6 pt-4 border-t">
+          <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-2 mb-3">
+              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium text-green-900 dark:text-green-200 text-sm mb-1">
+                  Conversion Values Calculated!
+                </p>
+                <p className="text-xs text-green-800 dark:text-green-300">
+                  Revenue metrics are now available in the Overview tab.
+                </p>
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="default"
+            className="w-full justify-center"
+            onClick={() => {
+              window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+            }}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Campaign Overview
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

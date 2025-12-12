@@ -2636,8 +2636,8 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : sessionData && aggregated ? (
                   <>
-                    {/* Conversion Value Missing Notification */}
-                    {!aggregated.hasRevenueTracking && !(sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0) && (
+                    {/* Conversion Value Missing Notification - Hide when conversion values are available */}
+                    {!(aggregated.hasRevenueTracking === 1 || (sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0)) && (
                       <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0">

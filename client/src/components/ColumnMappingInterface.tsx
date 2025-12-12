@@ -680,7 +680,46 @@ export function ColumnMappingInterface({
       </div>
 
       {/* Back to Campaign Overview Link - Only show after mappings are saved and conversion values exist */}
-      {mappingsJustSaved && hasConversionValues && (
+      {mappingsJustSaved && (
+        <div className="mt-6 pt-4 border-t">
+          {hasConversionValues ? (
+            <>
+              <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-2 mb-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-green-900 dark:text-green-200 text-sm mb-1">
+                      Conversion Values Calculated!
+                    </p>
+                    <p className="text-xs text-green-800 dark:text-green-300">
+                      Revenue metrics are now available in the Overview tab.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="default"
+                className="w-full justify-center"
+                onClick={() => {
+                  window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+                }}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Campaign Overview
+              </Button>
+            </>
+          ) : (
+            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                <p className="text-sm text-blue-800 dark:text-blue-300">
+                  Calculating conversion values...
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
         <div className="mt-6 pt-4 border-t">
           <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
             <div className="flex items-start gap-2 mb-3">

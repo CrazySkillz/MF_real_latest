@@ -27,25 +27,15 @@ interface GoogleSheetsDatasetsViewProps {
 
 // Component to show "Back to Campaign Overview" link after mappings are saved
 function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; onClose: () => void }) {
-  // Check if conversion values have been calculated (with a short delay to allow backend processing)
+  // Check if conversion values have been calculated
   const { data: sheetsData } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
     queryFn: async () => {
-      // Wait 2 seconds for backend to process
-      await new Promise(resolve => setTimeout(resolve, 2000));
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
       if (!response.ok) return null;
       return response.json();
     },
-    refetchInterval: (data) => {
-      // Poll every 3 seconds, max 5 times (15 seconds total)
-      if (!data?.calculatedConversionValues || data.calculatedConversionValues.length === 0) {
-        return 3000;
-      }
-      return false;
-    },
-    refetchIntervalInBackground: false,
   });
 
   const hasConversionValues = sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0;

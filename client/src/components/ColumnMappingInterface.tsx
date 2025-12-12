@@ -95,7 +95,7 @@ export function ColumnMappingInterface({
   const detectedColumns = columnsData?.columns || [];
 
   // Check if conversion values have been calculated (after mappings are saved)
-  const { data: sheetsData } = useQuery({
+  const { data: sheetsData, refetch: refetchSheetsData } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: mappingsJustSaved && !!campaignId,
     queryFn: async () => {
@@ -103,6 +103,14 @@ export function ColumnMappingInterface({
       if (!response.ok) return null;
       return response.json();
     },
+    refetchInterval: (data) => {
+      // Poll every 2 seconds if mappings were just saved and no conversion values yet
+      if (mappingsJustSaved && (!data?.calculatedConversionValues || data.calculatedConversionValues.length === 0)) {
+        return 2000; // Poll every 2 seconds
+      }
+      return false; // Stop polling once we have conversion values
+    },
+    refetchIntervalInBackground: false,
   });
 
   const hasConversionValues = sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0;
@@ -162,14 +170,16 @@ export function ColumnMappingInterface({
     onSuccess: async () => {
       toast({
         title: "Mappings Saved",
-        description: "Column mappings have been saved successfully.",
+        description: "Column mappings have been saved successfully. Calculating conversion values...",
       });
       // Invalidate and refetch queries to refresh data and show conversion values
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets"] });
-      // Refetch google-sheets-data to trigger conversion value calculation
-      await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-      // Mark that mappings were just saved
+      // Mark that mappings were just saved (this enables the query and starts polling)
       setMappingsJustSaved(true);
+      // Wait a moment for backend to process, then refetch
+      setTimeout(async () => {
+        await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+      }, 1000);
       // Call onMappingComplete to update parent
       if (onMappingComplete) {
         onMappingComplete();

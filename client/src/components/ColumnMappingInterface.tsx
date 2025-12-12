@@ -702,7 +702,10 @@ export function ColumnMappingInterface({
                 variant="default"
                 className="w-full justify-center"
                 onClick={() => {
-                  window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+                  const targetUrl = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+                  console.log('[ColumnMappingInterface] Navigating to:', targetUrl);
+                  console.log('[ColumnMappingInterface] Campaign ID:', campaignId);
+                  window.location.href = targetUrl;
                 }}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />

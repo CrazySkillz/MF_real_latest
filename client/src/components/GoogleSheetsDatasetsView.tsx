@@ -84,7 +84,10 @@ function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; on
         onClick={(e) => {
           e.preventDefault();
           // Navigate to LinkedIn Analytics Overview tab
-          window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+          const targetUrl = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+          console.log('[GoogleSheetsDatasetsView] Navigating to:', targetUrl);
+          console.log('[GoogleSheetsDatasetsView] Campaign ID:', campaignId);
+          window.location.href = targetUrl;
         }}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />

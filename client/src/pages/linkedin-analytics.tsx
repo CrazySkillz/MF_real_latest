@@ -2649,7 +2649,12 @@ export default function LinkedInAnalytics() {
                 ) : sessionData && aggregated ? (
                   <>
                     {/* Conversion Value Missing Notification - Hide when conversion values are available */}
-                    {!((sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0) || aggregated.hasRevenueTracking === 1) && (
+                    {(() => {
+                      const hasGoogleSheetsConversionValues = sheetsData?.calculatedConversionValues && Array.isArray(sheetsData.calculatedConversionValues) && sheetsData.calculatedConversionValues.length > 0;
+                      const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
+                      const shouldShowWarning = !hasGoogleSheetsConversionValues && !hasRevenueTracking;
+                      return shouldShowWarning;
+                    })() && (
                       <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0">

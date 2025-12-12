@@ -27,70 +27,61 @@ interface GoogleSheetsDatasetsViewProps {
 
 // Component to show "Back to Campaign Overview" link after mappings are saved
 function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; onClose: () => void }) {
-  // Check if conversion values have been calculated
+  const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
+  
+  // Check if conversion values have been calculated (only once, no polling)
   const { data: sheetsData } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
-    enabled: !!campaignId,
+    enabled: !!campaignId && !hasCheckedOnce,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
       if (!response.ok) return null;
-      return response.json();
+      const data = await response.json();
+      setHasCheckedOnce(true);
+      return data;
     },
+    staleTime: Infinity, // Don't refetch
   });
 
   const hasConversionValues = sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0;
 
-  // Always show the link after mappings are saved, with appropriate message
-  if (!hasConversionValues) {
-    return (
-      <>
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+  // Always show the link, with appropriate message based on conversion values status
+  return (
+    <>
+      {hasConversionValues ? (
+        <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
           <div className="flex items-start gap-2">
-            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mt-0.5 flex-shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <p className="font-medium text-blue-900 dark:text-blue-200 text-sm mb-1">
-                Calculating conversion values...
+              <p className="font-medium text-green-900 dark:text-green-200 text-sm mb-1">
+                Conversion Values Calculated!
               </p>
-              <p className="text-xs text-blue-800 dark:text-blue-300">
-                Conversion values are being calculated. You can go to the Overview tab to check revenue metrics.
+              <p className="text-xs text-green-800 dark:text-green-300">
+                Revenue metrics are now available in the campaign overview.
               </p>
             </div>
           </div>
         </div>
-        <Button
-          variant="default"
-          className="w-full justify-center"
-          onClick={() => {
-            window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
-          }}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Campaign Overview
-        </Button>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
-        <div className="flex items-start gap-2">
-          <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-          <div className="flex-1">
-            <p className="font-medium text-green-900 dark:text-green-200 text-sm mb-1">
-              Conversion Values Calculated!
-            </p>
-            <p className="text-xs text-green-800 dark:text-green-300">
-              Revenue metrics are now available in the Overview tab.
-            </p>
+      ) : (
+        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-2">
+            <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-blue-900 dark:text-blue-200 text-sm mb-1">
+                Mappings Saved Successfully
+              </p>
+              <p className="text-xs text-blue-800 dark:text-blue-300">
+                Conversion values will be calculated automatically. Check the campaign overview for revenue metrics.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
       <Button
         variant="default"
         className="w-full justify-center"
         onClick={() => {
-          window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+          window.location.href = `/campaigns/${campaignId}`;
         }}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />

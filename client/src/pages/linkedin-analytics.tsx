@@ -297,8 +297,16 @@ export default function LinkedInAnalytics() {
     refetchInterval: 10000,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
-      if (!response.ok) return null;
-      return response.json();
+      if (!response.ok) {
+        // If 404 or other error, return empty structure
+        return { calculatedConversionValues: [] };
+      }
+      const data = await response.json();
+      // Ensure calculatedConversionValues exists (even if empty)
+      return {
+        ...data,
+        calculatedConversionValues: data.calculatedConversionValues || []
+      };
     },
   });
 

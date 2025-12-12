@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, Star, Map, CheckCircle2, AlertCircle } from "lucide-react";
+import { FileSpreadsheet, Star, Map, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { ColumnMappingInterface } from "./ColumnMappingInterface";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useQuery } from "@tanstack/react-query";
 
 interface GoogleSheetsConnection {
   id: string;
@@ -23,6 +24,70 @@ interface GoogleSheetsDatasetsViewProps {
   platform?: string;
 }
 
+// Component to show "Back to Campaign Overview" link after mappings are saved
+function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; onClose: () => void }) {
+  // Check if conversion values have been calculated
+  const { data: sheetsData } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    refetchInterval: (data) => {
+      // Poll every 2 seconds if no conversion values yet
+      if (!data?.calculatedConversionValues || data.calculatedConversionValues.length === 0) {
+        return 2000;
+      }
+      return false;
+    },
+  });
+
+  const hasConversionValues = sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0;
+
+  if (!hasConversionValues) {
+    return (
+      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-blue-800 dark:text-blue-300">
+            Calculating conversion values...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+        <div className="flex items-start gap-2">
+          <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium text-green-900 dark:text-green-200 text-sm mb-1">
+              Conversion Values Calculated!
+            </p>
+            <p className="text-xs text-green-800 dark:text-green-300">
+              Revenue metrics are now available in the Overview tab.
+            </p>
+          </div>
+        </div>
+      </div>
+      <Button
+        variant="default"
+        className="w-full justify-center"
+        onClick={() => {
+          window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+        }}
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Campaign Overview
+      </Button>
+    </>
+  );
+}
+
 export function GoogleSheetsDatasetsView({
   campaignId,
   connections,
@@ -31,6 +96,7 @@ export function GoogleSheetsDatasetsView({
 }: GoogleSheetsDatasetsViewProps) {
   const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
   const [showMappingInterface, setShowMappingInterface] = useState(false);
+  const [mappingsJustSaved, setMappingsJustSaved] = useState(false);
 
   const isMapped = (connection: GoogleSheetsConnection): boolean => {
     if (!connection.columnMappings) return false;
@@ -144,8 +210,8 @@ export function GoogleSheetsDatasetsView({
               connectionId={mappingConnectionId}
               platform={platform}
               onMappingComplete={() => {
-                setShowMappingInterface(false);
-                setMappingConnectionId(null);
+                // Don't close dialog immediately - wait for conversion values
+                setMappingsJustSaved(true);
                 if (onConnectionChange) {
                   onConnectionChange();
                 }
@@ -153,8 +219,20 @@ export function GoogleSheetsDatasetsView({
               onCancel={() => {
                 setShowMappingInterface(false);
                 setMappingConnectionId(null);
+                setMappingsJustSaved(false);
               }}
             />
+          )}
+
+          {/* Back to Campaign Overview Link - Show after mappings saved */}
+          {mappingsJustSaved && (
+            <div className="mt-4 pt-4 border-t">
+              <BackToOverviewSection campaignId={campaignId} onClose={() => {
+                setShowMappingInterface(false);
+                setMappingConnectionId(null);
+                setMappingsJustSaved(false);
+              }} />
+            </div>
           )}
         </DialogContent>
       </Dialog>

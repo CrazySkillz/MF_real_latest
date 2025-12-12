@@ -290,6 +290,9 @@ export default function LinkedInAnalytics() {
   const { data: sheetsData } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
       if (!response.ok) return null;

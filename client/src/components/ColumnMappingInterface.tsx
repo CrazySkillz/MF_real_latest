@@ -704,7 +704,7 @@ export function ColumnMappingInterface({
                 onClick={() => {
                   if (onCancel) onCancel();
                   setTimeout(() => {
-                    window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+                    window.location.href = `/campaigns/${campaignId}`;
                   }, 100);
                 }}
               >

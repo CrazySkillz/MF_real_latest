@@ -83,11 +83,12 @@ function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; on
         className="w-full justify-center"
         onClick={(e) => {
           e.preventDefault();
-          // Navigate to LinkedIn Analytics Overview tab
-          const targetUrl = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
-          console.log('[GoogleSheetsDatasetsView] Navigating to:', targetUrl);
-          console.log('[GoogleSheetsDatasetsView] Campaign ID:', campaignId);
-          window.location.href = targetUrl;
+          e.stopPropagation();
+          // Close any open dialogs first, then navigate
+          if (onClose) onClose();
+          setTimeout(() => {
+            window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+          }, 100);
         }}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />

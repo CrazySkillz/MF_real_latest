@@ -3358,6 +3358,7 @@ export default function CampaignDetail() {
       queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
       queryClientHook.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
       queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+      queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
       refetchSheetsConnection();
     },
   });

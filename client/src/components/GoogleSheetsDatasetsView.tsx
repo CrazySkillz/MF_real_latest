@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,36 +27,57 @@ interface GoogleSheetsDatasetsViewProps {
 
 // Component to show "Back to Campaign Overview" link after mappings are saved
 function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; onClose: () => void }) {
-  // Check if conversion values have been calculated
+  // Check if conversion values have been calculated (with a short delay to allow backend processing)
   const { data: sheetsData } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
     queryFn: async () => {
+      // Wait 2 seconds for backend to process
+      await new Promise(resolve => setTimeout(resolve, 2000));
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
       if (!response.ok) return null;
       return response.json();
     },
     refetchInterval: (data) => {
-      // Poll every 2 seconds if no conversion values yet
+      // Poll every 3 seconds, max 5 times (15 seconds total)
       if (!data?.calculatedConversionValues || data.calculatedConversionValues.length === 0) {
-        return 2000;
+        return 3000;
       }
       return false;
     },
+    refetchIntervalInBackground: false,
   });
 
   const hasConversionValues = sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0;
 
+  // Always show the link after mappings are saved, with appropriate message
   if (!hasConversionValues) {
     return (
-      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-blue-800 dark:text-blue-300">
-            Calculating conversion values...
-          </p>
+      <>
+        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-2">
+            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-blue-900 dark:text-blue-200 text-sm mb-1">
+                Calculating conversion values...
+              </p>
+              <p className="text-xs text-blue-800 dark:text-blue-300">
+                Conversion values are being calculated. You can go to the Overview tab to check revenue metrics.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+        <Button
+          variant="default"
+          className="w-full justify-center"
+          onClick={() => {
+            window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+          }}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Campaign Overview
+        </Button>
+      </>
     );
   }
 

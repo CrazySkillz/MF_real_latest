@@ -238,19 +238,17 @@ export function GoogleSheetsDatasetsView({
               }}
             />
           )}
-
-          {/* Back to Campaign Overview Link - Show after mappings saved */}
-          {mappingsJustSaved && (
-            <div className="mt-4 pt-4 border-t">
-              <BackToOverviewSection campaignId={campaignId} onClose={() => {
-                setShowMappingInterface(false);
-                setMappingConnectionId(null);
-                setMappingsJustSaved(false);
-              }} />
-            </div>
-          )}
         </DialogContent>
       </Dialog>
+
+      {/* Back to Campaign Overview Link - Show after mappings saved, in the main view */}
+      {mappingsJustSaved && (
+        <div className="mt-6 pt-4 border-t">
+          <BackToOverviewSection campaignId={campaignId} onClose={() => {
+            setMappingsJustSaved(false);
+          }} />
+        </div>
+      )}
     </div>
   );
 }

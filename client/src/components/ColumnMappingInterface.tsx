@@ -150,7 +150,10 @@ export function ColumnMappingInterface({
         title: "Mappings Saved",
         description: "Column mappings have been saved successfully.",
       });
+      // Invalidate and refetch queries to refresh data and show conversion values
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets"] });
+      // Refetch google-sheets-data to trigger conversion value calculation
+      await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
       if (onMappingComplete) {
         onMappingComplete();
       }

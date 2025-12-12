@@ -9100,27 +9100,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         columnMappings: JSON.stringify(mappings)
       });
       
-      // After saving mappings, attempt to calculate conversion value
-      // This will be done when data is fetched, but we can trigger a check here
-      try {
-        // Get all connections to find the one with matching connectionId
-        const connections = await storage.getGoogleSheetsConnections(campaignId);
-        const connection = connections.find(c => c.id === connectionId);
-        if (connection && connection.spreadsheetId && connection.spreadsheetId !== 'pending') {
-          // Trigger data fetch which will calculate conversion value
-          // This is async and won't block the response
-          fetch(`/api/google-sheets/${campaignId}/data`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ connectionId })
-          }).catch(err => {
-            console.log('[Save Mappings] Background data fetch for conversion value calculation failed:', err);
-            // Non-blocking - conversion value will be calculated on next data sync
-          });
-        }
-      } catch (calcError) {
-        console.log('[Save Mappings] Conversion value calculation check failed (non-blocking):', calcError);
-      }
+      // Conversion value will be calculated automatically when /api/campaigns/:id/google-sheets-data is called
+      // The frontend will refetch this endpoint after saving mappings
       
       res.json({
         success: true,

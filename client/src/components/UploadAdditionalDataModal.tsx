@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, Building2, ShoppingCart, Code, Upload, CheckCircle2, Map, Lightbulb, DollarSign } from "lucide-react";
+import { FileSpreadsheet, Building2, ShoppingCart, Code, Upload, CheckCircle2, Map, Lightbulb, DollarSign, ArrowLeft } from "lucide-react";
 import { SimpleGoogleSheetsAuth } from "./SimpleGoogleSheetsAuth";
 import { GoogleSheetsDatasetsView } from "./GoogleSheetsDatasetsView";
 import { useToast } from "@/hooks/use-toast";
@@ -347,6 +347,20 @@ export function UploadAdditionalDataModal({
             </Card>
           </div>
         ) : null}
+
+        {/* Back to Campaign Overview Link */}
+        <div className="mt-6 pt-4 border-t">
+          <Button
+            variant="ghost"
+            className="w-full justify-center"
+            onClick={() => {
+              window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+            }}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Campaign Overview
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

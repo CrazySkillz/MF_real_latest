@@ -2936,7 +2936,20 @@ export default function LinkedInAnalytics() {
                       </div>
                       
                       {/* Revenue Metrics - Only shown if conversion value is set - Displayed under Derived Metrics */}
-                      {((sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0) || aggregated.hasRevenueTracking === 1) && (
+                      {(() => {
+                        const hasGoogleSheetsConversionValues = sheetsData?.calculatedConversionValues && Array.isArray(sheetsData.calculatedConversionValues) && sheetsData.calculatedConversionValues.length > 0;
+                        const sheetsDataExists = sheetsData !== null && sheetsData !== undefined;
+                        
+                        // If sheetsData exists but has no conversion values, hide Revenue Metrics
+                        // (Google Sheets is disconnected)
+                        if (sheetsDataExists && !hasGoogleSheetsConversionValues) {
+                          return false;
+                        }
+                        
+                        // Otherwise check both conditions
+                        const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
+                        return hasGoogleSheetsConversionValues || hasRevenueTracking;
+                      })() && (
                         <>
                           {/* Revenue Metrics Header */}
                           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">

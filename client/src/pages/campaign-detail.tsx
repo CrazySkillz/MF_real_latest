@@ -5094,11 +5094,11 @@ export default function CampaignDetail() {
                           </div>
                         )}
                         {/* Google Sheets Matching Status & Conversion Value Calculation Feedback */}
-                        {platform.platform === "Google Sheets" && sheetsData?.matchingInfo && (
+                        {platform.platform === "Google Sheets" && (
                           <div className="pt-2 border-t">
                             <div className="space-y-3">
                               {/* Conversion Value Calculation Feedback */}
-                              {sheetsData.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0 && (
+                              {sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0 && (
                                 <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
                                   <div className="flex items-start gap-2">
                                     <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
@@ -5131,7 +5131,7 @@ export default function CampaignDetail() {
                               )}
                               
                               {/* Matching Status */}
-                              {sheetsData.matchingInfo.method === 'campaign_name_platform' && (
+                              {sheetsData?.matchingInfo && sheetsData.matchingInfo.method === 'campaign_name_platform' && (
                                 <div className="flex items-start gap-2 text-sm">
                                   <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
                                   <div className="flex-1">
@@ -5144,7 +5144,7 @@ export default function CampaignDetail() {
                                   </div>
                                 </div>
                               )}
-                              {sheetsData.matchingInfo.method === 'platform_only' && (
+                              {sheetsData?.matchingInfo && sheetsData.matchingInfo.method === 'platform_only' && (
                                 <div className="flex items-start gap-2 text-sm">
                                   <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                                   <div className="flex-1">
@@ -5166,7 +5166,7 @@ export default function CampaignDetail() {
                                   </div>
                                 </div>
                               )}
-                              {sheetsData.matchingInfo.method === 'all_rows' && (
+                              {sheetsData?.matchingInfo && sheetsData.matchingInfo.method === 'all_rows' && (
                                 <div className="flex items-start gap-2 text-sm">
                                   <AlertCircle className="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0" />
                                   <div className="flex-1">

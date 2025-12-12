@@ -8398,8 +8398,10 @@ export default function LinkedInAnalytics() {
           campaignId={campaignId}
           returnUrl={window.location.pathname + window.location.search}
           onDataConnected={() => {
-            // Refresh data after connection
+            // Refresh all data after connection to show updated conversion values
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
           }}
         />
       )}

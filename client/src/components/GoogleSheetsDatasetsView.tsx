@@ -26,8 +26,8 @@ interface GoogleSheetsDatasetsViewProps {
   platform?: string;
 }
 
-// Component to show "Back to Campaign Overview" link after mappings are saved
-function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; onClose: () => void }) {
+// Component to show "Back to Campaign Overview" link after mappings are saved  
+function BackToOverviewSection({ campaignId, onClose, onNavigate }: { campaignId: string; onClose: () => void; onNavigate?: () => void }) {
   const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
   
   // Check if conversion values have been calculated (only once, no polling)
@@ -84,11 +84,15 @@ function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; on
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          // Close any open dialogs first, then navigate to LinkedIn Analytics Overview tab
-          if (onClose) onClose();
-          setTimeout(() => {
-            window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
-          }, 100);
+          // Call the navigation callback if provided, otherwise close and navigate
+          if (onNavigate) {
+            onNavigate();
+          } else {
+            if (onClose) onClose();
+            setTimeout(() => {
+              window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+            }, 100);
+          }
         }}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -102,8 +106,9 @@ export function GoogleSheetsDatasetsView({
   campaignId,
   connections,
   onConnectionChange,
-  platform = 'linkedin'
-}: GoogleSheetsDatasetsViewProps) {
+  platform = 'linkedin',
+  onNavigateBack
+}: GoogleSheetsDatasetsViewProps & { onNavigateBack?: () => void }) {
   const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
   const [showMappingInterface, setShowMappingInterface] = useState(false);
   const [mappingsJustSaved, setMappingsJustSaved] = useState(false);
@@ -242,9 +247,13 @@ export function GoogleSheetsDatasetsView({
       {/* Back to Campaign Overview Link - Show after mappings saved, in the main view */}
       {mappingsJustSaved && (
         <div className="mt-6 pt-4 border-t">
-          <BackToOverviewSection campaignId={campaignId} onClose={() => {
-            setMappingsJustSaved(false);
-          }} />
+          <BackToOverviewSection 
+            campaignId={campaignId} 
+            onClose={() => {
+              setMappingsJustSaved(false);
+            }}
+            onNavigate={onNavigateBack}
+          />
         </div>
       )}
     </div>

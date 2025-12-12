@@ -28,6 +28,9 @@ export function UploadAdditionalDataModal({
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const { toast } = useToast();
+  
+  // Store the original campaign ID on mount to ensure we return to the correct page
+  const [originalCampaignId] = useState(campaignId);
 
   // Fetch Google Sheets connections
   const { data: googleSheetsConnections = [], refetch: refetchConnections } = useQuery({
@@ -236,7 +239,7 @@ export function UploadAdditionalDataModal({
                 {/* Show connected datasets */}
                 {googleSheetsConnections.length > 0 && (
                   <GoogleSheetsDatasetsView
-                    campaignId={campaignId}
+                    campaignId={originalCampaignId}
                     connections={googleSheetsConnections}
                     onConnectionChange={() => {
                       refetchConnections();
@@ -245,6 +248,13 @@ export function UploadAdditionalDataModal({
                       }
                     }}
                     platform="linkedin"
+                    onNavigateBack={() => {
+                      // Close modal first, then navigate
+                      onClose();
+                      setTimeout(() => {
+                        window.location.href = `/campaigns/${originalCampaignId}/linkedin-analytics?tab=overview`;
+                      }, 150);
+                    }}
                   />
                 )}
 

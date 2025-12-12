@@ -82,9 +82,11 @@ function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; on
       <Button
         variant="default"
         className="w-full justify-center"
-        onClick={() => {
-          // Navigate to LinkedIn Analytics Overview tab using wouter navigation
-          setLocation(`/campaigns/${campaignId}/linkedin-analytics?tab=overview`);
+        onClick={(e) => {
+          e.preventDefault();
+          // Navigate to LinkedIn Analytics Overview tab - use window.location to ensure proper navigation
+          const targetUrl = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+          window.location.href = targetUrl;
         }}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />

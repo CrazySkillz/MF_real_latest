@@ -63,7 +63,6 @@ export function ColumnMappingInterface({
 }: ColumnMappingInterfaceProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
   
   const [mappings, setMappings] = useState<FieldMapping[]>([]);
   const [validationErrors, setValidationErrors] = useState<Map<string, string>>(new Map());
@@ -703,7 +702,7 @@ export function ColumnMappingInterface({
                 variant="default"
                 className="w-full justify-center"
                 onClick={() => {
-                  setLocation(`/campaigns/${campaignId}/linkedin-analytics?tab=overview`);
+                  window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
                 }}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />

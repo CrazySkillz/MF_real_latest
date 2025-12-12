@@ -29,7 +29,6 @@ interface GoogleSheetsDatasetsViewProps {
 // Component to show "Back to Campaign Overview" link after mappings are saved
 function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; onClose: () => void }) {
   const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
-  const [, setLocation] = useLocation();
   
   // Check if conversion values have been calculated (only once, no polling)
   const { data: sheetsData } = useQuery({
@@ -85,7 +84,7 @@ function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; on
         onClick={(e) => {
           e.preventDefault();
           // Navigate to LinkedIn Analytics Overview tab
-          setLocation(`/campaigns/${campaignId}/linkedin-analytics?tab=overview`);
+          window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
         }}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />

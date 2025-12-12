@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ interface GoogleSheetsDatasetsViewProps {
 // Component to show "Back to Campaign Overview" link after mappings are saved
 function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; onClose: () => void }) {
   const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
+  const [, setLocation] = useLocation();
   
   // Check if conversion values have been calculated (only once, no polling)
   const { data: sheetsData } = useQuery({
@@ -81,9 +83,8 @@ function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; on
         variant="default"
         className="w-full justify-center"
         onClick={() => {
-          // Navigate to LinkedIn Analytics Overview tab - ensure tab parameter is set
-          const url = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
-          window.location.href = url;
+          // Navigate to LinkedIn Analytics Overview tab using wouter navigation
+          setLocation(`/campaigns/${campaignId}/linkedin-analytics?tab=overview`);
         }}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />

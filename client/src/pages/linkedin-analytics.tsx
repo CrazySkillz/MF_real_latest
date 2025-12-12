@@ -400,6 +400,8 @@ export default function LinkedInAnalytics() {
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     staleTime: 0, // Always fetch fresh data to pick up conversion value changes
+    // Refetch every 10 seconds to catch Google Sheets deletions
+    refetchInterval: 10000,
   });
 
   // Fetch ad performance data

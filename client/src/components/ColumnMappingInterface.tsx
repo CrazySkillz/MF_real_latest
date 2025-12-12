@@ -66,11 +66,12 @@ export function ColumnMappingInterface({
   const [mappings, setMappings] = useState<FieldMapping[]>([]);
   const [validationErrors, setValidationErrors] = useState<Map<string, string>>(new Map());
 
-  // Fetch platform fields
+  // Fetch platform fields (with campaignId to check if LinkedIn API is connected)
   const { data: platformFieldsData } = useQuery<{ success: boolean; fields: PlatformField[] }>({
-    queryKey: ["/api/platforms", platform, "fields"],
+    queryKey: ["/api/platforms", platform, "fields", campaignId],
     queryFn: async () => {
-      const response = await fetch(`/api/platforms/${platform}/fields`);
+      const url = `/api/platforms/${platform}/fields${campaignId ? `?campaignId=${campaignId}` : ''}`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch platform fields');
       return response.json();
     }

@@ -8920,7 +8920,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/platforms/:platform/fields", async (req, res) => {
     try {
       const { platform } = req.params;
-      const fields = getPlatformFields(platform);
+      const { campaignId } = req.query;
+      
+      let fields = getPlatformFields(platform);
+      
+      // For LinkedIn campaigns with LinkedIn API connected, adjust required fields
+      // LinkedIn API already provides: Impressions, Clicks, Spend, Conversions
+      // Google Sheets only needs: Campaign Name (to match rows) and Revenue (for conversion value)
+      if (platform.toLowerCase() === 'linkedin' && campaignId) {
+        try {
+          const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+          if (linkedInConnection) {
+            // LinkedIn API is connected - adjust required fields
+            fields = fields.map(f => {
+              // Only Campaign Name and Revenue are required from Google Sheets
+              if (f.id === 'campaign_name' || f.id === 'revenue') {
+                return { ...f, required: true };
+              }
+              // All other fields are optional since LinkedIn API provides them
+              // Platform can default to "LinkedIn", Impressions/Clicks/Spend come from API
+              if (f.id === 'platform' || f.id === 'impressions' || f.id === 'clicks' || f.id === 'spend' || f.id === 'conversions') {
+                return { ...f, required: false };
+              }
+              return f;
+            });
+          }
+        } catch (error) {
+          // If we can't check connection, use default fields
+          console.log('[Platform Fields] Could not check LinkedIn connection, using default fields');
+        }
+      }
       
       res.json({
         success: true,

@@ -88,11 +88,11 @@ export const LINKEDIN_PLATFORM_FIELDS: PlatformField[] = [
     id: 'revenue',
     name: 'Revenue',
     type: 'currency',
-    required: false,
+    required: false, // Will be set to required for LinkedIn campaigns with LinkedIn API connected
     category: 'metrics',
     aliases: ['revenue', 'sales', 'total revenue', 'revenue (usd)', 'income', 'sales revenue', 'total sales'],
     patterns: [/revenue/i, /sales/i, /income/i],
-    description: 'Total revenue generated',
+    description: 'Total revenue generated (required for conversion value calculation when LinkedIn API is connected)',
     transform: (val) => parseFloat(String(val).replace(/[^0-9.-]/g, '')) || 0
   }
 ];

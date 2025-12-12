@@ -941,6 +941,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Check if there are any remaining active Google Sheets connections
+      const remainingConnections = await storage.getGoogleSheetsConnections(campaignId);
+      const hasActiveConnections = remainingConnections.length > 0;
+      
+      // If no active Google Sheets connections remain, clear conversion values from platform connections
+      // (since they were likely calculated from Google Sheets data)
+      if (!hasActiveConnections) {
+        console.log(`[Google Sheets] No active connections remaining - clearing conversion values from platform connections`);
+        
+        // Clear LinkedIn connection conversion value
+        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+        if (linkedInConnection?.conversionValue) {
+          await storage.updateLinkedInConnection(campaignId, {
+            conversionValue: null
+          });
+          console.log(`[Google Sheets] Cleared LinkedIn connection conversion value`);
+        }
+        
+        // Clear Meta connection conversion value
+        const metaConnection = await storage.getMetaConnection(campaignId);
+        if (metaConnection?.conversionValue) {
+          await storage.updateMetaConnection(campaignId, {
+            conversionValue: null
+          });
+          console.log(`[Google Sheets] Cleared Meta connection conversion value`);
+        }
+      }
+
       console.log(`[Google Sheets] Connection deleted successfully`);
       res.json({ success: true, message: 'Connection deleted' });
     } catch (error: any) {

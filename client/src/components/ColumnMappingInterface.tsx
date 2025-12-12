@@ -145,7 +145,7 @@ export function ColumnMappingInterface({
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Mappings Saved",
         description: "Column mappings have been saved successfully.",

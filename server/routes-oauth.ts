@@ -3221,8 +3221,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Automatic Conversion Value Calculation from Google Sheets - DISABLED
-      // TODO: Re-enable when new calculation logic is provided
-      const AUTO_CALCULATE_CONVERSION_VALUE = false;
+      // Enable automatic conversion value calculation after mappings are saved
+      const AUTO_CALCULATE_CONVERSION_VALUE = true;
       
       // Initialize calculatedConversionValues and matchingInfo (needed for response even when auto-calculation is disabled)
       let calculatedConversionValues: Array<{platform: string, conversionValue: string, revenue: number, conversions: number}> = [];

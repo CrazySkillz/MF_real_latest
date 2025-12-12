@@ -84,10 +84,10 @@ function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; on
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          // Close any open dialogs first, then navigate back to campaign detail page
+          // Close any open dialogs first, then navigate to LinkedIn Analytics Overview tab
           if (onClose) onClose();
           setTimeout(() => {
-            window.location.href = `/campaigns/${campaignId}`;
+            window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
           }, 100);
         }}
       >

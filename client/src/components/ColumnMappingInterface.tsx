@@ -94,6 +94,19 @@ export function ColumnMappingInterface({
 
   const detectedColumns = columnsData?.columns || [];
 
+  // Check if conversion values have been calculated (after mappings are saved)
+  const { data: sheetsData } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
+    enabled: mappingsJustSaved && !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+  });
+
+  const hasConversionValues = sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0;
+
   // Auto-map columns
   const autoMapMutation = useMutation({
     mutationFn: async () => {

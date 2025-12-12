@@ -2653,23 +2653,25 @@ export default function LinkedInAnalytics() {
                       // Check Google Sheets conversion values first (most reliable)
                       const hasGoogleSheetsConversionValues = sheetsData?.calculatedConversionValues && Array.isArray(sheetsData.calculatedConversionValues) && sheetsData.calculatedConversionValues.length > 0;
                       
-                      // Only trust aggregated.hasRevenueTracking if it's from manual entry (not Google Sheets)
-                      // If sheetsData exists but has no conversion values, that means Google Sheets is disconnected
-                      // So we should ignore aggregated.hasRevenueTracking in that case
-                      const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
+                      // If sheetsData exists (even if empty), it means Google Sheets was connected
+                      // If it has no conversion values, Google Sheets is disconnected - show warning
                       const sheetsDataExists = sheetsData !== null && sheetsData !== undefined;
                       
-                      // If sheetsData exists but has no conversion values, Google Sheets is disconnected
-                      // So we should show the warning regardless of aggregated.hasRevenueTracking
-                      const shouldShowWarning = !hasGoogleSheetsConversionValues && (!hasRevenueTracking || (sheetsDataExists && !hasGoogleSheetsConversionValues));
+                      // If sheetsData exists but has no conversion values, always show warning
+                      // (Google Sheets is disconnected, ignore aggregated.hasRevenueTracking)
+                      if (sheetsDataExists && !hasGoogleSheetsConversionValues) {
+                        console.log('[LinkedIn Analytics] Google Sheets disconnected - showing warning');
+                        return true;
+                      }
                       
-                      // Debug logging
-                      console.log('[LinkedIn Analytics Frontend] Notification Debug:', {
+                      // If no sheetsData, check aggregated.hasRevenueTracking (manual entry or from session)
+                      const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
+                      const shouldShowWarning = !hasGoogleSheetsConversionValues && !hasRevenueTracking;
+                      
+                      console.log('[LinkedIn Analytics] Notification check:', {
                         sheetsDataExists,
                         hasGoogleSheetsConversionValues,
-                        conversionValuesLength: sheetsData?.calculatedConversionValues?.length || 0,
                         hasRevenueTracking,
-                        aggregatedHasRevenueTracking: aggregated?.hasRevenueTracking,
                         shouldShowWarning
                       });
                       

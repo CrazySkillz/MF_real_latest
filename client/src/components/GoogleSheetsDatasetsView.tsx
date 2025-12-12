@@ -81,7 +81,7 @@ function BackToOverviewSection({ campaignId, onClose }: { campaignId: string; on
         variant="default"
         className="w-full justify-center"
         onClick={() => {
-          window.location.href = `/campaigns/${campaignId}`;
+          window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
         }}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />

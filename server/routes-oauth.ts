@@ -11,9 +11,12 @@ import { nanoid } from "nanoid";
 import { randomBytes } from "crypto";
 import { snapshotScheduler } from "./scheduler";
 import { detectColumnTypes } from "./utils/column-detection";
+import { discoverSchema } from "./utils/schema-discovery";
 import { autoMapColumns, validateMappings, isMappingValid } from "./utils/auto-mapping";
 import { getPlatformFields, getRequiredFields } from "./utils/field-definitions";
 import { transformData, filterRowsByCampaignAndPlatform, calculateConversionValue } from "./utils/data-transformation";
+import { enrichRows, inferMissingFields } from "./utils/data-enrichment";
+import { toCanonicalFormatBatch } from "./utils/canonical-format";
 
 // Configure multer for PDF file uploads
 const upload = multer({
@@ -3416,6 +3419,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.warn(`[Auto Conversion Value] Transformation errors:`, transformationResult.errors.slice(0, 5));
               }
               
+              // Phase 4: Enrich data with context
+              const enrichmentContext = {
+                campaignName: campaignName || '',
+                platform: campaignPlatform || 'linkedin',
+                hasLinkedInApi: campaignPlatform?.toLowerCase() === 'linkedin'
+              };
+              transformedRows = enrichRows(transformedRows, enrichmentContext);
+              
+              // Phase 6: Convert to canonical format
+              transformedRows = toCanonicalFormatBatch(transformedRows, 'google_sheets', 0.9);
+              
               console.log(`[Auto Conversion Value] Transformed ${transformedRows.length} rows using mappings`);
             }
           } catch (mappingError) {
@@ -3467,11 +3481,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Use transformed data with mappings
           for (const platformInfo of connectedPlatforms) {
             try {
-              // Filter transformed rows by platform and campaign
+              // Filter transformed rows by platform and campaign (Phase 5: Enhanced with fuzzy matching)
               const platformRows = filterRowsByCampaignAndPlatform(
                 transformedRows,
                 campaignName,
-                platformInfo.platform
+                platformInfo.platform,
+                {
+                  fuzzyMatch: true,
+                  minSimilarity: 0.8,
+                  contextAware: true
+                }
               );
               
               if (platformRows.length > 0) {
@@ -9008,10 +9027,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Detect columns
       const detectedColumns = detectColumnTypes(rows);
       
+      // Discover schema (Phase 1: Schema Discovery)
+      const schema = discoverSchema(rows, detectedColumns);
+      
       res.json({
         success: true,
         columns: detectedColumns,
-        totalRows: rows.length - 1 // Exclude header
+        totalRows: rows.length - 1, // Exclude header
+        schema: schema // Include schema discovery results
       });
     } catch (error: any) {
       console.error('[Detect Columns] Error:', error);

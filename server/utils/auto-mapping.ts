@@ -1,6 +1,7 @@
 /**
  * Auto-Mapping Algorithm
  * Intelligently maps detected columns to platform fields using fuzzy matching
+ * Phase 2: Enhanced Semantic Mapping
  */
 
 import { DetectedColumn } from './column-detection';
@@ -89,7 +90,66 @@ function isTypeCompatible(
 }
 
 /**
- * Calculate match score between a column and a platform field
+ * Semantic concept mappings (Phase 2: Enhanced Semantic Mapping)
+ * Maps related terms to semantic concepts
+ */
+const SEMANTIC_CONCEPTS: Record<string, string[]> = {
+  'revenue': ['revenue', 'sales', 'income', 'total revenue', 'total sales', 'deal value', 'deal amount', 'amount', 'value', 'revenue amount', 'sales amount'],
+  'conversions': ['conversions', 'conversion', 'converted', 'conversion count', 'total conversions', 'convs'],
+  'campaign_name': ['campaign', 'campaign name', 'campaign title', 'campaign id', 'campaign_name', 'campaignname'],
+  'platform': ['platform', 'channel', 'network', 'source', 'ad platform', 'advertising platform', 'media channel'],
+  'impressions': ['impressions', 'impression', 'imp', 'total impressions', 'impression count', 'views'],
+  'clicks': ['clicks', 'click', 'total clicks', 'click count', 'clicks count'],
+  'spend': ['spend', 'cost', 'total spend', 'total cost', 'ad spend', 'ad cost', 'budget', 'expense', 'expenses'],
+  'date': ['date', 'day', 'time', 'timestamp', 'period', 'date range', 'reporting date'],
+  'leads': ['leads', 'lead', 'total leads', 'lead count', 'qualified leads'],
+  'engagements': ['engagements', 'engagement', 'total engagements', 'engagement count', 'interactions']
+};
+
+/**
+ * Get semantic concept for a field
+ */
+function getSemanticConcept(fieldName: string): string | null {
+  const fieldNameLower = fieldName.toLowerCase();
+  
+  for (const [concept, terms] of Object.entries(SEMANTIC_CONCEPTS)) {
+    if (terms.some(term => fieldNameLower === term || fieldNameLower.includes(term))) {
+      return concept;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Check semantic match between column and field
+ */
+function checkSemanticMatch(columnName: string, fieldName: string): number {
+  const columnConcept = getSemanticConcept(columnName);
+  const fieldConcept = getSemanticConcept(fieldName);
+  
+  // Exact semantic concept match
+  if (columnConcept && fieldConcept && columnConcept === fieldConcept) {
+    return 0.5; // High score for semantic match
+  }
+  
+  // Check if column name contains any terms from field's semantic concept
+  const columnNameLower = columnName.toLowerCase();
+  
+  if (fieldConcept && SEMANTIC_CONCEPTS[fieldConcept]) {
+    const hasMatchingTerm = SEMANTIC_CONCEPTS[fieldConcept].some(term => 
+      columnNameLower.includes(term) || term.includes(columnNameLower)
+    );
+    if (hasMatchingTerm) {
+      return 0.4; // Good score for partial semantic match
+    }
+  }
+  
+  return 0;
+}
+
+/**
+ * Calculate match score between a column and a platform field (enhanced with semantic matching)
  */
 function calculateMatchScore(
   column: DetectedColumn,
@@ -104,7 +164,11 @@ function calculateMatchScore(
     score += 0.5;
   }
   
-  // 2. Alias match - 0.4 points
+  // 2. Semantic concept match (Phase 2) - 0.5 points
+  const semanticScore = checkSemanticMatch(column.originalName, field.name);
+  score += semanticScore;
+  
+  // 3. Alias match - 0.4 points
   const aliasMatch = field.aliases.some(alias => {
     const aliasLower = alias.toLowerCase();
     return columnNameLower === aliasLower ||
@@ -115,20 +179,20 @@ function calculateMatchScore(
     score += 0.4;
   }
   
-  // 3. Pattern match - 0.3 points
+  // 4. Pattern match - 0.3 points
   const patternMatch = field.patterns.some(pattern => pattern.test(column.originalName));
   if (patternMatch) {
     score += 0.3;
   }
   
-  // 4. Type compatibility - 0.2 points (or penalty)
+  // 5. Type compatibility - 0.2 points (or penalty)
   if (isTypeCompatible(column.detectedType, field.type)) {
     score += 0.2;
   } else {
     score -= 0.3; // Penalty for type mismatch
   }
   
-  // 5. Fuzzy string similarity - 0.2 points
+  // 6. Fuzzy string similarity - 0.2 points
   const similarity = stringSimilarity(columnNameLower, fieldNameLower);
   score += similarity * 0.2;
   

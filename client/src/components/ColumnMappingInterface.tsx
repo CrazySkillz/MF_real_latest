@@ -637,10 +637,28 @@ export function ColumnMappingInterface({
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
                 </div>
               );
             })}
           </div>
+          
+          {/* Summary of unmapped required fields */}
+          {(() => {
+            const unmappedRequired = platformFields.filter(f => f.required && !mappings.find(m => m.targetFieldId === f.id));
+            if (unmappedRequired.length > 0) {
+              return (
+                <Alert className="mt-4">
+                  <AlertCircle className="w-4 h-4" />
+                  <AlertDescription>
+                    <strong>{unmappedRequired.length} required field{unmappedRequired.length > 1 ? 's' : ''} not mapped:</strong>{' '}
+                    {unmappedRequired.map(f => f.name).join(', ')}
+                  </AlertDescription>
+                </Alert>
+              );
+            }
+            return null;
+          })()}
         </CardContent>
       </Card>
 

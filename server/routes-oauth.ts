@@ -2366,9 +2366,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update the database connection with the selected spreadsheet
+      // Default to first sheet if no sheetName provided
       await storage.updateGoogleSheetsConnection(dbConnection.id, {
         spreadsheetId,
-        spreadsheetName
+        spreadsheetName,
+        sheetName: null // Will be set when user selects a sheet
       });
       
       console.log('Updated database connection with spreadsheet:', {
@@ -2389,6 +2391,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Check Google Sheets connection status
   // List all Google Sheets connections for a campaign
+  // Get available sheet names from a spreadsheet
+  app.get("/api/google-sheets/:spreadsheetId/sheets", async (req, res) => {
+    try {
+      const { spreadsheetId } = req.params;
+      const campaignId = req.query.campaignId as string;
+      
+      if (!campaignId) {
+        return res.status(400).json({ error: 'campaignId is required' });
+      }
+      
+      // Get connection to access token
+      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const connection = connections.find(c => c.spreadsheetId === spreadsheetId) || connections[0];
+      
+      if (!connection || !connection.accessToken) {
+        return res.status(404).json({ error: 'No Google Sheets connection found for this campaign' });
+      }
+      
+      // Fetch spreadsheet metadata to get sheet names
+      const metadataResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?includeGridData=false`,
+        { headers: { 'Authorization': `Bearer ${connection.accessToken}` } }
+      );
+      
+      if (!metadataResponse.ok) {
+        // Try refreshing token if expired
+        if (metadataResponse.status === 401 && connection.refreshToken) {
+          const refreshedToken = await refreshGoogleSheetsToken(connection);
+          const retryResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?includeGridData=false`,
+            { headers: { 'Authorization': `Bearer ${refreshedToken}` } }
+          );
+          
+          if (!retryResponse.ok) {
+            throw new Error(`Failed to fetch spreadsheet metadata: ${retryResponse.statusText}`);
+          }
+          
+          const metadata = await retryResponse.json();
+          const sheets = (metadata.sheets || []).map((sheet: any) => ({
+            name: sheet.properties.title,
+            sheetId: sheet.properties.sheetId,
+            index: sheet.properties.index
+          }));
+          
+          return res.json({ success: true, sheets });
+        }
+        
+        throw new Error(`Failed to fetch spreadsheet metadata: ${metadataResponse.statusText}`);
+      }
+      
+      const metadata = await metadataResponse.json();
+      const sheets = (metadata.sheets || []).map((sheet: any) => ({
+        name: sheet.properties.title,
+        sheetId: sheet.properties.sheetId,
+        index: sheet.properties.index
+      }));
+      
+      res.json({ success: true, sheets });
+    } catch (error: any) {
+      console.error('Get sheets error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch sheet names' });
+    }
+  });
+
+  // Update sheet selection for a connection
+  app.post("/api/campaigns/:id/google-sheets-connections/:connectionId/sheet", async (req, res) => {
+    try {
+      const { id: campaignId, connectionId } = req.params;
+      const { sheetName } = req.body;
+      
+      if (!sheetName) {
+        return res.status(400).json({ error: 'sheetName is required' });
+      }
+      
+      await storage.updateGoogleSheetsConnection(connectionId, { sheetName });
+      
+      res.json({ success: true, sheetName });
+    } catch (error: any) {
+      console.error('Update sheet error:', error);
+      res.status(500).json({ error: error.message || 'Failed to update sheet selection' });
+    }
+  });
+
   app.get("/api/campaigns/:id/google-sheets-connections", async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -2400,6 +2485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: conn.id,
           spreadsheetId: conn.spreadsheetId,
           spreadsheetName: conn.spreadsheetName,
+          sheetName: conn.sheetName,
           isPrimary: conn.isPrimary,
           isActive: conn.isActive,
           columnMappings: conn.columnMappings,
@@ -2995,8 +3081,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      // Build range with sheet name if specified, otherwise use default (first sheet)
+      const range = connection.sheetName 
+        ? `${connection.sheetName}!A1:Z1000`
+        : 'A1:Z1000';
+      
       let sheetResponse = await fetchWithTimeout(
-        `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z1000`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(range)}`,
         { headers: { 'Authorization': `Bearer ${accessToken}` } },
         30000 // 30 second timeout
       );
@@ -3046,8 +3137,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           };
 
+          // Build range with sheet name if specified
+          const retryRange = connection.sheetName 
+            ? `${connection.sheetName}!A1:Z1000`
+            : 'A1:Z1000';
+          
           sheetResponse = await fetchWithTimeoutRetry(
-            `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z1000`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(retryRange)}`,
             { headers: { 'Authorization': `Bearer ${accessToken}` } },
             30000
           );
@@ -9136,9 +9232,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'No Google Sheets connection found' });
       }
       
+      // Build range with sheet name if specified
+      const analysisRange = connection.sheetName 
+        ? `${connection.sheetName}!A1:Z100`
+        : 'A1:Z100';
+      
       // Fetch first 100 rows for analysis
       const sheetResponse = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/A1:Z100?valueRenderOption=UNFORMATTED_VALUE`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(analysisRange)}?valueRenderOption=UNFORMATTED_VALUE`,
         { headers: { 'Authorization': `Bearer ${connection.accessToken}` } }
       );
       

@@ -1060,9 +1060,16 @@ export default function GoogleSheetsData() {
                                               </Badge>
                                             )}
                                           </div>
-                                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                                            {conn.spreadsheetId}
-                                          </p>
+                                          <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                              {conn.spreadsheetId}
+                                            </p>
+                                            {conn.sheetName && (
+                                              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                                                📄 Tab: {conn.sheetName}
+                                              </p>
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-2">
@@ -1225,6 +1232,83 @@ export default function GoogleSheetsData() {
               }}
               returnUrl={window.location.pathname + window.location.search}
             />
+          )}
+
+          {/* Change Sheet Tab Dialog */}
+          {editingSheetConnectionId && (
+            <Dialog open={!!editingSheetConnectionId} onOpenChange={() => setEditingSheetConnectionId(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Change Sheet Tab</DialogTitle>
+                  <DialogDescription>
+                    Select a different tab/sheet from this spreadsheet
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {availableSheets.length > 0 ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Available Sheets/Tabs</Label>
+                        <Select value={selectedNewSheetName} onValueChange={setSelectedNewSheetName}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a sheet tab..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableSheets.map((sheet) => (
+                              <SelectItem key={sheet.sheetId} value={sheet.name}>
+                                {sheet.name} {sheet.index === 0 && '(Default)'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex gap-3 pt-4">
+                        <Button variant="outline" onClick={() => setEditingSheetConnectionId(null)} className="flex-1">
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections/${editingSheetConnectionId}/sheet`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ sheetName: selectedNewSheetName })
+                              });
+                              
+                              if (response.ok) {
+                                refetchConnections();
+                                refetch();
+                                setEditingSheetConnectionId(null);
+                                toast({
+                                  title: "Sheet Tab Updated",
+                                  description: `Now using "${selectedNewSheetName}" tab.`
+                                });
+                              } else {
+                                throw new Error('Failed to update sheet');
+                              }
+                            } catch (error: any) {
+                              toast({
+                                title: "Update Failed",
+                                description: error.message || "Failed to change sheet tab",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                          className="flex-1"
+                        >
+                          Update
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <Loader2 className="w-6 h-6 mx-auto text-slate-400 animate-spin mb-2" />
+                      <p className="text-slate-600 dark:text-slate-400">Loading available sheets...</p>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
         </main>
       </div>

@@ -959,6 +959,7 @@ export class MemStorage implements IStorage {
       campaignId: connection.campaignId,
       spreadsheetId: connection.spreadsheetId,
       spreadsheetName: connection.spreadsheetName || null,
+      sheetName: connection.sheetName || null,
       accessToken: connection.accessToken || null,
       refreshToken: connection.refreshToken || null,
       clientId: connection.clientId || null,

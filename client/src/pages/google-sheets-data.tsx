@@ -937,6 +937,241 @@ export default function GoogleSheetsData() {
                     )}
                   </div>
                 </TabsContent>
+
+                <TabsContent value="connections" className="mt-6">
+                  <div className="space-y-6">
+                    {/* Conversion Values Calculated */}
+                    {sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0 && (
+                      <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Target className="w-5 h-5 text-green-600 dark:text-green-400" />
+                            Conversion Values Calculated
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            {sheetsData.calculatedConversionValues.map((cv: any, idx: number) => {
+                              const platformName = cv.platform === 'linkedin' ? 'LinkedIn' : 
+                                                 cv.platform === 'facebook_ads' ? 'Facebook Ads' :
+                                                 cv.platform === 'google_ads' ? 'Google Ads' :
+                                                 cv.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+                              return (
+                                <div key={idx} className="flex items-center gap-2 text-sm">
+                                  <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <span className="font-medium text-slate-900 dark:text-white">
+                                      {platformName}:
+                                    </span>
+                                    <span className="text-slate-700 dark:text-slate-300 ml-2">
+                                      ${cv.conversionValue}
+                                    </span>
+                                    <span className="text-slate-500 dark:text-slate-400 ml-2">
+                                      (from {cv.conversions.toLocaleString()} conversions)
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-green-200 dark:border-green-800">
+                            <p className="text-sm font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4" />
+                              Revenue metrics are now available!
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Connected Datasets */}
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-base">
+                              Connected Datasets ({googleSheetsConnections.length}/{MAX_GOOGLE_SHEETS_CONNECTIONS})
+                            </CardTitle>
+                            <CardDescription>
+                              Manage your Google Sheets connections and column mappings
+                            </CardDescription>
+                          </div>
+                          {canAddMoreSheets && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => setShowAddDatasetModal(true)}
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add Dataset
+                            </Button>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {googleSheetsConnections.length === 0 ? (
+                          <div className="text-center py-8">
+                            <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                            <p className="text-slate-600 dark:text-slate-400 mb-4">
+                              No Google Sheets datasets connected yet.
+                            </p>
+                            <Button onClick={() => setShowAddDatasetModal(true)}>
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add Dataset
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {googleSheetsConnections.map((conn: any) => {
+                              const mapped = isMapped(conn);
+                              return (
+                                <Card
+                                  key={conn.id}
+                                  className={`${
+                                    mapped
+                                      ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"
+                                      : "border-slate-200 dark:border-slate-700"
+                                  }`}
+                                >
+                                  <CardContent className="p-4">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <FileSpreadsheet className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="font-medium text-slate-900 dark:text-white truncate">
+                                              {conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`}
+                                            </h4>
+                                            {conn.isPrimary && (
+                                              <Badge variant="default" className="text-xs bg-blue-600">
+                                                <Star className="w-3 h-3 mr-1" />
+                                                Primary
+                                              </Badge>
+                                            )}
+                                            {mapped ? (
+                                              <Badge variant="default" className="text-xs bg-green-600">
+                                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                                Mapped
+                                              </Badge>
+                                            ) : (
+                                              <Badge variant="secondary" className="text-xs">
+                                                <AlertCircle className="w-3 h-3 mr-1" />
+                                                Not Mapped
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            {conn.spreadsheetId}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          variant={mapped ? "outline" : "default"}
+                                          size="sm"
+                                          onClick={() => {
+                                            setMappingConnectionId(conn.id);
+                                            setShowMappingInterface(true);
+                                          }}
+                                        >
+                                          <Map className="w-4 h-4 mr-1" />
+                                          {mapped ? "Edit Mapping" : "Map"}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Campaign Matching Status */}
+                    {sheetsData?.matchingInfo && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Campaign Matching Status</CardTitle>
+                          <CardDescription>
+                            How your Google Sheets data was matched with campaign data
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {sheetsData.matchingInfo.method === 'campaign_name_platform' && (
+                            <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="font-medium text-green-700 dark:text-green-400 mb-1">
+                                  Campaign matched successfully
+                                </p>
+                                {sheetsData.matchingInfo.matchedCampaigns?.length > 0 && (
+                                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                                    Matched: <strong>{sheetsData.matchingInfo.matchedCampaigns.join(', ')}</strong>
+                                  </p>
+                                )}
+                                {sheetsData.matchingInfo.unmatchedCampaigns?.length > 0 && (
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                    Other campaigns found: {sheetsData.matchingInfo.unmatchedCampaigns.join(', ')}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {sheetsData.matchingInfo.method === 'platform_only' && (
+                            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="font-medium text-amber-700 dark:text-amber-400 mb-1">
+                                  Using all {sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 'platform'} data
+                                </p>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                  {sheetsData.matchingInfo.unmatchedCampaigns?.length > 1 ? (
+                                    <>
+                                      Found {sheetsData.matchingInfo.unmatchedCampaigns.length} {sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 'platform'} campaigns. 
+                                      <span className="block mt-2 text-amber-600 dark:text-amber-400 text-xs">
+                                        💡 Tip: Use the same campaign name in Google Sheets for more accurate conversion value calculation.
+                                      </span>
+                                    </>
+                                  ) : (
+                                    `No campaign name match found. Using all ${sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 'platform'} rows.`
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {sheetsData.matchingInfo.method === 'all_rows' && (
+                            <div className="flex items-start gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                              <AlertCircle className="w-5 h-5 text-slate-500 dark:text-slate-400 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                  Using all rows
+                                </p>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                  No Platform column detected. Using all rows from the sheet.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Matching Method Info */}
+                          <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Matching method: <strong>{sheetsData.matchingInfo.method}</strong>
+                              {sheetsData.matchingInfo.totalFilteredRows > 0 && (
+                                <span className="ml-2">
+                                  • {sheetsData.matchingInfo.totalFilteredRows.toLocaleString()} rows processed
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </TabsContent>
               </Tabs>
             </>
           ) : (

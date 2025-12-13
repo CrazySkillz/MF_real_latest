@@ -600,34 +600,43 @@ export function ColumnMappingInterface({
                     {/* Dropdown to select platform field */}
                     <div className="flex-shrink-0 w-64">
                       <Select
-                      value={mapping ? mapping.sourceColumnIndex.toString() : "none"}
-                      onValueChange={(value) => {
-                        handleFieldMapping(field.id, value === "none" ? null : parseInt(value));
-                      }}
-                    >
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Select column..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">-- None --</SelectItem>
-                        {detectedColumns.map((column) => {
-                          const isUsed = mappings.some(m => 
-                            m.sourceColumnIndex === column.index && m.targetFieldId !== field.id
-                          );
-                          return (
-                            <SelectItem
-                              key={column.index}
-                              value={column.index.toString()}
-                              disabled={isUsed}
-                            >
-                              {column.originalName}
-                              {isUsed && " (already mapped)"}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        value={mapping ? mapping.targetFieldId : ""}
+                        onValueChange={(value) => {
+                          if (value === "") {
+                            // Remove mapping
+                            setMappings(prev => prev.filter(m => m.sourceColumnIndex !== column.index));
+                          } else {
+                            // Add or update mapping
+                            handleFieldMapping(value, column.index);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select field to map..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">— Not mapped —</SelectItem>
+                          {platformFields.map((field) => {
+                            // Don't show fields that are already mapped to another column (unless it's this column)
+                            const existingMapping = mappings.find(m => m.targetFieldId === field.id && m.sourceColumnIndex !== column.index);
+                            if (existingMapping) return null;
+                            
+                            return (
+                              <SelectItem key={field.id} value={field.id}>
+                                <div className="flex items-center gap-2">
+                                  <span>{field.name}</span>
+                                  {field.required && (
+                                    <Badge variant="destructive" className="text-xs ml-1">
+                                      Required
+                                    </Badge>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
                 </div>
               );
             })}

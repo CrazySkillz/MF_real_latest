@@ -230,17 +230,10 @@ function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
         ))}
       </div>
 
-      {/* Google Sheets Detailed Analytics Modal */}
-      {campaignId && (
-        <GoogleSheetsDetailedAnalytics
-          campaignId={campaignId}
-          isOpen={showGoogleSheetsAnalytics}
-          onClose={() => setShowGoogleSheetsAnalytics(false)}
-        />
-      )}
     </div>
   );
 }
+
 
 // Campaign KPIs Component
 function CampaignKPIs({ campaign }: { campaign: Campaign }) {

@@ -600,9 +600,9 @@ export function ColumnMappingInterface({
                     {/* Dropdown to select platform field */}
                     <div className="flex-shrink-0 w-64">
                       <Select
-                        value={mapping ? mapping.targetFieldId : ""}
+                        value={mapping ? mapping.targetFieldId : "none"}
                         onValueChange={(value) => {
-                          if (value === "") {
+                          if (value === "none") {
                             // Remove mapping
                             setMappings(prev => prev.filter(m => m.sourceColumnIndex !== column.index));
                           } else {
@@ -615,7 +615,7 @@ export function ColumnMappingInterface({
                           <SelectValue placeholder="Select field to map..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">— Not mapped —</SelectItem>
+                          <SelectItem value="none">— Not mapped —</SelectItem>
                           {platformFields.map((field) => {
                             // Don't show fields that are already mapped to another column (unless it's this column)
                             const existingMapping = mappings.find(m => m.targetFieldId === field.id && m.sourceColumnIndex !== column.index);

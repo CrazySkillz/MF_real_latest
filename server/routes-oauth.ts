@@ -9033,6 +9033,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                 }
               }
+              
+              // Also check detected columns from schema discovery (if available)
+              // This helps when user first opens mapping interface before mappings are saved
+              if (!hasPlatformColumn) {
+                try {
+                  const { spreadsheetId } = req.query;
+                  const connection = spreadsheetId 
+                    ? googleSheetsConnections.find(c => c.spreadsheetId === spreadsheetId)
+                    : googleSheetsConnections.find(c => c.isPrimary) || googleSheetsConnections[0];
+                  
+                  if (connection?.spreadsheetId && connection?.accessToken) {
+                    // Fetch schema to check for Platform column
+                    const schemaResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}?includeGridData=false`, {
+                      headers: { 'Authorization': `Bearer ${connection.accessToken}` }
+                    });
+                    if (schemaResponse.ok) {
+                      const schema = await schemaResponse.json();
+                      const sheet = schema.sheets?.[0];
+                      if (sheet?.properties?.gridProperties) {
+                        // Get first row (headers) to check for Platform column
+                        const valuesResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${sheet.properties.title}!1:1`, {
+                          headers: { 'Authorization': `Bearer ${connection.accessToken}` }
+                        });
+                        if (valuesResponse.ok) {
+                          const values = await valuesResponse.json();
+                          const headers = values.values?.[0] || [];
+                          hasPlatformColumn = headers.some((h: string) => 
+                            /platform|channel|network|source/i.test(String(h || ''))
+                          );
+                        }
+                      }
+                    }
+                  }
+                } catch (e) {
+                  // If we can't check, assume Platform might be needed (safer default)
+                  console.log('[Platform Fields] Could not check for Platform column, defaulting to optional');
+                }
+              }
             }
             
             // LinkedIn API is connected - adjust required fields
@@ -9042,7 +9080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 return { ...f, required: true };
               }
               
-              // Platform is REQUIRED if Platform column exists in mappings (multi-platform dataset)
+              // Platform is REQUIRED if Platform column exists (multi-platform dataset)
               // Platform is optional only if no Platform column exists (single-platform, can default to "LinkedIn")
               if (f.id === 'platform') {
                 return { ...f, required: hasPlatformColumn };

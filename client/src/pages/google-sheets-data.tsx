@@ -423,6 +423,7 @@ export default function GoogleSheetsData() {
                   <TabsTrigger value="data">Raw Data</TabsTrigger>
                   <TabsTrigger value="summary">Summary</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
+                  <TabsTrigger value="connections">Connection Details</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="data" className="mt-6">
@@ -450,6 +451,7 @@ export default function GoogleSheetsData() {
                   <TabsTrigger value="data">Raw Data</TabsTrigger>
                   <TabsTrigger value="summary">Summary</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
+                  <TabsTrigger value="connections">Connection Details</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="data" className="mt-6">

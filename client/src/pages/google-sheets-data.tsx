@@ -1084,6 +1084,26 @@ export default function GoogleSheetsData() {
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={async () => {
+                                            setEditingSheetConnectionId(conn.id);
+                                            try {
+                                              const response = await fetch(`/api/google-sheets/${conn.spreadsheetId}/sheets?campaignId=${campaignId}`);
+                                              if (response.ok) {
+                                                const data = await response.json();
+                                                setAvailableSheets(data.sheets || []);
+                                                setSelectedNewSheetName(conn.sheetName || data.sheets?.[0]?.name || '');
+                                              }
+                                            } catch (error) {
+                                              console.error('Failed to fetch sheets:', error);
+                                            }
+                                          }}
+                                        >
+                                          <FileSpreadsheet className="w-4 h-4 mr-1" />
+                                          Change Tab
+                                        </Button>
+                                        <Button
                                           variant={mapped ? "outline" : "default"}
                                           size="sm"
                                           onClick={() => {

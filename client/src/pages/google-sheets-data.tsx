@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
-import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Map, Plus } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -10,7 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SiGooglesheets } from "react-icons/si";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
+import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
 
 interface Campaign {
   id: string;
@@ -912,6 +915,49 @@ export default function GoogleSheetsData() {
                 <p className="text-slate-500 dark:text-slate-400">Unable to load Google Sheets data for this campaign.</p>
               </CardContent>
             </Card>
+          )}
+
+          {/* Column Mapping Interface Dialog */}
+          <Dialog open={showMappingInterface} onOpenChange={setShowMappingInterface}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Configure Column Mapping</DialogTitle>
+                <DialogDescription>
+                  Map your Google Sheets columns to platform fields for accurate data processing.
+                </DialogDescription>
+              </DialogHeader>
+              {showMappingInterface && mappingConnectionId && (
+                <ColumnMappingInterface
+                  campaignId={campaignId!}
+                  connectionId={mappingConnectionId}
+                  platform="linkedin"
+                  onMappingComplete={() => {
+                    setShowMappingInterface(false);
+                    setMappingConnectionId(null);
+                    refetchConnections();
+                    refetch();
+                  }}
+                  onCancel={() => {
+                    setShowMappingInterface(false);
+                    setMappingConnectionId(null);
+                  }}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Add Dataset Modal */}
+          {showAddDatasetModal && (
+            <UploadAdditionalDataModal
+              campaignId={campaignId!}
+              isOpen={showAddDatasetModal}
+              onClose={() => setShowAddDatasetModal(false)}
+              onDataConnected={() => {
+                refetchConnections();
+                refetch();
+              }}
+              returnUrl={window.location.pathname + window.location.search}
+            />
           )}
         </main>
       </div>

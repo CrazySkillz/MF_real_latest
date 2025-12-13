@@ -17,6 +17,9 @@ import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModa
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 interface Campaign {
   id: string;
@@ -110,6 +113,10 @@ export default function GoogleSheetsData() {
   const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
   const [showMappingInterface, setShowMappingInterface] = useState(false);
   const [showAddDatasetModal, setShowAddDatasetModal] = useState(false);
+  const [editingSheetConnectionId, setEditingSheetConnectionId] = useState<string | null>(null);
+  const [availableSheets, setAvailableSheets] = useState<Array<{ name: string; sheetId: number; index: number }>>([]);
+  const [selectedNewSheetName, setSelectedNewSheetName] = useState<string>('');
+  const { toast } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],

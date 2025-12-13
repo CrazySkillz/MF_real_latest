@@ -104,13 +104,43 @@ interface GoogleSheetsData {
 export default function GoogleSheetsData() {
   const [, params] = useRoute("/campaigns/:id/google-sheets-data");
   const campaignId = params?.id;
+  const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
+  const [showMappingInterface, setShowMappingInterface] = useState(false);
+  const [showAddDatasetModal, setShowAddDatasetModal] = useState(false);
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
   });
 
-  const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData>({
+  // Fetch Google Sheets connections
+  const { data: googleSheetsConnectionsData, refetch: refetchConnections } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
+      if (!response.ok) {
+        return { success: false, connections: [] };
+      }
+      return response.json();
+    },
+  });
+
+  const googleSheetsConnections = googleSheetsConnectionsData?.connections || [];
+  const MAX_GOOGLE_SHEETS_CONNECTIONS = 5;
+  const canAddMoreSheets = googleSheetsConnections.length < MAX_GOOGLE_SHEETS_CONNECTIONS;
+
+  const isMapped = (connection: any): boolean => {
+    if (!connection.columnMappings) return false;
+    try {
+      const mappings = JSON.parse(connection.columnMappings);
+      return Array.isArray(mappings) && mappings.length > 0;
+    } catch {
+      return false;
+    }
+  };
+
+  const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData & { calculatedConversionValues?: any[]; matchingInfo?: any }>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
     refetchInterval: 300000, // Auto-refresh every 5 minutes
@@ -947,9 +977,9 @@ export default function GoogleSheetsData() {
           </Dialog>
 
           {/* Add Dataset Modal */}
-          {showAddDatasetModal && (
+          {showAddDatasetModal && campaignId && (
             <UploadAdditionalDataModal
-              campaignId={campaignId!}
+              campaignId={campaignId}
               isOpen={showAddDatasetModal}
               onClose={() => setShowAddDatasetModal(false)}
               onDataConnected={() => {

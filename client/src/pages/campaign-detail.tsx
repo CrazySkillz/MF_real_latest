@@ -29,6 +29,7 @@ import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
+import { GoogleSheetsDetailedAnalytics } from "@/components/GoogleSheetsDetailedAnalytics";
 import { ABTestManager } from "@/components/ABTestManager";
 import { WebhookTester } from "@/components/WebhookTester";
 import { AttributionDashboard } from "@/components/AttributionDashboard";
@@ -228,6 +229,15 @@ function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
           </Card>
         ))}
       </div>
+
+      {/* Google Sheets Detailed Analytics Modal */}
+      {campaignId && (
+        <GoogleSheetsDetailedAnalytics
+          campaignId={campaignId}
+          isOpen={showGoogleSheetsAnalytics}
+          onClose={() => setShowGoogleSheetsAnalytics(false)}
+        />
+      )}
     </div>
   );
 }
@@ -3707,6 +3717,7 @@ export default function CampaignDetail() {
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [reportType, setReportType] = useState<"standard" | "custom">("standard");
+  const [showGoogleSheetsAnalytics, setShowGoogleSheetsAnalytics] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [reportMetrics, setReportMetrics] = useState<string[]>(["impressions", "clicks", "conversions", "spend"]);
   const [reportDateRange, setReportDateRange] = useState("30d");

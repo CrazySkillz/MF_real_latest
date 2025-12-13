@@ -454,149 +454,152 @@ export function ColumnMappingInterface({
         </Card>
       )}
 
-      {/* Detected Columns */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">📋 Detected Columns ({detectedColumns.length})</CardTitle>
-          <CardDescription>
-            Columns found in your Google Sheet
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {detectedColumns.map((column) => {
-              const mapping = mappings.find(m => m.sourceColumnIndex === column.index);
-              return (
-                <div
-                  key={column.index}
-                  className={`flex items-center justify-between p-3 rounded-lg border ${
-                    mapping
-                      ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
-                      : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-900 dark:text-white">
-                        {column.originalName}
-                      </span>
-                      <Badge variant="secondary" className="text-xs">
-                        {column.detectedType}
-                      </Badge>
-                      {mapping && (
-                        <Badge variant="default" className="text-xs bg-blue-600">
-                          → {mapping.targetFieldName}
-                        </Badge>
-                      )}
-                    </div>
-                    {column.sampleValues.length > 0 && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        Sample: {column.sampleValues.slice(0, 3).join(', ')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Required Fields */}
+      {/* Unified Column Mapping */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            🎯 Required Fields ({platformFields.filter(f => f.required).length} required)
+            📋 Map Your Columns ({detectedColumns.length} columns)
           </CardTitle>
           <CardDescription>
-            Map columns to these platform fields
+            Map each column from your Google Sheet to a platform field
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {platformFields.map((field) => {
-              const mapping = mappings.find(m => m.targetFieldId === field.id);
-              const error = validationErrors.get(field.id);
+            {detectedColumns.map((column) => {
+              const mapping = mappings.find(m => m.sourceColumnIndex === column.index);
+              const mappedField = mapping ? platformFields.find(f => f.id === mapping.targetFieldId) : null;
+              const error = mappedField ? validationErrors.get(mappedField.id) : null;
+              
+              // Determine background color based on state
+              let bgColor = "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700";
+              if (error) {
+                bgColor = "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800";
+              } else if (mapping && mappedField) {
+                if (mappedField.required) {
+                  bgColor = "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800";
+                } else {
+                  bgColor = "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800";
+                }
+              } else {
+                // Check if any required field is unmapped
+                const unmappedRequired = platformFields.filter(f => f.required && !mappings.find(m => m.targetFieldId === f.id));
+                if (unmappedRequired.length > 0) {
+                  bgColor = "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800";
+                }
+              }
               
               return (
                 <div
-                  key={field.id}
-                  className={`p-3 rounded-lg border ${
-                    error
-                      ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
-                      : mapping
-                      ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-                      : field.required
-                      ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
-                      : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
-                  }`}
+                  key={column.index}
+                  className={`p-4 rounded-lg border ${bgColor}`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-slate-900 dark:text-white">
-                          {field.name}
+                      {/* Column Name */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-semibold text-slate-900 dark:text-white text-base">
+                          {column.originalName}
                         </span>
-                        {field.required && (
-                          <Badge variant="destructive" className="text-xs">
-                            Required
-                          </Badge>
-                        )}
-                        {!field.required && (
-                          <Badge variant="secondary" className="text-xs">
-                            Optional
-                          </Badge>
-                        )}
-                        {(field.id === 'revenue' || field.id === 'conversions') && (
-                          <Badge variant="default" className="text-xs bg-blue-600">
-                            <DollarSign className="w-3 h-3 mr-1" />
-                            For Conversion Value
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="text-xs">
-                          {field.type}
+                        <Badge variant="secondary" className="text-xs">
+                          {column.detectedType}
                         </Badge>
-                        {mapping && (
-                          <Badge variant="default" className="text-xs bg-green-600">
-                            {mapping.matchType === 'auto' ? 'Auto' : 'Manual'}
-                          </Badge>
+                        {mapping && mappedField && (
+                          <>
+                            {mappedField.required ? (
+                              <Badge variant="destructive" className="text-xs">
+                                Required
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">
+                                Optional
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {mappedField.type}
+                            </Badge>
+                            <Badge variant="default" className="text-xs bg-green-600">
+                              {mapping.matchType === 'auto' ? 'Auto' : 'Manual'}
+                            </Badge>
+                          </>
                         )}
                       </div>
-                      {(field.id === 'revenue' || field.id === 'conversions') && (
-                        <div className="mt-1 flex items-start gap-2 text-xs text-blue-700 dark:text-blue-400">
-                          <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span>
-                            {field.id === 'revenue' 
-                              ? isLinkedIn 
-                                ? "Map this field to calculate conversion value. LinkedIn provides conversions automatically."
-                                : "Map this field along with Conversions to calculate conversion value."
-                              : "Map this field along with Revenue to calculate conversion value."
-                            }
-                          </span>
-                        </div>
-                      )}
-                      {field.description && (
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
-                          {field.description}
+                      
+                      {/* Description from mapped field */}
+                      {mapping && mappedField && mappedField.description && (
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                          {mappedField.description}
                         </p>
                       )}
-                      {mapping && (
-                        <p className="text-sm text-green-700 dark:text-green-400 mt-1">
-                          ✓ Mapped to: {mapping.sourceColumnName}
+                      
+                      {/* Mapped to indicator */}
+                      {mapping && mappedField && (
+                        <p className="text-sm text-green-700 dark:text-green-400 mb-2 flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Mapped to: <strong>{mappedField.name}</strong></span>
                           {mapping.confidence < 1.0 && (
-                            <span className="text-xs ml-2">
+                            <span className="text-xs ml-2 text-slate-500">
                               ({Math.round(mapping.confidence * 100)}% confidence)
                             </span>
                           )}
                         </p>
                       )}
+                      
+                      {/* Contextual help text */}
+                      {mapping && mappedField && (
+                        <>
+                          {(mappedField.id === 'revenue' || mappedField.id === 'conversions') && (
+                            <div className="mt-2 flex items-start gap-2 text-xs text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 p-2 rounded">
+                              <DollarSign className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                              <span>
+                                {mappedField.id === 'revenue' 
+                                  ? isLinkedIn 
+                                    ? "Map this field to calculate conversion value. LinkedIn provides conversions automatically. Total revenue generated (required for conversion value calculation when LinkedIn API is connected)."
+                                    : "Map this field along with Conversions to calculate conversion value."
+                                  : "Map this field along with Revenue to calculate conversion value."
+                                }
+                              </span>
+                            </div>
+                          )}
+                          {mappedField.id === 'platform' && (
+                            <div className="mt-2 flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+                              <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                              <span>
+                                Required to filter LinkedIn data from multi-platform datasets. If your sheet contains data for multiple platforms (LinkedIn, Facebook, Google Ads, etc.), this field is required.
+                              </span>
+                            </div>
+                          )}
+                          {mappedField.id === 'campaign_name' && (
+                            <div className="mt-2 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-2 rounded">
+                              <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                              <span>
+                                Used to match rows from Google Sheets with campaigns imported from LinkedIn API.
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      
+                      {/* Error message */}
                       {error && (
-                        <p className="text-sm text-red-700 dark:text-red-400 mt-1">
-                          ⚠️ {error}
+                        <p className="text-sm text-red-700 dark:text-red-400 mt-2 flex items-center gap-1">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>{error}</span>
+                        </p>
+                      )}
+                      
+                      {/* Sample values (only if not mapped or for debugging) */}
+                      {!mapping && column.sampleValues.length > 0 && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                          Sample values: {column.sampleValues.slice(0, 3).join(', ')}
+                          {column.sampleValues.length > 3 && '...'}
                         </p>
                       )}
                     </div>
-                    <Select
+                    
+                    {/* Dropdown to select platform field */}
+                    <div className="flex-shrink-0 w-64">
+                      <Select
                       value={mapping ? mapping.sourceColumnIndex.toString() : "none"}
                       onValueChange={(value) => {
                         handleFieldMapping(field.id, value === "none" ? null : parseInt(value));

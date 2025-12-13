@@ -5361,6 +5361,15 @@ export default function CampaignDetail() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Google Sheets Detailed Analytics Modal */}
+      {campaignId && (
+        <GoogleSheetsDetailedAnalytics
+          campaignId={campaignId}
+          isOpen={showGoogleSheetsAnalytics}
+          onClose={() => setShowGoogleSheetsAnalytics(false)}
+        />
+      )}
     </div>
   );
 }

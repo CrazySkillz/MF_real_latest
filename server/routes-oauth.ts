@@ -9012,15 +9012,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const linkedInConnection = await storage.getLinkedInConnection(campaignId);
           if (linkedInConnection) {
+            // Check if Google Sheets connection exists and has a Platform column
+            // If Platform column exists, it's likely a multi-platform dataset and Platform is REQUIRED for filtering
+            const googleSheetsConnections = await storage.getGoogleSheetsConnections(campaignId);
+            let hasPlatformColumn = false;
+            
+            if (googleSheetsConnections.length > 0) {
+              // Check if any connection has column mappings that include Platform
+              for (const conn of googleSheetsConnections) {
+                if (conn.columnMappings) {
+                  try {
+                    const mappings = JSON.parse(conn.columnMappings);
+                    const platformMapping = mappings.find((m: any) => m.targetFieldId === 'platform');
+                    if (platformMapping) {
+                      hasPlatformColumn = true;
+                      break;
+                    }
+                  } catch (e) {
+                    // Ignore parsing errors
+                  }
+                }
+              }
+            }
+            
             // LinkedIn API is connected - adjust required fields
             fields = fields.map(f => {
               // Only Campaign Name and Revenue are required from Google Sheets
               if (f.id === 'campaign_name' || f.id === 'revenue') {
                 return { ...f, required: true };
               }
+              
+              // Platform is REQUIRED if Platform column exists in mappings (multi-platform dataset)
+              // Platform is optional only if no Platform column exists (single-platform, can default to "LinkedIn")
+              if (f.id === 'platform') {
+                return { ...f, required: hasPlatformColumn };
+              }
+              
               // All other fields are optional since LinkedIn API provides them
-              // Platform can default to "LinkedIn", Impressions/Clicks/Spend come from API
-              if (f.id === 'platform' || f.id === 'impressions' || f.id === 'clicks' || f.id === 'spend' || f.id === 'conversions') {
+              if (f.id === 'impressions' || f.id === 'clicks' || f.id === 'spend' || f.id === 'conversions') {
                 return { ...f, required: false };
               }
               return f;

@@ -211,7 +211,7 @@ export function ColumnMappingInterface({
   const needsPlatformStep = isMultiPlatform;
   const totalSteps = needsPlatformStep ? 3 : 2;
   
-  // Get current mappings for each step
+  // Get current mappings for each step (single declarations - no duplicates)
   const campaignNameMapping = mappings.find(m => m.targetFieldId === 'campaign_name');
   const revenueMapping = mappings.find(m => m.targetFieldId === 'revenue');
   const platformMapping = mappings.find(m => m.targetFieldId === 'platform');

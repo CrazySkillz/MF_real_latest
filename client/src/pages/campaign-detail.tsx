@@ -5059,9 +5059,16 @@ export default function CampaignDetail() {
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow 
                           campaignId={campaign.id} 
-                          onConnectionSuccess={() => {
+                          onConnectionSuccess={async () => {
                             setExpandedPlatform(null);
-                            window.location.reload();
+                            // Invalidate and refetch connected platforms to update UI
+                            await queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            await queryClientHook.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
+                            await queryClientHook.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            toast({
+                              title: "Google Analytics Connected!",
+                              description: "Your Google Analytics connection has been successfully established.",
+                            });
                           }}
                         />
                       ) : platform.platform === "Google Sheets" ? (
@@ -5120,9 +5127,16 @@ export default function CampaignDetail() {
                       ) : platform.platform === "Facebook Ads" ? (
                         <SimpleMetaAuth
                           campaignId={campaign.id}
-                          onSuccess={() => {
+                          onSuccess={async () => {
                             setExpandedPlatform(null);
-                            window.location.reload();
+                            // Invalidate and refetch connected platforms to update UI
+                            await queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            await queryClientHook.invalidateQueries({ queryKey: ["/api/meta/check-connection", campaignId] });
+                            await queryClientHook.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            toast({
+                              title: "Facebook Ads Connected!",
+                              description: "Your Facebook Ads connection has been successfully established.",
+                            });
                           }}
                           onError={(error) => {
                             console.error("Meta connection error:", error);

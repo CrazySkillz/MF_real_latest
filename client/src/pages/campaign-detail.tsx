@@ -3207,6 +3207,7 @@ function CampaignInsightsChat({ campaign }: { campaign: Campaign }) {
 export default function CampaignDetail() {
   const [, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id;
+  const { toast } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -5104,9 +5105,16 @@ export default function CampaignDetail() {
                       ) : platform.platform === "LinkedIn Ads" ? (
                         <LinkedInConnectionFlow 
                           campaignId={campaign.id} 
-                          onConnectionSuccess={() => {
+                          onConnectionSuccess={async () => {
                             setExpandedPlatform(null);
-                            window.location.reload();
+                            // Invalidate and refetch connected platforms to update UI
+                            await queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            await queryClientHook.invalidateQueries({ queryKey: ["/api/linkedin/check-connection", campaignId] });
+                            await queryClientHook.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            toast({
+                              title: "LinkedIn Connected!",
+                              description: "Your LinkedIn connection has been successfully established.",
+                            });
                           }}
                         />
                       ) : platform.platform === "Facebook Ads" ? (

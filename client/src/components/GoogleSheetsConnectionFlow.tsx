@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,8 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { SiGoogle } from "react-icons/si";
-import { FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { FileSpreadsheet, CheckCircle, AlertCircle } from "lucide-react";
 
 interface GoogleSheetsConnectionFlowProps {
   campaignId: string;
@@ -21,36 +20,19 @@ interface Spreadsheet {
   url: string;
 }
 
-interface Sheet {
-  name: string;
-  sheetId: number;
-  index: number;
-}
-
 export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: GoogleSheetsConnectionFlowProps) {
-  const [step, setStep] = useState<'credentials' | 'connecting' | 'select-sheet' | 'select-tab' | 'manual-entry' | 'connected'>('credentials');
+  const [step, setStep] = useState<'credentials' | 'connecting' | 'select-sheet' | 'manual-entry' | 'connected'>('credentials');
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [showClientIdInput, setShowClientIdInput] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [spreadsheets, setSpreadsheets] = useState<Spreadsheet[]>([]);
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string>('');
+  const [availableSheets, setAvailableSheets] = useState<Array<{sheetId: number; title: string; index: number}>>([]);
   const [selectedSheetName, setSelectedSheetName] = useState<string>('');
+  const [isLoadingSheets, setIsLoadingSheets] = useState(false);
   const [manualSpreadsheetId, setManualSpreadsheetId] = useState<string>('');
   const { toast } = useToast();
-
-  // Fetch available sheets when spreadsheet is selected
-  const { data: sheetsData, isLoading: sheetsLoading } = useQuery<{ success: boolean; sheets: Sheet[] }>({
-    queryKey: ['/api/google-sheets', selectedSpreadsheet, 'sheets', campaignId],
-    enabled: !!selectedSpreadsheet && step === 'select-tab',
-    queryFn: async () => {
-      const response = await fetch(`/api/google-sheets/${selectedSpreadsheet}/sheets?campaignId=${campaignId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch sheet names');
-      }
-      return response.json();
-    },
-  });
 
   const handleGoogleOAuth = async () => {
     if (!clientId || !clientSecret) {
@@ -214,6 +196,42 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
     }
   };
 
+  const fetchAvailableSheets = async (spreadsheetId: string) => {
+    setIsLoadingSheets(true);
+    try {
+      const response = await fetch(`/api/google-sheets/${spreadsheetId}/sheets?campaignId=${campaignId}`);
+      const data = await response.json();
+      
+      if (data.success && data.sheets && data.sheets.length > 0) {
+        setAvailableSheets(data.sheets);
+        // Auto-select first sheet if available
+        if (data.sheets.length > 0) {
+          setSelectedSheetName(data.sheets[0].title);
+        }
+      } else {
+        setAvailableSheets([]);
+        setSelectedSheetName("");
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch sheets:", error);
+      // Don't show error, just set empty sheets - user can still proceed with default
+      setAvailableSheets([]);
+      setSelectedSheetName("");
+    } finally {
+      setIsLoadingSheets(false);
+    }
+  };
+
+  const handleSpreadsheetChange = (spreadsheetId: string) => {
+    setSelectedSpreadsheet(spreadsheetId);
+    setAvailableSheets([]);
+    setSelectedSheetName("");
+    // Fetch available sheets for this spreadsheet
+    if (spreadsheetId) {
+      fetchAvailableSheets(spreadsheetId);
+    }
+  };
+
   const handleSpreadsheetSelection = async (manualId?: string) => {
     const spreadsheetId = manualId || selectedSpreadsheet;
     if (!spreadsheetId) {
@@ -225,104 +243,32 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
       return;
     }
 
-    // If manual entry, go directly to sheet selection
-    // Otherwise, first save the spreadsheet selection, then go to sheet selection
-    if (manualId) {
-      try {
-        const response = await fetch('/api/google-sheets/select-spreadsheet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            campaignId,
-            spreadsheetId: spreadsheetId
-          })
-        });
-
-        const data = await response.json();
-        
-        if (data.success) {
-          setSelectedSpreadsheet(spreadsheetId);
-          setStep('select-tab');
-        } else {
-          throw new Error(data.error || 'Failed to connect spreadsheet');
-        }
-      } catch (error: any) {
-        toast({
-          title: "Selection Failed",
-          description: error.message || "Failed to connect to selected spreadsheet",
-          variant: "destructive"
-        });
-      }
-    } else {
-      // For OAuth flow, just move to sheet selection
-      setStep('select-tab');
-    }
-  };
-
-  const handleSheetSelection = async () => {
-    if (!selectedSpreadsheet) {
-      toast({
-        title: "Selection Required",
-        description: "Please select a spreadsheet first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
-      // First, save the spreadsheet selection if not already saved
-      const spreadsheetResponse = await fetch('/api/google-sheets/select-spreadsheet', {
+      const response = await fetch('/api/google-sheets/select-spreadsheet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId,
-          spreadsheetId: selectedSpreadsheet
+          spreadsheetId: spreadsheetId,
+          sheetName: selectedSheetName || null // Pass selected sheet name, or null to use first sheet
         })
       });
 
-      const spreadsheetData = await spreadsheetResponse.json();
+      const data = await response.json();
       
-      if (!spreadsheetData.success) {
-        throw new Error(spreadsheetData.error || 'Failed to connect spreadsheet');
-      }
-
-      // Get the connection ID from the connections list
-      const connectionsResponse = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
-      const connectionsData = await connectionsResponse.json();
-      const connection = connectionsData.connections?.find((c: any) => c.spreadsheetId === selectedSpreadsheet);
-      
-      if (!connection) {
-        throw new Error('Connection not found');
-      }
-
-      // Update with selected sheet name (or use first sheet if none selected)
-      const sheetNameToUse = selectedSheetName || sheetsData?.sheets?.[0]?.name || null;
-      
-      if (sheetNameToUse) {
-        const sheetResponse = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections/${connection.id}/sheet`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sheetName: sheetNameToUse
-          })
+      if (data.success) {
+        setStep('connected');
+        toast({
+          title: "Spreadsheet Connected!",
+          description: "Your Google Sheets data is now connected to this campaign."
         });
-
-        const sheetData = await sheetResponse.json();
-        
-        if (!sheetData.success) {
-          console.warn('Failed to set sheet name, continuing anyway:', sheetData.error);
-        }
+        onConnectionSuccess();
+      } else {
+        throw new Error(data.error || 'Failed to connect spreadsheet');
       }
-
-      setStep('connected');
-      toast({
-        title: "Spreadsheet Connected!",
-        description: `Your Google Sheets data from "${sheetNameToUse || 'first sheet'}" is now connected to this campaign.`
-      });
-      onConnectionSuccess();
     } catch (error: any) {
       toast({
-        title: "Connection Failed",
+        title: "Selection Failed",
         description: error.message || "Failed to connect to selected spreadsheet",
         variant: "destructive"
       });
@@ -404,7 +350,7 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
             <>
               <div className="space-y-2">
                 <Label>Available Spreadsheets</Label>
-                <Select value={selectedSpreadsheet} onValueChange={setSelectedSpreadsheet}>
+                <Select value={selectedSpreadsheet} onValueChange={handleSpreadsheetChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a spreadsheet..." />
                   </SelectTrigger>
@@ -417,6 +363,40 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
                   </SelectContent>
                 </Select>
               </div>
+
+              {selectedSpreadsheet && (
+                <div className="space-y-2">
+                  <Label>Select Sheet/Tab</Label>
+                  {isLoadingSheets ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Loading sheets...
+                    </div>
+                  ) : availableSheets.length > 0 ? (
+                    <Select value={selectedSheetName} onValueChange={setSelectedSheetName}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a sheet/tab..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSheets.map((sheet) => (
+                          <SelectItem key={sheet.sheetId} value={sheet.title}>
+                            {sheet.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      Using first sheet (default)
+                    </p>
+                  )}
+                  <p className="text-xs text-slate-400">
+                    {availableSheets.length > 0 
+                      ? `Select which tab to use from this spreadsheet. If not selected, the first tab will be used.`
+                      : `The first tab in the spreadsheet will be used.`}
+                  </p>
+                </div>
+              )}
               
               <div className="flex gap-3 pt-4">
                 <Button variant="outline" onClick={() => setStep('credentials')} className="flex-1">
@@ -427,7 +407,7 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
                   disabled={!selectedSpreadsheet}
                   className="flex-1"
                 >
-                  Next: Select Tab
+                  Connect Spreadsheet
                 </Button>
               </div>
             </>
@@ -437,77 +417,6 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
               <p className="text-slate-600 dark:text-slate-400">No spreadsheets found in your Google Drive</p>
               <Button variant="outline" onClick={() => setStep('credentials')} className="mt-4">
                 Try Again
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (step === 'select-tab') {
-    const selectedSpreadsheetName = spreadsheets.find(s => s.id === selectedSpreadsheet)?.name || 
-                                     (manualSpreadsheetId ? `Sheet ${manualSpreadsheetId.slice(0, 8)}...` : '');
-    
-    return (
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-green-500" />
-            Select Sheet Tab
-          </CardTitle>
-          <CardDescription>
-            Choose which tab/sheet to use from "{selectedSpreadsheetName}"
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {sheetsLoading ? (
-            <div className="text-center py-8">
-              <Loader2 className="w-8 h-8 mx-auto text-green-500 animate-spin mb-4" />
-              <p className="text-slate-600 dark:text-slate-400">Loading available sheets...</p>
-            </div>
-          ) : sheetsData?.sheets && sheetsData.sheets.length > 0 ? (
-            <>
-              <div className="space-y-2">
-                <Label>Available Sheets/Tabs</Label>
-                <Select value={selectedSheetName} onValueChange={setSelectedSheetName}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a sheet tab..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sheetsData.sheets.map((sheet) => (
-                      <SelectItem key={sheet.sheetId} value={sheet.name}>
-                        {sheet.name} {sheet.index === 0 && '(Default)'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {sheetsData.sheets.length === 1 
-                    ? 'This spreadsheet has only one sheet. It will be used automatically.'
-                    : `Found ${sheetsData.sheets.length} sheet${sheetsData.sheets.length > 1 ? 's' : ''} in this spreadsheet.`}
-                </p>
-              </div>
-              
-              <div className="flex gap-3 pt-4">
-                <Button variant="outline" onClick={() => setStep('select-sheet')} className="flex-1">
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleSheetSelection}
-                  disabled={sheetsLoading}
-                  className="flex-1"
-                >
-                  Connect Spreadsheet
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-4">
-              <AlertCircle className="w-8 h-8 mx-auto text-orange-500 mb-2" />
-              <p className="text-slate-600 dark:text-slate-400">No sheets found in this spreadsheet</p>
-              <Button variant="outline" onClick={() => setStep('select-sheet')} className="mt-4">
-                Back
               </Button>
             </div>
           )}

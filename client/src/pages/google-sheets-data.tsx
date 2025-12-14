@@ -14,12 +14,6 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 
 interface Campaign {
   id: string;
@@ -113,10 +107,6 @@ export default function GoogleSheetsData() {
   const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
   const [showMappingInterface, setShowMappingInterface] = useState(false);
   const [showAddDatasetModal, setShowAddDatasetModal] = useState(false);
-  const [editingSheetConnectionId, setEditingSheetConnectionId] = useState<string | null>(null);
-  const [availableSheets, setAvailableSheets] = useState<Array<{ name: string; sheetId: number; index: number }>>([]);
-  const [selectedNewSheetName, setSelectedNewSheetName] = useState<string>('');
-  const { toast } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -1070,39 +1060,19 @@ export default function GoogleSheetsData() {
                                               </Badge>
                                             )}
                                           </div>
-                                          <div className="space-y-1">
+                                          <div className="space-y-0.5">
                                             <p className="text-xs text-slate-500 dark:text-slate-400">
                                               {conn.spreadsheetId}
                                             </p>
                                             {conn.sheetName && (
-                                              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-                                                📄 Tab: {conn.sheetName}
+                                              <p className="text-xs text-slate-600 dark:text-slate-300">
+                                                Tab: <span className="font-medium">{conn.sheetName}</span>
                                               </p>
                                             )}
                                           </div>
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={async () => {
-                                            setEditingSheetConnectionId(conn.id);
-                                            try {
-                                              const response = await fetch(`/api/google-sheets/${conn.spreadsheetId}/sheets?campaignId=${campaignId}`);
-                                              if (response.ok) {
-                                                const data = await response.json();
-                                                setAvailableSheets(data.sheets || []);
-                                                setSelectedNewSheetName(conn.sheetName || data.sheets?.[0]?.name || '');
-                                              }
-                                            } catch (error) {
-                                              console.error('Failed to fetch sheets:', error);
-                                            }
-                                          }}
-                                        >
-                                          <FileSpreadsheet className="w-4 h-4 mr-1" />
-                                          Change Tab
-                                        </Button>
                                         <Button
                                           variant={mapped ? "outline" : "default"}
                                           size="sm"
@@ -1262,83 +1232,6 @@ export default function GoogleSheetsData() {
               }}
               returnUrl={window.location.pathname + window.location.search}
             />
-          )}
-
-          {/* Change Sheet Tab Dialog */}
-          {editingSheetConnectionId && (
-            <Dialog open={!!editingSheetConnectionId} onOpenChange={() => setEditingSheetConnectionId(null)}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Change Sheet Tab</DialogTitle>
-                  <DialogDescription>
-                    Select a different tab/sheet from this spreadsheet
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  {availableSheets.length > 0 ? (
-                    <>
-                      <div className="space-y-2">
-                        <Label>Available Sheets/Tabs</Label>
-                        <Select value={selectedNewSheetName} onValueChange={setSelectedNewSheetName}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a sheet tab..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableSheets.map((sheet) => (
-                              <SelectItem key={sheet.sheetId} value={sheet.name}>
-                                {sheet.name} {sheet.index === 0 && '(Default)'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex gap-3 pt-4">
-                        <Button variant="outline" onClick={() => setEditingSheetConnectionId(null)} className="flex-1">
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={async () => {
-                            try {
-                              const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections/${editingSheetConnectionId}/sheet`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ sheetName: selectedNewSheetName })
-                              });
-                              
-                              if (response.ok) {
-                                refetchConnections();
-                                refetch();
-                                setEditingSheetConnectionId(null);
-                                toast({
-                                  title: "Sheet Tab Updated",
-                                  description: `Now using "${selectedNewSheetName}" tab.`
-                                });
-                              } else {
-                                throw new Error('Failed to update sheet');
-                              }
-                            } catch (error: any) {
-                              toast({
-                                title: "Update Failed",
-                                description: error.message || "Failed to change sheet tab",
-                                variant: "destructive"
-                              });
-                            }
-                          }}
-                          className="flex-1"
-                        >
-                          Update
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-4">
-                      <Loader2 className="w-6 h-6 mx-auto text-slate-400 animate-spin mb-2" />
-                      <p className="text-slate-600 dark:text-slate-400">Loading available sheets...</p>
-                    </div>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
           )}
         </main>
       </div>

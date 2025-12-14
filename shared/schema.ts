@@ -89,7 +89,7 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
   campaignId: text("campaign_id").notNull(),
   spreadsheetId: text("spreadsheet_id").notNull(),
   spreadsheetName: text("spreadsheet_name"),
-  sheetName: text("sheet_name"), // Specific tab/sheet name within the spreadsheet
+  sheetName: text("sheet_name"), // Name of the specific tab/sheet within the spreadsheet
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   clientId: text("client_id"),

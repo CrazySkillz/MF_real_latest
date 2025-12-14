@@ -1174,10 +1174,6 @@ export default function Campaigns() {
           const result = await response.json();
           if (result.success) {
             console.log('✅ LinkedIn connection transferred successfully to campaign:', (newCampaign as any).id);
-            // Invalidate and refetch connection status queries to update UI
-            await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", (newCampaign as any).id, "connected-platforms"] });
-            await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/check-connection", (newCampaign as any).id] });
-            await queryClient.refetchQueries({ queryKey: ["/api/campaigns", (newCampaign as any).id, "connected-platforms"] });
           } else {
             console.error('❌ LinkedIn transfer failed:', result.error);
           }

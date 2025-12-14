@@ -19,11 +19,22 @@ interface Spreadsheet {
   name: string;
 }
 
+interface Sheet {
+  sheetId: number;
+  title: string;
+  index: number;
+  sheetType: string;
+  gridProperties?: any;
+}
+
 export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: SimpleGoogleSheetsAuthProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
   const [spreadsheets, setSpreadsheets] = useState<Spreadsheet[]>([]);
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string>("");
+  const [availableSheets, setAvailableSheets] = useState<Sheet[]>([]);
+  const [selectedSheetName, setSelectedSheetName] = useState<string>("");
+  const [isLoadingSheets, setIsLoadingSheets] = useState(false);
   const [isSelectingSpreadsheet, setIsSelectingSpreadsheet] = useState(false);
   const popupRef = useRef<Window | null>(null);
 
@@ -117,6 +128,42 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
     }
   }, [campaignId, cleanupPopup, onError]);
 
+  const fetchAvailableSheets = useCallback(async (spreadsheetId: string) => {
+    setIsLoadingSheets(true);
+    try {
+      const response = await fetch(`/api/google-sheets/${spreadsheetId}/sheets?campaignId=${campaignId}`);
+      const data = await response.json();
+      
+      if (data.success && data.sheets && data.sheets.length > 0) {
+        setAvailableSheets(data.sheets);
+        // Auto-select first sheet if available
+        if (data.sheets.length > 0) {
+          setSelectedSheetName(data.sheets[0].title);
+        }
+      } else {
+        setAvailableSheets([]);
+        setSelectedSheetName("");
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch sheets:", error);
+      // Don't show error, just set empty sheets - user can still proceed with default
+      setAvailableSheets([]);
+      setSelectedSheetName("");
+    } finally {
+      setIsLoadingSheets(false);
+    }
+  }, [campaignId]);
+
+  const handleSpreadsheetChange = useCallback((spreadsheetId: string) => {
+    setSelectedSpreadsheet(spreadsheetId);
+    setAvailableSheets([]);
+    setSelectedSheetName("");
+    // Fetch available sheets for this spreadsheet
+    if (spreadsheetId) {
+      fetchAvailableSheets(spreadsheetId);
+    }
+  }, [fetchAvailableSheets]);
+
   const handleSpreadsheetSelection = useCallback(async () => {
     if (!selectedSpreadsheet) {
       onError("Please select a spreadsheet");
@@ -126,8 +173,10 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
     setIsSelectingSpreadsheet(true);
 
     try {
-      const response = await apiRequest("POST", `/api/google-sheets/${campaignId}/select-spreadsheet`, {
+      const response = await apiRequest("POST", `/api/google-sheets/select-spreadsheet`, {
+        campaignId,
         spreadsheetId: selectedSpreadsheet,
+        sheetName: selectedSheetName || null, // Pass selected sheet name, or null to use first sheet
       });
 
       const data = await response.json();
@@ -143,7 +192,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
     } finally {
       setIsSelectingSpreadsheet(false);
     }
-  }, [campaignId, selectedSpreadsheet, onSuccess, onError]);
+  }, [campaignId, selectedSpreadsheet, selectedSheetName, onSuccess, onError]);
 
   // Show spreadsheet selection after auth
   if (authCompleted && spreadsheets.length > 0) {
@@ -162,7 +211,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Available Spreadsheets</Label>
-            <Select value={selectedSpreadsheet} onValueChange={setSelectedSpreadsheet}>
+            <Select value={selectedSpreadsheet} onValueChange={handleSpreadsheetChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a spreadsheet..." />
               </SelectTrigger>
@@ -175,6 +224,40 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
               </SelectContent>
             </Select>
           </div>
+
+          {selectedSpreadsheet && (
+            <div className="space-y-2">
+              <Label>Select Sheet/Tab</Label>
+              {isLoadingSheets ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Loading sheets...
+                </div>
+              ) : availableSheets.length > 0 ? (
+                <Select value={selectedSheetName} onValueChange={setSelectedSheetName}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a sheet/tab..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSheets.map((sheet) => (
+                      <SelectItem key={sheet.sheetId} value={sheet.title}>
+                        {sheet.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Using first sheet (default)
+                </p>
+              )}
+              <p className="text-xs text-slate-400">
+                {availableSheets.length > 0 
+                  ? `Select which tab to use from this spreadsheet. If not selected, the first tab will be used.`
+                  : `The first tab in the spreadsheet will be used.`}
+              </p>
+            </div>
+          )}
 
           <Button
             onClick={handleSpreadsheetSelection}

@@ -3207,7 +3207,6 @@ function CampaignInsightsChat({ campaign }: { campaign: Campaign }) {
 export default function CampaignDetail() {
   const [, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id;
-  const { toast } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -3242,51 +3241,6 @@ export default function CampaignDetail() {
     });
     return map;
   }, [connectedPlatformStatuses]);
-
-  // Check if LinkedIn connection exists for temp-campaign-setup and transfer it if this campaign doesn't have one
-  const linkedInStatus = platformStatusMap.get("linkedin");
-  const queryClientHook = useQueryClient();
-
-  useEffect(() => {
-    // Only check once when component mounts and LinkedIn is not connected
-    if (campaignId && !linkedInStatus?.connected) {
-      // Check if there's a LinkedIn connection for temp-campaign-setup that needs to be transferred
-      const checkAndTransferLinkedIn = async () => {
-        try {
-          // Check if temp-campaign-setup has a LinkedIn connection
-          const tempCheckResponse = await fetch('/api/linkedin/check-connection/temp-campaign-setup');
-          if (tempCheckResponse.ok) {
-            const tempData = await tempCheckResponse.json();
-            if (tempData.connected) {
-              // Transfer the connection
-              console.log(`[Campaign Detail] Found LinkedIn connection for temp-campaign-setup, transferring to ${campaignId}`);
-              const transferResponse = await fetch('/api/linkedin/transfer-connection', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  fromCampaignId: 'temp-campaign-setup',
-                  toCampaignId: campaignId
-                })
-              });
-              const transferResult = await transferResponse.json();
-              if (transferResult.success) {
-                console.log(`[Campaign Detail] ✅ LinkedIn connection transferred successfully`);
-                // Invalidate and refetch connected platforms
-                await queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                await queryClientHook.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-              }
-            }
-          }
-        } catch (error) {
-          console.error('[Campaign Detail] Error checking/transferring LinkedIn connection:', error);
-        }
-      };
-      
-      // Only check once, with a small delay to avoid race conditions
-      const timeoutId = setTimeout(checkAndTransferLinkedIn, 1000);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [campaignId, linkedInStatus?.connected, queryClientHook]);
 
   // Get campaign KPIs for report inclusion
   const { data: campaignKPIs } = useQuery({
@@ -3370,6 +3324,8 @@ export default function CampaignDetail() {
   const googleSheetsConnections = googleSheetsConnectionsData?.connections || [];
   const MAX_GOOGLE_SHEETS_CONNECTIONS = 5;
   const canAddMoreSheets = googleSheetsConnections.length < MAX_GOOGLE_SHEETS_CONNECTIONS;
+
+  const queryClientHook = useQueryClient();
 
   // Mutation to set primary connection
   const setPrimaryMutation = useMutation({
@@ -5059,16 +5015,9 @@ export default function CampaignDetail() {
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow 
                           campaignId={campaign.id} 
-                          onConnectionSuccess={async () => {
+                          onConnectionSuccess={() => {
                             setExpandedPlatform(null);
-                            // Invalidate and refetch connected platforms to update UI
-                            await queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                            await queryClientHook.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
-                            await queryClientHook.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                            toast({
-                              title: "Google Analytics Connected!",
-                              description: "Your Google Analytics connection has been successfully established.",
-                            });
+                            window.location.reload();
                           }}
                         />
                       ) : platform.platform === "Google Sheets" ? (
@@ -5112,31 +5061,17 @@ export default function CampaignDetail() {
                       ) : platform.platform === "LinkedIn Ads" ? (
                         <LinkedInConnectionFlow 
                           campaignId={campaign.id} 
-                          onConnectionSuccess={async () => {
+                          onConnectionSuccess={() => {
                             setExpandedPlatform(null);
-                            // Invalidate and refetch connected platforms to update UI
-                            await queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                            await queryClientHook.invalidateQueries({ queryKey: ["/api/linkedin/check-connection", campaignId] });
-                            await queryClientHook.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                            toast({
-                              title: "LinkedIn Connected!",
-                              description: "Your LinkedIn connection has been successfully established.",
-                            });
+                            window.location.reload();
                           }}
                         />
                       ) : platform.platform === "Facebook Ads" ? (
                         <SimpleMetaAuth
                           campaignId={campaign.id}
-                          onSuccess={async () => {
+                          onSuccess={() => {
                             setExpandedPlatform(null);
-                            // Invalidate and refetch connected platforms to update UI
-                            await queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                            await queryClientHook.invalidateQueries({ queryKey: ["/api/meta/check-connection", campaignId] });
-                            await queryClientHook.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                            toast({
-                              title: "Facebook Ads Connected!",
-                              description: "Your Facebook Ads connection has been successfully established.",
-                            });
+                            window.location.reload();
                           }}
                           onError={(error) => {
                             console.error("Meta connection error:", error);

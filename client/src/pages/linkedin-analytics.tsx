@@ -2933,8 +2933,8 @@ export default function LinkedInAnalytics() {
                             </CardContent>
                           </Card>
                         )}
-                      </div>
-                      
+                    </div>
+
                       {/* Revenue Metrics - Only shown if conversion value is set - Displayed under Derived Metrics */}
                       {(() => {
                         const hasGoogleSheetsConversionValues = sheetsData?.calculatedConversionValues && Array.isArray(sheetsData.calculatedConversionValues) && sheetsData.calculatedConversionValues.length > 0;
@@ -2954,16 +2954,16 @@ export default function LinkedInAnalytics() {
                           {/* Revenue Metrics Header */}
                           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                             <div className="flex items-center gap-2 mb-3">
-                              <DollarSign className="w-5 h-5 text-green-600" />
-                              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue Metrics</h3>
-                              <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                💰 Revenue Tracking Enabled
-                              </Badge>
-                            </div>
+                          <DollarSign className="w-5 h-5 text-green-600" />
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue Metrics</h3>
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            💰 Revenue Tracking Enabled
+                          </Badge>
+                        </div>
                           </div>
                           
                           {/* Revenue Metrics Cards */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                           {/* Conversion Value - Show first */}
                           {sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0 && (
                             <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">
@@ -3147,9 +3147,9 @@ export default function LinkedInAnalytics() {
                               </p>
                             </CardContent>
                           </Card>
-                          </div>
+                        </div>
                         </>
-                      )}
+                    )}
                     </div>
 
                     {/* Campaign Breakdown */}

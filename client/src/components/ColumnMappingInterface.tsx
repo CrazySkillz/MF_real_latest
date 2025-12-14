@@ -287,20 +287,6 @@ export function ColumnMappingInterface({
     (!needsPlatformStep || !!platformMapping) &&
     validationErrors.size === 0;
 
-  // Check conversion value calculation status
-  const revenueMapping = mappings.find(m => m.targetFieldId === 'revenue');
-  const conversionsMapping = mappings.find(m => m.targetFieldId === 'conversions');
-  const revenueField = platformFields.find(f => f.id === 'revenue');
-  const conversionsField = platformFields.find(f => f.id === 'conversions');
-  const platformLower = platform.toLowerCase();
-  const isLinkedIn = platformLower.includes('linkedin');
-  
-  // For LinkedIn: conversions come from API, only need revenue
-  // For other platforms: may need both revenue and conversions
-  const canCalculateConversionValue = isLinkedIn 
-    ? revenueMapping !== undefined // LinkedIn has conversions from API
-    : revenueMapping !== undefined && conversionsMapping !== undefined; // Other platforms need both
-
   if (columnsLoading) {
     return (
       <div className="flex items-center justify-center p-8">

@@ -2105,35 +2105,114 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined> {
-    if (spreadsheetId) {
-      const [connection] = await db.select().from(googleSheetsConnections)
+    try {
+      if (spreadsheetId) {
+        const [connection] = await db.select().from(googleSheetsConnections)
+          .where(and(
+            eq(googleSheetsConnections.campaignId, campaignId),
+            eq(googleSheetsConnections.spreadsheetId, spreadsheetId),
+            eq(googleSheetsConnections.isActive, true)
+          ));
+        return connection || undefined;
+      }
+      
+      // Return the primary connection if no spreadsheetId specified
+      const [primary] = await db.select().from(googleSheetsConnections)
         .where(and(
           eq(googleSheetsConnections.campaignId, campaignId),
-          eq(googleSheetsConnections.spreadsheetId, spreadsheetId),
+          eq(googleSheetsConnections.isPrimary, true),
           eq(googleSheetsConnections.isActive, true)
         ));
-      return connection || undefined;
+      
+      if (primary) return primary;
+      
+      // Fallback to first active connection if no primary
+      const [first] = await db.select().from(googleSheetsConnections)
+        .where(and(
+          eq(googleSheetsConnections.campaignId, campaignId),
+          eq(googleSheetsConnections.isActive, true)
+        ))
+        .limit(1);
+      
+      return first || undefined;
+    } catch (error: any) {
+      // If sheet_name column doesn't exist yet, use raw SQL query
+      if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
+        console.log('[Storage] sheet_name column not found, using fallback query for getGoogleSheetsConnection');
+        let query;
+        if (spreadsheetId) {
+          query = sql`
+            SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, 
+                   client_id, client_secret, expires_at, is_primary, is_active, column_mappings, 
+                   connected_at, created_at
+            FROM google_sheets_connections
+            WHERE campaign_id = ${campaignId} AND spreadsheet_id = ${spreadsheetId} AND is_active = true
+            LIMIT 1
+          `;
+        } else {
+          // Try primary first
+          query = sql`
+            SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, 
+                   client_id, client_secret, expires_at, is_primary, is_active, column_mappings, 
+                   connected_at, created_at
+            FROM google_sheets_connections
+            WHERE campaign_id = ${campaignId} AND is_primary = true AND is_active = true
+            LIMIT 1
+          `;
+        }
+        const result = await db.execute(query);
+        if (result.rows.length === 0 && !spreadsheetId) {
+          // Fallback to first active
+          const fallbackResult = await db.execute(sql`
+            SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, 
+                   client_id, client_secret, expires_at, is_primary, is_active, column_mappings, 
+                   connected_at, created_at
+            FROM google_sheets_connections
+            WHERE campaign_id = ${campaignId} AND is_active = true
+            LIMIT 1
+          `);
+          if (fallbackResult.rows.length === 0) return undefined;
+          const row = fallbackResult.rows[0] as any;
+          return {
+            id: row.id,
+            campaignId: row.campaign_id,
+            spreadsheetId: row.spreadsheet_id,
+            spreadsheetName: row.spreadsheet_name,
+            sheetName: null,
+            accessToken: row.access_token,
+            refreshToken: row.refresh_token,
+            clientId: row.client_id,
+            clientSecret: row.client_secret,
+            expiresAt: row.expires_at,
+            isPrimary: row.is_primary,
+            isActive: row.is_active,
+            columnMappings: row.column_mappings,
+            connectedAt: row.connected_at,
+            createdAt: row.created_at
+          } as GoogleSheetsConnection;
+        }
+        if (result.rows.length === 0) return undefined;
+        const row = result.rows[0] as any;
+        return {
+          id: row.id,
+          campaignId: row.campaign_id,
+          spreadsheetId: row.spreadsheet_id,
+          spreadsheetName: row.spreadsheet_name,
+          sheetName: null,
+          accessToken: row.access_token,
+          refreshToken: row.refresh_token,
+          clientId: row.client_id,
+          clientSecret: row.client_secret,
+          expiresAt: row.expires_at,
+          isPrimary: row.is_primary,
+          isActive: row.is_active,
+          columnMappings: row.column_mappings,
+          connectedAt: row.connected_at,
+          createdAt: row.created_at
+        } as GoogleSheetsConnection;
+      }
+      throw error;
     }
-    
-    // Return the primary connection if no spreadsheetId specified
-    const [primary] = await db.select().from(googleSheetsConnections)
-      .where(and(
-        eq(googleSheetsConnections.campaignId, campaignId),
-        eq(googleSheetsConnections.isPrimary, true),
-        eq(googleSheetsConnections.isActive, true)
-      ));
-    
-    if (primary) return primary;
-    
-    // Fallback to first active connection if no primary
-    const [first] = await db.select().from(googleSheetsConnections)
-      .where(and(
-        eq(googleSheetsConnections.campaignId, campaignId),
-        eq(googleSheetsConnections.isActive, true)
-      ))
-      .limit(1);
-    
-    return first || undefined;
   }
 
   async getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {

@@ -1709,11 +1709,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[Connected Platforms] Returning statuses:`, JSON.stringify(statuses, null, 2));
       res.json({ statuses });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Connected platforms status error:", error);
+      console.error("Error stack:", error?.stack);
       res
         .status(500)
-        .json({ message: "Failed to fetch connected platform statuses" });
+        .json({ 
+          message: "Failed to fetch connected platform statuses",
+          error: error?.message,
+          details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+        });
     }
   });
 
@@ -2461,6 +2466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: conn.id,
           spreadsheetId: conn.spreadsheetId,
           spreadsheetName: conn.spreadsheetName,
+          sheetName: (conn as any).sheetName || null, // Include sheetName field (may not exist in DB yet)
           isPrimary: conn.isPrimary,
           isActive: conn.isActive,
           columnMappings: conn.columnMappings,
@@ -2469,7 +2475,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('List connections error:', error);
-      res.status(500).json({ error: error.message || 'Failed to list connections' });
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ 
+        error: error.message || 'Failed to list connections',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 

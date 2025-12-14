@@ -3370,8 +3370,6 @@ export default function CampaignDetail() {
   const MAX_GOOGLE_SHEETS_CONNECTIONS = 5;
   const canAddMoreSheets = googleSheetsConnections.length < MAX_GOOGLE_SHEETS_CONNECTIONS;
 
-  const queryClientHook = useQueryClient();
-
   // Mutation to set primary connection
   const setPrimaryMutation = useMutation({
     mutationFn: async (connectionId: string) => {

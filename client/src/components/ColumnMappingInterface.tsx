@@ -25,6 +25,13 @@ interface DetectedColumn {
   nullCount: number;
 }
 
+interface DatasetSchema {
+  patterns: {
+    isMultiPlatform: boolean;
+    platformColumnIndex?: number;
+  };
+}
+
 interface PlatformField {
   id: string;
   name: string;
@@ -67,6 +74,9 @@ export function ColumnMappingInterface({
   const [mappings, setMappings] = useState<FieldMapping[]>([]);
   const [validationErrors, setValidationErrors] = useState<Map<string, string>>(new Map());
   const [mappingsJustSaved, setMappingsJustSaved] = useState(false);
+  
+  // Step-by-step guided flow state
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   // Fetch platform fields (with campaignId to check if LinkedIn API is connected)
   const { data: platformFieldsData } = useQuery<{ success: boolean; fields: PlatformField[] }>({
@@ -82,7 +92,7 @@ export function ColumnMappingInterface({
   const platformFields = platformFieldsData?.fields || [];
 
   // Fetch detected columns
-  const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number }>({
+  const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number; schema?: DatasetSchema }>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", spreadsheetId],
     queryFn: async () => {
       const queryParam = spreadsheetId ? `?spreadsheetId=${spreadsheetId}` : '';
@@ -94,6 +104,8 @@ export function ColumnMappingInterface({
   });
 
   const detectedColumns = columnsData?.columns || [];
+  const schema = columnsData?.schema;
+  const isMultiPlatform = schema?.patterns?.isMultiPlatform || false;
 
   // Check if conversion values have been calculated (after mappings are saved)
   const { data: sheetsData, refetch: refetchSheetsData } = useQuery({
@@ -195,30 +207,39 @@ export function ColumnMappingInterface({
     }
   });
 
-  // Auto-map on mount if columns are detected
+  // Determine if Platform step is needed
+  const needsPlatformStep = isMultiPlatform;
+  const totalSteps = needsPlatformStep ? 3 : 2;
+  
+  // Get current mappings for each step
+  const campaignNameMapping = mappings.find(m => m.targetFieldId === 'campaign_name');
+  const revenueMapping = mappings.find(m => m.targetFieldId === 'revenue');
+  const platformMapping = mappings.find(m => m.targetFieldId === 'platform');
+  
+  // Auto-advance steps when mappings are complete
   useEffect(() => {
-    if (detectedColumns.length > 0 && mappings.length === 0 && !autoMapMutation.isPending && !columnsLoading) {
-      autoMapMutation.mutate();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detectedColumns.length, columnsLoading]);
-
-  // Validate mappings
-  useEffect(() => {
-    if (platformFields.length === 0 || mappings.length === 0) {
-      setValidationErrors(new Map());
-      return;
-    }
-
-    const errors = new Map<string, string>();
-    const requiredFields = platformFields.filter(f => f.required);
-    
-    // Check if all required fields are mapped
-    for (const field of requiredFields) {
-      const mapping = mappings.find(m => m.targetFieldId === field.id);
-      if (!mapping) {
-        errors.set(field.id, `Required field "${field.name}" is not mapped`);
+    if (currentStep === 1 && campaignNameMapping) {
+      setCurrentStep(2);
+    } else if (currentStep === 2 && revenueMapping) {
+      if (needsPlatformStep) {
+        setCurrentStep(3);
       }
+    }
+  }, [campaignNameMapping, revenueMapping, platformMapping, currentStep, needsPlatformStep]);
+
+  // Validate mappings - for LinkedIn conversion value, we need: campaign_name, revenue, and platform (if multi-platform)
+  useEffect(() => {
+    const errors = new Map<string, string>();
+    
+    // Required fields for LinkedIn conversion value
+    if (!campaignNameMapping) {
+      errors.set('campaign_name', 'Campaign Name is required');
+    }
+    if (!revenueMapping) {
+      errors.set('revenue', 'Revenue is required');
+    }
+    if (needsPlatformStep && !platformMapping) {
+      errors.set('platform', 'Platform is required for multi-platform datasets');
     }
     
     // Check for duplicate mappings
@@ -231,7 +252,7 @@ export function ColumnMappingInterface({
     }
     
     setValidationErrors(errors);
-  }, [mappings, platformFields]);
+  }, [mappings, campaignNameMapping, revenueMapping, platformMapping, needsPlatformStep]);
 
   const handleFieldMapping = (fieldId: string, columnIndex: number | null) => {
     setMappings(prev => {
@@ -259,10 +280,12 @@ export function ColumnMappingInterface({
     });
   };
 
-  const isMappingValid = validationErrors.size === 0 && 
-    platformFields.filter(f => f.required).every(f => 
-      mappings.some(m => m.targetFieldId === f.id)
-    );
+  // Validation for LinkedIn conversion value: campaign_name + revenue + platform (if needed)
+  const isMappingValid = 
+    !!campaignNameMapping && 
+    !!revenueMapping && 
+    (!needsPlatformStep || !!platformMapping) &&
+    validationErrors.size === 0;
 
   // Check conversion value calculation status
   const revenueMapping = mappings.find(m => m.targetFieldId === 'revenue');
@@ -314,351 +337,287 @@ export function ColumnMappingInterface({
       {/* Header */}
       <div>
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-          Map Columns to Platform Fields
+          Map Columns for Conversion Value Calculation
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-          Map your Google Sheets columns to the required fields for {platform}
+          Map your Google Sheets columns to calculate conversion value and unlock revenue metrics (ROI, ROAS, Revenue, Profit)
         </p>
       </div>
 
-      {/* Conversion Value Calculation Status */}
-      {(revenueField || conversionsField) && (
-        <Card className={`border-l-4 ${
-          canCalculateConversionValue 
-            ? "border-l-green-500 bg-green-50 dark:bg-green-950/20" 
-            : "border-l-amber-500 bg-amber-50 dark:bg-amber-950/20"
-        }`}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Calculator className={`w-5 h-5 ${
-                canCalculateConversionValue ? "text-green-600" : "text-amber-600"
-              }`} />
-              Conversion Value Calculation Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              {isLinkedIn ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-slate-700 dark:text-slate-300">
-                      <strong>Conversions:</strong> Available from LinkedIn API
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {revenueMapping ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">
-                          <strong>Revenue:</strong> Mapped from "{revenueMapping.sourceColumnName}"
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="w-4 h-4 text-amber-600" />
-                        <span className="text-sm text-amber-800 dark:text-amber-300">
-                          <strong>Revenue:</strong> Not mapped - Map a Revenue column to unlock conversion value calculation
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </>
+      {/* Step Progress Indicator */}
+      <div className="flex items-center justify-center gap-2 mb-6">
+        {[1, 2, needsPlatformStep ? 3 : null].filter(Boolean).map((step) => (
+          <div key={step} className="flex items-center">
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+              currentStep === step
+                ? 'bg-blue-600 border-blue-600 text-white'
+                : currentStep > step
+                ? 'bg-green-600 border-green-600 text-white'
+                : 'bg-slate-100 border-slate-300 text-slate-500'
+            }`}>
+              {currentStep > step ? (
+                <CheckCircle2 className="w-5 h-5" />
               ) : (
-                <>
-                  <div className="flex items-center gap-2">
-                    {conversionsMapping ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">
-                          <strong>Conversions:</strong> Mapped from "{conversionsMapping.sourceColumnName}"
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="w-4 h-4 text-amber-600" />
-                        <span className="text-sm text-amber-800 dark:text-amber-300">
-                          <strong>Conversions:</strong> Not mapped
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {revenueMapping ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">
-                          <strong>Revenue:</strong> Mapped from "{revenueMapping.sourceColumnName}"
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="w-4 h-4 text-amber-600" />
-                        <span className="text-sm text-amber-800 dark:text-amber-300">
-                          <strong>Revenue:</strong> Not mapped
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </>
+                <span className="font-semibold">{step}</span>
               )}
             </div>
-            
-            {canCalculateConversionValue ? (
-              <div className="pt-2 border-t border-green-200 dark:border-green-800">
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-green-900 dark:text-green-200">
-                      ✓ Conversion Value Will Be Calculated
-                    </p>
-                    <p className="text-sm text-green-800 dark:text-green-300 mt-1">
-                      After saving mappings, the system will automatically calculate: <strong>Conversion Value = Revenue ÷ Conversions</strong>
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge variant="default" className="bg-green-600">
-                        ROI Available
-                      </Badge>
-                      <Badge variant="default" className="bg-green-600">
-                        ROAS Available
-                      </Badge>
-                      <Badge variant="default" className="bg-green-600">
-                        Revenue Available
-                      </Badge>
-                      <Badge variant="default" className="bg-green-600">
-                        Profit Available
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="pt-2 border-t border-amber-200 dark:border-amber-800">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                      ⚠️ Revenue Metrics Unavailable
-                    </p>
-                    <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
-                      {isLinkedIn 
-                        ? "Map a Revenue column to unlock conversion value calculation and revenue metrics (ROI, ROAS, Revenue, Profit)."
-                        : "Map both Revenue and Conversions columns to unlock conversion value calculation and revenue metrics (ROI, ROAS, Revenue, Profit)."
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
+            {step < totalSteps && (
+              <div className={`w-16 h-0.5 ${
+                currentStep > step ? 'bg-green-600' : 'bg-slate-300'
+              }`} />
             )}
+          </div>
+        ))}
+      </div>
+
+      {/* Info Card - Only show when all steps are complete */}
+      {isMappingValid && (
+        <Card className="border-l-4 border-l-green-500 bg-green-50 dark:bg-green-950/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-green-900 dark:text-green-200 mb-1">
+                  ✓ All Required Fields Mapped
+                </p>
+                <p className="text-xs text-green-800 dark:text-green-300">
+                  After saving, the system will calculate: <strong>Conversion Value = Revenue ÷ Conversions</strong>
+                  <br />
+                  LinkedIn provides conversions automatically from the API. Revenue metrics (ROI, ROAS, Revenue, Profit) will be unlocked.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Unified Column Mapping */}
+      {/* Step-by-Step Guided Mapping */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            📋 Map Your Columns ({detectedColumns.length} columns)
+            {currentStep === 1 && "Step 1: Select Campaign Name Column"}
+            {currentStep === 2 && "Step 2: Select Revenue Column"}
+            {currentStep === 3 && "Step 3: Select Platform Column"}
           </CardTitle>
           <CardDescription>
-            Map each column from your Google Sheet to a platform field
+            {currentStep === 1 && "Which column identifies the campaign name? This is used to match rows with your LinkedIn campaigns."}
+            {currentStep === 2 && "Which column contains the revenue data? This is required to calculate conversion value."}
+            {currentStep === 3 && "Which column identifies LinkedIn as the source? This filters your data to LinkedIn rows only."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {detectedColumns.map((column) => {
-              const mapping = mappings.find(m => m.sourceColumnIndex === column.index);
-              const mappedField = mapping ? platformFields.find(f => f.id === mapping.targetFieldId) : null;
-              const error = mappedField ? validationErrors.get(mappedField.id) : null;
-              
-              // Determine background color based on state
-              let bgColor = "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700";
-              if (error) {
-                bgColor = "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800";
-              } else if (mapping && mappedField) {
-                if (mappedField.required) {
-                  bgColor = "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800";
-                } else {
-                  bgColor = "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800";
-                }
-              } else {
-                // Check if any required field is unmapped
-                const unmappedRequired = platformFields.filter(f => f.required && !mappings.find(m => m.targetFieldId === f.id));
-                if (unmappedRequired.length > 0) {
-                  bgColor = "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800";
-                }
-              }
-              
-              return (
-                <div
-                  key={column.index}
-                  className={`p-4 rounded-lg border ${bgColor}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      {/* Column Name */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-semibold text-slate-900 dark:text-white text-base">
-                          {column.originalName}
-                        </span>
-                        <Badge variant="secondary" className="text-xs">
-                          {column.detectedType}
-                        </Badge>
-                        {mapping && mappedField && (
-                          <>
-                            {mappedField.required ? (
-                              <Badge variant="destructive" className="text-xs">
-                                Required
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-xs">
-                                Optional
+          {/* Step 1: Campaign Name */}
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <Alert>
+                <Info className="w-4 h-4" />
+                <AlertDescription>
+                  Select the column that contains campaign names. This will be used to match rows from Google Sheets with campaigns imported from LinkedIn API.
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                {detectedColumns.map((column) => {
+                  const isSelected = campaignNameMapping?.sourceColumnIndex === column.index;
+                  return (
+                    <div
+                      key={column.index}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                        isSelected
+                          ? "bg-green-50 dark:bg-green-950/20 border-green-500"
+                          : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                      }`}
+                      onClick={() => handleFieldMapping('campaign_name', column.index)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-slate-900 dark:text-white">
+                              {column.originalName}
+                            </span>
+                            <Badge variant="secondary" className="text-xs">
+                              {column.detectedType}
+                            </Badge>
+                            {isSelected && (
+                              <Badge variant="default" className="text-xs bg-green-600">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Selected
                               </Badge>
                             )}
-                            <Badge variant="outline" className="text-xs">
-                              {mappedField.type}
-                            </Badge>
-                            <Badge variant="default" className="text-xs bg-green-600">
-                              {mapping.matchType === 'auto' ? 'Auto' : 'Manual'}
-                            </Badge>
-                          </>
-                        )}
+                          </div>
+                          {column.sampleValues.length > 0 && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              Sample: {column.sampleValues.slice(0, 3).join(', ')}
+                              {column.sampleValues.length > 3 && '...'}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      
-                      {/* Description from mapped field */}
-                      {mapping && mappedField && mappedField.description && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                          {mappedField.description}
-                        </p>
-                      )}
-                      
-                      {/* Mapped to indicator */}
-                      {mapping && mappedField && (
-                        <p className="text-sm text-green-700 dark:text-green-400 mb-2 flex items-center gap-1">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>Mapped to: <strong>{mappedField.name}</strong></span>
-                          {mapping.confidence < 1.0 && (
-                            <span className="text-xs ml-2 text-slate-500">
-                              ({Math.round(mapping.confidence * 100)}% confidence)
-                            </span>
-                          )}
-                        </p>
-                      )}
-                      
-                      {/* Contextual help text */}
-                      {mapping && mappedField && (
-                        <>
-                          {(mappedField.id === 'revenue' || mappedField.id === 'conversions') && (
-                            <div className="mt-2 flex items-start gap-2 text-xs text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 p-2 rounded">
-                              <DollarSign className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                              <span>
-                                {mappedField.id === 'revenue' 
-                                  ? isLinkedIn 
-                                    ? "Map this field to calculate conversion value. LinkedIn provides conversions automatically. Total revenue generated (required for conversion value calculation when LinkedIn API is connected)."
-                                    : "Map this field along with Conversions to calculate conversion value."
-                                  : "Map this field along with Revenue to calculate conversion value."
-                                }
-                              </span>
-                            </div>
-                          )}
-                          {mappedField.id === 'platform' && (
-                            <div className="mt-2 flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
-                              <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                              <span>
-                                Required to filter LinkedIn data from multi-platform datasets. If your sheet contains data for multiple platforms (LinkedIn, Facebook, Google Ads, etc.), this field is required.
-                              </span>
-                            </div>
-                          )}
-                          {mappedField.id === 'campaign_name' && (
-                            <div className="mt-2 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-2 rounded">
-                              <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                              <span>
-                                Used to match rows from Google Sheets with campaigns imported from LinkedIn API.
-                              </span>
-                            </div>
-                          )}
-                        </>
-                      )}
-                      
-                      {/* Error message */}
-                      {error && (
-                        <p className="text-sm text-red-700 dark:text-red-400 mt-2 flex items-center gap-1">
-                          <AlertCircle className="w-4 h-4" />
-                          <span>{error}</span>
-                        </p>
-                      )}
-                      
-                      {/* Sample values (only if not mapped or for debugging) */}
-                      {!mapping && column.sampleValues.length > 0 && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                          Sample values: {column.sampleValues.slice(0, 3).join(', ')}
-                          {column.sampleValues.length > 3 && '...'}
-                        </p>
-                      )}
                     </div>
-                    
-                    {/* Dropdown to select platform field */}
-                    <div className="flex-shrink-0 w-64">
-                      <Select
-                        value={mapping ? mapping.targetFieldId : "none"}
-                        onValueChange={(value) => {
-                          if (value === "none") {
-                            // Remove mapping
-                            setMappings(prev => prev.filter(m => m.sourceColumnIndex !== column.index));
-                          } else {
-                            // Add or update mapping
-                            handleFieldMapping(value, column.index);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select field to map..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">— Not mapped —</SelectItem>
-                          {platformFields.map((field) => {
-                            // Don't show fields that are already mapped to another column (unless it's this column)
-                            const existingMapping = mappings.find(m => m.targetFieldId === field.id && m.sourceColumnIndex !== column.index);
-                            if (existingMapping) return null;
-                            
-                            return (
-                              <SelectItem key={field.id} value={field.id}>
-                                <div className="flex items-center gap-2">
-                                  <span>{field.name}</span>
-                                  {field.required && (
-                                    <Badge variant="destructive" className="text-xs ml-1">
-                                      Required
-                                    </Badge>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                  );
+                })}
+              </div>
+              {campaignNameMapping && (
+                <div className="mt-4 flex justify-end">
+                  <Button onClick={() => setCurrentStep(2)}>
+                    Next: Select Revenue Column →
+                  </Button>
                 </div>
-              );
-            })}
-          </div>
-          
-          {/* Summary of unmapped required fields */}
-          {(() => {
-            const unmappedRequired = platformFields.filter(f => f.required && !mappings.find(m => m.targetFieldId === f.id));
-            if (unmappedRequired.length > 0) {
-              return (
-                <Alert className="mt-4">
-                  <AlertCircle className="w-4 h-4" />
-                  <AlertDescription>
-                    <strong>{unmappedRequired.length} required field{unmappedRequired.length > 1 ? 's' : ''} not mapped:</strong>{' '}
-                    {unmappedRequired.map(f => f.name).join(', ')}
-                  </AlertDescription>
-                </Alert>
-              );
-            }
-            return null;
-          })()}
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Revenue */}
+          {currentStep === 2 && (
+            <div className="space-y-4">
+              <Alert>
+                <DollarSign className="w-4 h-4" />
+                <AlertDescription>
+                  Select the column that contains revenue data. This is required to calculate conversion value (Revenue ÷ Conversions). LinkedIn provides conversions automatically from the API.
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                {detectedColumns.map((column) => {
+                  const isSelected = revenueMapping?.sourceColumnIndex === column.index;
+                  const isCampaignName = campaignNameMapping?.sourceColumnIndex === column.index;
+                  return (
+                    <div
+                      key={column.index}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                        isSelected
+                          ? "bg-green-50 dark:bg-green-950/20 border-green-500"
+                          : isCampaignName
+                          ? "bg-blue-50 dark:bg-blue-950/20 border-blue-300 opacity-60"
+                          : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                      }`}
+                      onClick={() => !isCampaignName && handleFieldMapping('revenue', column.index)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-slate-900 dark:text-white">
+                              {column.originalName}
+                            </span>
+                            <Badge variant="secondary" className="text-xs">
+                              {column.detectedType}
+                            </Badge>
+                            {isSelected && (
+                              <Badge variant="default" className="text-xs bg-green-600">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Selected
+                              </Badge>
+                            )}
+                            {isCampaignName && (
+                              <Badge variant="default" className="text-xs bg-blue-600">
+                                Campaign Name
+                              </Badge>
+                            )}
+                          </div>
+                          {column.sampleValues.length > 0 && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              Sample: {column.sampleValues.slice(0, 3).join(', ')}
+                              {column.sampleValues.length > 3 && '...'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex justify-between">
+                <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                  ← Back
+                </Button>
+                {revenueMapping && (
+                  <Button onClick={() => {
+                    if (needsPlatformStep) {
+                      setCurrentStep(3);
+                    }
+                  }}>
+                    {needsPlatformStep ? 'Next: Select Platform Column →' : 'All Steps Complete ✓'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Platform (only if multi-platform) */}
+          {currentStep === 3 && needsPlatformStep && (
+            <div className="space-y-4">
+              <Alert>
+                <Info className="w-4 h-4" />
+                <AlertDescription>
+                  Your dataset contains data for multiple platforms. Select the column that identifies LinkedIn as the source. This will filter your data to LinkedIn rows only.
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                {detectedColumns.map((column) => {
+                  const isSelected = platformMapping?.sourceColumnIndex === column.index;
+                  const isCampaignName = campaignNameMapping?.sourceColumnIndex === column.index;
+                  const isRevenue = revenueMapping?.sourceColumnIndex === column.index;
+                  return (
+                    <div
+                      key={column.index}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                        isSelected
+                          ? "bg-green-50 dark:bg-green-950/20 border-green-500"
+                          : isCampaignName || isRevenue
+                          ? "bg-blue-50 dark:bg-blue-950/20 border-blue-300 opacity-60"
+                          : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                      }`}
+                      onClick={() => !isCampaignName && !isRevenue && handleFieldMapping('platform', column.index)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-slate-900 dark:text-white">
+                              {column.originalName}
+                            </span>
+                            <Badge variant="secondary" className="text-xs">
+                              {column.detectedType}
+                            </Badge>
+                            {isSelected && (
+                              <Badge variant="default" className="text-xs bg-green-600">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Selected
+                              </Badge>
+                            )}
+                            {isCampaignName && (
+                              <Badge variant="default" className="text-xs bg-blue-600">
+                                Campaign Name
+                              </Badge>
+                            )}
+                            {isRevenue && (
+                              <Badge variant="default" className="text-xs bg-blue-600">
+                                Revenue
+                              </Badge>
+                            )}
+                          </div>
+                          {column.sampleValues.length > 0 && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              Sample: {column.sampleValues.slice(0, 3).join(', ')}
+                              {column.sampleValues.length > 3 && '...'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex justify-between">
+                <Button variant="outline" onClick={() => setCurrentStep(2)}>
+                  ← Back
+                </Button>
+                {platformMapping && (
+                  <div className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    All steps complete! Click "Save Mappings" below.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -669,7 +628,9 @@ export function ColumnMappingInterface({
             <Alert variant="destructive" className="py-2">
               <AlertCircle className="w-4 h-4" />
               <AlertDescription className="text-xs">
-                Please fix {validationErrors.size} mapping error{validationErrors.size > 1 ? 's' : ''} before saving.
+                {!campaignNameMapping && "Please select a Campaign Name column."}
+                {!revenueMapping && " Please select a Revenue column."}
+                {needsPlatformStep && !platformMapping && " Please select a Platform column."}
               </AlertDescription>
             </Alert>
           )}
@@ -681,30 +642,21 @@ export function ColumnMappingInterface({
             </Button>
           )}
           <Button
-            variant="outline"
-            onClick={() => autoMapMutation.mutate()}
-            disabled={autoMapMutation.isPending}
-          >
-            {autoMapMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Re-detecting...
-              </>
-            ) : (
-              "🔄 Re-detect"
-            )}
-          </Button>
-          <Button
             onClick={() => saveMappingsMutation.mutate(mappings)}
             disabled={!isMappingValid || !connectionId || saveMappingsMutation.isPending}
+            size="lg"
+            className="bg-green-600 hover:bg-green-700"
           >
             {saveMappingsMutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
+                Saving & Calculating...
               </>
             ) : (
-              "✅ Save Mappings"
+              <>
+                <Calculator className="w-4 h-4 mr-2" />
+                Save & Calculate Conversion Value
+              </>
             )}
           </Button>
         </div>
@@ -719,18 +671,36 @@ export function ColumnMappingInterface({
                 <div className="flex items-start gap-2 mb-3">
                   <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="font-medium text-green-900 dark:text-green-200 text-sm mb-1">
-                      Conversion Values Calculated!
+                    <p className="font-medium text-green-900 dark:text-green-200 text-base mb-2">
+                      ✓ Conversion Value Calculated Successfully!
                     </p>
-                    <p className="text-xs text-green-800 dark:text-green-300">
-                      Revenue metrics are now available in the Overview tab.
+                    <p className="text-sm text-green-800 dark:text-green-300 mb-3">
+                      Revenue metrics (ROI, ROAS, Revenue, Profit) are now available in the LinkedIn Overview tab. The orange notification has been removed.
                     </p>
+                    {sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0 && (
+                      <div className="space-y-1 text-xs text-green-700 dark:text-green-400">
+                        {sheetsData.calculatedConversionValues.map((cv: any, idx: number) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <Calculator className="w-3 h-3" />
+                            <span>
+                              <strong>{cv.platform}:</strong> ${cv.conversionValue} per conversion
+                              {cv.revenue && cv.conversions && (
+                                <span className="text-slate-600 dark:text-slate-400 ml-2">
+                                  (${cv.revenue.toLocaleString()} revenue ÷ {cv.conversions.toLocaleString()} conversions)
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
               <Button
                 variant="default"
-                className="w-full justify-center"
+                className="w-full justify-center bg-green-600 hover:bg-green-700"
+                size="lg"
                 onClick={() => {
                   if (onCancel) onCancel();
                   setTimeout(() => {
@@ -747,7 +717,7 @@ export function ColumnMappingInterface({
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                 <p className="text-sm text-blue-800 dark:text-blue-300">
-                  Calculating conversion values...
+                  Calculating conversion values... This may take a few seconds.
                 </p>
               </div>
             </div>

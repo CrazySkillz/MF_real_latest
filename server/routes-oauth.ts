@@ -1633,7 +1633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`[Connected Platforms] Google Sheets connection:`, googleSheetsConnection ? `Found (ID: ${googleSheetsConnection.id})` : 'Not found');
-      console.log(`[Connected Platforms] LinkedIn connection:`, linkedInConnection ? `Found (ID: ${linkedInConnection.id})` : 'Not found');
+      console.log(`[Connected Platforms] LinkedIn connection:`, linkedInConnection ? `Found (ID: ${linkedInConnection.id}, adAccountId: ${linkedInConnection.adAccountId || 'missing'})` : 'Not found');
       console.log(`[Connected Platforms] Meta connection:`, metaConnection ? `Found (ID: ${metaConnection.id})` : 'Not found');
       console.log(`[Connected Platforms] Custom Integration:`, customIntegration ? `Found (ID: ${customIntegration.id}, webhook: ${customIntegration.webhookToken})` : 'Not found');
 
@@ -1681,7 +1681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "linkedin",
           name: "LinkedIn Ads",
-          connected: !!linkedInConnection,
+          connected: !!(linkedInConnection && linkedInConnection.adAccountId), // Require adAccountId to be considered connected
           analyticsPath: linkedInAnalyticsPath,
           lastConnectedAt: linkedInConnection?.connectedAt,
           conversionValue: linkedInConversionValue,

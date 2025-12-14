@@ -5063,7 +5063,13 @@ export default function CampaignDetail() {
                           campaignId={campaign.id} 
                           onConnectionSuccess={() => {
                             setExpandedPlatform(null);
-                            window.location.reload();
+                            // Invalidate queries to refresh connection status
+                            queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            queryClientHook.invalidateQueries({ queryKey: ["/api/linkedin/check-connection", campaignId] });
+                            // Small delay to ensure queries are invalidated before reload
+                            setTimeout(() => {
+                              window.location.reload();
+                            }, 100);
                           }}
                         />
                       ) : platform.platform === "Facebook Ads" ? (

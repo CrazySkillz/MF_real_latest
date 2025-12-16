@@ -2266,33 +2266,14 @@ export class DatabaseStorage implements IStorage {
     const isPrimary = existingConnections.length === 0;
     
     try {
-      // Try to insert without sheetName first (in case column doesn't exist)
-      const insertData: any = {
-        campaignId: connection.campaignId,
-        spreadsheetId: connection.spreadsheetId,
-        spreadsheetName: connection.spreadsheetName || null,
-        accessToken: connection.accessToken || null,
-        refreshToken: connection.refreshToken || null,
-        clientId: connection.clientId || null,
-        clientSecret: connection.clientSecret || null,
-        expiresAt: connection.expiresAt || null,
-        isPrimary: isPrimary,
-        isActive: true
-      };
-      
-      // Only include sheetName if it's provided (will fail if column doesn't exist, caught below)
-      if (connection.sheetName !== undefined) {
-        insertData.sheetName = connection.sheetName;
-      }
-      
-      // Only include columnMappings if provided
-      if ((connection as any).columnMappings !== undefined) {
-        insertData.columnMappings = (connection as any).columnMappings;
-      }
-      
+      // Try to insert - Drizzle will include all fields from schema, which may fail if sheet_name doesn't exist
       const [sheetsConnection] = await db
         .insert(googleSheetsConnections)
-        .values(insertData)
+        .values({
+          ...connection,
+          isPrimary: isPrimary,
+          isActive: true
+        })
         .returning();
       return sheetsConnection;
     } catch (error: any) {

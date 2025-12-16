@@ -1672,7 +1672,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "google-sheets",
           name: "Google Sheets",
-          connected: !!googleSheetsConnection,
+          // Google Sheets is considered "connected" if there's a connection AND it has mappings (conversion values calculated)
+          connected: !!googleSheetsConnection && (() => {
+            if (!googleSheetsConnection.columnMappings) return false;
+            try {
+              const mappings = JSON.parse(googleSheetsConnection.columnMappings);
+              return Array.isArray(mappings) && mappings.length > 0;
+            } catch {
+              return false;
+            }
+          })(),
           analyticsPath: googleSheetsConnection
             ? `/campaigns/${campaignId}/google-sheets-data`
             : null,

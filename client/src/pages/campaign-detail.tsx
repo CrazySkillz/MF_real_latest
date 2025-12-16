@@ -4971,9 +4971,8 @@ export default function CampaignDetail() {
                             </div>
                           </div>
                         )}
-                        {/* View Detailed Analytics Button - Only show for Google Sheets when connected and conversion values calculated */}
-                        {platform.platform === "Google Sheets" && platform.connected && 
-                         sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0 && (
+                        {/* View Detailed Analytics Button - Show for Google Sheets when connected (connection + mappings = conversion values calculated) */}
+                        {platform.platform === "Google Sheets" && platform.connected && (
                           <div className="pt-2 border-t">
                             <Link href={platform.analyticsPath || `/campaigns/${campaignId}/google-sheets-data`}>
                               <Button

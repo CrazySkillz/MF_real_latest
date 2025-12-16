@@ -269,7 +269,18 @@ export function GuidedColumnMapping({
         </div>
         {onMappingComplete && (
           <Button
-            onClick={onMappingComplete}
+            onClick={async () => {
+              // Ensure data is refetched before navigating
+              await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+              await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
+              await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+              await queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"] });
+              
+              // Small delay to ensure backend has processed
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              onMappingComplete();
+            }}
             className="w-full"
             size="lg"
           >

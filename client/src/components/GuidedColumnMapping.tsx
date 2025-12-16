@@ -270,14 +270,42 @@ export function GuidedColumnMapping({
         {onMappingComplete && (
           <Button
             onClick={async () => {
-              // Ensure data is refetched before navigating
-              await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-              await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
+              // Poll for conversion values - wait up to 10 seconds
+              let attempts = 0;
+              const maxAttempts = 20; // 20 attempts * 500ms = 10 seconds max
+              
+              while (attempts < maxAttempts) {
+                // Invalidate and refetch
+                await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+                await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
+                
+                const sheetsDataResponse = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
+                if (sheetsDataResponse.ok) {
+                  const sheetsData = await sheetsDataResponse.json();
+                  const hasConversionValues = sheetsData?.calculatedConversionValues && 
+                    Array.isArray(sheetsData.calculatedConversionValues) && 
+                    sheetsData.calculatedConversionValues.length > 0;
+                  
+                  if (hasConversionValues) {
+                    console.log('[Guided Mapping] Conversion values calculated, navigating...');
+                    // Update query cache with fresh data
+                    queryClient.setQueryData(
+                      ["/api/campaigns", campaignId, "google-sheets-data"],
+                      sheetsData
+                    );
+                    break;
+                  }
+                }
+                
+                attempts++;
+                if (attempts < maxAttempts) {
+                  await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms between attempts
+                }
+              }
+              
+              // Final refetch to ensure everything is up to date
               await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
               await queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"] });
-              
-              // Small delay to ensure backend has processed
-              await new Promise(resolve => setTimeout(resolve, 1000));
               
               onMappingComplete();
             }}

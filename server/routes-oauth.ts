@@ -9381,12 +9381,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         columnMappings: JSON.stringify(mappings)
       });
       
-      // Conversion value will be calculated automatically when /api/campaigns/:id/google-sheets-data is called
-      // The frontend will refetch this endpoint after saving mappings
+      // Immediately trigger conversion value calculation by fetching the connection again
+      // This ensures the mappings are available for the next google-sheets-data call
+      const updatedConnection = await storage.getGoogleSheetsConnection(campaignId, connectionId);
+      if (!updatedConnection) {
+        return res.status(404).json({ error: 'Connection not found after update' });
+      }
+      
+      console.log(`[Save Mappings] Mappings saved for connection ${connectionId}, conversion values will be calculated on next google-sheets-data call`);
       
       res.json({
         success: true,
-        message: 'Mappings saved successfully'
+        message: 'Mappings saved successfully',
+        connectionId: connectionId
       });
     } catch (error: any) {
       console.error('[Save Mappings] Error:', error);

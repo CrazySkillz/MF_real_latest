@@ -2411,15 +2411,12 @@ export class DatabaseStorage implements IStorage {
           return { ...conn, sheetName: null } as GoogleSheetsConnection;
         }
         
-        // Use parameterized query
+        // Use pool.query for dynamic SQL with proper parameterization
         const updateClause = updates.join(', ');
-        const query = `UPDATE google_sheets_connections SET ${updateClause} WHERE id = $${paramIndex} RETURNING id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, client_id, client_secret, expires_at, is_primary, is_active, column_mappings, connected_at, created_at`;
         values.push(connectionId);
+        const queryText = `UPDATE google_sheets_connections SET ${updateClause} WHERE id = $${paramIndex} RETURNING id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, client_id, client_secret, expires_at, is_primary, is_active, column_mappings, connected_at, created_at`;
         
-        const result = await db.execute(sql.raw(query.replace(/\$\d+/g, (match, offset) => {
-          const index = parseInt(match.substring(1)) - 1;
-          return `$${index + 1}`;
-        })), values);
+        const result = await pool.query(queryText, values);
         
         if (result.rows.length === 0) return undefined;
         const row = result.rows[0] as any;

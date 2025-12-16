@@ -9335,8 +9335,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'connectionId and mappings array are required' });
       }
       
+      // Get platform fields with dynamic requirements (same logic as /api/platforms/:platform/fields)
+      let platformFields = getPlatformFields(platform || 'linkedin');
+      
+      // For LinkedIn, adjust field requirements based on whether LinkedIn API is connected
+      if (platform?.toLowerCase() === 'linkedin' || !platform) {
+        try {
+          const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+          if (linkedInConnection) {
+            // Campaign name and revenue are required for conversion value calculation
+            // Platform is optional (can default to LinkedIn)
+            // Other fields (impressions, clicks, spend, conversions) are optional since LinkedIn API provides them
+            platformFields = platformFields.map(f => {
+              if (f.id === 'campaign_name' || f.id === 'revenue') {
+                return { ...f, required: true };
+              }
+              // Platform is optional (can skip if entire sheet is for LinkedIn)
+              if (f.id === 'platform') {
+                return { ...f, required: false };
+              }
+              // All other fields are optional since LinkedIn API provides them
+              if (f.id === 'impressions' || f.id === 'clicks' || f.id === 'spend' || f.id === 'conversions') {
+                return { ...f, required: false };
+              }
+              return f;
+            });
+          }
+        } catch (error) {
+          console.log('[Save Mappings] Could not check LinkedIn connection, using default field requirements');
+        }
+      }
+      
       // Validate mappings
-      const platformFields = getPlatformFields(platform || 'linkedin');
       const errors = validateMappings(mappings, platformFields);
       
       if (errors.size > 0) {

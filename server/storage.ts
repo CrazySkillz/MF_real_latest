@@ -2265,15 +2265,79 @@ export class DatabaseStorage implements IStorage {
     const existingConnections = await this.getGoogleSheetsConnections(connection.campaignId);
     const isPrimary = existingConnections.length === 0;
     
-    const [sheetsConnection] = await db
-      .insert(googleSheetsConnections)
-      .values({
-        ...connection,
+    try {
+      // Try to insert without sheetName first (in case column doesn't exist)
+      const insertData: any = {
+        campaignId: connection.campaignId,
+        spreadsheetId: connection.spreadsheetId,
+        spreadsheetName: connection.spreadsheetName || null,
+        accessToken: connection.accessToken || null,
+        refreshToken: connection.refreshToken || null,
+        clientId: connection.clientId || null,
+        clientSecret: connection.clientSecret || null,
+        expiresAt: connection.expiresAt || null,
         isPrimary: isPrimary,
         isActive: true
-      })
-      .returning();
-    return sheetsConnection;
+      };
+      
+      // Only include sheetName if it's provided (will fail if column doesn't exist, caught below)
+      if (connection.sheetName !== undefined) {
+        insertData.sheetName = connection.sheetName;
+      }
+      
+      // Only include columnMappings if provided
+      if ((connection as any).columnMappings !== undefined) {
+        insertData.columnMappings = (connection as any).columnMappings;
+      }
+      
+      const [sheetsConnection] = await db
+        .insert(googleSheetsConnections)
+        .values(insertData)
+        .returning();
+      return sheetsConnection;
+    } catch (error: any) {
+      // If sheet_name column doesn't exist yet, use raw SQL insert
+      if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
+        console.log('[Storage] sheet_name column not found, using fallback insert for createGoogleSheetsConnection');
+        const result = await db.execute(sql`
+          INSERT INTO google_sheets_connections (
+            campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token,
+            client_id, client_secret, expires_at, is_primary, is_active, column_mappings,
+            connected_at, created_at
+          )
+          VALUES (
+            ${connection.campaignId}, ${connection.spreadsheetId}, ${connection.spreadsheetName || null},
+            ${connection.accessToken || null}, ${connection.refreshToken || null},
+            ${connection.clientId || null}, ${connection.clientSecret || null},
+            ${connection.expiresAt || null}, ${isPrimary}, true,
+            ${(connection as any).columnMappings || null},
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+          )
+          RETURNING id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token,
+                    client_id, client_secret, expires_at, is_primary, is_active, column_mappings,
+                    connected_at, created_at
+        `);
+        const row = result.rows[0] as any;
+        return {
+          id: row.id,
+          campaignId: row.campaign_id,
+          spreadsheetId: row.spreadsheet_id,
+          spreadsheetName: row.spreadsheet_name,
+          sheetName: null, // Column doesn't exist yet
+          accessToken: row.access_token,
+          refreshToken: row.refresh_token,
+          clientId: row.client_id,
+          clientSecret: row.client_secret,
+          expiresAt: row.expires_at,
+          isPrimary: row.is_primary,
+          isActive: row.is_active,
+          columnMappings: row.column_mappings,
+          connectedAt: row.connected_at,
+          createdAt: row.created_at
+        } as GoogleSheetsConnection;
+      }
+      throw error;
+    }
   }
 
   async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {

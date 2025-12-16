@@ -2429,11 +2429,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update the database connection with the selected spreadsheet and sheet
-      await storage.updateGoogleSheetsConnection(dbConnection.id, {
+      // Note: sheetName will be ignored if column doesn't exist (handled in storage layer)
+      const updateData: any = {
         spreadsheetId,
-        spreadsheetName,
-        sheetName: sheetName || null // Store selected sheet name, or null to use first sheet
-      });
+        spreadsheetName
+      };
+      // Only include sheetName if provided (will be ignored if column doesn't exist)
+      if (sheetName) {
+        updateData.sheetName = sheetName;
+      }
+      await storage.updateGoogleSheetsConnection(dbConnection.id, updateData);
       
       console.log('Updated database connection with spreadsheet:', {
         campaignId,

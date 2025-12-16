@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, AlertCircle, Loader2, ArrowRight, ArrowLeft, FileSpreadsheet, DollarSign, Target, Filter } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Info } from "lucide-react";
 
 interface DetectedColumn {
   index: number;
@@ -66,6 +67,19 @@ export function GuidedColumnMapping({
   });
 
   const detectedColumns = columnsData?.columns || [];
+
+  // Fetch campaign name for tip
+  const { data: campaignData } = useQuery<{ id: string; name: string }>({
+    queryKey: ["/api/campaigns", campaignId],
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}`);
+      if (!response.ok) throw new Error('Failed to fetch campaign');
+      return response.json();
+    },
+    enabled: !!campaignId
+  });
+
+  const campaignName = campaignData?.name || 'your campaign';
 
   // Auto-advance to first step when columns are detected
   useEffect(() => {
@@ -434,10 +448,18 @@ export function GuidedColumnMapping({
                 </Select>
               </div>
               {selectedCampaignName && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                  <p className="text-xs text-blue-800 dark:text-blue-300">
-                    <strong>Sample values:</strong> {detectedColumns.find(c => c.index.toString() === selectedCampaignName)?.sampleValues.slice(0, 3).join(', ') || 'N/A'}
-                  </p>
+                <div className="space-y-2">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                    <p className="text-xs text-blue-800 dark:text-blue-300">
+                      <strong>Sample values:</strong> {detectedColumns.find(c => c.index.toString() === selectedCampaignName)?.sampleValues.slice(0, 3).join(', ') || 'N/A'}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>
+                      💡 <strong>Tip:</strong> Use the same campaign name in Google Sheets as your MetricMind campaign name ("<strong>{campaignName}</strong>") for more accurate conversion value calculation.
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

@@ -81,6 +81,19 @@ export function ColumnMappingInterface({
 
   const platformFields = platformFieldsData?.fields || [];
 
+  // Fetch campaign name for tip
+  const { data: campaignData } = useQuery<{ id: string; name: string }>({
+    queryKey: ["/api/campaigns", campaignId],
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}`);
+      if (!response.ok) throw new Error('Failed to fetch campaign');
+      return response.json();
+    },
+    enabled: !!campaignId
+  });
+
+  const campaignName = campaignData?.name || 'your campaign';
+
   // Fetch detected columns
   const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number }>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", spreadsheetId],
@@ -570,11 +583,19 @@ export function ColumnMappingInterface({
                             </div>
                           )}
                           {mappedField.id === 'campaign_name' && (
-                            <div className="mt-2 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-2 rounded">
-                              <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                              <span>
-                                Used to match rows from Google Sheets with campaigns imported from LinkedIn API.
-                              </span>
+                            <div className="mt-2 space-y-2">
+                              <div className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-2 rounded">
+                                <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                <span>
+                                  Used to match rows from Google Sheets with campaigns imported from LinkedIn API.
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded border border-amber-200 dark:border-amber-800">
+                                <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                <span>
+                                  💡 <strong>Tip:</strong> Use the same campaign name in Google Sheets as your MetricMind campaign name ("<strong>{campaignName}</strong>") for more accurate conversion value calculation.
+                                </span>
+                              </div>
                             </div>
                           )}
                         </>

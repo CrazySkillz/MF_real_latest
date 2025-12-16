@@ -1,6 +1,6 @@
 import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
@@ -2341,12 +2341,108 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
-    const [updated] = await db
-      .update(googleSheetsConnections)
-      .set(connection)
-      .where(eq(googleSheetsConnections.id, connectionId))
-      .returning();
-    return updated || undefined;
+    try {
+      // Remove sheetName from update if column doesn't exist - we'll handle it separately
+      const { sheetName, ...updateData } = connection as any;
+      
+      const [updated] = await db
+        .update(googleSheetsConnections)
+        .set(updateData)
+        .where(eq(googleSheetsConnections.id, connectionId))
+        .returning();
+      return updated || undefined;
+    } catch (error: any) {
+      // If sheet_name column doesn't exist yet, use raw SQL update
+      if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
+        console.log('[Storage] sheet_name column not found, using fallback update for updateGoogleSheetsConnection');
+        // Build update query without sheet_name
+        const updates: string[] = [];
+        const values: any[] = [];
+        let paramIndex = 1;
+        
+        if (connection.spreadsheetId !== undefined) {
+          updates.push(`spreadsheet_id = $${paramIndex++}`);
+          values.push(connection.spreadsheetId);
+        }
+        if (connection.spreadsheetName !== undefined) {
+          updates.push(`spreadsheet_name = $${paramIndex++}`);
+          values.push(connection.spreadsheetName);
+        }
+        if (connection.accessToken !== undefined) {
+          updates.push(`access_token = $${paramIndex++}`);
+          values.push(connection.accessToken);
+        }
+        if (connection.refreshToken !== undefined) {
+          updates.push(`refresh_token = $${paramIndex++}`);
+          values.push(connection.refreshToken);
+        }
+        if (connection.clientId !== undefined) {
+          updates.push(`client_id = $${paramIndex++}`);
+          values.push(connection.clientId);
+        }
+        if (connection.clientSecret !== undefined) {
+          updates.push(`client_secret = $${paramIndex++}`);
+          values.push(connection.clientSecret);
+        }
+        if (connection.expiresAt !== undefined) {
+          updates.push(`expires_at = $${paramIndex++}`);
+          values.push(connection.expiresAt);
+        }
+        if ((connection as any).columnMappings !== undefined) {
+          updates.push(`column_mappings = $${paramIndex++}`);
+          values.push((connection as any).columnMappings);
+        }
+        if (connection.isPrimary !== undefined) {
+          updates.push(`is_primary = $${paramIndex++}`);
+          values.push(connection.isPrimary);
+        }
+        if (connection.isActive !== undefined) {
+          updates.push(`is_active = $${paramIndex++}`);
+          values.push(connection.isActive);
+        }
+        
+        if (updates.length === 0) {
+          // No updates to make, just fetch the connection
+          const [conn] = await db.select().from(googleSheetsConnections)
+            .where(eq(googleSheetsConnections.id, connectionId))
+            .limit(1);
+          if (!conn) return undefined;
+          // Map to include sheetName as null
+          return { ...conn, sheetName: null } as GoogleSheetsConnection;
+        }
+        
+        // Use parameterized query
+        const updateClause = updates.join(', ');
+        const query = `UPDATE google_sheets_connections SET ${updateClause} WHERE id = $${paramIndex} RETURNING id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, client_id, client_secret, expires_at, is_primary, is_active, column_mappings, connected_at, created_at`;
+        values.push(connectionId);
+        
+        const result = await db.execute(sql.raw(query.replace(/\$\d+/g, (match, offset) => {
+          const index = parseInt(match.substring(1)) - 1;
+          return `$${index + 1}`;
+        })), values);
+        
+        if (result.rows.length === 0) return undefined;
+        const row = result.rows[0] as any;
+        return {
+          id: row.id,
+          campaignId: row.campaign_id,
+          spreadsheetId: row.spreadsheet_id,
+          spreadsheetName: row.spreadsheet_name,
+          sheetName: null,
+          accessToken: row.access_token,
+          refreshToken: row.refresh_token,
+          clientId: row.client_id,
+          clientSecret: row.client_secret,
+          expiresAt: row.expires_at,
+          isPrimary: row.is_primary,
+          isActive: row.is_active,
+          columnMappings: row.column_mappings,
+          connectedAt: row.connected_at,
+          createdAt: row.created_at
+        } as GoogleSheetsConnection;
+      }
+      throw error;
+    }
   }
 
   async setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string): Promise<boolean> {

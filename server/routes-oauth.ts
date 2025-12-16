@@ -3565,7 +3565,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           unmatchedCampaigns: unmatchedCampaigns,
           totalFilteredRows: filteredRows.length,
           totalRows: allRows.length,
-          platform: campaignPlatform
+          platform: campaignPlatform,
+          campaignName: campaignName // Include campaign name for UI display
         };
         
         // Check if mappings exist for this connection (flexible mapping system)

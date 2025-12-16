@@ -2403,18 +2403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Spreadsheet selection request:', { campaignId, spreadsheetId, sheetName });
       
-      const connections = (global as any).googleSheetsConnections;
-      if (!connections || !connections.has(campaignId)) {
-        return res.status(404).json({ error: 'No Google Sheets connection found for this campaign' });
-      }
-
-      const connection = connections.get(campaignId);
-      
-      // Find the selected spreadsheet
-      const selectedSpreadsheet = connection.spreadsheets?.find((s: any) => s.id === spreadsheetId);
-      const spreadsheetName = selectedSpreadsheet?.name || `Spreadsheet ${spreadsheetId}`;
-      
-      // Find existing connection with 'pending' spreadsheetId or create new one
+      // First, try to find connection in database (more reliable than global map)
       let dbConnection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
       
       if (!dbConnection) {
@@ -2424,7 +2413,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Use the first connection
           dbConnection = existingConnections[0];
         } else {
-          return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
+          // Try global map as fallback (for in-memory storage or if DB lookup failed)
+          const connections = (global as any).googleSheetsConnections;
+          if (connections && connections.has(campaignId)) {
+            const connection = connections.get(campaignId);
+            // Create a new DB connection from global map data
+            if (connection.accessToken) {
+              try {
+                dbConnection = await storage.createGoogleSheetsConnection({
+                  campaignId,
+                  spreadsheetId: 'pending',
+                  accessToken: connection.accessToken,
+                  refreshToken: connection.refreshToken || null,
+                  clientId: process.env.GOOGLE_CLIENT_ID || '',
+                  clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+                  expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined,
+                });
+                console.log('[Select Spreadsheet] Created DB connection from global map');
+              } catch (createError: any) {
+                console.error('[Select Spreadsheet] Failed to create connection from global map:', createError);
+                return res.status(404).json({ error: 'No Google Sheets connection found. Please reconnect Google Sheets.' });
+              }
+            } else {
+              return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
+            }
+          } else {
+            return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
+          }
+        }
+      }
+
+      // Get spreadsheet name - try to fetch from Google API if we have access token
+      let spreadsheetName = `Spreadsheet ${spreadsheetId}`;
+      if (dbConnection.accessToken) {
+        try {
+          const metadataResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?includeGridData=false`,
+            { headers: { 'Authorization': `Bearer ${dbConnection.accessToken}` } }
+          );
+          if (metadataResponse.ok) {
+            const metadata = await metadataResponse.json();
+            spreadsheetName = metadata.properties?.title || spreadsheetName;
+          }
+        } catch (fetchError) {
+          console.log('[Select Spreadsheet] Could not fetch spreadsheet name, using default');
         }
       }
       
@@ -2449,12 +2481,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         success: true,
-        selectedSpreadsheet: selectedSpreadsheet,
+        selectedSpreadsheet: {
+          id: spreadsheetId,
+          name: spreadsheetName
+        },
         sheetName: sheetName || null
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Spreadsheet selection error:', error);
-      res.status(500).json({ error: 'Failed to select spreadsheet' });
+      res.status(500).json({ error: error.message || 'Failed to select spreadsheet' });
     }
   });
 

@@ -3536,6 +3536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             console.log(`[Auto Conversion Value] ⚠️ Platform-only matching: Using ${filteredRows.length} ${platformDisplayName} rows (no Campaign Name match found)`);
+            console.log(`[Auto Conversion Value] Campaign "${campaignName}" not found in Google Sheets. Found ${unmatchedCampaigns.length} unique ${platformDisplayName} campaign name(s): ${unmatchedCampaigns.join(', ')}`);
             if (unmatchedCampaigns.length > 0) {
               console.log(`[Auto Conversion Value] Found ${platformDisplayName} campaigns: ${unmatchedCampaigns.join(', ')}`);
             }

@@ -788,15 +788,15 @@ export default function GoogleSheetsData() {
                                   Using all {sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 'platform'} data
                                 </p>
                                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                                  {sheetsData.matchingInfo.unmatchedCampaigns?.length > 1 ? (
+                                  {sheetsData.matchingInfo.unmatchedCampaigns?.length > 0 ? (
                                     <>
-                                      Found {sheetsData.matchingInfo.unmatchedCampaigns.length} {sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 'platform'} campaigns. 
+                                      Found {sheetsData.matchingInfo.unmatchedCampaigns.length} unique {sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 'platform'} campaign name{sheetsData.matchingInfo.unmatchedCampaigns.length > 1 ? 's' : ''} ({sheetsData.matchingInfo.totalFilteredRows} row{sheetsData.matchingInfo.totalFilteredRows !== 1 ? 's' : ''} total): {sheetsData.matchingInfo.unmatchedCampaigns.join(', ')}.
                                       <span className="block mt-2 text-amber-600 dark:text-amber-400 text-xs">
-                                        💡 Tip: Use the same campaign name in Google Sheets for more accurate conversion value calculation.
+                                        💡 Tip: Use the same campaign name in Google Sheets as your MetricMind campaign name ("{sheetsData.matchingInfo.campaignName || 'your campaign'}") for more accurate conversion value calculation.
                                       </span>
                                     </>
                                   ) : (
-                                    `No campaign name match found. Using all ${sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 'platform'} rows.`
+                                    `No campaign name match found. Using all ${sheetsData.matchingInfo.platform ? sheetsData.matchingInfo.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 'platform'} rows (${sheetsData.matchingInfo.totalFilteredRows} row${sheetsData.matchingInfo.totalFilteredRows !== 1 ? 's' : ''}).`
                                   )}
                                 </p>
                               </div>

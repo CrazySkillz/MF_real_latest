@@ -525,8 +525,20 @@ export default function GoogleSheetsData() {
                           <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Data Overview</h4>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                              <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Rows</div>
-                              <div className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(sheetsData.totalRows)}</div>
+                              <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Rows Used for Summary</div>
+                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatNumber((sheetsData as any).filteredRows || sheetsData.totalRows)}
+                                {(sheetsData as any).filteredRows && (sheetsData as any).filteredRows < sheetsData.totalRows && (
+                                  <span className="text-sm font-normal text-slate-500 dark:text-slate-400 ml-2">
+                                    of {formatNumber(sheetsData.totalRows)}
+                                  </span>
+                                )}
+                              </div>
+                              {(sheetsData as any).filteredRows && (sheetsData as any).filteredRows < sheetsData.totalRows && (
+                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  Filtered by campaign name
+                                </div>
+                              )}
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                               <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Columns</div>

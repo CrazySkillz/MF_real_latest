@@ -3276,19 +3276,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const rows = sheetData.values || [];
       console.log(`[Google Sheets Data] Received ${rows.length} rows from Google Sheets`);
       
-      // Process spreadsheet data to extract campaign metrics
+      // Get campaign name for filtering summary data
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignName = campaign?.name || '';
+      const campaignPlatform = campaign?.platform || null;
+      
+      // Get headers and determine column indices for filtering
+      const headers = rows[0] || [];
+      const platformColumnIndex = headers.findIndex((h: string) => 
+        String(h || '').toLowerCase().includes('platform')
+      );
+      const campaignNameColumnIndex = headers.findIndex((h: string) => 
+        String(h || '').toLowerCase().includes('campaign name')
+      );
+      
+      // Get platform keywords for filtering
+      const platformKeywords = campaignPlatform ? getPlatformKeywords(campaignPlatform) : [];
+      
+      // Filter rows by campaign name (and platform if available) for summary
+      let filteredRowsForSummary: any[] = [];
+      const allRows = rows.slice(1); // Skip header row
+      
+      if (campaignNameColumnIndex >= 0 && campaignName) {
+        // Filter by campaign name (and platform if available)
+        if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
+          // Strategy 1: Campaign Name + Platform matching
+          filteredRowsForSummary = allRows.filter((row: any[]) => {
+            if (!Array.isArray(row) || row.length <= Math.max(platformColumnIndex, campaignNameColumnIndex)) {
+              return false;
+            }
+            const platformValue = String(row[platformColumnIndex] || '');
+            const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
+            const platformMatches = matchesPlatform(platformValue, platformKeywords);
+            const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
+                                   campaignName.toLowerCase().includes(campaignNameValue);
+            return platformMatches && matchesCampaign;
+          });
+        } else {
+          // Strategy 2: Campaign Name only
+          filteredRowsForSummary = allRows.filter((row: any[]) => {
+            if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) {
+              return false;
+            }
+            const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
+            return campaignNameValue.includes(campaignName.toLowerCase()) ||
+                   campaignName.toLowerCase().includes(campaignNameValue);
+          });
+        }
+      } else if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
+        // Strategy 3: Platform only (if no campaign name column or campaign name)
+        filteredRowsForSummary = allRows.filter((row: any[]) => {
+          if (!Array.isArray(row) || row.length <= platformColumnIndex) {
+            return false;
+          }
+          const platformValue = String(row[platformColumnIndex] || '');
+          return matchesPlatform(platformValue, platformKeywords);
+        });
+      } else {
+        // Strategy 4: Use all rows (no filtering possible)
+        filteredRowsForSummary = allRows;
+      }
+      
+      // Use filtered rows for summary if we have a campaign name match, otherwise use all rows
+      const rowsForSummary = filteredRowsForSummary.length > 0 && campaignNameColumnIndex >= 0 && campaignName
+        ? filteredRowsForSummary
+        : allRows;
+      
+      console.log(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign name "${campaignName}") out of ${allRows.length} total rows`);
+      
+      // Process spreadsheet data to extract campaign metrics (using filtered rows)
       let campaignData = {
-        totalRows: rows.length,
-        headers: rows[0] || [],
-        data: rows.slice(1), // All data rows (excluding header)
-        sampleData: rows.slice(1, 6), // First 5 data rows for backward compatibility
+        totalRows: rows.length, // Keep original total for reference
+        filteredRows: rowsForSummary.length, // Number of rows used for summary
+        headers: headers,
+        data: rowsForSummary, // Filtered data rows for summary
+        sampleData: rowsForSummary.slice(0, 6), // First 5 filtered data rows
         metrics: {} as Record<string, number>,
         detectedColumns: [] as Array<{name: string, index: number, type: string, total: number}>
       };
 
-      // Dynamically detect and aggregate ALL numeric columns
-      if (rows.length > 1 && rows[0]) {
-        const headers = rows[0];
+      // Dynamically detect and aggregate numeric columns from FILTERED rows
+      if (rowsForSummary.length > 0 && headers.length > 0) {
         console.log('📊 Detected spreadsheet headers:', headers);
         
         // First pass: Identify which columns contain numeric data
@@ -3298,14 +3366,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const headerStr = String(header || '').trim();
           if (!headerStr) return; // Skip empty headers
           
-          // Sample first 5 data rows to determine if column is numeric
+          // Sample first 5 filtered data rows to determine if column is numeric
           const samples: number[] = [];
           let hasNumericData = false;
           let hasCurrency = false;
           let hasDecimals = false;
           
-          for (let i = 1; i < Math.min(6, rows.length); i++) {
-            const cellValue = rows[i]?.[index];
+          for (let i = 0; i < Math.min(6, rowsForSummary.length); i++) {
+            const cellValue = rowsForSummary[i]?.[index];
             if (!cellValue) continue;
             
             const cellStr = String(cellValue).trim();
@@ -3332,13 +3400,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           numericColumns.map(col => `"${col.name}" (${col.type})`).join(', ')
         );
         
-        // Second pass: Aggregate all numeric columns
+        // Second pass: Aggregate numeric columns from FILTERED rows only
         numericColumns.forEach(col => {
           let total = 0;
           let count = 0;
           
-          for (let i = 1; i < rows.length; i++) {
-            const cellValue = rows[i]?.[col.index];
+          for (let i = 0; i < rowsForSummary.length; i++) {
+            const cellValue = rowsForSummary[i]?.[col.index];
             if (!cellValue) continue;
             
             const cleanValue = String(cellValue).replace(/[$,]/g, '').trim();
@@ -3359,11 +3427,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               total: total
             });
             
-            console.log(`  ✓ ${col.name}: ${total.toLocaleString()} (${count} rows)`);
+            console.log(`  ✓ ${col.name}: ${total.toLocaleString()} (${count} filtered rows)`);
           }
         });
         
-        console.log(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rows.length - 1} data rows`);
+        console.log(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rowsForSummary.length} filtered rows (campaign: "${campaignName}")`);
       }
 
       // Generate intelligent insights from the data

@@ -92,9 +92,22 @@ export function GuidedColumnMapping({
       }
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+    onSuccess: async () => {
+      // Invalidate all relevant queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] })
+      ]);
+      
+      // Wait a bit for backend to process the mappings and calculate conversion values
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Refetch the data to ensure it's up to date
+      await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"] });
+      
       setCurrentStep('complete');
       toast({
         title: "Mappings Saved!",

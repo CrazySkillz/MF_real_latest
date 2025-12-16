@@ -3282,13 +3282,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignPlatform = campaign?.platform || null;
       
       // Get headers and determine column indices for filtering
+      // First check if mappings exist (use mapped columns if available)
       const headers = rows[0] || [];
-      const platformColumnIndex = headers.findIndex((h: string) => 
-        String(h || '').toLowerCase().includes('platform')
-      );
-      const campaignNameColumnIndex = headers.findIndex((h: string) => 
-        String(h || '').toLowerCase().includes('campaign name')
-      );
+      let platformColumnIndex = -1;
+      let campaignNameColumnIndex = -1;
+      
+      // Check if mappings exist and use them to find column indices
+      if (connection.columnMappings) {
+        try {
+          const mappings = JSON.parse(connection.columnMappings);
+          if (mappings && mappings.length > 0) {
+            // Find mapped columns
+            const campaignNameMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_name');
+            const platformMapping = mappings.find((m: any) => m.targetFieldId === 'platform');
+            
+            if (campaignNameMapping) {
+              campaignNameColumnIndex = campaignNameMapping.sourceColumnIndex;
+            }
+            if (platformMapping) {
+              platformColumnIndex = platformMapping.sourceColumnIndex;
+            }
+          }
+        } catch (mappingError) {
+          console.warn('[Google Sheets Summary] Failed to parse mappings, falling back to column detection:', mappingError);
+        }
+      }
+      
+      // Fallback to column detection if mappings don't exist or didn't find the columns
+      if (campaignNameColumnIndex < 0) {
+        campaignNameColumnIndex = headers.findIndex((h: string) => 
+          String(h || '').toLowerCase().includes('campaign name')
+        );
+      }
+      if (platformColumnIndex < 0) {
+        platformColumnIndex = headers.findIndex((h: string) => 
+          String(h || '').toLowerCase().includes('platform')
+        );
+      }
       
       // Get platform keywords for filtering
       const platformKeywords = campaignPlatform ? getPlatformKeywords(campaignPlatform) : [];
@@ -3434,10 +3464,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rowsForSummary.length} filtered rows (campaign: "${campaignName}")`);
       }
 
-      // Generate intelligent insights from the data
+      // Generate intelligent insights from the filtered data
       let insights;
       try {
-        insights = generateInsights(rows, campaignData.detectedColumns, campaignData.metrics);
+        // Use filtered rows + header for insights generation
+        const rowsForInsights = [headers, ...rowsForSummary];
+        insights = generateInsights(rowsForInsights, campaignData.detectedColumns, campaignData.metrics);
       } catch (insightsError) {
         console.error('[Google Sheets Data] Error generating insights:', insightsError);
         // Don't fail the request if insights generation fails

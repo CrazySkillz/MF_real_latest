@@ -2653,15 +2653,15 @@ export default function LinkedInAnalytics() {
                       // Check Google Sheets conversion values first (most reliable)
                       const hasGoogleSheetsConversionValues = sheetsData?.calculatedConversionValues && Array.isArray(sheetsData.calculatedConversionValues) && sheetsData.calculatedConversionValues.length > 0;
                       
-                      // If sheetsData exists (even if empty), it means Google Sheets was connected
-                      // If it has no conversion values, Google Sheets is disconnected - show warning
-                      const sheetsDataExists = sheetsData !== null && sheetsData !== undefined;
+                      // If conversion values exist, don't show warning
+                      if (hasGoogleSheetsConversionValues) {
+                        return false;
+                      }
                       
-                      // If sheetsData exists but has no conversion values, always show warning
-                      // (Google Sheets is disconnected, ignore aggregated.hasRevenueTracking)
-                      if (sheetsDataExists && !hasGoogleSheetsConversionValues) {
-                        console.log('[LinkedIn Analytics] Google Sheets disconnected - showing warning');
-                        return true;
+                      // If mappings exist but no conversion values yet, don't show warning (calculation in progress)
+                      if (hasMappings) {
+                        console.log('[LinkedIn Analytics] Mappings exist but conversion values not yet calculated - hiding warning');
+                        return false;
                       }
                       
                       // If no sheetsData, check aggregated.hasRevenueTracking (manual entry or from session)
@@ -2669,8 +2669,8 @@ export default function LinkedInAnalytics() {
                       const shouldShowWarning = !hasGoogleSheetsConversionValues && !hasRevenueTracking;
                       
                       console.log('[LinkedIn Analytics] Notification check:', {
-                        sheetsDataExists,
                         hasGoogleSheetsConversionValues,
+                        hasMappings,
                         hasRevenueTracking,
                         shouldShowWarning
                       });
@@ -2938,17 +2938,20 @@ export default function LinkedInAnalytics() {
                       {/* Revenue Metrics - Only shown if conversion value is set - Displayed under Derived Metrics */}
                       {(() => {
                         const hasGoogleSheetsConversionValues = sheetsData?.calculatedConversionValues && Array.isArray(sheetsData.calculatedConversionValues) && sheetsData.calculatedConversionValues.length > 0;
-                        const sheetsDataExists = sheetsData !== null && sheetsData !== undefined;
                         
-                        // If sheetsData exists but has no conversion values, hide Revenue Metrics
-                        // (Google Sheets is disconnected)
-                        if (sheetsDataExists && !hasGoogleSheetsConversionValues) {
-                          return false;
+                        // If conversion values exist, show Revenue Metrics
+                        if (hasGoogleSheetsConversionValues) {
+                          return true;
                         }
                         
-                        // Otherwise check both conditions
+                        // If mappings exist, show Revenue Metrics (conversion values being calculated)
+                        if (hasMappings) {
+                          return true;
+                        }
+                        
+                        // Otherwise check aggregated.hasRevenueTracking (manual entry or from session)
                         const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
-                        return hasGoogleSheetsConversionValues || hasRevenueTracking;
+                        return hasRevenueTracking;
                       })() && (
                         <>
                           {/* Revenue Metrics Header */}

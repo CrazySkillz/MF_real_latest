@@ -286,6 +286,32 @@ export default function LinkedInAnalytics() {
     enabled: !!campaignId,
   });
 
+  // Fetch Google Sheets connections to check if mappings exist
+  const { data: googleSheetsConnections } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"],
+    enabled: !!campaignId,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
+      if (!response.ok) return { connections: [] };
+      const data = await response.json();
+      return data;
+    },
+  });
+
+  // Check if any connection has mappings
+  const hasMappings = googleSheetsConnections?.connections?.some((conn: any) => {
+    if (!conn.columnMappings) return false;
+    try {
+      const mappings = JSON.parse(conn.columnMappings);
+      return Array.isArray(mappings) && mappings.length > 0;
+    } catch {
+      return false;
+    }
+  }) || false;
+
   // Fetch Google Sheets data to check for calculated conversion values
   const { data: sheetsData } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],

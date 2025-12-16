@@ -2443,30 +2443,73 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteGoogleSheetsConnection(connectionId: string): Promise<boolean> {
-    const connection = await db.select().from(googleSheetsConnections)
-      .where(eq(googleSheetsConnections.id, connectionId))
-      .limit(1);
-    
-    if (connection.length === 0) return false;
-    
-    const wasPrimary = connection[0].isPrimary;
-    const campaignId = connection[0].campaignId;
-    
-    // Soft delete by setting isActive to false
-    await db
-      .update(googleSheetsConnections)
-      .set({ isActive: false })
-      .where(eq(googleSheetsConnections.id, connectionId));
-    
-    // If this was the primary connection, make the first remaining connection primary
-    if (wasPrimary) {
-      const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
-      if (remainingConnections.length > 0) {
-        await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
+    try {
+      const connection = await db.select().from(googleSheetsConnections)
+        .where(eq(googleSheetsConnections.id, connectionId))
+        .limit(1);
+      
+      if (connection.length === 0) return false;
+      
+      const wasPrimary = connection[0].isPrimary;
+      const campaignId = connection[0].campaignId;
+      
+      // Soft delete by setting isActive to false
+      await db
+        .update(googleSheetsConnections)
+        .set({ isActive: false })
+        .where(eq(googleSheetsConnections.id, connectionId));
+      
+      // If this was the primary connection, make the first remaining connection primary
+      if (wasPrimary) {
+        const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
+        if (remainingConnections.length > 0) {
+          await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
+        }
       }
+      
+      return true;
+    } catch (error: any) {
+      // Fallback if sheet_name column doesn't exist
+      if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
+        console.log('[Storage] sheet_name column not found, using fallback query for deleteGoogleSheetsConnection');
+        try {
+          // First, get connection info using raw SQL
+          const selectResult = await db.execute(sql`
+            SELECT id, campaign_id, is_primary
+            FROM google_sheets_connections
+            WHERE id = ${connectionId} AND is_active = true
+            LIMIT 1
+          `);
+          
+          if (selectResult.rows.length === 0) return false;
+          
+          const row = selectResult.rows[0] as any;
+          const wasPrimary = row.is_primary;
+          const campaignId = row.campaign_id;
+          
+          // Soft delete using raw SQL
+          await db.execute(sql`
+            UPDATE google_sheets_connections
+            SET is_active = false
+            WHERE id = ${connectionId}
+          `);
+          
+          // If this was the primary connection, make the first remaining connection primary
+          if (wasPrimary) {
+            const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
+            if (remainingConnections.length > 0) {
+              await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
+            }
+          }
+          
+          return true;
+        } catch (fallbackError: any) {
+          console.error('[Storage] Fallback delete also failed:', fallbackError);
+          throw fallbackError;
+        }
+      }
+      throw error;
     }
-    
-    return true;
   }
 
   // LinkedIn Connection methods

@@ -10,7 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface SimpleGoogleSheetsAuthProps {
   campaignId: string;
-  onSuccess: () => void;
+  onSuccess: (connectionInfo?: { connectionId: string; spreadsheetId: string }) => void;
   onError: (error: string) => void;
 }
 
@@ -182,7 +182,10 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
       const data = await response.json();
 
       if (data.success) {
-        onSuccess();
+        onSuccess({
+          connectionId: data.connectionId,
+          spreadsheetId: selectedSpreadsheet
+        });
       } else {
         throw new Error(data.error || "Failed to connect spreadsheet");
       }

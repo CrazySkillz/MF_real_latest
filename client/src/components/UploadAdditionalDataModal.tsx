@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileSpreadsheet, Building2, ShoppingCart, Code, Upload, CheckCircle2, Map, Lightbulb, DollarSign, ArrowLeft } from "lucide-react";
 import { SimpleGoogleSheetsAuth } from "./SimpleGoogleSheetsAuth";
 import { GoogleSheetsDatasetsView } from "./GoogleSheetsDatasetsView";
+import { GuidedColumnMapping } from "./GuidedColumnMapping";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 
@@ -29,6 +30,8 @@ export function UploadAdditionalDataModal({
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(null);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
+  const [showGuidedMapping, setShowGuidedMapping] = useState(false);
+  const [newConnectionInfo, setNewConnectionInfo] = useState<{ connectionId: string; spreadsheetId: string } | null>(null);
   const { toast } = useToast();
   
   // Store the ACTUAL current URL when modal opens - this is where we came from
@@ -62,6 +65,8 @@ export function UploadAdditionalDataModal({
       setSelectedSource(null);
       setShowDatasetsView(false);
       setJustConnected(false);
+      setShowGuidedMapping(false);
+      setNewConnectionInfo(null);
     }
   }, [isOpen]);
 
@@ -79,17 +84,24 @@ export function UploadAdditionalDataModal({
     setSelectedSource(source);
   };
 
-  const handleGoogleSheetsSuccess = () => {
-    toast({
-      title: "Google Sheets Connected!",
-      description: "Your spreadsheet has been connected successfully.",
-    });
-    refetchConnections();
-    if (onDataConnected) {
-      onDataConnected();
+  const handleGoogleSheetsSuccess = (connectionInfo?: { connectionId: string; spreadsheetId: string }) => {
+    if (connectionInfo) {
+      // New connection - show guided mapping
+      setNewConnectionInfo(connectionInfo);
+      setShowGuidedMapping(true);
+      setJustConnected(false);
+    } else {
+      // Existing connection or no connection info - show datasets view
+      toast({
+        title: "Google Sheets Connected!",
+        description: "Your spreadsheet has been connected successfully.",
+      });
+      refetchConnections();
+      if (onDataConnected) {
+        onDataConnected();
+      }
+      setJustConnected(true);
     }
-    // Show "Next" button after successful connection
-    setJustConnected(true);
   };
 
   const handleGoogleSheetsError = (error: string) => {
@@ -213,8 +225,34 @@ export function UploadAdditionalDataModal({
               ← Back to Options
             </Button>
 
-            {/* Show datasets view and connection interface after clicking Next or if already viewing */}
-            {showDatasetsView || (!justConnected && googleSheetsConnections.length > 0) ? (
+            {/* Show guided mapping for new connections */}
+            {showGuidedMapping && newConnectionInfo ? (
+              <GuidedColumnMapping
+                campaignId={originalCampaignId}
+                connectionId={newConnectionInfo.connectionId}
+                spreadsheetId={newConnectionInfo.spreadsheetId}
+                platform="linkedin"
+                onMappingComplete={() => {
+                  setShowGuidedMapping(false);
+                  setNewConnectionInfo(null);
+                  refetchConnections();
+                  if (onDataConnected) {
+                    onDataConnected();
+                  }
+                  // Close modal and navigate back
+                  onClose();
+                  setTimeout(() => {
+                    window.location.href = originalReturnUrl;
+                  }, 500);
+                }}
+                onCancel={() => {
+                  setShowGuidedMapping(false);
+                  setNewConnectionInfo(null);
+                  refetchConnections();
+                  setShowDatasetsView(true);
+                }}
+              />
+            ) : showDatasetsView || (!justConnected && googleSheetsConnections.length > 0) ? (
               <>
                 {/* Conversion Value Calculation Info */}
                 <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20">

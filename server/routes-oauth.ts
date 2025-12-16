@@ -2476,11 +2476,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignId,
         spreadsheetId,
         spreadsheetName,
-        sheetName: sheetName || 'first sheet (default)'
+        sheetName: sheetName || 'first sheet (default)',
+        connectionId: dbConnection.id
       });
       
       res.json({
         success: true,
+        connectionId: dbConnection.id,
         selectedSpreadsheet: {
           id: spreadsheetId,
           name: spreadsheetName

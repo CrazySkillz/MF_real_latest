@@ -2970,11 +2970,6 @@ export default function LinkedInAnalytics() {
                           return true;
                         }
                         
-                        // If mappings exist, show Revenue Metrics (conversion values being calculated)
-                        if (hasMappings) {
-                          return true;
-                        }
-                        
                         // Otherwise check aggregated.hasRevenueTracking (manual entry or from session)
                         const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
                         return hasRevenueTracking;

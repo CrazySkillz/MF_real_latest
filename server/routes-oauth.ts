@@ -3511,10 +3511,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // NOW SUPPORTS MULTI-PLATFORM: LinkedIn, Google Ads, Facebook Ads, Twitter Ads, etc.
       
       try {
-        // Get MetricMind campaign name and platform for matching
-        const campaign = await storage.getCampaign(campaignId);
-        const campaignName = campaign?.name || '';
-        const campaignPlatform = campaign?.platform || null;
+        // Campaign name and platform already fetched above for summary filtering
+        // Reuse them here for conversion value calculation
         
         // Get ALL platform connections for this campaign to calculate conversion value for each
         const linkedInConnection = await storage.getLinkedInConnection(campaignId).catch(() => null);

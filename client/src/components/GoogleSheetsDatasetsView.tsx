@@ -4,10 +4,12 @@ import { AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, Star, Map, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
+import { FileSpreadsheet, Star, Map, CheckCircle2, AlertCircle, ArrowLeft, Trash2, X } from "lucide-react";
 import { ColumnMappingInterface } from "./ColumnMappingInterface";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useQuery } from "@tanstack/react-query";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface GoogleSheetsConnection {
   id: string;
@@ -112,6 +114,8 @@ export function GoogleSheetsDatasetsView({
   const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
   const [showMappingInterface, setShowMappingInterface] = useState(false);
   const [mappingsJustSaved, setMappingsJustSaved] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const isMapped = (connection: GoogleSheetsConnection): boolean => {
     if (!connection.columnMappings) return false;
@@ -122,6 +126,39 @@ export function GoogleSheetsDatasetsView({
       return false;
     }
   };
+
+  // Delete connection mutation
+  const deleteConnectionMutation = useMutation({
+    mutationFn: async (connectionId: string) => {
+      const response = await fetch(`/api/google-sheets/${campaignId}/connection?connectionId=${connectionId}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete connection');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
+      toast({
+        title: "Connection Deleted",
+        description: "Google Sheets connection has been removed successfully.",
+      });
+      if (onConnectionChange) {
+        onConnectionChange();
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Delete Connection",
+        description: error.message || "Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
 
   if (connections.length === 0) {
     return (
@@ -202,6 +239,38 @@ export function GoogleSheetsDatasetsView({
                       <Map className="w-4 h-4 mr-1" />
                       {mapped ? "Edit Mapping" : "Map"}
                     </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-slate-400 hover:text-red-600"
+                          title="Delete connection"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Google Sheet Connection?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will remove the connection to "{conn.spreadsheetName || conn.spreadsheetId}".
+                            {conn.isPrimary && connections.length > 1 && " Another sheet will be set as primary."}
+                            This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteConnectionMutation.mutate(conn.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={deleteConnectionMutation.isPending}
+                          >
+                            {deleteConnectionMutation.isPending ? "Deleting..." : "Delete"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </CardContent>

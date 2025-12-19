@@ -28,6 +28,7 @@ interface GoogleSheetsData {
   spreadsheetName: string;
   spreadsheetId: string;
   totalRows: number;
+  filteredRows?: number;
   lastUpdated: string;
   headers: string[];
   data: any[][];
@@ -622,7 +623,10 @@ export default function GoogleSheetsData() {
                         Spreadsheet Data
                       </CardTitle>
                       <CardDescription>
-                        {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
+                        {sheetsData.filteredRows !== undefined && sheetsData.filteredRows !== sheetsData.totalRows
+                          ? `${sheetsData.filteredRows} of ${sheetsData.totalRows} rows`
+                          : `${sheetsData.totalRows} rows`
+                        } • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

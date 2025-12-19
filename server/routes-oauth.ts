@@ -4318,6 +4318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spreadsheetName: connection.spreadsheetName || connection.spreadsheetId,
         spreadsheetId: connection.spreadsheetId,
         totalRows: campaignData.totalRows,
+        filteredRows: campaignData.filteredRows,
         headers: campaignData.headers,
         data: campaignData.data,
         summary: {

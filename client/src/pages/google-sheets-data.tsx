@@ -443,18 +443,6 @@ export default function GoogleSheetsData() {
                             <div className="flex items-center gap-2 w-full">
                               <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
                               <span className="flex-1 truncate">{displayName}</span>
-                              {conn.isPrimary && (
-                                <Badge variant="default" className="ml-auto text-xs bg-blue-600">
-                                  <Star className="w-3 h-3 mr-1" />
-                                  Primary
-                                </Badge>
-                              )}
-                              {isMapped(conn) && (
-                                <Badge variant="default" className="ml-1 text-xs bg-green-600">
-                                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                                  Mapped
-                                </Badge>
-                              )}
                             </div>
                           </SelectItem>
                         );

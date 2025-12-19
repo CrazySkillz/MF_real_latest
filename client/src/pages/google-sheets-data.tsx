@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Map, Plus } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -9,8 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SiGooglesheets } from "react-icons/si";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
@@ -103,10 +104,16 @@ interface GoogleSheetsData {
 
 export default function GoogleSheetsData() {
   const [, params] = useRoute("/campaigns/:id/google-sheets-data");
+  const [location, setLocation] = useLocation();
   const campaignId = params?.id;
   const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
   const [showMappingInterface, setShowMappingInterface] = useState(false);
   const [showAddDatasetModal, setShowAddDatasetModal] = useState(false);
+
+  // Get selected spreadsheetId from URL query params
+  const urlParams = useMemo(() => new URLSearchParams(window.location.search), [location]);
+  const selectedSpreadsheetId = urlParams.get('spreadsheetId');
+  const isCombinedView = urlParams.get('view') === 'combined';
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -140,9 +147,34 @@ export default function GoogleSheetsData() {
     }
   };
 
-  const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData & { calculatedConversionValues?: any[]; matchingInfo?: any }>({
-    queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
-    enabled: !!campaignId,
+  // Get primary connection for default selection
+  const primaryConnection = useMemo(() => {
+    return googleSheetsConnections.find((conn: any) => conn.isPrimary) || googleSheetsConnections[0];
+  }, [googleSheetsConnections]);
+
+  // Determine which spreadsheet to fetch data from
+  const activeSpreadsheetId = useMemo(() => {
+    if (isCombinedView) return 'combined';
+    if (selectedSpreadsheetId) return selectedSpreadsheetId;
+    return primaryConnection?.spreadsheetId || null;
+  }, [selectedSpreadsheetId, isCombinedView, primaryConnection]);
+
+  // Handle sheet selection change
+  const handleSheetChange = (value: string) => {
+    const newParams = new URLSearchParams(window.location.search);
+    if (value === 'combined') {
+      newParams.set('view', 'combined');
+      newParams.delete('spreadsheetId');
+    } else {
+      newParams.set('spreadsheetId', value);
+      newParams.delete('view');
+    }
+    setLocation(`${window.location.pathname}?${newParams.toString()}`);
+  };
+
+  const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData & { calculatedConversionValues?: any[]; matchingInfo?: any; sheetBreakdown?: any[] }>({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets-data", activeSpreadsheetId],
+    enabled: !!campaignId && activeSpreadsheetId !== null,
     refetchInterval: 300000, // Auto-refresh every 5 minutes
     refetchIntervalInBackground: true, // Continue refreshing when tab is in background
     refetchOnWindowFocus: true, // Refresh when user returns to tab
@@ -151,7 +183,10 @@ export default function GoogleSheetsData() {
     queryFn: async () => {
       let response: Response;
       try {
-        response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`, {
+        const url = isCombinedView 
+          ? `/api/campaigns/${campaignId}/google-sheets-data?view=combined`
+          : `/api/campaigns/${campaignId}/google-sheets-data${activeSpreadsheetId && activeSpreadsheetId !== 'combined' ? `?spreadsheetId=${activeSpreadsheetId}` : ''}`;
+        response = await fetch(url, {
           signal: AbortSignal.timeout(60000) // 60 second timeout for the entire request
         });
       } catch (fetchError: any) {
@@ -358,7 +393,7 @@ export default function GoogleSheetsData() {
                   <RefreshCw className={`w-4 h-4 mr-2 ${sheetsLoading ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
-                {sheetsData?.spreadsheetId && (
+                {sheetsData?.spreadsheetId && !isCombinedView && (
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -372,6 +407,99 @@ export default function GoogleSheetsData() {
                 )}
               </div>
             </div>
+
+            {/* Sheet Selector and Active Sheet Indicator */}
+            {googleSheetsConnections.length > 0 && (
+              <div className="mb-6 space-y-3">
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                    View Data From:
+                  </label>
+                  <Select
+                    value={isCombinedView ? 'combined' : (activeSpreadsheetId || primaryConnection?.spreadsheetId || '')}
+                    onValueChange={handleSheetChange}
+                  >
+                    <SelectTrigger className="w-[300px]">
+                      <SelectValue placeholder="Select a sheet..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {googleSheetsConnections.filter((conn: any) => isMapped(conn)).length > 1 && (
+                        <SelectItem value="combined">
+                          <div className="flex items-center gap-2">
+                            <FileSpreadsheet className="w-4 h-4" />
+                            <span>View All (Combined)</span>
+                            <Badge variant="secondary" className="ml-auto text-xs">
+                              {googleSheetsConnections.filter((conn: any) => isMapped(conn)).length} sheets
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      )}
+                      {googleSheetsConnections.map((conn: any) => {
+                        const displayName = conn.sheetName 
+                          ? `${conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`} (${conn.sheetName})`
+                          : (conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`);
+                        return (
+                          <SelectItem key={conn.id} value={conn.spreadsheetId}>
+                            <div className="flex items-center gap-2 w-full">
+                              <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
+                              <span className="flex-1 truncate">{displayName}</span>
+                              {conn.isPrimary && (
+                                <Badge variant="default" className="ml-auto text-xs bg-blue-600">
+                                  <Star className="w-3 h-3 mr-1" />
+                                  Primary
+                                </Badge>
+                              )}
+                              {isMapped(conn) && (
+                                <Badge variant="default" className="ml-1 text-xs bg-green-600">
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                                  Mapped
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Active Sheet Indicator */}
+                {sheetsData && (
+                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                    <Badge variant="outline" className="text-xs">
+                      {isCombinedView ? (
+                        <>
+                          <FileSpreadsheet className="w-3 h-3 mr-1" />
+                          Viewing: All Sheets (Combined)
+                        </>
+                      ) : (
+                        <>
+                          <FileSpreadsheet className="w-3 h-3 mr-1" />
+                          Active: {(() => {
+                            const activeConn = googleSheetsConnections.find((conn: any) => conn.spreadsheetId === activeSpreadsheetId);
+                            if (!activeConn) return 'Unknown';
+                            return activeConn.sheetName 
+                              ? `${activeConn.spreadsheetName || 'Sheet'} (${activeConn.sheetName})`
+                              : (activeConn.spreadsheetName || 'Sheet');
+                          })()}
+                          {primaryConnection?.spreadsheetId === activeSpreadsheetId && (
+                            <span className="ml-1">• Primary</span>
+                          )}
+                        </>
+                      )}
+                    </Badge>
+                    {sheetsData.filteredRows !== undefined && sheetsData.totalRows !== undefined && (
+                      <span className="text-xs">
+                        • {sheetsData.filteredRows.toLocaleString()} rows used for summary
+                        {sheetsData.filteredRows < sheetsData.totalRows && (
+                          <span className="text-slate-500"> (filtered from {sheetsData.totalRows.toLocaleString()} total)</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {sheetsError ? (
@@ -550,6 +678,57 @@ export default function GoogleSheetsData() {
                             </div>
                           </div>
                         </div>
+
+                        {/* Sheet Breakdown (for combined view) */}
+                        {isCombinedView && sheetsData.sheetBreakdown && sheetsData.sheetBreakdown.length > 0 && (
+                          <div>
+                            <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Sheet Breakdown</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {sheetsData.sheetBreakdown.map((sheet: any, idx: number) => {
+                                const conn = googleSheetsConnections.find((c: any) => c.spreadsheetId === sheet.spreadsheetId);
+                                const displayName = sheet.sheetName 
+                                  ? `${sheet.spreadsheetName || 'Sheet'} (${sheet.sheetName})`
+                                  : (sheet.spreadsheetName || 'Sheet');
+                                return (
+                                  <Card key={idx} className="border-slate-200 dark:border-slate-700">
+                                    <CardContent className="p-4">
+                                      <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <FileSpreadsheet className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                                          <div>
+                                            <div className="font-medium text-slate-900 dark:text-white text-sm">
+                                              {displayName}
+                                            </div>
+                                            {conn?.isPrimary && (
+                                              <Badge variant="default" className="mt-1 text-xs bg-blue-600">
+                                                <Star className="w-3 h-3 mr-1" />
+                                                Primary
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-3 mt-3">
+                                        <div>
+                                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Rows Used</div>
+                                          <div className="text-lg font-semibold text-slate-900 dark:text-white">
+                                            {formatNumber(sheet.rowCount)}
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Rows</div>
+                                          <div className="text-lg font-semibold text-slate-600 dark:text-slate-400">
+                                            {formatNumber(sheet.totalRows)}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         
                         {/* Dynamically Detected Metrics */}
                         {sheetsData.summary?.detectedColumns && sheetsData.summary.detectedColumns.length > 0 && (

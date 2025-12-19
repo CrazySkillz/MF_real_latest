@@ -2969,8 +2969,250 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get spreadsheet data for a campaign
   app.get("/api/campaigns/:id/google-sheets-data", async (req, res) => {
       const campaignId = req.params.id;
-      const { spreadsheetId } = req.query; // Optional: fetch from specific spreadsheet
+      const { spreadsheetId, view } = req.query; // Optional: fetch from specific spreadsheet or combined view
     try {
+      // Handle combined view - aggregate data from all mapped connections
+      if (view === 'combined') {
+        const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+        const mappedConnections = allConnections.filter((conn: any) => {
+          if (!conn.columnMappings) return false;
+          try {
+            const mappings = JSON.parse(conn.columnMappings);
+            return Array.isArray(mappings) && mappings.length > 0;
+          } catch {
+            return false;
+          }
+        });
+
+        if (mappedConnections.length === 0) {
+          return res.json({
+            success: true,
+            data: [],
+            transformedRows: [],
+            insights: null,
+            matchingInfo: {
+              method: 'none',
+              matchedCampaigns: [],
+              unmatchedCampaigns: [],
+              totalFilteredRows: 0,
+              totalRows: 0,
+              platform: null,
+              campaignName: ''
+            },
+            calculatedConversionValues: [],
+            lastUpdated: new Date().toISOString()
+          });
+        }
+
+        // Aggregate data from all mapped connections
+        const aggregatedData: any = {
+          allRows: [],
+          allHeaders: new Set<string>(),
+          sheetBreakdown: [] as any[],
+          totalRows: 0,
+          totalFilteredRows: 0
+        };
+
+        const campaign = await storage.getCampaign(campaignId);
+        const campaignName = campaign?.name || '';
+        const campaignPlatform = campaign?.platform || null;
+        const platformKeywords = campaignPlatform ? getPlatformKeywords(campaignPlatform) : [];
+
+        for (const conn of mappedConnections) {
+          try {
+            // Refresh token if needed
+            let accessToken = conn.accessToken;
+            if (!accessToken && conn.refreshToken && conn.clientId && conn.clientSecret) {
+              try {
+                accessToken = await refreshGoogleSheetsToken(conn);
+                await storage.updateGoogleSheetsConnection(conn.id, { accessToken });
+              } catch (refreshError) {
+                console.warn(`[Combined View] Failed to refresh token for ${conn.spreadsheetId}:`, refreshError);
+                continue; // Skip this connection if token refresh fails
+              }
+            }
+
+            if (!accessToken) {
+              console.warn(`[Combined View] No access token for ${conn.spreadsheetId}`);
+              continue;
+            }
+
+            // Process each connection (similar to single connection logic)
+            const range = conn.sheetName ? `${conn.sheetName}!A1:Z1000` : 'A1:Z1000';
+            let sheetResponse = await fetch(
+              `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheetId}/values/${encodeURIComponent(range)}`,
+              { headers: { 'Authorization': `Bearer ${accessToken}` } }
+            );
+
+            // Retry with refreshed token if 401
+            if (sheetResponse.status === 401 && conn.refreshToken) {
+              try {
+                accessToken = await refreshGoogleSheetsToken(conn);
+                await storage.updateGoogleSheetsConnection(conn.id, { accessToken });
+                sheetResponse = await fetch(
+                  `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheetId}/values/${encodeURIComponent(range)}`,
+                  { headers: { 'Authorization': `Bearer ${accessToken}` } }
+                );
+              } catch (retryError) {
+                console.warn(`[Combined View] Retry failed for ${conn.spreadsheetId}:`, retryError);
+                continue;
+              }
+            }
+
+            if (!sheetResponse.ok) {
+              console.warn(`[Combined View] Failed to fetch data from ${conn.spreadsheetId}`);
+              continue;
+            }
+
+            const sheetData = await sheetResponse.json();
+            const rows = sheetData.values || [];
+            if (rows.length === 0) continue;
+
+            const headers = rows[0] || [];
+            headers.forEach((h: string) => aggregatedData.allHeaders.add(h));
+
+            // Determine column indices for filtering
+            let campaignNameColumnIndex = -1;
+            let platformColumnIndex = -1;
+
+            if (conn.columnMappings) {
+              try {
+                const mappings = JSON.parse(conn.columnMappings);
+                campaignNameColumnIndex = mappings.find((m: any) => m.targetFieldId === 'campaign_name')?.sourceColumnIndex ?? -1;
+                platformColumnIndex = mappings.find((m: any) => m.targetFieldId === 'platform')?.sourceColumnIndex ?? -1;
+              } catch (e) {
+                console.warn(`[Combined View] Failed to parse mappings for ${conn.spreadsheetId}`);
+              }
+            }
+
+            // Filter rows by campaign name
+            const allRows = rows.slice(1);
+            let filteredRows: any[] = [];
+
+            if (campaignNameColumnIndex >= 0 && campaignName) {
+              if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
+                filteredRows = allRows.filter((row: any[]) => {
+                  if (!Array.isArray(row) || row.length <= Math.max(platformColumnIndex, campaignNameColumnIndex)) return false;
+                  const platformValue = String(row[platformColumnIndex] || '');
+                  const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
+                  const platformMatches = matchesPlatform(platformValue, platformKeywords);
+                  const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
+                                         campaignName.toLowerCase().includes(campaignNameValue);
+                  return platformMatches && matchesCampaign;
+                });
+              } else {
+                filteredRows = allRows.filter((row: any[]) => {
+                  if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) return false;
+                  const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
+                  return campaignNameValue.includes(campaignName.toLowerCase()) ||
+                         campaignName.toLowerCase().includes(campaignNameValue);
+                });
+              }
+            } else if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
+              filteredRows = allRows.filter((row: any[]) => {
+                if (!Array.isArray(row) || row.length <= platformColumnIndex) return false;
+                const platformValue = String(row[platformColumnIndex] || '');
+                return matchesPlatform(platformValue, platformKeywords);
+              });
+            } else {
+              filteredRows = allRows;
+            }
+
+            aggregatedData.allRows.push(...filteredRows);
+            aggregatedData.totalRows += rows.length;
+            aggregatedData.totalFilteredRows += filteredRows.length;
+
+            aggregatedData.sheetBreakdown.push({
+              spreadsheetId: conn.spreadsheetId,
+              spreadsheetName: conn.spreadsheetName,
+              sheetName: conn.sheetName,
+              rowCount: filteredRows.length,
+              totalRows: rows.length
+            });
+          } catch (error) {
+            console.error(`[Combined View] Error processing connection ${conn.id}:`, error);
+          }
+        }
+
+        // Generate summary from aggregated data
+        const headers = Array.from(aggregatedData.allHeaders);
+        const summaryMetrics: Record<string, number> = {};
+        const detectedColumns: Array<{name: string, index: number, type: string, total: number}> = [];
+
+        // Aggregate numeric columns
+        headers.forEach((header: string, index: number) => {
+          const headerStr = String(header || '').trim();
+          if (!headerStr) return;
+
+          let total = 0;
+          let count = 0;
+          let hasCurrency = false;
+          let hasDecimals = false;
+
+          for (const row of aggregatedData.allRows) {
+            const cellValue = row[index];
+            if (!cellValue) continue;
+
+            const cellStr = String(cellValue).trim();
+            if (cellStr.includes('$') || cellStr.includes('USD')) hasCurrency = true;
+
+            const cleanValue = cellStr.replace(/[$,]/g, '').trim();
+            const numValue = parseFloat(cleanValue);
+
+            if (!isNaN(numValue)) {
+              total += numValue;
+              count++;
+              if (cleanValue.includes('.')) hasDecimals = true;
+            }
+          }
+
+          if (count > 0) {
+            summaryMetrics[headerStr] = total;
+            detectedColumns.push({
+              name: headerStr,
+              index,
+              type: hasCurrency ? 'currency' : (hasDecimals ? 'decimal' : 'integer'),
+              total
+            });
+          }
+        });
+
+        return res.json({
+          success: true,
+          spreadsheetName: `Combined (${mappedConnections.length} sheets)`,
+          spreadsheetId: 'combined',
+          totalRows: aggregatedData.totalRows,
+          filteredRows: aggregatedData.totalFilteredRows,
+          headers: headers,
+          data: aggregatedData.allRows,
+          summary: {
+            metrics: summaryMetrics,
+            detectedColumns: detectedColumns,
+            totalImpressions: summaryMetrics['Impressions'] || summaryMetrics['impressions'] || 0,
+            totalClicks: summaryMetrics['Clicks'] || summaryMetrics['clicks'] || 0,
+            totalSpend: summaryMetrics['Spend (USD)'] || summaryMetrics['Budget'] || summaryMetrics['Cost'] || 0,
+            averageCTR: (() => {
+              const impressions = summaryMetrics['Impressions'] || summaryMetrics['impressions'] || 0;
+              const clicks = summaryMetrics['Clicks'] || summaryMetrics['clicks'] || 0;
+              return impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0;
+            })()
+          },
+          insights: null, // Could generate insights from aggregated data
+          matchingInfo: {
+            method: campaignName ? 'campaign_name_platform' : 'all_rows',
+            matchedCampaigns: campaignName ? [campaignName] : [],
+            unmatchedCampaigns: [],
+            totalFilteredRows: aggregatedData.totalFilteredRows,
+            totalRows: aggregatedData.totalRows,
+            platform: campaignPlatform,
+            campaignName: campaignName
+          },
+          calculatedConversionValues: [], // Would need to recalculate from aggregated data
+          sheetBreakdown: aggregatedData.sheetBreakdown,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+
       // If spreadsheetId is provided, fetch from that specific connection
       // Otherwise, use the primary connection
       let connection: any;

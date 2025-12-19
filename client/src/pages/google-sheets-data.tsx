@@ -114,10 +114,16 @@ export default function GoogleSheetsData() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Get selected spreadsheetId from URL query params
-  const urlParams = useMemo(() => new URLSearchParams(window.location.search), [location]);
+  // Get selected spreadsheetId from URL query params - update when location changes
+  const [urlParams, setUrlParams] = useState(() => new URLSearchParams(window.location.search));
   const selectedSpreadsheetId = urlParams.get('spreadsheetId');
   const isCombinedView = urlParams.get('view') === 'combined';
+
+  // Update URL params when location changes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setUrlParams(params);
+  }, [location]);
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -191,22 +197,38 @@ export default function GoogleSheetsData() {
   // Determine which spreadsheet to fetch data from
   const activeSpreadsheetId = useMemo(() => {
     if (isCombinedView) return 'combined';
-    if (selectedSpreadsheetId) return selectedSpreadsheetId;
-    return primaryConnection?.spreadsheetId || null;
-  }, [selectedSpreadsheetId, isCombinedView, primaryConnection]);
+    if (selectedSpreadsheetId) {
+      // Verify the selected spreadsheetId exists in connections
+      const exists = googleSheetsConnections.some((conn: any) => conn.spreadsheetId === selectedSpreadsheetId);
+      if (exists) return selectedSpreadsheetId;
+    }
+    // Default to primary or first connection
+    return primaryConnection?.spreadsheetId || googleSheetsConnections[0]?.spreadsheetId || null;
+  }, [selectedSpreadsheetId, isCombinedView, primaryConnection, googleSheetsConnections]);
 
   // Handle sheet selection change
-  const handleSheetChange = (value: string) => {
+  const handleSheetChange = useCallback((value: string) => {
+    if (!value) return; // Don't handle empty values
+    
     const newParams = new URLSearchParams(window.location.search);
     if (value === 'combined') {
       newParams.set('view', 'combined');
       newParams.delete('spreadsheetId');
     } else {
-      newParams.set('spreadsheetId', value);
-      newParams.delete('view');
+      // Verify the value exists in connections before setting it
+      const exists = googleSheetsConnections.some((conn: any) => conn.spreadsheetId === value);
+      if (exists) {
+        newParams.set('spreadsheetId', value);
+        newParams.delete('view');
+      } else {
+        console.warn('[Sheet Selector] Invalid spreadsheetId:', value);
+        return;
+      }
     }
-    setLocation(`${window.location.pathname}?${newParams.toString()}`);
-  };
+    const newUrl = `${window.location.pathname}${newParams.toString() ? `?${newParams.toString()}` : ''}`;
+    // Use window.location.href for reliable navigation with query params
+    window.location.href = newUrl;
+  }, [googleSheetsConnections]);
 
   const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData & { calculatedConversionValues?: any[]; matchingInfo?: any; sheetBreakdown?: any[] }>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data", activeSpreadsheetId],
@@ -436,20 +458,29 @@ export default function GoogleSheetsData() {
                     View Data From:
                   </label>
                   <Select
-                    value={isCombinedView ? 'combined' : (activeSpreadsheetId || primaryConnection?.spreadsheetId || '')}
+                    value={(() => {
+                      if (isCombinedView) return 'combined';
+                      if (activeSpreadsheetId && activeSpreadsheetId !== 'combined') {
+                        // Verify the activeSpreadsheetId exists in connections
+                        const exists = googleSheetsConnections.some((conn: any) => conn.spreadsheetId === activeSpreadsheetId);
+                        if (exists) return activeSpreadsheetId;
+                      }
+                      // Default to first connection if available, otherwise empty string
+                      return googleSheetsConnections[0]?.spreadsheetId || '';
+                    })()}
                     onValueChange={handleSheetChange}
                   >
                     <SelectTrigger className="w-[300px]">
                       <SelectValue placeholder="Select a sheet..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {googleSheetsConnections.filter((conn: any) => isMapped(conn)).length > 1 && (
+                      {googleSheetsConnections.length > 1 && (
                         <SelectItem value="combined">
                           <div className="flex items-center gap-2">
                             <FileSpreadsheet className="w-4 h-4" />
                             <span>View All (Combined)</span>
                             <Badge variant="secondary" className="ml-auto text-xs">
-                              {googleSheetsConnections.filter((conn: any) => isMapped(conn)).length} sheets
+                              {googleSheetsConnections.length} sheets
                             </Badge>
                           </div>
                         </SelectItem>

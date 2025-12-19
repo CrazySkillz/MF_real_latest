@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -13,8 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SiGooglesheets } from "react-icons/si";
 import { useEffect, useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
+import { useToast } from "@/hooks/use-toast";
 
 interface Campaign {
   id: string;
@@ -109,6 +111,8 @@ export default function GoogleSheetsData() {
   const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
   const [showMappingInterface, setShowMappingInterface] = useState(false);
   const [showAddDatasetModal, setShowAddDatasetModal] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Get selected spreadsheetId from URL query params
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), [location]);
@@ -136,6 +140,38 @@ export default function GoogleSheetsData() {
   const googleSheetsConnections = googleSheetsConnectionsData?.connections || [];
   const MAX_GOOGLE_SHEETS_CONNECTIONS = 5;
   const canAddMoreSheets = googleSheetsConnections.length < MAX_GOOGLE_SHEETS_CONNECTIONS;
+
+  // Delete connection mutation
+  const deleteConnectionMutation = useMutation({
+    mutationFn: async (connectionId: string) => {
+      const response = await fetch(`/api/google-sheets/${campaignId}/connection?connectionId=${connectionId}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete connection');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
+      refetchConnections();
+      refetch();
+      toast({
+        title: "Connection Removed",
+        description: "Google Sheets connection has been removed successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Remove Connection",
+        description: error.message || "An error occurred while removing the connection.",
+        variant: "destructive"
+      });
+    }
+  });
 
   const isMapped = (connection: any): boolean => {
     if (!connection.columnMappings) return false;
@@ -713,6 +749,40 @@ export default function GoogleSheetsData() {
                                             )}
                                           </div>
                                         </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-8 w-8 p-0 text-slate-400 hover:text-red-600"
+                                              title="Remove connection"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Remove Google Sheet Connection?</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                This will remove the connection to "{conn.spreadsheetName || conn.spreadsheetId}".
+                                                {conn.isPrimary && googleSheetsConnections.length > 1 && " Another sheet will be set as primary."}
+                                                This action cannot be undone.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                              <AlertDialogAction
+                                                onClick={() => deleteConnectionMutation.mutate(conn.id)}
+                                                className="bg-red-600 hover:bg-red-700"
+                                                disabled={deleteConnectionMutation.isPending}
+                                              >
+                                                {deleteConnectionMutation.isPending ? "Removing..." : "Remove"}
+                                              </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
                                       </div>
                                     </div>
                                   </CardContent>

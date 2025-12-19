@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Map, Plus } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -454,9 +454,6 @@ export default function GoogleSheetsData() {
                               ? `${activeConn.spreadsheetName || 'Sheet'} (${activeConn.sheetName})`
                               : (activeConn.spreadsheetName || 'Sheet');
                           })()}
-                          {primaryConnection?.spreadsheetId === activeSpreadsheetId && (
-                            <span className="ml-1">• Primary</span>
-                          )}
                         </>
                       )}
                     </Badge>
@@ -660,7 +657,7 @@ export default function GoogleSheetsData() {
                               Connected Datasets ({googleSheetsConnections.length}/{MAX_GOOGLE_SHEETS_CONNECTIONS})
                             </CardTitle>
                             <CardDescription>
-                              Manage your Google Sheets connections and column mappings
+                              Manage your Google Sheets connections
                             </CardDescription>
                           </div>
                           {canAddMoreSheets && (
@@ -690,15 +687,10 @@ export default function GoogleSheetsData() {
                         ) : (
                           <div className="space-y-3">
                             {googleSheetsConnections.map((conn: any) => {
-                              const mapped = isMapped(conn);
                               return (
                                 <Card
                                   key={conn.id}
-                                  className={`${
-                                    mapped
-                                      ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"
-                                      : "border-slate-200 dark:border-slate-700"
-                                  }`}
+                                  className="border-slate-200 dark:border-slate-700"
                                 >
                                   <CardContent className="p-4">
                                     <div className="flex items-center justify-between">
@@ -709,23 +701,6 @@ export default function GoogleSheetsData() {
                                             <h4 className="font-medium text-slate-900 dark:text-white truncate">
                                               {conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`}
                                             </h4>
-                                            {conn.isPrimary && (
-                                              <Badge variant="default" className="text-xs bg-blue-600">
-                                                <Star className="w-3 h-3 mr-1" />
-                                                Primary
-                                              </Badge>
-                                            )}
-                                            {mapped ? (
-                                              <Badge variant="default" className="text-xs bg-green-600">
-                                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                                Mapped
-                                              </Badge>
-                                            ) : (
-                                              <Badge variant="secondary" className="text-xs">
-                                                <AlertCircle className="w-3 h-3 mr-1" />
-                                                Not Mapped
-                                              </Badge>
-                                            )}
                                           </div>
                                           <div className="space-y-0.5">
                                             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -738,19 +713,6 @@ export default function GoogleSheetsData() {
                                             )}
                                           </div>
                                         </div>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <Button
-                                          variant={mapped ? "outline" : "default"}
-                                          size="sm"
-                                          onClick={() => {
-                                            setMappingConnectionId(conn.id);
-                                            setShowMappingInterface(true);
-                                          }}
-                                        >
-                                          <Map className="w-4 h-4 mr-1" />
-                                          {mapped ? "Edit Mapping" : "Map"}
-                                        </Button>
                                       </div>
                                     </div>
                                   </CardContent>

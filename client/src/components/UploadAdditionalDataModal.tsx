@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, Building2, ShoppingCart, Code, Upload, CheckCircle2, Map, Lightbulb, DollarSign, ArrowLeft } from "lucide-react";
+import { FileSpreadsheet, Building2, ShoppingCart, Code, Upload, CheckCircle2, Map, ArrowLeft } from "lucide-react";
 import { SimpleGoogleSheetsAuth } from "./SimpleGoogleSheetsAuth";
 import { GoogleSheetsDatasetsView } from "./GoogleSheetsDatasetsView";
 import { GuidedColumnMapping } from "./GuidedColumnMapping";
@@ -16,6 +15,7 @@ interface UploadAdditionalDataModalProps {
   campaignId: string;
   returnUrl?: string;
   onDataConnected?: () => void;
+  googleSheetsOnly?: boolean; // If true, skip source selection and go directly to Google Sheets
 }
 
 type DataSourceType = 'google-sheets' | 'crm' | 'ecommerce' | 'custom-integration' | 'upload-file' | null;
@@ -25,9 +25,10 @@ export function UploadAdditionalDataModal({
   onClose,
   campaignId,
   returnUrl,
-  onDataConnected
+  onDataConnected,
+  googleSheetsOnly = false
 }: UploadAdditionalDataModalProps) {
-  const [selectedSource, setSelectedSource] = useState<DataSourceType>(null);
+  const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
@@ -123,13 +124,13 @@ export function UploadAdditionalDataModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Upload Additional Data</DialogTitle>
+          <DialogTitle>{googleSheetsOnly ? 'Add Google Sheets Dataset' : 'Upload Additional Data'}</DialogTitle>
           <DialogDescription>
-            Connect data sources to unlock revenue metrics including ROI, ROAS, Revenue, and Profit.
+            {googleSheetsOnly ? 'Connect a Google Sheet or tab to add it to your campaign.' : 'Connect data sources to unlock revenue metrics including ROI, ROAS, Revenue, and Profit.'}
           </DialogDescription>
         </DialogHeader>
 
-        {!selectedSource ? (
+        {!selectedSource && !googleSheetsOnly ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             {/* Google Sheets */}
             <Card 
@@ -213,17 +214,19 @@ export function UploadAdditionalDataModal({
           </div>
         ) : selectedSource === 'google-sheets' ? (
           <div className="mt-4 space-y-6">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setSelectedSource(null);
-                setShowDatasetsView(false);
-                setJustConnected(false);
-              }}
-              className="mb-4"
-            >
-              ← Back to Options
-            </Button>
+            {!googleSheetsOnly && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSelectedSource(null);
+                  setShowDatasetsView(false);
+                  setJustConnected(false);
+                }}
+                className="mb-4"
+              >
+                ← Back to Options
+              </Button>
+            )}
 
             {/* Show guided mapping for new connections */}
             {showGuidedMapping && newConnectionInfo ? (
@@ -254,38 +257,6 @@ export function UploadAdditionalDataModal({
               />
             ) : showDatasetsView || (!justConnected && googleSheetsConnections.length > 0) ? (
               <>
-                {/* Conversion Value Calculation Info */}
-                <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Lightbulb className="w-5 h-5 text-blue-600" />
-                      To calculate conversion value and unlock ROI, ROAS, Revenue, and Profit:
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-3 ml-4 list-disc">
-                      <li>
-                        <p className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
-                          Your Google Sheet should include:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="default" className="bg-green-600">
-                            ✓ Revenue column (required for conversion value)
-                          </Badge>
-                          <Badge variant="default" className="bg-green-600">
-                            ✓ Campaign Name column (to match with LinkedIn campaigns)
-                          </Badge>
-                          <Badge variant="secondary">
-                            Date column (optional, for time-based matching)
-                          </Badge>
-                        </div>
-                      </li>
-                      <li>Map a <strong>"Revenue"</strong> column (e.g., Deal Value, Sales, Total Revenue)</li>
-                      <li>System will calculate: <strong>Conversion Value = Revenue ÷ Conversions</strong></li>
-                    </ul>
-                  </CardContent>
-                </Card>
-                
                 {/* Show connected datasets */}
                 {googleSheetsConnections.length > 0 && (
                   <GoogleSheetsDatasetsView
@@ -324,38 +295,6 @@ export function UploadAdditionalDataModal({
             ) : (
               /* Show connection interface initially */
               <>
-                {/* Conversion Value Calculation Info */}
-                <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Lightbulb className="w-5 h-5 text-blue-600" />
-                      To calculate conversion value and unlock ROI, ROAS, Revenue, and Profit:
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-3 ml-4 list-disc">
-                      <li>
-                        <p className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
-                          Your Google Sheet should include:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="default" className="bg-green-600">
-                            ✓ Revenue column (required for conversion value)
-                          </Badge>
-                          <Badge variant="default" className="bg-green-600">
-                            ✓ Campaign Name column (to match with LinkedIn campaigns)
-                          </Badge>
-                          <Badge variant="secondary">
-                            Date column (optional, for time-based matching)
-                          </Badge>
-                        </div>
-                      </li>
-                      <li>Map a <strong>"Revenue"</strong> column (e.g., Deal Value, Sales, Total Revenue)</li>
-                      <li>System will calculate: <strong>Conversion Value = Revenue ÷ Conversions</strong></li>
-                    </ul>
-                  </CardContent>
-                </Card>
-
                 {/* Google Sheets Connection Interface */}
                 <SimpleGoogleSheetsAuth
                   campaignId={campaignId}

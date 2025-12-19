@@ -860,6 +860,7 @@ export default function GoogleSheetsData() {
                 refetch();
               }}
               returnUrl={window.location.pathname + window.location.search}
+              googleSheetsOnly={true}
             />
           )}
         </main>

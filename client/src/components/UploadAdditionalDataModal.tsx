@@ -87,10 +87,26 @@ export function UploadAdditionalDataModal({
 
   const handleGoogleSheetsSuccess = (connectionInfo?: { connectionId: string; spreadsheetId: string }) => {
     if (connectionInfo) {
-      // New connection - show guided mapping
-      setNewConnectionInfo(connectionInfo);
-      setShowGuidedMapping(true);
-      setJustConnected(false);
+      if (googleSheetsOnly) {
+        // For Google Sheets only mode (from Connection Details), skip mapping and just connect
+        toast({
+          title: "Google Sheet Connected!",
+          description: "Your sheet has been added and is now available in the dropdown.",
+        });
+        refetchConnections();
+        if (onDataConnected) {
+          onDataConnected();
+        }
+        // Close modal after a short delay to show the toast
+        setTimeout(() => {
+          onClose();
+        }, 1500);
+      } else {
+        // For LinkedIn conversion value flow, show guided mapping
+        setNewConnectionInfo(connectionInfo);
+        setShowGuidedMapping(true);
+        setJustConnected(false);
+      }
     } else {
       // Existing connection or no connection info - show datasets view
       toast({
@@ -228,8 +244,8 @@ export function UploadAdditionalDataModal({
               </Button>
             )}
 
-            {/* Show guided mapping for new connections */}
-            {showGuidedMapping && newConnectionInfo ? (
+            {/* Show guided mapping for new connections (only for LinkedIn conversion value flow, not googleSheetsOnly) */}
+            {showGuidedMapping && newConnectionInfo && !googleSheetsOnly ? (
               <GuidedColumnMapping
                 campaignId={originalCampaignId}
                 connectionId={newConnectionInfo.connectionId}

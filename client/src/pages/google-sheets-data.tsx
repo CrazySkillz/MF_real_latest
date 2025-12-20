@@ -174,15 +174,18 @@ export default function GoogleSheetsData() {
       
       // Additional delay to ensure backend has fully processed the deletion and cleared conversion values
       setTimeout(async () => {
-        // Force refetch of all related queries
+        // Force refetch of all related queries - invalidate first, then refetch
         await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
         await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false });
         await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
+        
         // Force immediate refetch to ensure fresh data
-        await queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
-        await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
-        await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false });
-      }, 1500);
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"], exact: false }),
+          queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false }),
+          queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false })
+        ]);
+      }, 2000);
       
       toast({
         title: "Connection Removed",

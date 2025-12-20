@@ -2994,8 +2994,17 @@ export default function LinkedInAnalytics() {
                           return true;
                         }
                         
-                        // Otherwise check aggregated.hasRevenueTracking (manual entry or from session)
+                        // Check aggregated.hasRevenueTracking - must be exactly 1 to show revenue metrics
+                        // Backend sets this to 0 when no active Google Sheets with mappings exist
                         const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
+                        
+                        console.log('[LinkedIn Analytics] Revenue Metrics check:', {
+                          hasGoogleSheetsConversionValues,
+                          hasRevenueTracking,
+                          hasRevenueTrackingValue: aggregated?.hasRevenueTracking,
+                          aggregatedConversionValue: aggregated?.conversionValue
+                        });
+                        
                         return hasRevenueTracking;
                       })() && (
                         <>

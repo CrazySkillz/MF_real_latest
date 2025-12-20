@@ -4180,6 +4180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         conversionValue: platformConversionValue
                       });
                       console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${platformConversionValue}`);
+                    }
                   }
                 } else {
                   console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No revenue/conversions data found`);

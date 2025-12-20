@@ -758,50 +758,6 @@ export default function GoogleSheetsData() {
 
                 <TabsContent value="connections" className="mt-6">
                   <div className="space-y-6">
-                    {/* Conversion Values Calculated */}
-                    {sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0 && (
-                      <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
-                        <CardHeader>
-                          <CardTitle className="text-base flex items-center gap-2">
-                            <Target className="w-5 h-5 text-green-600 dark:text-green-400" />
-                            Conversion Values Calculated
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {sheetsData.calculatedConversionValues.map((cv: any, idx: number) => {
-                              const platformName = cv.platform === 'linkedin' ? 'LinkedIn' : 
-                                                 cv.platform === 'facebook_ads' ? 'Facebook Ads' :
-                                                 cv.platform === 'google_ads' ? 'Google Ads' :
-                                                 cv.platform.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-                              return (
-                                <div key={idx} className="flex items-center gap-2 text-sm">
-                                  <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                                  <div className="flex-1">
-                                    <span className="font-medium text-slate-900 dark:text-white">
-                                      {platformName}:
-                                    </span>
-                                    <span className="text-slate-700 dark:text-slate-300 ml-2">
-                                      ${cv.conversionValue}
-                                    </span>
-                                    <span className="text-slate-500 dark:text-slate-400 ml-2">
-                                      (from {cv.conversions.toLocaleString()} conversions)
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="mt-4 pt-3 border-t border-green-200 dark:border-green-800">
-                            <p className="text-sm font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Revenue metrics are now available!
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
                     {/* Connected Datasets */}
                     <Card>
                       <CardHeader>

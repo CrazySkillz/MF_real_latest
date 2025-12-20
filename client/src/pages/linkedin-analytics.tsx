@@ -2994,47 +2994,38 @@ export default function LinkedInAnalytics() {
                           
                           {/* Revenue Metrics Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {/* Conversion Value - Show first */}
-                          {sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0 && (
-                            <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                      Conversion Value
-                                    </h3>
-                                    <UITooltip>
-                                      <TooltipTrigger asChild>
-                                        <button type="button" className="inline-flex items-center">
-                                          <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" />
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="max-w-sm">
-                                        <div className="space-y-2 text-sm">
-                                          <p className="font-medium">Calculation</p>
-                                          <p>Conversion Value = Revenue ÷ Conversions</p>
-                                          {sheetsData.calculatedConversionValues.map((cv: any, idx: number) => (
-                                            <p key={idx} className="text-xs text-slate-400">
-                                              {cv.platform}: ${cv.conversionValue} (from {cv.conversions.toLocaleString()} conversions)
-                                            </p>
-                                          ))}
-                                        </div>
-                                      </TooltipContent>
-                                    </UITooltip>
-                                  </div>
-                                  <Calculator className="w-4 h-4 text-green-600" />
+                          {/* Conversion Value - Show first - Use aggregated.conversionValue (single source of truth) */}
+                          <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                    Conversion Value
+                                  </h3>
+                                  <UITooltip>
+                                    <TooltipTrigger asChild>
+                                      <button type="button" className="inline-flex items-center">
+                                        <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" />
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-sm">
+                                      <div className="space-y-2 text-sm">
+                                        <p className="font-medium">Calculation</p>
+                                        <p>Conversion Value = Revenue ÷ Conversions</p>
+                                        <p className="text-xs text-slate-400">
+                                          ${parseFloat(aggregated.conversionValue || 0).toFixed(2)} per conversion
+                                        </p>
+                                      </div>
+                                    </TooltipContent>
+                                  </UITooltip>
                                 </div>
-                                <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                                  ${sheetsData.calculatedConversionValues[0]?.conversionValue || '0.00'}
-                                </p>
-                                {sheetsData.calculatedConversionValues.length > 1 && (
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    {sheetsData.calculatedConversionValues.length} platforms
-                                  </p>
-                                )}
-                              </CardContent>
-                            </Card>
-                          )}
+                                <Calculator className="w-4 h-4 text-green-600" />
+                              </div>
+                              <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                ${parseFloat(aggregated.conversionValue || 0).toFixed(2)}
+                              </p>
+                            </CardContent>
+                          </Card>
                           
                           {/* Total Revenue */}
                           <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">

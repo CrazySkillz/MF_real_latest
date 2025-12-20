@@ -481,17 +481,6 @@ export default function GoogleSheetsData() {
                       <SelectValue placeholder="Select a sheet..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {googleSheetsConnections.length > 1 && (
-                        <SelectItem value="combined">
-                          <div className="flex items-center gap-2">
-                            <FileSpreadsheet className="w-4 h-4" />
-                            <span>View All (Combined)</span>
-                            <Badge variant="secondary" className="ml-auto text-xs">
-                              {googleSheetsConnections.length} sheets
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      )}
                       {googleSheetsConnections.map((conn: any) => {
                         const displayName = conn.sheetName 
                           ? `${conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`} (${conn.sheetName})`

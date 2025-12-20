@@ -7836,12 +7836,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Final conversion value used:', conversionValue);
       
-      // Calculate revenue metrics if conversion value is set
-      if (conversionValue > 0) {
+      const totalRevenue = totalConversions * conversionValue;
+      const profit = totalRevenue - totalSpend;
+      
+      // Calculate revenue metrics if conversion value is set AND has active mappings
+      if (conversionValue > 0 && hasActiveGoogleSheetsWithMappings) {
         console.log('✅ Revenue tracking ENABLED');
-        
-        const totalRevenue = totalConversions * conversionValue;
-        const profit = totalRevenue - totalSpend;
         
         aggregated.hasRevenueTracking = 1;
         aggregated.conversionValue = conversionValue;

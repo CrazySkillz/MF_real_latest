@@ -3449,9 +3449,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Revenue Metrics (only if conversion value is set)
       console.log('[LinkedIn Analytics] Checking revenue tracking - conversionValue:', conversionValue);
       console.log('[LinkedIn Analytics] hasActiveGoogleSheetsWithMappings:', hasActiveGoogleSheetsWithMappings);
+      console.log('[LinkedIn Analytics] connectionsWithMappings count:', connectionsWithMappings.length);
+      console.log('[LinkedIn Analytics] total Google Sheets connections:', googleSheetsConnections.length);
       
-      // Explicitly set hasRevenueTracking based on conversionValue AND active mappings
+      // CRITICAL: Explicitly set hasRevenueTracking based on conversionValue AND active mappings
       // If no active Google Sheets with mappings, force hasRevenueTracking to 0 even if conversionValue > 0
+      // This ensures that when a mapped Google Sheet is deleted, revenue metrics disappear immediately
       if (conversionValue > 0 && hasActiveGoogleSheetsWithMappings) {
         console.log('[LinkedIn Analytics] ✅ Revenue tracking ENABLED (conversionValue > 0 AND active mappings exist)');
         aggregated.hasRevenueTracking = 1; // Flag to indicate revenue tracking is enabled
@@ -3481,6 +3484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Force hasRevenueTracking to 0 if no active mappings OR conversionValue is 0
         console.log('[LinkedIn Analytics] ❌ Revenue tracking DISABLED - conversionValue:', conversionValue, 'hasActiveGoogleSheetsWithMappings:', hasActiveGoogleSheetsWithMappings);
+        // Explicitly set all revenue-related fields to 0 or null
         aggregated.hasRevenueTracking = 0;
         aggregated.conversionValue = 0;
         aggregated.totalRevenue = 0;

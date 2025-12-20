@@ -4081,6 +4081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   console.log(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
                   // Platform connection values are managed by the LinkedIn Analytics endpoint
                   // which checks for active mappings and clears stale values
+                  }
                 }
               }
             } catch (platformError) {

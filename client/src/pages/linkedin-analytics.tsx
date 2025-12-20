@@ -428,10 +428,21 @@ export default function LinkedInAnalytics() {
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     staleTime: 0, // Always fetch fresh data to pick up conversion value changes
-    // Refetch every 10 seconds to catch Google Sheets deletions
-    refetchInterval: 10000,
+    // Refetch every 5 seconds to catch Google Sheets deletions quickly
+    refetchInterval: 5000,
     // Force refetch to ensure we get the latest data after Google Sheets deletions
     gcTime: 0, // Don't cache - always fetch fresh
+    // Add cache busting timestamp to force fresh fetch
+    queryFn: async () => {
+      const response = await fetch(`/api/linkedin/imports/${sessionId}?t=${Date.now()}`);
+      if (!response.ok) throw new Error('Failed to fetch session data');
+      const data = await response.json();
+      console.log('[LinkedIn Analytics] Session data fetched:', {
+        hasRevenueTracking: data?.aggregated?.hasRevenueTracking,
+        conversionValue: data?.aggregated?.conversionValue
+      });
+      return data;
+    },
   });
 
   // Fetch ad performance data

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRoute, useLocation, setLocation } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -227,9 +227,10 @@ export default function GoogleSheetsData() {
       }
     }
     const newUrl = `${window.location.pathname}${newParams.toString() ? `?${newParams.toString()}` : ''}`;
-    // Use setLocation for smooth client-side navigation without page reload
+    // Update URL using history API and setLocation for smooth client-side navigation
+    window.history.pushState({}, '', newUrl);
     setLocation(newUrl);
-  }, [googleSheetsConnections]);
+  }, [googleSheetsConnections, setLocation]);
 
   const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData & { calculatedConversionValues?: any[]; matchingInfo?: any; sheetBreakdown?: any[] }>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data", activeSpreadsheetId],

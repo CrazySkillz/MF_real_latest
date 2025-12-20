@@ -3395,7 +3395,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : parseFloat(session.conversionValue || '0');
         console.log('[LinkedIn Analytics] Using stored conversion value (Google Sheets with mappings still connected):', conversionValue);
       } else {
-        // No active Google Sheets with mappings - check if conversion value is from LinkedIn connection (manual entry)
+        // No active Google Sheets with mappings - FORCE CLEAR stale conversion values
+        console.log('[LinkedIn Analytics] ❌ NO active Google Sheets with mappings - clearing stale conversion values');
+        
+        // Clear stale campaign conversion value
+        if (campaign?.conversionValue) {
+          console.log('[LinkedIn Analytics] Clearing stale campaign conversion value:', campaign.conversionValue);
+          await storage.updateCampaign(session.campaignId, { conversionValue: null });
+        }
+        
+        // Clear stale session conversion value
+        if (session.conversionValue) {
+          console.log('[LinkedIn Analytics] Clearing stale session conversion value:', session.conversionValue);
+          await storage.updateLinkedInImportSession(session.id, { conversionValue: null });
+        }
+        
+        // Check if conversion value is from LinkedIn connection (manual entry - NOT from Google Sheets)
         const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
         if (linkedInConnection?.conversionValue) {
           conversionValue = parseFloat(linkedInConnection.conversionValue);

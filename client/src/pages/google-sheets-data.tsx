@@ -246,7 +246,8 @@ export default function GoogleSheetsData() {
     refetchIntervalInBackground: true, // Continue refreshing when tab is in background
     refetchOnWindowFocus: true, // Refresh when user returns to tab
     staleTime: 0, // Always consider data stale - force fresh fetch
-    gcTime: 0, // Don't cache the data (TanStack Query v5)
+    gcTime: 5000, // Keep data in cache briefly for smooth transitions
+    placeholderData: (previousData) => previousData, // Keep previous data visible during fetch
     queryFn: async () => {
       let response: Response;
       try {

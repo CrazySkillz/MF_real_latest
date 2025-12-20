@@ -199,15 +199,16 @@ export default function GoogleSheetsData() {
   const activeSpreadsheetId = useMemo(() => {
     if (isCombinedView) return 'combined';
     if (selectedSpreadsheetId) {
-      // Parse composite value (spreadsheetId:sheetName or just spreadsheetId)
-      const [spreadsheetId, sheetName] = selectedSpreadsheetId.includes(':') 
+      // Parse composite value (spreadsheetId:sheetName or spreadsheetId:connectionId)
+      const [spreadsheetId, identifier] = selectedSpreadsheetId.includes(':') 
         ? selectedSpreadsheetId.split(':') 
         : [selectedSpreadsheetId, null];
       
       // Verify the selected connection exists
+      // identifier can be sheetName or connectionId (for tabs without sheetName)
       const exists = googleSheetsConnections.some((conn: any) => 
         conn.spreadsheetId === spreadsheetId && 
-        (sheetName === null || conn.sheetName === sheetName)
+        (identifier === null || conn.sheetName === identifier || conn.id === identifier)
       );
       if (exists) return selectedSpreadsheetId;
     }
@@ -216,7 +217,7 @@ export default function GoogleSheetsData() {
     if (defaultConn) {
       return defaultConn.sheetName 
         ? `${defaultConn.spreadsheetId}:${defaultConn.sheetName}`
-        : defaultConn.spreadsheetId;
+        : `${defaultConn.spreadsheetId}:${defaultConn.id}`;
     }
     return null;
   }, [selectedSpreadsheetId, isCombinedView, primaryConnection, googleSheetsConnections]);
@@ -230,15 +231,16 @@ export default function GoogleSheetsData() {
       newParams.set('view', 'combined');
       newParams.delete('spreadsheetId');
     } else {
-      // Parse composite value (spreadsheetId:sheetName or just spreadsheetId)
-      const [spreadsheetId, sheetName] = value.includes(':') 
+      // Parse composite value (spreadsheetId:sheetName or spreadsheetId:connectionId)
+      const [spreadsheetId, identifier] = value.includes(':') 
         ? value.split(':') 
         : [value, null];
       
       // Verify the value exists in connections before setting it
+      // identifier can be sheetName or connectionId (for tabs without sheetName)
       const exists = googleSheetsConnections.some((conn: any) => 
         conn.spreadsheetId === spreadsheetId && 
-        (sheetName === null || conn.sheetName === sheetName)
+        (identifier === null || conn.sheetName === identifier || conn.id === identifier)
       );
       if (exists) {
         newParams.set('spreadsheetId', value);
@@ -491,12 +493,12 @@ export default function GoogleSheetsData() {
                       if (isCombinedView) return 'combined';
                       if (activeSpreadsheetId && activeSpreadsheetId !== 'combined') {
                         // Parse activeSpreadsheetId to verify it exists
-                        const [spreadsheetId, sheetName] = activeSpreadsheetId.includes(':') 
+                        const [spreadsheetId, identifier] = activeSpreadsheetId.includes(':') 
                           ? activeSpreadsheetId.split(':') 
                           : [activeSpreadsheetId, null];
                         const exists = googleSheetsConnections.some((conn: any) => 
                           conn.spreadsheetId === spreadsheetId && 
-                          (sheetName === null || conn.sheetName === sheetName)
+                          (identifier === null || conn.sheetName === identifier || conn.id === identifier)
                         );
                         if (exists) return activeSpreadsheetId;
                       }
@@ -505,7 +507,7 @@ export default function GoogleSheetsData() {
                       if (defaultConn) {
                         return defaultConn.sheetName 
                           ? `${defaultConn.spreadsheetId}:${defaultConn.sheetName}`
-                          : defaultConn.spreadsheetId;
+                          : `${defaultConn.spreadsheetId}:${defaultConn.id}`;
                       }
                       return '';
                     })()}
@@ -515,27 +517,35 @@ export default function GoogleSheetsData() {
                       <SelectValue placeholder="Select a sheet..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {googleSheetsConnections.map((conn: any) => {
-                        // Make tab name prominent when multiple tabs from same spreadsheet exist
-                        const hasMultipleTabsFromSameSpreadsheet = googleSheetsConnections.filter(
+                      {googleSheetsConnections.map((conn: any, index: number) => {
+                        // Check if multiple tabs from same spreadsheet exist
+                        const connectionsFromSameSpreadsheet = googleSheetsConnections.filter(
                           (c: any) => c.spreadsheetId === conn.spreadsheetId
-                        ).length > 1;
+                        );
+                        const hasMultipleTabsFromSameSpreadsheet = connectionsFromSameSpreadsheet.length > 1;
                         
                         let displayName: string;
-                        if (conn.sheetName) {
-                          if (hasMultipleTabsFromSameSpreadsheet) {
-                            // When multiple tabs exist, show tab name first and prominently
+                        if (hasMultipleTabsFromSameSpreadsheet) {
+                          // When multiple tabs exist, always show something to distinguish them
+                          if (conn.sheetName) {
+                            // Show tab name first and prominently
                             displayName = `${conn.sheetName} - ${conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`}`;
                           } else {
-                            // Single tab, show spreadsheet name with tab in parentheses
-                            displayName = `${conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`} (${conn.sheetName})`;
+                            // No sheetName, use connection index or ID to distinguish
+                            const tabIndex = connectionsFromSameSpreadsheet.findIndex((c: any) => c.id === conn.id) + 1;
+                            displayName = `${conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`} (Tab ${tabIndex})`;
                           }
                         } else {
-                          displayName = conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`;
+                          // Single tab from this spreadsheet
+                          if (conn.sheetName) {
+                            displayName = `${conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`} (${conn.sheetName})`;
+                          } else {
+                            displayName = conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`;
+                          }
                         }
                         
                         return (
-                          <SelectItem key={conn.id} value={`${conn.spreadsheetId}${conn.sheetName ? `:${conn.sheetName}` : ''}`}>
+                          <SelectItem key={conn.id} value={`${conn.spreadsheetId}${conn.sheetName ? `:${conn.sheetName}` : `:${conn.id}`}`}>
                             <div className="flex items-center gap-2 w-full">
                               <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
                               <span className="flex-1 truncate">{displayName}</span>
@@ -561,26 +571,34 @@ export default function GoogleSheetsData() {
                           <FileSpreadsheet className="w-3 h-3 mr-1" />
                           Active: {(() => {
                           // Parse activeSpreadsheetId to find the correct connection
-                          const [spreadsheetId, sheetName] = activeSpreadsheetId?.includes(':') 
+                          const [spreadsheetId, identifier] = activeSpreadsheetId?.includes(':') 
                             ? activeSpreadsheetId.split(':') 
                             : [activeSpreadsheetId, null];
                           const activeConn = googleSheetsConnections.find((conn: any) => 
                             conn.spreadsheetId === spreadsheetId && 
-                            (sheetName === null || conn.sheetName === sheetName)
+                            (identifier === null || conn.sheetName === identifier || conn.id === identifier)
                           );
                           if (!activeConn) return 'Unknown';
                           
                           // Show tab name prominently if multiple tabs from same spreadsheet
-                          const hasMultipleTabs = googleSheetsConnections.filter(
+                          const connectionsFromSameSpreadsheet = googleSheetsConnections.filter(
                             (c: any) => c.spreadsheetId === activeConn.spreadsheetId
-                          ).length > 1;
+                          );
+                          const hasMultipleTabs = connectionsFromSameSpreadsheet.length > 1;
                           
-                          if (activeConn.sheetName) {
-                            return hasMultipleTabs
-                              ? `${activeConn.sheetName} - ${activeConn.spreadsheetName || 'Sheet'}`
-                              : `${activeConn.spreadsheetName || 'Sheet'} (${activeConn.sheetName})`;
+                          if (hasMultipleTabs) {
+                            if (activeConn.sheetName) {
+                              return `${activeConn.sheetName} - ${activeConn.spreadsheetName || 'Sheet'}`;
+                            } else {
+                              const tabIndex = connectionsFromSameSpreadsheet.findIndex((c: any) => c.id === activeConn.id) + 1;
+                              return `${activeConn.spreadsheetName || 'Sheet'} (Tab ${tabIndex})`;
+                            }
+                          } else {
+                            if (activeConn.sheetName) {
+                              return `${activeConn.spreadsheetName || 'Sheet'} (${activeConn.sheetName})`;
+                            }
+                            return activeConn.spreadsheetName || 'Sheet';
                           }
-                          return activeConn.spreadsheetName || 'Sheet';
                           })()}
                         </>
                       )}

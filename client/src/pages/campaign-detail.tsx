@@ -4971,7 +4971,7 @@ export default function CampaignDetail() {
                             </div>
                           </div>
                         )}
-                        {/* View Detailed Analytics Button - Show for Google Sheets when connected (connection + mappings = conversion values calculated) */}
+                        {/* View Detailed Analytics Button - Show for Google Sheets when any active connection exists */}
                         {platform.platform === "Google Sheets" && platform.connected && (
                           <div className="pt-2 border-t">
                             <Link href={platform.analyticsPath || `/campaigns/${campaignId}/google-sheets-data`}>
@@ -4985,9 +4985,9 @@ export default function CampaignDetail() {
                                 View Detailed Analytics
                               </Button>
                             </Link>
-                          </div>
-                        )}
-                        
+                                </div>
+                              )}
+                              
                         {/* View Detailed Analytics for other platforms */}
                         {platform.analyticsPath && platform.platform !== "Google Sheets" && (
                           <div className="pt-2">
@@ -5067,7 +5067,7 @@ export default function CampaignDetail() {
                             queryClientHook.invalidateQueries({ queryKey: ["/api/linkedin/check-connection", campaignId] });
                             // Small delay to ensure queries are invalidated before reload
                             setTimeout(() => {
-                              window.location.reload();
+                            window.location.reload();
                             }, 100);
                           }}
                         />

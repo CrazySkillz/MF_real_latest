@@ -4077,22 +4077,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     conversions: conversionsUsed
                   });
                   
-                  // Update platform connection ONLY IF AUTO_CALCULATE_CONVERSION_VALUE is enabled
-                  if (AUTO_CALCULATE_CONVERSION_VALUE) {
-                    if (platformInfo.platform === 'linkedin' && linkedInConnection) {
-                      await storage.updateLinkedInConnection(campaignId, {
-                        conversionValue: conversionValue.toFixed(2)
-                      });
-                      console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${conversionValue.toFixed(2)} (using ${conversionSource} conversions)`);
-                    } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
-                      await storage.updateMetaConnection(campaignId, {
-                        conversionValue: conversionValue.toFixed(2)
-                      });
-                      console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${conversionValue.toFixed(2)} (using mappings)`);
-                    }
-                  } else {
-                    console.log(`[Auto Conversion Value] ⏭️ Skipped updating platform connection (AUTO_CALCULATE disabled)`);
-                  }
+                  // DO NOT update platform connection - it will be cleared if needed by the analytics endpoint
+                  console.log(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
+                  // Platform connection values are managed by the LinkedIn Analytics endpoint
+                  // which checks for active mappings and clears stale values
                 }
               }
             } catch (platformError) {
@@ -4177,8 +4165,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     conversions: conversionsToUse
                   });
                   
-                  // Update the platform connection's conversion value ONLY IF AUTO_CALCULATE is enabled
-                  if (AUTO_CALCULATE_CONVERSION_VALUE) {
+                  // DO NOT update platform connection - it will be cleared if needed by the analytics endpoint
+                  console.log(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
+                  // Platform connection values are managed by the LinkedIn Analytics endpoint
+                  // which checks for active mappings and clears stale values
+                  if (false) { // Disabled - causes race condition with clearing logic
                     if (platformInfo.platform === 'linkedin' && linkedInConnection) {
                       await storage.updateLinkedInConnection(campaignId, {
                         conversionValue: platformConversionValue

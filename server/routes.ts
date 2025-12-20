@@ -3363,31 +3363,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalImpressions = aggregated.totalImpressions || 0;
       const totalEngagements = aggregated.totalEngagements || 0;
       
-      // Check if there are active Google Sheets connections
-      // If no active connections, don't use stored conversion values (they were likely from Google Sheets)
+      // Check if there are active Google Sheets connections WITH MAPPINGS
+      // If no active connections with mappings, don't use stored conversion values (they were likely from Google Sheets)
       const googleSheetsConnections = await storage.getGoogleSheetsConnections(session.campaignId);
-      const hasActiveGoogleSheets = googleSheetsConnections.length > 0;
+      
+      // Filter to only connections with mappings
+      const connectionsWithMappings = googleSheetsConnections.filter((conn: any) => {
+        if (!conn.columnMappings) return false;
+        try {
+          const mappings = JSON.parse(conn.columnMappings);
+          return Array.isArray(mappings) && mappings.length > 0;
+        } catch {
+          return false;
+        }
+      });
+      
+      const hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
       
       // Use campaign conversion value (prioritize campaign, fallback to session)
-      // BUT only if Google Sheets is still connected, otherwise the value is stale
+      // BUT only if Google Sheets with mappings is still connected, otherwise the value is stale
       console.log('[LinkedIn Analytics] Campaign conversion value:', campaign?.conversionValue);
       console.log('[LinkedIn Analytics] Session conversion value:', session.conversionValue);
       console.log('[LinkedIn Analytics] Active Google Sheets connections:', googleSheetsConnections.length);
+      console.log('[LinkedIn Analytics] Active Google Sheets connections WITH MAPPINGS:', connectionsWithMappings.length);
       
       let conversionValue = 0;
-      if (hasActiveGoogleSheets) {
-        // Only use stored conversion value if Google Sheets is still connected
+      if (hasActiveGoogleSheetsWithMappings) {
+        // Only use stored conversion value if Google Sheets with mappings is still connected
         conversionValue = campaign?.conversionValue 
           ? parseFloat(campaign.conversionValue.toString()) 
           : parseFloat(session.conversionValue || '0');
+        console.log('[LinkedIn Analytics] Using stored conversion value (Google Sheets with mappings still connected):', conversionValue);
       } else {
-        // No active Google Sheets - check if conversion value is from LinkedIn connection (manual entry)
+        // No active Google Sheets with mappings - check if conversion value is from LinkedIn connection (manual entry)
         const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
         if (linkedInConnection?.conversionValue) {
           conversionValue = parseFloat(linkedInConnection.conversionValue);
           console.log('[LinkedIn Analytics] Using LinkedIn connection conversion value (manual entry):', conversionValue);
         } else {
-          console.log('[LinkedIn Analytics] No active Google Sheets and no LinkedIn connection conversion value - revenue tracking disabled');
+          console.log('[LinkedIn Analytics] No active Google Sheets with mappings and no LinkedIn connection conversion value - revenue tracking disabled');
           conversionValue = 0;
         }
       }

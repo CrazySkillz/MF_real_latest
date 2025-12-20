@@ -4077,17 +4077,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     conversions: conversionsUsed
                   });
                   
-                  // Update platform connection
-                  if (platformInfo.platform === 'linkedin' && linkedInConnection) {
-                    await storage.updateLinkedInConnection(campaignId, {
-                      conversionValue: conversionValue.toFixed(2)
-                    });
-                    console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${conversionValue.toFixed(2)} (using ${conversionSource} conversions)`);
-                  } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
-                    await storage.updateMetaConnection(campaignId, {
-                      conversionValue: conversionValue.toFixed(2)
-                    });
-                    console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${conversionValue.toFixed(2)} (using mappings)`);
+                  // Update platform connection ONLY IF AUTO_CALCULATE_CONVERSION_VALUE is enabled
+                  if (AUTO_CALCULATE_CONVERSION_VALUE) {
+                    if (platformInfo.platform === 'linkedin' && linkedInConnection) {
+                      await storage.updateLinkedInConnection(campaignId, {
+                        conversionValue: conversionValue.toFixed(2)
+                      });
+                      console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${conversionValue.toFixed(2)} (using ${conversionSource} conversions)`);
+                    } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
+                      await storage.updateMetaConnection(campaignId, {
+                        conversionValue: conversionValue.toFixed(2)
+                      });
+                      console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${conversionValue.toFixed(2)} (using mappings)`);
+                    }
+                  } else {
+                    console.log(`[Auto Conversion Value] ⏭️ Skipped updating platform connection (AUTO_CALCULATE disabled)`);
                   }
                 }
               }
@@ -4173,17 +4177,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     conversions: conversionsToUse
                   });
                   
-                  // Update the platform connection's conversion value
-                  if (platformInfo.platform === 'linkedin' && linkedInConnection) {
-                    await storage.updateLinkedInConnection(campaignId, {
-                      conversionValue: platformConversionValue
-                    });
-                    console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue} (using ${conversionSource} conversions)`);
-                  } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
-                    await storage.updateMetaConnection(campaignId, {
-                      conversionValue: platformConversionValue
-                    });
-                    console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${platformConversionValue}`);
+                  // Update the platform connection's conversion value ONLY IF AUTO_CALCULATE is enabled
+                  if (AUTO_CALCULATE_CONVERSION_VALUE) {
+                    if (platformInfo.platform === 'linkedin' && linkedInConnection) {
+                      await storage.updateLinkedInConnection(campaignId, {
+                        conversionValue: platformConversionValue
+                      });
+                      console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue} (using ${conversionSource} conversions)`);
+                    } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
+                      await storage.updateMetaConnection(campaignId, {
+                        conversionValue: platformConversionValue
+                      });
+                      console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${platformConversionValue}`);
                   }
                 } else {
                   console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No revenue/conversions data found`);

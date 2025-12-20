@@ -2966,22 +2966,16 @@ export default function LinkedInAnalytics() {
 
                       {/* Revenue Metrics - Only shown if conversion value is set - Displayed under Derived Metrics */}
                       {(() => {
-                        const hasGoogleSheetsConversionValues = sheetsData?.calculatedConversionValues && Array.isArray(sheetsData.calculatedConversionValues) && sheetsData.calculatedConversionValues.length > 0;
-                        
-                        // If conversion values exist, show Revenue Metrics
-                        if (hasGoogleSheetsConversionValues) {
-                          return true;
-                        }
-                        
-                        // Check aggregated.hasRevenueTracking - must be exactly 1 to show revenue metrics
-                        // Backend sets this to 0 when no active Google Sheets with mappings exist
+                        // SINGLE SOURCE OF TRUTH: Only check the backend's hasRevenueTracking flag
+                        // The backend sets hasRevenueTracking = 1 only when conversion values are available
+                        // This prevents race conditions and flickering caused by checking multiple data sources
                         const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
                         
-                        console.log('[LinkedIn Analytics] Revenue Metrics check:', {
-                          hasGoogleSheetsConversionValues,
+                        console.log('[LinkedIn Analytics] 💰 Revenue Metrics check:', {
                           hasRevenueTracking,
                           hasRevenueTrackingValue: aggregated?.hasRevenueTracking,
-                          aggregatedConversionValue: aggregated?.conversionValue
+                          shouldShowRevenueMetrics: hasRevenueTracking,
+                          conversionValue: aggregated?.conversionValue
                         });
                         
                         return hasRevenueTracking;

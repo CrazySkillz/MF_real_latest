@@ -230,6 +230,8 @@ export default function GoogleSheetsData() {
     // Update URL using history API and setLocation for smooth client-side navigation
     window.history.pushState({}, '', newUrl);
     setLocation(newUrl);
+    // Manually update urlParams state to trigger re-render and query refetch
+    setUrlParams(newParams);
   }, [googleSheetsConnections, setLocation]);
 
   const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData & { calculatedConversionValues?: any[]; matchingInfo?: any; sheetBreakdown?: any[] }>({

@@ -3214,10 +3214,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // If spreadsheetId is provided, fetch from that specific connection
+      // spreadsheetId may be in format "spreadsheetId:sheetName" to distinguish tabs from same spreadsheet
       // Otherwise, use the primary connection
       let connection: any;
       if (spreadsheetId) {
-        connection = await storage.getGoogleSheetsConnection(campaignId, spreadsheetId as string);
+        const spreadsheetIdStr = spreadsheetId as string;
+        // Check if it's a composite value (spreadsheetId:sheetName)
+        if (spreadsheetIdStr.includes(':')) {
+          const [spreadsheetIdOnly, sheetName] = spreadsheetIdStr.split(':');
+          // Get all connections for this campaign and find the one matching both spreadsheetId and sheetName
+          const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+          connection = allConnections.find((conn: any) => 
+            conn.spreadsheetId === spreadsheetIdOnly && conn.sheetName === sheetName
+          );
+        } else {
+          // Legacy format - just spreadsheetId (will get first matching connection)
+          connection = await storage.getGoogleSheetsConnection(campaignId, spreadsheetIdStr);
+        }
       } else {
         connection = await storage.getPrimaryGoogleSheetsConnection(campaignId) || 
                      await storage.getGoogleSheetsConnection(campaignId);

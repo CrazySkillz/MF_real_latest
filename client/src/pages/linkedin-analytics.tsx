@@ -422,7 +422,7 @@ export default function LinkedInAnalytics() {
   };
 
   // Fetch import session data
-  const { data: sessionData, isLoading: sessionLoading } = useQuery({
+  const { data: sessionData, isLoading: sessionLoading, refetch: refetchSessionData } = useQuery({
     queryKey: ['/api/linkedin/imports', sessionId],
     enabled: !!sessionId,
     refetchOnMount: 'always',
@@ -430,6 +430,8 @@ export default function LinkedInAnalytics() {
     staleTime: 0, // Always fetch fresh data to pick up conversion value changes
     // Refetch every 10 seconds to catch Google Sheets deletions
     refetchInterval: 10000,
+    // Force refetch to ensure we get the latest data after Google Sheets deletions
+    gcTime: 0, // Don't cache - always fetch fresh
   });
 
   // Fetch ad performance data

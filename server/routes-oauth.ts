@@ -963,6 +963,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!hasActiveConnectionsWithMappings) {
         console.log(`[Google Sheets] No active connections with mappings remaining - clearing conversion values from platform connections`);
         
+        // Clear campaign-level conversion value (if it was set from Google Sheets)
+        const campaign = await storage.getCampaign(campaignId);
+        if (campaign?.conversionValue) {
+          await storage.updateCampaign(campaignId, {
+            conversionValue: null
+          });
+          console.log(`[Google Sheets] Cleared campaign-level conversion value`);
+        }
+        
         // Clear LinkedIn connection conversion value
         const linkedInConnection = await storage.getLinkedInConnection(campaignId);
         if (linkedInConnection?.conversionValue) {

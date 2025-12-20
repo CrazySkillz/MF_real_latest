@@ -239,7 +239,7 @@ export default function GoogleSheetsData() {
   const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData & { calculatedConversionValues?: any[]; matchingInfo?: any; sheetBreakdown?: any[] }>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data", activeSpreadsheetId],
     enabled: !!campaignId && activeSpreadsheetId !== null,
-    refetchInterval: 300000, // Auto-refresh every 5 minutes
+    refetchInterval: 3600000, // Auto-refresh every hour
     refetchIntervalInBackground: true, // Continue refreshing when tab is in background
     refetchOnWindowFocus: true, // Refresh when user returns to tab
     staleTime: 0, // Always consider data stale - force fresh fetch
@@ -431,7 +431,7 @@ export default function GoogleSheetsData() {
               <div className="flex items-center space-x-3">
                 <Badge variant="secondary" className="text-xs">
                   <Calendar className="w-3 h-3 mr-1" />
-                  Auto-refreshing every 5 min
+                  Auto-refreshing hourly
                 </Badge>
                 <Button
                   variant="outline"

@@ -2703,14 +2703,23 @@ export default function LinkedInAnalytics() {
                       }
                       
                       // If no sheetsData, check aggregated.hasRevenueTracking (manual entry or from session)
+                      // But only if there are no active connections with mappings (if mappings exist, conversion value might be recalculating)
                       const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
-                      const shouldShowWarning = !hasGoogleSheetsConversionValues && !hasRevenueTracking;
+                      
+                      // Show warning if:
+                      // 1. No Google Sheets conversion values AND
+                      // 2. No active connections with mappings (so no recalculation in progress) AND
+                      // 3. No revenue tracking from LinkedIn API/manual entry
+                      const shouldShowWarning = !hasGoogleSheetsConversionValues && !hasActiveConnectionsWithMappings && !hasRevenueTracking;
                       
                       console.log('[LinkedIn Analytics] Notification check:', {
                         hasGoogleSheetsConversionValues,
                         hasActiveConnectionsWithMappings,
                         hasRevenueTracking,
-                        shouldShowWarning
+                        shouldShowWarning,
+                        sheetsDataCalculatedValues: sheetsData?.calculatedConversionValues,
+                        googleSheetsConnectionsCount: googleSheetsConnections?.connections?.length,
+                        aggregatedConversionValue: aggregated?.conversionValue
                       });
                       
                       return shouldShowWarning;

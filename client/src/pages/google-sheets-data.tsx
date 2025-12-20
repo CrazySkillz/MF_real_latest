@@ -178,9 +178,11 @@ export default function GoogleSheetsData() {
         await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
         await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false });
         await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
-        // Refetch to ensure fresh data
+        // Force immediate refetch to ensure fresh data
         await queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
-      }, 1000);
+        await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
+        await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false });
+      }, 1500);
       
       toast({
         title: "Connection Removed",

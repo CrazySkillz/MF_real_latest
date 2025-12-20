@@ -2689,7 +2689,6 @@ export default function LinkedInAnalytics() {
                       }
                       
                       // Check if there are any active Google Sheets connections with mappings
-                      // Only hide warning if mappings exist AND there are active connections (calculation might be in progress)
                       const hasActiveConnectionsWithMappings = googleSheetsConnections?.connections?.some((conn: any) => {
                         if (!conn.columnMappings) return false;
                         try {
@@ -2706,24 +2705,24 @@ export default function LinkedInAnalytics() {
                         return false;
                       }
                       
-                      // If no sheetsData, check aggregated.hasRevenueTracking (manual entry or from session)
-                      // But only if there are no active connections with mappings (if mappings exist, conversion value might be recalculating)
+                      // Check aggregated.hasRevenueTracking - if it's 0 or undefined, show warning
+                      // hasRevenueTracking should be 0 when no active Google Sheets with mappings exist (backend sets it to 0)
                       const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
                       
-                      // Show warning if:
-                      // 1. No Google Sheets conversion values AND
-                      // 2. No active connections with mappings (so no recalculation in progress) AND
-                      // 3. No revenue tracking from LinkedIn API/manual entry
+                      // SIMPLIFIED LOGIC: Show warning if no Google Sheets conversion values AND no active mappings
+                      // AND hasRevenueTracking is NOT 1 (could be 0, undefined, or falsy)
                       const shouldShowWarning = !hasGoogleSheetsConversionValues && !hasActiveConnectionsWithMappings && !hasRevenueTracking;
                       
                       console.log('[LinkedIn Analytics] Notification check:', {
                         hasGoogleSheetsConversionValues,
                         hasActiveConnectionsWithMappings,
                         hasRevenueTracking,
+                        hasRevenueTrackingValue: aggregated?.hasRevenueTracking,
                         shouldShowWarning,
                         sheetsDataCalculatedValues: sheetsData?.calculatedConversionValues,
                         googleSheetsConnectionsCount: googleSheetsConnections?.connections?.length,
-                        aggregatedConversionValue: aggregated?.conversionValue
+                        aggregatedConversionValue: aggregated?.conversionValue,
+                        aggregatedObject: aggregated
                       });
                       
                       return shouldShowWarning;

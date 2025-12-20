@@ -3616,12 +3616,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign name "${campaignName}") out of ${allRows.length} total rows`);
       
-      // Process spreadsheet data to extract campaign metrics (using filtered rows)
+      // Process spreadsheet data to extract campaign metrics (using filtered rows for summary, but show all rows in table)
       let campaignData = {
         totalRows: rows.length, // Keep original total for reference
         filteredRows: rowsForSummary.length, // Number of rows used for summary
         headers: headers,
-        data: rowsForSummary, // Filtered data rows for summary
+        data: allRows, // Show all rows in the table (not filtered)
         sampleData: rowsForSummary.slice(0, 6), // First 5 filtered data rows
         metrics: {} as Record<string, number>,
         detectedColumns: [] as Array<{name: string, index: number, type: string, total: number}>

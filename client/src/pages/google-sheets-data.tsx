@@ -623,10 +623,7 @@ export default function GoogleSheetsData() {
                         Spreadsheet Data
                       </CardTitle>
                       <CardDescription>
-                        {sheetsData.filteredRows !== undefined && sheetsData.filteredRows !== sheetsData.totalRows
-                          ? `${sheetsData.filteredRows} of ${sheetsData.totalRows} rows`
-                          : `${sheetsData.totalRows} rows`
-                        } • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
+                        {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, setLocation } from "wouter";
 import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -207,7 +207,7 @@ export default function GoogleSheetsData() {
     return primaryConnection?.spreadsheetId || googleSheetsConnections[0]?.spreadsheetId || null;
   }, [selectedSpreadsheetId, isCombinedView, primaryConnection, googleSheetsConnections]);
 
-  // Handle sheet selection change
+  // Handle sheet selection change with smooth transition
   const handleSheetChange = useCallback((value: string) => {
     if (!value) return; // Don't handle empty values
     
@@ -227,8 +227,8 @@ export default function GoogleSheetsData() {
       }
     }
     const newUrl = `${window.location.pathname}${newParams.toString() ? `?${newParams.toString()}` : ''}`;
-    // Use window.location.href for reliable navigation with query params
-    window.location.href = newUrl;
+    // Use setLocation for smooth client-side navigation without page reload
+    setLocation(newUrl);
   }, [googleSheetsConnections]);
 
   const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData & { calculatedConversionValues?: any[]; matchingInfo?: any; sheetBreakdown?: any[] }>({
@@ -609,6 +609,16 @@ export default function GoogleSheetsData() {
             </>
           ) : sheetsData ? (
             <>
+              {/* Loading overlay during data fetch */}
+              {sheetsFetching && (
+                <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 flex items-center justify-center transition-opacity duration-300">
+                  <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-xl flex items-center gap-3">
+                    <Loader2 className="w-5 h-5 text-green-600 animate-spin" />
+                    <span className="text-slate-700 dark:text-slate-300">Loading data...</span>
+                  </div>
+                </div>
+              )}
+              <div className={`transition-opacity duration-300 ${sheetsFetching ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
               <Tabs defaultValue="data" className="space-y-6">
                 <TabsList>
                   <TabsTrigger value="data">Raw Data</TabsTrigger>
@@ -628,7 +638,7 @@ export default function GoogleSheetsData() {
                     </CardHeader>
                     <CardContent>
                       {sheetsData.data && sheetsData.data.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-6">
+                        <div className="grid grid-cols-1 gap-6 transition-opacity duration-300">
                           <div className="overflow-x-auto">
                             <table className="w-full caption-bottom text-sm">
                               <thead className="[&_tr]:border-b">
@@ -828,6 +838,7 @@ export default function GoogleSheetsData() {
                   </div>
                 </TabsContent>
               </Tabs>
+              </div>
             </>
           ) : (
             <Card>

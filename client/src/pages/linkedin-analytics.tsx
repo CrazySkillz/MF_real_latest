@@ -287,12 +287,14 @@ export default function LinkedInAnalytics() {
   });
 
   // Fetch Google Sheets connections to check if mappings exist
-  const { data: googleSheetsConnections } = useQuery({
+  const { data: googleSheetsConnections, refetch: refetchGoogleSheetsConnections } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"],
     enabled: !!campaignId,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     staleTime: 0,
+    // Refetch every 10 seconds to catch connection deletions from other tabs/pages
+    refetchInterval: 10000,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
       if (!response.ok) return { connections: [] };

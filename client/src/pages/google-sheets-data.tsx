@@ -162,20 +162,25 @@ export default function GoogleSheetsData() {
     },
     onSuccess: async () => {
       // Invalidate all related queries to ensure UI updates
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+      // Use exact: false to invalidate all queries that start with these keys
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
       
       // Refetch connections and data immediately
       await refetchConnections();
       await refetch();
       
-      // Small delay to ensure backend has processed the deletion
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
-      }, 500);
+      // Additional delay to ensure backend has fully processed the deletion and cleared conversion values
+      setTimeout(async () => {
+        // Force refetch of all related queries
+        await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
+        await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false });
+        await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
+        // Refetch to ensure fresh data
+        await queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
+      }, 1000);
       
       toast({
         title: "Connection Removed",

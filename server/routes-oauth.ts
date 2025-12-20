@@ -972,6 +972,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[Google Sheets] Cleared LinkedIn connection conversion value`);
         }
         
+        // Also clear conversion value from LinkedIn import sessions
+        const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+        if (linkedInSessions && linkedInSessions.length > 0) {
+          for (const session of linkedInSessions) {
+            if (session.conversionValue) {
+              await storage.updateLinkedInImportSession(session.id, {
+                conversionValue: null
+              });
+              console.log(`[Google Sheets] Cleared conversion value from LinkedIn import session ${session.id}`);
+            }
+          }
+        }
+        
         // Clear Meta connection conversion value
         const metaConnection = await storage.getMetaConnection(campaignId);
         if (metaConnection?.conversionValue) {

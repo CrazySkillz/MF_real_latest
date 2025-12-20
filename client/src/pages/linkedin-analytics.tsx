@@ -313,7 +313,7 @@ export default function LinkedInAnalytics() {
   }) || false;
 
   // Fetch Google Sheets data to check for calculated conversion values
-  const { data: sheetsData } = useQuery({
+  const { data: sheetsData, refetch: refetchSheetsData } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
     refetchOnMount: 'always',

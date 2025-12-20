@@ -1687,17 +1687,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "google-sheets",
           name: "Google Sheets",
-          // Google Sheets is considered "connected" if there's a connection AND it has mappings (conversion values calculated)
-          connected: !!googleSheetsConnection && (() => {
-            if (!googleSheetsConnection.columnMappings) return false;
-            try {
-              const mappings = JSON.parse(googleSheetsConnection.columnMappings);
-              return Array.isArray(mappings) && mappings.length > 0;
-            } catch {
-              return false;
-            }
-          })(),
-          analyticsPath: googleSheetsConnection
+          // Google Sheets is considered "connected" if ANY active connection exists (not just primary/first)
+          // This ensures that if one sheet is deleted, it still shows as connected if other sheets exist
+          connected: googleSheetsConnections.length > 0,
+          analyticsPath: googleSheetsConnections.length > 0
             ? `/campaigns/${campaignId}/google-sheets-data`
             : null,
           lastConnectedAt: googleSheetsConnection?.connectedAt,

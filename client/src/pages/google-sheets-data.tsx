@@ -617,16 +617,14 @@ export default function GoogleSheetsData() {
             </>
           ) : sheetsData ? (
             <>
-              {/* Loading overlay during data fetch */}
+              {/* Subtle loading indicator - non-blocking */}
               {sheetsFetching && (
-                <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 flex items-center justify-center transition-opacity duration-300">
-                  <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-xl flex items-center gap-3">
-                    <Loader2 className="w-5 h-5 text-green-600 animate-spin" />
-                    <span className="text-slate-700 dark:text-slate-300">Loading data...</span>
-                  </div>
+                <div className="absolute top-4 right-4 z-50 flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg px-3 py-2 shadow-lg border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <Loader2 className="w-4 h-4 text-green-600 animate-spin" />
+                  <span className="text-sm text-slate-600 dark:text-slate-300">Loading...</span>
                 </div>
               )}
-              <div className={`transition-opacity duration-300 ${sheetsFetching ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+              <div className="relative transition-all duration-500 ease-in-out">
               <Tabs defaultValue="data" className="space-y-6">
                 <TabsList>
                   <TabsTrigger value="data">Raw Data</TabsTrigger>
@@ -646,9 +644,9 @@ export default function GoogleSheetsData() {
                     </CardHeader>
                     <CardContent>
                       {sheetsData.data && sheetsData.data.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-6 transition-opacity duration-300">
+                        <div className="grid grid-cols-1 gap-6">
                           <div className="overflow-x-auto">
-                            <table className="w-full caption-bottom text-sm">
+                            <table className="w-full caption-bottom text-sm transition-opacity duration-500 ease-in-out">
                               <thead className="[&_tr]:border-b">
                                 <tr className="border-b transition-colors hover:bg-muted/50">
                                   {sheetsData.headers?.map((header, index) => (

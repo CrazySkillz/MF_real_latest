@@ -3448,8 +3448,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Revenue Metrics (only if conversion value is set)
       console.log('[LinkedIn Analytics] Checking revenue tracking - conversionValue:', conversionValue);
-      if (conversionValue > 0) {
-        console.log('[LinkedIn Analytics] ✅ Revenue tracking ENABLED');
+      console.log('[LinkedIn Analytics] hasActiveGoogleSheetsWithMappings:', hasActiveGoogleSheetsWithMappings);
+      
+      // Explicitly set hasRevenueTracking based on conversionValue AND active mappings
+      // If no active Google Sheets with mappings, force hasRevenueTracking to 0 even if conversionValue > 0
+      if (conversionValue > 0 && hasActiveGoogleSheetsWithMappings) {
+        console.log('[LinkedIn Analytics] ✅ Revenue tracking ENABLED (conversionValue > 0 AND active mappings exist)');
         aggregated.hasRevenueTracking = 1; // Flag to indicate revenue tracking is enabled
         aggregated.conversionValue = conversionValue;
         aggregated.totalRevenue = parseFloat(totalRevenue.toFixed(2));
@@ -3475,8 +3479,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           aggregated.revenuePerLead = parseFloat((totalRevenue / totalLeads).toFixed(2));
         }
       } else {
-        console.log('[LinkedIn Analytics] ❌ Revenue tracking DISABLED - conversion value is 0 or missing');
+        // Force hasRevenueTracking to 0 if no active mappings OR conversionValue is 0
+        console.log('[LinkedIn Analytics] ❌ Revenue tracking DISABLED - conversionValue:', conversionValue, 'hasActiveGoogleSheetsWithMappings:', hasActiveGoogleSheetsWithMappings);
         aggregated.hasRevenueTracking = 0;
+        aggregated.conversionValue = 0;
+        aggregated.totalRevenue = 0;
+        aggregated.profit = 0;
+        aggregated.roi = 0;
+        aggregated.roas = 0;
+        aggregated.profitMargin = 0;
+        aggregated.revenuePerLead = 0;
       }
       
       console.log('[LinkedIn Analytics] Final aggregated object:', JSON.stringify(aggregated, null, 2));

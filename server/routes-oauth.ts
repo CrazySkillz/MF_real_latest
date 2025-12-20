@@ -945,10 +945,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const remainingConnections = await storage.getGoogleSheetsConnections(campaignId);
       const hasActiveConnections = remainingConnections.length > 0;
       
-      // If no active Google Sheets connections remain, clear conversion values from platform connections
+      // Check if there are any remaining active Google Sheets connections WITH mappings
+      // If no active connections with mappings remain, clear conversion values from platform connections
       // (since they were likely calculated from Google Sheets data)
-      if (!hasActiveConnections) {
-        console.log(`[Google Sheets] No active connections remaining - clearing conversion values from platform connections`);
+      const remainingConnectionsWithMappings = remainingConnections.filter((conn: any) => {
+        if (!conn.columnMappings) return false;
+        try {
+          const mappings = JSON.parse(conn.columnMappings);
+          return Array.isArray(mappings) && mappings.length > 0;
+        } catch {
+          return false;
+        }
+      });
+      
+      const hasActiveConnectionsWithMappings = remainingConnectionsWithMappings.length > 0;
+      
+      if (!hasActiveConnectionsWithMappings) {
+        console.log(`[Google Sheets] No active connections with mappings remaining - clearing conversion values from platform connections`);
         
         // Clear LinkedIn connection conversion value
         const linkedInConnection = await storage.getLinkedInConnection(campaignId);
@@ -967,6 +980,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           console.log(`[Google Sheets] Cleared Meta connection conversion value`);
         }
+      } else {
+        console.log(`[Google Sheets] ${remainingConnectionsWithMappings.length} active connection(s) with mappings still exist - keeping conversion values`);
       }
 
       console.log(`[Google Sheets] Connection deleted successfully`);

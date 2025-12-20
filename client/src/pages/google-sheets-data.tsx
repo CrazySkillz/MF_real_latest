@@ -160,12 +160,23 @@ export default function GoogleSheetsData() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Invalidate all related queries to ensure UI updates
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
       queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
-      refetchConnections();
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+      
+      // Refetch connections and data immediately
+      await refetchConnections();
+      await refetch();
+      
+      // Small delay to ensure backend has processed the deletion
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
+      }, 500);
+      
       toast({
         title: "Connection Removed",
         description: "Google Sheets connection has been removed successfully.",

@@ -2684,9 +2684,21 @@ export default function LinkedInAnalytics() {
                         return false;
                       }
                       
-                      // If mappings exist but no conversion values yet, don't show warning (calculation in progress)
-                      if (hasMappings) {
-                        console.log('[LinkedIn Analytics] Mappings exist but conversion values not yet calculated - hiding warning');
+                      // Check if there are any active Google Sheets connections with mappings
+                      // Only hide warning if mappings exist AND there are active connections (calculation might be in progress)
+                      const hasActiveConnectionsWithMappings = googleSheetsConnections?.connections?.some((conn: any) => {
+                        if (!conn.columnMappings) return false;
+                        try {
+                          const mappings = JSON.parse(conn.columnMappings);
+                          return Array.isArray(mappings) && mappings.length > 0;
+                        } catch {
+                          return false;
+                        }
+                      }) || false;
+                      
+                      // If active connections with mappings exist but no conversion values yet, don't show warning (calculation in progress)
+                      if (hasActiveConnectionsWithMappings) {
+                        console.log('[LinkedIn Analytics] Active connections with mappings exist but conversion values not yet calculated - hiding warning');
                         return false;
                       }
                       
@@ -2696,7 +2708,7 @@ export default function LinkedInAnalytics() {
                       
                       console.log('[LinkedIn Analytics] Notification check:', {
                         hasGoogleSheetsConversionValues,
-                        hasMappings,
+                        hasActiveConnectionsWithMappings,
                         hasRevenueTracking,
                         shouldShowWarning
                       });

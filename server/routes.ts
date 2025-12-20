@@ -3410,15 +3410,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateLinkedInImportSession(session.id, { conversionValue: null });
         }
         
-        // Check if conversion value is from LinkedIn connection (manual entry - NOT from Google Sheets)
+        // Clear LinkedIn connection conversion value (it was likely from Google Sheets, not manual entry)
         const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
         if (linkedInConnection?.conversionValue) {
-          conversionValue = parseFloat(linkedInConnection.conversionValue);
-          console.log('[LinkedIn Analytics] Using LinkedIn connection conversion value (manual entry):', conversionValue);
-        } else {
-          console.log('[LinkedIn Analytics] No active Google Sheets with mappings and no LinkedIn connection conversion value - revenue tracking disabled');
-          conversionValue = 0;
+          console.log('[LinkedIn Analytics] Clearing LinkedIn connection conversion value:', linkedInConnection.conversionValue);
+          await storage.updateLinkedInConnection(session.campaignId, { conversionValue: null });
         }
+        
+        console.log('[LinkedIn Analytics] ✅ All conversion values cleared - revenue tracking DISABLED');
+        conversionValue = 0;
       }
       
       console.log('[LinkedIn Analytics] Final conversion value:', conversionValue);

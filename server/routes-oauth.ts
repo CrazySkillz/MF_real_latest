@@ -7873,6 +7873,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('❌ Revenue tracking DISABLED - conversion value is 0 or missing');
         aggregated.hasRevenueTracking = 0;
+        aggregated.conversionValue = 0;
+        aggregated.totalRevenue = 0;
+        aggregated.profit = 0;
+        aggregated.roi = 0;
+        aggregated.roas = 0;
+        aggregated.profitMargin = 0;
+        aggregated.revenuePerLead = 0;
       }
       
       // Calculate performance indicators based on benchmarks

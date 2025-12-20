@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, setLocation } from "wouter";
 import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -211,8 +211,6 @@ export default function GoogleSheetsData() {
   const handleSheetChange = useCallback((value: string) => {
     if (!value) return; // Don't handle empty values
     
-    console.log('[Sheet Selector] Changing to:', value);
-    
     const newParams = new URLSearchParams(window.location.search);
     if (value === 'combined') {
       newParams.set('view', 'combined');
@@ -229,12 +227,11 @@ export default function GoogleSheetsData() {
       }
     }
     const newUrl = `${window.location.pathname}${newParams.toString() ? `?${newParams.toString()}` : ''}`;
-    console.log('[Sheet Selector] New URL:', newUrl);
     
-    // Manually update urlParams state FIRST to trigger re-render and query refetch
+    // Update URL params state immediately for smooth transition
     setUrlParams(newParams);
     
-    // Update URL using history API and setLocation for smooth client-side navigation
+    // Use client-side navigation for smooth transition (no page reload)
     window.history.pushState({}, '', newUrl);
     setLocation(newUrl);
   }, [googleSheetsConnections, setLocation]);
@@ -246,8 +243,8 @@ export default function GoogleSheetsData() {
     refetchIntervalInBackground: true, // Continue refreshing when tab is in background
     refetchOnWindowFocus: true, // Refresh when user returns to tab
     staleTime: 0, // Always consider data stale - force fresh fetch
-    gcTime: 5000, // Keep data in cache briefly for smooth transitions
-    placeholderData: (previousData) => previousData, // Keep previous data visible during fetch
+    gcTime: 30000, // Keep data in cache for 30 seconds for smooth transitions
+    placeholderData: (previousData) => previousData, // Keep previous data visible during fetch for smooth transition
     queryFn: async () => {
       let response: Response;
       try {
@@ -617,7 +614,7 @@ export default function GoogleSheetsData() {
               </Tabs>
             </>
           ) : sheetsData ? (
-            <>
+            <div className="relative">
               {/* Subtle loading indicator - non-blocking */}
               {sheetsFetching && (
                 <div className="absolute top-4 right-4 z-50 flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg px-3 py-2 shadow-lg border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -625,8 +622,8 @@ export default function GoogleSheetsData() {
                   <span className="text-sm text-slate-600 dark:text-slate-300">Loading...</span>
                 </div>
               )}
-              <div className="relative transition-all duration-500 ease-in-out">
-              <Tabs defaultValue="data" className="space-y-6">
+              <div className="transition-opacity duration-300 ease-in-out" style={{ opacity: sheetsFetching ? 0.7 : 1 }}>
+                <Tabs defaultValue="data" className="space-y-6">
                 <TabsList>
                   <TabsTrigger value="data">Raw Data</TabsTrigger>
                   <TabsTrigger value="connections">Connection Details</TabsTrigger>
@@ -647,7 +644,7 @@ export default function GoogleSheetsData() {
                       {sheetsData.data && sheetsData.data.length > 0 ? (
                         <div className="grid grid-cols-1 gap-6">
                           <div className="overflow-x-auto">
-                            <table className="w-full caption-bottom text-sm transition-opacity duration-500 ease-in-out">
+                            <table className="w-full caption-bottom text-sm">
                               <thead className="[&_tr]:border-b">
                                 <tr className="border-b transition-colors hover:bg-muted/50">
                                   {sheetsData.headers?.map((header, index) => (
@@ -843,11 +840,11 @@ export default function GoogleSheetsData() {
                       </CardContent>
                     </Card>
                   </div>
-                </TabsContent>
-              </Tabs>
+                  </TabsContent>
+                </Tabs>
               </div>
-            </>
-          ) : (
+            </div>
+            ) : (
             <Card>
               <CardContent className="text-center py-12">
                 <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />

@@ -2691,49 +2691,17 @@ export default function LinkedInAnalytics() {
                   <>
                     {/* Conversion Value Missing Notification - Show when NO conversion values are available */}
                     {(() => {
-                      // Check Google Sheets conversion values first (most reliable)
-                      const hasGoogleSheetsConversionValues = sheetsData?.calculatedConversionValues && Array.isArray(sheetsData.calculatedConversionValues) && sheetsData.calculatedConversionValues.length > 0;
-                      
-                      // If conversion values exist, don't show warning
-                      if (hasGoogleSheetsConversionValues) {
-                        return false;
-                      }
-                      
-                      // Check if there are any active Google Sheets connections with mappings
-                      const hasActiveConnectionsWithMappings = googleSheetsConnections?.connections?.some((conn: any) => {
-                        if (!conn.columnMappings) return false;
-                        try {
-                          const mappings = JSON.parse(conn.columnMappings);
-                          return Array.isArray(mappings) && mappings.length > 0;
-                        } catch {
-                          return false;
-                        }
-                      }) || false;
-                      
-                      // If active connections with mappings exist but no conversion values yet, don't show warning (calculation in progress)
-                      if (hasActiveConnectionsWithMappings) {
-                        console.log('[LinkedIn Analytics] Active connections with mappings exist but conversion values not yet calculated - hiding warning');
-                        return false;
-                      }
-                      
-                      // Check aggregated.hasRevenueTracking - if it's 0 or undefined, show warning
-                      // hasRevenueTracking should be 0 when no active Google Sheets with mappings exist (backend sets it to 0)
+                      // SINGLE SOURCE OF TRUTH: Only check the backend's hasRevenueTracking flag
+                      // The backend (routes.ts) sets hasRevenueTracking = 0 when no active Google Sheets with mappings exist
+                      // This prevents race conditions and flickering caused by checking multiple data sources
                       const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
+                      const shouldShowWarning = !hasRevenueTracking;
                       
-                      // SIMPLIFIED LOGIC: Show warning if no Google Sheets conversion values AND no active mappings
-                      // AND hasRevenueTracking is NOT 1 (could be 0, undefined, or falsy)
-                      const shouldShowWarning = !hasGoogleSheetsConversionValues && !hasActiveConnectionsWithMappings && !hasRevenueTracking;
-                      
-                      console.log('[LinkedIn Analytics] Notification check:', {
-                        hasGoogleSheetsConversionValues,
-                        hasActiveConnectionsWithMappings,
+                      console.log('[LinkedIn Analytics] 🚨 Notification check:', {
                         hasRevenueTracking,
                         hasRevenueTrackingValue: aggregated?.hasRevenueTracking,
                         shouldShowWarning,
-                        sheetsDataCalculatedValues: sheetsData?.calculatedConversionValues,
-                        googleSheetsConnectionsCount: googleSheetsConnections?.connections?.length,
-                        aggregatedConversionValue: aggregated?.conversionValue,
-                        aggregatedObject: aggregated
+                        conversionValue: aggregated?.conversionValue
                       });
                       
                       return shouldShowWarning;

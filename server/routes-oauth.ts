@@ -7788,28 +7788,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if there are active Google Sheets connections
       // If no active connections, don't use stored conversion values (they were likely from Google Sheets)
       const googleSheetsConnections = await storage.getGoogleSheetsConnections(session.campaignId);
-      const hasActiveGoogleSheets = googleSheetsConnections.length > 0;
       
-      // Get conversion value from campaign (prioritize campaign, fallback to session)
-      // BUT only if Google Sheets is still connected, otherwise the value is stale
+      // Filter to only connections WITH MAPPINGS
+      const connectionsWithMappings = googleSheetsConnections.filter((conn: any) => {
+        if (!conn.columnMappings) return false;
+        try {
+          const mappings = JSON.parse(conn.columnMappings);
+          return Array.isArray(mappings) && mappings.length > 0;
+        } catch {
+          return false;
+        }
+      });
+      
+      const hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
+      
       console.log('[LinkedIn Analytics OAuth] Active Google Sheets connections:', googleSheetsConnections.length);
+      console.log('[LinkedIn Analytics OAuth] Active Google Sheets connections WITH MAPPINGS:', connectionsWithMappings.length);
       
       let conversionValue = 0;
-      if (hasActiveGoogleSheets) {
-        // Only use stored conversion value if Google Sheets is still connected
+      if (hasActiveGoogleSheetsWithMappings) {
+        // Only use stored conversion value if Google Sheets WITH MAPPINGS is still connected
         conversionValue = campaign?.conversionValue 
           ? parseFloat(campaign.conversionValue.toString()) 
           : parseFloat(session.conversionValue || '0');
       } else {
-        // No active Google Sheets - check if conversion value is from LinkedIn connection (manual entry)
+        // No active Google Sheets with mappings - FORCE CLEAR stale conversion values
+        console.log('[LinkedIn Analytics OAuth] ❌ NO active Google Sheets with mappings - clearing stale conversion values');
+        
+        // Clear stale values
+        if (campaign?.conversionValue) {
+          await storage.updateCampaign(session.campaignId, { conversionValue: null });
+        }
+        if (session.conversionValue) {
+          await storage.updateLinkedInImportSession(session.id, { conversionValue: null });
+        }
+        
+        // Clear LinkedIn connection conversion value
         const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
         if (linkedInConnection?.conversionValue) {
-          conversionValue = parseFloat(linkedInConnection.conversionValue);
-          console.log('[LinkedIn Analytics OAuth] Using LinkedIn connection conversion value (manual entry):', conversionValue);
-        } else {
-          console.log('[LinkedIn Analytics OAuth] No active Google Sheets and no LinkedIn connection conversion value - revenue tracking disabled');
-          conversionValue = 0;
+          console.log('[LinkedIn Analytics OAuth] Clearing LinkedIn connection conversion value:', linkedInConnection.conversionValue);
+          await storage.updateLinkedInConnection(session.campaignId, { conversionValue: null });
         }
+        
+        console.log('[LinkedIn Analytics OAuth] ✅ All conversion values cleared - revenue tracking DISABLED');
+        conversionValue = 0;
       }
       
       console.log('Final conversion value used:', conversionValue);

@@ -55,6 +55,15 @@ export function GuidedColumnMapping({
   const [selectedRevenue, setSelectedRevenue] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [skipPlatform, setSkipPlatform] = useState(false);
+  
+  // CRITICAL DEBUG LOG
+  console.log('====== GUIDED COLUMN MAPPING INIT ======');
+  console.log('campaignId:', campaignId);
+  console.log('connectionId:', connectionId);
+  console.log('connectionIds:', connectionIds);
+  console.log('connectionIds length:', connectionIds?.length);
+  console.log('spreadsheetId:', spreadsheetId);
+  console.log('========================================');
 
   // Fetch detected columns
   const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number; sheetsAnalyzed?: number }>({

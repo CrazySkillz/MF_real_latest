@@ -68,9 +68,29 @@ export function GuidedColumnMapping({
           : spreadsheetId 
             ? `?spreadsheetId=${spreadsheetId}` 
             : '';
+      
+      console.log('[GuidedColumnMapping] Fetching columns with:', {
+        campaignId,
+        connectionIds,
+        connectionId,
+        spreadsheetId,
+        queryParam,
+        fullUrl: `/api/campaigns/${campaignId}/google-sheets/detect-columns${queryParam}`
+      });
+      
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/detect-columns${queryParam}`);
       if (!response.ok) throw new Error('Failed to detect columns');
-      return response.json();
+      const data = await response.json();
+      
+      console.log('[GuidedColumnMapping] Received columns response:', {
+        success: data.success,
+        columnsCount: data.columns?.length,
+        sheetsAnalyzed: data.sheetsAnalyzed,
+        totalRows: data.totalRows,
+        columnNames: data.columns?.map((c: any) => c.name)
+      });
+      
+      return data;
     },
     enabled: !!campaignId && (!!connectionIds?.length || !!connectionId || !!spreadsheetId)
   });

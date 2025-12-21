@@ -2637,8 +2637,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionIds: string[] = [];
       const isFirstConnection = dbConnection.spreadsheetId === 'pending';
       
+      console.log(`[Select Multiple Spreadsheets] 📋 Creating connections for ${sheetNames.length} sheet(s)`);
+      console.log(`[Select Multiple Spreadsheets] Sheet names:`, sheetNames);
+      console.log(`[Select Multiple Spreadsheets] Is first connection:`, isFirstConnection);
+      
       for (let i = 0; i < sheetNames.length; i++) {
         const sheetName = sheetNames[i];
+        
+        console.log(`[Select Multiple Spreadsheets] Processing sheet ${i + 1}/${sheetNames.length}: "${sheetName}"`);
         
         if (i === 0 && isFirstConnection) {
           // Update the first connection (the one we found/created)
@@ -2651,9 +2657,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           await storage.updateGoogleSheetsConnection(dbConnection.id, updateData);
           connectionIds.push(dbConnection.id);
-          console.log(`[Select Multiple Spreadsheets] Updated connection ${dbConnection.id} with sheet: ${sheetName || 'first sheet (default)'}`);
+          console.log(`[Select Multiple Spreadsheets] ✅ Updated connection ${dbConnection.id} with sheet: ${sheetName || 'first sheet (default)'}`);
         } else {
           // Create new connections for additional sheets
+          console.log(`[Select Multiple Spreadsheets] 🆕 Creating NEW connection for sheet: ${sheetName}`);
           try {
             const newConnection = await storage.createGoogleSheetsConnection({
               campaignId,
@@ -2667,13 +2674,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               expiresAt: dbConnection.expiresAt,
             });
             connectionIds.push(newConnection.id);
-            console.log(`[Select Multiple Spreadsheets] Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
+            console.log(`[Select Multiple Spreadsheets] ✅ Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
           } catch (error: any) {
-            console.error(`[Select Multiple Spreadsheets] Failed to create connection for sheet ${sheetName}:`, error.message);
+            console.error(`[Select Multiple Spreadsheets] ❌ Failed to create connection for sheet ${sheetName}:`, error.message);
+            console.error(`[Select Multiple Spreadsheets] Error stack:`, error.stack);
             // Continue with other sheets even if one fails
           }
         }
       }
+      
+      console.log(`[Select Multiple Spreadsheets] 🎯 Final connectionIds:`, connectionIds);
       
       console.log('Created/updated multiple database connections:', {
         campaignId,

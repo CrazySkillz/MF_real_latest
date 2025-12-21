@@ -9795,25 +9795,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/google-sheets/detect-columns", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { spreadsheetId, connectionId } = req.query;
+      const { spreadsheetId, connectionId, connectionIds } = req.query;
       
-      // Get connection
-      let connection: any;
+      // Parse connectionIds if provided (comma-separated)
+      const connectionIdList = connectionIds 
+        ? (connectionIds as string).split(',').filter(id => id.trim())
+        : connectionId 
+          ? [connectionId as string]
+          : [];
       
-      // Prioritize connectionId for exact match (important when multiple sheets from same spreadsheet)
-      if (connectionId) {
+      // Get connections
+      let connections: any[] = [];
+      
+      if (connectionIdList.length > 0) {
+        // Fetch multiple connections by ID
         const allConnections = await storage.getGoogleSheetsConnections(campaignId);
-        connection = allConnections.find(conn => conn.id === connectionId);
+        connections = allConnections.filter(conn => connectionIdList.includes(conn.id));
       } else if (spreadsheetId) {
-        connection = await storage.getGoogleSheetsConnection(campaignId, spreadsheetId as string);
+        const conn = await storage.getGoogleSheetsConnection(campaignId, spreadsheetId as string);
+        if (conn) connections = [conn];
       } else {
-        connection = await storage.getPrimaryGoogleSheetsConnection(campaignId) || 
+        const conn = await storage.getPrimaryGoogleSheetsConnection(campaignId) || 
                      await storage.getGoogleSheetsConnection(campaignId);
+        if (conn) connections = [conn];
       }
       
-      if (!connection || !connection.accessToken) {
+      if (connections.length === 0 || !connections[0].accessToken) {
         return res.status(404).json({ error: 'No Google Sheets connection found' });
       }
+      
+      // Collect all columns from all sheets
+      const allColumnsMap = new Map<string, DetectedColumn>();
+      let totalRowsAcrossSheets = 0;
+      
+      for (const connection of connections) {
+        // Build range with sheet name if specified
+        const analysisRange = connection.sheetName ? `${connection.sheetName}!A1:Z100` : 'A1:Z100';
+        
+        console.log(`[Detect Columns] Fetching columns from sheet: ${connection.sheetName || 'default'}, spreadsheet: ${connection.spreadsheetId}`);
+        
+        // Fetch first 100 rows for analysis
+        const sheetResponse = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(analysisRange)}?valueRenderOption=UNFORMATTED_VALUE`,
+          { headers: { 'Authorization': `Bearer ${connection.accessToken}` } }
+        );
+        
+        if (!sheetResponse.ok) {
+          console.warn(`[Detect Columns] Failed to fetch sheet ${connection.sheetName || 'default'}: ${sheetResponse.statusText}`);
+          continue; // Skip this sheet and continue with others
+        }
+        
+        const sheetData = await sheetResponse.json();
+        const rows = sheetData.values || [];
+        
+        if (rows.length === 0) {
+          console.warn(`[Detect Columns] Sheet ${connection.sheetName || 'default'} has no data`);
+          continue;
+        }
+        
+        totalRowsAcrossSheets += rows.length;
+        
+        // Analyze columns from this sheet
+        const headers = rows[0] || [];
+        const dataRows = rows.slice(1);
+        
+        headers.forEach((header: any, index: number) => {
+          const columnName = String(header || `Column ${index + 1}`).trim();
+          
+          // If column already exists (from another sheet), merge sample values
+          if (allColumnsMap.has(columnName)) {
+            const existing = allColumnsMap.get(columnName)!;
+            // Add more sample values from this sheet
+            const columnValues = dataRows.map((row: any[]) => row[index]).filter((val: any) => val !== undefined && val !== null && val !== '');
+            existing.sampleValues = [...existing.sampleValues, ...columnValues.slice(0, 3)].slice(0, 5);
+          } else {
+            // New column - analyze it
+            const columnValues = dataRows.map((row: any[]) => row[index]);
+            const nonEmptyValues = columnValues.filter((val: any) => val !== undefined && val !== null && val !== '');
+            
+            // Detect column type
+            const { detectedType, confidence } = detectColumnType(columnName, nonEmptyValues);
+            
+            allColumnsMap.set(columnName, {
+              index,
+              name: columnName,
+              originalName: header,
+              detectedType,
+              confidence,
+              sampleValues: nonEmptyValues.slice(0, 5),
+              uniqueValues: new Set(nonEmptyValues).size,
+              nullCount: columnValues.length - nonEmptyValues.length
+            });
+          }
+        });
+      }
+      
+      const detectedColumns = Array.from(allColumnsMap.values());
+      
+      console.log(`[Detect Columns] Combined columns from ${connections.length} sheet(s): ${detectedColumns.length} unique columns found`);
+      
+      res.json({
+        success: true,
+        columns: detectedColumns,
+        totalRows: totalRowsAcrossSheets,
+        sheetsAnalyzed: connections.length
+      });
+      
+      return; // Exit after successful response
+      
+      // OLD CODE BELOW - keeping for reference, will be removed
+      const connection = connections[0]; // This is now handled above
       
       // Build range with sheet name if specified
       const analysisRange = connection.sheetName ? `${connection.sheetName}!A1:Z100` : 'A1:Z100';

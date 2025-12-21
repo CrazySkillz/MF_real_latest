@@ -29,6 +29,7 @@ interface DetectedColumn {
 interface GuidedColumnMappingProps {
   campaignId: string;
   connectionId: string;
+  connectionIds?: string[];
   spreadsheetId: string;
   platform: string;
   onMappingComplete?: () => void;
@@ -40,6 +41,7 @@ type Step = 'detect' | 'campaign-name' | 'revenue' | 'platform' | 'review' | 'co
 export function GuidedColumnMapping({
   campaignId,
   connectionId,
+  connectionIds,
   spreadsheetId,
   platform,
   onMappingComplete,
@@ -55,16 +57,22 @@ export function GuidedColumnMapping({
   const [skipPlatform, setSkipPlatform] = useState(false);
 
   // Fetch detected columns
-  const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number }>({
-    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", connectionId],
+  const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number; sheetsAnalyzed?: number }>({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", connectionIds?.join(',') || connectionId],
     queryFn: async () => {
-      // Use connectionId for exact match (important when multiple sheets from same spreadsheet)
-      const queryParam = connectionId ? `?connectionId=${connectionId}` : spreadsheetId ? `?spreadsheetId=${spreadsheetId}` : '';
+      // Use connectionIds for multiple sheets, or connectionId for single sheet
+      const queryParam = connectionIds && connectionIds.length > 0
+        ? `?connectionIds=${connectionIds.join(',')}`
+        : connectionId 
+          ? `?connectionId=${connectionId}` 
+          : spreadsheetId 
+            ? `?spreadsheetId=${spreadsheetId}` 
+            : '';
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/detect-columns${queryParam}`);
       if (!response.ok) throw new Error('Failed to detect columns');
       return response.json();
     },
-    enabled: !!campaignId && (!!connectionId || !!spreadsheetId)
+    enabled: !!campaignId && (!!connectionIds?.length || !!connectionId || !!spreadsheetId)
   });
 
   const detectedColumns = columnsData?.columns || [];

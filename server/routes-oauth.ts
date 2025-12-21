@@ -18,6 +18,37 @@ import { transformData, filterRowsByCampaignAndPlatform, calculateConversionValu
 import { enrichRows, inferMissingFields } from "./utils/data-enrichment";
 import { toCanonicalFormatBatch } from "./utils/canonical-format";
 
+// Helper functions for column type detection
+function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
+  if (values.length === 0) return 'unknown';
+  
+  const valueStrings = values.map(v => String(v).trim());
+  
+  // Check for currency
+  const currencyPattern = /^[\$€£¥]\s*\d+[.,]?\d*$/;
+  const currencyCount = valueStrings.filter(v => currencyPattern.test(v)).length;
+  if (currencyCount / values.length > 0.5) return 'currency';
+  
+  // Check for percentage
+  const percentagePattern = /^\d+[.,]?\d*\s*%$/;
+  const percentageCount = valueStrings.filter(v => percentagePattern.test(v)).length;
+  if (percentageCount / values.length > 0.5) return 'percentage';
+  
+  // Check for numbers
+  const numericValues = values.filter(v => {
+    const str = String(v).replace(/[,\s]/g, '');
+    return !isNaN(parseFloat(str)) && isFinite(parseFloat(str));
+  });
+  if (numericValues.length / values.length > 0.7) return 'number';
+  
+  return 'text';
+}
+
+function calculateConfidence(values: any[], detectedType: string): number {
+  if (values.length === 0) return 0;
+  return 0.8; // Simple confidence score
+}
+
 // Configure multer for PDF file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -9873,8 +9904,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const columnValues = dataRows.map((row: any[]) => row[index]);
             const nonEmptyValues = columnValues.filter((val: any) => val !== undefined && val !== null && val !== '');
             
-            // Detect column type
-            const { detectedType, confidence } = detectColumnType(columnName, nonEmptyValues);
+            // Detect column type using simple inference
+            const detectedType = inferColumnType(nonEmptyValues);
+            const confidence = calculateConfidence(nonEmptyValues, detectedType);
             
             allColumnsMap.set(columnName, {
               index,

@@ -9925,6 +9925,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const detectedColumns = Array.from(allColumnsMap.values());
       
       console.log(`[Detect Columns] Combined columns from ${connections.length} sheet(s): ${detectedColumns.length} unique columns found`);
+      console.log('[Detect Columns] Column names:', detectedColumns.map(c => c.name));
+      console.log('[Detect Columns] Response:', JSON.stringify({
+        columnsCount: detectedColumns.length,
+        totalRows: totalRowsAcrossSheets,
+        sheetsAnalyzed: connections.length,
+        sampleColumn: detectedColumns[0]
+      }, null, 2));
       
       res.json({
         success: true,

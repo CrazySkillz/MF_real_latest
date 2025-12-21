@@ -76,6 +76,16 @@ export function GuidedColumnMapping({
   });
 
   const detectedColumns = columnsData?.columns || [];
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[GuidedColumnMapping] Columns data:', {
+      columnsData,
+      detectedColumns,
+      columnsLength: detectedColumns.length,
+      sheetsAnalyzed: columnsData?.sheetsAnalyzed
+    });
+  }, [columnsData, detectedColumns]);
 
   // Fetch campaign name for tip
   const { data: campaignData } = useQuery<{ id: string; name: string }>({

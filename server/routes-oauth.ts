@@ -9858,28 +9858,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Collect all columns from all sheets
       const allColumnsMap = new Map<string, DetectedColumn>();
       let totalRowsAcrossSheets = 0;
+      let globalColumnIndex = 0; // Track global index across all sheets
       
       for (const connection of connections) {
         // Build range with sheet name if specified
         const analysisRange = connection.sheetName ? `${connection.sheetName}!A1:Z100` : 'A1:Z100';
         
         console.log(`[Detect Columns] Fetching columns from sheet: ${connection.sheetName || 'default'}, spreadsheet: ${connection.spreadsheetId}`);
-      
-      // Fetch first 100 rows for analysis
-      const sheetResponse = await fetch(
+        
+        // Fetch first 100 rows for analysis
+        const sheetResponse = await fetch(
           `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(analysisRange)}?valueRenderOption=UNFORMATTED_VALUE`,
-        { headers: { 'Authorization': `Bearer ${connection.accessToken}` } }
-      );
-      
-      if (!sheetResponse.ok) {
+          { headers: { 'Authorization': `Bearer ${connection.accessToken}` } }
+        );
+        
+        if (!sheetResponse.ok) {
           console.warn(`[Detect Columns] Failed to fetch sheet ${connection.sheetName || 'default'}: ${sheetResponse.statusText}`);
           continue; // Skip this sheet and continue with others
-      }
-      
-      const sheetData = await sheetResponse.json();
-      const rows = sheetData.values || [];
-      
-      if (rows.length === 0) {
+        }
+        
+        const sheetData = await sheetResponse.json();
+        const rows = sheetData.values || [];
+        
+        if (rows.length === 0) {
           console.warn(`[Detect Columns] Sheet ${connection.sheetName || 'default'} has no data`);
           continue;
         }
@@ -9890,18 +9891,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const headers = rows[0] || [];
         const dataRows = rows.slice(1);
         
-        headers.forEach((header: any, index: number) => {
-          const columnName = String(header || `Column ${index + 1}`).trim();
+        headers.forEach((header: any, localIndex: number) => {
+          const columnName = String(header || `Column ${localIndex + 1}`).trim();
           
-          // If column already exists (from another sheet), merge sample values
+          // If column already exists (from another sheet), merge sample values but keep existing index
           if (allColumnsMap.has(columnName)) {
             const existing = allColumnsMap.get(columnName)!;
             // Add more sample values from this sheet
-            const columnValues = dataRows.map((row: any[]) => row[index]).filter((val: any) => val !== undefined && val !== null && val !== '');
+            const columnValues = dataRows.map((row: any[]) => row[localIndex]).filter((val: any) => val !== undefined && val !== null && val !== '');
             existing.sampleValues = [...existing.sampleValues, ...columnValues.slice(0, 3)].slice(0, 5);
+            console.log(`[Detect Columns] Merged column "${columnName}" (keeping index ${existing.index})`);
           } else {
-            // New column - analyze it
-            const columnValues = dataRows.map((row: any[]) => row[index]);
+            // New column - analyze it and assign unique global index
+            const columnValues = dataRows.map((row: any[]) => row[localIndex]);
             const nonEmptyValues = columnValues.filter((val: any) => val !== undefined && val !== null && val !== '');
             
             // Detect column type using simple inference
@@ -9909,7 +9911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const confidence = calculateConfidence(nonEmptyValues, detectedType);
             
             allColumnsMap.set(columnName, {
-              index,
+              index: globalColumnIndex++, // Assign unique sequential index
               name: columnName,
               originalName: header,
               detectedType,
@@ -9918,6 +9920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               uniqueValues: new Set(nonEmptyValues).size,
               nullCount: columnValues.length - nonEmptyValues.length
             });
+            console.log(`[Detect Columns] Added new column "${columnName}" with global index ${globalColumnIndex - 1}`);
           }
         });
       }

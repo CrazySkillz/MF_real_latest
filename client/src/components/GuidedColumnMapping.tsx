@@ -56,14 +56,15 @@ export function GuidedColumnMapping({
 
   // Fetch detected columns
   const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number }>({
-    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", spreadsheetId],
+    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", connectionId],
     queryFn: async () => {
-      const queryParam = spreadsheetId ? `?spreadsheetId=${spreadsheetId}` : '';
+      // Use connectionId for exact match (important when multiple sheets from same spreadsheet)
+      const queryParam = connectionId ? `?connectionId=${connectionId}` : spreadsheetId ? `?spreadsheetId=${spreadsheetId}` : '';
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/detect-columns${queryParam}`);
       if (!response.ok) throw new Error('Failed to detect columns');
       return response.json();
     },
-    enabled: !!campaignId && !!spreadsheetId
+    enabled: !!campaignId && (!!connectionId || !!spreadsheetId)
   });
 
   const detectedColumns = columnsData?.columns || [];

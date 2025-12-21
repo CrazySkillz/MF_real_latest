@@ -9795,11 +9795,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/google-sheets/detect-columns", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { spreadsheetId } = req.query;
+      const { spreadsheetId, connectionId } = req.query;
       
       // Get connection
       let connection: any;
-      if (spreadsheetId) {
+      
+      // Prioritize connectionId for exact match (important when multiple sheets from same spreadsheet)
+      if (connectionId) {
+        const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+        connection = allConnections.find(conn => conn.id === connectionId);
+      } else if (spreadsheetId) {
         connection = await storage.getGoogleSheetsConnection(campaignId, spreadsheetId as string);
       } else {
         connection = await storage.getPrimaryGoogleSheetsConnection(campaignId) || 

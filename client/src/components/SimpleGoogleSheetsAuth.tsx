@@ -11,7 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface SimpleGoogleSheetsAuthProps {
   campaignId: string;
-  onSuccess: (connectionInfo?: { connectionId: string; spreadsheetId: string }) => void;
+  onSuccess: (connectionInfo?: { connectionId: string; spreadsheetId: string; connectionIds?: string[] }) => void;
   onError: (error: string) => void;
 }
 
@@ -209,7 +209,8 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
       if (data.success) {
         onSuccess({
           connectionId: data.connectionIds?.[0] || data.connectionId,
-          spreadsheetId: selectedSpreadsheet
+          spreadsheetId: selectedSpreadsheet,
+          connectionIds: data.connectionIds || [data.connectionId]
         });
       } else {
         throw new Error(data.error || "Failed to connect spreadsheet");

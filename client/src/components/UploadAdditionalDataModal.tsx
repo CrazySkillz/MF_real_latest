@@ -32,7 +32,7 @@ export function UploadAdditionalDataModal({
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
-  const [newConnectionInfo, setNewConnectionInfo] = useState<{ connectionId: string; spreadsheetId: string } | null>(null);
+  const [newConnectionInfo, setNewConnectionInfo] = useState<{ connectionId: string; spreadsheetId: string; connectionIds?: string[] } | null>(null);
   const { toast } = useToast();
   
   // Store the ACTUAL current URL when modal opens - this is where we came from
@@ -85,13 +85,14 @@ export function UploadAdditionalDataModal({
     setSelectedSource(source);
   };
 
-  const handleGoogleSheetsSuccess = (connectionInfo?: { connectionId: string; spreadsheetId: string }) => {
+  const handleGoogleSheetsSuccess = (connectionInfo?: { connectionId: string; spreadsheetId: string; connectionIds?: string[] }) => {
     if (connectionInfo) {
       if (googleSheetsOnly) {
         // For Google Sheets only mode (from Connection Details), skip mapping and just connect
+        const sheetsCount = connectionInfo.connectionIds?.length || 1;
         toast({
           title: "Google Sheet Connected!",
-          description: "Your sheet has been added and is now available in the dropdown.",
+          description: `${sheetsCount} sheet${sheetsCount > 1 ? 's have' : ' has'} been added and ${sheetsCount > 1 ? 'are' : 'is'} now available in the dropdown.`,
         });
         refetchConnections();
         if (onDataConnected) {
@@ -102,7 +103,7 @@ export function UploadAdditionalDataModal({
           onClose();
         }, 1500);
       } else {
-        // For LinkedIn conversion value flow, show guided mapping
+        // For LinkedIn conversion value flow, show guided mapping for the first connection
         setNewConnectionInfo(connectionInfo);
         setShowGuidedMapping(true);
         setJustConnected(false);

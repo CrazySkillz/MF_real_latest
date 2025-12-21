@@ -3322,7 +3322,7 @@ export default function CampaignDetail() {
   });
 
   const googleSheetsConnections = googleSheetsConnectionsData?.connections || [];
-  const MAX_GOOGLE_SHEETS_CONNECTIONS = 5;
+  const MAX_GOOGLE_SHEETS_CONNECTIONS = 10;
   const canAddMoreSheets = googleSheetsConnections.length < MAX_GOOGLE_SHEETS_CONNECTIONS;
 
   const queryClientHook = useQueryClient();

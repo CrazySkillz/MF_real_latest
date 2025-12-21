@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { SiGoogle } from "react-icons/si";
 import { AlertCircle, RefreshCw, FileSpreadsheet } from "lucide-react";
@@ -33,7 +34,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
   const [spreadsheets, setSpreadsheets] = useState<Spreadsheet[]>([]);
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string>("");
   const [availableSheets, setAvailableSheets] = useState<Sheet[]>([]);
-  const [selectedSheetName, setSelectedSheetName] = useState<string>("");
+  const [selectedSheetNames, setSelectedSheetNames] = useState<string[]>([]);
   const [isLoadingSheets, setIsLoadingSheets] = useState(false);
   const [isSelectingSpreadsheet, setIsSelectingSpreadsheet] = useState(false);
   const popupRef = useRef<Window | null>(null);
@@ -157,12 +158,30 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
   const handleSpreadsheetChange = useCallback((spreadsheetId: string) => {
     setSelectedSpreadsheet(spreadsheetId);
     setAvailableSheets([]);
-    setSelectedSheetName("");
+    setSelectedSheetNames([]);
     // Fetch available sheets for this spreadsheet
     if (spreadsheetId) {
       fetchAvailableSheets(spreadsheetId);
     }
   }, [fetchAvailableSheets]);
+
+  const toggleSheetSelection = useCallback((sheetTitle: string) => {
+    setSelectedSheetNames(prev => {
+      if (prev.includes(sheetTitle)) {
+        return prev.filter(s => s !== sheetTitle);
+      } else {
+        return [...prev, sheetTitle];
+      }
+    });
+  }, []);
+
+  const selectAllSheets = useCallback(() => {
+    if (selectedSheetNames.length === availableSheets.length) {
+      setSelectedSheetNames([]);
+    } else {
+      setSelectedSheetNames(availableSheets.map(sheet => sheet.title));
+    }
+  }, [availableSheets, selectedSheetNames]);
 
   const handleSpreadsheetSelection = useCallback(async () => {
     if (!selectedSpreadsheet) {
@@ -170,20 +189,28 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
       return;
     }
 
+    // If no sheets are selected, use all available sheets or just the first sheet if none available
+    const sheetsToConnect = selectedSheetNames.length > 0 
+      ? selectedSheetNames 
+      : availableSheets.length > 0 
+        ? [availableSheets[0].title] 
+        : [null];
+
     setIsSelectingSpreadsheet(true);
 
     try {
-      const response = await apiRequest("POST", `/api/google-sheets/select-spreadsheet`, {
+      // Call the API to connect multiple sheets
+      const response = await apiRequest("POST", `/api/google-sheets/select-spreadsheet-multiple`, {
         campaignId,
         spreadsheetId: selectedSpreadsheet,
-        sheetName: selectedSheetName || null, // Pass selected sheet name, or null to use first sheet
+        sheetNames: sheetsToConnect,
       });
 
       const data = await response.json();
 
       if (data.success) {
         onSuccess({
-          connectionId: data.connectionId,
+          connectionId: data.connectionIds?.[0] || data.connectionId,
           spreadsheetId: selectedSpreadsheet
         });
       } else {
@@ -195,7 +222,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
     } finally {
       setIsSelectingSpreadsheet(false);
     }
-  }, [campaignId, selectedSpreadsheet, selectedSheetName, onSuccess, onError]);
+  }, [campaignId, selectedSpreadsheet, selectedSheetNames, availableSheets, onSuccess, onError]);
 
   // Show spreadsheet selection after auth
   if (authCompleted && spreadsheets.length > 0) {
@@ -230,25 +257,50 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
 
           {selectedSpreadsheet && (
             <div className="space-y-2">
-              <Label>Select Sheet/Tab</Label>
+              <div className="flex items-center justify-between">
+                <Label>Select Sheet/Tab(s)</Label>
+                {availableSheets.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={selectAllSheets}
+                    className="text-xs h-auto py-1"
+                  >
+                    {selectedSheetNames.length === availableSheets.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                )}
+              </div>
               {isLoadingSheets ? (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                   <RefreshCw className="w-4 h-4 animate-spin" />
                   Loading sheets...
                 </div>
               ) : availableSheets.length > 0 ? (
-                <Select value={selectedSheetName} onValueChange={setSelectedSheetName}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a sheet/tab..." />
-                  </SelectTrigger>
-                  <SelectContent>
+                <>
+                  <div className="space-y-2 max-h-64 overflow-y-auto border border-slate-200 rounded-md p-3">
                     {availableSheets.map((sheet) => (
-                      <SelectItem key={sheet.sheetId} value={sheet.title}>
-                        {sheet.title}
-                      </SelectItem>
+                      <div key={sheet.sheetId} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`sheet-${sheet.sheetId}`}
+                          checked={selectedSheetNames.includes(sheet.title)}
+                          onCheckedChange={() => toggleSheetSelection(sheet.title)}
+                        />
+                        <label
+                          htmlFor={`sheet-${sheet.sheetId}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                        >
+                          {sheet.title}
+                        </label>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                  {selectedSheetNames.length > 0 && (
+                    <p className="text-xs text-green-600 dark:text-green-400">
+                      {selectedSheetNames.length} sheet{selectedSheetNames.length > 1 ? 's' : ''} selected
+                    </p>
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-slate-500">
                   Using first sheet (default)
@@ -256,7 +308,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
               )}
               <p className="text-xs text-slate-400">
                 {availableSheets.length > 0 
-                  ? `Select which tab to use from this spreadsheet. If not selected, the first tab will be used.`
+                  ? `Select one or multiple tabs to connect. If none selected, the first tab will be used.`
                   : `The first tab in the spreadsheet will be used.`}
               </p>
             </div>
@@ -276,7 +328,9 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
             ) : (
               <>
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Connect Spreadsheet
+                {selectedSheetNames.length > 0 
+                  ? `Connect ${selectedSheetNames.length} Sheet${selectedSheetNames.length > 1 ? 's' : ''}`
+                  : 'Connect Spreadsheet'}
               </>
             )}
           </Button>

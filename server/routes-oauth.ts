@@ -2534,6 +2534,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Select multiple spreadsheet sheets/tabs in one call
+  app.post("/api/google-sheets/select-spreadsheet-multiple", async (req, res) => {
+    try {
+      const { campaignId, spreadsheetId, sheetNames } = req.body;
+      
+      console.log('Multiple spreadsheet selection request:', { campaignId, spreadsheetId, sheetNames });
+      
+      if (!Array.isArray(sheetNames) || sheetNames.length === 0) {
+        return res.status(400).json({ error: 'Sheet names array is required and must not be empty' });
+      }
+      
+      // First, try to find connection in database (more reliable than global map)
+      let dbConnection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
+      
+      if (!dbConnection) {
+        // Check if there's any connection for this campaign
+        const existingConnections = await storage.getGoogleSheetsConnections(campaignId);
+        if (existingConnections.length > 0) {
+          // Use the first connection
+          dbConnection = existingConnections[0];
+        } else {
+          // Try global map as fallback (for in-memory storage or if DB lookup failed)
+          const connections = (global as any).googleSheetsConnections;
+          if (connections && connections.has(campaignId)) {
+            const connection = connections.get(campaignId);
+            // Create a new DB connection from global map data
+            if (connection.accessToken) {
+              try {
+                dbConnection = await storage.createGoogleSheetsConnection({
+                  campaignId,
+                  spreadsheetId: 'pending',
+                  accessToken: connection.accessToken,
+                  refreshToken: connection.refreshToken || null,
+                  clientId: process.env.GOOGLE_CLIENT_ID || '',
+                  clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+                  expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined,
+                });
+                console.log('[Select Multiple Spreadsheets] Created DB connection from global map');
+              } catch (createError: any) {
+                console.error('[Select Multiple Spreadsheets] Failed to create connection from global map:', createError);
+                return res.status(404).json({ error: 'No Google Sheets connection found. Please reconnect Google Sheets.' });
+              }
+            } else {
+              return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
+            }
+          } else {
+            return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
+          }
+        }
+      }
+
+      // Get spreadsheet name - try to fetch from Google API if we have access token
+      let spreadsheetName = `Spreadsheet ${spreadsheetId}`;
+      if (dbConnection.accessToken) {
+        try {
+          const metadataResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?includeGridData=false`,
+            { headers: { 'Authorization': `Bearer ${dbConnection.accessToken}` } }
+          );
+          if (metadataResponse.ok) {
+            const metadata = await metadataResponse.json();
+            spreadsheetName = metadata.properties?.title || spreadsheetName;
+          }
+        } catch (fetchError) {
+          console.log('[Select Multiple Spreadsheets] Could not fetch spreadsheet name, using default');
+        }
+      }
+      
+      // Create/update connections for each sheet
+      const connectionIds: string[] = [];
+      const isFirstConnection = dbConnection.spreadsheetId === 'pending';
+      
+      for (let i = 0; i < sheetNames.length; i++) {
+        const sheetName = sheetNames[i];
+        
+        if (i === 0 && isFirstConnection) {
+          // Update the first connection (the one we found/created)
+          const updateData: any = {
+            spreadsheetId,
+            spreadsheetName
+          };
+          if (sheetName) {
+            updateData.sheetName = sheetName;
+          }
+          await storage.updateGoogleSheetsConnection(dbConnection.id, updateData);
+          connectionIds.push(dbConnection.id);
+          console.log(`[Select Multiple Spreadsheets] Updated connection ${dbConnection.id} with sheet: ${sheetName || 'first sheet (default)'}`);
+        } else {
+          // Create new connections for additional sheets
+          try {
+            const newConnection = await storage.createGoogleSheetsConnection({
+              campaignId,
+              spreadsheetId,
+              spreadsheetName,
+              sheetName: sheetName || null,
+              accessToken: dbConnection.accessToken,
+              refreshToken: dbConnection.refreshToken || null,
+              clientId: dbConnection.clientId,
+              clientSecret: dbConnection.clientSecret,
+              expiresAt: dbConnection.expiresAt,
+            });
+            connectionIds.push(newConnection.id);
+            console.log(`[Select Multiple Spreadsheets] Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
+          } catch (error: any) {
+            console.error(`[Select Multiple Spreadsheets] Failed to create connection for sheet ${sheetName}:`, error.message);
+            // Continue with other sheets even if one fails
+          }
+        }
+      }
+      
+      console.log('Created/updated multiple database connections:', {
+        campaignId,
+        spreadsheetId,
+        spreadsheetName,
+        sheets: sheetNames,
+        connectionIds
+      });
+      
+      res.json({
+        success: true,
+        connectionIds,
+        selectedSpreadsheet: {
+          id: spreadsheetId,
+          name: spreadsheetName
+        },
+        sheetsConnected: sheetNames.length
+      });
+    } catch (error: any) {
+      console.error('Multiple spreadsheet selection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to select spreadsheets' });
+    }
+  });
+
   // Check Google Sheets connection status
   // List all Google Sheets connections for a campaign
   app.get("/api/campaigns/:id/google-sheets-connections", async (req, res) => {

@@ -520,20 +520,20 @@ export function ColumnMappingInterface({
                         {mapping && mappedField && (
                           <>
                             {mappedField.required ? (
-                              <Badge variant="destructive" className="text-xs">
-                                Required
-                              </Badge>
+                          <Badge variant="destructive" className="text-xs">
+                            Required
+                          </Badge>
                             ) : (
-                              <Badge variant="secondary" className="text-xs">
-                                Optional
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className="text-xs">
+                          <Badge variant="secondary" className="text-xs">
+                            Optional
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-xs">
                               {mappedField.type}
-                            </Badge>
-                            <Badge variant="default" className="text-xs bg-green-600">
-                              {mapping.matchType === 'auto' ? 'Auto' : 'Manual'}
-                            </Badge>
+                        </Badge>
+                          <Badge variant="default" className="text-xs bg-green-600">
+                            {mapping.matchType === 'auto' ? 'Auto' : 'Manual'}
+                          </Badge>
                           </>
                         )}
                       </div>
@@ -620,9 +620,9 @@ export function ColumnMappingInterface({
                     
                     {/* Dropdown to select platform field */}
                     <div className="flex-shrink-0 w-64">
-                      <Select
+                    <Select
                         value={mapping ? mapping.targetFieldId : "none"}
-                        onValueChange={(value) => {
+                      onValueChange={(value) => {
                           if (value === "none") {
                             // Remove mapping
                             setMappings(prev => prev.filter(m => m.sourceColumnIndex !== column.index));
@@ -630,19 +630,19 @@ export function ColumnMappingInterface({
                             // Add or update mapping
                             handleFieldMapping(value, column.index);
                           }
-                        }}
-                      >
+                      }}
+                    >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select field to map..." />
-                        </SelectTrigger>
-                        <SelectContent>
+                      </SelectTrigger>
+                      <SelectContent>
                           <SelectItem value="none">— Not mapped —</SelectItem>
                           {platformFields.map((field) => {
                             // Don't show fields that are already mapped to another column (unless it's this column)
                             const existingMapping = mappings.find(m => m.targetFieldId === field.id && m.sourceColumnIndex !== column.index);
                             if (existingMapping) return null;
                             
-                            return (
+                          return (
                               <SelectItem key={field.id} value={field.id}>
                                 <div className="flex items-center gap-2">
                                   <span>{field.name}</span>
@@ -652,11 +652,11 @@ export function ColumnMappingInterface({
                                     </Badge>
                                   )}
                                 </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                     </div>
                   </div>
                 </div>
@@ -755,7 +755,7 @@ export function ColumnMappingInterface({
                 onClick={() => {
                   if (onCancel) onCancel();
                   setTimeout(() => {
-                    window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+                  window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
                   }, 100);
                 }}
               >

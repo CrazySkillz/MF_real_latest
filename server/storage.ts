@@ -943,8 +943,8 @@ export class MemStorage implements IStorage {
   async createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection> {
     const id = randomUUID();
     
-    // Check connection limit (5 sheets per campaign)
-    const MAX_CONNECTIONS = 5;
+    // Check connection limit (10 sheets per campaign)
+    const MAX_CONNECTIONS = 10;
     const existingConnections = await this.getGoogleSheetsConnections(connection.campaignId);
     
     if (existingConnections.length >= MAX_CONNECTIONS) {
@@ -2067,8 +2067,8 @@ export class DatabaseStorage implements IStorage {
   async getGoogleSheetsConnections(campaignId: string): Promise<GoogleSheetsConnection[]> {
     try {
       return await db.select().from(googleSheetsConnections)
-        .where(and(eq(googleSheetsConnections.campaignId, campaignId), eq(googleSheetsConnections.isActive, true)))
-        .orderBy(googleSheetsConnections.connectedAt);
+      .where(and(eq(googleSheetsConnections.campaignId, campaignId), eq(googleSheetsConnections.isActive, true)))
+      .orderBy(googleSheetsConnections.connectedAt);
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -2106,35 +2106,35 @@ export class DatabaseStorage implements IStorage {
 
   async getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined> {
     try {
-      if (spreadsheetId) {
-        const [connection] = await db.select().from(googleSheetsConnections)
-          .where(and(
-            eq(googleSheetsConnections.campaignId, campaignId),
-            eq(googleSheetsConnections.spreadsheetId, spreadsheetId),
-            eq(googleSheetsConnections.isActive, true)
-          ));
-        return connection || undefined;
-      }
-      
-      // Return the primary connection if no spreadsheetId specified
-      const [primary] = await db.select().from(googleSheetsConnections)
+    if (spreadsheetId) {
+      const [connection] = await db.select().from(googleSheetsConnections)
         .where(and(
           eq(googleSheetsConnections.campaignId, campaignId),
-          eq(googleSheetsConnections.isPrimary, true),
+          eq(googleSheetsConnections.spreadsheetId, spreadsheetId),
           eq(googleSheetsConnections.isActive, true)
         ));
-      
-      if (primary) return primary;
-      
-      // Fallback to first active connection if no primary
-      const [first] = await db.select().from(googleSheetsConnections)
-        .where(and(
-          eq(googleSheetsConnections.campaignId, campaignId),
-          eq(googleSheetsConnections.isActive, true)
-        ))
-        .limit(1);
-      
-      return first || undefined;
+      return connection || undefined;
+    }
+    
+    // Return the primary connection if no spreadsheetId specified
+    const [primary] = await db.select().from(googleSheetsConnections)
+      .where(and(
+        eq(googleSheetsConnections.campaignId, campaignId),
+        eq(googleSheetsConnections.isPrimary, true),
+        eq(googleSheetsConnections.isActive, true)
+      ));
+    
+    if (primary) return primary;
+    
+    // Fallback to first active connection if no primary
+    const [first] = await db.select().from(googleSheetsConnections)
+      .where(and(
+        eq(googleSheetsConnections.campaignId, campaignId),
+        eq(googleSheetsConnections.isActive, true)
+      ))
+      .limit(1);
+    
+    return first || undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -2217,13 +2217,13 @@ export class DatabaseStorage implements IStorage {
 
   async getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {
     try {
-      const [primary] = await db.select().from(googleSheetsConnections)
-        .where(and(
-          eq(googleSheetsConnections.campaignId, campaignId),
-          eq(googleSheetsConnections.isPrimary, true),
-          eq(googleSheetsConnections.isActive, true)
-        ));
-      return primary || undefined;
+    const [primary] = await db.select().from(googleSheetsConnections)
+      .where(and(
+        eq(googleSheetsConnections.campaignId, campaignId),
+        eq(googleSheetsConnections.isPrimary, true),
+        eq(googleSheetsConnections.isActive, true)
+      ));
+    return primary || undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -2267,15 +2267,15 @@ export class DatabaseStorage implements IStorage {
     
     try {
       // Try to insert - Drizzle will include all fields from schema, which may fail if sheet_name doesn't exist
-      const [sheetsConnection] = await db
-        .insert(googleSheetsConnections)
-        .values({
-          ...connection,
-          isPrimary: isPrimary,
-          isActive: true
-        })
-        .returning();
-      return sheetsConnection;
+    const [sheetsConnection] = await db
+      .insert(googleSheetsConnections)
+      .values({
+        ...connection,
+        isPrimary: isPrimary,
+        isActive: true
+      })
+      .returning();
+    return sheetsConnection;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL insert
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -2326,12 +2326,12 @@ export class DatabaseStorage implements IStorage {
       // Remove sheetName from update if column doesn't exist - we'll handle it separately
       const { sheetName, ...updateData } = connection as any;
       
-      const [updated] = await db
-        .update(googleSheetsConnections)
+    const [updated] = await db
+      .update(googleSheetsConnections)
         .set(updateData)
-        .where(eq(googleSheetsConnections.id, connectionId))
-        .returning();
-      return updated || undefined;
+      .where(eq(googleSheetsConnections.id, connectionId))
+      .returning();
+    return updated || undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL update
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -2444,30 +2444,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGoogleSheetsConnection(connectionId: string): Promise<boolean> {
     try {
-      const connection = await db.select().from(googleSheetsConnections)
-        .where(eq(googleSheetsConnections.id, connectionId))
-        .limit(1);
-      
-      if (connection.length === 0) return false;
-      
-      const wasPrimary = connection[0].isPrimary;
-      const campaignId = connection[0].campaignId;
-      
-      // Soft delete by setting isActive to false
-      await db
-        .update(googleSheetsConnections)
-        .set({ isActive: false })
-        .where(eq(googleSheetsConnections.id, connectionId));
-      
-      // If this was the primary connection, make the first remaining connection primary
-      if (wasPrimary) {
-        const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
-        if (remainingConnections.length > 0) {
-          await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
-        }
+    const connection = await db.select().from(googleSheetsConnections)
+      .where(eq(googleSheetsConnections.id, connectionId))
+      .limit(1);
+    
+    if (connection.length === 0) return false;
+    
+    const wasPrimary = connection[0].isPrimary;
+    const campaignId = connection[0].campaignId;
+    
+    // Soft delete by setting isActive to false
+    await db
+      .update(googleSheetsConnections)
+      .set({ isActive: false })
+      .where(eq(googleSheetsConnections.id, connectionId));
+    
+    // If this was the primary connection, make the first remaining connection primary
+    if (wasPrimary) {
+      const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
+      if (remainingConnections.length > 0) {
+        await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
       }
-      
-      return true;
+    }
+    
+    return true;
     } catch (error: any) {
       // Fallback if sheet_name column doesn't exist
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {

@@ -145,7 +145,7 @@ export default function GoogleSheetsData() {
   });
 
   const googleSheetsConnections = googleSheetsConnectionsData?.connections || [];
-  const MAX_GOOGLE_SHEETS_CONNECTIONS = 5;
+  const MAX_GOOGLE_SHEETS_CONNECTIONS = 10;
   const canAddMoreSheets = googleSheetsConnections.length < MAX_GOOGLE_SHEETS_CONNECTIONS;
 
   // Delete connection mutation

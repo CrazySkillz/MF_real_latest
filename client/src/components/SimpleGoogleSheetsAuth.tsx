@@ -137,19 +137,17 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
       
       if (data.success && data.sheets && data.sheets.length > 0) {
         setAvailableSheets(data.sheets);
-        // Auto-select first sheet if available
-        if (data.sheets.length > 0) {
-          setSelectedSheetName(data.sheets[0].title);
-        }
+        // Don't auto-select - let user choose
+        setSelectedSheetNames([]);
       } else {
         setAvailableSheets([]);
-        setSelectedSheetName("");
+        setSelectedSheetNames([]);
       }
     } catch (error: any) {
       console.error("Failed to fetch sheets:", error);
       // Don't show error, just set empty sheets - user can still proceed with default
       setAvailableSheets([]);
-      setSelectedSheetName("");
+      setSelectedSheetNames([]);
     } finally {
       setIsLoadingSheets(false);
     }

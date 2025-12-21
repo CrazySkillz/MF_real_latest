@@ -9828,6 +9828,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const { spreadsheetId, connectionId, connectionIds } = req.query;
       
+      console.log('[Detect Columns] Query params received:', { spreadsheetId, connectionId, connectionIds, campaignId });
+      
       // Parse connectionIds if provided (comma-separated)
       const connectionIdList = connectionIds 
         ? (connectionIds as string).split(',').filter(id => id.trim())
@@ -9835,25 +9837,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? [connectionId as string]
           : [];
       
+      console.log('[Detect Columns] Parsed connectionIdList:', connectionIdList);
+      
       // Get connections
       let connections: any[] = [];
       
       if (connectionIdList.length > 0) {
         // Fetch multiple connections by ID
         const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+        console.log('[Detect Columns] All connections for campaign:', allConnections.map(c => ({ id: c.id, sheetName: c.sheetName, spreadsheetId: c.spreadsheetId })));
         connections = allConnections.filter(conn => connectionIdList.includes(conn.id));
+        console.log('[Detect Columns] Filtered connections:', connections.map(c => ({ id: c.id, sheetName: c.sheetName })));
       } else if (spreadsheetId) {
         const conn = await storage.getGoogleSheetsConnection(campaignId, spreadsheetId as string);
         if (conn) connections = [conn];
+        console.log('[Detect Columns] Using spreadsheetId, found connection:', conn ? { id: conn.id, sheetName: conn.sheetName } : 'none');
       } else {
         const conn = await storage.getPrimaryGoogleSheetsConnection(campaignId) || 
                      await storage.getGoogleSheetsConnection(campaignId);
         if (conn) connections = [conn];
+        console.log('[Detect Columns] Using primary/fallback, found connection:', conn ? { id: conn.id, sheetName: conn.sheetName } : 'none');
       }
       
       if (connections.length === 0 || !connections[0].accessToken) {
+        console.error('[Detect Columns] No valid connections found');
         return res.status(404).json({ error: 'No Google Sheets connection found' });
       }
+      
+      console.log('[Detect Columns] Will process', connections.length, 'connection(s)');
       
       // Collect all columns from all sheets
       const allColumnsMap = new Map<string, DetectedColumn>();

@@ -109,15 +109,15 @@ export function UploadAdditionalDataModal({
       }
     } else {
       // Existing connection or no connection info - show datasets view
-      toast({
-        title: "Google Sheets Connected!",
-        description: "Your spreadsheet has been connected successfully.",
-      });
-      refetchConnections();
-      if (onDataConnected) {
-        onDataConnected();
-      }
-      setJustConnected(true);
+    toast({
+      title: "Google Sheets Connected!",
+      description: "Your spreadsheet has been connected successfully.",
+    });
+    refetchConnections();
+    if (onDataConnected) {
+      onDataConnected();
+    }
+    setJustConnected(true);
     }
   };
 
@@ -140,7 +140,7 @@ export function UploadAdditionalDataModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{googleSheetsOnly ? 'Add Google Sheets Dataset' : 'Upload Additional Data'}</DialogTitle>
+          <DialogTitle>{googleSheetsOnly ? 'Add Google Sheets Dataset' : 'Connect Additional Data'}</DialogTitle>
           <DialogDescription>
             {googleSheetsOnly ? 'Connect a Google Sheet or tab to add it to your campaign.' : 'Connect data sources to unlock revenue metrics including ROI, ROAS, Revenue, and Profit.'}
           </DialogDescription>
@@ -231,17 +231,17 @@ export function UploadAdditionalDataModal({
         ) : selectedSource === 'google-sheets' ? (
           <div className="mt-4 space-y-6">
             {!googleSheetsOnly && (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setSelectedSource(null);
-                  setShowDatasetsView(false);
-                  setJustConnected(false);
-                }}
-                className="mb-4"
-              >
-                ← Back to Options
-              </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSelectedSource(null);
+                setShowDatasetsView(false);
+                setJustConnected(false);
+              }}
+              className="mb-4"
+            >
+              ← Back to Options
+            </Button>
             )}
 
             {/* Show guided mapping for new connections (only for LinkedIn conversion value flow, not googleSheetsOnly) */}

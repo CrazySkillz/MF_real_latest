@@ -250,6 +250,7 @@ export function UploadAdditionalDataModal({
               <GuidedColumnMapping
                 campaignId={originalCampaignId}
                 connectionId={newConnectionInfo.connectionId}
+                connectionIds={newConnectionInfo.connectionIds}
                 spreadsheetId={newConnectionInfo.spreadsheetId}
                 platform="linkedin"
                 onMappingComplete={() => {

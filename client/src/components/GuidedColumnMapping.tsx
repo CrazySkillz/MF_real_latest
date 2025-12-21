@@ -67,18 +67,24 @@ export function GuidedColumnMapping({
 
   // Fetch detected columns
   const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number; sheetsAnalyzed?: number }>({
-    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", connectionIds?.join(',') || connectionId],
+    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", connectionIds?.join(',') || connectionId, spreadsheetId],
     queryFn: async () => {
-      // Use connectionIds for multiple sheets, or connectionId for single sheet
-      const queryParam = connectionIds && connectionIds.length > 0
-        ? `?connectionIds=${connectionIds.join(',')}`
-        : connectionId 
-          ? `?connectionId=${connectionId}` 
-          : spreadsheetId 
-            ? `?spreadsheetId=${spreadsheetId}` 
-            : '';
+      // ALWAYS fetch all connections for this spreadsheet to get ALL columns
+      // Use spreadsheetId as the primary way to get all sheets/tabs
+      let queryParam = '';
       
-      console.log('[GuidedColumnMapping] Fetching columns with:', {
+      if (spreadsheetId) {
+        // Fetch ALL sheets from this spreadsheet (this will get columns from all tabs)
+        queryParam = `?spreadsheetId=${spreadsheetId}&fetchAll=true`;
+      } else if (connectionIds && connectionIds.length > 0) {
+        // Use specific connection IDs if provided
+        queryParam = `?connectionIds=${connectionIds.join(',')}`;
+      } else if (connectionId) {
+        // Fallback to single connection
+        queryParam = `?connectionId=${connectionId}`;
+      }
+      
+      console.log('[GuidedColumnMapping] 🔍 Fetching columns with:', {
         campaignId,
         connectionIds,
         connectionId,
@@ -91,7 +97,7 @@ export function GuidedColumnMapping({
       if (!response.ok) throw new Error('Failed to detect columns');
       const data = await response.json();
       
-      console.log('[GuidedColumnMapping] Received columns response:', {
+      console.log('[GuidedColumnMapping] ✅ Received columns:', {
         success: data.success,
         columnsCount: data.columns?.length,
         sheetsAnalyzed: data.sheetsAnalyzed,
@@ -101,7 +107,7 @@ export function GuidedColumnMapping({
       
       return data;
     },
-    enabled: !!campaignId && (!!connectionIds?.length || !!connectionId || !!spreadsheetId)
+    enabled: !!campaignId && (!!spreadsheetId || !!connectionIds?.length || !!connectionId)
   });
 
   const detectedColumns = columnsData?.columns || [];

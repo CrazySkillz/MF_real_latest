@@ -9826,45 +9826,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/google-sheets/detect-columns", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { spreadsheetId, connectionId, connectionIds } = req.query;
+      const { spreadsheetId, connectionId, connectionIds, fetchAll } = req.query;
       
-      console.log('[Detect Columns] Query params received:', { spreadsheetId, connectionId, connectionIds, campaignId });
-      
-      // Parse connectionIds if provided (comma-separated)
-      const connectionIdList = connectionIds 
-        ? (connectionIds as string).split(',').filter(id => id.trim())
-        : connectionId 
-          ? [connectionId as string]
-          : [];
-      
-      console.log('[Detect Columns] Parsed connectionIdList:', connectionIdList);
+      console.log('[Detect Columns] 🔍 Query params:', { spreadsheetId, connectionId, connectionIds, fetchAll, campaignId });
       
       // Get connections
       let connections: any[] = [];
       
-      if (connectionIdList.length > 0) {
-        // Fetch multiple connections by ID
+      // If fetchAll is specified with spreadsheetId, get ALL connections for that spreadsheet
+      if (fetchAll === 'true' && spreadsheetId) {
         const allConnections = await storage.getGoogleSheetsConnections(campaignId);
-        console.log('[Detect Columns] All connections for campaign:', allConnections.map(c => ({ id: c.id, sheetName: c.sheetName, spreadsheetId: c.spreadsheetId })));
+        connections = allConnections.filter(conn => conn.spreadsheetId === spreadsheetId);
+        console.log('[Detect Columns] 📊 Fetching ALL sheets from spreadsheet:', spreadsheetId, '- found', connections.length, 'connection(s)');
+        connections.forEach(c => console.log('  - Sheet:', c.sheetName || 'default', 'ID:', c.id));
+      }
+      // Parse connectionIds if provided (comma-separated)
+      else if (connectionIds) {
+        const connectionIdList = (connectionIds as string).split(',').filter(id => id.trim());
+        const allConnections = await storage.getGoogleSheetsConnections(campaignId);
         connections = allConnections.filter(conn => connectionIdList.includes(conn.id));
-        console.log('[Detect Columns] Filtered connections:', connections.map(c => ({ id: c.id, sheetName: c.sheetName })));
-      } else if (spreadsheetId) {
+        console.log('[Detect Columns] 📋 Using connectionIds:', connectionIdList, '- found', connections.length, 'connection(s)');
+      }
+      // Single connectionId
+      else if (connectionId) {
+        const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+        const conn = allConnections.find(c => c.id === connectionId);
+        if (conn) connections = [conn];
+        console.log('[Detect Columns] 📄 Using single connectionId:', connectionId);
+      }
+      // Fallback: spreadsheetId
+      else if (spreadsheetId) {
         const conn = await storage.getGoogleSheetsConnection(campaignId, spreadsheetId as string);
         if (conn) connections = [conn];
-        console.log('[Detect Columns] Using spreadsheetId, found connection:', conn ? { id: conn.id, sheetName: conn.sheetName } : 'none');
-      } else {
+        console.log('[Detect Columns] 📑 Using spreadsheetId:', spreadsheetId);
+      }
+      // Last resort: primary connection
+      else {
         const conn = await storage.getPrimaryGoogleSheetsConnection(campaignId) || 
                      await storage.getGoogleSheetsConnection(campaignId);
         if (conn) connections = [conn];
-        console.log('[Detect Columns] Using primary/fallback, found connection:', conn ? { id: conn.id, sheetName: conn.sheetName } : 'none');
+        console.log('[Detect Columns] 🎯 Using primary/fallback connection');
       }
       
-      if (connections.length === 0 || !connections[0].accessToken) {
-        console.error('[Detect Columns] No valid connections found');
+      if (connections.length === 0 || !connections[0]?.accessToken) {
+        console.error('[Detect Columns] ❌ No valid connections found');
         return res.status(404).json({ error: 'No Google Sheets connection found' });
       }
       
-      console.log('[Detect Columns] Will process', connections.length, 'connection(s)');
+      console.log('[Detect Columns] ✅ Will process', connections.length, 'sheet(s):', connections.map(c => c.sheetName || 'default'));
       
       // Collect all columns from all sheets
       const allColumnsMap = new Map<string, DetectedColumn>();

@@ -2386,7 +2386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignId) {
         return res.status(400).json({ error: 'campaignId is required' });
       }
-
+      
       // Get connection to access token
       const connection = await storage.getGoogleSheetsConnection(campaignId as string);
       if (!connection || !connection.accessToken) {
@@ -2473,8 +2473,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.error('[Select Spreadsheet] Failed to create connection from global map:', createError);
                 return res.status(404).json({ error: 'No Google Sheets connection found. Please reconnect Google Sheets.' });
               }
-            } else {
-              return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
+        } else {
+          return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
             }
           } else {
             return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
@@ -3538,7 +3538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Build range with sheet name if specified
       const range = connection.sheetName ? `${connection.sheetName}!A1:Z1000` : 'A1:Z1000';
-      
+
       let sheetResponse = await fetchWithTimeout(
         `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(range)}`,
         { headers: { 'Authorization': `Bearer ${accessToken}` } },
@@ -3592,7 +3592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Build range with sheet name if specified
           const retryRange = connection.sheetName ? `${connection.sheetName}!A1:Z1000` : 'A1:Z1000';
-          
+
           sheetResponse = await fetchWithTimeoutRetry(
             `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(retryRange)}`,
             { headers: { 'Authorization': `Bearer ${accessToken}` } },
@@ -4303,16 +4303,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   // Platform connection values are managed by the LinkedIn Analytics endpoint
                   // which checks for active mappings and clears stale values
                   if (false) { // Disabled - causes race condition with clearing logic
-                    if (platformInfo.platform === 'linkedin' && linkedInConnection) {
-                      await storage.updateLinkedInConnection(campaignId, {
-                        conversionValue: platformConversionValue
-                      });
-                      console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue} (using ${conversionSource} conversions)`);
-                    } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
-                      await storage.updateMetaConnection(campaignId, {
-                        conversionValue: platformConversionValue
-                      });
-                      console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${platformConversionValue}`);
+                  if (platformInfo.platform === 'linkedin' && linkedInConnection) {
+                    await storage.updateLinkedInConnection(campaignId, {
+                      conversionValue: platformConversionValue
+                    });
+                    console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue} (using ${conversionSource} conversions)`);
+                  } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
+                    await storage.updateMetaConnection(campaignId, {
+                      conversionValue: platformConversionValue
+                    });
+                    console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${platformConversionValue}`);
                     }
                   }
                 } else {
@@ -7939,8 +7939,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (hasActiveGoogleSheetsWithMappings) {
         // Only use stored conversion value if Google Sheets WITH MAPPINGS is still connected
         conversionValue = campaign?.conversionValue 
-          ? parseFloat(campaign.conversionValue.toString()) 
-          : parseFloat(session.conversionValue || '0');
+        ? parseFloat(campaign.conversionValue.toString()) 
+        : parseFloat(session.conversionValue || '0');
       } else {
         // No active Google Sheets with mappings - FORCE CLEAR stale conversion values
         console.log('[LinkedIn Analytics OAuth] ❌ NO active Google Sheets with mappings - clearing stale conversion values');
@@ -7965,9 +7965,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log('Final conversion value used:', conversionValue);
-      
-      const totalRevenue = totalConversions * conversionValue;
-      const profit = totalRevenue - totalSpend;
+        
+        const totalRevenue = totalConversions * conversionValue;
+        const profit = totalRevenue - totalSpend;
       
       // Calculate revenue metrics if conversion value is set AND has active mappings
       if (conversionValue > 0 && hasActiveGoogleSheetsWithMappings) {
@@ -9833,22 +9833,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const analysisRange = connection.sheetName ? `${connection.sheetName}!A1:Z100` : 'A1:Z100';
         
         console.log(`[Detect Columns] Fetching columns from sheet: ${connection.sheetName || 'default'}, spreadsheet: ${connection.spreadsheetId}`);
-        
-        // Fetch first 100 rows for analysis
-        const sheetResponse = await fetch(
+      
+      // Fetch first 100 rows for analysis
+      const sheetResponse = await fetch(
           `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(analysisRange)}?valueRenderOption=UNFORMATTED_VALUE`,
-          { headers: { 'Authorization': `Bearer ${connection.accessToken}` } }
-        );
-        
-        if (!sheetResponse.ok) {
+        { headers: { 'Authorization': `Bearer ${connection.accessToken}` } }
+      );
+      
+      if (!sheetResponse.ok) {
           console.warn(`[Detect Columns] Failed to fetch sheet ${connection.sheetName || 'default'}: ${sheetResponse.statusText}`);
           continue; // Skip this sheet and continue with others
-        }
-        
-        const sheetData = await sheetResponse.json();
-        const rows = sheetData.values || [];
-        
-        if (rows.length === 0) {
+      }
+      
+      const sheetData = await sheetResponse.json();
+      const rows = sheetData.values || [];
+      
+      if (rows.length === 0) {
           console.warn(`[Detect Columns] Sheet ${connection.sheetName || 'default'} has no data`);
           continue;
         }
@@ -9899,44 +9899,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         columns: detectedColumns,
         totalRows: totalRowsAcrossSheets,
         sheetsAnalyzed: connections.length
-      });
-      
-      return; // Exit after successful response
-      
-      // OLD CODE BELOW - keeping for reference, will be removed
-      const connection = connections[0]; // This is now handled above
-      
-      // Build range with sheet name if specified
-      const analysisRange = connection.sheetName ? `${connection.sheetName}!A1:Z100` : 'A1:Z100';
-      
-      // Fetch first 100 rows for analysis
-      const sheetResponse = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(analysisRange)}?valueRenderOption=UNFORMATTED_VALUE`,
-        { headers: { 'Authorization': `Bearer ${connection.accessToken}` } }
-      );
-      
-      if (!sheetResponse.ok) {
-        throw new Error(`Failed to fetch Google Sheets data: ${sheetResponse.statusText}`);
-      }
-      
-      const sheetData = await sheetResponse.json();
-      const rows = sheetData.values || [];
-      
-      if (rows.length === 0) {
-        return res.json({ success: true, columns: [] });
-      }
-      
-      // Detect columns
-      const detectedColumns = detectColumnTypes(rows);
-      
-      // Discover schema (Phase 1: Schema Discovery)
-      const schema = discoverSchema(rows, detectedColumns);
-      
-      res.json({
-        success: true,
-        columns: detectedColumns,
-        totalRows: rows.length - 1, // Exclude header
-        schema: schema // Include schema discovery results
       });
     } catch (error: any) {
       console.error('[Detect Columns] Error:', error);

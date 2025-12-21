@@ -4143,11 +4143,6 @@ export class DatabaseStorage implements IStorage {
 
     return performance.sort((a, b) => b.totalAttributedValue - a.totalAttributedValue);
   }
-
-  // Notifications methods
-  async getNotifications(): Promise<Notification[]> {
-    return db.select().from(notifications).orderBy(desc(notifications.createdAt));
-  }
 }
 
 const useMemStorage =

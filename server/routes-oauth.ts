@@ -9836,15 +9836,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/google-sheets/detect-columns", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { spreadsheetId, connectionId, connectionIds, fetchAll } = req.query;
+      const { spreadsheetId, connectionId, connectionIds, fetchAll, sheetNames } = req.query;
       
-      console.log('[Detect Columns] 🔍 Query params:', { spreadsheetId, connectionId, connectionIds, fetchAll, campaignId });
+      console.log('[Detect Columns] 🔍 Query params:', { spreadsheetId, connectionId, connectionIds, fetchAll, sheetNames, campaignId });
       
       // Get connections
       let connections: any[] = [];
       
+      // If sheetNames is provided, fetch ONLY those specific sheets
+      if (sheetNames && spreadsheetId) {
+        const selectedSheets = (sheetNames as string).split(',').map(s => s.trim());
+        console.log('[Detect Columns] 🎯 Fetching ONLY selected sheets:', selectedSheets);
+        
+        // Get any connection for this spreadsheet to use the access token
+        const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+        const baseConnection = allConnections.find(conn => conn.spreadsheetId === spreadsheetId);
+        
+        if (!baseConnection || !baseConnection.accessToken) {
+          console.error('[Detect Columns] ❌ No connection found for spreadsheet:', spreadsheetId);
+          return res.status(404).json({ error: 'No Google Sheets connection found' });
+        }
+        
+        // Create virtual connections for ONLY the selected sheets
+        connections = selectedSheets.map((sheetName: string) => ({
+          ...baseConnection,
+          sheetName,
+          id: `${baseConnection.id}-${sheetName}`
+        }));
+        
+        console.log('[Detect Columns] ✅ Will fetch columns from', connections.length, 'selected sheet(s):', selectedSheets);
+      }
       // If fetchAll is specified with spreadsheetId, fetch ALL tabs directly from Google Sheets API
-      if (fetchAll === 'true' && spreadsheetId) {
+      else if (fetchAll === 'true' && spreadsheetId) {
         // Get any connection for this spreadsheet to use the access token
         const allConnections = await storage.getGoogleSheetsConnections(campaignId);
         const baseConnection = allConnections.find(conn => conn.spreadsheetId === spreadsheetId);

@@ -30,6 +30,7 @@ interface GuidedColumnMappingProps {
   campaignId: string;
   connectionId: string;
   connectionIds?: string[];
+  sheetNames?: string[];
   spreadsheetId: string;
   platform: string;
   onMappingComplete?: () => void;
@@ -42,6 +43,7 @@ export function GuidedColumnMapping({
   campaignId,
   connectionId,
   connectionIds,
+  sheetNames,
   spreadsheetId,
   platform,
   onMappingComplete,
@@ -61,21 +63,26 @@ export function GuidedColumnMapping({
   console.log('campaignId:', campaignId);
   console.log('connectionId:', connectionId);
   console.log('connectionIds:', connectionIds);
-  console.log('connectionIds length:', connectionIds?.length);
+  console.log('sheetNames:', sheetNames);
+  console.log('sheetNames length:', sheetNames?.length);
   console.log('spreadsheetId:', spreadsheetId);
   console.log('========================================');
 
   // Fetch detected columns
   const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number; sheetsAnalyzed?: number }>({
-    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", connectionIds?.join(',') || connectionId, spreadsheetId],
+    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", sheetNames?.join(',') || connectionIds?.join(',') || connectionId, spreadsheetId],
     queryFn: async () => {
-      // ALWAYS fetch all connections for this spreadsheet to get ALL columns
-      // Use spreadsheetId as the primary way to get all sheets/tabs
+      // Use sheetNames if provided (ONLY fetch columns from selected sheets)
       let queryParam = '';
       
-      if (spreadsheetId) {
-        // Fetch ALL sheets from this spreadsheet (this will get columns from all tabs)
+      if (sheetNames && sheetNames.length > 0 && spreadsheetId) {
+        // Fetch ONLY the selected sheet names
+        queryParam = `?spreadsheetId=${spreadsheetId}&sheetNames=${encodeURIComponent(sheetNames.join(','))}`;
+        console.log('[GuidedColumnMapping] 🎯 Fetching ONLY selected sheets:', sheetNames);
+      } else if (spreadsheetId) {
+        // Fetch ALL sheets from this spreadsheet
         queryParam = `?spreadsheetId=${spreadsheetId}&fetchAll=true`;
+        console.log('[GuidedColumnMapping] 📊 Fetching ALL sheets from spreadsheet');
       } else if (connectionIds && connectionIds.length > 0) {
         // Use specific connection IDs if provided
         queryParam = `?connectionIds=${connectionIds.join(',')}`;

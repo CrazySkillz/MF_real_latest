@@ -32,7 +32,7 @@ export function UploadAdditionalDataModal({
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
-  const [newConnectionInfo, setNewConnectionInfo] = useState<{ connectionId: string; spreadsheetId: string; connectionIds?: string[] } | null>(null);
+  const [newConnectionInfo, setNewConnectionInfo] = useState<{ connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] } | null>(null);
   const { toast } = useToast();
   
   // Store the ACTUAL current URL when modal opens - this is where we came from
@@ -85,7 +85,7 @@ export function UploadAdditionalDataModal({
     setSelectedSource(source);
   };
 
-  const handleGoogleSheetsSuccess = (connectionInfo?: { connectionId: string; spreadsheetId: string; connectionIds?: string[] }) => {
+  const handleGoogleSheetsSuccess = (connectionInfo?: { connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] }) => {
     if (connectionInfo) {
       if (googleSheetsOnly) {
         // For Google Sheets only mode (from Connection Details), skip mapping and just connect
@@ -251,6 +251,7 @@ export function UploadAdditionalDataModal({
                 campaignId={originalCampaignId}
                 connectionId={newConnectionInfo.connectionId}
                 connectionIds={newConnectionInfo.connectionIds}
+                sheetNames={newConnectionInfo.sheetNames}
                 spreadsheetId={newConnectionInfo.spreadsheetId}
                 platform="linkedin"
                 onMappingComplete={() => {

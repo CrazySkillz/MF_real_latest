@@ -3372,11 +3372,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionsWithMappings = googleSheetsConnections.filter((conn: any) => {
         // Check both possible field name formats
         const columnMappings = conn.columnMappings || conn.column_mappings;
-        if (!columnMappings || columnMappings.trim() === '') {
+        if (!columnMappings || (typeof columnMappings === 'string' && columnMappings.trim() === '')) {
           return false;
         }
         try {
-          const mappings = JSON.parse(columnMappings);
+          const mappings = typeof columnMappings === 'string' ? JSON.parse(columnMappings) : columnMappings;
           return Array.isArray(mappings) && mappings.length > 0;
         } catch {
           return false;

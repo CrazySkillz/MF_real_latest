@@ -2066,7 +2066,23 @@ export class DatabaseStorage implements IStorage {
   // Google Sheets Connection methods
   async getGoogleSheetsConnections(campaignId: string): Promise<GoogleSheetsConnection[]> {
     try {
-      return await db.select().from(googleSheetsConnections)
+      return await db.select({
+        id: googleSheetsConnections.id,
+        campaignId: googleSheetsConnections.campaignId,
+        spreadsheetId: googleSheetsConnections.spreadsheetId,
+        spreadsheetName: googleSheetsConnections.spreadsheetName,
+        sheetName: googleSheetsConnections.sheetName,
+        accessToken: googleSheetsConnections.accessToken,
+        refreshToken: googleSheetsConnections.refreshToken,
+        clientId: googleSheetsConnections.clientId,
+        clientSecret: googleSheetsConnections.clientSecret,
+        expiresAt: googleSheetsConnections.expiresAt,
+        isPrimary: googleSheetsConnections.isPrimary,
+        isActive: googleSheetsConnections.isActive,
+        columnMappings: googleSheetsConnections.columnMappings,
+        connectedAt: googleSheetsConnections.connectedAt,
+        createdAt: googleSheetsConnections.createdAt,
+      }).from(googleSheetsConnections)
       .where(and(eq(googleSheetsConnections.campaignId, campaignId), eq(googleSheetsConnections.isActive, true)))
       .orderBy(googleSheetsConnections.connectedAt);
     } catch (error: any) {
@@ -2326,9 +2342,15 @@ export class DatabaseStorage implements IStorage {
       // Remove sheetName from update if column doesn't exist - we'll handle it separately
       const { sheetName, ...updateData } = connection as any;
       
+      // Explicitly map columnMappings to ensure it's included
+      const setData: any = { ...updateData };
+      if ((connection as any).columnMappings !== undefined) {
+        setData.columnMappings = (connection as any).columnMappings;
+      }
+      
     const [updated] = await db
       .update(googleSheetsConnections)
-        .set(updateData)
+        .set(setData)
       .where(eq(googleSheetsConnections.id, connectionId))
       .returning();
     return updated || undefined;

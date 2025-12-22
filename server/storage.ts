@@ -2362,7 +2362,23 @@ export class DatabaseStorage implements IStorage {
       .update(googleSheetsConnections)
         .set(setData)
       .where(eq(googleSheetsConnections.id, connectionId))
-      .returning();
+      .returning({
+        id: googleSheetsConnections.id,
+        campaignId: googleSheetsConnections.campaignId,
+        spreadsheetId: googleSheetsConnections.spreadsheetId,
+        spreadsheetName: googleSheetsConnections.spreadsheetName,
+        sheetName: googleSheetsConnections.sheetName,
+        accessToken: googleSheetsConnections.accessToken,
+        refreshToken: googleSheetsConnections.refreshToken,
+        clientId: googleSheetsConnections.clientId,
+        clientSecret: googleSheetsConnections.clientSecret,
+        expiresAt: googleSheetsConnections.expiresAt,
+        isPrimary: googleSheetsConnections.isPrimary,
+        isActive: googleSheetsConnections.isActive,
+        columnMappings: googleSheetsConnections.columnMappings,
+        connectedAt: googleSheetsConnections.connectedAt,
+        createdAt: googleSheetsConnections.createdAt,
+      });
     return updated || undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL update

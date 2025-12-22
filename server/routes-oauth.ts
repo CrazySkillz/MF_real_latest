@@ -10136,12 +10136,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Save Mappings] ✅ Verified connection ${connectionId} exists with mappings:`, updatedConnection.columnMappings ? 'YES' : 'NO');
       
-      console.log(`[Save Mappings] Mappings saved for connection ${connectionId}, conversion values will be calculated on next google-sheets-data call`);
+      // IMMEDIATELY calculate conversion value after saving mappings
+      console.log(`[Save Mappings] 🚀 Triggering immediate conversion value calculation...`);
+      
+      try {
+        // Fetch campaign and session data
+        const campaign = await storage.getCampaign(campaignId);
+        const linkedInSessions = await storage.getLinkedInImportSessionsByCampaign(campaignId);
+        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+        
+        if (linkedInConnection && linkedInSessions.length > 0) {
+          // Get all Google Sheets connections with mappings
+          const sheetsConnections = await storage.getGoogleSheetsConnections(campaignId);
+          const mappedConnections = sheetsConnections.filter(conn => conn.columnMappings);
+          
+          console.log(`[Save Mappings] Found ${mappedConnections.length} mapped connections`);
+          
+          if (mappedConnections.length > 0) {
+            // Calculate total revenue and conversions from LinkedIn API
+            let totalRevenue = 0;
+            let totalConversions = 0;
+            
+            for (const session of linkedInSessions) {
+              const metrics = await storage.getLinkedInCampaignMetrics(session.id);
+              for (const metric of metrics) {
+                totalConversions += parseFloat(metric.conversions?.toString() || '0');
+              }
+            }
+            
+            // Fetch revenue from Google Sheets for each connection
+            for (const conn of mappedConnections) {
+              try {
+                const sheetData = await getSpreadsheetData(
+                  conn.spreadsheetId,
+                  conn.accessToken!,
+                  conn.sheetName || undefined
+                );
+                
+                if (sheetData && sheetData.length > 0) {
+                  const mappings = JSON.parse(conn.columnMappings || '[]');
+                  const revenueMapping = mappings.find((m: any) => m.platformField === 'revenue');
+                  const campaignNameMapping = mappings.find((m: any) => m.platformField === 'campaign_name');
+                  
+                  if (revenueMapping && campaign) {
+                    // Filter by campaign name if mapped
+                    let filteredRows = sheetData;
+                    if (campaignNameMapping) {
+                      filteredRows = sheetData.filter((row: any) => {
+                        const campaignNameValue = row[campaignNameMapping.columnIndex];
+                        return campaignNameValue?.toString().toLowerCase() === campaign.name?.toLowerCase();
+                      });
+                    }
+                    
+                    // Sum revenue
+                    for (const row of filteredRows) {
+                      const revenueValue = parseFloat(row[revenueMapping.columnIndex]?.toString() || '0');
+                      if (!isNaN(revenueValue)) {
+                        totalRevenue += revenueValue;
+                      }
+                    }
+                  }
+                }
+              } catch (sheetError: any) {
+                console.error(`[Save Mappings] Error fetching sheet data for connection ${conn.id}:`, sheetError.message);
+              }
+            }
+            
+            // Calculate conversion value
+            const conversionValue = totalConversions > 0 ? totalRevenue / totalConversions : 0;
+            
+            console.log(`[Save Mappings] 💰 Calculated conversion value: ${conversionValue} (Revenue: ${totalRevenue}, Conversions: ${totalConversions})`);
+            
+            // Save to campaign
+            if (conversionValue > 0) {
+              await storage.updateCampaign(campaignId, { conversionValue: conversionValue.toString() });
+              
+              // Save to LinkedIn connection
+              await storage.updateLinkedInConnection(campaignId, { conversionValue: conversionValue.toString() });
+              
+              // Save to all sessions
+              for (const session of linkedInSessions) {
+                await storage.updateLinkedInImportSession(session.id, { conversionValue: conversionValue.toString() });
+              }
+              
+              console.log(`[Save Mappings] ✅ Conversion value ${conversionValue} saved to campaign, LinkedIn connection, and sessions`);
+            }
+          }
+        }
+      } catch (calcError: any) {
+        console.error(`[Save Mappings] Error calculating conversion value:`, calcError.message);
+        // Don't fail the request if calculation fails
+      }
+      
+      console.log(`[Save Mappings] ✅ Mappings saved and conversion value calculated for connection ${connectionId}`);
       
       res.json({
         success: true,
         message: 'Mappings saved successfully',
-        connectionId: connectionId
+        connectionId: connectionId,
+        conversionValueCalculated: true
       });
     } catch (error: any) {
       console.error('[Save Mappings] Error:', error);

@@ -7976,12 +7976,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[LinkedIn Analytics OAuth] Active Google Sheets connections:', googleSheetsConnections.length);
       console.log('[LinkedIn Analytics OAuth] Active Google Sheets connections WITH MAPPINGS:', connectionsWithMappings.length);
       
+      // CRITICAL: Refetch campaign to get the latest conversion value (it might have just been updated by save-mappings)
+      // The campaign was fetched earlier, but conversion value might have been updated since then
+      const latestCampaign = await storage.getCampaign(session.campaignId);
+      console.log('[LinkedIn Analytics OAuth] Latest campaign conversion value:', latestCampaign?.conversionValue);
+      
       let conversionValue = 0;
       if (hasActiveGoogleSheetsWithMappings) {
         // Only use stored conversion value if Google Sheets WITH MAPPINGS is still connected
-        conversionValue = campaign?.conversionValue 
-        ? parseFloat(campaign.conversionValue.toString()) 
+        // Use the REFETCHED campaign to get the latest conversion value
+        conversionValue = latestCampaign?.conversionValue 
+        ? parseFloat(latestCampaign.conversionValue.toString()) 
         : parseFloat(session.conversionValue || '0');
+        
+        console.log('[LinkedIn Analytics OAuth] Using conversion value:', conversionValue, 'from', latestCampaign?.conversionValue ? 'campaign' : 'session');
       } else {
         // No active Google Sheets with mappings - FORCE CLEAR stale conversion values
         console.log('[LinkedIn Analytics OAuth] ❌ NO active Google Sheets with mappings - clearing stale conversion values');

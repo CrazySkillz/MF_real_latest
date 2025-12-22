@@ -3383,11 +3383,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      const hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
+      let hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
       
       // CRITICAL: Refetch campaign to get the latest conversion value (it might have just been updated by save-mappings)
       // The campaign was fetched earlier, but conversion value might have been updated since then
       const latestCampaign = await storage.getCampaign(session.campaignId);
+      
+      // CRITICAL: If we have a conversion value but no mappings detected, do a recheck immediately
+      // This handles race conditions where mappings were just saved but not yet visible
+      const hasConversionValue = latestCampaign?.conversionValue && parseFloat(latestCampaign.conversionValue.toString()) > 0;
+      if (hasConversionValue && !hasActiveGoogleSheetsWithMappings) {
+        // Recheck connections - mappings might have just been saved
+        const recheckConnections = await storage.getGoogleSheetsConnections(session.campaignId);
+        const recheckMappings = recheckConnections.filter((conn: any) => {
+          const cm = conn.columnMappings || conn.column_mappings;
+          if (!cm || (typeof cm === 'string' && cm.trim() === '')) return false;
+          try {
+            const m = typeof cm === 'string' ? JSON.parse(cm) : cm;
+            return Array.isArray(m) && m.length > 0;
+          } catch { return false; }
+        });
+        if (recheckMappings.length > 0) {
+          hasActiveGoogleSheetsWithMappings = true;
+          connectionsWithMappings.push(...recheckMappings);
+        }
+      }
       
       // Use campaign conversion value (prioritize campaign, fallback to session)
       // BUT only if Google Sheets with mappings is still connected, otherwise the value is stale
@@ -3474,23 +3494,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // CRITICAL: Explicitly set hasRevenueTracking based on conversionValue AND active mappings
       // If no active Google Sheets with mappings, force hasRevenueTracking to 0 even if conversionValue > 0
       // This ensures that when a mapped Google Sheet is deleted, revenue metrics disappear immediately
-      
-      // If conversion value exists but mappings weren't detected, do a final recheck
-      // This handles race conditions where mappings were just saved
-      if (conversionValue > 0 && !hasActiveGoogleSheetsWithMappings) {
-        const recheckConnections = await storage.getGoogleSheetsConnections(session.campaignId);
-        const recheckMappings = recheckConnections.filter((conn: any) => {
-          const cm = conn.columnMappings || conn.column_mappings;
-          if (!cm || (typeof cm === 'string' && cm.trim() === '')) return false;
-          try {
-            const m = typeof cm === 'string' ? JSON.parse(cm) : cm;
-            return Array.isArray(m) && m.length > 0;
-          } catch { return false; }
-        });
-        if (recheckMappings.length > 0) {
-          hasActiveGoogleSheetsWithMappings = true;
-        }
-      }
       
       if (conversionValue > 0 && hasActiveGoogleSheetsWithMappings) {
         aggregated.hasRevenueTracking = 1; // Flag to indicate revenue tracking is enabled

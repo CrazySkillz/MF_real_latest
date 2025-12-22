@@ -8025,7 +8025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('[LinkedIn Analytics OAuth] ❌ NO active Google Sheets with mappings - clearing stale conversion values');
         
         // Clear stale values
-        if (campaign?.conversionValue) {
+        if (latestCampaign?.conversionValue) {
           await storage.updateCampaign(session.campaignId, { conversionValue: null });
         }
         if (session.conversionValue) {

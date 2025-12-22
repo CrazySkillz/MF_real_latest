@@ -7961,35 +7961,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const googleSheetsConnections = await storage.getGoogleSheetsConnections(session.campaignId);
       
       // Filter to only connections WITH MAPPINGS
+      // Handle both camelCase (Drizzle) and snake_case (raw SQL) field names
       const connectionsWithMappings = googleSheetsConnections.filter((conn: any) => {
-        if (!conn.columnMappings) return false;
+        const columnMappings = conn.columnMappings || conn.column_mappings;
+        if (!columnMappings || (typeof columnMappings === 'string' && columnMappings.trim() === '')) {
+          return false;
+        }
         try {
-          const mappings = JSON.parse(conn.columnMappings);
+          const mappings = typeof columnMappings === 'string' ? JSON.parse(columnMappings) : columnMappings;
           return Array.isArray(mappings) && mappings.length > 0;
         } catch {
           return false;
         }
       });
       
-      const hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
-      
-      console.log('[LinkedIn Analytics OAuth] Active Google Sheets connections:', googleSheetsConnections.length);
-      console.log('[LinkedIn Analytics OAuth] Active Google Sheets connections WITH MAPPINGS:', connectionsWithMappings.length);
+      let hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
       
       // CRITICAL: Refetch campaign to get the latest conversion value (it might have just been updated by save-mappings)
       // The campaign was fetched earlier, but conversion value might have been updated since then
       const latestCampaign = await storage.getCampaign(session.campaignId);
-      console.log('[LinkedIn Analytics OAuth] Latest campaign conversion value:', latestCampaign?.conversionValue);
+      
+      // CRITICAL: If we have a conversion value but no mappings detected, do a recheck immediately
+      // This handles race conditions where mappings were just saved but not yet visible
+      const hasConversionValue = latestCampaign?.conversionValue && parseFloat(latestCampaign.conversionValue.toString()) > 0;
+      if (hasConversionValue && !hasActiveGoogleSheetsWithMappings) {
+        // Recheck connections - mappings might have just been saved
+        const recheckConnections = await storage.getGoogleSheetsConnections(session.campaignId);
+        const recheckMappings = recheckConnections.filter((conn: any) => {
+          const cm = conn.columnMappings || conn.column_mappings;
+          if (!cm || (typeof cm === 'string' && cm.trim() === '')) return false;
+          try {
+            const m = typeof cm === 'string' ? JSON.parse(cm) : cm;
+            return Array.isArray(m) && m.length > 0;
+          } catch { return false; }
+        });
+        if (recheckMappings.length > 0) {
+          hasActiveGoogleSheetsWithMappings = true;
+          connectionsWithMappings.push(...recheckMappings);
+        }
+      }
       
       let conversionValue = 0;
       if (hasActiveGoogleSheetsWithMappings) {
         // Only use stored conversion value if Google Sheets WITH MAPPINGS is still connected
         // Use the REFETCHED campaign to get the latest conversion value
-        conversionValue = latestCampaign?.conversionValue 
-        ? parseFloat(latestCampaign.conversionValue.toString()) 
-        : parseFloat(session.conversionValue || '0');
+        const campaignConversionValue = latestCampaign?.conversionValue 
+          ? parseFloat(latestCampaign.conversionValue.toString()) 
+          : 0;
+        const sessionConversionValue = parseFloat(session.conversionValue || '0');
         
-        console.log('[LinkedIn Analytics OAuth] Using conversion value:', conversionValue, 'from', latestCampaign?.conversionValue ? 'campaign' : 'session');
+        // Prioritize campaign conversion value, fallback to session
+        conversionValue = campaignConversionValue > 0 ? campaignConversionValue : sessionConversionValue;
+        
+        // If still 0, try to get from LinkedIn connection
+        if (conversionValue === 0) {
+          const linkedInConn = await storage.getLinkedInConnection(session.campaignId);
+          if (linkedInConn?.conversionValue) {
+            conversionValue = parseFloat(linkedInConn.conversionValue.toString());
+          }
+        }
       } else {
         // No active Google Sheets with mappings - FORCE CLEAR stale conversion values
         console.log('[LinkedIn Analytics OAuth] ❌ NO active Google Sheets with mappings - clearing stale conversion values');

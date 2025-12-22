@@ -3367,18 +3367,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If no active connections with mappings, don't use stored conversion values (they were likely from Google Sheets)
       const googleSheetsConnections = await storage.getGoogleSheetsConnections(session.campaignId);
       
+      console.log('[LinkedIn Analytics] 🔍 Checking Google Sheets connections:');
+      console.log('[LinkedIn Analytics] Total active connections:', googleSheetsConnections.length);
+      googleSheetsConnections.forEach((conn: any, index: number) => {
+        console.log(`[LinkedIn Analytics] Connection ${index + 1}:`, {
+          id: conn.id,
+          spreadsheetId: conn.spreadsheetId,
+          isActive: conn.isActive,
+          hasColumnMappings: !!conn.columnMappings,
+          columnMappingsLength: conn.columnMappings ? conn.columnMappings.length : 0,
+          columnMappingsPreview: conn.columnMappings ? conn.columnMappings.substring(0, 100) : 'null'
+        });
+      });
+      
       // Filter to only connections with mappings
       const connectionsWithMappings = googleSheetsConnections.filter((conn: any) => {
-        if (!conn.columnMappings) return false;
+        if (!conn.columnMappings) {
+          console.log(`[LinkedIn Analytics] ❌ Connection ${conn.id} has no columnMappings`);
+          return false;
+        }
         try {
           const mappings = JSON.parse(conn.columnMappings);
-          return Array.isArray(mappings) && mappings.length > 0;
-        } catch {
+          const isValid = Array.isArray(mappings) && mappings.length > 0;
+          console.log(`[LinkedIn Analytics] ${isValid ? '✅' : '❌'} Connection ${conn.id} mappings:`, {
+            isArray: Array.isArray(mappings),
+            length: mappings?.length || 0,
+            isValid
+          });
+          return isValid;
+        } catch (error: any) {
+          console.error(`[LinkedIn Analytics] ❌ Failed to parse columnMappings for connection ${conn.id}:`, error.message);
+          console.error(`[LinkedIn Analytics] Raw columnMappings:`, conn.columnMappings);
           return false;
         }
       });
       
       const hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
+      console.log('[LinkedIn Analytics] 📊 Final check:', {
+        totalConnections: googleSheetsConnections.length,
+        connectionsWithMappings: connectionsWithMappings.length,
+        hasActiveGoogleSheetsWithMappings
+      });
       
       // CRITICAL: Refetch campaign to get the latest conversion value (it might have just been updated by save-mappings)
       // The campaign was fetched earlier, but conversion value might have been updated since then

@@ -2342,11 +2342,21 @@ export class DatabaseStorage implements IStorage {
       // Remove sheetName from update if column doesn't exist - we'll handle it separately
       const { sheetName, ...updateData } = connection as any;
       
-      // Explicitly map columnMappings to ensure it's included
-      const setData: any = { ...updateData };
-      if ((connection as any).columnMappings !== undefined) {
-        setData.columnMappings = (connection as any).columnMappings;
-      }
+    // Build the set object with explicit field mapping for columnMappings
+    const setData: any = {};
+    if (connection.spreadsheetId !== undefined) setData.spreadsheetId = connection.spreadsheetId;
+    if (connection.spreadsheetName !== undefined) setData.spreadsheetName = connection.spreadsheetName;
+    if (connection.accessToken !== undefined) setData.accessToken = connection.accessToken;
+    if (connection.refreshToken !== undefined) setData.refreshToken = connection.refreshToken;
+    if (connection.clientId !== undefined) setData.clientId = connection.clientId;
+    if (connection.clientSecret !== undefined) setData.clientSecret = connection.clientSecret;
+    if (connection.expiresAt !== undefined) setData.expiresAt = connection.expiresAt;
+    if (connection.isPrimary !== undefined) setData.isPrimary = connection.isPrimary;
+    if (connection.isActive !== undefined) setData.isActive = connection.isActive;
+    // CRITICAL: Explicitly include columnMappings
+    if ((connection as any).columnMappings !== undefined) {
+      setData.columnMappings = (connection as any).columnMappings;
+    }
       
     const [updated] = await db
       .update(googleSheetsConnections)

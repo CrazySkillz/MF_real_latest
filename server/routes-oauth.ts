@@ -10189,7 +10189,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (linkedInConnection && linkedInSessions.length > 0 && campaign) {
           // Get all mapped Google Sheets connections
           const sheetsConnections = await storage.getGoogleSheetsConnections(campaignId);
-          const mappedConnections = sheetsConnections.filter(conn => conn.columnMappings && conn.isActive);
+          const mappedConnections = sheetsConnections.filter((conn: any) => {
+            const cm = conn.columnMappings || conn.column_mappings;
+            if (!cm || (typeof cm === 'string' && cm.trim() === '')) return false;
+            try {
+              const m = typeof cm === 'string' ? JSON.parse(cm) : cm;
+              return Array.isArray(m) && m.length > 0 && conn.isActive;
+            } catch {
+              return false;
+            }
+          });
           
           console.log(`[Save Mappings] Found ${mappedConnections.length} active mapped connections out of ${sheetsConnections.length} total`);
           

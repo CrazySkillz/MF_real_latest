@@ -3367,19 +3367,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If no active connections with mappings, don't use stored conversion values (they were likely from Google Sheets)
       const googleSheetsConnections = await storage.getGoogleSheetsConnections(session.campaignId);
       
-      console.log('[LinkedIn Analytics] 🔍 Checking Google Sheets connections:');
-      console.log('[LinkedIn Analytics] Total active connections:', googleSheetsConnections.length);
-      googleSheetsConnections.forEach((conn: any, index: number) => {
-        console.log(`[LinkedIn Analytics] Connection ${index + 1}:`, {
-          id: conn.id,
-          spreadsheetId: conn.spreadsheetId,
-          isActive: conn.isActive,
-          hasColumnMappings: !!conn.columnMappings,
-          columnMappingsLength: conn.columnMappings ? conn.columnMappings.length : 0,
-          columnMappingsPreview: conn.columnMappings ? conn.columnMappings.substring(0, 100) : 'null'
-        });
-      });
-      
       // Filter to only connections with mappings
       // Handle both camelCase (Drizzle) and snake_case (raw SQL) field names
       const connectionsWithMappings = googleSheetsConnections.filter((conn: any) => {
@@ -3397,11 +3384,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
-      console.log('[LinkedIn Analytics] 📊 Final check:', {
-        totalConnections: googleSheetsConnections.length,
-        connectionsWithMappings: connectionsWithMappings.length,
-        hasActiveGoogleSheetsWithMappings
-      });
       
       // CRITICAL: Refetch campaign to get the latest conversion value (it might have just been updated by save-mappings)
       // The campaign was fetched earlier, but conversion value might have been updated since then
@@ -3409,11 +3391,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Use campaign conversion value (prioritize campaign, fallback to session)
       // BUT only if Google Sheets with mappings is still connected, otherwise the value is stale
-      console.log('[LinkedIn Analytics] Campaign conversion value (original):', campaign?.conversionValue);
-      console.log('[LinkedIn Analytics] Campaign conversion value (latest):', latestCampaign?.conversionValue);
-      console.log('[LinkedIn Analytics] Session conversion value:', session.conversionValue);
-      console.log('[LinkedIn Analytics] Active Google Sheets connections:', googleSheetsConnections.length);
-      console.log('[LinkedIn Analytics] Active Google Sheets connections WITH MAPPINGS:', connectionsWithMappings.length);
       
       let conversionValue = 0;
       if (hasActiveGoogleSheetsWithMappings) {
@@ -3436,32 +3413,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         // No active Google Sheets with mappings - FORCE CLEAR stale conversion values
-        console.log('[LinkedIn Analytics] ❌ NO active Google Sheets with mappings - clearing stale conversion values');
-        
         // Clear stale campaign conversion value
         if (campaign?.conversionValue) {
-          console.log('[LinkedIn Analytics] Clearing stale campaign conversion value:', campaign.conversionValue);
           await storage.updateCampaign(session.campaignId, { conversionValue: null });
         }
         
         // Clear stale session conversion value
         if (session.conversionValue) {
-          console.log('[LinkedIn Analytics] Clearing stale session conversion value:', session.conversionValue);
           await storage.updateLinkedInImportSession(session.id, { conversionValue: null });
         }
         
         // Clear LinkedIn connection conversion value (it was likely from Google Sheets, not manual entry)
         const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
         if (linkedInConnection?.conversionValue) {
-          console.log('[LinkedIn Analytics] Clearing LinkedIn connection conversion value:', linkedInConnection.conversionValue);
           await storage.updateLinkedInConnection(session.campaignId, { conversionValue: null });
         }
-        
-        console.log('[LinkedIn Analytics] ✅ All conversion values cleared - revenue tracking DISABLED');
         conversionValue = 0;
       }
       
-      console.log('[LinkedIn Analytics] Final conversion value:', conversionValue);
       
       const totalRevenue = totalConversions * conversionValue;
       const profit = totalRevenue - totalSpend;
@@ -3502,16 +3471,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Revenue Metrics (only if conversion value is set)
-      console.log('[LinkedIn Analytics] Checking revenue tracking - conversionValue:', conversionValue);
-      console.log('[LinkedIn Analytics] hasActiveGoogleSheetsWithMappings:', hasActiveGoogleSheetsWithMappings);
-      console.log('[LinkedIn Analytics] connectionsWithMappings count:', connectionsWithMappings.length);
-      console.log('[LinkedIn Analytics] total Google Sheets connections:', googleSheetsConnections.length);
-      
       // CRITICAL: Explicitly set hasRevenueTracking based on conversionValue AND active mappings
       // If no active Google Sheets with mappings, force hasRevenueTracking to 0 even if conversionValue > 0
       // This ensures that when a mapped Google Sheet is deleted, revenue metrics disappear immediately
       if (conversionValue > 0 && hasActiveGoogleSheetsWithMappings) {
-        console.log('[LinkedIn Analytics] ✅ Revenue tracking ENABLED (conversionValue > 0 AND active mappings exist)');
         aggregated.hasRevenueTracking = 1; // Flag to indicate revenue tracking is enabled
         aggregated.conversionValue = conversionValue;
         aggregated.totalRevenue = parseFloat(totalRevenue.toFixed(2));
@@ -3538,7 +3501,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         // Force hasRevenueTracking to 0 if no active mappings OR conversionValue is 0
-        console.log('[LinkedIn Analytics] ❌ Revenue tracking DISABLED - conversionValue:', conversionValue, 'hasActiveGoogleSheetsWithMappings:', hasActiveGoogleSheetsWithMappings);
         // Explicitly set all revenue-related fields to 0 or null
         aggregated.hasRevenueTracking = 0;
         aggregated.conversionValue = 0;
@@ -3550,7 +3512,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.revenuePerLead = 0;
       }
       
-      console.log('[LinkedIn Analytics] Final aggregated object:', JSON.stringify(aggregated, null, 2));
       
       res.json({
         session,

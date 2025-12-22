@@ -359,6 +359,8 @@ export function GuidedColumnMapping({
         {onMappingComplete && (
           <Button
             onClick={async () => {
+              console.log('[Guided Mapping] 🚀 Back to Campaign Overview button clicked!');
+              
               // Poll for conversion values - wait up to 10 seconds
               let attempts = 0;
               const maxAttempts = 20; // 20 attempts * 500ms = 10 seconds max
@@ -376,7 +378,7 @@ export function GuidedColumnMapping({
                     sheetsData.calculatedConversionValues.length > 0;
                   
                   if (hasConversionValues) {
-                    console.log('[Guided Mapping] Conversion values calculated, navigating...');
+                    console.log('[Guided Mapping] ✅ Conversion values calculated, triggering navigation...');
                     // Update query cache with fresh data
                     queryClient.setQueryData(
                       ["/api/campaigns", campaignId, "google-sheets-data"],
@@ -392,10 +394,12 @@ export function GuidedColumnMapping({
                 }
               }
               
+              console.log('[Guided Mapping] 📊 Final refetch of queries...');
               // Final refetch to ensure everything is up to date
               await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
               await queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"] });
               
+              console.log('[Guided Mapping] 🎯 Calling onMappingComplete()');
               onMappingComplete();
             }}
             className="w-full"

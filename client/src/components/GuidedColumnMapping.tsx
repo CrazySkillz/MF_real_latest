@@ -179,6 +179,19 @@ export function GuidedColumnMapping({
       
       const results = await Promise.all(savePromises);
       console.log('[GuidedColumnMapping] ✅ Saved mappings to all connections');
+      
+      // IMMEDIATELY trigger Google Sheets data fetch to calculate conversion value
+      console.log('[GuidedColumnMapping] 🚀 Triggering conversion value calculation...');
+      try {
+        const sheetsResponse = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
+        if (sheetsResponse.ok) {
+          const sheetsData = await sheetsResponse.json();
+          console.log('[GuidedColumnMapping] ✅ Conversion value calculated:', sheetsData.calculatedConversionValues);
+        }
+      } catch (calcError) {
+        console.error('[GuidedColumnMapping] ⚠️ Conversion value calculation failed:', calcError);
+      }
+      
       return results[0]; // Return first result
     },
     onSuccess: async () => {

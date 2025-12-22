@@ -156,25 +156,38 @@ export function GuidedColumnMapping({
       const connectionsToUpdate = connectionIds && connectionIds.length > 0 ? connectionIds : [connectionId];
       
       console.log('[GuidedColumnMapping] 💾 Saving mappings to', connectionsToUpdate.length, 'connection(s)');
+      console.log('[GuidedColumnMapping] Mappings being saved:', JSON.stringify(mappings, null, 2));
+      console.log('[GuidedColumnMapping] Campaign ID:', campaignId);
+      console.log('[GuidedColumnMapping] Connection IDs:', connectionsToUpdate);
       
       // Save to all connections
       const savePromises = connectionsToUpdate.map(async (connId) => {
+        const requestBody = {
+          connectionId: connId,
+          mappings,
+          platform,
+          spreadsheetId // Also send spreadsheetId as fallback
+        };
+        
+        console.log(`[GuidedColumnMapping] 📤 Sending save-mappings request for connection ${connId}:`, requestBody);
+        
         const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/save-mappings`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            connectionId: connId,
-            mappings,
-            platform,
-            spreadsheetId // Also send spreadsheetId as fallback
-          })
+          body: JSON.stringify(requestBody)
         });
+        
+        console.log(`[GuidedColumnMapping] 📥 Response status: ${response.status} for connection ${connId}`);
+        
         if (!response.ok) {
           const error = await response.json();
           console.error(`[GuidedColumnMapping] ❌ Failed to save mappings for connection ${connId}:`, error);
           throw new Error(error.error || 'Failed to save mappings');
         }
-        return response.json();
+        
+        const result = await response.json();
+        console.log(`[GuidedColumnMapping] ✅ Save mappings response for ${connId}:`, result);
+        return result;
       });
       
       const results = await Promise.all(savePromises);

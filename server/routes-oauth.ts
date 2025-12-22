@@ -10233,32 +10233,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`[Save Mappings] Campaign name mapping:`, campaignNameMapping);
                 
                 if (revenueMapping) {
-                  const revenueColumnIndex = revenueMapping.sourceColumnIndex ?? revenueMapping.columnIndex;
-                  console.log(`[Save Mappings] Revenue column index: ${revenueColumnIndex}`);
+                  const revenueColumnIndex = revenueMapping.sourceColumnIndex ?? revenueMapping.columnIndex ?? -1;
+                  console.log(`[Save Mappings] Revenue column index: ${revenueColumnIndex} (from mapping:`, revenueMapping, ')');
+                  
+                  if (revenueColumnIndex < 0 || revenueColumnIndex >= headers.length) {
+                    console.error(`[Save Mappings] ❌ Invalid revenue column index: ${revenueColumnIndex} (headers length: ${headers.length})`);
+                    continue;
+                  }
                   
                   // Filter by campaign name if mapped
                   let filteredRows = dataRows;
                   if (campaignNameMapping && campaign) {
-                    const campaignNameColumnIndex = campaignNameMapping.sourceColumnIndex ?? campaignNameMapping.columnIndex;
-                    filteredRows = dataRows.filter((row: any[]) => {
-                      if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) return false;
-                      const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
-                      return campaignNameValue.includes(campaign.name.toLowerCase()) ||
-                             campaign.name.toLowerCase().includes(campaignNameValue);
-                    });
-                    console.log(`[Save Mappings] Filtered rows: ${filteredRows.length} (from ${dataRows.length}) for campaign "${campaign.name}"`);
+                    const campaignNameColumnIndex = campaignNameMapping.sourceColumnIndex ?? campaignNameMapping.columnIndex ?? -1;
+                    if (campaignNameColumnIndex >= 0 && campaignNameColumnIndex < headers.length) {
+                      filteredRows = dataRows.filter((row: any[]) => {
+                        if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) return false;
+                        const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
+                        return campaignNameValue.includes(campaign.name.toLowerCase()) ||
+                               campaign.name.toLowerCase().includes(campaignNameValue);
+                      });
+                      console.log(`[Save Mappings] Filtered rows: ${filteredRows.length} (from ${dataRows.length}) for campaign "${campaign.name}"`);
+                    } else {
+                      console.log(`[Save Mappings] ⚠️ Invalid campaign name column index: ${campaignNameColumnIndex}, using all rows`);
+                    }
                   }
                   
                   // Sum revenue
                   let connectionRevenue = 0;
+                  let revenueRowCount = 0;
                   for (const row of filteredRows) {
                     if (!Array.isArray(row) || row.length <= revenueColumnIndex) continue;
-                    const revenueValue = parseFloat(String(row[revenueColumnIndex] || '0').replace(/[$,]/g, '')) || 0;
-                    connectionRevenue += revenueValue;
+                    const rawValue = String(row[revenueColumnIndex] || '0');
+                    const revenueValue = parseFloat(rawValue.replace(/[$,]/g, '')) || 0;
+                    if (revenueValue > 0) {
+                      connectionRevenue += revenueValue;
+                      revenueRowCount++;
+                      if (revenueRowCount <= 3) {
+                        console.log(`[Save Mappings] Revenue row ${revenueRowCount}: "${rawValue}" -> $${revenueValue}`);
+                      }
+                    }
                   }
                   
                   totalRevenue += connectionRevenue;
-                  console.log(`[Save Mappings] Revenue from connection ${conn.id}: $${connectionRevenue} (total so far: $${totalRevenue}, from ${filteredRows.length} rows)`);
+                  console.log(`[Save Mappings] Revenue from connection ${conn.id}: $${connectionRevenue} (from ${revenueRowCount} rows with revenue > 0, total so far: $${totalRevenue})`);
                 } else {
                   console.log(`[Save Mappings] ⚠️ No revenue mapping found for connection ${conn.id}`);
                 }

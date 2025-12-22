@@ -3381,23 +3381,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Filter to only connections with mappings
+      // Handle both camelCase (Drizzle) and snake_case (raw SQL) field names
       const connectionsWithMappings = googleSheetsConnections.filter((conn: any) => {
-        if (!conn.columnMappings) {
-          console.log(`[LinkedIn Analytics] ❌ Connection ${conn.id} has no columnMappings`);
+        // Check both possible field name formats
+        const columnMappings = conn.columnMappings || conn.column_mappings;
+        if (!columnMappings || columnMappings.trim() === '') {
           return false;
         }
         try {
-          const mappings = JSON.parse(conn.columnMappings);
-          const isValid = Array.isArray(mappings) && mappings.length > 0;
-          console.log(`[LinkedIn Analytics] ${isValid ? '✅' : '❌'} Connection ${conn.id} mappings:`, {
-            isArray: Array.isArray(mappings),
-            length: mappings?.length || 0,
-            isValid
-          });
-          return isValid;
-        } catch (error: any) {
-          console.error(`[LinkedIn Analytics] ❌ Failed to parse columnMappings for connection ${conn.id}:`, error.message);
-          console.error(`[LinkedIn Analytics] Raw columnMappings:`, conn.columnMappings);
+          const mappings = JSON.parse(columnMappings);
+          return Array.isArray(mappings) && mappings.length > 0;
+        } catch {
           return false;
         }
       });

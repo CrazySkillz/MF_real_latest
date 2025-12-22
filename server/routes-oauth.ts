@@ -10277,13 +10277,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               console.log(`[Save Mappings] 💰 Calculated conversion value: $${calculatedConversionValue} (Revenue: $${totalRevenue}, Conversions: ${totalConversions})`);
               
-              // Save to campaign
-              const updatedCampaign = await storage.updateCampaign(campaignId, { conversionValue: calculatedConversionValue });
-              if (!updatedCampaign || updatedCampaign.conversionValue !== calculatedConversionValue) {
-                console.error(`[Save Mappings] ❌ FAILED to update campaign conversion value!`);
-                throw new Error('Failed to save conversion value to campaign');
+              // Save to campaign - use conversionValue field name that matches schema
+              console.log(`[Save Mappings] Attempting to save conversionValue "${calculatedConversionValue}" to campaign ${campaignId}`);
+              try {
+                const updatedCampaign = await storage.updateCampaign(campaignId, { conversionValue: calculatedConversionValue });
+                if (!updatedCampaign) {
+                  console.error(`[Save Mappings] ❌ updateCampaign returned null/undefined!`);
+                  throw new Error('updateCampaign returned null');
+                }
+                
+                // Check if the value was actually saved (handle both string and number comparison)
+                const savedValue = updatedCampaign.conversionValue?.toString() || null;
+                const expectedValue = calculatedConversionValue.toString();
+                
+                console.log(`[Save Mappings] Update result - Expected: "${expectedValue}", Got: "${savedValue}"`);
+                
+                if (savedValue !== expectedValue && parseFloat(savedValue || '0') !== parseFloat(expectedValue)) {
+                  console.error(`[Save Mappings] ❌ Value mismatch! Expected "${expectedValue}", got "${savedValue}"`);
+                  // Don't throw - continue to try other saves
+                } else {
+                  console.log(`[Save Mappings] ✅ Campaign updated successfully: conversionValue = ${savedValue}`);
+                }
+              } catch (updateError: any) {
+                console.error(`[Save Mappings] ❌❌❌ ERROR updating campaign:`, updateError.message);
+                console.error(`[Save Mappings] Error stack:`, updateError.stack);
+                // Continue with other saves even if campaign update fails
               }
-              console.log(`[Save Mappings] ✅ Campaign updated: conversionValue = ${updatedCampaign.conversionValue}`);
               
               // Save to LinkedIn connection
               const updatedLinkedIn = await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue });

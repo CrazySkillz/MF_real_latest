@@ -152,20 +152,34 @@ export function GuidedColumnMapping({
   // Save mappings mutation
   const saveMappingsMutation = useMutation({
     mutationFn: async (mappings: any[]) => {
-      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/save-mappings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          connectionId,
-          mappings,
-          platform
-        })
+      // If we have multiple connections (multiple sheets), save mappings to all of them
+      const connectionsToUpdate = connectionIds && connectionIds.length > 0 ? connectionIds : [connectionId];
+      
+      console.log('[GuidedColumnMapping] 💾 Saving mappings to', connectionsToUpdate.length, 'connection(s)');
+      
+      // Save to all connections
+      const savePromises = connectionsToUpdate.map(async (connId) => {
+        const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/save-mappings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            connectionId: connId,
+            mappings,
+            platform,
+            spreadsheetId // Also send spreadsheetId as fallback
+          })
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          console.error(`[GuidedColumnMapping] ❌ Failed to save mappings for connection ${connId}:`, error);
+          throw new Error(error.error || 'Failed to save mappings');
+        }
+        return response.json();
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save mappings');
-      }
-      return response.json();
+      
+      const results = await Promise.all(savePromises);
+      console.log('[GuidedColumnMapping] ✅ Saved mappings to all connections');
+      return results[0]; // Return first result
     },
     onSuccess: async () => {
       // Invalidate all relevant queries

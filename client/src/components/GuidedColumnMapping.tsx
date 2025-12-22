@@ -374,22 +374,13 @@ export function GuidedColumnMapping({
             onClick={async () => {
               console.log('[Guided Mapping] 🚀 Back to Campaign Overview button clicked!');
               
-              // Step 1: Trigger conversion value calculation by calling google-sheets-data
-              console.log('[Guided Mapping] 📊 Triggering conversion value calculation...');
-              try {
-                const sheetsResponse = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
-                if (sheetsResponse.ok) {
-                  const sheetsData = await sheetsResponse.json();
-                  console.log('[Guided Mapping] ✅ Conversion value calculated:', sheetsData.calculatedConversionValues);
-                }
-              } catch (calcError) {
-                console.error('[Guided Mapping] ⚠️ Conversion value calculation failed:', calcError);
-              }
+              // Conversion value is calculated IMMEDIATELY in save-mappings endpoint
+              // Just wait a moment for it to be saved, then verify and navigate
               
-              // Step 2: Wait for conversion value to be saved to database
-              await new Promise(resolve => setTimeout(resolve, 2000));
+              // Step 1: Wait for conversion value to be saved to database
+              await new Promise(resolve => setTimeout(resolve, 1500));
               
-              // Step 3: Get session ID from connected-platforms endpoint
+              // Step 2: Get session ID and verify conversion value is available
               let sessionId: string | null = null;
               try {
                 const platformsResponse = await fetch(`/api/campaigns/${campaignId}/connected-platforms`);
@@ -406,26 +397,24 @@ export function GuidedColumnMapping({
                 console.error('[Guided Mapping] Error getting session ID:', error);
               }
               
-              // Step 4: Poll LinkedIn imports endpoint to check if hasRevenueTracking === 1
+              // Step 3: Verify conversion value is available (poll up to 5 seconds)
               if (sessionId) {
-                console.log('[Guided Mapping] 🔍 Checking if conversion value is available...');
+                console.log('[Guided Mapping] 🔍 Verifying conversion value is available...');
                 let attempts = 0;
                 const maxAttempts = 10; // 10 attempts * 500ms = 5 seconds max
-                let hasRevenueTracking = false;
                 
                 while (attempts < maxAttempts) {
                   try {
-                    const importsResponse = await fetch(`/api/linkedin/imports/${sessionId}`);
+                    const importsResponse = await fetch(`/api/linkedin/imports/${sessionId}?t=${Date.now()}`);
                     if (importsResponse.ok) {
                       const importsData = await importsResponse.json();
                       if (importsData?.aggregated?.hasRevenueTracking === 1) {
-                        console.log('[Guided Mapping] ✅ Conversion value is available! hasRevenueTracking = 1');
-                        hasRevenueTracking = true;
+                        console.log('[Guided Mapping] ✅ Conversion value verified! hasRevenueTracking = 1');
                         break;
                       }
                     }
                   } catch (error) {
-                    console.error('[Guided Mapping] Error checking conversion value:', error);
+                    console.error('[Guided Mapping] Error verifying conversion value:', error);
                   }
                   
                   attempts++;
@@ -433,13 +422,9 @@ export function GuidedColumnMapping({
                     await new Promise(resolve => setTimeout(resolve, 500));
                   }
                 }
-                
-                if (!hasRevenueTracking) {
-                  console.warn('[Guided Mapping] ⚠️ Conversion value not yet available, but proceeding anyway...');
-                }
               }
               
-              // Step 5: Invalidate queries to ensure fresh data
+              // Step 4: Invalidate queries to ensure fresh data
               console.log('[Guided Mapping] 📊 Invalidating queries...');
               await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
               await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });

@@ -4191,10 +4191,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               )[0];
               const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
               
-              // Sum all conversions from LinkedIn API
-              const totalConversions = metrics
-                .filter((m: any) => m.metricKey.toLowerCase() === 'conversions')
-                .reduce((sum: number, m: any) => sum + (parseFloat(m.metricValue || '0') || 0), 0);
+              const normalizeMetricKey = (key: any) =>
+                String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+              // Sum all conversions from LinkedIn metrics (handle key variants)
+              const totalConversions = metrics.reduce((sum: number, m: any) => {
+                const k = normalizeMetricKey(m.metricKey);
+                if (k === 'conversions' || k === 'externalwebsiteconversions') {
+                  return sum + (parseFloat(m.metricValue || '0') || 0);
+                }
+                return sum;
+              }, 0);
               
               return totalConversions > 0 ? totalConversions : null;
             }
@@ -7882,13 +7889,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated[aggregateKey] = parseFloat(total.toFixed(2));
       });
       
-      // Calculate derived metrics
-      const totalConversions = aggregated.totalConversions || 0;
+      const normalizeMetricKey = (key: any) =>
+        String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const sumMetricValues = (normalizedKeys: string[]) =>
+        metrics.reduce((sum: number, m: any) => {
+          const k = normalizeMetricKey(m.metricKey);
+          if (normalizedKeys.includes(k)) {
+            return sum + (parseFloat(m.metricValue || '0') || 0);
+          }
+          return sum;
+        }, 0);
+
+      // Calculate derived metrics (use canonical conversions so revenue tracking works regardless of LinkedIn key naming)
+      const totalConversions = sumMetricValues(['conversions', 'externalwebsiteconversions']);
+      aggregated.totalConversions = parseFloat(totalConversions.toFixed(2));
       const totalSpend = aggregated.totalSpend || 0;
       const totalClicks = aggregated.totalClicks || 0;
       const totalLeads = aggregated.totalLeads || 0;
       const totalImpressions = aggregated.totalImpressions || 0;
-      const totalEngagements = aggregated.totalTotalengagements || 0;
+      const totalEngagements = aggregated.totalEngagements || sumMetricValues(['engagements']);
       
       // Validate metric relationships
       const { sanitizeCalculatedMetric } = await import('./validation/linkedin-metrics.js');
@@ -10244,11 +10264,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const linkedInMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
             console.log(`[Save Mappings] LinkedIn metrics found: ${linkedInMetrics.length}`);
             
+            const normalizeMetricKey = (key: any) =>
+              String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
             for (const metric of linkedInMetrics) {
-              if (metric.metricKey?.toLowerCase() === 'conversions') {
-                const convValue = parseFloat(metric.metricValue || '0');
+              const k = normalizeMetricKey(metric.metricKey);
+              if (k === 'conversions' || k === 'externalwebsiteconversions') {
+                const convValue = parseFloat(metric.metricValue || '0') || 0;
                 totalConversions += convValue;
-                console.log(`[Save Mappings] Found conversions metric: ${convValue} (total: ${totalConversions})`);
+                console.log(`[Save Mappings] Found conversions metric (${metric.metricKey}): ${convValue} (total: ${totalConversions})`);
               }
             }
             

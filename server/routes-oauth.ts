@@ -10271,26 +10271,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`[Save Mappings] 💰 FINAL: Total revenue: $${totalRevenue}, Total conversions: ${totalConversions}`);
             
             // Calculate conversion value
+            let calculatedConversionValue: string | null = null;
             if (totalRevenue > 0 && totalConversions > 0) {
-              const conversionValue = (totalRevenue / totalConversions).toFixed(2);
+              calculatedConversionValue = (totalRevenue / totalConversions).toFixed(2);
               
-              console.log(`[Save Mappings] 💰 Calculated conversion value: $${conversionValue} (Revenue: $${totalRevenue}, Conversions: ${totalConversions})`);
+              console.log(`[Save Mappings] 💰 Calculated conversion value: $${calculatedConversionValue} (Revenue: $${totalRevenue}, Conversions: ${totalConversions})`);
               
               // Save to campaign
-              const updatedCampaign = await storage.updateCampaign(campaignId, { conversionValue });
-              console.log(`[Save Mappings] ✅ Campaign updated:`, updatedCampaign ? `conversionValue = ${updatedCampaign.conversionValue}` : 'FAILED');
+              const updatedCampaign = await storage.updateCampaign(campaignId, { conversionValue: calculatedConversionValue });
+              if (!updatedCampaign || updatedCampaign.conversionValue !== calculatedConversionValue) {
+                console.error(`[Save Mappings] ❌ FAILED to update campaign conversion value!`);
+                throw new Error('Failed to save conversion value to campaign');
+              }
+              console.log(`[Save Mappings] ✅ Campaign updated: conversionValue = ${updatedCampaign.conversionValue}`);
               
               // Save to LinkedIn connection
-              const updatedLinkedIn = await storage.updateLinkedInConnection(campaignId, { conversionValue });
-              console.log(`[Save Mappings] ✅ LinkedIn connection updated:`, updatedLinkedIn ? `conversionValue = ${updatedLinkedIn.conversionValue}` : 'FAILED');
+              const updatedLinkedIn = await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue });
+              if (!updatedLinkedIn) {
+                console.error(`[Save Mappings] ❌ FAILED to update LinkedIn connection conversion value!`);
+              } else {
+                console.log(`[Save Mappings] ✅ LinkedIn connection updated: conversionValue = ${updatedLinkedIn.conversionValue}`);
+              }
               
               // Save to all sessions
               for (const session of linkedInSessions) {
-                const updatedSession = await storage.updateLinkedInImportSession(session.id, { conversionValue });
-                console.log(`[Save Mappings] ✅ Session ${session.id} updated:`, updatedSession ? `conversionValue = ${updatedSession.conversionValue}` : 'FAILED');
+                const updatedSession = await storage.updateLinkedInImportSession(session.id, { conversionValue: calculatedConversionValue });
+                if (!updatedSession) {
+                  console.error(`[Save Mappings] ❌ FAILED to update session ${session.id} conversion value!`);
+                } else {
+                  console.log(`[Save Mappings] ✅ Session ${session.id} updated: conversionValue = ${updatedSession.conversionValue}`);
+                }
               }
               
-              console.log(`[Save Mappings] ✅✅✅ Conversion value $${conversionValue} saved to campaign, LinkedIn connection, and ${linkedInSessions.length} session(s)`);
+              console.log(`[Save Mappings] ✅✅✅ Conversion value $${calculatedConversionValue} saved to campaign, LinkedIn connection, and ${linkedInSessions.length} session(s)`);
+              
+              // Verify it was saved by refetching
+              const verifyCampaign = await storage.getCampaign(campaignId);
+              console.log(`[Save Mappings] 🔍 VERIFICATION: Campaign conversion value after save: ${verifyCampaign?.conversionValue}`);
+              if (verifyCampaign?.conversionValue !== calculatedConversionValue) {
+                console.error(`[Save Mappings] ❌❌❌ VERIFICATION FAILED! Expected ${calculatedConversionValue}, got ${verifyCampaign?.conversionValue}`);
+              }
             } else {
               console.log(`[Save Mappings] ⚠️ Cannot calculate conversion value: Revenue=${totalRevenue}, Conversions=${totalConversions}`);
             }
@@ -10306,13 +10326,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Don't fail the request if calculation fails
       }
       
-      console.log(`[Save Mappings] ✅ Mappings saved and conversion value calculated for connection ${connectionId}`);
+      // Get the final conversion value for the response
+      const finalCampaign = await storage.getCampaign(campaignId);
+      const finalConversionValue = finalCampaign?.conversionValue || null;
+      
+      console.log(`[Save Mappings] ✅✅✅ Mappings saved for connection ${connectionId}`);
+      console.log(`[Save Mappings] Final conversion value in database: ${finalConversionValue}`);
       
       res.json({
         success: true,
         message: 'Mappings saved successfully',
         connectionId: connectionId,
-        conversionValueCalculated: true
+        conversionValue: finalConversionValue,
+        conversionValueCalculated: !!finalConversionValue
       });
     } catch (error: any) {
       console.error('[Save Mappings] Error:', error);

@@ -10138,18 +10138,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // IMMEDIATELY calculate and save conversion value after saving mappings
       console.log(`[Save Mappings] 🚀 Calculating conversion value immediately...`);
+      console.log(`[Save Mappings] Campaign ID: ${campaignId}, Connection ID: ${connectionId}`);
       
       try {
         const campaign = await storage.getCampaign(campaignId);
+        console.log(`[Save Mappings] Campaign found:`, campaign ? campaign.name : 'NOT FOUND');
+        
         const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+        console.log(`[Save Mappings] LinkedIn sessions found: ${linkedInSessions.length}`);
+        
         const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+        console.log(`[Save Mappings] LinkedIn connection found:`, linkedInConnection ? 'YES' : 'NO');
         
         if (linkedInConnection && linkedInSessions.length > 0 && campaign) {
           // Get all mapped Google Sheets connections
           const sheetsConnections = await storage.getGoogleSheetsConnections(campaignId);
           const mappedConnections = sheetsConnections.filter(conn => conn.columnMappings && conn.isActive);
           
-          console.log(`[Save Mappings] Found ${mappedConnections.length} active mapped connections`);
+          console.log(`[Save Mappings] Found ${mappedConnections.length} active mapped connections out of ${sheetsConnections.length} total`);
           
           if (mappedConnections.length > 0) {
             // Get LinkedIn conversions from API
@@ -10158,20 +10164,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
             )[0];
             
+            console.log(`[Save Mappings] Using latest session: ${latestSession.id}`);
+            
             const linkedInMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
+            console.log(`[Save Mappings] LinkedIn metrics found: ${linkedInMetrics.length}`);
+            
             for (const metric of linkedInMetrics) {
               if (metric.metricKey?.toLowerCase() === 'conversions') {
-                totalConversions += parseFloat(metric.metricValue || '0');
+                const convValue = parseFloat(metric.metricValue || '0');
+                totalConversions += convValue;
+                console.log(`[Save Mappings] Found conversions metric: ${convValue} (total: ${totalConversions})`);
               }
             }
             
-            console.log(`[Save Mappings] LinkedIn conversions: ${totalConversions}`);
+            console.log(`[Save Mappings] Total LinkedIn conversions: ${totalConversions}`);
             
             // Fetch revenue from Google Sheets
             let totalRevenue = 0;
             
             for (const conn of mappedConnections) {
               try {
+                console.log(`[Save Mappings] Processing connection ${conn.id} (${conn.spreadsheetId}, sheet: ${conn.sheetName || 'default'})`);
+                
                 // Fetch Google Sheets data using the same logic as google-sheets-data endpoint
                 const range = conn.sheetName ? `${conn.sheetName}!A1:Z1000` : 'A1:Z1000';
                 const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheetId}/values/${range}`;
@@ -10183,12 +10197,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
                 
                 if (!sheetsResponse.ok) {
-                  const errorData = await sheetsResponse.json();
-                  throw new Error(`Google Sheets API Error (${sheetsResponse.status}): ${errorData.error?.message || sheetsResponse.statusText}`);
+                  const errorData = await sheetsResponse.json().catch(() => ({}));
+                  console.error(`[Save Mappings] Google Sheets API error for ${conn.id}:`, sheetsResponse.status, errorData);
+                  continue;
                 }
                 
                 const sheetsData = await sheetsResponse.json();
                 const rows = sheetsData.values || [];
+                
+                console.log(`[Save Mappings] Sheet ${conn.id} has ${rows.length} rows`);
                 
                 if (rows.length === 0) {
                   console.log(`[Save Mappings] No data in sheet ${conn.spreadsheetId}`);
@@ -10199,11 +10216,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const dataRows = rows.slice(1);
                 
                 const mappings = JSON.parse(conn.columnMappings || '[]');
+                console.log(`[Save Mappings] Mappings for ${conn.id}:`, JSON.stringify(mappings));
+                
                 const revenueMapping = mappings.find((m: any) => m.targetFieldId === 'revenue' || m.platformField === 'revenue');
                 const campaignNameMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_name' || m.platformField === 'campaign_name');
                 
+                console.log(`[Save Mappings] Revenue mapping:`, revenueMapping);
+                console.log(`[Save Mappings] Campaign name mapping:`, campaignNameMapping);
+                
                 if (revenueMapping) {
                   const revenueColumnIndex = revenueMapping.sourceColumnIndex ?? revenueMapping.columnIndex;
+                  console.log(`[Save Mappings] Revenue column index: ${revenueColumnIndex}`);
                   
                   // Filter by campaign name if mapped
                   let filteredRows = dataRows;
@@ -10215,23 +10238,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       return campaignNameValue.includes(campaign.name.toLowerCase()) ||
                              campaign.name.toLowerCase().includes(campaignNameValue);
                     });
+                    console.log(`[Save Mappings] Filtered rows: ${filteredRows.length} (from ${dataRows.length}) for campaign "${campaign.name}"`);
                   }
                   
                   // Sum revenue
+                  let connectionRevenue = 0;
                   for (const row of filteredRows) {
                     if (!Array.isArray(row) || row.length <= revenueColumnIndex) continue;
                     const revenueValue = parseFloat(String(row[revenueColumnIndex] || '0').replace(/[$,]/g, '')) || 0;
-                    totalRevenue += revenueValue;
+                    connectionRevenue += revenueValue;
                   }
                   
-                  console.log(`[Save Mappings] Revenue from connection ${conn.id}: $${totalRevenue} (from ${filteredRows.length} rows)`);
+                  totalRevenue += connectionRevenue;
+                  console.log(`[Save Mappings] Revenue from connection ${conn.id}: $${connectionRevenue} (total so far: $${totalRevenue}, from ${filteredRows.length} rows)`);
+                } else {
+                  console.log(`[Save Mappings] ⚠️ No revenue mapping found for connection ${conn.id}`);
                 }
               } catch (sheetError: any) {
-                console.error(`[Save Mappings] Error fetching sheet data for connection ${conn.id}:`, sheetError.message);
+                console.error(`[Save Mappings] ❌ Error fetching sheet data for connection ${conn.id}:`, sheetError.message);
+                console.error(`[Save Mappings] Error stack:`, sheetError.stack);
               }
             }
             
-            console.log(`[Save Mappings] Total revenue: $${totalRevenue}`);
+            console.log(`[Save Mappings] 💰 FINAL: Total revenue: $${totalRevenue}, Total conversions: ${totalConversions}`);
             
             // Calculate conversion value
             if (totalRevenue > 0 && totalConversions > 0) {
@@ -10240,24 +10269,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`[Save Mappings] 💰 Calculated conversion value: $${conversionValue} (Revenue: $${totalRevenue}, Conversions: ${totalConversions})`);
               
               // Save to campaign
-              await storage.updateCampaign(campaignId, { conversionValue });
+              const updatedCampaign = await storage.updateCampaign(campaignId, { conversionValue });
+              console.log(`[Save Mappings] ✅ Campaign updated:`, updatedCampaign ? `conversionValue = ${updatedCampaign.conversionValue}` : 'FAILED');
               
               // Save to LinkedIn connection
-              await storage.updateLinkedInConnection(campaignId, { conversionValue });
+              const updatedLinkedIn = await storage.updateLinkedInConnection(campaignId, { conversionValue });
+              console.log(`[Save Mappings] ✅ LinkedIn connection updated:`, updatedLinkedIn ? `conversionValue = ${updatedLinkedIn.conversionValue}` : 'FAILED');
               
               // Save to all sessions
               for (const session of linkedInSessions) {
-                await storage.updateLinkedInImportSession(session.id, { conversionValue });
+                const updatedSession = await storage.updateLinkedInImportSession(session.id, { conversionValue });
+                console.log(`[Save Mappings] ✅ Session ${session.id} updated:`, updatedSession ? `conversionValue = ${updatedSession.conversionValue}` : 'FAILED');
               }
               
-              console.log(`[Save Mappings] ✅ Conversion value $${conversionValue} saved to campaign, LinkedIn connection, and ${linkedInSessions.length} session(s)`);
+              console.log(`[Save Mappings] ✅✅✅ Conversion value $${conversionValue} saved to campaign, LinkedIn connection, and ${linkedInSessions.length} session(s)`);
             } else {
               console.log(`[Save Mappings] ⚠️ Cannot calculate conversion value: Revenue=${totalRevenue}, Conversions=${totalConversions}`);
             }
+          } else {
+            console.log(`[Save Mappings] ⚠️ No mapped connections found`);
           }
+        } else {
+          console.log(`[Save Mappings] ⚠️ Missing requirements: LinkedIn connection=${!!linkedInConnection}, Sessions=${linkedInSessions.length}, Campaign=${!!campaign}`);
         }
       } catch (calcError: any) {
-        console.error(`[Save Mappings] ❌ Error calculating conversion value:`, calcError.message);
+        console.error(`[Save Mappings] ❌❌❌ Error calculating conversion value:`, calcError.message);
+        console.error(`[Save Mappings] Error stack:`, calcError.stack);
         // Don't fail the request if calculation fails
       }
       

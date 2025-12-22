@@ -194,7 +194,24 @@ export function GuidedColumnMapping({
       
       return results[0]; // Return first result
     },
-    onSuccess: async () => {
+    onSuccess: async (data: any) => {
+      console.log('[Guided Mapping] Save mappings response:', data);
+      
+      // Check if conversion value was calculated
+      if (data.conversionValue) {
+        console.log('[Guided Mapping] ✅ Conversion value calculated:', data.conversionValue);
+        toast({
+          title: "Mappings Saved!",
+          description: `Conversion value calculated: $${data.conversionValue}`,
+        });
+      } else {
+        console.warn('[Guided Mapping] ⚠️ No conversion value in response');
+        toast({
+          title: "Mappings Saved!",
+          description: "Conversion value calculation may be in progress...",
+        });
+      }
+      
       // Invalidate all relevant queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] }),
@@ -203,18 +220,14 @@ export function GuidedColumnMapping({
         queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] })
       ]);
       
-      // Wait a bit for backend to process the mappings and calculate conversion values
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait a bit for backend to fully process
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Refetch the data to ensure it's up to date
       await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
       await queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"] });
       
       setCurrentStep('complete');
-      toast({
-        title: "Mappings Saved!",
-        description: "Conversion values will be calculated automatically.",
-      });
     },
     onError: (error: any) => {
       toast({

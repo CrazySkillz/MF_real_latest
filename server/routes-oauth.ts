@@ -10079,13 +10079,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Save column mappings to connection
   app.post("/api/campaigns/:id/google-sheets/save-mappings", async (req, res) => {
+    console.log(`[Save Mappings] ========== SAVE MAPPINGS ENDPOINT CALLED ==========`);
+    console.log(`[Save Mappings] Campaign ID: ${req.params.id}`);
+    console.log(`[Save Mappings] Request body:`, JSON.stringify({ connectionId: req.body.connectionId, mappingsCount: req.body.mappings?.length, platform: req.body.platform }));
+    
     try {
       const campaignId = req.params.id;
       const { connectionId, mappings, platform } = req.body;
       
       if (!connectionId || !mappings || !Array.isArray(mappings)) {
+        console.error(`[Save Mappings] ❌ Validation failed: connectionId=${!!connectionId}, mappings is array=${Array.isArray(mappings)}`);
         return res.status(400).json({ error: 'connectionId and mappings array are required' });
       }
+      
+      console.log(`[Save Mappings] ✅ Validation passed. Processing ${mappings.length} mappings...`);
       
       // Get platform fields with dynamic requirements (same logic as /api/platforms/:platform/fields)
       let platformFields = getPlatformFields(platform || 'linkedin');

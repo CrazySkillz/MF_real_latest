@@ -260,12 +260,8 @@ export function UploadAdditionalDataModal({
                   
                   setShowGuidedMapping(false);
                   setNewConnectionInfo(null);
-                  refetchConnections();
-                  if (onDataConnected) {
-                    onDataConnected();
-                  }
                   
-                  // Close modal and navigate back
+                  // Close modal immediately
                   onClose();
                   
                   // Ensure URL includes tab=overview for LinkedIn Analytics page
@@ -274,11 +270,16 @@ export function UploadAdditionalDataModal({
                     targetUrl = targetUrl + (targetUrl.includes('?') ? '&' : '?') + 'tab=overview';
                   }
                   
-                  console.log('[UploadAdditionalDataModal] Navigating to:', targetUrl);
+                  console.log('[UploadAdditionalDataModal] 🔄 FULL PAGE RELOAD to:', targetUrl);
                   
+                  // Do a FULL page reload to ensure fresh data from server
                   setTimeout(() => {
                     window.location.href = targetUrl;
-                  }, 500);
+                    // Force reload to bypass any cache
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 100);
+                  }, 300);
                 }}
                 onCancel={() => {
                   setShowGuidedMapping(false);

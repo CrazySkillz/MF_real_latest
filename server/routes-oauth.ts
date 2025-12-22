@@ -10138,12 +10138,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // IMMEDIATELY calculate conversion value after saving mappings
       console.log(`[Save Mappings] 🚀 Triggering immediate conversion value calculation...`);
+      console.log(`[Save Mappings] Campaign ID: ${campaignId}`);
+      console.log(`[Save Mappings] Connection ID: ${connectionId}`);
       
       try {
         // Fetch campaign and session data
         const campaign = await storage.getCampaign(campaignId);
+        console.log(`[Save Mappings] Campaign found:`, campaign ? campaign.name : 'NOT FOUND');
+        
         const linkedInSessions = await storage.getLinkedInImportSessionsByCampaign(campaignId);
+        console.log(`[Save Mappings] LinkedIn sessions found: ${linkedInSessions.length}`);
+        
         const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+        console.log(`[Save Mappings] LinkedIn connection found:`, linkedInConnection ? 'YES' : 'NO');
         
         if (linkedInConnection && linkedInSessions.length > 0) {
           // Get all Google Sheets connections with mappings
@@ -10151,54 +10158,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const mappedConnections = sheetsConnections.filter(conn => conn.columnMappings);
           
           console.log(`[Save Mappings] Found ${mappedConnections.length} mapped connections`);
+          console.log(`[Save Mappings] Mapped connections:`, mappedConnections.map(c => ({ id: c.id, spreadsheetId: c.spreadsheetId, sheetName: c.sheetName })));
           
           if (mappedConnections.length > 0) {
             // Calculate total revenue and conversions from LinkedIn API
             let totalRevenue = 0;
             let totalConversions = 0;
             
+            console.log(`[Save Mappings] 📊 Fetching conversions from LinkedIn sessions...`);
             for (const session of linkedInSessions) {
               const metrics = await storage.getLinkedInCampaignMetrics(session.id);
+              console.log(`[Save Mappings] Session ${session.id}: ${metrics.length} metrics found`);
               for (const metric of metrics) {
-                totalConversions += parseFloat(metric.conversions?.toString() || '0');
+                const conversions = parseFloat(metric.conversions?.toString() || '0');
+                totalConversions += conversions;
+                console.log(`[Save Mappings] Metric conversions: ${conversions}, running total: ${totalConversions}`);
               }
             }
             
+            console.log(`[Save Mappings] 💰 Total conversions from LinkedIn: ${totalConversions}`);
+            
             // Fetch revenue from Google Sheets for each connection
+            console.log(`[Save Mappings] 📊 Fetching revenue from ${mappedConnections.length} Google Sheets connections...`);
             for (const conn of mappedConnections) {
               try {
+                console.log(`[Save Mappings] Fetching data for connection ${conn.id} (${conn.spreadsheetId}, sheet: ${conn.sheetName || 'default'})`);
+                
                 const sheetData = await getSpreadsheetData(
                   conn.spreadsheetId,
                   conn.accessToken!,
                   conn.sheetName || undefined
                 );
                 
+                console.log(`[Save Mappings] Sheet data rows: ${sheetData?.length || 0}`);
+                
                 if (sheetData && sheetData.length > 0) {
                   const mappings = JSON.parse(conn.columnMappings || '[]');
+                  console.log(`[Save Mappings] Mappings:`, mappings);
+                  
                   const revenueMapping = mappings.find((m: any) => m.platformField === 'revenue');
                   const campaignNameMapping = mappings.find((m: any) => m.platformField === 'campaign_name');
+                  
+                  console.log(`[Save Mappings] Revenue mapping:`, revenueMapping);
+                  console.log(`[Save Mappings] Campaign name mapping:`, campaignNameMapping);
                   
                   if (revenueMapping && campaign) {
                     // Filter by campaign name if mapped
                     let filteredRows = sheetData;
                     if (campaignNameMapping) {
+                      console.log(`[Save Mappings] Filtering by campaign name: ${campaign.name}`);
                       filteredRows = sheetData.filter((row: any) => {
                         const campaignNameValue = row[campaignNameMapping.columnIndex];
                         return campaignNameValue?.toString().toLowerCase() === campaign.name?.toLowerCase();
                       });
+                      console.log(`[Save Mappings] Filtered rows: ${filteredRows.length} (from ${sheetData.length})`);
                     }
                     
                     // Sum revenue
+                    let sheetRevenue = 0;
                     for (const row of filteredRows) {
                       const revenueValue = parseFloat(row[revenueMapping.columnIndex]?.toString() || '0');
                       if (!isNaN(revenueValue)) {
-                        totalRevenue += revenueValue;
+                        sheetRevenue += revenueValue;
+                        console.log(`[Save Mappings] Row revenue: ${revenueValue}, sheet total: ${sheetRevenue}`);
                       }
                     }
+                    totalRevenue += sheetRevenue;
+                    console.log(`[Save Mappings] Total revenue after this sheet: ${totalRevenue}`);
+                  } else {
+                    console.log(`[Save Mappings] ⚠️ No revenue mapping or campaign found - skipping`);
                   }
                 }
               } catch (sheetError: any) {
-                console.error(`[Save Mappings] Error fetching sheet data for connection ${conn.id}:`, sheetError.message);
+                console.error(`[Save Mappings] ❌ Error fetching sheet data for connection ${conn.id}:`, sheetError.message);
+                console.error(`[Save Mappings] Error stack:`, sheetError.stack);
               }
             }
             

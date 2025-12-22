@@ -9843,12 +9843,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get connections
       let connections: any[] = [];
       
-      // If fetchAll is specified with spreadsheetId, get ALL connections for that spreadsheet
+      // If fetchAll is specified with spreadsheetId, fetch ALL tabs directly from Google Sheets API
       if (fetchAll === 'true' && spreadsheetId) {
+        // Get any connection for this spreadsheet to use the access token
         const allConnections = await storage.getGoogleSheetsConnections(campaignId);
-        connections = allConnections.filter(conn => conn.spreadsheetId === spreadsheetId);
-        console.log('[Detect Columns] 📊 Fetching ALL sheets from spreadsheet:', spreadsheetId, '- found', connections.length, 'connection(s)');
-        connections.forEach(c => console.log('  - Sheet:', c.sheetName || 'default', 'ID:', c.id));
+        const baseConnection = allConnections.find(conn => conn.spreadsheetId === spreadsheetId);
+        
+        if (!baseConnection || !baseConnection.accessToken) {
+          console.error('[Detect Columns] ❌ No connection found for spreadsheet:', spreadsheetId);
+          return res.status(404).json({ error: 'No Google Sheets connection found' });
+        }
+        
+        console.log('[Detect Columns] 📊 Fetching ALL tabs from spreadsheet:', spreadsheetId);
+        
+        // Fetch spreadsheet metadata to get all sheet names
+        try {
+          const metadataResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?includeGridData=false`,
+            { headers: { 'Authorization': `Bearer ${baseConnection.accessToken}` } }
+          );
+          
+          if (!metadataResponse.ok) {
+            throw new Error(`Failed to fetch spreadsheet metadata: ${metadataResponse.statusText}`);
+          }
+          
+          const metadata = await metadataResponse.json();
+          const allSheets = metadata.sheets || [];
+          
+          console.log('[Detect Columns] 📋 Found', allSheets.length, 'sheet(s) in spreadsheet');
+          
+          // Create virtual connections for each sheet
+          connections = allSheets.map((sheet: any) => ({
+            ...baseConnection,
+            sheetName: sheet.properties.title,
+            id: `${baseConnection.id}-${sheet.properties.title}` // Virtual ID for this tab
+          }));
+          
+          console.log('[Detect Columns] ✅ Will fetch columns from ALL', connections.length, 'sheet(s):', connections.map(c => c.sheetName));
+        } catch (error: any) {
+          console.error('[Detect Columns] ❌ Failed to fetch sheet metadata:', error.message);
+          // Fallback to just the base connection
+          connections = [baseConnection];
+        }
       }
       // Parse connectionIds if provided (comma-separated)
       else if (connectionIds) {

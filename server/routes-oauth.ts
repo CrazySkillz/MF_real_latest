@@ -10135,21 +10135,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Update connection with mappings
-      await storage.updateGoogleSheetsConnection(connectionId, {
-        columnMappings: JSON.stringify(mappings)
+      // Update connection with mappings AND ensure it's active
+      const updateResult = await storage.updateGoogleSheetsConnection(connectionId, {
+        columnMappings: JSON.stringify(mappings),
+        isActive: true  // Ensure connection stays active
       });
+      
+      console.log(`[Save Mappings] Update result:`, updateResult ? 'SUCCESS' : 'FAILED');
+      if (updateResult) {
+        console.log(`[Save Mappings] Updated connection:`, {
+          id: updateResult.id,
+          isActive: updateResult.isActive,
+          hasColumnMappings: !!updateResult.columnMappings,
+          columnMappingsLength: updateResult.columnMappings?.length || 0
+        });
+      }
       
       // Verify the update was successful by fetching all connections and finding this one
       const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+      console.log(`[Save Mappings] Total active connections for campaign:`, allConnections.length);
       const updatedConnection = allConnections.find(conn => conn.id === connectionId);
       
       if (!updatedConnection) {
-        console.error(`[Save Mappings] Connection ${connectionId} not found after update`);
+        console.error(`[Save Mappings] ❌ Connection ${connectionId} not found in active connections after update`);
+        console.error(`[Save Mappings] Available connection IDs:`, allConnections.map(c => c.id));
         return res.status(404).json({ error: 'Connection not found after update' });
       }
       
       console.log(`[Save Mappings] ✅ Verified connection ${connectionId} exists with mappings:`, updatedConnection.columnMappings ? 'YES' : 'NO');
+      if (updatedConnection.columnMappings) {
+        try {
+          const parsedMappings = JSON.parse(updatedConnection.columnMappings);
+          console.log(`[Save Mappings] Mappings are valid JSON with ${parsedMappings.length} entries`);
+        } catch (e) {
+          console.error(`[Save Mappings] ❌ Mappings are not valid JSON:`, e);
+        }
+      }
       
       // IMMEDIATELY calculate and save conversion value after saving mappings
       console.log(`[Save Mappings] 🚀 Calculating conversion value immediately...`);

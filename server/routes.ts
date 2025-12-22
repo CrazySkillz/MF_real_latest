@@ -3380,9 +3380,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
       
+      // CRITICAL: Refetch campaign to get the latest conversion value (it might have just been updated by save-mappings)
+      // The campaign was fetched earlier, but conversion value might have been updated since then
+      const latestCampaign = await storage.getCampaign(session.campaignId);
+      
       // Use campaign conversion value (prioritize campaign, fallback to session)
       // BUT only if Google Sheets with mappings is still connected, otherwise the value is stale
-      console.log('[LinkedIn Analytics] Campaign conversion value:', campaign?.conversionValue);
+      console.log('[LinkedIn Analytics] Campaign conversion value (original):', campaign?.conversionValue);
+      console.log('[LinkedIn Analytics] Campaign conversion value (latest):', latestCampaign?.conversionValue);
       console.log('[LinkedIn Analytics] Session conversion value:', session.conversionValue);
       console.log('[LinkedIn Analytics] Active Google Sheets connections:', googleSheetsConnections.length);
       console.log('[LinkedIn Analytics] Active Google Sheets connections WITH MAPPINGS:', connectionsWithMappings.length);
@@ -3390,10 +3395,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let conversionValue = 0;
       if (hasActiveGoogleSheetsWithMappings) {
         // Only use stored conversion value if Google Sheets with mappings is still connected
-        conversionValue = campaign?.conversionValue 
-          ? parseFloat(campaign.conversionValue.toString()) 
+        // Use the REFETCHED campaign to get the latest conversion value
+        conversionValue = latestCampaign?.conversionValue 
+          ? parseFloat(latestCampaign.conversionValue.toString()) 
           : parseFloat(session.conversionValue || '0');
-        console.log('[LinkedIn Analytics] Using stored conversion value (Google Sheets with mappings still connected):', conversionValue);
+        console.log('[LinkedIn Analytics] Using stored conversion value (Google Sheets with mappings still connected):', conversionValue, 'from', latestCampaign?.conversionValue ? 'campaign' : 'session');
       } else {
         // No active Google Sheets with mappings - FORCE CLEAR stale conversion values
         console.log('[LinkedIn Analytics] ❌ NO active Google Sheets with mappings - clearing stale conversion values');

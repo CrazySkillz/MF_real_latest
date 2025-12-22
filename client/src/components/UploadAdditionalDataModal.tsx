@@ -255,16 +255,29 @@ export function UploadAdditionalDataModal({
                 spreadsheetId={newConnectionInfo.spreadsheetId}
                 platform="linkedin"
                 onMappingComplete={() => {
+                  console.log('[UploadAdditionalDataModal] onMappingComplete called');
+                  console.log('[UploadAdditionalDataModal] originalReturnUrl:', originalReturnUrl);
+                  
                   setShowGuidedMapping(false);
                   setNewConnectionInfo(null);
                   refetchConnections();
                   if (onDataConnected) {
                     onDataConnected();
                   }
+                  
                   // Close modal and navigate back
                   onClose();
+                  
+                  // Ensure URL includes tab=overview for LinkedIn Analytics page
+                  let targetUrl = originalReturnUrl;
+                  if (targetUrl.includes('/linkedin-analytics') && !targetUrl.includes('tab=')) {
+                    targetUrl = targetUrl + (targetUrl.includes('?') ? '&' : '?') + 'tab=overview';
+                  }
+                  
+                  console.log('[UploadAdditionalDataModal] Navigating to:', targetUrl);
+                  
                   setTimeout(() => {
-                    window.location.href = originalReturnUrl;
+                    window.location.href = targetUrl;
                   }, 500);
                 }}
                 onCancel={() => {

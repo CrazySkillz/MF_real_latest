@@ -374,8 +374,72 @@ export function GuidedColumnMapping({
             onClick={async () => {
               console.log('[Guided Mapping] 🚀 Back to Campaign Overview button clicked!');
               
-              // Conversion value is calculated immediately when mappings are saved
-              // Just invalidate queries and navigate
+              // Step 1: Trigger conversion value calculation by calling google-sheets-data
+              console.log('[Guided Mapping] 📊 Triggering conversion value calculation...');
+              try {
+                const sheetsResponse = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
+                if (sheetsResponse.ok) {
+                  const sheetsData = await sheetsResponse.json();
+                  console.log('[Guided Mapping] ✅ Conversion value calculated:', sheetsData.calculatedConversionValues);
+                }
+              } catch (calcError) {
+                console.error('[Guided Mapping] ⚠️ Conversion value calculation failed:', calcError);
+              }
+              
+              // Step 2: Wait for conversion value to be saved to database
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              // Step 3: Get session ID from connected-platforms endpoint
+              let sessionId: string | null = null;
+              try {
+                const platformsResponse = await fetch(`/api/campaigns/${campaignId}/connected-platforms`);
+                if (platformsResponse.ok) {
+                  const platforms = await platformsResponse.json();
+                  const linkedInPlatform = platforms.find((p: any) => p.id === 'linkedin');
+                  if (linkedInPlatform?.analyticsPath) {
+                    const url = new URL(linkedInPlatform.analyticsPath, window.location.origin);
+                    sessionId = url.searchParams.get('session');
+                    console.log('[Guided Mapping] Found session ID:', sessionId);
+                  }
+                }
+              } catch (error) {
+                console.error('[Guided Mapping] Error getting session ID:', error);
+              }
+              
+              // Step 4: Poll LinkedIn imports endpoint to check if hasRevenueTracking === 1
+              if (sessionId) {
+                console.log('[Guided Mapping] 🔍 Checking if conversion value is available...');
+                let attempts = 0;
+                const maxAttempts = 10; // 10 attempts * 500ms = 5 seconds max
+                let hasRevenueTracking = false;
+                
+                while (attempts < maxAttempts) {
+                  try {
+                    const importsResponse = await fetch(`/api/linkedin/imports/${sessionId}`);
+                    if (importsResponse.ok) {
+                      const importsData = await importsResponse.json();
+                      if (importsData?.aggregated?.hasRevenueTracking === 1) {
+                        console.log('[Guided Mapping] ✅ Conversion value is available! hasRevenueTracking = 1');
+                        hasRevenueTracking = true;
+                        break;
+                      }
+                    }
+                  } catch (error) {
+                    console.error('[Guided Mapping] Error checking conversion value:', error);
+                  }
+                  
+                  attempts++;
+                  if (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                  }
+                }
+                
+                if (!hasRevenueTracking) {
+                  console.warn('[Guided Mapping] ⚠️ Conversion value not yet available, but proceeding anyway...');
+                }
+              }
+              
+              // Step 5: Invalidate queries to ensure fresh data
               console.log('[Guided Mapping] 📊 Invalidating queries...');
               await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
               await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
@@ -703,4 +767,5 @@ export function GuidedColumnMapping({
     </div>
   );
 }
+
 

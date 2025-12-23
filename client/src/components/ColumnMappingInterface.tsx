@@ -67,6 +67,7 @@ export function ColumnMappingInterface({
   const [mappings, setMappings] = useState<FieldMapping[]>([]);
   const [validationErrors, setValidationErrors] = useState<Map<string, string>>(new Map());
   const [mappingsJustSaved, setMappingsJustSaved] = useState(false);
+  const [conversionValueCalculated, setConversionValueCalculated] = useState(false);
 
   // Fetch platform fields (with campaignId to check if LinkedIn API is connected)
   const { data: platformFieldsData } = useQuery<{ success: boolean; fields: PlatformField[] }>({
@@ -127,7 +128,8 @@ export function ColumnMappingInterface({
     refetchIntervalInBackground: false,
   });
 
-  const hasConversionValues = sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0;
+  // Check conversion values from both the save response and the polling query
+  const hasConversionValues = conversionValueCalculated || (sheetsData?.calculatedConversionValues && sheetsData.calculatedConversionValues.length > 0);
 
   // Auto-map columns
   const autoMapMutation = useMutation({
@@ -181,19 +183,36 @@ export function ColumnMappingInterface({
       }
       return response.json();
     },
-    onSuccess: async () => {
-      toast({
-        title: "Mappings Saved",
-        description: "Column mappings have been saved successfully. Calculating conversion values...",
-      });
+    onSuccess: async (data) => {
+      // Check if conversion value was calculated from the response
+      const conversionValueWasCalculated = data?.conversionValueCalculated === true || !!data?.conversionValue;
+      
+      if (conversionValueWasCalculated) {
+        setConversionValueCalculated(true);
+        toast({
+          title: "Mappings Saved",
+          description: `Conversion value calculated: $${data.conversionValue || 'N/A'}`,
+        });
+      } else {
+        toast({
+          title: "Mappings Saved",
+          description: "Column mappings have been saved successfully.",
+        });
+      }
+      
       // Invalidate and refetch queries to refresh data and show conversion values
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-analytics"] });
+      
       // Mark that mappings were just saved (this enables the query and starts polling)
       setMappingsJustSaved(true);
+      
       // Wait a moment for backend to process, then refetch
       setTimeout(async () => {
         await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-      }, 1000);
+        await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-analytics"] });
+      }, 500);
+      
       // Call onMappingComplete to update parent
       if (onMappingComplete) {
         onMappingComplete();
@@ -731,7 +750,7 @@ export function ColumnMappingInterface({
         </div>
       </div>
 
-      {/* Back to Campaign Overview Link - Only show after mappings are saved and conversion values exist */}
+      {/* Back to Campaign Overview Link - Show immediately after mappings are saved */}
       {mappingsJustSaved && (
         <div className="mt-6 pt-4 border-t">
           {hasConversionValues ? (
@@ -749,22 +768,9 @@ export function ColumnMappingInterface({
                   </div>
                 </div>
               </div>
-              <Button
-                variant="default"
-                className="w-full justify-center"
-                onClick={() => {
-                  if (onCancel) onCancel();
-                  setTimeout(() => {
-                  window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
-                  }, 100);
-                }}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Campaign Overview
-              </Button>
             </>
           ) : (
-            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                 <p className="text-sm text-blue-800 dark:text-blue-300">
@@ -773,6 +779,45 @@ export function ColumnMappingInterface({
               </div>
             </div>
           )}
+          <Button
+            variant="default"
+            className="w-full justify-center"
+            onClick={async () => {
+              // Invalidate queries to ensure fresh data when navigating
+              await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-analytics"] });
+              await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+              
+              if (onCancel) onCancel();
+              
+              // IMPORTANT: LinkedIn analytics page requires `?session=...` to load data.
+              // Preserve existing session param if present; otherwise fetch latest session for the campaign.
+              const urlParams = new URLSearchParams(window.location.search);
+              let session = urlParams.get('session');
+              if (!session) {
+                try {
+                  const resp = await fetch(`/api/linkedin/import-sessions/${campaignId}`);
+                  if (resp.ok) {
+                    const sessions = await resp.json();
+                    session = sessions?.[0]?.id || null;
+                  }
+                } catch {
+                  // ignore - we'll navigate without session if needed
+                }
+              }
+
+              const targetUrl = session
+                ? `/campaigns/${campaignId}/linkedin-analytics?session=${encodeURIComponent(session)}&tab=overview`
+                : `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+
+              // Navigate immediately - full reload ensures fresh data
+              setTimeout(() => {
+                window.location.href = targetUrl;
+              }, 100);
+            }}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Campaign Overview
+          </Button>
         </div>
       )}
     </div>

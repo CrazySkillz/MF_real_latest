@@ -86,14 +86,37 @@ function BackToOverviewSection({ campaignId, onClose, onNavigate }: { campaignId
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          
           // Call the navigation callback if provided, otherwise close and navigate
           if (onNavigate) {
             onNavigate();
           } else {
             if (onClose) onClose();
-            setTimeout(() => {
-              window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
-            }, 100);
+            // IMPORTANT: LinkedIn analytics page requires `?session=...` to load data.
+            // Preserve existing session param if present; otherwise fetch latest session for the campaign.
+            const urlParams = new URLSearchParams(window.location.search);
+            const existingSession = urlParams.get('session');
+            if (existingSession) {
+              window.location.href = `/campaigns/${campaignId}/linkedin-analytics?session=${encodeURIComponent(existingSession)}&tab=overview`;
+              return;
+            }
+
+            // Fallback: fetch latest session and navigate with it
+            fetch(`/api/linkedin/import-sessions/${campaignId}`)
+              .then(async (resp) => {
+                if (!resp.ok) return null;
+                const sessions = await resp.json();
+                const session = sessions?.[0]?.id || null;
+                return session;
+              })
+              .then((session) => {
+                window.location.href = session
+                  ? `/campaigns/${campaignId}/linkedin-analytics?session=${encodeURIComponent(session)}&tab=overview`
+                  : `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+              })
+              .catch(() => {
+                window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+              });
           }
         }}
       >

@@ -247,31 +247,10 @@ export function UploadAdditionalDataModal({
 
             {/* Show guided mapping for new connections (only for LinkedIn conversion value flow, not googleSheetsOnly) */}
             {showGuidedMapping && newConnectionInfo && !googleSheetsOnly ? (
-              (() => {
-                // Fallback: recover selected tab names from localStorage if they were dropped from props/state.
-                let fallbackSheetNames: string[] | undefined = undefined;
-                if (!newConnectionInfo.sheetNames || newConnectionInfo.sheetNames.length === 0) {
-                  try {
-                    const raw = localStorage.getItem(`mm:selectedSheetNames:${originalCampaignId}:${newConnectionInfo.spreadsheetId}`);
-                    const parsed = raw ? JSON.parse(raw) : null;
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                      fallbackSheetNames = parsed;
-                    }
-                  } catch {
-                    // ignore
-                  }
-                }
-
-                const effectiveSheetNames = (newConnectionInfo.sheetNames && newConnectionInfo.sheetNames.length > 0)
-                  ? newConnectionInfo.sheetNames
-                  : fallbackSheetNames;
-
-                return (
               <GuidedColumnMapping
                 campaignId={originalCampaignId}
                 connectionId={newConnectionInfo.connectionId}
                 connectionIds={newConnectionInfo.connectionIds}
-                sheetNames={effectiveSheetNames}
                 spreadsheetId={newConnectionInfo.spreadsheetId}
                 platform="linkedin"
                 onMappingComplete={() => {
@@ -308,8 +287,6 @@ export function UploadAdditionalDataModal({
                   setShowDatasetsView(true);
                 }}
               />
-                );
-              })()
             ) : showDatasetsView || (!justConnected && googleSheetsConnections.length > 0) ? (
               <>
                 {/* Show connected datasets */}

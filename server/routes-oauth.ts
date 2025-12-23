@@ -2709,7 +2709,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: spreadsheetId,
           name: spreadsheetName
         },
-        sheetsConnected: sheetNames.length
+        sheetsConnected: sheetNames.length,
+        // Echo back the exact tab names we connected so the UI can scope detection/mapping reliably
+        sheetNames: sheetNames.filter((s: any) => typeof s === 'string' && s.trim().length > 0)
       });
     } catch (error: any) {
       console.error('Multiple spreadsheet selection error:', error);

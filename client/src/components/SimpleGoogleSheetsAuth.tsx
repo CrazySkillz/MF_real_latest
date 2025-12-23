@@ -35,6 +35,9 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string>("");
   const [availableSheets, setAvailableSheets] = useState<Sheet[]>([]);
   const [selectedSheetNames, setSelectedSheetNames] = useState<string[]>([]);
+  // Keep a ref in sync to avoid any edge-case where the latest checkbox selection
+  // isn't reflected yet when the user immediately clicks "Connect".
+  const selectedSheetNamesRef = useRef<string[]>([]);
   const [isLoadingSheets, setIsLoadingSheets] = useState(false);
   const [isSelectingSpreadsheet, setIsSelectingSpreadsheet] = useState(false);
   const popupRef = useRef<Window | null>(null);
@@ -166,18 +169,25 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
   const toggleSheetSelection = useCallback((sheetTitle: string) => {
     setSelectedSheetNames(prev => {
       if (prev.includes(sheetTitle)) {
-        return prev.filter(s => s !== sheetTitle);
+        const next = prev.filter(s => s !== sheetTitle);
+        selectedSheetNamesRef.current = next;
+        return next;
       } else {
-        return [...prev, sheetTitle];
+        const next = [...prev, sheetTitle];
+        selectedSheetNamesRef.current = next;
+        return next;
       }
     });
   }, []);
 
   const selectAllSheets = useCallback(() => {
     if (selectedSheetNames.length === availableSheets.length) {
+      selectedSheetNamesRef.current = [];
       setSelectedSheetNames([]);
     } else {
-      setSelectedSheetNames(availableSheets.map(sheet => sheet.title));
+      const next = availableSheets.map(sheet => sheet.title);
+      selectedSheetNamesRef.current = next;
+      setSelectedSheetNames(next);
     }
   }, [availableSheets, selectedSheetNames]);
 
@@ -188,8 +198,9 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
     }
 
     // If no sheets are selected, use all available sheets or just the first sheet if none available
-    const sheetsToConnect = selectedSheetNames.length > 0 
-      ? selectedSheetNames 
+    const latestSelected = selectedSheetNamesRef.current.length > 0 ? selectedSheetNamesRef.current : selectedSheetNames;
+    const sheetsToConnect = latestSelected.length > 0 
+      ? latestSelected 
       : availableSheets.length > 0 
         ? [availableSheets[0].title] 
         : [null];
@@ -207,11 +218,16 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
       const data = await response.json();
 
       if (data.success) {
+        // Prefer server-confirmed sheet names (most reliable), fallback to the client selection.
+        const connectedSheetNames: string[] =
+          Array.isArray(data.sheetNames) && data.sheetNames.length > 0
+            ? data.sheetNames
+            : sheetsToConnect.filter((s): s is string => s !== null);
         onSuccess({
           connectionId: data.connectionIds?.[0] || data.connectionId,
           spreadsheetId: selectedSpreadsheet,
           connectionIds: data.connectionIds || [data.connectionId],
-          sheetNames: sheetsToConnect.filter((s): s is string => s !== null) // Pass the actual sheet names selected
+          sheetNames: connectedSheetNames // Pass the connected sheet names (server-confirmed)
         });
       } else {
         throw new Error(data.error || "Failed to connect spreadsheet");

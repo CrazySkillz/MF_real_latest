@@ -280,22 +280,48 @@ export function UploadAdditionalDataModal({
                   
                   // Close modal immediately
                   onClose();
-                  
-                  // Ensure URL includes tab=overview for LinkedIn Analytics page
-                  let targetUrl = originalReturnUrl;
-                  if (targetUrl.includes('/linkedin-analytics') && !targetUrl.includes('tab=')) {
-                    targetUrl = targetUrl + (targetUrl.includes('?') ? '&' : '?') + 'tab=overview';
-                  }
-                  
-                  console.log('[UploadAdditionalDataModal] 🔄 FULL PAGE RELOAD to:', targetUrl);
-                  
-                  // Do a FULL page reload to ensure fresh data from server
-                  setTimeout(() => {
+
+                  // Always navigate to LinkedIn Overview with a valid session param.
+                  // If we land on /linkedin-analytics without ?session=..., the page cannot load the session and the orange warning will remain.
+                  const navigateToLinkedInOverview = async () => {
+                    let sessionId: string | null = null;
+                    try {
+                      const platformsResponse = await fetch(`/api/campaigns/${originalCampaignId}/connected-platforms`);
+                      if (platformsResponse.ok) {
+                        const platforms = await platformsResponse.json();
+                        const linkedInPlatform = platforms.find((p: any) => p.id === 'linkedin');
+                        if (linkedInPlatform?.analyticsPath) {
+                          const url = new URL(linkedInPlatform.analyticsPath, window.location.origin);
+                          sessionId = url.searchParams.get('session');
+                        }
+                      }
+                    } catch {
+                      // ignore
+                    }
+
+                    if (!sessionId) {
+                      try {
+                        const resp = await fetch(`/api/linkedin/import-sessions/${originalCampaignId}`);
+                        if (resp.ok) {
+                          const sessions = await resp.json();
+                          sessionId = sessions?.[0]?.id || null;
+                        }
+                      } catch {
+                        // ignore
+                      }
+                    }
+
+                    const targetUrl = sessionId
+                      ? `/campaigns/${originalCampaignId}/linkedin-analytics?session=${encodeURIComponent(sessionId)}&tab=overview`
+                      : `/campaigns/${originalCampaignId}/linkedin-analytics?tab=overview`;
+
+                    console.log('[UploadAdditionalDataModal] 🔄 FULL PAGE RELOAD to:', targetUrl);
                     window.location.href = targetUrl;
-                    // Force reload to bypass any cache
-                    setTimeout(() => {
-                      window.location.reload();
-                    }, 100);
+                  };
+
+                  // Give the backend a moment to persist conversion value and mappings.
+                  setTimeout(() => {
+                    void navigateToLinkedInOverview();
                   }, 300);
                 }}
                 onCancel={() => {

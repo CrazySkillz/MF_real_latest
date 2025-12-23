@@ -10347,7 +10347,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`[Save Mappings] Campaign name mapping:`, campaignNameMapping);
                 
                 if (revenueMapping) {
-                  const revenueColumnIndex = revenueMapping.sourceColumnIndex ?? revenueMapping.columnIndex ?? -1;
+                  const resolveColumnIndex = (mapping: any, sheetHeaders: any[]): number => {
+                    let idx = mapping?.sourceColumnIndex ?? mapping?.columnIndex ?? -1;
+                    if (idx >= 0 && idx < sheetHeaders.length) return idx;
+                    const mappedName = String(mapping?.sourceColumnName || '').trim().toLowerCase();
+                    if (!mappedName) return -1;
+                    const byName = sheetHeaders.findIndex((h: any) => String(h || '').trim().toLowerCase() === mappedName);
+                    return byName;
+                  };
+
+                  const revenueColumnIndex = resolveColumnIndex(revenueMapping, headers);
                   console.log(`[Save Mappings] Revenue column index: ${revenueColumnIndex} (from mapping:`, revenueMapping, ')');
                   
                   if (revenueColumnIndex < 0 || revenueColumnIndex >= headers.length) {
@@ -10360,7 +10369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   // So prefer matching against the LinkedIn campaign names present in the latest import session.
                   let filteredRows = dataRows;
                   if (campaignNameMapping) {
-                    const campaignNameColumnIndex = campaignNameMapping.sourceColumnIndex ?? campaignNameMapping.columnIndex ?? -1;
+                    const campaignNameColumnIndex = resolveColumnIndex(campaignNameMapping, headers);
                     if (campaignNameColumnIndex >= 0 && campaignNameColumnIndex < headers.length) {
                       const workspaceCampaignName = String(campaign?.name || '').toLowerCase().trim();
                       const linkedInCampaignNames = new Set(

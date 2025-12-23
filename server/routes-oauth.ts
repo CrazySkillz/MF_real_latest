@@ -10333,17 +10333,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                   
                   // Filter by campaign name if mapped
+                  // IMPORTANT: The spreadsheet typically contains LinkedIn *campaign names*, not the MetricMind workspace campaign name.
+                  // So prefer matching against the LinkedIn campaign names present in the latest import session.
                   let filteredRows = dataRows;
-                  if (campaignNameMapping && campaign) {
+                  if (campaignNameMapping) {
                     const campaignNameColumnIndex = campaignNameMapping.sourceColumnIndex ?? campaignNameMapping.columnIndex ?? -1;
                     if (campaignNameColumnIndex >= 0 && campaignNameColumnIndex < headers.length) {
-                      filteredRows = dataRows.filter((row: any[]) => {
+                      const workspaceCampaignName = String(campaign?.name || '').toLowerCase().trim();
+                      const linkedInCampaignNames = new Set(
+                        linkedInMetrics
+                          .map((m: any) => String(m?.campaignName || '').toLowerCase().trim())
+                          .filter(Boolean)
+                      );
+
+                      const matchesAny = (sheetNameRaw: string): boolean => {
+                        const sheetName = String(sheetNameRaw || '').toLowerCase().trim();
+                        if (!sheetName) return false;
+
+                        // Prefer matching against imported LinkedIn campaign names (exact or substring both ways)
+                        for (const liName of linkedInCampaignNames) {
+                          if (!liName) continue;
+                          if (sheetName === liName) return true;
+                          if (sheetName.includes(liName) || liName.includes(sheetName)) return true;
+                        }
+
+                        // Fallback: match against workspace campaign name if available
+                        if (workspaceCampaignName) {
+                          return sheetName.includes(workspaceCampaignName) || workspaceCampaignName.includes(sheetName);
+                        }
+
+                        return false;
+                      };
+
+                      const filteredByLinkedIn = dataRows.filter((row: any[]) => {
                         if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) return false;
-                        const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
-                        return campaignNameValue.includes(campaign.name.toLowerCase()) ||
-                               campaign.name.toLowerCase().includes(campaignNameValue);
+                        return matchesAny(String(row[campaignNameColumnIndex] || ''));
                       });
-                      console.log(`[Save Mappings] Filtered rows: ${filteredRows.length} (from ${dataRows.length}) for campaign "${campaign.name}"`);
+
+                      // If matching yields no rows, don't zero out revenue—fall back to using all rows.
+                      filteredRows = filteredByLinkedIn.length > 0 ? filteredByLinkedIn : dataRows;
                     } else {
                       console.log(`[Save Mappings] ⚠️ Invalid campaign name column index: ${campaignNameColumnIndex}, using all rows`);
                     }

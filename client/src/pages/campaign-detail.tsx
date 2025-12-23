@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
+import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -5209,33 +5210,62 @@ export default function CampaignDetail() {
       <Dialog open={showMappingInterface} onOpenChange={setShowMappingInterface}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Configure Column Mapping</DialogTitle>
+            <DialogTitle>Map Columns</DialogTitle>
             <DialogDescription>
-              Map your Google Sheets columns to platform fields for accurate data processing.
+              Follow the guided steps to map your campaign identifier, revenue column, and optional platform filter.
             </DialogDescription>
           </DialogHeader>
-          {showMappingInterface && campaign && (
-            <ColumnMappingInterface
-              campaignId={campaign.id}
-              connectionId={mappingConnectionId || undefined}
-              spreadsheetId={mappingSpreadsheetId || undefined}
-              platform={campaign.platform || 'linkedin'}
-              onMappingComplete={() => {
-                setShowMappingInterface(false);
-                setMappingConnectionId(null);
-                setMappingSpreadsheetId(null);
-                refetchGoogleSheetsConnections();
-                queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-                // If user wants to connect another sheet, expand Google Sheets section
-                // This will be handled by the completion dialog in ColumnMappingInterface
-              }}
-              onCancel={() => {
-                setShowMappingInterface(false);
-                setMappingConnectionId(null);
-                setMappingSpreadsheetId(null);
-              }}
-            />
-          )}
+          {showMappingInterface && campaign && (() => {
+            const platform = campaign.platform || 'linkedin';
+            const spreadsheetId = mappingSpreadsheetId || undefined;
+            const connectionId = mappingConnectionId || undefined;
+
+            if (platform === 'linkedin' && spreadsheetId && connectionId) {
+              return (
+                <GuidedColumnMapping
+                  campaignId={campaign.id}
+                  connectionId={connectionId}
+                  spreadsheetId={spreadsheetId}
+                  platform={platform}
+                  onMappingComplete={() => {
+                    setShowMappingInterface(false);
+                    setMappingConnectionId(null);
+                    setMappingSpreadsheetId(null);
+                    refetchGoogleSheetsConnections();
+                    queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+                  }}
+                  onCancel={() => {
+                    setShowMappingInterface(false);
+                    setMappingConnectionId(null);
+                    setMappingSpreadsheetId(null);
+                  }}
+                />
+              );
+            }
+
+            return (
+              <ColumnMappingInterface
+                campaignId={campaign.id}
+                connectionId={connectionId}
+                spreadsheetId={spreadsheetId}
+                platform={platform}
+                onMappingComplete={() => {
+                  setShowMappingInterface(false);
+                  setMappingConnectionId(null);
+                  setMappingSpreadsheetId(null);
+                  refetchGoogleSheetsConnections();
+                  queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+                  // If user wants to connect another sheet, expand Google Sheets section
+                  // This will be handled by the completion dialog in ColumnMappingInterface
+                }}
+                onCancel={() => {
+                  setShowMappingInterface(false);
+                  setMappingConnectionId(null);
+                  setMappingSpreadsheetId(null);
+                }}
+              />
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

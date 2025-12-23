@@ -15,6 +15,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
+import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
 import { useToast } from "@/hooks/use-toast";
 
@@ -907,28 +908,56 @@ export default function GoogleSheetsData() {
           <Dialog open={showMappingInterface} onOpenChange={setShowMappingInterface}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Configure Column Mapping</DialogTitle>
+                <DialogTitle>Map Columns</DialogTitle>
                 <DialogDescription>
-                  Map your Google Sheets columns to platform fields for accurate data processing.
+                  Follow the guided steps to map your campaign identifier, revenue column, and optional platform filter.
                 </DialogDescription>
               </DialogHeader>
-              {showMappingInterface && mappingConnectionId && (
-                <ColumnMappingInterface
-                  campaignId={campaignId!}
-                  connectionId={mappingConnectionId}
-                  platform="linkedin"
-                  onMappingComplete={() => {
-                    setShowMappingInterface(false);
-                    setMappingConnectionId(null);
-                    refetchConnections();
-                    refetch();
-                  }}
-                  onCancel={() => {
-                    setShowMappingInterface(false);
-                    setMappingConnectionId(null);
-                  }}
-                />
-              )}
+              {showMappingInterface && mappingConnectionId && (() => {
+                const selectedConnection = googleSheetsConnections.find((c: any) => c.id === mappingConnectionId);
+                const spreadsheetId = selectedConnection?.spreadsheetId;
+                const platform = "linkedin";
+
+                if (platform === 'linkedin' && spreadsheetId) {
+                  return (
+                    <GuidedColumnMapping
+                      campaignId={campaignId!}
+                      connectionId={mappingConnectionId}
+                      spreadsheetId={spreadsheetId}
+                      platform={platform}
+                      onMappingComplete={() => {
+                        setShowMappingInterface(false);
+                        setMappingConnectionId(null);
+                        refetchConnections();
+                        refetch();
+                      }}
+                      onCancel={() => {
+                        setShowMappingInterface(false);
+                        setMappingConnectionId(null);
+                      }}
+                    />
+                  );
+                }
+
+                return (
+                  <ColumnMappingInterface
+                    campaignId={campaignId!}
+                    connectionId={mappingConnectionId}
+                    spreadsheetId={spreadsheetId}
+                    platform={platform}
+                    onMappingComplete={() => {
+                      setShowMappingInterface(false);
+                      setMappingConnectionId(null);
+                      refetchConnections();
+                      refetch();
+                    }}
+                    onCancel={() => {
+                      setShowMappingInterface(false);
+                      setMappingConnectionId(null);
+                    }}
+                  />
+                );
+              })()}
             </DialogContent>
           </Dialog>
 

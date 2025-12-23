@@ -79,16 +79,16 @@ export function GuidedColumnMapping({
         // Fetch ONLY the selected sheet names
         queryParam = `?spreadsheetId=${spreadsheetId}&sheetNames=${encodeURIComponent(sheetNames.join(','))}`;
         console.log('[GuidedColumnMapping] 🎯 Fetching ONLY selected sheets:', sheetNames);
-      } else if (spreadsheetId) {
-        // Fetch ALL sheets from this spreadsheet
-        queryParam = `?spreadsheetId=${spreadsheetId}&fetchAll=true`;
-        console.log('[GuidedColumnMapping] 📊 Fetching ALL sheets from spreadsheet');
       } else if (connectionIds && connectionIds.length > 0) {
         // Use specific connection IDs if provided
         queryParam = `?connectionIds=${connectionIds.join(',')}`;
       } else if (connectionId) {
         // Fallback to single connection
         queryParam = `?connectionId=${connectionId}`;
+      } else if (spreadsheetId) {
+        // Last resort: Fetch ALL sheets from this spreadsheet (only when we truly don't know which tabs to scope to)
+        queryParam = `?spreadsheetId=${spreadsheetId}&fetchAll=true`;
+        console.log('[GuidedColumnMapping] 📊 Fetching ALL sheets from spreadsheet (no tab scope provided)');
       }
       
       console.log('[GuidedColumnMapping] 🔍 Fetching columns with:', {

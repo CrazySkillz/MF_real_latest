@@ -916,6 +916,7 @@ export default function GoogleSheetsData() {
               {showMappingInterface && mappingConnectionId && (() => {
                 const selectedConnection = googleSheetsConnections.find((c: any) => c.id === mappingConnectionId);
                 const spreadsheetId = selectedConnection?.spreadsheetId;
+                const sheetName = selectedConnection?.sheetName;
                 const platform = "linkedin";
 
                 if (platform === 'linkedin' && spreadsheetId) {
@@ -924,6 +925,7 @@ export default function GoogleSheetsData() {
                       campaignId={campaignId!}
                       connectionId={mappingConnectionId}
                       spreadsheetId={spreadsheetId}
+                      sheetNames={sheetName ? [sheetName] : undefined}
                       platform={platform}
                       onMappingComplete={() => {
                         setShowMappingInterface(false);

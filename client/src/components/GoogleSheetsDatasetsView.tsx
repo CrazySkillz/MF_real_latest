@@ -16,6 +16,7 @@ interface GoogleSheetsConnection {
   id: string;
   spreadsheetId: string;
   spreadsheetName: string;
+  sheetName?: string | null;
   isPrimary: boolean;
   isActive: boolean;
   columnMappings?: string | null;
@@ -315,6 +316,7 @@ export function GoogleSheetsDatasetsView({
           {showMappingInterface && mappingConnectionId && (() => {
             const selectedConnection = connections.find(c => c.id === mappingConnectionId);
             const spreadsheetId = selectedConnection?.spreadsheetId;
+            const sheetName = selectedConnection?.sheetName;
 
             // For the LinkedIn flow, prefer the guided wizard UX.
             // Keep the classic mapper as a fallback for other platforms or missing spreadsheetId.
@@ -324,6 +326,7 @@ export function GoogleSheetsDatasetsView({
                   campaignId={campaignId}
                   connectionId={mappingConnectionId}
                   spreadsheetId={spreadsheetId}
+                  sheetNames={sheetName ? [sheetName] : undefined}
                   platform={platform}
                   onMappingComplete={() => {
                     setShowMappingInterface(false);

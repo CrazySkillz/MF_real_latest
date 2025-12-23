@@ -247,11 +247,29 @@ export function UploadAdditionalDataModal({
 
             {/* Show guided mapping for new connections (only for LinkedIn conversion value flow, not googleSheetsOnly) */}
             {showGuidedMapping && newConnectionInfo && !googleSheetsOnly ? (
+              (() => {
+                // Prefer explicit selected tab names for scoping column detection (most reliable when DB lacks sheet_name).
+                // Use server-provided sheetNames; fall back to what we persisted at selection time.
+                let effectiveSheetNames: string[] | undefined = newConnectionInfo.sheetNames;
+                if (!effectiveSheetNames || effectiveSheetNames.length === 0) {
+                  try {
+                    const raw = localStorage.getItem(`mm:selectedSheetNames:${originalCampaignId}:${newConnectionInfo.spreadsheetId}`);
+                    const parsed = raw ? JSON.parse(raw) : null;
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      effectiveSheetNames = parsed;
+                    }
+                  } catch {
+                    // ignore
+                  }
+                }
+
+                return (
               <GuidedColumnMapping
                 campaignId={originalCampaignId}
                 connectionId={newConnectionInfo.connectionId}
                 connectionIds={newConnectionInfo.connectionIds}
                 spreadsheetId={newConnectionInfo.spreadsheetId}
+                sheetNames={effectiveSheetNames}
                 platform="linkedin"
                 onMappingComplete={() => {
                   console.log('[UploadAdditionalDataModal] onMappingComplete called');
@@ -287,6 +305,8 @@ export function UploadAdditionalDataModal({
                   setShowDatasetsView(true);
                 }}
               />
+                );
+              })()
             ) : showDatasetsView || (!justConnected && googleSheetsConnections.length > 0) ? (
               <>
                 {/* Show connected datasets */}

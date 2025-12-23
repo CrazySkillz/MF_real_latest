@@ -161,43 +161,66 @@ export default function GoogleSheetsData() {
       }
       return response.json();
     },
-    onSuccess: async () => {
-      // Invalidate all related queries to ensure UI updates
-      // Use exact: false to invalidate all queries that start with these keys
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false });
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
-      await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
-      
-      // Refetch connections and data immediately
-      await refetchConnections();
-      await refetch();
-      
-      // Additional delay to ensure backend has fully processed the deletion and cleared conversion values
-      setTimeout(async () => {
-        // Force refetch of all related queries - invalidate first, then refetch
-        await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
-        await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false });
-        await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
-        
-        // Force immediate refetch to ensure fresh data
-        await Promise.all([
-          queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"], exact: false }),
-          queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false }),
-          queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false })
-        ]);
-      }, 2000);
-      
-      toast({
-        title: "Connection Removed",
-        description: "Google Sheets connection has been removed successfully.",
+    onMutate: async (connectionId: string) => {
+      // Optimistic update to avoid UI "jumping" on delete (no full refetch/skeleton churn)
+      const connectionsKey = ["/api/campaigns", campaignId, "google-sheets-connections"];
+      await queryClient.cancelQueries({ queryKey: connectionsKey });
+
+      const prev = queryClient.getQueryData<any>(connectionsKey);
+      const prevConnections: any[] = prev?.connections || [];
+
+      // Determine if we are deleting the currently selected connection
+      const currentValue = activeSpreadsheetId;
+      let wasActive = false;
+      if (currentValue && currentValue !== 'combined') {
+        const [spreadsheetId, identifier] = currentValue.includes(':') ? currentValue.split(':') : [currentValue, null];
+        const activeConn = prevConnections.find((c: any) =>
+          c.spreadsheetId === spreadsheetId && (identifier === null || c.sheetName === identifier || c.id === identifier)
+        );
+        wasActive = !!activeConn && activeConn.id === connectionId;
+      }
+
+      // Optimistically remove the connection from the list
+      queryClient.setQueryData(connectionsKey, (old: any) => {
+        const connections = old?.connections || [];
+        return { ...(old || {}), connections: connections.filter((c: any) => c.id !== connectionId) };
       });
+
+      // If the deleted connection was active, switch to the next available connection smoothly
+      if (wasActive) {
+        const remaining = prevConnections.filter((c: any) => c.id !== connectionId);
+        const next = remaining[0];
+        if (next) {
+          const nextValue = next.sheetName ? `${next.spreadsheetId}:${next.sheetName}` : `${next.spreadsheetId}:${next.id}`;
+          handleSheetChange(nextValue);
+        } else {
+          handleSheetChange('combined');
+        }
+      }
+
+      return { prev };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _connectionId: string, context: any) => {
+      // Roll back optimistic update
+      const connectionsKey = ["/api/campaigns", campaignId, "google-sheets-connections"];
+      if (context?.prev) queryClient.setQueryData(connectionsKey, context.prev);
+
       toast({
         title: "Failed to Remove Connection",
         description: error.message || "An error occurred while removing the connection.",
         variant: "destructive"
+      });
+    },
+    onSuccess: async () => {
+      // Background refresh (no forced double refetch loop → avoids UI jumping)
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
+
+      toast({
+        title: "Connection Removed",
+        description: "Google Sheets connection has been removed successfully.",
       });
     }
   });

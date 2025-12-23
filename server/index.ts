@@ -191,6 +191,12 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true,
             ADD COLUMN IF NOT EXISTS column_mappings TEXT;
           `);
+
+          // Migration 6b: Ensure sheet_name exists (older DBs created before multi-tab support)
+          await db.execute(sql`
+            ALTER TABLE google_sheets_connections
+            ADD COLUMN IF NOT EXISTS sheet_name TEXT;
+          `);
           
           // Set existing connections as primary and active (backward compatibility)
           await db.execute(sql`

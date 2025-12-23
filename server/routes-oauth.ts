@@ -2584,6 +2584,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!Array.isArray(sheetNames) || sheetNames.length === 0) {
         return res.status(400).json({ error: 'Sheet names array is required and must not be empty' });
       }
+
+      // Enforce max connections per campaign server-side (prevents runaway counts like 48/10)
+      const MAX_GOOGLE_SHEETS_CONNECTIONS = 10;
+      const existingConnectionsForLimit = await storage.getGoogleSheetsConnections(campaignId);
+      const existingCount = existingConnectionsForLimit.length;
+      if (existingCount >= MAX_GOOGLE_SHEETS_CONNECTIONS) {
+        return res.status(400).json({
+          error: `Maximum of ${MAX_GOOGLE_SHEETS_CONNECTIONS} Google Sheets connections reached for this campaign. Please remove unused connections first.`,
+          maxConnections: MAX_GOOGLE_SHEETS_CONNECTIONS,
+          existingConnections: existingCount
+        });
+      }
+
+      const normalizedSheetNames = sheetNames
+        .filter((s: any) => typeof s === 'string' && s.trim().length > 0)
+        .map((s: string) => s.trim());
+
+      const availableSlots = Math.max(0, MAX_GOOGLE_SHEETS_CONNECTIONS - existingCount);
+      const limitedSheetNames = normalizedSheetNames.slice(0, availableSlots);
+      if (limitedSheetNames.length === 0) {
+        return res.status(400).json({
+          error: `No available slots to add new Google Sheets connections (max ${MAX_GOOGLE_SHEETS_CONNECTIONS}).`,
+          maxConnections: MAX_GOOGLE_SHEETS_CONNECTIONS,
+          existingConnections: existingCount
+        });
+      }
       
       // First, try to find connection in database (more reliable than global map)
       let dbConnection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
@@ -2646,12 +2672,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionIds: string[] = [];
       const isFirstConnection = dbConnection.spreadsheetId === 'pending';
       
-      console.log(`[Select Multiple Spreadsheets] 📋 Creating connections for ${sheetNames.length} sheet(s)`);
-      console.log(`[Select Multiple Spreadsheets] Sheet names:`, sheetNames);
+      console.log(`[Select Multiple Spreadsheets] 📋 Creating connections for ${limitedSheetNames.length} sheet(s)`);
+      console.log(`[Select Multiple Spreadsheets] Sheet names:`, limitedSheetNames);
       console.log(`[Select Multiple Spreadsheets] Is first connection:`, isFirstConnection);
       
-      for (let i = 0; i < sheetNames.length; i++) {
-        const sheetName = sheetNames[i];
+      for (let i = 0; i < limitedSheetNames.length; i++) {
+        const sheetName = limitedSheetNames[i];
         
         console.log(`[Select Multiple Spreadsheets] Processing sheet ${i + 1}/${sheetNames.length}: "${sheetName}"`);
         
@@ -2698,7 +2724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignId,
         spreadsheetId,
         spreadsheetName,
-        sheets: sheetNames,
+        sheets: limitedSheetNames,
         connectionIds
       });
       
@@ -2709,9 +2735,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: spreadsheetId,
           name: spreadsheetName
         },
-        sheetsConnected: sheetNames.length,
+        sheetsConnected: limitedSheetNames.length,
         // Echo back the exact tab names we connected so the UI can scope detection/mapping reliably
-        sheetNames: sheetNames.filter((s: any) => typeof s === 'string' && s.trim().length > 0)
+        sheetNames: limitedSheetNames
       });
     } catch (error: any) {
       console.error('Multiple spreadsheet selection error:', error);

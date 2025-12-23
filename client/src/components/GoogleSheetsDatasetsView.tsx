@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileSpreadsheet, Star, Map, CheckCircle2, AlertCircle, ArrowLeft, Trash2, X } from "lucide-react";
 import { ColumnMappingInterface } from "./ColumnMappingInterface";
+import { GuidedColumnMapping } from "./GuidedColumnMapping";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -306,33 +307,63 @@ export function GoogleSheetsDatasetsView({
       <Dialog open={showMappingInterface} onOpenChange={setShowMappingInterface}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Configure Column Mapping</DialogTitle>
+            <DialogTitle>Map Columns</DialogTitle>
             <DialogDescription>
-              Map your Google Sheets columns to platform fields for accurate data processing.
+              Follow the guided steps to map your campaign identifier, revenue column, and optional platform filter.
             </DialogDescription>
           </DialogHeader>
-          {showMappingInterface && mappingConnectionId && (
-            <ColumnMappingInterface
-              campaignId={campaignId}
-              connectionId={mappingConnectionId}
-              platform={platform}
-              onMappingComplete={() => {
-                // Close dialog and go back to datasets view
-                setShowMappingInterface(false);
-                setMappingConnectionId(null);
-                // Mark that mappings were just saved to show the link
-                setMappingsJustSaved(true);
-                if (onConnectionChange) {
-                  onConnectionChange();
-                }
-              }}
-              onCancel={() => {
-                setShowMappingInterface(false);
-                setMappingConnectionId(null);
-                setMappingsJustSaved(false);
-              }}
-            />
-          )}
+          {showMappingInterface && mappingConnectionId && (() => {
+            const selectedConnection = connections.find(c => c.id === mappingConnectionId);
+            const spreadsheetId = selectedConnection?.spreadsheetId;
+
+            // For the LinkedIn flow, prefer the guided wizard UX.
+            // Keep the classic mapper as a fallback for other platforms or missing spreadsheetId.
+            if (platform === 'linkedin' && spreadsheetId) {
+              return (
+                <GuidedColumnMapping
+                  campaignId={campaignId}
+                  connectionId={mappingConnectionId}
+                  spreadsheetId={spreadsheetId}
+                  platform={platform}
+                  onMappingComplete={() => {
+                    setShowMappingInterface(false);
+                    setMappingConnectionId(null);
+                    setMappingsJustSaved(true);
+                    if (onConnectionChange) onConnectionChange();
+                  }}
+                  onCancel={() => {
+                    setShowMappingInterface(false);
+                    setMappingConnectionId(null);
+                    setMappingsJustSaved(false);
+                  }}
+                />
+              );
+            }
+
+            return (
+              <ColumnMappingInterface
+                campaignId={campaignId}
+                connectionId={mappingConnectionId}
+                spreadsheetId={spreadsheetId}
+                platform={platform}
+                onMappingComplete={() => {
+                  // Close dialog and go back to datasets view
+                  setShowMappingInterface(false);
+                  setMappingConnectionId(null);
+                  // Mark that mappings were just saved to show the link
+                  setMappingsJustSaved(true);
+                  if (onConnectionChange) {
+                    onConnectionChange();
+                  }
+                }}
+                onCancel={() => {
+                  setShowMappingInterface(false);
+                  setMappingConnectionId(null);
+                  setMappingsJustSaved(false);
+                }}
+              />
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
@@ -351,4 +382,3 @@ export function GoogleSheetsDatasetsView({
     </div>
   );
 }
-

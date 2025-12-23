@@ -2725,19 +2725,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const connections = await storage.getGoogleSheetsConnections(campaignId);
+
+      // If sheetName isn't persisted in the DB (older schema / failed migrations), the UI falls back to "Tab 1/2/3...".
+      // For better UX and troubleshooting, attempt to enrich missing sheetName values from Google Sheets metadata.
+      const bySpreadsheetId = new Map<string, any[]>();
+      for (const conn of connections as any[]) {
+        const key = String(conn.spreadsheetId || '');
+        if (!bySpreadsheetId.has(key)) bySpreadsheetId.set(key, []);
+        bySpreadsheetId.get(key)!.push(conn);
+      }
+
+      const spreadsheetTabTitles = new Map<string, string[]>();
+      for (const [spreadsheetId, conns] of bySpreadsheetId.entries()) {
+        if (!spreadsheetId) continue;
+        const hasMissingSheetName = conns.some((c: any) => !(c as any).sheetName);
+        if (!hasMissingSheetName) continue;
+
+        const baseConn = conns.find((c: any) => c.accessToken) || conns[0];
+        if (!baseConn?.accessToken) continue;
+
+        const fetchTitles = async (accessToken: string): Promise<string[] | null> => {
+          const metaResp = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties.title`,
+            { headers: { 'Authorization': `Bearer ${accessToken}` } }
+          );
+          if (!metaResp.ok) return null;
+          const meta = await metaResp.json().catch(() => ({}));
+          const titles = Array.isArray(meta?.sheets)
+            ? meta.sheets.map((s: any) => s?.properties?.title).filter(Boolean)
+            : [];
+          return titles;
+        };
+
+        let titles: string[] | null = await fetchTitles(baseConn.accessToken);
+        // If token is expired, try a refresh (best-effort) and retry once.
+        if ((!titles || titles.length === 0) && baseConn.refreshToken) {
+          try {
+            const refreshed = await refreshGoogleSheetsToken(baseConn);
+            if (refreshed) {
+              titles = await fetchTitles(refreshed);
+            }
+          } catch {
+            // ignore - keep fallback labels
+          }
+        }
+
+        if (titles && titles.length > 0) {
+          spreadsheetTabTitles.set(spreadsheetId, titles);
+        }
+      }
       
       res.json({
         success: true,
-        connections: connections.map(conn => ({
-          id: conn.id,
-          spreadsheetId: conn.spreadsheetId,
-          spreadsheetName: conn.spreadsheetName,
-          sheetName: (conn as any).sheetName || null, // Include sheetName field (may not exist in DB yet)
-          isPrimary: conn.isPrimary,
-          isActive: conn.isActive,
-          columnMappings: conn.columnMappings,
-          connectedAt: conn.connectedAt
-        }))
+        connections: connections.map(conn => {
+          // Derive a stable "tab order index" within a spreadsheet group (based on server response order).
+          const group = bySpreadsheetId.get(String(conn.spreadsheetId || '')) || [];
+          const tabIndex = group.findIndex((c: any) => c.id === (conn as any).id);
+          const titles = spreadsheetTabTitles.get(String(conn.spreadsheetId || ''));
+          const derivedSheetName =
+            (conn as any).sheetName ||
+            (titles && tabIndex >= 0 && tabIndex < titles.length ? titles[tabIndex] : null);
+
+          return ({
+            id: conn.id,
+            spreadsheetId: conn.spreadsheetId,
+            spreadsheetName: conn.spreadsheetName,
+            sheetName: derivedSheetName,
+            isPrimary: conn.isPrimary,
+            isActive: conn.isActive,
+            columnMappings: conn.columnMappings,
+            connectedAt: conn.connectedAt
+          });
+        })
       });
     } catch (error: any) {
       console.error('List connections error:', error);

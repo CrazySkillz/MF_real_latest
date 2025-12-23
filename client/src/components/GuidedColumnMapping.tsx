@@ -31,7 +31,7 @@ interface GuidedColumnMappingProps {
   connectionId: string;
   connectionIds?: string[];
   sheetNames?: string[];
-  spreadsheetId: string;
+  spreadsheetId?: string;
   platform: string;
   onMappingComplete?: () => void;
   onCancel?: () => void;

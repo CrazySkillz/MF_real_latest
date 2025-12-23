@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, AlertCircle, Star, Loader2, Info, Lightbulb, DollarSign, Calculator, ArrowLeft } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { GuidedColumnMapping } from "./GuidedColumnMapping";
 
 interface DetectedColumn {
   index: number;
@@ -41,17 +42,12 @@ interface FieldMapping {
   targetFieldName: string;
   matchType: 'auto' | 'manual' | 'template';
   confidence: number;
-  // Optional metadata: how to interpret the campaign identifier column when filtering sheet rows.
-  // Stored alongside mappings to avoid DB schema changes.
-  campaignMatchMode?: 'auto' | 'name' | 'id';
 }
 
 interface ColumnMappingInterfaceProps {
   campaignId: string;
   connectionId?: string;
   spreadsheetId?: string; // Google Sheets spreadsheet ID (different from connectionId)
-  connectionIds?: string[]; // When multiple tabs were selected/connected
-  sheetNames?: string[]; // Selected tab names (used for detect-columns)
   platform: string;
   onMappingComplete?: () => void;
   onCancel?: () => void;
@@ -62,12 +58,27 @@ export function ColumnMappingInterface({
   campaignId,
   connectionId,
   spreadsheetId,
-  connectionIds,
-  sheetNames,
   platform,
   onMappingComplete,
   onCancel
 }: ColumnMappingInterfaceProps) {
+  // IMPORTANT: For LinkedIn, we always want the guided step-by-step wizard UX.
+  // This prevents any remaining entry point from showing the all-in-one mapper.
+  const platformLower = (platform || '').toLowerCase();
+  const isLinkedIn = platformLower.includes('linkedin');
+  if (isLinkedIn && connectionId) {
+    return (
+      <GuidedColumnMapping
+        campaignId={campaignId}
+        connectionId={connectionId}
+        spreadsheetId={spreadsheetId}
+        platform={platform}
+        onMappingComplete={onMappingComplete}
+        onCancel={onCancel}
+      />
+    );
+  }
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -75,11 +86,6 @@ export function ColumnMappingInterface({
   const [validationErrors, setValidationErrors] = useState<Map<string, string>>(new Map());
   const [mappingsJustSaved, setMappingsJustSaved] = useState(false);
   const [conversionValueCalculated, setConversionValueCalculated] = useState(false);
-  const [campaignMatchMode, setCampaignMatchMode] = useState<'auto' | 'name' | 'id'>('auto');
-  const [liIdentifierColumn, setLiIdentifierColumn] = useState<string>('');
-  const [liRevenueColumn, setLiRevenueColumn] = useState<string>('');
-  const [liPlatformColumn, setLiPlatformColumn] = useState<string>('');
-  const [liIsLinkedInOnly, setLiIsLinkedInOnly] = useState(true);
 
   // Fetch platform fields (with campaignId to check if LinkedIn API is connected)
   const { data: platformFieldsData } = useQuery<{ success: boolean; fields: PlatformField[] }>({
@@ -108,16 +114,10 @@ export function ColumnMappingInterface({
   const campaignName = campaignData?.name || 'your campaign';
 
   // Fetch detected columns
-  const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number; sheetsAnalyzed?: number }>({
-    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", spreadsheetId, connectionId, connectionIds?.join(','), sheetNames?.join(',')],
+  const { data: columnsData, isLoading: columnsLoading, error: columnsError } = useQuery<{ success: boolean; columns: DetectedColumn[]; totalRows: number }>({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets", "detect-columns", spreadsheetId],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (spreadsheetId) params.set('spreadsheetId', spreadsheetId);
-      if (sheetNames && sheetNames.length > 0) params.set('sheetNames', sheetNames.join(','));
-      if (connectionIds && connectionIds.length > 0) params.set('connectionIds', connectionIds.join(','));
-      else if (connectionId) params.set('connectionId', connectionId);
-
-      const queryParam = params.toString() ? `?${params.toString()}` : '';
+      const queryParam = spreadsheetId ? `?spreadsheetId=${spreadsheetId}` : '';
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/detect-columns${queryParam}`);
       if (!response.ok) throw new Error('Failed to detect columns');
       return response.json();
@@ -182,36 +182,24 @@ export function ColumnMappingInterface({
   // Save mappings
   const saveMappingsMutation = useMutation({
     mutationFn: async (mappingsToSave: FieldMapping[]) => {
-      const idsToUpdate = (connectionIds && connectionIds.length > 0)
-        ? connectionIds
-        : (connectionId ? [connectionId] : []);
-
-      if (idsToUpdate.length === 0) {
+      if (!connectionId) {
         throw new Error('Connection ID is required to save mappings');
       }
-
-      const mappingsWithMode = mappingsToSave.map(m => ({ ...m, campaignMatchMode }));
-
-      const results = await Promise.all(idsToUpdate.map(async (id) => {
-        const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/save-mappings`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            connectionId: id,
-            mappings: mappingsWithMode,
-            platform,
-            spreadsheetId
-          })
-        });
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          throw new Error(error.error || 'Failed to save mappings');
-        }
-        return response.json();
-      }));
-
-      // Return the "best" result (one that includes conversionValue if any)
-      return results.find((r: any) => r?.conversionValue) || results[0];
+      
+      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/save-mappings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connectionId,
+          mappings: mappingsToSave,
+          platform
+        })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save mappings');
+      }
+      return response.json();
     },
     onSuccess: async (data) => {
       // Check if conversion value was calculated from the response
@@ -282,21 +270,6 @@ export function ColumnMappingInterface({
         errors.set(field.id, `Required field "${field.name}" is not mapped`);
       }
     }
-
-    // Campaign identifier requirement (LinkedIn revenue tracking relies on a stable identifier).
-    // For LinkedIn: require either campaign_name or campaign_id depending on selected mode.
-    if (platform?.toLowerCase() === 'linkedin') {
-      const hasCampaignName = mappings.some(m => m.targetFieldId === 'campaign_name');
-      const hasCampaignId = mappings.some(m => m.targetFieldId === 'campaign_id');
-
-      if (campaignMatchMode === 'name' && !hasCampaignName) {
-        errors.set('campaign_name', 'Please map a column to "Campaign Name" (text) to match sheet rows to LinkedIn campaigns.');
-      } else if (campaignMatchMode === 'id' && !(hasCampaignId || hasCampaignName)) {
-        errors.set('campaign_id', 'Please map a column to "Campaign ID" (or use Campaign Name if your sheet stores IDs there).');
-      } else if (campaignMatchMode === 'auto' && !(hasCampaignName || hasCampaignId)) {
-        errors.set('campaign_name', 'Please map a campaign identifier column (Campaign Name or Campaign ID).');
-      }
-    }
     
     // Check for duplicate mappings
     const fieldIds = new Set<string>();
@@ -308,7 +281,7 @@ export function ColumnMappingInterface({
     }
     
     setValidationErrors(errors);
-  }, [mappings, platformFields, campaignMatchMode, platform]);
+  }, [mappings, platformFields]);
 
   const handleFieldMapping = (fieldId: string, columnIndex: number | null) => {
     setMappings(prev => {
@@ -336,82 +309,18 @@ export function ColumnMappingInterface({
     });
   };
 
-  const platformLower = platform.toLowerCase();
-  const isLinkedIn = platformLower.includes('linkedin');
-
   const isMappingValid = validationErrors.size === 0 && 
     platformFields.filter(f => f.required).every(f => 
       mappings.some(m => m.targetFieldId === f.id)
     );
-
-  const inferIdentifierTarget = (colIdxStr: string): 'campaign_id' | 'campaign_name' => {
-    const col = detectedColumns.find(c => c.index.toString() === colIdxStr);
-    const samples = (col?.sampleValues || []).map(v => String(v ?? '').trim()).filter(Boolean);
-    if (samples.length === 0) return 'campaign_name';
-    const idLike = samples.filter(v => /urn:li:sponsoredCampaign:\d+/i.test(v) || /^\d+$/.test(v)).length;
-    return idLike / samples.length >= 0.6 ? 'campaign_id' : 'campaign_name';
-  };
-
-  const isLinkedInWizardValid =
-    isLinkedIn &&
-    !!liIdentifierColumn &&
-    !!liRevenueColumn &&
-    (liIsLinkedInOnly || !!liPlatformColumn);
-
-  const handleSaveLinkedInWizard = () => {
-    const identifierTarget =
-      campaignMatchMode === 'id'
-        ? 'campaign_id'
-        : campaignMatchMode === 'name'
-          ? 'campaign_name'
-          : inferIdentifierTarget(liIdentifierColumn);
-
-    const identifierName = identifierTarget === 'campaign_id' ? 'Campaign ID' : 'Campaign Name';
-
-    const idCol = detectedColumns.find(c => c.index.toString() === liIdentifierColumn);
-    const revCol = detectedColumns.find(c => c.index.toString() === liRevenueColumn);
-    const platCol = detectedColumns.find(c => c.index.toString() === liPlatformColumn);
-
-    if (!idCol || !revCol) return;
-
-    const wizardMappings: FieldMapping[] = [
-      {
-        sourceColumnIndex: idCol.index,
-        sourceColumnName: idCol.originalName,
-        targetFieldId: identifierTarget,
-        targetFieldName: identifierName,
-        matchType: 'manual',
-        confidence: 1.0,
-      },
-      {
-        sourceColumnIndex: revCol.index,
-        sourceColumnName: revCol.originalName,
-        targetFieldId: 'revenue',
-        targetFieldName: 'Revenue',
-        matchType: 'manual',
-        confidence: 1.0,
-      }
-    ];
-
-    if (!liIsLinkedInOnly && platCol) {
-      wizardMappings.push({
-        sourceColumnIndex: platCol.index,
-        sourceColumnName: platCol.originalName,
-        targetFieldId: 'platform',
-        targetFieldName: 'Platform',
-        matchType: 'manual',
-        confidence: 1.0,
-      });
-    }
-
-    saveMappingsMutation.mutate(wizardMappings);
-  };
 
   // Check conversion value calculation status
   const revenueMapping = mappings.find(m => m.targetFieldId === 'revenue');
   const conversionsMapping = mappings.find(m => m.targetFieldId === 'conversions');
   const revenueField = platformFields.find(f => f.id === 'revenue');
   const conversionsField = platformFields.find(f => f.id === 'conversions');
+  // NOTE: platformLower/isLinkedIn defined above for the LinkedIn wizard redirect.
+  
   // For LinkedIn: conversions come from API, only need revenue
   // For other platforms: may need both revenue and conversions
   const canCalculateConversionValue = isLinkedIn 
@@ -461,169 +370,8 @@ export function ColumnMappingInterface({
         </p>
       </div>
 
-      {/* LinkedIn guided mapping (single flow) */}
-      {isLinkedIn ? (
-        <>
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              For LinkedIn revenue tracking you only need: <strong>Campaign Identifier</strong> + <strong>Revenue</strong>. Optionally, map a <strong>Platform</strong> column if this sheet contains multiple sources.
-            </AlertDescription>
-          </Alert>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Detected columns</CardTitle>
-              <CardDescription>
-                We detected <strong>{detectedColumns.length}</strong> columns{columnsData?.sheetsAnalyzed ? ` across ${columnsData.sheetsAnalyzed} tab(s)` : ''}. You’ll only be asked to pick the few needed for LinkedIn revenue.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {detectedColumns.map((c) => (
-                  <div key={c.index} className="p-3 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-medium text-sm text-slate-900 dark:text-white truncate">
-                        {c.originalName}
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        {c.detectedType}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                      Samples: {(c.sampleValues || []).slice(0, 3).map(v => String(v)).join(', ') || '—'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Campaign Identifier</CardTitle>
-              <CardDescription>
-                Pick the column that identifies the LinkedIn campaign for each row.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-0">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Match campaigns by
-                </div>
-                <Select value={campaignMatchMode} onValueChange={(v) => setCampaignMatchMode(v as any)}>
-                  <SelectTrigger className="w-full sm:w-[260px]">
-                    <SelectValue placeholder="Select matching mode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">Auto-detect (recommended)</SelectItem>
-                    <SelectItem value="name">Campaign Name (text)</SelectItem>
-                    <SelectItem value="id">Campaign ID / URN (numeric)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  {campaignMatchMode === 'id' ? 'Campaign ID / URN column' : 'Campaign Name (or ID) column'}
-                </div>
-                <Select value={liIdentifierColumn} onValueChange={setLiIdentifierColumn}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a column..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {detectedColumns.map((column) => (
-                      <SelectItem key={column.index} value={column.index.toString()}>
-                        {column.originalName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">LinkedIn Revenue</CardTitle>
-              <CardDescription>
-                Pick the column that contains revenue. This is required to calculate conversion value.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <Select value={liRevenueColumn} onValueChange={setLiRevenueColumn}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select the Revenue column..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {detectedColumns.map((column) => (
-                    <SelectItem key={column.index} value={column.index.toString()}>
-                      {column.originalName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Attribute this data to LinkedIn (optional)</CardTitle>
-              <CardDescription>
-                If this sheet contains multiple sources, select the column that indicates the platform/source (e.g. “LinkedIn”, “Google Ads”).
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-0">
-              <div className="flex items-center justify-between gap-3 border rounded-md p-3 border-slate-200 dark:border-slate-700">
-                <div className="text-sm text-slate-700 dark:text-slate-300">
-                  This dataset is <strong>LinkedIn-only</strong> (no Platform column needed)
-                </div>
-                <Button
-                  type="button"
-                  variant={liIsLinkedInOnly ? "default" : "outline"}
-                  onClick={() => setLiIsLinkedInOnly(v => !v)}
-                >
-                  {liIsLinkedInOnly ? "LinkedIn-only" : "Multiple sources"}
-                </Button>
-              </div>
-
-              {!liIsLinkedInOnly && (
-                <Select value={liPlatformColumn} onValueChange={setLiPlatformColumn}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select the Platform/Source column..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {detectedColumns.map((column) => (
-                      <SelectItem key={column.index} value={column.index.toString()}>
-                        {column.originalName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="flex items-center justify-end gap-3">
-            <Button
-              onClick={() => handleSaveLinkedInWizard()}
-              disabled={!isLinkedInWizardValid || saveMappingsMutation.isPending}
-            >
-              {saveMappingsMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "✅ Save Mappings"
-              )}
-            </Button>
-          </div>
-        </>
-      ) : null}
-
-      {/* Conversion Value Calculation Status (non-LinkedIn flow) */}
-      {!isLinkedIn && (revenueField || conversionsField) && (
+      {/* Conversion Value Calculation Status */}
+      {(revenueField || conversionsField) && (
         <Card className={`border-l-4 ${
           canCalculateConversionValue 
             ? "border-l-green-500 bg-green-50 dark:bg-green-950/20" 
@@ -756,7 +504,6 @@ export function ColumnMappingInterface({
       )}
 
       {/* Unified Column Mapping */}
-      {!isLinkedIn && (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
@@ -971,7 +718,6 @@ export function ColumnMappingInterface({
           })()}
         </CardContent>
       </Card>
-      )}
 
       {/* Actions */}
       <div className="flex items-center justify-between pt-4 border-t">
@@ -1083,6 +829,51 @@ export function ColumnMappingInterface({
               // Navigate immediately - full reload ensures fresh data
               setTimeout(() => {
                 window.location.href = targetUrl;
+              }, 100);
+            }}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Campaign Overview
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+              const targetUrl = session
+                ? `/campaigns/${campaignId}/linkedin-analytics?session=${encodeURIComponent(session)}&tab=overview`
+                : `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
+
+              // Navigate immediately - full reload ensures fresh data
+              setTimeout(() => {
+                window.location.href = targetUrl;
+              }, 100);
+            }}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Campaign Overview
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+            variant="default"
+            className="w-full justify-center"
+            onClick={async () => {
+              // Invalidate queries to ensure fresh data when navigating
+              await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-analytics"] });
+              await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+              
+              if (onCancel) onCancel();
+              
+              // Navigate immediately - the data will refresh on the Overview tab
+              setTimeout(() => {
+                window.location.href = `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
               }, 100);
             }}
           >

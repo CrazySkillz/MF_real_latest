@@ -10324,11 +10324,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const revenueMapping = mappings.find((m: any) => m.targetFieldId === 'revenue' || m.platformField === 'revenue');
                 const campaignNameMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_name' || m.platformField === 'campaign_name');
                 const campaignIdMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_id' || m.platformField === 'campaign_id');
+                const platformMapping = mappings.find((m: any) => m.targetFieldId === 'platform' || m.platformField === 'platform');
                 const campaignMatchMode = (mappings.find((m: any) => m.campaignMatchMode)?.campaignMatchMode as any) || 'auto';
                 
                 console.log(`[Save Mappings] Revenue mapping:`, revenueMapping);
                 console.log(`[Save Mappings] Campaign name mapping:`, campaignNameMapping);
                 console.log(`[Save Mappings] Campaign ID mapping:`, campaignIdMapping);
+                console.log(`[Save Mappings] Platform mapping:`, platformMapping);
                 console.log(`[Save Mappings] Campaign match mode:`, campaignMatchMode);
                 
                 if (revenueMapping) {
@@ -10424,6 +10426,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                     // If matching yields no rows, don't zero out revenue—fall back to using all rows.
                     filteredRows = filtered.length > 0 ? filtered : dataRows;
+                  }
+
+                  // Optional: filter by platform/source if mapped (only include LinkedIn rows)
+                  if (platformMapping) {
+                    const platformColumnIndex = platformMapping.sourceColumnIndex ?? platformMapping.columnIndex ?? -1;
+                    if (platformColumnIndex >= 0 && platformColumnIndex < headers.length) {
+                      const before = filteredRows.length;
+                      const platformFiltered = filteredRows.filter((row: any[]) => {
+                        if (!Array.isArray(row) || row.length <= platformColumnIndex) return false;
+                        const v = String(row[platformColumnIndex] || '').toLowerCase().trim();
+                        return v.includes('linkedin') || v === 'li';
+                      });
+                      // If filtering eliminates everything, fall back to previous filteredRows
+                      filteredRows = platformFiltered.length > 0 ? platformFiltered : filteredRows;
+                      console.log(`[Save Mappings] Platform filter applied: ${filteredRows.length} (from ${before})`);
+                    }
                   }
                   
                   // Sum revenue

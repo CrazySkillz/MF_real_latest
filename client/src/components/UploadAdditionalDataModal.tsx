@@ -247,6 +247,8 @@ export function UploadAdditionalDataModal({
               <ColumnMappingInterface
                 campaignId={originalCampaignId}
                 connectionId={newConnectionInfo.connectionId}
+                connectionIds={newConnectionInfo.connectionIds}
+                sheetNames={newConnectionInfo.sheetNames}
                 spreadsheetId={newConnectionInfo.spreadsheetId}
                 platform="linkedin"
                 onMappingComplete={() => {

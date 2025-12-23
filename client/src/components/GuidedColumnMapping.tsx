@@ -475,32 +475,6 @@ export function GuidedColumnMapping({
 
   return (
     <div className="space-y-6">
-      {/* Sheet scope info */}
-      {(sheetNames?.length || requestedSheets?.length) && (
-        <Alert>
-          <Info className="w-4 h-4" />
-          <AlertDescription>
-            <div className="space-y-1">
-              <div>
-                <strong>Tabs selected:</strong>{' '}
-                {(sheetNames && sheetNames.length > 0 ? sheetNames : requestedSheets || []).join(', ')}
-              </div>
-              {fetchedSheets && (
-                <div>
-                  <strong>Tabs loaded:</strong> {fetchedSheets.join(', ') || 'None'}
-                </div>
-              )}
-              {failedSheets && failedSheets.length > 0 && (
-                <div className="text-amber-700 dark:text-amber-400">
-                  <strong>Tabs failed to load:</strong>{' '}
-                  {failedSheets.map(f => `${f.sheet}${f.status ? ` (${f.status})` : ''}`).join(', ')}
-                </div>
-              )}
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* Step Indicator */}
       <div className="flex items-center justify-between mb-6">
         {steps.map((step, index) => {

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FileSpreadsheet, Building2, ShoppingCart, Code, Upload, CheckCircle2, Map, ArrowLeft } from "lucide-react";
 import { SimpleGoogleSheetsAuth } from "./SimpleGoogleSheetsAuth";
 import { GoogleSheetsDatasetsView } from "./GoogleSheetsDatasetsView";
-import { ColumnMappingInterface } from "./ColumnMappingInterface";
+import { GuidedColumnMapping } from "./GuidedColumnMapping";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 
@@ -31,6 +31,7 @@ export function UploadAdditionalDataModal({
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
+  const [showGuidedMapping, setShowGuidedMapping] = useState(false);
   const [newConnectionInfo, setNewConnectionInfo] = useState<{ connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] } | null>(null);
   const { toast } = useToast();
   
@@ -65,6 +66,7 @@ export function UploadAdditionalDataModal({
       setSelectedSource(null);
       setShowDatasetsView(false);
       setJustConnected(false);
+      setShowGuidedMapping(false);
       setNewConnectionInfo(null);
     }
   }, [isOpen]);
@@ -101,8 +103,9 @@ export function UploadAdditionalDataModal({
           onClose();
         }, 1500);
       } else {
-        // For LinkedIn revenue flow, go directly to the single mapping UI (ColumnMappingInterface)
+        // For LinkedIn conversion value flow, show guided mapping for the first connection
         setNewConnectionInfo(connectionInfo);
+        setShowGuidedMapping(true);
         setJustConnected(false);
       }
     } else {
@@ -242,38 +245,71 @@ export function UploadAdditionalDataModal({
             </Button>
             )}
 
-            {/* Single mapping flow: ColumnMappingInterface */}
-            {newConnectionInfo && !googleSheetsOnly ? (
-              <ColumnMappingInterface
+            {/* Show guided mapping for new connections (only for LinkedIn conversion value flow, not googleSheetsOnly) */}
+            {showGuidedMapping && newConnectionInfo && !googleSheetsOnly ? (
+              (() => {
+                // Fallback: recover selected tab names from localStorage if they were dropped from props/state.
+                let fallbackSheetNames: string[] | undefined = undefined;
+                if (!newConnectionInfo.sheetNames || newConnectionInfo.sheetNames.length === 0) {
+                  try {
+                    const raw = localStorage.getItem(`mm:selectedSheetNames:${originalCampaignId}:${newConnectionInfo.spreadsheetId}`);
+                    const parsed = raw ? JSON.parse(raw) : null;
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      fallbackSheetNames = parsed;
+                    }
+                  } catch {
+                    // ignore
+                  }
+                }
+
+                const effectiveSheetNames = (newConnectionInfo.sheetNames && newConnectionInfo.sheetNames.length > 0)
+                  ? newConnectionInfo.sheetNames
+                  : fallbackSheetNames;
+
+                return (
+              <GuidedColumnMapping
                 campaignId={originalCampaignId}
                 connectionId={newConnectionInfo.connectionId}
                 connectionIds={newConnectionInfo.connectionIds}
-                sheetNames={newConnectionInfo.sheetNames}
+                sheetNames={effectiveSheetNames}
                 spreadsheetId={newConnectionInfo.spreadsheetId}
                 platform="linkedin"
                 onMappingComplete={() => {
+                  console.log('[UploadAdditionalDataModal] onMappingComplete called');
+                  console.log('[UploadAdditionalDataModal] originalReturnUrl:', originalReturnUrl);
+                  
+                  setShowGuidedMapping(false);
                   setNewConnectionInfo(null);
-
+                  
                   // Close modal immediately
                   onClose();
-
+                  
                   // Ensure URL includes tab=overview for LinkedIn Analytics page
                   let targetUrl = originalReturnUrl;
                   if (targetUrl.includes('/linkedin-analytics') && !targetUrl.includes('tab=')) {
                     targetUrl = targetUrl + (targetUrl.includes('?') ? '&' : '?') + 'tab=overview';
                   }
-
-                  // Full page reload to ensure fresh server state
+                  
+                  console.log('[UploadAdditionalDataModal] 🔄 FULL PAGE RELOAD to:', targetUrl);
+                  
+                  // Do a FULL page reload to ensure fresh data from server
                   setTimeout(() => {
                     window.location.href = targetUrl;
+                    // Force reload to bypass any cache
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 100);
                   }, 300);
                 }}
                 onCancel={() => {
+                  setShowGuidedMapping(false);
                   setNewConnectionInfo(null);
                   refetchConnections();
                   setShowDatasetsView(true);
                 }}
               />
+                );
+              })()
             ) : showDatasetsView || (!justConnected && googleSheetsConnections.length > 0) ? (
               <>
                 {/* Show connected datasets */}

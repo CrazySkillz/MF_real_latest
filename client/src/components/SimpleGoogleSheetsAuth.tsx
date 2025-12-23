@@ -205,6 +205,18 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
         ? [availableSheets[0].title] 
         : [null];
 
+    // Persist the user’s explicit tab selection so the next screen can reliably scope detection,
+    // even if something drops props/state during modal transitions.
+    try {
+      const persisted = sheetsToConnect.filter((s): s is string => s !== null);
+      localStorage.setItem(
+        `mm:selectedSheetNames:${campaignId}:${selectedSpreadsheet}`,
+        JSON.stringify(persisted)
+      );
+    } catch {
+      // ignore storage failures
+    }
+
     setIsSelectingSpreadsheet(true);
 
     try {

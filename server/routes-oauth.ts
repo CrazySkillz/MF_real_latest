@@ -65,6 +65,15 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Build a Sheets A1 range prefix for a tab name.
+  // Sheet/tab names with spaces or special characters must be quoted in A1 notation.
+  const toA1SheetPrefix = (sheetName?: string | null): string => {
+    if (!sheetName) return '';
+    // Escape single quotes by doubling them: O'Brien -> O''Brien
+    const escaped = String(sheetName).replace(/'/g, "''");
+    return `'${escaped}'!`;
+  };
+
   // Import rate limiters
   const { 
     oauthRateLimiter, 
@@ -3242,7 +3251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             // Process each connection (similar to single connection logic)
-            const range = conn.sheetName ? `${conn.sheetName}!A1:Z1000` : 'A1:Z1000';
+            const range = conn.sheetName ? `${toA1SheetPrefix(conn.sheetName)}A1:Z1000` : 'A1:Z1000';
             let sheetResponse = await fetch(
               `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheetId}/values/${encodeURIComponent(range)}`,
               { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -3578,7 +3587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Build range with sheet name if specified
-      const range = connection.sheetName ? `${connection.sheetName}!A1:Z1000` : 'A1:Z1000';
+      const range = connection.sheetName ? `${toA1SheetPrefix(connection.sheetName)}A1:Z1000` : 'A1:Z1000';
 
       let sheetResponse = await fetchWithTimeout(
         `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(range)}`,
@@ -3632,7 +3641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
 
           // Build range with sheet name if specified
-          const retryRange = connection.sheetName ? `${connection.sheetName}!A1:Z1000` : 'A1:Z1000';
+          const retryRange = connection.sheetName ? `${toA1SheetPrefix(connection.sheetName)}A1:Z1000` : 'A1:Z1000';
 
           sheetResponse = await fetchWithTimeoutRetry(
             `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(retryRange)}`,
@@ -10009,7 +10018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const connection of connections) {
         // Build range with sheet name if specified
-        const analysisRange = connection.sheetName ? `${connection.sheetName}!A1:Z100` : 'A1:Z100';
+        const analysisRange = connection.sheetName ? `${toA1SheetPrefix(connection.sheetName)}A1:Z100` : 'A1:Z100';
         
         console.log(`[Detect Columns] Fetching columns from sheet: ${connection.sheetName || 'default'}, spreadsheet: ${connection.spreadsheetId}`);
         
@@ -10286,7 +10295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`[Save Mappings] Processing connection ${conn.id} (${conn.spreadsheetId}, sheet: ${conn.sheetName || 'default'})`);
                 
                 // Fetch Google Sheets data using the same logic as google-sheets-data endpoint
-                const range = conn.sheetName ? `${conn.sheetName}!A1:Z1000` : 'A1:Z1000';
+                const range = conn.sheetName ? `${toA1SheetPrefix(conn.sheetName)}A1:Z1000` : 'A1:Z1000';
                 const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheetId}/values/${range}`;
                 
                 const sheetsResponse = await fetch(sheetsUrl, {

@@ -41,6 +41,9 @@ interface FieldMapping {
   targetFieldName: string;
   matchType: 'auto' | 'manual' | 'template';
   confidence: number;
+  // Optional metadata: how to interpret the campaign identifier column when filtering sheet rows.
+  // Stored alongside mappings to avoid DB schema changes.
+  campaignMatchMode?: 'auto' | 'name' | 'id';
 }
 
 interface ColumnMappingInterfaceProps {
@@ -68,6 +71,7 @@ export function ColumnMappingInterface({
   const [validationErrors, setValidationErrors] = useState<Map<string, string>>(new Map());
   const [mappingsJustSaved, setMappingsJustSaved] = useState(false);
   const [conversionValueCalculated, setConversionValueCalculated] = useState(false);
+  const [campaignMatchMode, setCampaignMatchMode] = useState<'auto' | 'name' | 'id'>('auto');
 
   // Fetch platform fields (with campaignId to check if LinkedIn API is connected)
   const { data: platformFieldsData } = useQuery<{ success: boolean; fields: PlatformField[] }>({
@@ -167,13 +171,15 @@ export function ColumnMappingInterface({
       if (!connectionId) {
         throw new Error('Connection ID is required to save mappings');
       }
+
+      const mappingsWithMode = mappingsToSave.map(m => ({ ...m, campaignMatchMode }));
       
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/save-mappings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           connectionId,
-          mappings: mappingsToSave,
+          mappings: mappingsWithMode,
           platform
         })
       });
@@ -252,6 +258,21 @@ export function ColumnMappingInterface({
         errors.set(field.id, `Required field "${field.name}" is not mapped`);
       }
     }
+
+    // Campaign identifier requirement (LinkedIn revenue tracking relies on a stable identifier).
+    // For LinkedIn: require either campaign_name or campaign_id depending on selected mode.
+    if (platform?.toLowerCase() === 'linkedin') {
+      const hasCampaignName = mappings.some(m => m.targetFieldId === 'campaign_name');
+      const hasCampaignId = mappings.some(m => m.targetFieldId === 'campaign_id');
+
+      if (campaignMatchMode === 'name' && !hasCampaignName) {
+        errors.set('campaign_name', 'Please map a column to "Campaign Name" (text) to match sheet rows to LinkedIn campaigns.');
+      } else if (campaignMatchMode === 'id' && !(hasCampaignId || hasCampaignName)) {
+        errors.set('campaign_id', 'Please map a column to "Campaign ID" (or use Campaign Name if your sheet stores IDs there).');
+      } else if (campaignMatchMode === 'auto' && !(hasCampaignName || hasCampaignId)) {
+        errors.set('campaign_name', 'Please map a campaign identifier column (Campaign Name or Campaign ID).');
+      }
+    }
     
     // Check for duplicate mappings
     const fieldIds = new Set<string>();
@@ -263,7 +284,7 @@ export function ColumnMappingInterface({
     }
     
     setValidationErrors(errors);
-  }, [mappings, platformFields]);
+  }, [mappings, platformFields, campaignMatchMode, platform]);
 
   const handleFieldMapping = (fieldId: string, columnIndex: number | null) => {
     setMappings(prev => {
@@ -352,6 +373,35 @@ export function ColumnMappingInterface({
           Map your Google Sheets columns to the required fields for {platform}
         </p>
       </div>
+
+      {/* Campaign identifier matching mode */}
+      {isLinkedIn && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Campaign Identifier</CardTitle>
+            <CardDescription>
+              Choose how to match Google Sheets rows to LinkedIn campaigns. Use <strong>Campaign ID</strong> if your sheet stores numeric IDs/URNs.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Match campaigns by
+              </div>
+              <Select value={campaignMatchMode} onValueChange={(v) => setCampaignMatchMode(v as any)}>
+                <SelectTrigger className="w-full sm:w-[260px]">
+                  <SelectValue placeholder="Select matching mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto-detect (recommended)</SelectItem>
+                  <SelectItem value="name">Campaign Name (text)</SelectItem>
+                  <SelectItem value="id">Campaign ID / URN (numeric)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Conversion Value Calculation Status */}
       {(revenueField || conversionsField) && (

@@ -57,7 +57,6 @@ export function GuidedColumnMapping({
   const [selectedRevenue, setSelectedRevenue] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [skipPlatform, setSkipPlatform] = useState(false);
-  const [campaignMatchMode, setCampaignMatchMode] = useState<'auto' | 'name' | 'id'>('auto');
   
   // CRITICAL DEBUG LOG
   console.log('====== GUIDED COLUMN MAPPING INIT ======');
@@ -257,9 +256,7 @@ export function GuidedColumnMapping({
       if (!selectedCampaignName) {
         toast({
           title: "Campaign Identifier Required",
-          description: campaignMatchMode === 'id'
-            ? "Please select a column that contains the campaign ID/URN."
-            : "Please select a column that identifies the campaign name.",
+          description: "Please select the column that identifies the campaign (name or numeric ID).",
           variant: "destructive"
         });
         return;
@@ -293,19 +290,17 @@ export function GuidedColumnMapping({
   const handleSave = () => {
     const mappings: any[] = [];
     
-    // Add campaign identifier mapping (name or id)
+    // Add campaign name mapping
     if (selectedCampaignName) {
       const column = detectedColumns.find(c => c.index.toString() === selectedCampaignName);
       if (column) {
         mappings.push({
           sourceColumnIndex: column.index,
           sourceColumnName: column.originalName,
-          targetFieldId: campaignMatchMode === 'id' ? 'campaign_id' : 'campaign_name',
-          targetFieldName: campaignMatchMode === 'id' ? 'Campaign ID' : 'Campaign Name',
+          targetFieldId: 'campaign_name',
+          targetFieldName: 'Campaign Name',
           matchType: 'manual',
-          confidence: 1.0,
-          // Stored alongside mappings so backend can choose matching logic without a DB change
-          campaignMatchMode
+          confidence: 1.0
         });
       }
     }
@@ -551,7 +546,7 @@ export function GuidedColumnMapping({
           </CardTitle>
           <CardDescription>
             {currentStep === 'campaign-name' && (
-              "Which column identifies the campaign for each row? You can match by Campaign Name (text) or Campaign ID/URN (numeric)."
+              "Which column in your Google Sheet identifies the campaign? You can select a campaign name column OR a numeric campaign ID column."
             )}
             {currentStep === 'revenue' && (
               "Which column contains the revenue data? This is required to calculate conversion values and revenue metrics like ROI and ROAS."
@@ -569,27 +564,7 @@ export function GuidedColumnMapping({
           {currentStep === 'campaign-name' && (
             <div className="space-y-4">
               <div>
-                <Label className="text-sm font-medium mb-2 block">Match campaigns by</Label>
-                <Select value={campaignMatchMode} onValueChange={(v) => setCampaignMatchMode(v as any)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select matching mode..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">Auto-detect (recommended)</SelectItem>
-                    <SelectItem value="name">Campaign Name (text)</SelectItem>
-                    <SelectItem value="id">Campaign ID / URN (numeric)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-                  {campaignMatchMode === 'id'
-                    ? 'Choose this if your sheet stores numeric campaign IDs or URNs like "urn:li:sponsoredCampaign:123".'
-                    : 'Choose this if your sheet stores the LinkedIn campaign name text.'}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium mb-2 block">
-                  {campaignMatchMode === 'id' ? 'Campaign ID / URN Column' : 'Campaign Name Column'}
-                </Label>
+                <Label className="text-sm font-medium mb-2 block">Campaign Identifier Column (Name or ID)</Label>
                 <Select value={selectedCampaignName || ""} onValueChange={setSelectedCampaignName}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a column..." />
@@ -618,7 +593,7 @@ export function GuidedColumnMapping({
                   <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
                     <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <span>
-                      💡 <strong>Tip:</strong> Use the LinkedIn campaign identifier from your import session (campaign name or numeric ID). The MetricMind workspace name ("<strong>{campaignName}</strong>") may not match what’s in the sheet.
+                      💡 <strong>Tip:</strong> This can be the LinkedIn campaign <strong>name</strong> or a numeric LinkedIn campaign <strong>ID</strong>. MetricMind will match it against the campaigns imported for this workspace.
                     </span>
                   </div>
                 </div>
@@ -720,7 +695,7 @@ export function GuidedColumnMapping({
                 <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Target className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium">Campaign Name:</span>
+                    <span className="text-sm font-medium">Campaign Identifier:</span>
                   </div>
                   <span className="text-sm text-slate-700 dark:text-slate-300">
                     {detectedColumns.find(c => c.index.toString() === selectedCampaignName)?.originalName || 'Not selected'}

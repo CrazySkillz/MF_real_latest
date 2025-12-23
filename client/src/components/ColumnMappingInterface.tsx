@@ -336,6 +336,9 @@ export function ColumnMappingInterface({
     });
   };
 
+  const platformLower = platform.toLowerCase();
+  const isLinkedIn = platformLower.includes('linkedin');
+
   const isMappingValid = validationErrors.size === 0 && 
     platformFields.filter(f => f.required).every(f => 
       mappings.some(m => m.targetFieldId === f.id)
@@ -409,9 +412,6 @@ export function ColumnMappingInterface({
   const conversionsMapping = mappings.find(m => m.targetFieldId === 'conversions');
   const revenueField = platformFields.find(f => f.id === 'revenue');
   const conversionsField = platformFields.find(f => f.id === 'conversions');
-  const platformLower = platform.toLowerCase();
-  const isLinkedIn = platformLower.includes('linkedin');
-  
   // For LinkedIn: conversions come from API, only need revenue
   // For other platforms: may need both revenue and conversions
   const canCalculateConversionValue = isLinkedIn 

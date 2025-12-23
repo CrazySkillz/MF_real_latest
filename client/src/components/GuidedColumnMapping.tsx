@@ -24,6 +24,7 @@ interface DetectedColumn {
   sampleValues: any[];
   uniqueValues?: number;
   nullCount: number;
+  sheets?: string[];
 }
 
 interface GuidedColumnMappingProps {
@@ -118,6 +119,9 @@ export function GuidedColumnMapping({
   });
 
   const detectedColumns = columnsData?.columns || [];
+  const requestedSheets = (columnsData as any)?.sheetNamesRequested as string[] | undefined;
+  const fetchedSheets = (columnsData as any)?.sheetNamesFetched as string[] | undefined;
+  const failedSheets = (columnsData as any)?.sheetNamesFailed as Array<{ sheet: string; status?: number; statusText?: string }> | undefined;
   
   // Debug logging
   useEffect(() => {
@@ -471,6 +475,32 @@ export function GuidedColumnMapping({
 
   return (
     <div className="space-y-6">
+      {/* Sheet scope info */}
+      {(sheetNames?.length || requestedSheets?.length) && (
+        <Alert>
+          <Info className="w-4 h-4" />
+          <AlertDescription>
+            <div className="space-y-1">
+              <div>
+                <strong>Tabs selected:</strong>{' '}
+                {(sheetNames && sheetNames.length > 0 ? sheetNames : requestedSheets || []).join(', ')}
+              </div>
+              {fetchedSheets && (
+                <div>
+                  <strong>Tabs loaded:</strong> {fetchedSheets.join(', ') || 'None'}
+                </div>
+              )}
+              {failedSheets && failedSheets.length > 0 && (
+                <div className="text-amber-700 dark:text-amber-400">
+                  <strong>Tabs failed to load:</strong>{' '}
+                  {failedSheets.map(f => `${f.sheet}${f.status ? ` (${f.status})` : ''}`).join(', ')}
+                </div>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Step Indicator */}
       <div className="flex items-center justify-between mb-6">
         {steps.map((step, index) => {
@@ -574,9 +604,16 @@ export function GuidedColumnMapping({
                       <SelectItem key={column.index} value={column.index.toString()}>
                         <div className="flex items-center justify-between w-full">
                           <span>{column.originalName}</span>
-                          <Badge variant="secondary" className="ml-2 text-xs">
-                            {column.detectedType}
-                          </Badge>
+                          <div className="flex items-center gap-2 ml-2">
+                            {column.sheets && column.sheets.length > 1 && (
+                              <Badge variant="outline" className="text-xs">
+                                {column.sheets.length} tabs
+                              </Badge>
+                            )}
+                            <Badge variant="secondary" className="text-xs">
+                              {column.detectedType}
+                            </Badge>
+                          </div>
                         </div>
                       </SelectItem>
                     ))}

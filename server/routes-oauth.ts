@@ -10013,6 +10013,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Collect all columns from all sheets
       const allColumnsMap = new Map<string, DetectedColumn>();
+      const sheetNamesRequested = connections.map(c => c.sheetName || 'default');
+      const sheetNamesFetched: string[] = [];
+      const sheetNamesFailed: Array<{ sheet: string; status?: number; statusText?: string }> = [];
       let totalRowsAcrossSheets = 0;
       let globalColumnIndex = 0; // Track global index across all sheets
       
@@ -10030,8 +10033,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (!sheetResponse.ok) {
           console.warn(`[Detect Columns] Failed to fetch sheet ${connection.sheetName || 'default'}: ${sheetResponse.statusText}`);
+          sheetNamesFailed.push({ sheet: connection.sheetName || 'default', status: sheetResponse.status, statusText: sheetResponse.statusText });
           continue; // Skip this sheet and continue with others
         }
+        sheetNamesFetched.push(connection.sheetName || 'default');
         
         const sheetData = await sheetResponse.json();
         const rows = sheetData.values || [];
@@ -10056,6 +10061,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Add more sample values from this sheet
             const columnValues = dataRows.map((row: any[]) => row[localIndex]).filter((val: any) => val !== undefined && val !== null && val !== '');
             existing.sampleValues = [...existing.sampleValues, ...columnValues.slice(0, 3)].slice(0, 5);
+            // Track which sheets this column appeared in
+            (existing as any).sheets = Array.from(new Set([...(existing as any).sheets || [], connection.sheetName || 'default']));
             console.log(`[Detect Columns] Merged column "${columnName}" (keeping index ${existing.index})`);
           } else {
             // New column - analyze it and assign unique global index
@@ -10074,7 +10081,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               confidence,
               sampleValues: nonEmptyValues.slice(0, 5),
               uniqueValues: new Set(nonEmptyValues).size,
-              nullCount: columnValues.length - nonEmptyValues.length
+              nullCount: columnValues.length - nonEmptyValues.length,
+              // Extra metadata (safe for clients): which sheet tabs contained this column
+              ...( { sheets: [connection.sheetName || 'default'] } as any )
             });
             console.log(`[Detect Columns] Added new column "${columnName}" with global index ${globalColumnIndex - 1}`);
           }
@@ -10096,7 +10105,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         columns: detectedColumns,
         totalRows: totalRowsAcrossSheets,
-        sheetsAnalyzed: connections.length
+        sheetsAnalyzed: connections.length,
+        sheetNamesRequested,
+        sheetNamesFetched,
+        sheetNamesFailed
       });
     } catch (error: any) {
       console.error('[Detect Columns] Error:', error);

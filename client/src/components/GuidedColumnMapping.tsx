@@ -170,7 +170,8 @@ export function GuidedColumnMapping({
           connectionId: connId,
           mappings,
           platform,
-          spreadsheetId // Also send spreadsheetId as fallback
+          spreadsheetId, // Also send spreadsheetId as fallback
+          sheetNames, // CRITICAL: selected tab names (needed if DB doesn't persist sheet_name)
         };
         
         console.log(`[GuidedColumnMapping] 📤 Sending save-mappings request for connection ${connId}:`, requestBody);

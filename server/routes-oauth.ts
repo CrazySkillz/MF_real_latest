@@ -10157,11 +10157,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/google-sheets/save-mappings", async (req, res) => {
     console.log(`[Save Mappings] ========== SAVE MAPPINGS ENDPOINT CALLED ==========`);
     console.log(`[Save Mappings] Campaign ID: ${req.params.id}`);
-    console.log(`[Save Mappings] Request body:`, JSON.stringify({ connectionId: req.body.connectionId, mappingsCount: req.body.mappings?.length, platform: req.body.platform }));
+    console.log(`[Save Mappings] Request body:`, JSON.stringify({ connectionId: req.body.connectionId, mappingsCount: req.body.mappings?.length, platform: req.body.platform, spreadsheetId: req.body.spreadsheetId, sheetNames: req.body.sheetNames }));
     
     try {
       const campaignId = req.params.id;
       const { connectionId, mappings, platform } = req.body;
+      const spreadsheetIdFromBody: string | undefined = req.body.spreadsheetId;
+      const sheetNamesFromBody: string[] = Array.isArray(req.body.sheetNames)
+        ? req.body.sheetNames.filter((s: any) => typeof s === 'string' && s.trim().length > 0).map((s: string) => s.trim())
+        : (typeof req.body.sheetNames === 'string'
+            ? req.body.sheetNames.split(',').map((s: string) => s.trim()).filter(Boolean)
+            : []);
       
       if (!connectionId || !mappings || !Array.isArray(mappings)) {
         console.error(`[Save Mappings] ❌ Validation failed: connectionId=${!!connectionId}, mappings is array=${Array.isArray(mappings)}`);
@@ -10307,7 +10313,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Fetch revenue from Google Sheets
             let totalRevenue = 0;
             
-            for (const conn of mappedConnections) {
+            // If the DB cannot persist sheet_name (older schema), mappedConnections will all have sheetName=null.
+            // In that case, rely on sheetNames passed by the client to fetch the correct tabs (e.g. Revenue_Closed_Won).
+            const shouldUseSheetNamesFromBody = !!spreadsheetIdFromBody && sheetNamesFromBody.length > 0;
+            const connectionsToProcess = (() => {
+              if (!shouldUseSheetNamesFromBody) return mappedConnections;
+              const tokenConn = mappedConnections.find((c: any) => c.spreadsheetId === spreadsheetIdFromBody) || mappedConnections[0];
+              if (!tokenConn) return mappedConnections;
+              return sheetNamesFromBody.map((sn) => ({ ...tokenConn, sheetName: sn }));
+            })();
+
+            for (const conn of connectionsToProcess) {
               try {
                 console.log(`[Save Mappings] Processing connection ${conn.id} (${conn.spreadsheetId}, sheet: ${conn.sheetName || 'default'})`);
                 

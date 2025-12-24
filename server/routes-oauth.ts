@@ -10500,14 +10500,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     const sheetName = String(sheetNameRaw || '').toLowerCase().trim();
                     if (!sheetName) return false;
 
+                    // Per guided UI: when a user maps by Campaign Name, they expect it to match the MetricMind campaign name.
+                    // So prefer the workspace campaign name first, then fall back to LinkedIn imported campaign names.
+                    if (workspaceCampaignName) {
+                      if (sheetName.includes(workspaceCampaignName) || workspaceCampaignName.includes(sheetName)) return true;
+                    }
+
                     for (const liName of linkedInCampaignNames) {
                       if (!liName) continue;
                       if (sheetName === liName) return true;
                       if (sheetName.includes(liName) || liName.includes(sheetName)) return true;
-                    }
-
-                    if (workspaceCampaignName) {
-                      return sheetName.includes(workspaceCampaignName) || workspaceCampaignName.includes(sheetName);
                     }
 
                     return false;

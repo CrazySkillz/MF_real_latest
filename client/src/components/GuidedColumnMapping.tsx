@@ -25,7 +25,7 @@ interface DetectedColumn {
   uniqueValues?: number;
   nullCount: number;
   sheets?: string[];
-is }
+}
 
 interface GuidedColumnMappingProps {
   campaignId: string;

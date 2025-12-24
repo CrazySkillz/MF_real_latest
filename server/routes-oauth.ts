@@ -10445,9 +10445,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`[Save Mappings] Mappings for ${conn.id}:`, JSON.stringify(mappings));
                 
                 const revenueMapping = mappings.find((m: any) => m.targetFieldId === 'revenue' || m.platformField === 'revenue');
+                const campaignIdMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_id' || m.platformField === 'campaign_id');
                 const campaignNameMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_name' || m.platformField === 'campaign_name');
                 
                 console.log(`[Save Mappings] Revenue mapping:`, revenueMapping);
+                console.log(`[Save Mappings] Campaign ID mapping:`, campaignIdMapping);
                 console.log(`[Save Mappings] Campaign name mapping:`, campaignNameMapping);
                 
                 if (revenueMapping) {
@@ -10468,66 +10470,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     continue;
                   }
                   
-                  // Filter by campaign name if mapped
-                  // IMPORTANT: The spreadsheet typically contains LinkedIn *campaign names*, not the MetricMind workspace campaign name.
-                  // So prefer matching against the LinkedIn campaign names present in the latest import session.
+                  // Filter by campaign identifier if mapped.
+                  // Prefer Campaign ID when available (more reliable), otherwise fall back to Campaign Name.
+                  // IMPORTANT: The spreadsheet typically contains LinkedIn *campaign names* or IDs, not necessarily the MetricMind workspace campaign name.
                   let filteredRows = dataRows;
-                  if (campaignNameMapping) {
+                  const workspaceCampaignName = String(campaign?.name || '').toLowerCase().trim();
+                  const linkedInCampaignNames = new Set(
+                    linkedInMetrics
+                      .map((m: any) => String(m?.campaignName || '').toLowerCase().trim())
+                      .filter(Boolean)
+                  );
+
+                  // LinkedIn import metrics store `campaignUrn` like "urn:li:sponsoredCampaign:123".
+                  const linkedInCampaignIds = new Set(
+                    linkedInMetrics
+                      .map((m: any) => String(m?.campaignUrn || '').trim())
+                      .map((urn: string) => urn.split(':').pop() || '')
+                      .map((id: string) => id.trim())
+                      .filter((id: string) => /^[0-9]+$/.test(id))
+                  );
+
+                  const normalizeNumericId = (raw: any): string => {
+                    const s = String(raw || '').toLowerCase().trim();
+                    if (!s) return '';
+                    return s.replace(/^urn:li:sponsoredcampaign:/, '').replace(/[^0-9]/g, '');
+                  };
+
+                  const matchesByName = (sheetNameRaw: string): boolean => {
+                    const sheetName = String(sheetNameRaw || '').toLowerCase().trim();
+                    if (!sheetName) return false;
+
+                    for (const liName of linkedInCampaignNames) {
+                      if (!liName) continue;
+                      if (sheetName === liName) return true;
+                      if (sheetName.includes(liName) || liName.includes(sheetName)) return true;
+                    }
+
+                    if (workspaceCampaignName) {
+                      return sheetName.includes(workspaceCampaignName) || workspaceCampaignName.includes(sheetName);
+                    }
+
+                    return false;
+                  };
+
+                  // 1) Prefer Campaign ID mapping if provided and valid for this sheet
+                  if (campaignIdMapping) {
+                    const campaignIdColumnIndex = resolveColumnIndex(campaignIdMapping, headers);
+                    if (campaignIdColumnIndex >= 0 && campaignIdColumnIndex < headers.length) {
+                      const filteredById = dataRows.filter((row: any[]) => {
+                        if (!Array.isArray(row) || row.length <= campaignIdColumnIndex) return false;
+                        const numericCandidate = normalizeNumericId(row[campaignIdColumnIndex]);
+                        return !!numericCandidate && linkedInCampaignIds.has(numericCandidate);
+                      });
+                      filteredRows = filteredById.length > 0 ? filteredById : filteredRows;
+                    } else {
+                      console.log(`[Save Mappings] ⚠️ Invalid campaign ID column index: ${campaignIdColumnIndex}, skipping ID filter`);
+                    }
+                  }
+
+                  // 2) If still unfiltered or Campaign ID not provided, try Campaign Name mapping
+                  if (filteredRows === dataRows && campaignNameMapping) {
                     const campaignNameColumnIndex = resolveColumnIndex(campaignNameMapping, headers);
                     if (campaignNameColumnIndex >= 0 && campaignNameColumnIndex < headers.length) {
-                      const workspaceCampaignName = String(campaign?.name || '').toLowerCase().trim();
-                      const linkedInCampaignNames = new Set(
-                        linkedInMetrics
-                          .map((m: any) => String(m?.campaignName || '').toLowerCase().trim())
-                          .filter(Boolean)
-                      );
-
-                      // Also support sheets that store a numeric LinkedIn campaign ID (or URN) in the mapped "campaign_name" column.
-                      // LinkedIn import metrics store `campaignUrn` like "urn:li:sponsoredCampaign:123".
-                      const linkedInCampaignIds = new Set(
-                        linkedInMetrics
-                          .map((m: any) => String(m?.campaignUrn || '').trim())
-                          .map((urn: string) => urn.split(':').pop() || '')
-                          .map((id: string) => id.trim())
-                          .filter((id: string) => /^[0-9]+$/.test(id))
-                      );
-
-                      const matchesAny = (sheetNameRaw: string): boolean => {
-                        const sheetName = String(sheetNameRaw || '').toLowerCase().trim();
-                        if (!sheetName) return false;
-
-                        // If the sheet value is a numeric ID (or URN containing one), match on campaign ID.
-                        const numericCandidate =
-                          sheetName.replace(/^urn:li:sponsoredcampaign:/, '').replace(/[^0-9]/g, '');
-                        if (numericCandidate && linkedInCampaignIds.has(numericCandidate)) {
-                          return true;
-                        }
-
-                        // Prefer matching against imported LinkedIn campaign names (exact or substring both ways)
-                        for (const liName of linkedInCampaignNames) {
-                          if (!liName) continue;
-                          if (sheetName === liName) return true;
-                          if (sheetName.includes(liName) || liName.includes(sheetName)) return true;
-                        }
-
-                        // Fallback: match against workspace campaign name if available
-                        if (workspaceCampaignName) {
-                          return sheetName.includes(workspaceCampaignName) || workspaceCampaignName.includes(sheetName);
-                        }
-
-                        return false;
-                      };
-
-                      const filteredByLinkedIn = dataRows.filter((row: any[]) => {
+                      const filteredByName = dataRows.filter((row: any[]) => {
                         if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) return false;
-                        return matchesAny(String(row[campaignNameColumnIndex] || ''));
+                        return matchesByName(String(row[campaignNameColumnIndex] || ''));
                       });
-
-                      // If matching yields no rows, don't zero out revenue—fall back to using all rows.
-                      filteredRows = filteredByLinkedIn.length > 0 ? filteredByLinkedIn : dataRows;
+                      filteredRows = filteredByName.length > 0 ? filteredByName : filteredRows;
                     } else {
-                      console.log(`[Save Mappings] ⚠️ Invalid campaign name column index: ${campaignNameColumnIndex}, using all rows`);
+                      console.log(`[Save Mappings] ⚠️ Invalid campaign name column index: ${campaignNameColumnIndex}, skipping name filter`);
                     }
+                  }
+
+                  // 3) If matching yields no rows, don't zero out revenue—fall back to using all rows.
+                  if (filteredRows.length === 0) {
+                    filteredRows = dataRows;
                   }
                   
                   // Sum revenue

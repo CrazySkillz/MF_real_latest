@@ -25,7 +25,7 @@ interface DetectedColumn {
   uniqueValues?: number;
   nullCount: number;
   sheets?: string[];
-}
+is }
 
 interface GuidedColumnMappingProps {
   campaignId: string;
@@ -38,7 +38,7 @@ interface GuidedColumnMappingProps {
   onCancel?: () => void;
 }
 
-type Step = 'detect' | 'campaign-name' | 'revenue' | 'platform' | 'review' | 'complete';
+type Step = 'detect' | 'campaign-name' | 'campaign-name-sheet' | 'revenue' | 'platform' | 'review' | 'complete';
 
 export function GuidedColumnMapping({
   campaignId,
@@ -54,7 +54,12 @@ export function GuidedColumnMapping({
   const queryClient = useQueryClient();
   
   const [currentStep, setCurrentStep] = useState<Step>('detect');
+  // Identifier route selection:
+  // - campaign_name: user selects Campaign Name as unique identifier (Route 1)
+  // - campaign_id: user selects Campaign ID as unique identifier, then selects Campaign Name column (Route 2)
+  const [identifierRoute, setIdentifierRoute] = useState<'campaign_name' | 'campaign_id'>('campaign_name');
   const [selectedCampaignName, setSelectedCampaignName] = useState<string | null>(null);
+  const [selectedCampaignNameFromSheet, setSelectedCampaignNameFromSheet] = useState<string | null>(null);
   const [selectedRevenue, setSelectedRevenue] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [skipPlatform, setSkipPlatform] = useState(false);
@@ -261,7 +266,21 @@ export function GuidedColumnMapping({
       if (!selectedCampaignName) {
         toast({
           title: "Campaign Identifier Required",
-          description: "Please select the column that identifies the campaign (name or numeric ID).",
+          description: "Please select the column that uniquely identifies the campaign.",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (identifierRoute === 'campaign_id') {
+        setCurrentStep('campaign-name-sheet');
+      } else {
+        setCurrentStep('revenue');
+      }
+    } else if (currentStep === 'campaign-name-sheet') {
+      if (!selectedCampaignNameFromSheet) {
+        toast({
+          title: "Campaign Name Column Required",
+          description: "Please select the Campaign Name column from your sheet. This should match the campaign name in MetricMind.",
           variant: "destructive"
         });
         return;
@@ -278,12 +297,15 @@ export function GuidedColumnMapping({
       }
       setCurrentStep('platform');
     } else if (currentStep === 'platform') {
-      setCurrentStep('review');
+      // Final step: save mappings
+      handleSave();
     }
   };
 
   const handleBack = () => {
     if (currentStep === 'revenue') {
+      setCurrentStep(identifierRoute === 'campaign_id' ? 'campaign-name-sheet' : 'campaign-name');
+    } else if (currentStep === 'campaign-name-sheet') {
       setCurrentStep('campaign-name');
     } else if (currentStep === 'platform') {
       setCurrentStep('revenue');
@@ -295,13 +317,40 @@ export function GuidedColumnMapping({
   const handleSave = () => {
     const mappings: any[] = [];
     
-    // Add campaign name mapping
+    // Route 1: Campaign Name is the unique identifier
+    // Route 2: Campaign ID is the unique identifier AND Campaign Name is selected separately (should match MetricMind campaign name)
     if (selectedCampaignName) {
-      const column = detectedColumns.find(c => c.index.toString() === selectedCampaignName);
-      if (column) {
+      const identifierColumn = detectedColumns.find(c => c.index.toString() === selectedCampaignName);
+      if (identifierColumn) {
+        if (identifierRoute === 'campaign_id') {
+          mappings.push({
+            sourceColumnIndex: identifierColumn.index,
+            sourceColumnName: identifierColumn.originalName,
+            targetFieldId: 'campaign_id',
+            targetFieldName: 'Campaign ID',
+            matchType: 'manual',
+            confidence: 1.0
+          });
+        } else {
+          mappings.push({
+            sourceColumnIndex: identifierColumn.index,
+            sourceColumnName: identifierColumn.originalName,
+            targetFieldId: 'campaign_name',
+            targetFieldName: 'Campaign Name',
+            matchType: 'manual',
+            confidence: 1.0
+          });
+        }
+      }
+    }
+
+    // If user chose Campaign ID route, also store the Campaign Name column
+    if (identifierRoute === 'campaign_id' && selectedCampaignNameFromSheet) {
+      const nameColumn = detectedColumns.find(c => c.index.toString() === selectedCampaignNameFromSheet);
+      if (nameColumn) {
         mappings.push({
-          sourceColumnIndex: column.index,
-          sourceColumnName: column.originalName,
+          sourceColumnIndex: nameColumn.index,
+          sourceColumnName: nameColumn.originalName,
           targetFieldId: 'campaign_name',
           targetFieldName: 'Campaign Name',
           matchType: 'manual',
@@ -377,10 +426,12 @@ export function GuidedColumnMapping({
   // Step indicator
   const steps = [
     { id: 'campaign-name', label: 'Campaign Identifier', icon: Target },
+    ...(identifierRoute === 'campaign_id'
+      ? [{ id: 'campaign-name-sheet', label: 'Campaign Name', icon: Target }]
+      : []),
     { id: 'revenue', label: 'Revenue', icon: DollarSign },
-    { id: 'platform', label: 'Platform', icon: Filter },
-    { id: 'review', label: 'Review', icon: CheckCircle2 }
-  ];
+    { id: 'platform', label: 'LinkedIn Filter', icon: Filter },
+  ] as Array<{ id: Step; label: string; icon: any }>;
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
 
@@ -530,6 +581,12 @@ export function GuidedColumnMapping({
                 Select Campaign Identifier Column
               </>
             )}
+            {currentStep === 'campaign-name-sheet' && (
+              <>
+                <Target className="w-5 h-5 text-blue-600" />
+                Select Campaign Name Column
+              </>
+            )}
             {currentStep === 'revenue' && (
               <>
                 <DollarSign className="w-5 h-5 text-green-600" />
@@ -542,16 +599,13 @@ export function GuidedColumnMapping({
                 Select Platform Column (Optional)
               </>
             )}
-            {currentStep === 'review' && (
-              <>
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-                Review Your Mappings
-              </>
-            )}
           </CardTitle>
           <CardDescription>
             {currentStep === 'campaign-name' && (
-              "Which column in your Google Sheet identifies the campaign? You can select a campaign name column OR a numeric campaign ID column."
+              "Which column uniquely identifies your campaign? Choose Campaign Name (Route 1) or Campaign ID (Route 2)."
+            )}
+            {currentStep === 'campaign-name-sheet' && (
+              "Which column should be used as the campaign name? The values in this column should match the campaign name in MetricMind."
             )}
             {currentStep === 'revenue' && (
               "Which column contains the revenue data? This is required to calculate conversion values and revenue metrics like ROI and ROAS."
@@ -559,17 +613,42 @@ export function GuidedColumnMapping({
             {currentStep === 'platform' && (
               "Which column identifies the platform (e.g., LinkedIn, Facebook, Google Ads)? This is optional if your entire sheet is for LinkedIn only."
             )}
-            {currentStep === 'review' && (
-              "Review your column mappings before saving. Conversion values will be calculated automatically."
-            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Campaign Name Step */}
           {currentStep === 'campaign-name' && (
             <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={identifierRoute === 'campaign_name' ? "default" : "outline"}
+                  onClick={() => {
+                    setIdentifierRoute('campaign_name');
+                    setSelectedCampaignName(null);
+                    setSelectedCampaignNameFromSheet(null);
+                  }}
+                  size="sm"
+                >
+                  Campaign Name
+                </Button>
+                <Button
+                  type="button"
+                  variant={identifierRoute === 'campaign_id' ? "default" : "outline"}
+                  onClick={() => {
+                    setIdentifierRoute('campaign_id');
+                    setSelectedCampaignName(null);
+                    setSelectedCampaignNameFromSheet(null);
+                  }}
+                  size="sm"
+                >
+                  Campaign ID
+                </Button>
+              </div>
               <div>
-                <Label className="text-sm font-medium mb-2 block">Campaign Identifier Column (Name or ID)</Label>
+                <Label className="text-sm font-medium mb-2 block">
+                  {identifierRoute === 'campaign_id' ? 'Campaign ID Column' : 'Campaign Name Column'}
+                </Label>
                 <Select value={selectedCampaignName || ""} onValueChange={setSelectedCampaignName}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a column..." />
@@ -605,7 +684,48 @@ export function GuidedColumnMapping({
                   <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
                     <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <span>
-                      💡 <strong>Tip:</strong> This can be the LinkedIn campaign <strong>name</strong> or a numeric LinkedIn campaign <strong>ID</strong>. MetricMind will match it against the campaigns imported for this workspace.
+                      💡 <strong>Tip:</strong> If you pick <strong>Campaign ID</strong>, you’ll select a <strong>Campaign Name</strong> column next (and it should match MetricMind’s campaign name: <strong>{campaignName}</strong>).
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Campaign Name Column Step (Route 2 only) */}
+          {currentStep === 'campaign-name-sheet' && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Campaign Name Column</Label>
+                <Select value={selectedCampaignNameFromSheet || ""} onValueChange={setSelectedCampaignNameFromSheet}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a column..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {detectedColumns.map((column) => (
+                      <SelectItem key={column.index} value={column.index.toString()}>
+                        <div className="flex items-center justify-between w-full">
+                          <span>{column.originalName}</span>
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            {column.detectedType}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedCampaignNameFromSheet && (
+                <div className="space-y-2">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                    <p className="text-xs text-blue-800 dark:text-blue-300">
+                      <strong>Sample values:</strong> {detectedColumns.find(c => c.index.toString() === selectedCampaignNameFromSheet)?.sampleValues.slice(0, 3).join(', ') || 'N/A'}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>
+                      This column should contain the MetricMind campaign name (e.g., <strong>{campaignName}</strong>) so we can attribute the correct rows to this workspace campaign.
                     </span>
                   </div>
                 </div>
@@ -760,7 +880,7 @@ export function GuidedColumnMapping({
               )}
             </div>
             <div>
-              {currentStep === 'review' ? (
+              {currentStep === 'platform' ? (
                 <Button
                   onClick={handleSave}
                   disabled={saveMappingsMutation.isPending}

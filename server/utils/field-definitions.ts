@@ -24,7 +24,7 @@ export const LINKEDIN_PLATFORM_FIELDS: PlatformField[] = [
     id: 'campaign_name',
     name: 'Campaign Name',
     type: 'text',
-    required: false,
+    required: true,
     category: 'identifiers',
     aliases: ['campaign', 'campaign name', 'campaign_name', 'ad campaign', 'campaign title', 'campaign_title'],
     patterns: [/campaign.*name/i, /^campaign$/i, /ad.*campaign/i],
@@ -36,9 +36,9 @@ export const LINKEDIN_PLATFORM_FIELDS: PlatformField[] = [
     type: 'text',
     required: false,
     category: 'identifiers',
-    aliases: ['campaign id', 'campaign_id', 'campaignid', 'id', 'campaign identifier', 'linkedin campaign id', 'linkedin_campaign_id', 'urn'],
-    patterns: [/campaign.*id/i, /campaignid/i, /^id$/i, /urn/i],
-    description: 'Numeric campaign ID or URN (e.g., 123456789 or urn:li:sponsoredCampaign:123456789)'
+    aliases: ['campaign id', 'campaign_id', 'campaignid', 'id', 'campaign identifier', 'campaign_identifier', 'campaign urn', 'campaign_urn'],
+    patterns: [/campaign.*id/i, /campaign.*identifier/i, /campaign.*urn/i],
+    description: 'Numeric campaign identifier (or URN). Optional; if present it will be used for more reliable matching.'
   },
   {
     id: 'platform',

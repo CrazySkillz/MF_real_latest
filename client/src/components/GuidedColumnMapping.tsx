@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, AlertCircle, Loader2, ArrowRight, ArrowLeft, FileSpreadsheet, DollarSign, Target, Filter } from "lucide-react";
@@ -40,7 +39,7 @@ interface GuidedColumnMappingProps {
   onCancel?: () => void;
 }
 
-type Step = 'tabs' | 'detect' | 'campaign-name' | 'crosswalk' | 'revenue' | 'platform' | 'complete';
+type Step = 'detect' | 'campaign-name' | 'crosswalk' | 'revenue' | 'platform' | 'complete';
 
 export function GuidedColumnMapping({
   campaignId,
@@ -55,7 +54,7 @@ export function GuidedColumnMapping({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const [currentStep, setCurrentStep] = useState<Step>(() => (spreadsheetId ? 'tabs' : 'detect'));
+  const [currentStep, setCurrentStep] = useState<Step>('detect');
   // Identifier selection:
   // - campaign_name: user selects Campaign Name column as identifier
   // - campaign_id: user selects Campaign ID column as identifier
@@ -67,28 +66,13 @@ export function GuidedColumnMapping({
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [skipPlatform, setSkipPlatform] = useState(false);
   const [selectedIdentifierValue, setSelectedIdentifierValue] = useState<string | null>(null);
-
-  // Tabs-to-map selection (Step 3 in your journey)
-  const [mappingSheetNames, setMappingSheetNames] = useState<string[]>(() => (sheetNames && sheetNames.length > 0 ? sheetNames : []));
-  const MAX_MAPPING_TABS = 10;
-  const effectiveSheetNames = mappingSheetNames.length > 0 ? mappingSheetNames : (sheetNames || []);
+  const effectiveSheetNames = sheetNames || [];
 
   // Reset crosswalk selection when identifier column or route changes
   useEffect(() => {
     setSelectedIdentifierValue(null);
   }, [identifierRoute, selectedCampaignName]);
 
-  // Fetch available tabs from the selected spreadsheet (shows *all* tabs; user chooses which to use for mapping)
-  const { data: sheetsMeta, isLoading: sheetsMetaLoading, error: sheetsMetaError } = useQuery<{ success: boolean; sheets: Array<{ title: string }> }>({
-    queryKey: ["/api/google-sheets", "spreadsheet-sheets", campaignId, spreadsheetId],
-    queryFn: async () => {
-      const resp = await fetch(`/api/google-sheets/${encodeURIComponent(String(spreadsheetId))}/sheets?campaignId=${encodeURIComponent(campaignId)}`);
-      if (!resp.ok) throw new Error('Failed to load spreadsheet tabs');
-      return resp.json();
-    },
-    enabled: !!campaignId && !!spreadsheetId && currentStep === 'tabs',
-  });
-  
   // CRITICAL DEBUG LOG
   console.log('====== GUIDED COLUMN MAPPING INIT ======');
   console.log('campaignId:', campaignId);
@@ -145,7 +129,7 @@ export function GuidedColumnMapping({
       
       return data;
     },
-    enabled: currentStep !== 'tabs' && !!campaignId && (!!spreadsheetId || !!connectionIds?.length || !!connectionId)
+    enabled: !!campaignId && (!!spreadsheetId || !!connectionIds?.length || !!connectionId)
   });
 
   const detectedColumns = columnsData?.columns || [];
@@ -303,21 +287,7 @@ export function GuidedColumnMapping({
   });
 
   const handleNext = () => {
-    if (currentStep === 'tabs') {
-      if (!spreadsheetId) {
-        setCurrentStep('detect');
-        return;
-      }
-      if (!mappingSheetNames || mappingSheetNames.length === 0) {
-        toast({
-          title: "Select Tabs",
-          description: "Please select at least one tab to use for mapping.",
-          variant: "destructive"
-        });
-        return;
-      }
-      setCurrentStep('detect');
-    } else if (currentStep === 'campaign-name') {
+    if (currentStep === 'campaign-name') {
       if (!selectedCampaignName) {
         toast({
           title: "Campaign Identifier Required",
@@ -362,9 +332,7 @@ export function GuidedColumnMapping({
   };
 
   const handleBack = () => {
-    if (currentStep === 'detect') {
-      setCurrentStep('tabs');
-    } else if (currentStep === 'revenue') {
+    if (currentStep === 'revenue') {
       setCurrentStep('crosswalk');
     } else if (currentStep === 'crosswalk') {
       setCurrentStep('campaign-name');
@@ -436,109 +404,6 @@ export function GuidedColumnMapping({
 
     saveMappingsMutation.mutate(mappings);
   };
-
-  if (currentStep === 'tabs') {
-    const allTabs = (sheetsMeta?.sheets || []).map(s => s.title).filter(Boolean);
-    const toggleTab = (title: string) => {
-      setMappingSheetNames(prev => {
-        if (prev.includes(title)) return prev.filter(t => t !== title);
-        if (prev.length >= MAX_MAPPING_TABS) return prev;
-        return [...prev, title];
-      });
-    };
-    const allSelected = allTabs.length > 0 && mappingSheetNames.length === allTabs.length;
-
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-green-600" />
-              Select Tabs to Use for Mapping
-            </CardTitle>
-            <CardDescription>
-              Choose which tabs include Campaign ID/Name and revenue or conversion value. We’ll use only these tabs for mapping and calculation.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!spreadsheetId ? (
-              <Alert variant="destructive">
-                <AlertCircle className="w-4 h-4" />
-                <AlertDescription>
-                  No spreadsheet selected. Please go back and connect a spreadsheet first.
-                </AlertDescription>
-              </Alert>
-            ) : sheetsMetaLoading ? (
-              <div className="flex items-center gap-2 text-slate-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading tabs…
-              </div>
-            ) : sheetsMetaError ? (
-              <Alert variant="destructive">
-                <AlertCircle className="w-4 h-4" />
-                <AlertDescription>
-                  Failed to load tabs for this spreadsheet. Please try again.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Selected: <strong>{mappingSheetNames.length}</strong> / {Math.min(MAX_MAPPING_TABS, allTabs.length)} (max {MAX_MAPPING_TABS})
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setMappingSheetNames(allSelected ? [] : allTabs.slice(0, MAX_MAPPING_TABS))}
-                    >
-                      {allSelected ? "Clear" : "Select All"}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="max-h-64 overflow-auto rounded-md border border-slate-200 dark:border-slate-700">
-                  <div className="p-3 space-y-2">
-                    {allTabs.map((title) => {
-                      const checked = mappingSheetNames.includes(title);
-                      const disabled = !checked && mappingSheetNames.length >= MAX_MAPPING_TABS;
-                      return (
-                        <div key={title} className="flex items-center gap-3">
-                          <Checkbox
-                            checked={checked}
-                            disabled={disabled}
-                            onCheckedChange={() => toggleTab(title)}
-                          />
-                          <span className={`text-sm ${disabled ? 'text-slate-400' : 'text-slate-800 dark:text-slate-200'}`}>
-                            {title}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div className="flex items-center justify-between pt-4 border-t">
-              <div>
-                {onCancel && (
-                  <Button variant="ghost" onClick={onCancel}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-              <Button onClick={handleNext} disabled={!spreadsheetId || mappingSheetNames.length === 0}>
-                Next
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   if (columnsLoading) {
     return (

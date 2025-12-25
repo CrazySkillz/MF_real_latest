@@ -11132,7 +11132,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let connection: any;
       if (connectionId) {
-        connection = await storage.getGoogleSheetsConnection(campaignId, connectionId as string);
+        // `connectionId` is the google_sheets_connections.id (NOT spreadsheetId).
+        const all = await storage.getGoogleSheetsConnections(campaignId);
+        connection = (all || []).find((c: any) => c?.id === String(connectionId));
+        // Backwards-compat fallback: allow callers to pass a spreadsheetId.
+        if (!connection) {
+          connection = await storage.getGoogleSheetsConnection(campaignId, connectionId as string);
+        }
       } else {
         connection = await storage.getPrimaryGoogleSheetsConnection(campaignId);
       }
@@ -11141,9 +11147,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Connection not found' });
       }
       
-      const mappings = connection.columnMappings 
-        ? JSON.parse(connection.columnMappings)
-        : [];
+      let mappings: any[] = [];
+      try {
+        const raw = (connection as any).columnMappings ?? (connection as any).column_mappings ?? null;
+        if (raw) {
+          mappings = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        }
+      } catch {
+        mappings = [];
+      }
       
       res.json({
         success: true,

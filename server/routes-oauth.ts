@@ -2834,6 +2834,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * Connected Data Sources (LinkedIn tab)
+   * - Unifies sources (Google Sheets now; CRMs later) into a consistent shape for the UI.
+   */
+  app.get("/api/campaigns/:id/connected-data-sources", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const campaign = await storage.getCampaign(campaignId);
+
+      const googleSheetsConnections = await storage.getGoogleSheetsConnections(campaignId);
+      const googleSheetsSources = (googleSheetsConnections || [])
+        .filter((c: any) => c.isActive)
+        .map((conn: any) => {
+          let hasMappings = false;
+          let usedForRevenueTracking = false;
+          try {
+            const mappingsRaw = conn.columnMappings || conn.column_mappings;
+            const mappings = mappingsRaw ? (typeof mappingsRaw === 'string' ? JSON.parse(mappingsRaw) : mappingsRaw) : [];
+            hasMappings = Array.isArray(mappings) && mappings.length > 0;
+            if (hasMappings) {
+              const hasIdentifier =
+                mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
+                mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
+              const hasValueSource =
+                mappings.some((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value') ||
+                mappings.some((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
+              usedForRevenueTracking = hasIdentifier && hasValueSource;
+            }
+          } catch {
+            hasMappings = false;
+            usedForRevenueTracking = false;
+          }
+
+          return {
+            id: conn.id,
+            type: 'google_sheets',
+            provider: 'Google Sheets',
+            displayName: conn.sheetName
+              ? `${conn.sheetName} — ${conn.spreadsheetName || conn.spreadsheetId}`
+              : (conn.spreadsheetName || conn.spreadsheetId),
+            spreadsheetId: conn.spreadsheetId,
+            spreadsheetName: conn.spreadsheetName,
+            sheetName: conn.sheetName || null,
+            status: 'connected',
+            connectedAt: conn.connectedAt,
+            hasMappings,
+            usedForRevenueTracking,
+            campaignName: campaign?.name || null,
+          };
+        });
+
+      res.json({
+        success: true,
+        campaignId,
+        sources: [
+          ...googleSheetsSources,
+          // Future: hubspot, salesforce, etc.
+        ],
+      });
+    } catch (error: any) {
+      console.error('[Connected Data Sources] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to load connected data sources' });
+    }
+  });
+
+  // Preview raw data for a connected data source (Google Sheets first; CRMs later)
+  app.get("/api/campaigns/:id/connected-data-sources/:sourceId/preview", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const sourceId = req.params.sourceId;
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 10), 200);
+
+      const conn = await storage.getGoogleSheetsConnection(campaignId, sourceId);
+      if (!conn || !conn.accessToken) {
+        return res.status(404).json({ error: 'Source not found or missing access token' });
+      }
+
+      let accessToken = conn.accessToken;
+      try {
+        if (conn.refreshToken && conn.clientId && conn.clientSecret) {
+          const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+          if (shouldRefresh) {
+            accessToken = await refreshGoogleSheetsToken(conn);
+          }
+        }
+      } catch {
+        // ignore refresh failure; we'll try with the current token
+      }
+
+      const range = conn.sheetName ? `${toA1SheetPrefix(conn.sheetName)}A1:ZZ${limit + 1}` : `A1:ZZ${limit + 1}`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`;
+      const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+
+      if (!resp.ok) {
+        const body = await resp.text().catch(() => '');
+        return res.status(resp.status).json({ error: 'Failed to fetch preview data from Google Sheets', details: body });
+      }
+
+      const json = await resp.json().catch(() => ({}));
+      const rows: any[][] = json?.values || [];
+      const headers = Array.isArray(rows) && rows.length > 0 ? (rows[0] || []) : [];
+      const data = Array.isArray(rows) && rows.length > 1 ? rows.slice(1) : [];
+
+      res.json({
+        success: true,
+        type: 'google_sheets',
+        sourceId,
+        spreadsheetId: conn.spreadsheetId,
+        spreadsheetName: conn.spreadsheetName,
+        sheetName: conn.sheetName || null,
+        headers,
+        rows: data,
+        rowCount: data.length,
+      });
+    } catch (error: any) {
+      console.error('[Connected Data Sources Preview] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to load preview' });
+    }
+  });
+
   // Set primary Google Sheets connection
   app.post("/api/campaigns/:id/google-sheets-connections/:connectionId/set-primary", async (req, res) => {
     try {

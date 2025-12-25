@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
+import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -106,6 +107,9 @@ export default function LinkedInAnalytics() {
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isUploadDataModalOpen, setIsUploadDataModalOpen] = useState(false);
+  const [isConnectedDataModalOpen, setIsConnectedDataModalOpen] = useState(false);
+  const [isEditMappingModalOpen, setIsEditMappingModalOpen] = useState(false);
+  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
@@ -113,6 +117,35 @@ export default function LinkedInAnalytics() {
   const [editingKPI, setEditingKPI] = useState<any>(null);
   const { toast } = useToast();
   const campaignId = params?.id;
+
+  // Connected Data Sources (Google Sheets now; CRMs later)
+  const { data: connectedDataSourcesData, refetch: refetchConnectedDataSources } = useQuery<{
+    success: boolean;
+    sources: Array<any>;
+  }>({
+    queryKey: ["/api/campaigns", campaignId, "connected-data-sources"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/connected-data-sources`);
+      if (!resp.ok) throw new Error('Failed to load connected data sources');
+      return resp.json();
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+
+  const connectedSources = connectedDataSourcesData?.sources || [];
+
+  const { data: selectedSourcePreview, isLoading: previewLoading, error: previewError } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "connected-data-sources", selectedSourceId, "preview"],
+    enabled: !!campaignId && !!selectedSourceId && isConnectedDataModalOpen,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/connected-data-sources/${selectedSourceId}/preview?limit=50`);
+      if (!resp.ok) throw new Error('Failed to load preview');
+      return resp.json();
+    },
+    staleTime: 0,
+  });
   
   // KPI Form State
   const [kpiForm, setKpiForm] = useState({
@@ -2662,8 +2695,9 @@ export default function LinkedInAnalytics() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5" data-testid="tabs-list">
+              <TabsList className="grid w-full grid-cols-6" data-testid="tabs-list">
                 <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+                <TabsTrigger value="connected-data" data-testid="tab-connected-data">Connected Data Sources</TabsTrigger>
                 <TabsTrigger value="kpis" data-testid="tab-kpis">KPIs</TabsTrigger>
                 <TabsTrigger value="benchmarks" data-testid="tab-benchmarks">Benchmarks</TabsTrigger>
                 <TabsTrigger value="ads" data-testid="tab-ads">Ad Comparison</TabsTrigger>
@@ -3681,6 +3715,188 @@ export default function LinkedInAnalytics() {
                     </CardContent>
                   </Card>
                 )}
+              </TabsContent>
+
+              {/* Connected Data Sources Tab */}
+              <TabsContent value="connected-data" className="space-y-6" data-testid="content-connected-data">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Connected Data Sources</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Manage external datasets used to unlock revenue metrics (Google Sheets now; CRMs like HubSpot/Salesforce later).
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        void refetchConnectedDataSources();
+                        void refetchGoogleSheetsConnections();
+                      }}
+                    >
+                      Refresh
+                    </Button>
+                    <Button onClick={() => setIsUploadDataModalOpen(true)}>
+                      Connect Additional Data
+                    </Button>
+                  </div>
+                </div>
+
+                {connectedSources.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <p className="text-slate-500">No data sources connected yet.</p>
+                      <div className="mt-4">
+                        <Button onClick={() => setIsUploadDataModalOpen(true)}>Connect Additional Data</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {connectedSources.map((source: any) => {
+                      const isSheets = source.type === 'google_sheets';
+                      return (
+                        <Card key={source.id}>
+                          <CardHeader>
+                            <CardTitle className="text-base flex items-center justify-between gap-2">
+                              <span className="truncate">{source.displayName}</span>
+                              <Badge variant={source.usedForRevenueTracking ? "default" : "secondary"}>
+                                {source.usedForRevenueTracking ? "Used for revenue" : "Connected"}
+                              </Badge>
+                            </CardTitle>
+                            <CardDescription>
+                              {source.provider}
+                              {source.hasMappings ? " • Mapped" : " • Not mapped"}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {isSheets && (
+                              <div className="text-xs text-slate-500 space-y-1">
+                                {source.spreadsheetId && <div>Spreadsheet: {source.spreadsheetId}</div>}
+                                {source.sheetName && <div>Tab: {source.sheetName}</div>}
+                              </div>
+                            )}
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedSourceId(source.id);
+                                  setIsConnectedDataModalOpen(true);
+                                }}
+                              >
+                                View Raw Data
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedSourceId(source.id);
+                                  setIsEditMappingModalOpen(true);
+                                }}
+                              >
+                                Edit Mappings
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Raw Data Preview Modal */}
+                <Dialog open={isConnectedDataModalOpen} onOpenChange={setIsConnectedDataModalOpen}>
+                  <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Raw Data Preview</DialogTitle>
+                      <DialogDescription>
+                        Preview of the connected dataset (first 50 rows).
+                      </DialogDescription>
+                    </DialogHeader>
+                    {previewLoading ? (
+                      <div className="py-10 text-center text-slate-500">Loading preview…</div>
+                    ) : previewError ? (
+                      <div className="py-10 text-center text-red-600">Failed to load preview.</div>
+                    ) : selectedSourcePreview ? (
+                      <div className="space-y-4">
+                        <div className="text-xs text-slate-500">
+                          {selectedSourcePreview.spreadsheetName || selectedSourcePreview.spreadsheetId}
+                          {selectedSourcePreview.sheetName ? ` • ${selectedSourcePreview.sheetName}` : ''}
+                        </div>
+                        <div className="overflow-x-auto border rounded">
+                          <table className="w-full text-sm">
+                            <thead className="bg-slate-50 dark:bg-slate-800">
+                              <tr>
+                                {(selectedSourcePreview.headers || []).map((h: any, i: number) => (
+                                  <th key={i} className="text-left px-3 py-2 font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                                    {String(h || `Col ${i + 1}`)}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(selectedSourcePreview.rows || []).map((row: any[], rIdx: number) => (
+                                <tr key={rIdx} className="border-t">
+                                  {(selectedSourcePreview.headers || []).map((_h: any, cIdx: number) => (
+                                    <td key={cIdx} className="px-3 py-2 whitespace-nowrap">
+                                      {String((row || [])[cIdx] ?? '')}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-10 text-center text-slate-500">No preview available.</div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+
+                {/* Edit Mappings Modal */}
+                <Dialog open={isEditMappingModalOpen} onOpenChange={setIsEditMappingModalOpen}>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Edit Mappings</DialogTitle>
+                      <DialogDescription>
+                        Update campaign identifier, linked value, value source, and optional platform filter.
+                      </DialogDescription>
+                    </DialogHeader>
+                    {(() => {
+                      const source = connectedSources.find((s: any) => s.id === selectedSourceId);
+                      if (!source || source.type !== 'google_sheets') {
+                        return <div className="py-10 text-center text-slate-500">Select a Google Sheets source to edit mappings.</div>;
+                      }
+                      const spreadsheetId = source.spreadsheetId;
+                      const sheetNames = connectedSources
+                        .filter((s: any) => s.type === 'google_sheets' && s.spreadsheetId === spreadsheetId)
+                        .map((s: any) => s.sheetName)
+                        .filter(Boolean);
+                      return (
+                        <GuidedColumnMapping
+                          campaignId={campaignId!}
+                          connectionId={source.id}
+                          spreadsheetId={spreadsheetId}
+                          sheetNames={sheetNames.length > 0 ? sheetNames : undefined}
+                          platform="linkedin"
+                          onMappingComplete={() => {
+                            setIsEditMappingModalOpen(false);
+                            setSelectedSourceId(null);
+                            void refetchConnectedDataSources();
+                            void refetchGoogleSheetsConnections();
+                          }}
+                          onCancel={() => {
+                            setIsEditMappingModalOpen(false);
+                            setSelectedSourceId(null);
+                          }}
+                        />
+                      );
+                    })()}
+                  </DialogContent>
+                </Dialog>
               </TabsContent>
 
               {/* KPIs Tab */}

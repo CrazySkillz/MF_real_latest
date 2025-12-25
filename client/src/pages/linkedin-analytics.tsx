@@ -178,8 +178,11 @@ export default function LinkedInAnalytics() {
     enabled: !!campaignId && !!selectedSourceId && isConnectedDataModalOpen,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/connected-data-sources/${selectedSourceId}/preview?limit=50`);
-      if (!resp.ok) throw new Error('Failed to load preview');
-      return resp.json();
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(json?.error || json?.details || 'Failed to load preview');
+      }
+      return json;
     },
     staleTime: 0,
   });
@@ -3912,7 +3915,9 @@ export default function LinkedInAnalytics() {
                     {previewLoading ? (
                       <div className="py-10 text-center text-slate-500">Loading preview…</div>
                     ) : previewError ? (
-                      <div className="py-10 text-center text-red-600">Failed to load preview.</div>
+                      <div className="py-10 text-center text-red-600">
+                        {(previewError as any)?.message || 'Failed to load preview.'}
+                      </div>
                     ) : selectedSourcePreview ? (
                       <div className="space-y-4">
                         <div className="text-xs text-slate-500">

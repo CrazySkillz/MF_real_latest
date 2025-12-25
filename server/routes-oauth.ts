@@ -2991,7 +2991,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // ignore refresh failure; we'll try with the current token
       }
 
-      const range = conn.sheetName ? `${toA1SheetPrefix(conn.sheetName)}A1:ZZ${limit + 1}` : `A1:ZZ${limit + 1}`;
+      // Ensure we have a sheet/tab name. Without it, the Sheets API range is often invalid for multi-tab spreadsheets.
+      let sheetNameForPreview: string | null = conn.sheetName || null;
+      if (!sheetNameForPreview) {
+        try {
+          const all = await storage.getGoogleSheetsConnections(campaignId);
+          const group = (all || [])
+            .filter((c: any) => c && c.isActive)
+            .filter((c: any) => c.spreadsheetId === conn.spreadsheetId)
+            .filter((c: any) => c.spreadsheetId && c.spreadsheetId !== 'pending');
+          const idx = group.findIndex((c: any) => c.id === (conn as any).id);
+
+          const fetchTitles = async (token: string): Promise<string[] | null> => {
+            const metaResp = await fetch(
+              `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets.properties.title`,
+              { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            if (!metaResp.ok) return null;
+            const meta = await metaResp.json().catch(() => ({}));
+            const titles = Array.isArray(meta?.sheets)
+              ? meta.sheets.map((s: any) => s?.properties?.title).filter(Boolean)
+              : [];
+            return titles;
+          };
+
+          let titles: string[] | null = await fetchTitles(accessToken);
+          if ((!titles || titles.length === 0) && conn.refreshToken) {
+            try {
+              const refreshed = await refreshGoogleSheetsToken(conn);
+              if (refreshed) {
+                accessToken = refreshed;
+                titles = await fetchTitles(accessToken);
+              }
+            } catch {
+              // ignore
+            }
+          }
+          if (titles && titles.length > 0) {
+            sheetNameForPreview = (idx >= 0 && idx < titles.length) ? titles[idx] : titles[0];
+          }
+        } catch {
+          // best-effort only; handled below if still missing
+        }
+      }
+
+      if (!sheetNameForPreview) {
+        return res.status(400).json({
+          error: 'Missing Google Sheets tab name for this connection',
+          details: 'This connection is missing a sheet/tab name (likely created via Back/cancel flow). Please refresh connections or reconnect the sheet.',
+        });
+      }
+
+      const range = `${toA1SheetPrefix(sheetNameForPreview)}A1:ZZ${limit + 1}`;
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`;
       const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
 
@@ -3011,7 +3062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sourceId,
         spreadsheetId: conn.spreadsheetId,
         spreadsheetName: conn.spreadsheetName,
-        sheetName: conn.sheetName || null,
+        sheetName: sheetNameForPreview,
         headers,
         rows: data,
         rowCount: data.length,

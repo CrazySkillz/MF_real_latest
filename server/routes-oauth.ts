@@ -2974,7 +2974,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sourceId = req.params.sourceId;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 10), 200);
 
-      const conn = await storage.getGoogleSheetsConnection(campaignId, sourceId);
+      // NOTE: `sourceId` is the Google Sheets *connection id* (not spreadsheetId).
+      // Pull from the campaign's connections list and find by id.
+      const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+      let conn: any = (allConnections || []).find((c: any) => c?.id === sourceId);
+      // Backwards-compat fallback: if caller passed spreadsheetId, try resolving that too.
+      if (!conn) {
+        conn = await storage.getGoogleSheetsConnection(campaignId, sourceId);
+      }
       if (!conn || !conn.accessToken) {
         return res.status(404).json({ error: 'Source not found or missing access token' });
       }
@@ -2995,8 +3002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let sheetNameForPreview: string | null = conn.sheetName || null;
       if (!sheetNameForPreview) {
         try {
-          const all = await storage.getGoogleSheetsConnections(campaignId);
-          const group = (all || [])
+          const group = (allConnections || [])
             .filter((c: any) => c && c.isActive)
             .filter((c: any) => c.spreadsheetId === conn.spreadsheetId)
             .filter((c: any) => c.spreadsheetId && c.spreadsheetId !== 'pending');

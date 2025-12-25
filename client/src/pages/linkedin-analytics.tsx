@@ -3799,7 +3799,7 @@ export default function LinkedInAnalytics() {
                         <Card key={source.id}>
                           <CardHeader>
                             <CardTitle className="text-base flex items-center justify-between gap-2">
-                              <span className="truncate">{source.displayName}</span>
+                              <span className="truncate">{source.sheetName || source.spreadsheetName || source.displayName}</span>
                               <Badge variant={source.usedForRevenueTracking ? "default" : "secondary"}>
                                 {source.usedForRevenueTracking ? "Used for revenue" : "Connected"}
                               </Badge>
@@ -3812,8 +3812,24 @@ export default function LinkedInAnalytics() {
                           <CardContent className="space-y-3">
                             {isSheets && (
                               <div className="text-xs text-slate-500 space-y-1">
-                                {source.spreadsheetId && <div>Spreadsheet: {source.spreadsheetId}</div>}
-                                {source.sheetName && <div>Tab: {source.sheetName}</div>}
+                                <div>
+                                  Spreadsheet: <span className="font-medium">{source.spreadsheetName || 'Google Sheet'}</span>
+                                </div>
+                                <div>
+                                  Tab: <span className="font-medium">{source.sheetName || '—'}</span>
+                                </div>
+                                {source.spreadsheetId && (
+                                  <div>
+                                    <a
+                                      href={`https://docs.google.com/spreadsheets/d/${source.spreadsheetId}/edit`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="underline text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                                    >
+                                      Open in Google Sheets
+                                    </a>
+                                  </div>
+                                )}
                               </div>
                             )}
 

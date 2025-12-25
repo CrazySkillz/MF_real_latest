@@ -2858,9 +2858,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const campaign = await storage.getCampaign(campaignId);
 
-      const googleSheetsConnections = await storage.getGoogleSheetsConnections(campaignId);
+      const googleSheetsConnectionsRaw = await storage.getGoogleSheetsConnections(campaignId);
+      // Filter out placeholder/half-created connections (e.g., spreadsheetId='pending') so Back/cancel flows don't create confusing cards.
+      const googleSheetsConnections = (googleSheetsConnectionsRaw || [])
+        .filter((c: any) => c && c.isActive)
+        .filter((c: any) => c.spreadsheetId && c.spreadsheetId !== 'pending');
+
+      // Enrich missing sheetName values (same approach as /google-sheets-connections).
+      const bySpreadsheetId = new Map<string, any[]>();
+      for (const conn of googleSheetsConnections as any[]) {
+        const key = String(conn.spreadsheetId || '');
+        if (!bySpreadsheetId.has(key)) bySpreadsheetId.set(key, []);
+        bySpreadsheetId.get(key)!.push(conn);
+      }
+
+      const spreadsheetTabTitles = new Map<string, string[]>();
+      for (const [spreadsheetId, conns] of bySpreadsheetId.entries()) {
+        if (!spreadsheetId) continue;
+        const hasMissingSheetName = conns.some((c: any) => !(c as any).sheetName);
+        if (!hasMissingSheetName) continue;
+
+        const baseConn = conns.find((c: any) => c.accessToken) || conns[0];
+        if (!baseConn?.accessToken) continue;
+
+        const fetchTitles = async (accessToken: string): Promise<string[] | null> => {
+          const metaResp = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties.title`,
+            { headers: { 'Authorization': `Bearer ${accessToken}` } }
+          );
+          if (!metaResp.ok) return null;
+          const meta = await metaResp.json().catch(() => ({}));
+          const titles = Array.isArray(meta?.sheets)
+            ? meta.sheets.map((s: any) => s?.properties?.title).filter(Boolean)
+            : [];
+          return titles;
+        };
+
+        let titles: string[] | null = await fetchTitles(baseConn.accessToken);
+        if ((!titles || titles.length === 0) && baseConn.refreshToken) {
+          try {
+            const refreshed = await refreshGoogleSheetsToken(baseConn);
+            if (refreshed) titles = await fetchTitles(refreshed);
+          } catch {
+            // ignore
+          }
+        }
+        if (titles && titles.length > 0) spreadsheetTabTitles.set(spreadsheetId, titles);
+      }
+
       const googleSheetsSources = (googleSheetsConnections || [])
-        .filter((c: any) => c.isActive)
         .map((conn: any) => {
           let hasMappings = false;
           let usedForRevenueTracking = false;
@@ -2882,16 +2928,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             usedForRevenueTracking = false;
           }
 
+          const group = bySpreadsheetId.get(String(conn.spreadsheetId || '')) || [];
+          const tabIndex = group.findIndex((c: any) => c.id === (conn as any).id);
+          const titles = spreadsheetTabTitles.get(String(conn.spreadsheetId || ''));
+          const derivedSheetName =
+            (conn as any).sheetName ||
+            (titles && tabIndex >= 0 && tabIndex < titles.length ? titles[tabIndex] : null);
+
           return {
             id: conn.id,
             type: 'google_sheets',
             provider: 'Google Sheets',
-            displayName: conn.sheetName
-              ? `${conn.sheetName} — ${conn.spreadsheetName || conn.spreadsheetId}`
+            displayName: derivedSheetName
+              ? `${derivedSheetName} — ${conn.spreadsheetName || conn.spreadsheetId}`
               : (conn.spreadsheetName || conn.spreadsheetId),
             spreadsheetId: conn.spreadsheetId,
             spreadsheetName: conn.spreadsheetName,
-            sheetName: conn.sheetName || null,
+            sheetName: derivedSheetName,
             status: 'connected',
             connectedAt: conn.connectedAt,
             hasMappings,

@@ -10206,6 +10206,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fetch unique values for a given column across selected Google Sheets tabs (used for crosswalk dropdown)
+  app.get("/api/campaigns/:id/google-sheets/unique-values", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const spreadsheetId = String(req.query.spreadsheetId || '').trim();
+      const sheetNamesRaw = String(req.query.sheetNames || '').trim();
+      const columnName = String(req.query.columnName || '').trim();
+      const maxValues = Math.min(Math.max(parseInt(String(req.query.maxValues || '500'), 10) || 500, 50), 1000);
+
+      if (!spreadsheetId) return res.status(400).json({ error: 'spreadsheetId is required' });
+      if (!sheetNamesRaw) return res.status(400).json({ error: 'sheetNames is required' });
+      if (!columnName) return res.status(400).json({ error: 'columnName is required' });
+
+      const sheetNames = sheetNamesRaw.split(',').map(s => s.trim()).filter(Boolean);
+      if (sheetNames.length === 0) return res.status(400).json({ error: 'sheetNames must include at least one sheet' });
+
+      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const baseConn =
+        connections.find((c: any) => c.spreadsheetId === spreadsheetId && c.accessToken) ||
+        connections.find((c: any) => c.accessToken);
+
+      if (!baseConn?.accessToken) {
+        return res.status(404).json({ error: 'No Google Sheets connection with access token found' });
+      }
+
+      const unique = new Set<string>();
+      let truncated = false;
+
+      let accessToken = baseConn.accessToken as string;
+      const tryFetchValuesFromSheet = async (sn: string, token: string): Promise<any[][] | null> => {
+        // NOTE: Use a wider range than A:Z to avoid missing columns that sit beyond Z.
+        // This endpoint only reads headers + one column, so the extra width is a pragmatic tradeoff.
+        const range = `${toA1SheetPrefix(sn)}A1:ZZ2000`;
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`;
+        const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!resp.ok) return null;
+        const json = await resp.json().catch(() => ({}));
+        const rows: any[][] = json?.values || [];
+        return rows;
+      };
+
+      let anySheetFetched = false;
+
+      for (const sn of sheetNames) {
+        if (unique.size >= maxValues) {
+          truncated = true;
+          break;
+        }
+
+        let rows: any[][] | null = await tryFetchValuesFromSheet(sn, accessToken);
+        if (!rows) {
+          // If token is expired, attempt a refresh once and retry.
+          // (We don't have response status here because we only return null on non-ok;
+          // refresh is best-effort and safe.)
+          if ((baseConn as any).refreshToken) {
+            try {
+              const refreshed = await refreshGoogleSheetsToken(baseConn as any);
+              if (refreshed) {
+                accessToken = refreshed;
+                rows = await tryFetchValuesFromSheet(sn, accessToken);
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+
+        if (!rows) continue;
+        anySheetFetched = true;
+        if (!Array.isArray(rows) || rows.length < 2) continue;
+
+        const headers = rows[0] || [];
+        const idx = headers.findIndex((h: any) => String(h || '').trim().toLowerCase() === columnName.trim().toLowerCase());
+        if (idx < 0) continue;
+
+        for (const row of rows.slice(1)) {
+          if (!Array.isArray(row) || row.length <= idx) continue;
+          const v = String(row[idx] ?? '').trim();
+          if (!v) continue;
+          unique.add(v);
+          if (unique.size >= maxValues) {
+            truncated = true;
+            break;
+          }
+        }
+      }
+
+      if (!anySheetFetched) {
+        return res.status(502).json({
+          error: 'Failed to fetch values from Google Sheets. Please reconnect Google Sheets and try again.',
+        });
+      }
+
+      res.json({
+        success: true,
+        columnName,
+        values: Array.from(unique).slice(0, maxValues),
+        truncated,
+        count: unique.size,
+      });
+    } catch (error: any) {
+      console.error('[Unique Values] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch unique values' });
+    }
+  });
+
   // Auto-map columns to platform fields
   app.post("/api/campaigns/:id/google-sheets/auto-map", async (req, res) => {
     try {
@@ -10269,12 +10375,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const linkedInConnection = await storage.getLinkedInConnection(campaignId);
           if (linkedInConnection) {
-            // Campaign name and revenue are required for conversion value calculation
+            // Guided mapping supports:
+            // - Identifier: campaign_name OR campaign_id (either is acceptable)
+            // - Value: revenue OR conversion_value (either is acceptable)
             // Platform is optional (can default to LinkedIn)
             // Other fields (impressions, clicks, spend, conversions) are optional since LinkedIn API provides them
             platformFields = platformFields.map(f => {
-              if (f.id === 'campaign_name' || f.id === 'revenue') {
-                return { ...f, required: true };
+              // We enforce "either/or" requirements below, so don't mark individual fields required here.
+              if (f.id === 'campaign_name' || f.id === 'campaign_id' || f.id === 'revenue' || f.id === 'conversion_value') {
+                return { ...f, required: false };
               }
               // Platform is optional (can skip if entire sheet is for LinkedIn)
               if (f.id === 'platform') {
@@ -10294,6 +10403,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate mappings
       const errors = validateMappings(mappings, platformFields);
+      // LinkedIn guided flow "either/or" requirements:
+      // - Must map one identifier: campaign_name OR campaign_id
+      // - Must map one value source: conversion_value OR revenue
+      if ((platform?.toLowerCase() === 'linkedin' || !platform)) {
+        const hasIdentifier =
+          mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
+          mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
+        const hasValueSource =
+          mappings.some((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value') ||
+          mappings.some((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
+
+        if (!hasIdentifier) {
+          errors.set('campaign_identifier', 'Please map Campaign Name or Campaign ID');
+        }
+        if (!hasValueSource) {
+          errors.set('value_source', 'Please map Conversion Value or Revenue');
+        }
+      }
       
       if (errors.size > 0) {
         return res.status(400).json({
@@ -10445,14 +10572,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`[Save Mappings] Mappings for ${conn.id}:`, JSON.stringify(mappings));
                 
                 const revenueMapping = mappings.find((m: any) => m.targetFieldId === 'revenue' || m.platformField === 'revenue');
+                const conversionValueMapping = mappings.find((m: any) => m.targetFieldId === 'conversion_value' || m.platformField === 'conversion_value');
                 const campaignIdMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_id' || m.platformField === 'campaign_id');
                 const campaignNameMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_name' || m.platformField === 'campaign_name');
                 
                 console.log(`[Save Mappings] Revenue mapping:`, revenueMapping);
+                console.log(`[Save Mappings] Conversion Value mapping:`, conversionValueMapping);
                 console.log(`[Save Mappings] Campaign ID mapping:`, campaignIdMapping);
                 console.log(`[Save Mappings] Campaign name mapping:`, campaignNameMapping);
                 
-                if (revenueMapping) {
+                if (revenueMapping || conversionValueMapping) {
                   const resolveColumnIndex = (mapping: any, sheetHeaders: any[]): number => {
                     let idx = mapping?.sourceColumnIndex ?? mapping?.columnIndex ?? -1;
                     if (idx >= 0 && idx < sheetHeaders.length) return idx;
@@ -10462,12 +10591,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     return byName;
                   };
 
-                  const revenueColumnIndex = resolveColumnIndex(revenueMapping, headers);
-                  console.log(`[Save Mappings] Revenue column index: ${revenueColumnIndex} (from mapping:`, revenueMapping, ')');
-                  
-                  if (revenueColumnIndex < 0 || revenueColumnIndex >= headers.length) {
-                    console.error(`[Save Mappings] ❌ Invalid revenue column index: ${revenueColumnIndex} (headers length: ${headers.length})`);
-                    continue;
+                  const revenueColumnIndex = revenueMapping ? resolveColumnIndex(revenueMapping, headers) : -1;
+                  const conversionValueColumnIndex = conversionValueMapping ? resolveColumnIndex(conversionValueMapping, headers) : -1;
+                  if (revenueMapping) {
+                    console.log(`[Save Mappings] Revenue column index: ${revenueColumnIndex} (from mapping:`, revenueMapping, ')');
+                    if (revenueColumnIndex < 0 || revenueColumnIndex >= headers.length) {
+                      console.error(`[Save Mappings] ❌ Invalid revenue column index: ${revenueColumnIndex} (headers length: ${headers.length})`);
+                      continue;
+                    }
+                  }
+                  if (conversionValueMapping) {
+                    console.log(`[Save Mappings] Conversion Value column index: ${conversionValueColumnIndex} (from mapping:`, conversionValueMapping, ')');
+                    if (conversionValueColumnIndex < 0 || conversionValueColumnIndex >= headers.length) {
+                      console.error(`[Save Mappings] ❌ Invalid conversion value column index: ${conversionValueColumnIndex} (headers length: ${headers.length})`);
+                      continue;
+                    }
                   }
                   
                   // Filter by campaign identifier if mapped.
@@ -10515,8 +10653,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     return false;
                   };
 
+                  // 0) If UI provided an explicit crosswalk value, prefer filtering by that exact value first.
+                  const selectedIdValue = String(campaignIdMapping?.selectedValue ?? campaignIdMapping?.campaignIdentifierValue ?? '').trim();
+                  const selectedNameValue = String(campaignNameMapping?.selectedValue ?? campaignNameMapping?.campaignIdentifierValue ?? '').trim();
+                  if (campaignIdMapping && selectedIdValue) {
+                    const campaignIdColumnIndex = resolveColumnIndex(campaignIdMapping, headers);
+                    if (campaignIdColumnIndex >= 0 && campaignIdColumnIndex < headers.length) {
+                      const selectedNumeric = normalizeNumericId(selectedIdValue);
+                      const filteredBySelectedId = dataRows.filter((row: any[]) => {
+                        if (!Array.isArray(row) || row.length <= campaignIdColumnIndex) return false;
+                        const numericCandidate = normalizeNumericId(row[campaignIdColumnIndex]);
+                        return !!selectedNumeric && numericCandidate === selectedNumeric;
+                      });
+                      if (filteredBySelectedId.length > 0) {
+                        filteredRows = filteredBySelectedId;
+                      }
+                    }
+                  } else if (campaignNameMapping && selectedNameValue) {
+                    const campaignNameColumnIndex = resolveColumnIndex(campaignNameMapping, headers);
+                    if (campaignNameColumnIndex >= 0 && campaignNameColumnIndex < headers.length) {
+                      const selectedLower = selectedNameValue.toLowerCase().trim();
+                      const filteredBySelectedName = dataRows.filter((row: any[]) => {
+                        if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) return false;
+                        const v = String(row[campaignNameColumnIndex] || '').toLowerCase().trim();
+                        if (!v) return false;
+                        return v === selectedLower || v.includes(selectedLower) || selectedLower.includes(v);
+                      });
+                      if (filteredBySelectedName.length > 0) {
+                        filteredRows = filteredBySelectedName;
+                      }
+                    }
+                  }
+
                   // 1) Prefer Campaign ID mapping if provided and valid for this sheet
-                  if (campaignIdMapping) {
+                  if (filteredRows === dataRows && campaignIdMapping) {
                     const campaignIdColumnIndex = resolveColumnIndex(campaignIdMapping, headers);
                     if (campaignIdColumnIndex >= 0 && campaignIdColumnIndex < headers.length) {
                       const filteredById = dataRows.filter((row: any[]) => {
@@ -10549,26 +10719,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     filteredRows = dataRows;
                   }
                   
-                  // Sum revenue
-                  let connectionRevenue = 0;
-                  let revenueRowCount = 0;
-                  for (const row of filteredRows) {
-                    if (!Array.isArray(row) || row.length <= revenueColumnIndex) continue;
-                    const rawValue = String(row[revenueColumnIndex] || '0');
-                    const revenueValue = parseFloat(rawValue.replace(/[$,]/g, '')) || 0;
-                    if (revenueValue > 0) {
-                      connectionRevenue += revenueValue;
-                      revenueRowCount++;
-                      if (revenueRowCount <= 3) {
-                        console.log(`[Save Mappings] Revenue row ${revenueRowCount}: "${rawValue}" -> $${revenueValue}`);
-                      }
+                  // If conversion_value is mapped, prefer extracting conversion value directly.
+                  // Otherwise, sum revenue to compute conversion value.
+                  if (conversionValueMapping) {
+                    const values: number[] = [];
+                    for (const row of filteredRows) {
+                      if (!Array.isArray(row) || row.length <= conversionValueColumnIndex) continue;
+                      const rawValue = String(row[conversionValueColumnIndex] || '0');
+                      const v = parseFloat(rawValue.replace(/[$,]/g, '')) || 0;
+                      if (v > 0) values.push(v);
+                    }
+                    if (values.length > 0) {
+                      // Use median for robustness if multiple values exist
+                      const sorted = values.slice().sort((a, b) => a - b);
+                      const mid = Math.floor(sorted.length / 2);
+                      const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+                      // Stash on campaign object for later usage in this request (across multiple tabs)
+                      const prev = (campaign as any).__conversionValuesFromSheets;
+                      (campaign as any).__conversionValuesFromSheets = Array.isArray(prev) ? [...prev, median] : [median];
+                      console.log(`[Save Mappings] ✅ Extracted conversion value from sheet: $${median} (from ${values.length} rows)`);
+                    } else {
+                      console.log(`[Save Mappings] ⚠️ No conversion value rows found in mapped column`);
                     }
                   }
-                  
-                  totalRevenue += connectionRevenue;
-                  console.log(`[Save Mappings] Revenue from connection ${conn.id}: $${connectionRevenue} (from ${revenueRowCount} rows with revenue > 0, total so far: $${totalRevenue})`);
+
+                  if (revenueMapping) {
+                    // Sum revenue
+                    let connectionRevenue = 0;
+                    let revenueRowCount = 0;
+                    for (const row of filteredRows) {
+                      if (!Array.isArray(row) || row.length <= revenueColumnIndex) continue;
+                      const rawValue = String(row[revenueColumnIndex] || '0');
+                      const revenueValue = parseFloat(rawValue.replace(/[$,]/g, '')) || 0;
+                      if (revenueValue > 0) {
+                        connectionRevenue += revenueValue;
+                        revenueRowCount++;
+                        if (revenueRowCount <= 3) {
+                          console.log(`[Save Mappings] Revenue row ${revenueRowCount}: "${rawValue}" -> $${revenueValue}`);
+                        }
+                      }
+                    }
+                    
+                    totalRevenue += connectionRevenue;
+                    console.log(`[Save Mappings] Revenue from connection ${conn.id}: $${connectionRevenue} (from ${revenueRowCount} rows with revenue > 0, total so far: $${totalRevenue})`);
+                  }
                 } else {
-                  console.log(`[Save Mappings] ⚠️ No revenue mapping found for connection ${conn.id}`);
+                  console.log(`[Save Mappings] ⚠️ No revenue/conversion_value mapping found for connection ${conn.id}`);
                 }
               } catch (sheetError: any) {
                 console.error(`[Save Mappings] ❌ Error fetching sheet data for connection ${conn.id}:`, sheetError.message);
@@ -10580,7 +10776,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Calculate conversion value
             let calculatedConversionValue: string | null = null;
-            if (totalRevenue > 0 && totalConversions > 0) {
+            const extracted = (campaign as any).__conversionValuesFromSheets as number[] | undefined;
+            if (Array.isArray(extracted) && extracted.length > 0) {
+              const sorted = extracted.slice().sort((a, b) => a - b);
+              const mid = Math.floor(sorted.length / 2);
+              const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+              if (median > 0) {
+                calculatedConversionValue = median.toFixed(2);
+                console.log(`[Save Mappings] 💰 Using conversion value from sheet: $${calculatedConversionValue} (from ${extracted.length} tab(s))`);
+              }
+            }
+            if (!calculatedConversionValue && totalRevenue > 0 && totalConversions > 0) {
               calculatedConversionValue = (totalRevenue / totalConversions).toFixed(2);
               
               console.log(`[Save Mappings] 💰 Calculated conversion value: $${calculatedConversionValue} (Revenue: $${totalRevenue}, Conversions: ${totalConversions})`);

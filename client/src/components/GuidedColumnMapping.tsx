@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, AlertCircle, Loader2, ArrowRight, ArrowLeft, FileSpreadsheet, DollarSign, Target, Filter } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -871,6 +872,20 @@ export function GuidedColumnMapping({
                   <p className="text-xs mt-2 text-slate-500">
                     Showing the first {uniqueValuesData.values.length} values (list truncated).
                   </p>
+                )}
+
+                {/* Fallback: allow manual entry when values cannot be loaded or list is empty */}
+                {(!uniqueValuesLoading && (uniqueValuesError || (uniqueValuesData && (uniqueValuesData.values || []).length === 0))) && (
+                  <div className="mt-3">
+                    <Label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
+                      Or enter a value manually
+                    </Label>
+                    <Input
+                      value={selectedIdentifierValue || ""}
+                      onChange={(e) => setSelectedIdentifierValue(e.target.value)}
+                      placeholder={identifierRoute === 'campaign_id' ? "e.g., 301" : "e.g., my_campaign"}
+                    />
+                  </div>
                 )}
               </div>
             </div>

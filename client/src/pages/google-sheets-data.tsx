@@ -870,6 +870,16 @@ export default function GoogleSheetsData() {
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            setMappingConnectionId(conn.id);
+                                            setShowMappingInterface(true);
+                                          }}
+                                        >
+                                          Edit Mappings
+                                        </Button>
                                         <AlertDialog>
                                           <AlertDialogTrigger asChild>
                                             <Button
@@ -939,7 +949,8 @@ export default function GoogleSheetsData() {
               {showMappingInterface && mappingConnectionId && (() => {
                 const selectedConnection = googleSheetsConnections.find((c: any) => c.id === mappingConnectionId);
                 const spreadsheetId = selectedConnection?.spreadsheetId;
-                const sheetName = selectedConnection?.sheetName;
+                const spreadsheetConnections = googleSheetsConnections.filter((c: any) => c.spreadsheetId === spreadsheetId);
+                const sheetNames = spreadsheetConnections.map((c: any) => c.sheetName).filter(Boolean);
                 const platform = "linkedin";
 
                 if (platform === 'linkedin' && spreadsheetId) {
@@ -948,7 +959,7 @@ export default function GoogleSheetsData() {
                       campaignId={campaignId!}
                       connectionId={mappingConnectionId}
                       spreadsheetId={spreadsheetId}
-                      sheetNames={sheetName ? [sheetName] : undefined}
+                      sheetNames={sheetNames.length > 0 ? sheetNames : undefined}
                       platform={platform}
                       onMappingComplete={() => {
                         setShowMappingInterface(false);

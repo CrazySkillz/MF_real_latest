@@ -165,6 +165,89 @@ export function GuidedColumnMapping({
     : undefined;
   const identifierColumnName = identifierColumn?.originalName ? String(identifierColumn.originalName) : '';
 
+  // Edit mode: load existing mappings and prefill the wizard
+  const { data: existingMappingsData } = useQuery<{ success: boolean; mappings: any[]; hasMappings: boolean }>({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets", "mappings", connectionId],
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets/mappings?connectionId=${encodeURIComponent(connectionId)}`);
+      if (!resp.ok) throw new Error('Failed to load existing mappings');
+      return resp.json();
+    },
+    enabled: !!campaignId && !!connectionId,
+    staleTime: 0,
+  });
+
+  const [hasPrefilled, setHasPrefilled] = useState(false);
+  useEffect(() => {
+    if (hasPrefilled) return;
+    if (!existingMappingsData?.hasMappings) return;
+    if (!Array.isArray(existingMappingsData.mappings)) return;
+    if (detectedColumns.length === 0) return;
+
+    const mappings = existingMappingsData.mappings;
+    const findColumnChoice = (m: any): string | null => {
+      const idx = m?.sourceColumnIndex ?? m?.columnIndex;
+      if (typeof idx === 'number') {
+        const hitByIndex = detectedColumns.find((c) => c.index === idx);
+        if (hitByIndex) return hitByIndex.index.toString();
+      }
+      const name = String(m?.sourceColumnName || '').trim();
+      if (name) {
+        const hitByName = detectedColumns.find((c) => String(c.originalName || '').trim() === name);
+        if (hitByName) return hitByName.index.toString();
+      }
+      return null;
+    };
+
+    const idMapping = mappings.find((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
+    const nameMapping = mappings.find((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name');
+    const revenueMapping = mappings.find((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
+    const convValueMapping = mappings.find((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value');
+    const platformMapping = mappings.find((m: any) => m?.targetFieldId === 'platform' || m?.platformField === 'platform');
+
+    // Identifier route + column
+    if (idMapping) {
+      setIdentifierRoute('campaign_id');
+      const choice = findColumnChoice(idMapping);
+      if (choice) setSelectedCampaignName(choice);
+      const selected = String(idMapping?.selectedValue || '').trim();
+      if (selected) setSelectedIdentifierValue(selected);
+    } else if (nameMapping) {
+      setIdentifierRoute('campaign_name');
+      const choice = findColumnChoice(nameMapping);
+      if (choice) setSelectedCampaignName(choice);
+      const selected = String(nameMapping?.selectedValue || '').trim();
+      if (selected) setSelectedIdentifierValue(selected);
+    }
+
+    // Value source
+    if (convValueMapping) {
+      setValueMode('conversion_value');
+      const choice = findColumnChoice(convValueMapping);
+      if (choice) setSelectedConversionValue(choice);
+    } else if (revenueMapping) {
+      setValueMode('revenue');
+      const choice = findColumnChoice(revenueMapping);
+      if (choice) setSelectedRevenue(choice);
+    }
+
+    // Platform
+    if (platformMapping) {
+      const choice = findColumnChoice(platformMapping);
+      if (choice) {
+        setSkipPlatform(false);
+        setSelectedPlatform(choice);
+      }
+    } else {
+      setSkipPlatform(true);
+      setSelectedPlatform(null);
+    }
+
+    // Start at first step when editing, with values prefilled
+    setCurrentStep('campaign-name');
+    setHasPrefilled(true);
+  }, [hasPrefilled, existingMappingsData, detectedColumns]);
+
   const { data: uniqueValuesData, isLoading: uniqueValuesLoading, error: uniqueValuesError } = useQuery<{ success: boolean; values: string[]; truncated?: boolean; count?: number }>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets", "unique-values", spreadsheetId, effectiveSheetNames.join(','), identifierColumnName],
     queryFn: async () => {

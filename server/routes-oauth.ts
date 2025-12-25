@@ -985,23 +985,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const remainingConnections = await storage.getGoogleSheetsConnections(campaignId);
       const hasActiveConnections = remainingConnections.length > 0;
       
-      // Check if there are any remaining active Google Sheets connections WITH mappings
-      // If no active connections with mappings remain, clear conversion values from platform connections
-      // (since they were likely calculated from Google Sheets data)
-      const remainingConnectionsWithMappings = remainingConnections.filter((conn: any) => {
-        if (!conn.columnMappings) return false;
+      // Check if there are any remaining active Google Sheets connections that are USED FOR REVENUE TRACKING.
+      // If no revenue-tracking connections remain, clear conversion values from campaign/platform connections.
+      // This ensures the Overview tab shows the orange warning and revenue metrics disappear when the user deletes
+      // the last mapped revenue/conversion-value source.
+      const isRevenueTrackingConnection = (conn: any): boolean => {
+        const mappingsRaw = conn.columnMappings || conn.column_mappings;
+        if (!mappingsRaw) return false;
         try {
-          const mappings = JSON.parse(conn.columnMappings);
-          return Array.isArray(mappings) && mappings.length > 0;
+          const mappings = typeof mappingsRaw === 'string' ? JSON.parse(mappingsRaw) : mappingsRaw;
+          if (!Array.isArray(mappings) || mappings.length === 0) return false;
+          const hasIdentifier =
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
+          const hasValueSource =
+            mappings.some((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value') ||
+            mappings.some((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
+          return hasIdentifier && hasValueSource;
         } catch {
           return false;
         }
-      });
-      
-      const hasActiveConnectionsWithMappings = remainingConnectionsWithMappings.length > 0;
-      
-      if (!hasActiveConnectionsWithMappings) {
-        console.log(`[Google Sheets] No active connections with mappings remaining - clearing conversion values from platform connections`);
+      };
+
+      const remainingRevenueTrackingConnections = remainingConnections.filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingConnection);
+      const hasRevenueTrackingConnections = remainingRevenueTrackingConnections.length > 0;
+
+      let conversionValueCleared = false;
+      if (!hasRevenueTrackingConnections) {
+        console.log(`[Google Sheets] No active revenue-tracking connections remaining - clearing conversion values from platform connections`);
         
         // Clear campaign-level conversion value (if it was set from Google Sheets)
         const campaign = await storage.getCampaign(campaignId);
@@ -1010,6 +1021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             conversionValue: null
           });
           console.log(`[Google Sheets] Cleared campaign-level conversion value`);
+          conversionValueCleared = true;
         }
         
         // Clear LinkedIn connection conversion value
@@ -1019,6 +1031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             conversionValue: null
           });
           console.log(`[Google Sheets] Cleared LinkedIn connection conversion value`);
+          conversionValueCleared = true;
         }
         
         // Also clear conversion value from LinkedIn import sessions
@@ -1030,6 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 conversionValue: null
               });
               console.log(`[Google Sheets] Cleared conversion value from LinkedIn import session ${session.id}`);
+              conversionValueCleared = true;
             }
           }
         }
@@ -1041,13 +1055,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             conversionValue: null
           });
           console.log(`[Google Sheets] Cleared Meta connection conversion value`);
+          conversionValueCleared = true;
         }
       } else {
-        console.log(`[Google Sheets] ${remainingConnectionsWithMappings.length} active connection(s) with mappings still exist - keeping conversion values`);
+        console.log(`[Google Sheets] ${remainingRevenueTrackingConnections.length} revenue-tracking connection(s) still exist - keeping conversion values`);
       }
 
       console.log(`[Google Sheets] Connection deleted successfully`);
-      res.json({ success: true, message: 'Connection deleted' });
+      res.json({ success: true, message: 'Connection deleted', conversionValueCleared });
     } catch (error: any) {
       console.error('[Google Sheets] Delete connection error:', error);
       res.status(500).json({ error: error.message || 'Failed to delete connection' });

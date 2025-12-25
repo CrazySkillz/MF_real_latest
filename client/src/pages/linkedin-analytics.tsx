@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, AlertTriangle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent, Info, Calculator } from "lucide-react";
@@ -135,6 +136,42 @@ export default function LinkedInAnalytics() {
   });
 
   const connectedSources = connectedDataSourcesData?.sources || [];
+
+  const deleteSourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const resp = await fetch(`/api/google-sheets/${campaignId}/connection?connectionId=${encodeURIComponent(sourceId)}`, { method: 'DELETE' });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(json?.error || 'Failed to delete source');
+      }
+      return json;
+    },
+    onSuccess: async (data: any) => {
+      if (selectedSourceId && selectedSourceId === data?.sourceId) {
+        setSelectedSourceId(null);
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-data-sources"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] }),
+      ]);
+      toast({
+        title: "Source Removed",
+        description: data?.conversionValueCleared
+          ? "Source removed. Conversion value was cleared, so revenue metrics are now disabled."
+          : "Source removed.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to Remove Source",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
 
   const { data: selectedSourcePreview, isLoading: previewLoading, error: previewError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "connected-data-sources", selectedSourceId, "preview"],
@@ -3755,6 +3792,9 @@ export default function LinkedInAnalytics() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {connectedSources.map((source: any) => {
                       const isSheets = source.type === 'google_sheets';
+                      const willClearConversionValue =
+                        !!source.usedForRevenueTracking &&
+                        connectedSources.filter((s: any) => s.id !== source.id && s.usedForRevenueTracking).length === 0;
                       return (
                         <Card key={source.id}>
                           <CardHeader>
@@ -3798,6 +3838,40 @@ export default function LinkedInAnalytics() {
                               >
                                 Edit Mappings
                               </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    disabled={deleteSourceMutation.isPending}
+                                  >
+                                    {deleteSourceMutation.isPending ? "Removing..." : "Delete"}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete connected source?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will remove the connection to "{source.displayName}".
+                                      {willClearConversionValue && (
+                                        <>
+                                          {" "}Because this source is used to calculate conversion value, deleting it will
+                                          <strong> delete the conversion value</strong> and revenue metrics will disappear from the Overview tab.
+                                        </>
+                                      )}
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteSourceMutation.mutate(source.id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </CardContent>
                         </Card>

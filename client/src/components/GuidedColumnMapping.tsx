@@ -38,7 +38,7 @@ interface GuidedColumnMappingProps {
   onCancel?: () => void;
 }
 
-type Step = 'detect' | 'campaign-name' | 'campaign-name-sheet' | 'revenue' | 'platform' | 'review' | 'complete';
+type Step = 'detect' | 'campaign-name' | 'crosswalk' | 'revenue' | 'platform' | 'complete';
 
 export function GuidedColumnMapping({
   campaignId,
@@ -54,15 +54,22 @@ export function GuidedColumnMapping({
   const queryClient = useQueryClient();
   
   const [currentStep, setCurrentStep] = useState<Step>('detect');
-  // Identifier route selection:
-  // - campaign_name: user selects Campaign Name as unique identifier (Route 1)
-  // - campaign_id: user selects Campaign ID as unique identifier, then selects Campaign Name column (Route 2)
+  // Identifier selection:
+  // - campaign_name: user selects Campaign Name column as identifier
+  // - campaign_id: user selects Campaign ID column as identifier
   const [identifierRoute, setIdentifierRoute] = useState<'campaign_name' | 'campaign_id'>('campaign_name');
   const [selectedCampaignName, setSelectedCampaignName] = useState<string | null>(null);
-  const [selectedCampaignNameFromSheet, setSelectedCampaignNameFromSheet] = useState<string | null>(null);
   const [selectedRevenue, setSelectedRevenue] = useState<string | null>(null);
+  const [selectedConversionValue, setSelectedConversionValue] = useState<string | null>(null);
+  const [valueMode, setValueMode] = useState<'conversion_value' | 'revenue'>('revenue');
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [skipPlatform, setSkipPlatform] = useState(false);
+  const [selectedIdentifierValue, setSelectedIdentifierValue] = useState<string | null>(null);
+
+  // Reset crosswalk selection when identifier column or route changes
+  useEffect(() => {
+    setSelectedIdentifierValue(null);
+  }, [identifierRoute, selectedCampaignName]);
   
   // CRITICAL DEBUG LOG
   console.log('====== GUIDED COLUMN MAPPING INIT ======');
@@ -150,6 +157,22 @@ export function GuidedColumnMapping({
   });
 
   const campaignName = campaignData?.name || 'your campaign';
+
+  const identifierColumn = selectedCampaignName
+    ? detectedColumns.find(c => c.index.toString() === selectedCampaignName)
+    : undefined;
+  const identifierColumnName = identifierColumn?.originalName ? String(identifierColumn.originalName) : '';
+
+  const { data: uniqueValuesData, isLoading: uniqueValuesLoading, error: uniqueValuesError } = useQuery<{ success: boolean; values: string[]; truncated?: boolean; count?: number }>({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets", "unique-values", spreadsheetId, sheetNames?.join(','), identifierColumnName],
+    queryFn: async () => {
+      const queryParam = `?spreadsheetId=${encodeURIComponent(spreadsheetId || '')}&sheetNames=${encodeURIComponent((sheetNames || []).join(','))}&columnName=${encodeURIComponent(identifierColumnName)}`;
+      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets/unique-values${queryParam}`);
+      if (!resp.ok) throw new Error('Failed to fetch unique values');
+      return resp.json();
+    },
+    enabled: !!campaignId && !!spreadsheetId && !!sheetNames?.length && !!identifierColumnName && currentStep === 'crosswalk',
+  });
 
   // Auto-advance to first step when columns are detected
   useEffect(() => {
@@ -271,23 +294,28 @@ export function GuidedColumnMapping({
         });
         return;
       }
-      if (identifierRoute === 'campaign_id') {
-        setCurrentStep('campaign-name-sheet');
-      } else {
-        setCurrentStep('revenue');
-      }
-    } else if (currentStep === 'campaign-name-sheet') {
-      if (!selectedCampaignNameFromSheet) {
+      setCurrentStep('crosswalk');
+    } else if (currentStep === 'crosswalk') {
+      if (!selectedIdentifierValue) {
         toast({
-          title: "Campaign Name Column Required",
-          description: "Please select the Campaign Name column from your sheet. This should match the campaign name in MetricMind.",
+          title: "Link Required",
+          description: `Please select the ${identifierRoute === 'campaign_id' ? 'Campaign ID' : 'Campaign Name'} value that corresponds to "${campaignName}".`,
           variant: "destructive"
         });
         return;
       }
       setCurrentStep('revenue');
     } else if (currentStep === 'revenue') {
-      if (!selectedRevenue) {
+      if (valueMode === 'conversion_value') {
+        if (!selectedConversionValue) {
+          toast({
+            title: "Conversion Value Column Required",
+            description: "Please select a column that contains conversion value (value per conversion).",
+            variant: "destructive"
+          });
+          return;
+        }
+      } else if (!selectedRevenue) {
         toast({
           title: "Revenue Column Required",
           description: "Please select a column that contains revenue data.",
@@ -297,70 +325,53 @@ export function GuidedColumnMapping({
       }
       setCurrentStep('platform');
     } else if (currentStep === 'platform') {
-      // Final step: save mappings
       handleSave();
     }
   };
 
   const handleBack = () => {
     if (currentStep === 'revenue') {
-      setCurrentStep(identifierRoute === 'campaign_id' ? 'campaign-name-sheet' : 'campaign-name');
-    } else if (currentStep === 'campaign-name-sheet') {
+      setCurrentStep('crosswalk');
+    } else if (currentStep === 'crosswalk') {
       setCurrentStep('campaign-name');
     } else if (currentStep === 'platform') {
       setCurrentStep('revenue');
-    } else if (currentStep === 'review') {
-      setCurrentStep('platform');
     }
   };
 
   const handleSave = () => {
     const mappings: any[] = [];
     
-    // Route 1: Campaign Name is the unique identifier
-    // Route 2: Campaign ID is the unique identifier AND Campaign Name is selected separately (should match MetricMind campaign name)
+    // Identifier mapping (campaign_name OR campaign_id) + selected crosswalk value
     if (selectedCampaignName) {
       const identifierColumn = detectedColumns.find(c => c.index.toString() === selectedCampaignName);
       if (identifierColumn) {
-        if (identifierRoute === 'campaign_id') {
-          mappings.push({
-            sourceColumnIndex: identifierColumn.index,
-            sourceColumnName: identifierColumn.originalName,
-            targetFieldId: 'campaign_id',
-            targetFieldName: 'Campaign ID',
-            matchType: 'manual',
-            confidence: 1.0
-          });
-        } else {
-          mappings.push({
-            sourceColumnIndex: identifierColumn.index,
-            sourceColumnName: identifierColumn.originalName,
-            targetFieldId: 'campaign_name',
-            targetFieldName: 'Campaign Name',
-            matchType: 'manual',
-            confidence: 1.0
-          });
-        }
-      }
-    }
-
-    // If user chose Campaign ID route, also store the Campaign Name column
-    if (identifierRoute === 'campaign_id' && selectedCampaignNameFromSheet) {
-      const nameColumn = detectedColumns.find(c => c.index.toString() === selectedCampaignNameFromSheet);
-      if (nameColumn) {
         mappings.push({
-          sourceColumnIndex: nameColumn.index,
-          sourceColumnName: nameColumn.originalName,
-          targetFieldId: 'campaign_name',
-          targetFieldName: 'Campaign Name',
+          sourceColumnIndex: identifierColumn.index,
+          sourceColumnName: identifierColumn.originalName,
+          targetFieldId: identifierRoute === 'campaign_id' ? 'campaign_id' : 'campaign_name',
+          targetFieldName: identifierRoute === 'campaign_id' ? 'Campaign ID' : 'Campaign Name',
+          selectedValue: selectedIdentifierValue,
           matchType: 'manual',
           confidence: 1.0
         });
       }
     }
 
-    // Add revenue mapping
-    if (selectedRevenue) {
+    // Value source mapping: conversion_value OR revenue
+    if (valueMode === 'conversion_value' && selectedConversionValue) {
+      const column = detectedColumns.find(c => c.index.toString() === selectedConversionValue);
+      if (column) {
+        mappings.push({
+          sourceColumnIndex: column.index,
+          sourceColumnName: column.originalName,
+          targetFieldId: 'conversion_value',
+          targetFieldName: 'Conversion Value',
+          matchType: 'manual',
+          confidence: 1.0
+        });
+      }
+    } else if (valueMode === 'revenue' && selectedRevenue) {
       const column = detectedColumns.find(c => c.index.toString() === selectedRevenue);
       if (column) {
         mappings.push({
@@ -423,13 +434,11 @@ export function GuidedColumnMapping({
     );
   }
 
-  // Step indicator
+  // Step indicator (no review; Save happens on the last step)
   const steps = [
     { id: 'campaign-name', label: 'Campaign Identifier', icon: Target },
-    ...(identifierRoute === 'campaign_id'
-      ? [{ id: 'campaign-name-sheet', label: 'Campaign Name', icon: Target }]
-      : []),
-    { id: 'revenue', label: 'Revenue', icon: DollarSign },
+    { id: 'crosswalk', label: 'Link Campaign', icon: Target },
+    { id: 'revenue', label: 'Value Source', icon: DollarSign },
     { id: 'platform', label: 'LinkedIn Filter', icon: Filter },
   ] as Array<{ id: Step; label: string; icon: any }>;
 
@@ -581,16 +590,16 @@ export function GuidedColumnMapping({
                 Select Campaign Identifier Column
               </>
             )}
-            {currentStep === 'campaign-name-sheet' && (
+            {currentStep === 'crosswalk' && (
               <>
                 <Target className="w-5 h-5 text-blue-600" />
-                Select Campaign Name Column
+                Link Campaign to Sheet Value
               </>
             )}
             {currentStep === 'revenue' && (
               <>
                 <DollarSign className="w-5 h-5 text-green-600" />
-                Select Revenue Column
+                Select Conversion Value or Revenue Column
               </>
             )}
             {currentStep === 'platform' && (
@@ -602,13 +611,13 @@ export function GuidedColumnMapping({
           </CardTitle>
           <CardDescription>
             {currentStep === 'campaign-name' && (
-              "Which column uniquely identifies your campaign? Choose Campaign Name (Route 1) or Campaign ID (Route 2)."
+              "Which column uniquely identifies your campaign across the selected tabs?"
             )}
-            {currentStep === 'campaign-name-sheet' && (
-              "Which column should be used as the campaign name? The values in this column should match the campaign name in MetricMind."
+            {currentStep === 'crosswalk' && (
+              "Select the specific Campaign ID/Name value from your sheet that corresponds to this MetricMind campaign."
             )}
             {currentStep === 'revenue' && (
-              "Which column contains the revenue data? This is required to calculate conversion values and revenue metrics like ROI and ROAS."
+              "Which column contains conversion value (value per conversion)? If conversion value is not available, select the revenue column so we can calculate it."
             )}
             {currentStep === 'platform' && (
               "Which column identifies the platform (e.g., LinkedIn, Facebook, Google Ads)? This is optional if your entire sheet is for LinkedIn only."
@@ -626,7 +635,6 @@ export function GuidedColumnMapping({
                   onClick={() => {
                     setIdentifierRoute('campaign_name');
                     setSelectedCampaignName(null);
-                    setSelectedCampaignNameFromSheet(null);
                   }}
                   size="sm"
                 >
@@ -638,7 +646,6 @@ export function GuidedColumnMapping({
                   onClick={() => {
                     setIdentifierRoute('campaign_id');
                     setSelectedCampaignName(null);
-                    setSelectedCampaignNameFromSheet(null);
                   }}
                   size="sm"
                 >
@@ -684,7 +691,7 @@ export function GuidedColumnMapping({
                   <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
                     <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <span>
-                      💡 <strong>Tip:</strong> If you pick <strong>Campaign ID</strong>, you’ll select a <strong>Campaign Name</strong> column next (and it should match MetricMind’s campaign name: <strong>{campaignName}</strong>).
+                      💡 <strong>Tip:</strong> Next, you’ll pick the specific value from this column that corresponds to <strong>{campaignName}</strong>.
                     </span>
                   </div>
                 </div>
@@ -692,53 +699,85 @@ export function GuidedColumnMapping({
             </div>
           )}
 
-          {/* Campaign Name Column Step (Route 2 only) */}
-          {currentStep === 'campaign-name-sheet' && (
+          {/* Crosswalk Step */}
+          {currentStep === 'crosswalk' && (
             <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  <strong>MetricMind Campaign:</strong> {campaignName}
+                </p>
+              </div>
+
               <div>
-                <Label className="text-sm font-medium mb-2 block">Campaign Name Column</Label>
-                <Select value={selectedCampaignNameFromSheet || ""} onValueChange={setSelectedCampaignNameFromSheet}>
+                <Label className="text-sm font-medium mb-2 block">
+                  {identifierRoute === 'campaign_id'
+                    ? 'Select the Campaign ID value for this campaign'
+                    : 'Select the Campaign Name value for this campaign'}
+                </Label>
+                <Select value={selectedIdentifierValue || ""} onValueChange={setSelectedIdentifierValue}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a column..." />
+                    <SelectValue placeholder={uniqueValuesLoading ? "Loading values..." : "Select a value..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {detectedColumns.map((column) => (
-                      <SelectItem key={column.index} value={column.index.toString()}>
-                        <div className="flex items-center justify-between w-full">
-                          <span>{column.originalName}</span>
-                          <Badge variant="secondary" className="ml-2 text-xs">
-                            {column.detectedType}
-                          </Badge>
-                        </div>
+                    {(uniqueValuesData?.values || []).map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {v}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {uniqueValuesError && (
+                  <p className="text-xs mt-2 text-amber-700 dark:text-amber-400">
+                    Could not load values automatically. Please go back and reselect tabs/columns, or try again later.
+                  </p>
+                )}
+                {uniqueValuesData?.truncated && (
+                  <p className="text-xs mt-2 text-slate-500">
+                    Showing the first {uniqueValuesData.values.length} values (list truncated).
+                  </p>
+                )}
               </div>
-              {selectedCampaignNameFromSheet && (
-                <div className="space-y-2">
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                    <p className="text-xs text-blue-800 dark:text-blue-300">
-                      <strong>Sample values:</strong> {detectedColumns.find(c => c.index.toString() === selectedCampaignNameFromSheet)?.sampleValues.slice(0, 3).join(', ') || 'N/A'}
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
-                    <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <span>
-                      This column should contain the MetricMind campaign name (e.g., <strong>{campaignName}</strong>) so we can attribute the correct rows to this workspace campaign.
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
           {/* Revenue Step */}
           {currentStep === 'revenue' && (
             <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={valueMode === 'conversion_value' ? "default" : "outline"}
+                  onClick={() => {
+                    setValueMode('conversion_value');
+                    setSelectedRevenue(null);
+                  }}
+                  size="sm"
+                >
+                  Use Conversion Value
+                </Button>
+                <Button
+                  type="button"
+                  variant={valueMode === 'revenue' ? "default" : "outline"}
+                  onClick={() => {
+                    setValueMode('revenue');
+                    setSelectedConversionValue(null);
+                  }}
+                  size="sm"
+                >
+                  Use Revenue (Calculate)
+                </Button>
+              </div>
               <div>
-                <Label className="text-sm font-medium mb-2 block">Revenue Column</Label>
-                <Select value={selectedRevenue || ""} onValueChange={setSelectedRevenue}>
+                <Label className="text-sm font-medium mb-2 block">
+                  {valueMode === 'conversion_value' ? 'Conversion Value Column' : 'Revenue Column'}
+                </Label>
+                <Select
+                  value={valueMode === 'conversion_value' ? (selectedConversionValue || "") : (selectedRevenue || "")}
+                  onValueChange={(v) => {
+                    if (valueMode === 'conversion_value') setSelectedConversionValue(v);
+                    else setSelectedRevenue(v);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a column..." />
                   </SelectTrigger>
@@ -756,10 +795,14 @@ export function GuidedColumnMapping({
                   </SelectContent>
                 </Select>
               </div>
-              {selectedRevenue && (
+              {(valueMode === 'conversion_value' ? selectedConversionValue : selectedRevenue) && (
                 <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
                   <p className="text-xs text-green-800 dark:text-green-300">
-                    <strong>Sample values:</strong> {detectedColumns.find(c => c.index.toString() === selectedRevenue)?.sampleValues.slice(0, 3).join(', ') || 'N/A'}
+                    <strong>Sample values:</strong>{' '}
+                    {detectedColumns
+                      .find(c => c.index.toString() === (valueMode === 'conversion_value' ? selectedConversionValue : selectedRevenue))
+                      ?.sampleValues.slice(0, 3)
+                      .join(', ') || 'N/A'}
                   </p>
                 </div>
               )}
@@ -817,50 +860,6 @@ export function GuidedColumnMapping({
                   </p>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Review Step */}
-          {currentStep === 'review' && (
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Target className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium">Campaign Identifier:</span>
-                  </div>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">
-                    {detectedColumns.find(c => c.index.toString() === selectedCampaignName)?.originalName || 'Not selected'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium">Revenue:</span>
-                  </div>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">
-                    {detectedColumns.find(c => c.index.toString() === selectedRevenue)?.originalName || 'Not selected'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm font-medium">Platform:</span>
-                  </div>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">
-                    {skipPlatform 
-                      ? 'Skipped (entire sheet for LinkedIn)'
-                      : (detectedColumns.find(c => c.index.toString() === selectedPlatform)?.originalName || 'Not selected')
-                    }
-                  </span>
-                </div>
-              </div>
-              <Alert>
-                <CheckCircle2 className="w-4 h-4" />
-                <AlertDescription>
-                  After saving, conversion values will be calculated automatically and revenue metrics will be available in the campaign overview.
-                </AlertDescription>
-              </Alert>
             </div>
           )}
 

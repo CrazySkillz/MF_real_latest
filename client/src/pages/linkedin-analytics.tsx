@@ -3829,23 +3829,27 @@ export default function LinkedInAnalytics() {
                                 View Raw Data
                               </Button>
                               <Button
-                                variant="default"
-                                size="sm"
+                                variant="outline"
+                                size="icon"
+                                title="Edit mappings"
+                                aria-label="Edit mappings"
                                 onClick={() => {
                                   setSelectedSourceId(source.id);
                                   setIsEditMappingModalOpen(true);
                                 }}
                               >
-                                Edit Mappings
+                                <Pencil className="w-4 h-4" />
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button
-                                    variant="destructive"
-                                    size="sm"
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Delete source"
+                                    aria-label="Delete source"
                                     disabled={deleteSourceMutation.isPending}
                                   >
-                                    {deleteSourceMutation.isPending ? "Removing..." : "Delete"}
+                                    <Trash2 className="w-4 h-4" />
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>

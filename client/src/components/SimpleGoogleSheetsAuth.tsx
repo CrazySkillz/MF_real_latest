@@ -243,6 +243,16 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
           Array.isArray(data.sheetNames) && data.sheetNames.length > 0
             ? data.sheetNames
             : sheetsToConnect.filter((s): s is string => s !== null);
+        // Overwrite persisted selection with server-confirmed tabs to prevent any stale/mismatched tab names
+        // from being reused by later steps (e.g., mapping scope fallback).
+        try {
+          localStorage.setItem(
+            `mm:selectedSheetNames:${campaignId}:${selectedSpreadsheet}`,
+            JSON.stringify(connectedSheetNames)
+          );
+        } catch {
+          // ignore storage failures
+        }
         onSuccess({
           connectionId: data.connectionIds?.[0] || data.connectionId,
           spreadsheetId: selectedSpreadsheet,

@@ -55,10 +55,12 @@ export function GuidedColumnMapping({
   const queryClient = useQueryClient();
   
   const [currentStep, setCurrentStep] = useState<Step>('detect');
-  // Identifier selection:
-  // - campaign_name: user selects Campaign Name column as identifier
-  // - campaign_id: user selects Campaign ID column as identifier
+  // Identifier mapping target:
+  // - campaign_name: the selected identifier column is treated as Campaign Name
+  // - campaign_id: the selected identifier column is treated as Campaign ID
   const [identifierRoute, setIdentifierRoute] = useState<'campaign_name' | 'campaign_id'>('campaign_name');
+  // Auto-detect identifierRoute from the selected column. Users can override.
+  const [identifierRouteAuto, setIdentifierRouteAuto] = useState(true);
   const [selectedCampaignName, setSelectedCampaignName] = useState<string | null>(null);
   const [selectedRevenue, setSelectedRevenue] = useState<string | null>(null);
   const [selectedConversionValue, setSelectedConversionValue] = useState<string | null>(null);
@@ -67,6 +69,28 @@ export function GuidedColumnMapping({
   const [skipPlatform, setSkipPlatform] = useState(false);
   const [selectedIdentifierValue, setSelectedIdentifierValue] = useState<string | null>(null);
   const effectiveSheetNames = sheetNames || [];
+
+  const inferIdentifierRoute = (col?: DetectedColumn | null): 'campaign_name' | 'campaign_id' => {
+    if (!col) return 'campaign_name';
+    const detected = String(col.detectedType || '').toLowerCase();
+    if (detected.includes('number') || detected.includes('int') || detected.includes('numeric')) {
+      return 'campaign_id';
+    }
+    const samples = Array.isArray(col.sampleValues) ? col.sampleValues : [];
+    const normalized = samples
+      .map((v) => String(v ?? '').trim())
+      .filter((v) => v.length > 0)
+      .slice(0, 20);
+    if (normalized.some((v) => v.toLowerCase().includes('urn:li'))) {
+      return 'campaign_id';
+    }
+    if (normalized.length > 0) {
+      const numericLike = normalized.filter((v) => /^\d+$/.test(v)).length;
+      const ratio = numericLike / normalized.length;
+      if (ratio >= 0.6) return 'campaign_id';
+    }
+    return 'campaign_name';
+  };
 
   // Reset crosswalk selection when identifier column or route changes
   useEffect(() => {
@@ -136,6 +160,15 @@ export function GuidedColumnMapping({
   const requestedSheets = (columnsData as any)?.sheetNamesRequested as string[] | undefined;
   const fetchedSheets = (columnsData as any)?.sheetNamesFetched as string[] | undefined;
   const failedSheets = (columnsData as any)?.sheetNamesFailed as Array<{ sheet: string; status?: number; statusText?: string }> | undefined;
+
+  // Auto-detect identifierRoute whenever the selected identifier column changes (unless user overrides).
+  useEffect(() => {
+    if (!identifierRouteAuto) return;
+    if (!selectedCampaignName) return;
+    const col = detectedColumns.find((c) => c.index.toString() === selectedCampaignName);
+    if (!col) return;
+    setIdentifierRoute(inferIdentifierRoute(col));
+  }, [identifierRouteAuto, selectedCampaignName, detectedColumns]);
   
   // Debug logging
   useEffect(() => {
@@ -208,12 +241,14 @@ export function GuidedColumnMapping({
     // Identifier route + column
     if (idMapping) {
       setIdentifierRoute('campaign_id');
+      setIdentifierRouteAuto(false);
       const choice = findColumnChoice(idMapping);
       if (choice) setSelectedCampaignName(choice);
       const selected = String(idMapping?.selectedValue || '').trim();
       if (selected) setSelectedIdentifierValue(selected);
     } else if (nameMapping) {
       setIdentifierRoute('campaign_name');
+      setIdentifierRouteAuto(false);
       const choice = findColumnChoice(nameMapping);
       if (choice) setSelectedCampaignName(choice);
       const selected = String(nameMapping?.selectedValue || '').trim();
@@ -696,7 +731,7 @@ export function GuidedColumnMapping({
           </CardTitle>
           <CardDescription>
             {currentStep === 'campaign-name' && (
-              "Which column uniquely identifies your campaign across the selected tabs?"
+              "Select the column that identifies your campaign across the selected tabs. We’ll automatically detect whether it’s a Campaign Name or Campaign ID."
             )}
             {currentStep === 'crosswalk' && (
               "Select the specific Campaign ID/Name value from your sheet that corresponds to this MetricMind campaign."
@@ -713,35 +748,17 @@ export function GuidedColumnMapping({
           {/* Campaign Name Step */}
           {currentStep === 'campaign-name' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant={identifierRoute === 'campaign_name' ? "default" : "outline"}
-                  onClick={() => {
-                    setIdentifierRoute('campaign_name');
-                    setSelectedCampaignName(null);
-                  }}
-                  size="sm"
-                >
-                  Campaign Name
-                </Button>
-                <Button
-                  type="button"
-                  variant={identifierRoute === 'campaign_id' ? "default" : "outline"}
-                  onClick={() => {
-                    setIdentifierRoute('campaign_id');
-                    setSelectedCampaignName(null);
-                  }}
-                  size="sm"
-                >
-                  Campaign ID
-                </Button>
-              </div>
               <div>
                 <Label className="text-sm font-medium mb-2 block">
-                  {identifierRoute === 'campaign_id' ? 'Campaign ID Column' : 'Campaign Name Column'}
+                  Campaign Identifier Column
                 </Label>
-                <Select value={selectedCampaignName || ""} onValueChange={setSelectedCampaignName}>
+                <Select
+                  value={selectedCampaignName || ""}
+                  onValueChange={(v) => {
+                    setIdentifierRouteAuto(true);
+                    setSelectedCampaignName(v);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a column..." />
                   </SelectTrigger>
@@ -766,6 +783,28 @@ export function GuidedColumnMapping({
                   </SelectContent>
                 </Select>
               </div>
+              {selectedCampaignName && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">
+                    Detected: {identifierRoute === 'campaign_id' ? 'Campaign ID' : 'Campaign Name'}
+                  </Badge>
+                  {!identifierRouteAuto && (
+                    <Badge variant="outline">Manual override</Badge>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      setIdentifierRouteAuto(false);
+                      setIdentifierRoute(identifierRoute === 'campaign_id' ? 'campaign_name' : 'campaign_id');
+                    }}
+                  >
+                    Treat as {identifierRoute === 'campaign_id' ? 'Campaign Name' : 'Campaign ID'}
+                  </Button>
+                </div>
+              )}
               {selectedCampaignName && (
                 <div className="space-y-2">
                   <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">

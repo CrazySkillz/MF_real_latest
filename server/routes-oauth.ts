@@ -2685,6 +2685,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get spreadsheet name - try to fetch from Google API if we have access token
       let spreadsheetName = `Spreadsheet ${spreadsheetId}`;
+      let spreadsheetTabTitles: string[] | null = null;
       if (dbConnection.accessToken) {
         try {
           const metadataResponse = await fetch(
@@ -2694,9 +2695,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (metadataResponse.ok) {
             const metadata = await metadataResponse.json();
             spreadsheetName = metadata.properties?.title || spreadsheetName;
+            spreadsheetTabTitles = Array.isArray(metadata?.sheets)
+              ? metadata.sheets.map((s: any) => s?.properties?.title).filter(Boolean)
+              : null;
           }
         } catch (fetchError) {
           console.log('[Select Multiple Spreadsheets] Could not fetch spreadsheet name, using default');
+        }
+      }
+
+      // Guardrail: only allow sheetNames that actually exist in the spreadsheet.
+      // This prevents mismatches where a stale client selection (or bad payload) connects unexpected tabs.
+      if (spreadsheetTabTitles && spreadsheetTabTitles.length > 0) {
+        const titleSet = new Set(spreadsheetTabTitles.map((t) => String(t).trim()));
+        const invalid = normalizedSheetNames.filter((s) => !titleSet.has(String((s || '').trim())));
+        if (invalid.length > 0) {
+          return res.status(400).json({
+            error: 'One or more selected tabs were not found in the spreadsheet',
+            invalidTabs: invalid,
+          });
         }
       }
       

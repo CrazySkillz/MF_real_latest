@@ -185,7 +185,9 @@ export function GoogleSheetsDatasetsView({
     }
   });
 
-  if (connections.length === 0) {
+  const visibleConnections = connections.filter((c) => c?.spreadsheetId && c.spreadsheetId !== 'pending');
+
+  if (visibleConnections.length === 0) {
     return (
       <Card>
         <CardContent className="p-6 text-center">
@@ -201,7 +203,7 @@ export function GoogleSheetsDatasetsView({
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-          Connected Datasets ({connections.length})
+          Connected Datasets ({visibleConnections.length})
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400">
           Manage your Google Sheets connections and column mappings
@@ -209,7 +211,7 @@ export function GoogleSheetsDatasetsView({
       </div>
 
       <div className="space-y-3">
-        {connections.map((conn) => {
+        {visibleConnections.map((conn) => {
           const mapped = isMapped(conn);
           return (
             <Card

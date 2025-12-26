@@ -325,10 +325,23 @@ export function UploadAdditionalDataModal({
                   }, 300);
                 }}
                 onCancel={() => {
+                  // User cancelled before saving mappings: roll back the newly-created sheet connections
+                  // so they don't show up as stray datasets (including "pending").
+                  const connectionIdsToDelete = (newConnectionInfo?.connectionIds && newConnectionInfo.connectionIds.length > 0)
+                    ? newConnectionInfo.connectionIds
+                    : (newConnectionInfo?.connectionId ? [newConnectionInfo.connectionId] : []);
+
                   setShowGuidedMapping(false);
                   setNewConnectionInfo(null);
-                  refetchConnections();
-                  setShowDatasetsView(true);
+
+                  Promise.allSettled(
+                    connectionIdsToDelete.map((id) =>
+                      fetch(`/api/google-sheets/${originalCampaignId}/connection?connectionId=${encodeURIComponent(id)}`, { method: 'DELETE' })
+                    )
+                  ).finally(() => {
+                    refetchConnections();
+                    setShowDatasetsView(true);
+                  });
                 }}
               />
                 );

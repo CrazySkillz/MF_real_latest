@@ -3795,9 +3795,11 @@ export default function LinkedInAnalytics() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {connectedSources.map((source: any) => {
                       const isSheets = source.type === 'google_sheets';
-                      const willClearConversionValue =
-                        !!source.usedForRevenueTracking &&
-                        connectedSources.filter((s: any) => s.id !== source.id && s.usedForRevenueTracking).length === 0;
+                      const otherRevenueSourcesCount = connectedSources.filter(
+                        (s: any) => s.id !== source.id && s.usedForRevenueTracking
+                      ).length;
+                      const isRevenueRelated = !!source.usedForRevenueTracking;
+                      const willClearConversionValue = isRevenueRelated && otherRevenueSourcesCount === 0;
                       return (
                         <Card key={source.id}>
                           <CardHeader>
@@ -3876,11 +3878,18 @@ export default function LinkedInAnalytics() {
                                     <AlertDialogTitle>Delete connected source?</AlertDialogTitle>
                                     <AlertDialogDescription>
                                       This will remove the connection to "{source.displayName}".
-                                      {willClearConversionValue && (
-                                        <>
-                                          {" "}Because this source is used to calculate conversion value, deleting it will
-                                          <strong> delete the conversion value</strong> and revenue metrics will disappear from the Overview tab.
-                                        </>
+                                      {isRevenueRelated && (
+                                        willClearConversionValue ? (
+                                          <>
+                                            {" "}Because this source is used to calculate conversion value, deleting it will
+                                            <strong> delete the conversion value</strong> and revenue metrics will disappear from the Overview tab.
+                                          </>
+                                        ) : (
+                                          <>
+                                            {" "}This source is marked as <strong>Used for revenue</strong>. Deleting it may change how conversion value is calculated.
+                                            If revenue metrics disappear, you can reconnect the source or re-run mappings with your remaining sources.
+                                          </>
+                                        )
                                       )}
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>

@@ -17,6 +17,7 @@ import { getPlatformFields, getRequiredFields } from "./utils/field-definitions"
 import { transformData, filterRowsByCampaignAndPlatform, calculateConversionValue } from "./utils/data-transformation";
 import { enrichRows, inferMissingFields } from "./utils/data-enrichment";
 import { toCanonicalFormatBatch } from "./utils/canonical-format";
+import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
 
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
@@ -1006,10 +1007,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return false;
         }
       };
-
+      
       const remainingRevenueTrackingConnections = remainingConnections.filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingConnection);
       const hasRevenueTrackingConnections = remainingRevenueTrackingConnections.length > 0;
-
+      
       let conversionValueCleared = false;
       if (!hasRevenueTrackingConnections) {
         console.log(`[Google Sheets] No active revenue-tracking connections remaining - clearing conversion values from platform connections`);
@@ -2703,7 +2704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('[Select Multiple Spreadsheets] Could not fetch spreadsheet name, using default');
         }
       }
-
+      
       // Guardrail: only allow sheetNames that actually exist in the spreadsheet.
       // This prevents mismatches where a stale client selection (or bad payload) connects unexpected tabs.
       if (spreadsheetTabTitles && spreadsheetTabTitles.length > 0) {
@@ -2737,7 +2738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Refresh tokens/metadata on the existing connection (best-effort)
           try {
             await storage.updateGoogleSheetsConnection(existing.id, {
-              spreadsheetId,
+            spreadsheetId,
               spreadsheetName,
               sheetName,
               accessToken: dbConnection.accessToken,
@@ -2764,28 +2765,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        console.log(`[Select Multiple Spreadsheets] 🆕 Creating NEW connection for sheet: ${sheetName}`);
-        try {
-          const newConnection = await storage.createGoogleSheetsConnection({
-            campaignId,
-            spreadsheetId,
-            spreadsheetName,
-            sheetName: sheetName || null,
-            accessToken: dbConnection.accessToken,
-            refreshToken: dbConnection.refreshToken || null,
-            clientId: dbConnection.clientId,
-            clientSecret: dbConnection.clientSecret,
-            expiresAt: dbConnection.expiresAt,
-          });
-          connectionIds.push(newConnection.id);
+          console.log(`[Select Multiple Spreadsheets] 🆕 Creating NEW connection for sheet: ${sheetName}`);
+          try {
+            const newConnection = await storage.createGoogleSheetsConnection({
+              campaignId,
+              spreadsheetId,
+              spreadsheetName,
+              sheetName: sheetName || null,
+              accessToken: dbConnection.accessToken,
+              refreshToken: dbConnection.refreshToken || null,
+              clientId: dbConnection.clientId,
+              clientSecret: dbConnection.clientSecret,
+              expiresAt: dbConnection.expiresAt,
+            });
+            connectionIds.push(newConnection.id);
           existingBySheet.set(sheetKey, newConnection);
-          console.log(`[Select Multiple Spreadsheets] ✅ Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
-        } catch (error: any) {
-          console.error(`[Select Multiple Spreadsheets] ❌ Failed to create connection for sheet ${sheetName}:`, error.message);
-          console.error(`[Select Multiple Spreadsheets] Error stack:`, error.stack);
-          // Continue with other sheets even if one fails
+            console.log(`[Select Multiple Spreadsheets] ✅ Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
+          } catch (error: any) {
+            console.error(`[Select Multiple Spreadsheets] ❌ Failed to create connection for sheet ${sheetName}:`, error.message);
+            console.error(`[Select Multiple Spreadsheets] Error stack:`, error.stack);
+            // Continue with other sheets even if one fails
+          }
         }
-      }
 
       // If a pending row wasn't consumed, delete it to avoid clutter/limits.
       if (dbConnection?.spreadsheetId === 'pending' && dbConnection?.id && !pendingConsumed && connectionIds.length > 0) {
@@ -2924,14 +2925,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             (titles && tabIndex >= 0 && tabIndex < titles.length ? titles[tabIndex] : null);
 
           return ({
-            id: conn.id,
-            spreadsheetId: conn.spreadsheetId,
-            spreadsheetName: conn.spreadsheetName,
+          id: conn.id,
+          spreadsheetId: conn.spreadsheetId,
+          spreadsheetName: conn.spreadsheetName,
             sheetName: derivedSheetName,
-            isPrimary: conn.isPrimary,
-            isActive: conn.isActive,
-            columnMappings: conn.columnMappings,
-            connectedAt: conn.connectedAt
+          isPrimary: conn.isPrimary,
+          isActive: conn.isActive,
+          columnMappings: conn.columnMappings,
+          connectedAt: conn.connectedAt
           });
         })
       });
@@ -8485,10 +8486,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let conversionValue = 0;
       if (hasAnyActiveGoogleSheetsConnection) {
         const campaignConversionValue = latestCampaign?.conversionValue
-          ? parseFloat(latestCampaign.conversionValue.toString())
+        ? parseFloat(latestCampaign.conversionValue.toString()) 
           : 0;
         const sessionConversionValue = parseFloat(session.conversionValue || '0');
-
+        
         conversionValue = campaignConversionValue > 0 ? campaignConversionValue : sessionConversionValue;
 
         if (conversionValue === 0) {
@@ -10871,7 +10872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             const normalizeMetricKey = (key: any) =>
               String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
+            
             for (const metric of linkedInMetrics) {
               const k = normalizeMetricKey(metric.metricKey);
               if (k === 'conversions' || k === 'externalwebsiteconversions') {
@@ -10954,12 +10955,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                   const revenueColumnIndex = revenueMapping ? resolveColumnIndex(revenueMapping, headers) : -1;
                   const conversionValueColumnIndex = conversionValueMapping ? resolveColumnIndex(conversionValueMapping, headers) : -1;
-                  if (revenueMapping) {
-                    console.log(`[Save Mappings] Revenue column index: ${revenueColumnIndex} (from mapping:`, revenueMapping, ')');
-                    if (revenueColumnIndex < 0 || revenueColumnIndex >= headers.length) {
-                      console.error(`[Save Mappings] ❌ Invalid revenue column index: ${revenueColumnIndex} (headers length: ${headers.length})`);
-                      continue;
-                    }
+                if (revenueMapping) {
+                  console.log(`[Save Mappings] Revenue column index: ${revenueColumnIndex} (from mapping:`, revenueMapping, ')');
+                  if (revenueColumnIndex < 0 || revenueColumnIndex >= headers.length) {
+                    console.error(`[Save Mappings] ❌ Invalid revenue column index: ${revenueColumnIndex} (headers length: ${headers.length})`);
+                    continue;
+                  }
                   }
                   if (conversionValueMapping) {
                     console.log(`[Save Mappings] Conversion Value column index: ${conversionValueColumnIndex} (from mapping:`, conversionValueMapping, ')');
@@ -11083,46 +11084,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   // If conversion_value is mapped, prefer extracting conversion value directly.
                   // Otherwise, sum revenue to compute conversion value.
                   if (conversionValueMapping) {
-                    const values: number[] = [];
-                    for (const row of filteredRows) {
-                      if (!Array.isArray(row) || row.length <= conversionValueColumnIndex) continue;
-                      const rawValue = String(row[conversionValueColumnIndex] || '0');
-                      const v = parseFloat(rawValue.replace(/[$,]/g, '')) || 0;
-                      if (v > 0) values.push(v);
+                    const stratRaw = String((conversionValueMapping as any)?.dateStrategy || (conversionValueMapping as any)?.aggregation || 'median').toLowerCase();
+                    const strategy: 'latest' | 'median' = stratRaw === 'latest' ? 'latest' : 'median';
+                    const dateColumnIndexMaybe = (conversionValueMapping as any)?.dateColumnIndex;
+                    const dateColumnNameMaybe = String((conversionValueMapping as any)?.dateColumnName || '').trim();
+                    let dateIdx = -1;
+                    if (typeof dateColumnIndexMaybe === 'number') {
+                      dateIdx = dateColumnIndexMaybe;
+                    } else if (dateColumnNameMaybe) {
+                      const byName = headers.findIndex((h: any) => String(h || '').trim().toLowerCase() === dateColumnNameMaybe.toLowerCase());
+                      dateIdx = byName;
                     }
-                    if (values.length > 0) {
-                      // Use median for robustness if multiple values exist
-                      const sorted = values.slice().sort((a, b) => a - b);
-                      const mid = Math.floor(sorted.length / 2);
-                      const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-                      // Stash on campaign object for later usage in this request (across multiple tabs)
+
+                    const picked = pickConversionValueFromRows({
+                      rows: filteredRows,
+                      valueColumnIndex: conversionValueColumnIndex,
+                      dateColumnIndex: dateIdx >= 0 ? dateIdx : undefined,
+                      strategy: (dateIdx >= 0 ? strategy : 'median'),
+                    });
+
+                    if (picked && picked > 0) {
                       const prev = (campaign as any).__conversionValuesFromSheets;
-                      (campaign as any).__conversionValuesFromSheets = Array.isArray(prev) ? [...prev, median] : [median];
-                      console.log(`[Save Mappings] ✅ Extracted conversion value from sheet: $${median} (from ${values.length} rows)`);
+                      (campaign as any).__conversionValuesFromSheets = Array.isArray(prev) ? [...prev, picked] : [picked];
+                      console.log(`[Save Mappings] ✅ Extracted conversion value from sheet: $${picked} (strategy=${dateIdx >= 0 ? strategy : 'median'})`);
                     } else {
                       console.log(`[Save Mappings] ⚠️ No conversion value rows found in mapped column`);
                     }
                   }
 
                   if (revenueMapping) {
-                    // Sum revenue
-                    let connectionRevenue = 0;
-                    let revenueRowCount = 0;
-                    for (const row of filteredRows) {
-                      if (!Array.isArray(row) || row.length <= revenueColumnIndex) continue;
-                      const rawValue = String(row[revenueColumnIndex] || '0');
-                      const revenueValue = parseFloat(rawValue.replace(/[$,]/g, '')) || 0;
-                      if (revenueValue > 0) {
-                        connectionRevenue += revenueValue;
-                        revenueRowCount++;
-                        if (revenueRowCount <= 3) {
-                          console.log(`[Save Mappings] Revenue row ${revenueRowCount}: "${rawValue}" -> $${revenueValue}`);
-                        }
+                  // Sum revenue
+                  let connectionRevenue = 0;
+                  let revenueRowCount = 0;
+                  for (const row of filteredRows) {
+                    if (!Array.isArray(row) || row.length <= revenueColumnIndex) continue;
+                    const rawValue = String(row[revenueColumnIndex] || '0');
+                    const revenueValue = parseFloat(rawValue.replace(/[$,]/g, '')) || 0;
+                    if (revenueValue > 0) {
+                      connectionRevenue += revenueValue;
+                      revenueRowCount++;
+                      if (revenueRowCount <= 3) {
+                        console.log(`[Save Mappings] Revenue row ${revenueRowCount}: "${rawValue}" -> $${revenueValue}`);
                       }
                     }
-                    
-                    totalRevenue += connectionRevenue;
-                    console.log(`[Save Mappings] Revenue from connection ${conn.id}: $${connectionRevenue} (from ${revenueRowCount} rows with revenue > 0, total so far: $${totalRevenue})`);
+                  }
+                  
+                  totalRevenue += connectionRevenue;
+                  console.log(`[Save Mappings] Revenue from connection ${conn.id}: $${connectionRevenue} (from ${revenueRowCount} rows with revenue > 0, total so far: $${totalRevenue})`);
                   }
                 } else {
                   console.log(`[Save Mappings] ⚠️ No revenue/conversion_value mapping found for connection ${conn.id}`);
@@ -11253,7 +11261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connection = (all || []).find((c: any) => c?.id === String(connectionId));
         // Backwards-compat fallback: allow callers to pass a spreadsheetId.
         if (!connection) {
-          connection = await storage.getGoogleSheetsConnection(campaignId, connectionId as string);
+        connection = await storage.getGoogleSheetsConnection(campaignId, connectionId as string);
         }
       } else {
         connection = await storage.getPrimaryGoogleSheetsConnection(campaignId);

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, AlertCircle, Loader2, ArrowRight, ArrowLeft, FileSpreadsheet, DollarSign, Target, Filter } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -65,6 +66,9 @@ export function GuidedColumnMapping({
   const [selectedRevenue, setSelectedRevenue] = useState<string | null>(null);
   const [selectedConversionValue, setSelectedConversionValue] = useState<string | null>(null);
   const [valueMode, setValueMode] = useState<'conversion_value' | 'revenue'>('revenue');
+  const [valueColumnMeaning, setValueColumnMeaning] = useState<'revenue_per_row' | 'revenue_aggregated' | 'value_per_conversion'>('revenue_per_row');
+  const [convValueDateStrategy, setConvValueDateStrategy] = useState<'latest' | 'median'>('median');
+  const [convValueDateColumn, setConvValueDateColumn] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [skipPlatform, setSkipPlatform] = useState(false);
   const [selectedIdentifierValue, setSelectedIdentifierValue] = useState<string | null>(null);
@@ -169,6 +173,25 @@ export function GuidedColumnMapping({
     if (!col) return;
     setIdentifierRoute(inferIdentifierRoute(col));
   }, [identifierRouteAuto, selectedCampaignName, detectedColumns]);
+
+  const dateCandidates = detectedColumns.filter((c) => {
+    const t = String(c.detectedType || '').toLowerCase();
+    const n = String(c.originalName || '').toLowerCase();
+    return t.includes('date') || t.includes('time') || n.includes('date') || n.includes('timestamp');
+  });
+
+  // For "value per conversion" pattern, choose a date column automatically when available.
+  useEffect(() => {
+    if (valueMode !== 'conversion_value') return;
+    if (valueColumnMeaning !== 'value_per_conversion') return;
+    if (dateCandidates.length > 0) {
+      if (!convValueDateColumn) setConvValueDateColumn(String(dateCandidates[0].index));
+      if (convValueDateStrategy !== 'latest') setConvValueDateStrategy('latest');
+    } else {
+      setConvValueDateColumn(null);
+      if (convValueDateStrategy !== 'median') setConvValueDateStrategy('median');
+    }
+  }, [valueMode, valueColumnMeaning, dateCandidates.length]);
   
   // Debug logging
   useEffect(() => {
@@ -258,6 +281,12 @@ export function GuidedColumnMapping({
     // Value source
     if (convValueMapping) {
       setValueMode('conversion_value');
+      setValueColumnMeaning(String(convValueMapping?.valueSemantic || 'value_per_conversion') === 'value_per_conversion' ? 'value_per_conversion' : 'value_per_conversion');
+      const strat = String(convValueMapping?.dateStrategy || convValueMapping?.aggregation || '').toLowerCase();
+      if (strat === 'latest') setConvValueDateStrategy('latest');
+      if (strat === 'median') setConvValueDateStrategy('median');
+      const dateIdx = convValueMapping?.dateColumnIndex;
+      if (typeof dateIdx === 'number') setConvValueDateColumn(String(dateIdx));
       const choice = findColumnChoice(convValueMapping);
       if (choice) setSelectedConversionValue(choice);
     } else if (revenueMapping) {
@@ -430,7 +459,7 @@ export function GuidedColumnMapping({
         if (!selectedConversionValue) {
           toast({
             title: "Conversion Value Column Required",
-            description: "Please select a column that contains conversion value (value per conversion).",
+            description: "Please select the value column from your sheet.",
             variant: "destructive"
           });
           return;
@@ -482,14 +511,35 @@ export function GuidedColumnMapping({
     if (valueMode === 'conversion_value' && selectedConversionValue) {
       const column = detectedColumns.find(c => c.index.toString() === selectedConversionValue);
       if (column) {
-        mappings.push({
-          sourceColumnIndex: column.index,
-          sourceColumnName: column.originalName,
-          targetFieldId: 'conversion_value',
-          targetFieldName: 'Conversion Value',
-          matchType: 'manual',
-          confidence: 1.0
-        });
+        if (valueColumnMeaning === 'value_per_conversion') {
+          const dateCol = convValueDateColumn
+            ? detectedColumns.find((c) => c.index.toString() === convValueDateColumn)
+            : null;
+          mappings.push({
+            sourceColumnIndex: column.index,
+            sourceColumnName: column.originalName,
+            targetFieldId: 'conversion_value',
+            targetFieldName: 'Conversion Value',
+            valueSemantic: 'value_per_conversion',
+            dateStrategy: dateCol ? convValueDateStrategy : 'median',
+            dateColumnIndex: dateCol ? dateCol.index : undefined,
+            dateColumnName: dateCol ? dateCol.originalName : undefined,
+            matchType: 'manual',
+            confidence: 1.0
+          });
+        } else {
+          // User selected "Use Conversion Value" but clarified this column is actually revenue.
+          // Treat it as revenue and compute conversion value from Revenue / LinkedIn Conversions.
+          mappings.push({
+            sourceColumnIndex: column.index,
+            sourceColumnName: column.originalName,
+            targetFieldId: 'revenue',
+            targetFieldName: 'Revenue',
+            valueSemantic: valueColumnMeaning,
+            matchType: 'manual',
+            confidence: 1.0
+          });
+        }
       }
     } else if (valueMode === 'revenue' && selectedRevenue) {
       const column = detectedColumns.find(c => c.index.toString() === selectedRevenue);
@@ -888,6 +938,9 @@ export function GuidedColumnMapping({
                   onClick={() => {
                     setValueMode('conversion_value');
                     setSelectedRevenue(null);
+                    setValueColumnMeaning('revenue_per_row');
+                    setConvValueDateStrategy('median');
+                    setConvValueDateColumn(null);
                   }}
                   size="sm"
                 >
@@ -942,6 +995,96 @@ export function GuidedColumnMapping({
                       ?.sampleValues.slice(0, 3)
                       .join(', ') || 'N/A'}
                   </p>
+                </div>
+              )}
+
+              {valueMode === 'conversion_value' && selectedConversionValue && (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                    <Label className="text-sm font-medium mb-2 block">
+                      What does this column represent?
+                    </Label>
+                    <RadioGroup
+                      value={valueColumnMeaning}
+                      onValueChange={(v) => setValueColumnMeaning(v as any)}
+                      className="gap-3"
+                    >
+                      <div className="flex items-start gap-2">
+                        <RadioGroupItem value="revenue_per_row" id="meaning-rev-row" className="mt-1" />
+                        <Label htmlFor="meaning-rev-row" className="cursor-pointer">
+                          <div className="font-medium">Actual revenue per row</div>
+                          <div className="text-xs text-slate-500">
+                            Each row is a deal/closed-won amount (or a revenue event). We’ll sum it for the linked campaign.
+                          </div>
+                        </Label>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <RadioGroupItem value="revenue_aggregated" id="meaning-rev-agg" className="mt-1" />
+                        <Label htmlFor="meaning-rev-agg" className="cursor-pointer">
+                          <div className="font-medium">Pre-aggregated campaign revenue</div>
+                          <div className="text-xs text-slate-500">
+                            Rows may already be totals (often per time period). We’ll sum totals to standardize across periods.
+                          </div>
+                        </Label>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <RadioGroupItem value="value_per_conversion" id="meaning-vpc" className="mt-1" />
+                        <Label htmlFor="meaning-vpc" className="cursor-pointer">
+                          <div className="font-medium">Estimated value per conversion</div>
+                          <div className="text-xs text-slate-500">
+                            This is not revenue—it's a planning assumption (e.g., “$75 per lead”). We’ll multiply by LinkedIn conversions.
+                          </div>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {valueColumnMeaning === 'value_per_conversion' && (
+                    <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <div className="text-sm font-medium mb-2">Multiple values for this estimate?</div>
+                      {dateCandidates.length > 0 ? (
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
+                              Date column (used to pick the latest value)
+                            </Label>
+                            <Select value={convValueDateColumn || ""} onValueChange={setConvValueDateColumn}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select date column..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {dateCandidates.map((c) => (
+                                  <SelectItem key={c.index} value={String(c.index)}>
+                                    {c.originalName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <RadioGroup value={convValueDateStrategy} onValueChange={(v) => setConvValueDateStrategy(v as any)}>
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="latest" id="cv-latest" />
+                              <Label htmlFor="cv-latest" className="cursor-pointer">Use latest non-empty value (recommended)</Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="median" id="cv-median" />
+                              <Label htmlFor="cv-median" className="cursor-pointer">Use median value (robust)</Label>
+                            </div>
+                          </RadioGroup>
+                          {convValueDateStrategy === 'median' && (
+                            <p className="text-xs text-slate-500">
+                              Median protects against outliers and inconsistent entries.
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500">
+                          No date column detected. We’ll default to the median value to protect against outliers.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

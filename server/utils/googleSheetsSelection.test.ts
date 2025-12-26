@@ -3,6 +3,7 @@ import {
   computeConnectedSheets,
   dedupeSourcesBySpreadsheetAndSheet,
   normalizeSheetNames,
+  pickConversionValueFromRows,
   shouldDeactivateConnection,
   validateSheetNamesExist,
 } from "./googleSheetsSelection";
@@ -66,6 +67,26 @@ describe("googleSheetsSelection", () => {
     const out = dedupeSourcesBySpreadsheetAndSheet([a as any, b as any]);
     expect(out).toHaveLength(1);
     expect((out[0] as any).id).toBe("b");
+  });
+
+  it("picks latest conversion value by date when strategy=latest", () => {
+    const rows = [
+      ["2025-01-01", "75"],
+      ["2025-01-03", "90"],
+      ["2025-01-02", "80"],
+    ];
+    const v = pickConversionValueFromRows({ rows, dateColumnIndex: 0, valueColumnIndex: 1, strategy: "latest" });
+    expect(v).toBe(90);
+  });
+
+  it("falls back to median when latest cannot be determined", () => {
+    const rows = [
+      ["not-a-date", "75"],
+      ["", "90"],
+      ["nope", "80"],
+    ];
+    const v = pickConversionValueFromRows({ rows, dateColumnIndex: 0, valueColumnIndex: 1, strategy: "latest" });
+    expect(v).toBe(80);
   });
 });
 

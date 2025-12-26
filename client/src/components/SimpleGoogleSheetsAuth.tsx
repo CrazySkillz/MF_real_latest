@@ -141,15 +141,18 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
       if (data.success && data.sheets && data.sheets.length > 0) {
         setAvailableSheets(data.sheets);
         // Don't auto-select - let user choose
+        selectedSheetNamesRef.current = [];
         setSelectedSheetNames([]);
       } else {
         setAvailableSheets([]);
+        selectedSheetNamesRef.current = [];
         setSelectedSheetNames([]);
       }
     } catch (error: any) {
       console.error("Failed to fetch sheets:", error);
       // Don't show error, just set empty sheets - user can still proceed with default
       setAvailableSheets([]);
+      selectedSheetNamesRef.current = [];
       setSelectedSheetNames([]);
     } finally {
       setIsLoadingSheets(false);
@@ -159,12 +162,18 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
   const handleSpreadsheetChange = useCallback((spreadsheetId: string) => {
     setSelectedSpreadsheet(spreadsheetId);
     setAvailableSheets([]);
+    selectedSheetNamesRef.current = [];
     setSelectedSheetNames([]);
     // Fetch available sheets for this spreadsheet
     if (spreadsheetId) {
       fetchAvailableSheets(spreadsheetId);
     }
   }, [fetchAvailableSheets]);
+
+  // Keep the ref always in sync with state so we never send stale selections.
+  useEffect(() => {
+    selectedSheetNamesRef.current = selectedSheetNames;
+  }, [selectedSheetNames]);
 
   const toggleSheetSelection = useCallback((sheetTitle: string) => {
     setSelectedSheetNames(prev => {
@@ -197,18 +206,17 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
       return;
     }
 
-    // If no sheets are selected, use all available sheets or just the first sheet if none available
-    const latestSelected = selectedSheetNamesRef.current.length > 0 ? selectedSheetNamesRef.current : selectedSheetNames;
-    const sheetsToConnect = latestSelected.length > 0 
-      ? latestSelected 
-      : availableSheets.length > 0 
-        ? [availableSheets[0].title] 
-        : [null];
+    // Require explicit tab selection to avoid accidentally connecting the wrong tab due to defaults/stale state.
+    const sheetsToConnect = selectedSheetNamesRef.current.length > 0 ? selectedSheetNamesRef.current : selectedSheetNames;
+    if (availableSheets.length > 0 && (!Array.isArray(sheetsToConnect) || sheetsToConnect.length === 0)) {
+      onError("Please select at least one tab to connect.");
+      return;
+    }
 
     // Persist the user’s explicit tab selection so the next screen can reliably scope detection,
     // even if something drops props/state during modal transitions.
     try {
-      const persisted = sheetsToConnect.filter((s): s is string => s !== null);
+      const persisted = (sheetsToConnect || []).filter((s): s is string => typeof s === 'string' && s !== null);
       localStorage.setItem(
         `mm:selectedSheetNames:${campaignId}:${selectedSpreadsheet}`,
         JSON.stringify(persisted)
@@ -224,7 +232,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
       const response = await apiRequest("POST", `/api/google-sheets/select-spreadsheet-multiple`, {
         campaignId,
         spreadsheetId: selectedSpreadsheet,
-        sheetNames: sheetsToConnect,
+        sheetNames: sheetsToConnect.length > 0 ? sheetsToConnect : [null],
       });
 
       const data = await response.json();

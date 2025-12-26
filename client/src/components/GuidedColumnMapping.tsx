@@ -100,7 +100,7 @@ export function GuidedColumnMapping({
   useEffect(() => {
     setSelectedIdentifierValue(null);
   }, [identifierRoute, selectedCampaignName]);
-
+  
   // CRITICAL DEBUG LOG
   console.log('====== GUIDED COLUMN MAPPING INIT ======');
   console.log('campaignId:', campaignId);
@@ -522,9 +522,9 @@ export function GuidedColumnMapping({
           const dateCol = convValueDateColumn
             ? detectedColumns.find((c) => c.index.toString() === convValueDateColumn)
             : null;
-          mappings.push({
-            sourceColumnIndex: column.index,
-            sourceColumnName: column.originalName,
+        mappings.push({
+          sourceColumnIndex: column.index,
+          sourceColumnName: column.originalName,
             targetFieldId: 'conversion_value',
             targetFieldName: 'Conversion Value',
             valueSemantic: 'value_per_conversion',
@@ -543,11 +543,11 @@ export function GuidedColumnMapping({
             targetFieldId: 'revenue',
             targetFieldName: 'Revenue',
             valueSemantic: valueColumnMeaning,
-            matchType: 'manual',
-            confidence: 1.0
-          });
-        }
+          matchType: 'manual',
+          confidence: 1.0
+        });
       }
+    }
     } else if (valueMode === 'revenue' && selectedRevenue) {
       const column = detectedColumns.find(c => c.index.toString() === selectedRevenue);
       if (column) {
@@ -831,8 +831,8 @@ export function GuidedColumnMapping({
                               </Badge>
                             )}
                             <Badge variant="secondary" className="text-xs">
-                              {column.detectedType}
-                            </Badge>
+                            {column.detectedType}
+                          </Badge>
                           </div>
                         </div>
                       </SelectItem>

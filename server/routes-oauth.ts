@@ -2778,6 +2778,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // ignore
         }
       }
+
+      // Treat the user's selected tabs as authoritative for this campaign+spreadsheet.
+      // Deactivate any other existing active connections for this spreadsheet that are not in the selected set,
+      // and also deactivate any duplicate connections that weren't returned in `connectionIds`.
+      try {
+        const keepIds = new Set(connectionIds.map((id) => String(id)));
+        const selectedSet = new Set(connectedSheetNames.map((s) => String((s || '').trim())));
+        const allActiveForSpreadsheet = (await storage.getGoogleSheetsConnections(campaignId))
+          .filter((c: any) => c && c.isActive)
+          .filter((c: any) => c.spreadsheetId === spreadsheetId)
+          .filter((c: any) => c.spreadsheetId && c.spreadsheetId !== 'pending');
+
+        for (const c of allActiveForSpreadsheet) {
+          const sheetKey = String((c.sheetName || '').trim());
+          const shouldKeep = keepIds.has(String(c.id));
+          const isSelected = selectedSet.has(sheetKey);
+
+          // If it's not one of the connections we just selected/returned, deactivate it.
+          // This removes unrelated tabs like ROI_ROAS_Calculations when the user only selected Revenue_Closed_Won + LI_API_Campaign_Daily.
+          if (!shouldKeep || !isSelected) {
+            try {
+              await storage.updateGoogleSheetsConnection(String(c.id), {
+                isActive: false as any,
+                columnMappings: null as any,
+              } as any);
+            } catch {
+              // ignore
+            }
+          }
+        }
+      } catch {
+        // best-effort cleanup; ignore failures
+      }
       
       console.log(`[Select Multiple Spreadsheets] 🎯 Final connectionIds:`, connectionIds);
       

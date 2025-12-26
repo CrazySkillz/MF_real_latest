@@ -144,8 +144,15 @@ export function GuidedColumnMapping({
       });
       
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets/detect-columns${queryParam}`);
-      if (!response.ok) throw new Error('Failed to detect columns');
-      const data = await response.json();
+      const data = await response.json().catch(() => ({} as any));
+      if (!response.ok) {
+        const msg =
+          (data as any)?.error ||
+          (data as any)?.message ||
+          response.statusText ||
+          'Failed to detect columns';
+        throw new Error(msg);
+      }
       
       console.log('[GuidedColumnMapping] ✅ Received columns:', {
         success: data.success,

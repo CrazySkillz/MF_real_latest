@@ -1700,6 +1700,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       console.log(`[Connected Platforms] Checking platforms for campaign ${campaignId}`);
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignPlatformRaw = String((campaign as any)?.platform || '')
+        .split(',')
+        .map((s: string) => s.trim().toLowerCase())
+        .filter(Boolean);
+      const campaignWantsGoogleSheets = campaignPlatformRaw.includes('google-sheets') || campaignPlatformRaw.includes('google sheets');
 
       const [
         ga4Connections,
@@ -1768,6 +1774,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Google Sheets is considered "connected" if ANY active connection exists (not just primary/first)
           // This ensures that if one sheet is deleted, it still shows as connected if other sheets exist
           connected: googleSheetsConnections.length > 0,
+          // Campaign-level Google Sheets card should only appear as "Connected" if the campaign was created/configured
+          // with Google Sheets as a connector (Create Campaign flow). Google Sheets used only for LinkedIn revenue mapping
+          // should be shown under LinkedIn -> Connected Data Sources, not as a campaign-level connector.
+          connectedCampaignLevel:
+            !!campaignWantsGoogleSheets &&
+            googleSheetsConnections.some((c: any) => c?.spreadsheetId && c.spreadsheetId !== 'pending'),
           analyticsPath: googleSheetsConnections.length > 0
             ? `/campaigns/${campaignId}/google-sheets-data`
             : null,

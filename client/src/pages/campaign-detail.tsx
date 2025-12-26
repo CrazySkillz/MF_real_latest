@@ -54,6 +54,7 @@ interface ConnectedPlatformStatus {
   id: string;
   name: string;
   connected: boolean;
+  connectedCampaignLevel?: boolean;
   analyticsPath?: string | null;
   lastConnectedAt?: string | null;
 }
@@ -3575,7 +3576,7 @@ export default function CampaignDetail() {
     },
     {
       platform: "Google Sheets",
-      connected: platformStatusMap.get("google-sheets")?.connected === true,
+      connected: platformStatusMap.get("google-sheets")?.connectedCampaignLevel === true,
       impressions: sheetsData?.summary?.totalImpressions || 0,
       clicks: sheetsData?.summary?.totalClicks || 0,
       conversions: 0, // Conversions not in summary, would need to be calculated separately

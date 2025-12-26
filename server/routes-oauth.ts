@@ -2602,7 +2602,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Enforce max connections per campaign server-side (prevents runaway counts like 48/10)
       const MAX_GOOGLE_SHEETS_CONNECTIONS = 10;
-      const existingConnectionsForLimit = await storage.getGoogleSheetsConnections(campaignId);
+      // Exclude placeholder 'pending' connections from the limit count.
+      const existingConnectionsForLimit = (await storage.getGoogleSheetsConnections(campaignId))
+        .filter((c: any) => c && c.spreadsheetId && c.spreadsheetId !== 'pending');
       const existingCount = existingConnectionsForLimit.length;
       if (existingCount >= MAX_GOOGLE_SHEETS_CONNECTIONS) {
         return res.status(400).json({
@@ -2617,8 +2619,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map((s: string) => s.trim());
 
       const availableSlots = Math.max(0, MAX_GOOGLE_SHEETS_CONNECTIONS - existingCount);
-      const limitedSheetNames = normalizedSheetNames.slice(0, availableSlots);
-      if (limitedSheetNames.length === 0) {
+      // We'll always reuse/update existing connections for selected tabs.
+      // The limit applies only to *new* tabs that aren't already connected.
+      const existingForSpreadsheet = existingConnectionsForLimit
+        .filter((c: any) => c.spreadsheetId === spreadsheetId);
+      const existingBySheet = new Map<string, any>();
+      for (const c of existingForSpreadsheet) {
+        const key = String((c.sheetName || '').trim());
+        if (!existingBySheet.has(key)) existingBySheet.set(key, c);
+      }
+      const newSheetsNeeded = normalizedSheetNames.filter((s) => !existingBySheet.has(String((s || '').trim())));
+      const sheetsToCreate = newSheetsNeeded.slice(0, availableSlots);
+      // These are the tabs we will actually connect (existing + newly created within slot limit).
+      const connectedSheetNames = normalizedSheetNames.filter((s) => {
+        const key = String((s || '').trim());
+        return existingBySheet.has(key) || sheetsToCreate.includes(s);
+      });
+      if (connectedSheetNames.length === 0) {
         return res.status(400).json({
           error: `No available slots to add new Google Sheets connections (max ${MAX_GOOGLE_SHEETS_CONNECTIONS}).`,
           maxConnections: MAX_GOOGLE_SHEETS_CONNECTIONS,
@@ -2683,53 +2700,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create/update connections for each sheet
+      // Create/update connections for each sheet (idempotent: do not create duplicates)
       const connectionIds: string[] = [];
       const isFirstConnection = dbConnection.spreadsheetId === 'pending';
+      let pendingConsumed = false;
       
-      console.log(`[Select Multiple Spreadsheets] 📋 Creating connections for ${limitedSheetNames.length} sheet(s)`);
-      console.log(`[Select Multiple Spreadsheets] Sheet names:`, limitedSheetNames);
+      console.log(`[Select Multiple Spreadsheets] 📋 Creating connections for ${connectedSheetNames.length} sheet(s)`);
+      console.log(`[Select Multiple Spreadsheets] Sheet names:`, connectedSheetNames);
       console.log(`[Select Multiple Spreadsheets] Is first connection:`, isFirstConnection);
       
-      for (let i = 0; i < limitedSheetNames.length; i++) {
-        const sheetName = limitedSheetNames[i];
+      for (let i = 0; i < connectedSheetNames.length; i++) {
+        const sheetName = connectedSheetNames[i];
+        const sheetKey = String((sheetName || '').trim());
         
         console.log(`[Select Multiple Spreadsheets] Processing sheet ${i + 1}/${sheetNames.length}: "${sheetName}"`);
         
-        if (i === 0 && isFirstConnection) {
-          // Update the first connection (the one we found/created)
-          const updateData: any = {
-            spreadsheetId,
-            spreadsheetName
-          };
-          if (sheetName) {
-            updateData.sheetName = sheetName;
-          }
-          await storage.updateGoogleSheetsConnection(dbConnection.id, updateData);
-          connectionIds.push(dbConnection.id);
-          console.log(`[Select Multiple Spreadsheets] ✅ Updated connection ${dbConnection.id} with sheet: ${sheetName || 'first sheet (default)'}`);
-        } else {
-          // Create new connections for additional sheets
-          console.log(`[Select Multiple Spreadsheets] 🆕 Creating NEW connection for sheet: ${sheetName}`);
+        const existing = existingBySheet.get(sheetKey);
+        if (existing?.id) {
+          // Refresh tokens/metadata on the existing connection (best-effort)
           try {
-            const newConnection = await storage.createGoogleSheetsConnection({
-              campaignId,
+            await storage.updateGoogleSheetsConnection(existing.id, {
               spreadsheetId,
               spreadsheetName,
-              sheetName: sheetName || null,
+              sheetName,
               accessToken: dbConnection.accessToken,
               refreshToken: dbConnection.refreshToken || null,
               clientId: dbConnection.clientId,
               clientSecret: dbConnection.clientSecret,
               expiresAt: dbConnection.expiresAt,
-            });
-            connectionIds.push(newConnection.id);
-            console.log(`[Select Multiple Spreadsheets] ✅ Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
-          } catch (error: any) {
-            console.error(`[Select Multiple Spreadsheets] ❌ Failed to create connection for sheet ${sheetName}:`, error.message);
-            console.error(`[Select Multiple Spreadsheets] Error stack:`, error.stack);
-            // Continue with other sheets even if one fails
+              isActive: true as any,
+            } as any);
+          } catch {
+            // ignore
           }
+          connectionIds.push(existing.id);
+          continue;
+        }
+
+        // New tab connection
+        if (i === 0 && isFirstConnection && !pendingConsumed && dbConnection.id && dbConnection.spreadsheetId === 'pending') {
+          await storage.updateGoogleSheetsConnection(dbConnection.id, { spreadsheetId, spreadsheetName, sheetName } as any);
+          connectionIds.push(dbConnection.id);
+          pendingConsumed = true;
+          existingBySheet.set(sheetKey, { ...dbConnection, id: dbConnection.id, spreadsheetId, spreadsheetName, sheetName });
+          console.log(`[Select Multiple Spreadsheets] ✅ Updated pending connection ${dbConnection.id} with sheet: ${sheetName}`);
+          continue;
+        }
+
+        console.log(`[Select Multiple Spreadsheets] 🆕 Creating NEW connection for sheet: ${sheetName}`);
+        try {
+          const newConnection = await storage.createGoogleSheetsConnection({
+            campaignId,
+            spreadsheetId,
+            spreadsheetName,
+            sheetName: sheetName || null,
+            accessToken: dbConnection.accessToken,
+            refreshToken: dbConnection.refreshToken || null,
+            clientId: dbConnection.clientId,
+            clientSecret: dbConnection.clientSecret,
+            expiresAt: dbConnection.expiresAt,
+          });
+          connectionIds.push(newConnection.id);
+          existingBySheet.set(sheetKey, newConnection);
+          console.log(`[Select Multiple Spreadsheets] ✅ Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
+        } catch (error: any) {
+          console.error(`[Select Multiple Spreadsheets] ❌ Failed to create connection for sheet ${sheetName}:`, error.message);
+          console.error(`[Select Multiple Spreadsheets] Error stack:`, error.stack);
+          // Continue with other sheets even if one fails
+        }
+      }
+
+      // If a pending row wasn't consumed, delete it to avoid clutter/limits.
+      if (dbConnection?.spreadsheetId === 'pending' && dbConnection?.id && !pendingConsumed && connectionIds.length > 0) {
+        try {
+          await storage.deleteGoogleSheetsConnection(dbConnection.id);
+        } catch {
+          // ignore
         }
       }
       
@@ -2739,7 +2785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignId,
         spreadsheetId,
         spreadsheetName,
-        sheets: limitedSheetNames,
+        sheets: connectedSheetNames,
         connectionIds
       });
       
@@ -2750,9 +2796,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: spreadsheetId,
           name: spreadsheetName
         },
-        sheetsConnected: limitedSheetNames.length,
+        sheetsConnected: connectedSheetNames.length,
         // Echo back the exact tab names we connected so the UI can scope detection/mapping reliably
-        sheetNames: limitedSheetNames
+        sheetNames: connectedSheetNames
       });
     } catch (error: any) {
       console.error('Multiple spreadsheet selection error:', error);
@@ -2906,7 +2952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (titles && titles.length > 0) spreadsheetTabTitles.set(spreadsheetId, titles);
       }
 
-      const googleSheetsSources = (googleSheetsConnections || [])
+      const googleSheetsSourcesAll = (googleSheetsConnections || [])
         .map((conn: any) => {
           let hasMappings = false;
           let usedForRevenueTracking = false;
@@ -2952,6 +2998,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             campaignName: campaign?.name || null,
           };
         });
+
+      // Only show sources after the user saves mappings.
+      // This prevents "extra cards" appearing when the user has connected tabs but hasn't completed mapping yet.
+      const googleSheetsSourcesMapped = googleSheetsSourcesAll.filter((s: any) => !!s.hasMappings);
+
+      // Defensive de-dupe: keep one source per (spreadsheetId, sheetName) key.
+      const dedupedByKey = new Map<string, any>();
+      for (const s of googleSheetsSourcesMapped) {
+        const key = `${String(s.spreadsheetId || '')}::${String(s.sheetName || '')}`;
+        const existing = dedupedByKey.get(key);
+        if (!existing) {
+          dedupedByKey.set(key, s);
+          continue;
+        }
+        // Prefer the most recently connected one.
+        const existingTime = existing?.connectedAt ? new Date(existing.connectedAt).getTime() : 0;
+        const nextTime = s?.connectedAt ? new Date(s.connectedAt).getTime() : 0;
+        if (nextTime >= existingTime) dedupedByKey.set(key, s);
+      }
+      const googleSheetsSources = Array.from(dedupedByKey.values());
 
       res.json({
         success: true,

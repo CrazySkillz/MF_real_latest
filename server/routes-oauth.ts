@@ -2971,8 +2971,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const googleSheetsConnectionsRaw = await storage.getGoogleSheetsConnections(campaignId);
       // Filter out placeholder/half-created connections (e.g., spreadsheetId='pending') so Back/cancel flows don't create confusing cards.
+      // NOTE: We intentionally include inactive connections so older campaigns (or past deactivation bugs)
+      // don't appear to have "no connected sources" after a refresh.
       const googleSheetsConnections = (googleSheetsConnectionsRaw || [])
-        .filter((c: any) => c && c.isActive)
+        .filter((c: any) => c)
         .filter((c: any) => c.spreadsheetId && c.spreadsheetId !== 'pending');
 
       // Enrich missing sheetName values (same approach as /google-sheets-connections).
@@ -3046,6 +3048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             (conn as any).sheetName ||
             (titles && tabIndex >= 0 && tabIndex < titles.length ? titles[tabIndex] : null);
 
+          const isActive = !!conn.isActive;
           return {
             id: conn.id,
             type: 'google_sheets',
@@ -3056,7 +3059,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             spreadsheetId: conn.spreadsheetId,
             spreadsheetName: conn.spreadsheetName,
             sheetName: derivedSheetName,
-            status: 'connected',
+            status: isActive ? 'connected' : 'inactive',
+            isActive,
             connectedAt: conn.connectedAt,
             hasMappings,
             usedForRevenueTracking,

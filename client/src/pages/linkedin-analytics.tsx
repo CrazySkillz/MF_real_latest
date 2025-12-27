@@ -3802,22 +3802,23 @@ export default function LinkedInAnalytics() {
                     {connectedSources.map((source: any) => {
                       const isSheets = source.type === 'google_sheets';
                       const otherRevenueSourcesCount = connectedSources.filter(
-                        (s: any) => s.id !== source.id && s.usedForRevenueTracking
+                        (s: any) => s.id !== source.id && s.usedForRevenueTracking && s.isActive !== false
                       ).length;
-                      const isRevenueRelated = !!source.usedForRevenueTracking;
+                      const isRevenueRelated = !!source.usedForRevenueTracking && source.isActive !== false;
                       const willClearConversionValue = isRevenueRelated && otherRevenueSourcesCount === 0;
                       return (
                         <Card key={source.id}>
                           <CardHeader>
                             <CardTitle className="text-base flex items-center justify-between gap-2">
                               <span className="truncate">{source.sheetName || source.spreadsheetName || source.displayName}</span>
-                              <Badge variant={source.usedForRevenueTracking ? "default" : "secondary"}>
-                                {source.usedForRevenueTracking ? "Used for revenue" : "Connected"}
+                              <Badge variant={source.isActive === false ? "outline" : (source.usedForRevenueTracking ? "default" : "secondary")}>
+                                {source.isActive === false ? "Inactive" : (source.usedForRevenueTracking ? "Used for revenue" : "Connected")}
                               </Badge>
                             </CardTitle>
                             <CardDescription>
                               {source.provider}
                               {source.hasMappings ? " • Mapped" : " • Not mapped"}
+                              {source.isActive === false ? " • Inactive" : ""}
                             </CardDescription>
                           </CardHeader>
                           <CardContent className="space-y-3">

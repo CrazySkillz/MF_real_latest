@@ -8805,6 +8805,7 @@ export default function LinkedInAnalytics() {
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
             queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
+            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-data-sources"] });
           }}
           autoStartMappingOnGoogleSheetsConnect={false}
           showGoogleSheetsUseCaseStep={true}

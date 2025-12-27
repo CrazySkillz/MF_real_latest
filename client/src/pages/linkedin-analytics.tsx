@@ -8801,6 +8801,7 @@ export default function LinkedInAnalytics() {
             queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
           }}
           autoStartMappingOnGoogleSheetsConnect={false}
+          showGoogleSheetsUseCaseStep={true}
         />
       )}
       </div>

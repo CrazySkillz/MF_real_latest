@@ -8,6 +8,8 @@ import { GoogleSheetsDatasetsView } from "./GoogleSheetsDatasetsView";
 import { GuidedColumnMapping } from "./GuidedColumnMapping";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface UploadAdditionalDataModalProps {
   isOpen: boolean;
@@ -17,9 +19,11 @@ interface UploadAdditionalDataModalProps {
   onDataConnected?: () => void;
   googleSheetsOnly?: boolean; // If true, skip source selection and go directly to Google Sheets
   autoStartMappingOnGoogleSheetsConnect?: boolean; // If true, immediately launch mapping after connecting sheets
+  showGoogleSheetsUseCaseStep?: boolean; // If true, show "How will you use this Google Sheet?"
 }
 
 type DataSourceType = 'google-sheets' | 'crm' | 'ecommerce' | 'custom-integration' | 'upload-file' | null;
+type GoogleSheetsUseCase = 'view' | 'enhance';
 
 export function UploadAdditionalDataModal({
   isOpen,
@@ -28,13 +32,16 @@ export function UploadAdditionalDataModal({
   returnUrl,
   onDataConnected,
   googleSheetsOnly = false,
-  autoStartMappingOnGoogleSheetsConnect = false
+  autoStartMappingOnGoogleSheetsConnect = false,
+  showGoogleSheetsUseCaseStep = false
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
   const [newConnectionInfo, setNewConnectionInfo] = useState<{ connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] } | null>(null);
+  const [googleSheetsUseCase, setGoogleSheetsUseCase] = useState<GoogleSheetsUseCase>('view');
+  const [mappingLaunchedFromConnect, setMappingLaunchedFromConnect] = useState(false);
   const { toast } = useToast();
   
   // Store the ACTUAL current URL when modal opens - this is where we came from
@@ -70,6 +77,8 @@ export function UploadAdditionalDataModal({
       setJustConnected(false);
       setShowGuidedMapping(false);
       setNewConnectionInfo(null);
+      setGoogleSheetsUseCase('view');
+      setMappingLaunchedFromConnect(false);
     }
   }, [isOpen]);
 
@@ -85,31 +94,44 @@ export function UploadAdditionalDataModal({
 
   const handleSourceSelect = (source: DataSourceType) => {
     setSelectedSource(source);
+    if (source !== 'google-sheets') {
+      setGoogleSheetsUseCase('view');
+    }
   };
 
   const handleGoogleSheetsSuccess = (connectionInfo?: { connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] }) => {
     if (connectionInfo) {
+      const shouldLaunchMapping =
+        autoStartMappingOnGoogleSheetsConnect ||
+        (showGoogleSheetsUseCaseStep && googleSheetsUseCase === 'enhance');
       if (googleSheetsOnly) {
-        // For Google Sheets only mode (from Connection Details), skip mapping and just connect
-        const sheetsCount = connectionInfo.connectionIds?.length || 1;
-        toast({
-          title: "Google Sheet Connected!",
-          description: `${sheetsCount} sheet${sheetsCount > 1 ? 's have' : ' has'} been added and ${sheetsCount > 1 ? 'are' : 'is'} now available in the dropdown.`,
-        });
-        refetchConnections();
-        if (onDataConnected) {
-          onDataConnected();
-        }
-        // Close modal after a short delay to show the toast
-        setTimeout(() => {
-          onClose();
-        }, 1500);
-      } else {
-        if (autoStartMappingOnGoogleSheetsConnect) {
-          // Optional: launch mapping immediately after connect
+        if (shouldLaunchMapping) {
           setNewConnectionInfo(connectionInfo);
           setShowGuidedMapping(true);
           setJustConnected(false);
+          setMappingLaunchedFromConnect(true);
+        } else {
+          // For Google Sheets only mode (from Connection Details), just connect and return
+          const sheetsCount = connectionInfo.connectionIds?.length || 1;
+          toast({
+            title: "Google Sheet Connected!",
+            description: `${sheetsCount} sheet${sheetsCount > 1 ? 's have' : ' has'} been added and ${sheetsCount > 1 ? 'are' : 'is'} now available.`,
+          });
+          refetchConnections();
+          if (onDataConnected) {
+            onDataConnected();
+          }
+          setTimeout(() => {
+            onClose();
+          }, 800);
+        }
+      } else {
+        if (shouldLaunchMapping) {
+          // Launch mapping immediately after connect
+          setNewConnectionInfo(connectionInfo);
+          setShowGuidedMapping(true);
+          setJustConnected(false);
+          setMappingLaunchedFromConnect(true);
         } else {
           // Default: just connect the tabs and return to the Connected Data Sources list.
           const sheetsCount = connectionInfo.connectionIds?.length || 1;
@@ -254,6 +276,10 @@ export function UploadAdditionalDataModal({
                 setSelectedSource(null);
                 setShowDatasetsView(false);
                 setJustConnected(false);
+                setShowGuidedMapping(false);
+                setNewConnectionInfo(null);
+                setGoogleSheetsUseCase('view');
+                setMappingLaunchedFromConnect(false);
               }}
               className="mb-4"
             >
@@ -261,8 +287,50 @@ export function UploadAdditionalDataModal({
             </Button>
             )}
 
-            {/* Show guided mapping for new connections (only for LinkedIn conversion value flow, not googleSheetsOnly) */}
-            {showGuidedMapping && newConnectionInfo && !googleSheetsOnly ? (
+            {showGoogleSheetsUseCaseStep && (!showGuidedMapping || !newConnectionInfo) && (
+              <Card className="border-slate-200 dark:border-slate-700">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">How will you use this Google Sheet?</CardTitle>
+                  <CardDescription>
+                    Connect tabs for viewing now, or connect and immediately map fields to enhance LinkedIn metrics.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <RadioGroup
+                    value={googleSheetsUseCase}
+                    onValueChange={(v) => setGoogleSheetsUseCase(v as GoogleSheetsUseCase)}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-start gap-3">
+                      <RadioGroupItem value="view" id="gs-usecase-view" className="mt-1" />
+                      <div className="space-y-1">
+                        <Label htmlFor="gs-usecase-view" className="font-medium">
+                          Just connect for viewing / later use
+                        </Label>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Connect tabs now. You can map columns later from the dataset card.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <RadioGroupItem value="enhance" id="gs-usecase-enhance" className="mt-1" />
+                      <div className="space-y-1">
+                        <Label htmlFor="gs-usecase-enhance" className="font-medium">
+                          Use it to enhance LinkedIn metrics
+                        </Label>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Connect tabs, then launch the guided mapping wizard (crosswalk + field selection).
+                        </p>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Show guided mapping for new connections */}
+            {showGuidedMapping && newConnectionInfo ? (
               (() => {
                 // Prefer explicit selected tab names for scoping column detection (most reliable when DB lacks sheet_name).
                 // Use server-provided sheetNames; fall back to what we persisted at selection time.
@@ -296,6 +364,16 @@ export function UploadAdditionalDataModal({
                   
                   // Close modal immediately
                   onClose();
+
+                  if (googleSheetsOnly) {
+                    // In Google Sheets Data page flows, don't force LinkedIn navigation.
+                    refetchConnections();
+                    if (onDataConnected) onDataConnected();
+                    setTimeout(() => {
+                      window.location.href = originalReturnUrl;
+                    }, 150);
+                    return;
+                  }
 
                   // Always navigate to LinkedIn Overview with a valid session param.
                   // If we land on /linkedin-analytics without ?session=..., the page cannot load the session and the orange warning will remain.
@@ -341,23 +419,32 @@ export function UploadAdditionalDataModal({
                   }, 300);
                 }}
                 onCancel={() => {
-                  // User cancelled before saving mappings: roll back the newly-created sheet connections
-                  // so they don't show up as stray datasets (including "pending").
-                  const connectionIdsToDelete = (newConnectionInfo?.connectionIds && newConnectionInfo.connectionIds.length > 0)
-                    ? newConnectionInfo.connectionIds
-                    : (newConnectionInfo?.connectionId ? [newConnectionInfo.connectionId] : []);
+                  if (mappingLaunchedFromConnect) {
+                    // User cancelled before saving mappings: roll back the newly-created sheet connections
+                    // so they don't show up as stray datasets (including "pending").
+                    const connectionIdsToDelete = (newConnectionInfo?.connectionIds && newConnectionInfo.connectionIds.length > 0)
+                      ? newConnectionInfo.connectionIds
+                      : (newConnectionInfo?.connectionId ? [newConnectionInfo.connectionId] : []);
+
+                    setShowGuidedMapping(false);
+                    setNewConnectionInfo(null);
+                    setMappingLaunchedFromConnect(false);
+
+                    Promise.allSettled(
+                      connectionIdsToDelete.map((id) =>
+                        fetch(`/api/google-sheets/${originalCampaignId}/connection?connectionId=${encodeURIComponent(id)}`, { method: 'DELETE' })
+                      )
+                    ).finally(() => {
+                      refetchConnections();
+                      setShowDatasetsView(true);
+                    });
+                    return;
+                  }
 
                   setShowGuidedMapping(false);
                   setNewConnectionInfo(null);
-
-                  Promise.allSettled(
-                    connectionIdsToDelete.map((id) =>
-                      fetch(`/api/google-sheets/${originalCampaignId}/connection?connectionId=${encodeURIComponent(id)}`, { method: 'DELETE' })
-                    )
-                  ).finally(() => {
-                    refetchConnections();
-                    setShowDatasetsView(true);
-                  });
+                  setMappingLaunchedFromConnect(false);
+                  refetchConnections();
                 }}
               />
                 );

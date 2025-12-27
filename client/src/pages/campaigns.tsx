@@ -1251,7 +1251,7 @@ export default function Campaigns() {
       setConnectedPlatformsInDialog([]);
       form.reset();
       
-      // Navigate to campaigns page after all transfers complete
+      // Default: Navigate to campaigns page after all transfers complete
       setLocation("/campaigns");
     }
   };

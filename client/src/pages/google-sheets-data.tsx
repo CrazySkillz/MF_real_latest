@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation, setLocation } from "wouter";
 import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X } from "lucide-react";
 import { Link } from "wouter";
@@ -149,6 +149,7 @@ export default function GoogleSheetsData() {
   const MAX_GOOGLE_SHEETS_CONNECTIONS = 10;
   const canAddMoreSheets = googleSheetsConnections.length < MAX_GOOGLE_SHEETS_CONNECTIONS;
 
+
   // Delete connection mutation
   const deleteConnectionMutation = useMutation({
     mutationFn: async (connectionId: string) => {
@@ -212,7 +213,7 @@ export default function GoogleSheetsData() {
       });
     },
     onSuccess: async () => {
-      // Background refresh (no forced double refetch loop → avoids UI jumping)
+      // Background refresh (no forced double refetch loop â†’ avoids UI jumping)
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"], exact: false });
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
       await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
@@ -650,7 +651,7 @@ export default function GoogleSheetsData() {
                     </Badge>
                     {sheetsData.filteredRows !== undefined && sheetsData.totalRows !== undefined && (
                       <span className="text-xs">
-                        • {sheetsData.filteredRows.toLocaleString()} rows used for summary
+                        â€¢ {sheetsData.filteredRows.toLocaleString()} rows used for summary
                         {sheetsData.filteredRows < sheetsData.totalRows && (
                           <span className="text-slate-500"> (filtered from {sheetsData.totalRows.toLocaleString()} total)</span>
                         )}
@@ -754,7 +755,7 @@ export default function GoogleSheetsData() {
                         Spreadsheet Data
                       </CardTitle>
                       <CardDescription>
-                        {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
+                        {sheetsData.totalRows} rows â€¢ Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

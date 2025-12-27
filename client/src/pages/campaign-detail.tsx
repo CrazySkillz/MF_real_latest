@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -1008,7 +1008,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <SelectContent className="max-h-[400px]">
                     {/* Aggregated Campaign Metrics - Always visible */}
                     <SelectGroup>
-                      <SelectLabel>📊 Core Campaign Metrics</SelectLabel>
+                      <SelectLabel>ðŸ“Š Core Campaign Metrics</SelectLabel>
                       <SelectItem value="total-impressions">Total Impressions</SelectItem>
                       <SelectItem value="total-clicks">Total Clicks</SelectItem>
                       <SelectItem value="total-conversions">Total Conversions</SelectItem>
@@ -1019,7 +1019,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <SelectSeparator />
                     
                     <SelectGroup>
-                      <SelectLabel>📈 Blended Performance Metrics</SelectLabel>
+                      <SelectLabel>ðŸ“ˆ Blended Performance Metrics</SelectLabel>
                       <SelectItem value="overall-ctr">Overall CTR (Click-Through Rate)</SelectItem>
                       <SelectItem value="blended-cpc">Blended CPC (Cost Per Click)</SelectItem>
                       <SelectItem value="blended-cpm">Blended CPM (Cost Per Mille)</SelectItem>
@@ -1030,7 +1030,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <SelectSeparator />
                     
                     <SelectGroup>
-                      <SelectLabel>👥 Audience Metrics</SelectLabel>
+                      <SelectLabel>ðŸ‘¥ Audience Metrics</SelectLabel>
                       <SelectItem value="total-users">Total Users</SelectItem>
                       <SelectItem value="total-sessions">Total Sessions</SelectItem>
                     </SelectGroup>
@@ -1038,7 +1038,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     
                     {/* Manual Entry */}
                     <SelectGroup>
-                      <SelectLabel>✏️ Manual Entry</SelectLabel>
+                      <SelectLabel>âœï¸ Manual Entry</SelectLabel>
                       <SelectItem value="custom">Custom Value</SelectItem>
                     </SelectGroup>
                   </SelectContent>
@@ -1353,7 +1353,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 </SelectTrigger>
                 <SelectContent className="max-h-[400px]">
                   <SelectGroup>
-                    <SelectLabel>📊 Core Campaign Metrics</SelectLabel>
+                    <SelectLabel>ðŸ“Š Core Campaign Metrics</SelectLabel>
                     <SelectItem value="total-impressions">Total Impressions</SelectItem>
                     <SelectItem value="total-clicks">Total Clicks</SelectItem>
                     <SelectItem value="total-conversions">Total Conversions</SelectItem>
@@ -1364,7 +1364,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <SelectSeparator />
                   
                   <SelectGroup>
-                    <SelectLabel>📈 Blended Performance Metrics</SelectLabel>
+                    <SelectLabel>ðŸ“ˆ Blended Performance Metrics</SelectLabel>
                     <SelectItem value="overall-ctr">Overall CTR (Click-Through Rate)</SelectItem>
                     <SelectItem value="blended-cpc">Blended CPC (Cost Per Click)</SelectItem>
                     <SelectItem value="blended-cpm">Blended CPM (Cost Per Mille)</SelectItem>
@@ -1375,7 +1375,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <SelectSeparator />
                   
                   <SelectGroup>
-                    <SelectLabel>👥 Audience Metrics</SelectLabel>
+                    <SelectLabel>ðŸ‘¥ Audience Metrics</SelectLabel>
                     <SelectItem value="total-users">Total Users</SelectItem>
                     <SelectItem value="total-sessions">Total Sessions</SelectItem>
                   </SelectGroup>
@@ -2227,19 +2227,19 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     {benchmark.benchmarkType && <span>Type: {benchmark.benchmarkType}</span>}
                     {benchmark.industry && (
                       <>
-                        <span>•</span>
+                        <span>â€¢</span>
                         <span>{benchmark.industry}</span>
                       </>
                     )}
                     {benchmark.period && (
                       <>
-                        <span>•</span>
+                        <span>â€¢</span>
                         <span>{benchmark.period}</span>
                       </>
                     )}
                     {benchmark.category && (
                       <>
-                        <span>•</span>
+                        <span>â€¢</span>
                         <span>{benchmark.category}</span>
                       </>
                     )}
@@ -2540,7 +2540,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   <SelectContent className="max-h-[400px]">
                     {/* Aggregated Campaign Metrics - Always visible */}
                     <SelectGroup>
-                      <SelectLabel>📊 Core Campaign Metrics</SelectLabel>
+                      <SelectLabel>ðŸ“Š Core Campaign Metrics</SelectLabel>
                       <SelectItem value="total-impressions">Total Impressions</SelectItem>
                       <SelectItem value="total-clicks">Total Clicks</SelectItem>
                       <SelectItem value="total-conversions">Total Conversions</SelectItem>
@@ -2550,7 +2550,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     </SelectGroup>
                     <SelectSeparator />
                     <SelectGroup>
-                      <SelectLabel>📈 Blended Performance Metrics</SelectLabel>
+                      <SelectLabel>ðŸ“ˆ Blended Performance Metrics</SelectLabel>
                       <SelectItem value="overall-ctr">Overall CTR</SelectItem>
                       <SelectItem value="blended-cpc">Blended CPC</SelectItem>
                       <SelectItem value="blended-cpm">Blended CPM</SelectItem>
@@ -2560,7 +2560,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     </SelectGroup>
                     <SelectSeparator />
                     <SelectGroup>
-                      <SelectLabel>👥 Audience Metrics</SelectLabel>
+                      <SelectLabel>ðŸ‘¥ Audience Metrics</SelectLabel>
                       <SelectItem value="total-users">Total Users</SelectItem>
                       <SelectItem value="total-sessions">Total Sessions</SelectItem>
                     </SelectGroup>
@@ -2608,7 +2608,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  💡 Select an industry to auto-fill benchmark value, or leave blank to enter custom value
+                  ðŸ’¡ Select an industry to auto-fill benchmark value, or leave blank to enter custom value
                 </p>
               </div>
             </div>
@@ -5038,12 +5038,15 @@ export default function CampaignDetail() {
                               </div>
                             </div>
                           )}
+
                           <SimpleGoogleSheetsAuth 
                             campaignId={campaign.id} 
                             onSuccess={() => {
                               setExpandedPlatform(null);
                               refetchGoogleSheetsConnections();
                               queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+
+
                               toast({
                                 title: "Google Sheet Connected",
                                 description: "The Google Sheet has been connected successfully.",

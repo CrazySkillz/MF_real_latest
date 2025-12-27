@@ -20,6 +20,7 @@ interface UploadAdditionalDataModalProps {
   googleSheetsOnly?: boolean; // If true, skip source selection and go directly to Google Sheets
   autoStartMappingOnGoogleSheetsConnect?: boolean; // If true, immediately launch mapping after connecting sheets
   showGoogleSheetsUseCaseStep?: boolean; // If true, show "How will you use this Google Sheet?"
+  defaultGoogleSheetsUseCase?: 'view' | 'enhance'; // Default selection when the use-case step is shown
 }
 
 type DataSourceType = 'google-sheets' | 'crm' | 'ecommerce' | 'custom-integration' | 'upload-file' | null;
@@ -33,14 +34,15 @@ export function UploadAdditionalDataModal({
   onDataConnected,
   googleSheetsOnly = false,
   autoStartMappingOnGoogleSheetsConnect = false,
-  showGoogleSheetsUseCaseStep = false
+  showGoogleSheetsUseCaseStep = false,
+  defaultGoogleSheetsUseCase = 'view'
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
   const [newConnectionInfo, setNewConnectionInfo] = useState<{ connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] } | null>(null);
-  const [googleSheetsUseCase, setGoogleSheetsUseCase] = useState<GoogleSheetsUseCase>('view');
+  const [googleSheetsUseCase, setGoogleSheetsUseCase] = useState<GoogleSheetsUseCase>(defaultGoogleSheetsUseCase);
   const [mappingLaunchedFromConnect, setMappingLaunchedFromConnect] = useState(false);
   const { toast } = useToast();
   
@@ -77,10 +79,17 @@ export function UploadAdditionalDataModal({
       setJustConnected(false);
       setShowGuidedMapping(false);
       setNewConnectionInfo(null);
-      setGoogleSheetsUseCase('view');
+      setGoogleSheetsUseCase(defaultGoogleSheetsUseCase);
       setMappingLaunchedFromConnect(false);
     }
-  }, [isOpen]);
+  }, [isOpen, defaultGoogleSheetsUseCase]);
+
+  // When opened, initialize the selection based on where the modal was launched from.
+  useEffect(() => {
+    if (isOpen) {
+      setGoogleSheetsUseCase(defaultGoogleSheetsUseCase);
+    }
+  }, [isOpen, defaultGoogleSheetsUseCase]);
 
   useEffect(() => {
     if (selectedSource !== 'google-sheets') {

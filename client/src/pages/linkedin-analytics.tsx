@@ -108,6 +108,12 @@ export default function LinkedInAnalytics() {
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isUploadDataModalOpen, setIsUploadDataModalOpen] = useState(false);
+  const [uploadModalDefaultGoogleSheetsUseCase, setUploadModalDefaultGoogleSheetsUseCase] = useState<'view' | 'enhance'>('view');
+  const openConnectAdditionalDataModal = (defaultUseCase: 'view' | 'enhance' = 'view') => {
+    setUploadModalDefaultGoogleSheetsUseCase(defaultUseCase);
+    setIsUploadDataModalOpen(true);
+  };
+
   const [isConnectedDataModalOpen, setIsConnectedDataModalOpen] = useState(false);
   const [isEditMappingModalOpen, setIsEditMappingModalOpen] = useState(false);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
@@ -2795,7 +2801,7 @@ export default function LinkedInAnalytics() {
                               LinkedIn doesn’t include revenue data. Connect a revenue source (Google Sheets, CRM, webhooks, custom integration) to calculate conversion value and unlock ROI/ROAS, Revenue, and Profit.
                             </p>
                             <button
-                              onClick={() => setIsUploadDataModalOpen(true)}
+                              onClick={() => openConnectAdditionalDataModal('enhance')}
                               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3776,7 +3782,7 @@ export default function LinkedInAnalytics() {
                     >
                       Refresh
                     </Button>
-                    <Button onClick={() => setIsUploadDataModalOpen(true)}>
+                    <Button onClick={() => openConnectAdditionalDataModal('view')}>
                       Connect Additional Data
                     </Button>
                   </div>
@@ -3787,7 +3793,7 @@ export default function LinkedInAnalytics() {
                     <CardContent className="py-12 text-center">
                       <p className="text-slate-500">No data sources connected yet.</p>
                       <div className="mt-4">
-                        <Button onClick={() => setIsUploadDataModalOpen(true)}>Connect Additional Data</Button>
+                        <Button onClick={() => openConnectAdditionalDataModal('view')}>Connect Additional Data</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -5593,7 +5599,7 @@ export default function LinkedInAnalytics() {
                     <button
                       onClick={() => {
                         setIsKPIModalOpen(false);
-                        setIsUploadDataModalOpen(true);
+                        openConnectAdditionalDataModal('enhance');
                       }}
                       className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                     >
@@ -6372,7 +6378,7 @@ export default function LinkedInAnalytics() {
                     <button
                       onClick={() => {
                         setIsBenchmarkModalOpen(false);
-                        setIsUploadDataModalOpen(true);
+                        openConnectAdditionalDataModal('enhance');
                       }}
                       className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                     >
@@ -8802,6 +8808,7 @@ export default function LinkedInAnalytics() {
           }}
           autoStartMappingOnGoogleSheetsConnect={false}
           showGoogleSheetsUseCaseStep={true}
+          defaultGoogleSheetsUseCase={uploadModalDefaultGoogleSheetsUseCase}
         />
       )}
       </div>

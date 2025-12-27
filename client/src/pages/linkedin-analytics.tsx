@@ -3802,23 +3802,32 @@ export default function LinkedInAnalytics() {
                     {connectedSources.map((source: any) => {
                       const isSheets = source.type === 'google_sheets';
                       const otherRevenueSourcesCount = connectedSources.filter(
-                        (s: any) => s.id !== source.id && s.usedForRevenueTracking && s.isActive !== false
+                        (s: any) => s.id !== source.id && s.usedForRevenueTracking && s.isActive !== false && s.status !== 'pending'
                       ).length;
-                      const isRevenueRelated = !!source.usedForRevenueTracking && source.isActive !== false;
+                      const isRevenueRelated = !!source.usedForRevenueTracking && source.isActive !== false && source.status !== 'pending';
                       const willClearConversionValue = isRevenueRelated && otherRevenueSourcesCount === 0;
                       return (
                         <Card key={source.id}>
                           <CardHeader>
                             <CardTitle className="text-base flex items-center justify-between gap-2">
                               <span className="truncate">{source.sheetName || source.spreadsheetName || source.displayName}</span>
-                              <Badge variant={source.isActive === false ? "outline" : (source.usedForRevenueTracking ? "default" : "secondary")}>
-                                {source.isActive === false ? "Inactive" : (source.usedForRevenueTracking ? "Used for revenue" : "Connected")}
+                              <Badge
+                                variant={
+                                  source.status === 'pending'
+                                    ? "outline"
+                                    : (source.isActive === false ? "outline" : (source.usedForRevenueTracking ? "default" : "secondary"))
+                                }
+                              >
+                                {source.status === 'pending'
+                                  ? "Pending"
+                                  : (source.isActive === false ? "Inactive" : (source.usedForRevenueTracking ? "Used for revenue" : "Connected"))}
                               </Badge>
                             </CardTitle>
                             <CardDescription>
                               {source.provider}
                               {source.hasMappings ? " • Mapped" : " • Not mapped"}
                               {source.isActive === false ? " • Inactive" : ""}
+                              {source.status === 'pending' ? " • Incomplete connection" : ""}
                             </CardDescription>
                           </CardHeader>
                           <CardContent className="space-y-3">

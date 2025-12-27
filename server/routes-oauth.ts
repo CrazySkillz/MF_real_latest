@@ -3062,13 +3062,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         });
 
-      // Only show sources after the user saves mappings.
-      // This prevents "extra cards" appearing when the user has connected tabs but hasn't completed mapping yet.
-      const googleSheetsSourcesMapped = googleSheetsSourcesAll.filter((s: any) => !!s.hasMappings);
-
       // Defensive de-dupe: keep one source per (spreadsheetId, sheetName) key.
+      // We include both mapped and unmapped sources so this can act as an "all connected sources" hub.
       const dedupedByKey = new Map<string, any>();
-      for (const s of googleSheetsSourcesMapped) {
+      for (const s of googleSheetsSourcesAll) {
         const key = `${String(s.spreadsheetId || '')}::${String(s.sheetName || '')}`;
         const existing = dedupedByKey.get(key);
         if (!existing) {

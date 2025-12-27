@@ -16,6 +16,7 @@ interface UploadAdditionalDataModalProps {
   returnUrl?: string;
   onDataConnected?: () => void;
   googleSheetsOnly?: boolean; // If true, skip source selection and go directly to Google Sheets
+  autoStartMappingOnGoogleSheetsConnect?: boolean; // If true, immediately launch mapping after connecting sheets
 }
 
 type DataSourceType = 'google-sheets' | 'crm' | 'ecommerce' | 'custom-integration' | 'upload-file' | null;
@@ -26,7 +27,8 @@ export function UploadAdditionalDataModal({
   campaignId,
   returnUrl,
   onDataConnected,
-  googleSheetsOnly = false
+  googleSheetsOnly = false,
+  autoStartMappingOnGoogleSheetsConnect = false
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
@@ -103,10 +105,22 @@ export function UploadAdditionalDataModal({
           onClose();
         }, 1500);
       } else {
-        // For LinkedIn conversion value flow, show guided mapping for the first connection
-        setNewConnectionInfo(connectionInfo);
-        setShowGuidedMapping(true);
-        setJustConnected(false);
+        if (autoStartMappingOnGoogleSheetsConnect) {
+          // Optional: launch mapping immediately after connect
+          setNewConnectionInfo(connectionInfo);
+          setShowGuidedMapping(true);
+          setJustConnected(false);
+        } else {
+          // Default: just connect the tabs and return to the Connected Data Sources list.
+          const sheetsCount = connectionInfo.connectionIds?.length || 1;
+          toast({
+            title: "Google Sheet Connected!",
+            description: `${sheetsCount} tab${sheetsCount > 1 ? 's have' : ' has'} been connected.`,
+          });
+          refetchConnections();
+          if (onDataConnected) onDataConnected();
+          setTimeout(() => onClose(), 300);
+        }
       }
     } else {
       // Existing connection or no connection info - show datasets view
@@ -143,7 +157,9 @@ export function UploadAdditionalDataModal({
         <DialogHeader>
           <DialogTitle>{googleSheetsOnly ? 'Add Google Sheets Dataset' : 'Connect Additional Data'}</DialogTitle>
           <DialogDescription>
-            {googleSheetsOnly ? 'Connect a Google Sheet or tab to add it to your campaign.' : 'Connect data sources to unlock revenue metrics including ROI, ROAS, Revenue, and Profit.'}
+            {googleSheetsOnly
+              ? 'Connect a Google Sheet or tab to add it to your campaign.'
+              : 'Connect additional data sources for LinkedIn reporting (revenue/pipeline, lead quality, offline conversions, segments).'}
           </DialogDescription>
         </DialogHeader>
 

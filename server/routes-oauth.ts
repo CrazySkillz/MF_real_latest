@@ -2970,16 +2970,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
 
       const googleSheetsConnectionsRaw = await storage.getGoogleSheetsConnections(campaignId);
-      // NOTE: We intentionally include inactive connections so older campaigns (or past deactivation bugs)
-      // don't appear to have "no connected sources" after a refresh.
-      //
-      // We *normally* hide placeholder/half-created connections (spreadsheetId='pending').
-      // But if a campaign ONLY has pending connections, we return them as "pending" sources so the UI doesn't look empty.
+      // Clean + streamlined behavior:
+      // - Never show placeholder/half-created connections (spreadsheetId='pending') in the UI.
+      // - Best-effort cleanup: delete old pending placeholders so they don't linger forever.
+      // - Prefer showing active connections; only show inactive if there are *zero* active sources (recovery aid for legacy campaigns).
       const allGoogleSheetsConnections = (googleSheetsConnectionsRaw || []).filter((c: any) => c);
-      const googleSheetsConnections = allGoogleSheetsConnections
-        .filter((c: any) => c.spreadsheetId && c.spreadsheetId !== 'pending');
-      const pendingGoogleSheetsConnections = allGoogleSheetsConnections
-        .filter((c: any) => c.spreadsheetId === 'pending');
+      const pendingGoogleSheetsConnections = allGoogleSheetsConnections.filter((c: any) => c.spreadsheetId === 'pending');
+      const nonPendingConnections = allGoogleSheetsConnections.filter((c: any) => c.spreadsheetId && c.spreadsheetId !== 'pending');
+
+      // Cleanup pending placeholders if they're stale OR if there is at least one real (non-pending) connection.
+      // This avoids breaking an in-progress connection flow (recent pending row), while keeping the system clean.
+      const PENDING_TTL_MS = 10 * 60 * 1000; // 10 minutes
+      const now = Date.now();
+      const shouldCleanupPending =
+        nonPendingConnections.length > 0 ||
+        pendingGoogleSheetsConnections.some((c: any) => {
+          try {
+            const t = c?.connectedAt ? new Date(c.connectedAt).getTime() : 0;
+            return t > 0 && (now - t) > PENDING_TTL_MS;
+          } catch {
+            return true;
+          }
+        });
+      if (pendingGoogleSheetsConnections.length > 0 && shouldCleanupPending) {
+        await Promise.allSettled(
+          pendingGoogleSheetsConnections
+            .map((c: any) => String(c?.id || ''))
+            .filter(Boolean)
+            .map((id: string) => storage.deleteGoogleSheetsConnection(id))
+        );
+      }
+
+      const activeConnections = nonPendingConnections.filter((c: any) => !!c.isActive);
+      const inactiveConnections = nonPendingConnections.filter((c: any) => !c.isActive);
+      const googleSheetsConnections = activeConnections.length > 0 ? activeConnections : inactiveConnections;
 
       // Enrich missing sheetName values (same approach as /google-sheets-connections).
       const bySpreadsheetId = new Map<string, any[]>();
@@ -3088,30 +3112,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (nextTime >= existingTime) dedupedByKey.set(key, s);
       }
       const googleSheetsSources = Array.from(dedupedByKey.values());
-      const pendingSources = (googleSheetsSources.length === 0 && pendingGoogleSheetsConnections.length > 0)
-        ? pendingGoogleSheetsConnections.map((conn: any) => ({
-            id: conn.id,
-            type: 'google_sheets',
-            provider: 'Google Sheets',
-            displayName: 'Pending Google Sheets connection',
-            spreadsheetId: conn.spreadsheetId,
-            spreadsheetName: conn.spreadsheetName || null,
-            sheetName: null,
-            status: 'pending',
-            isActive: !!conn.isActive,
-            connectedAt: conn.connectedAt,
-            hasMappings: false,
-            usedForRevenueTracking: false,
-            campaignName: campaign?.name || null,
-          }))
-        : [];
 
       res.json({
         success: true,
         campaignId,
         sources: [
           ...googleSheetsSources,
-          ...pendingSources,
           // Future: hubspot, salesforce, etc.
         ],
       });

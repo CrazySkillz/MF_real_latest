@@ -301,7 +301,7 @@ export function UploadAdditionalDataModal({
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">How will you use this Google Sheet?</CardTitle>
                   <CardDescription>
-                    Connect tabs for viewing now, or connect and immediately map fields to enhance LinkedIn metrics.
+                    Choose whether to map this data to unlock LinkedIn revenue metrics, or just connect it for viewing.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -311,6 +311,18 @@ export function UploadAdditionalDataModal({
                     className="space-y-3"
                   >
                     <div className="flex items-start gap-3">
+                      <RadioGroupItem value="enhance" id="gs-usecase-enhance" className="mt-1" />
+                      <div className="space-y-1">
+                        <Label htmlFor="gs-usecase-enhance" className="font-medium">
+                          Use it to enhance LinkedIn revenue metrics
+                        </Label>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Connect tabs, then launch the guided mapping wizard.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
                       <RadioGroupItem value="view" id="gs-usecase-view" className="mt-1" />
                       <div className="space-y-1">
                         <Label htmlFor="gs-usecase-view" className="font-medium">
@@ -318,18 +330,6 @@ export function UploadAdditionalDataModal({
                         </Label>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
                           Connect tabs now. You can map columns later from the dataset card.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <RadioGroupItem value="enhance" id="gs-usecase-enhance" className="mt-1" />
-                      <div className="space-y-1">
-                        <Label htmlFor="gs-usecase-enhance" className="font-medium">
-                          Use it to enhance LinkedIn metrics
-                        </Label>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Connect tabs, then launch the guided mapping wizard (crosswalk + field selection).
                         </p>
                       </div>
                     </div>

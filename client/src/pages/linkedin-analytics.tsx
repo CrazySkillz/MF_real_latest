@@ -2789,10 +2789,10 @@ export default function LinkedInAnalytics() {
                           </div>
                           <div className="flex-1">
                             <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">
-                              Conversion Value: Not available from API
+                              Revenue metrics are locked
                             </h3>
                             <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">
-                              LinkedIn doesn't provide revenue data. Connect other sources with LinkedIn revenue or sales data (Google Sheets, CRM, webhooks, custom integration) to unlock LinkedIn revenue metrics including ROI, ROAS, Revenue, and Profit.
+                              LinkedIn doesn’t include revenue data. Connect a revenue source (Google Sheets, CRM, webhooks, custom integration) to calculate conversion value and unlock ROI/ROAS, Revenue, and Profit.
                             </p>
                             <button
                               onClick={() => setIsUploadDataModalOpen(true)}

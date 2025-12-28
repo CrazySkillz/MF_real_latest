@@ -13,6 +13,7 @@ interface SimpleGoogleSheetsAuthProps {
   campaignId: string;
   onSuccess: (connectionInfo?: { connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] }) => void;
   onError: (error: string) => void;
+  selectionMode?: 'replace' | 'append';
 }
 
 interface Spreadsheet {
@@ -28,7 +29,7 @@ interface Sheet {
   gridProperties?: any;
 }
 
-export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: SimpleGoogleSheetsAuthProps) {
+export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selectionMode = 'replace' }: SimpleGoogleSheetsAuthProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
   const [spreadsheets, setSpreadsheets] = useState<Spreadsheet[]>([]);
@@ -233,6 +234,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError }: Simpl
         campaignId,
         spreadsheetId: selectedSpreadsheet,
         sheetNames: sheetsToConnect.length > 0 ? sheetsToConnect : [null],
+        selectionMode,
       });
 
       const data = await response.json();

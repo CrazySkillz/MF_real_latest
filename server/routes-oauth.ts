@@ -2605,9 +2605,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Select multiple spreadsheet sheets/tabs in one call
   app.post("/api/google-sheets/select-spreadsheet-multiple", async (req, res) => {
     try {
-      const { campaignId, spreadsheetId, sheetNames } = req.body;
+      const { campaignId, spreadsheetId, sheetNames, selectionMode } = req.body;
+      const mode: 'replace' | 'append' = (selectionMode === 'append' || selectionMode === 'replace') ? selectionMode : 'replace';
       
-      console.log('Multiple spreadsheet selection request:', { campaignId, spreadsheetId, sheetNames });
+      console.log('Multiple spreadsheet selection request:', { campaignId, spreadsheetId, sheetNames, selectionMode: mode });
       
       if (!Array.isArray(sheetNames) || sheetNames.length === 0) {
         return res.status(400).json({ error: 'Sheet names array is required and must not be empty' });
@@ -2811,13 +2812,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Treat the user's selected tabs as authoritative for this campaign+spreadsheet.
-      // Deactivate any other existing active connections for this spreadsheet that are not in `connectionIds`.
+      // Treat the user's selected tabs as authoritative for this campaign+spreadsheet (replace mode).
+      // In append mode (view-only connects), we keep existing tabs active and only add the newly selected ones.
       //
       // NOTE: We intentionally do NOT rely on `sheetName` for this deactivation check.
       // Some environments may not persist `sheetName` (older schema / failed migrations), which would otherwise cause
       // the just-created connections to be immediately deactivated (cards appear, then disappear).
-      try {
+      if (mode === 'replace') try {
         const keepIds = new Set(connectionIds.map((id) => String(id)));
         const allActiveForSpreadsheet = (await storage.getGoogleSheetsConnections(campaignId))
           .filter((c: any) => c && c.isActive)

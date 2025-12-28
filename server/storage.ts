@@ -2339,13 +2339,11 @@ export class DatabaseStorage implements IStorage {
 
   async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
     try {
-      // Remove sheetName from update if column doesn't exist - we'll handle it separately
-      const { sheetName, ...updateData } = connection as any;
-      
     // Build the set object with explicit field mapping for columnMappings
     const setData: any = {};
     if (connection.spreadsheetId !== undefined) setData.spreadsheetId = connection.spreadsheetId;
     if (connection.spreadsheetName !== undefined) setData.spreadsheetName = connection.spreadsheetName;
+    if ((connection as any).sheetName !== undefined) setData.sheetName = (connection as any).sheetName;
     if (connection.accessToken !== undefined) setData.accessToken = connection.accessToken;
     if (connection.refreshToken !== undefined) setData.refreshToken = connection.refreshToken;
     if (connection.clientId !== undefined) setData.clientId = connection.clientId;

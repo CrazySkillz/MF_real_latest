@@ -491,6 +491,7 @@ export function UploadAdditionalDataModal({
                 {/* Google Sheets Connection Interface */}
                 <SimpleGoogleSheetsAuth
                   campaignId={campaignId}
+                  selectionMode={showGoogleSheetsUseCaseStep && googleSheetsUseCase === 'view' ? 'append' : 'replace'}
                   onSuccess={handleGoogleSheetsSuccess}
                   onError={handleGoogleSheetsError}
                 />
@@ -501,6 +502,7 @@ export function UploadAdditionalDataModal({
                 {/* Google Sheets Connection Interface */}
                 <SimpleGoogleSheetsAuth
                   campaignId={campaignId}
+                  selectionMode={showGoogleSheetsUseCaseStep && googleSheetsUseCase === 'view' ? 'append' : 'replace'}
                   onSuccess={handleGoogleSheetsSuccess}
                   onError={handleGoogleSheetsError}
                 />

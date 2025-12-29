@@ -8478,9 +8478,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.er = sanitizeCalculatedMetric('er', parseFloat(er.toFixed(2)));
       }
       
-      // Check if there are active Google Sheets connections
-      // If no active connections, don't use stored conversion values (they were likely from Google Sheets)
+      // Check active Google Sheets connections
+      // IMPORTANT: Revenue metrics should only be enabled when there is at least one ACTIVE Google Sheets connection
+      // that is explicitly mapped for revenue tracking (identifier + revenue/conversion value source).
+      // View-only connections ("Just connect for viewing / later use") must NOT keep revenue metrics enabled.
       const googleSheetsConnections = await storage.getGoogleSheetsConnections(session.campaignId);
+
+      const isRevenueTrackingConnection = (conn: any): boolean => {
+        const mappingsRaw = conn?.columnMappings || conn?.column_mappings;
+        if (!mappingsRaw) return false;
+        try {
+          const mappings = typeof mappingsRaw === 'string' ? JSON.parse(mappingsRaw) : mappingsRaw;
+          if (!Array.isArray(mappings) || mappings.length === 0) return false;
+          const hasIdentifier =
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
+          const hasValueSource =
+            mappings.some((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value') ||
+            mappings.some((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
+          return hasIdentifier && hasValueSource;
+        } catch {
+          return false;
+        }
+      };
       
       // Filter to only connections WITH MAPPINGS
       // Handle both camelCase (Drizzle) and snake_case (raw SQL) field names
@@ -8498,6 +8518,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const hasAnyActiveGoogleSheetsConnection = googleSheetsConnections.length > 0;
+      const hasAnyActiveRevenueTrackingGoogleSheetsConnection =
+        googleSheetsConnections.some((c: any) => (c as any)?.isActive !== false && isRevenueTrackingConnection(c));
       let hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
       
       // CRITICAL: Refetch campaign to get the latest conversion value (it might have just been updated by save-mappings)
@@ -8525,8 +8547,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Determine conversion value (campaign → session → linkedin connection).
-      // IMPORTANT: Revenue tracking should not hinge on mapping JSON parsing; if conversionValue exists and there
-      // is at least one active Google Sheets connection, we should enable revenue metrics.
       let conversionValue = 0;
       if (hasAnyActiveGoogleSheetsConnection) {
         const campaignConversionValue = latestCampaign?.conversionValue
@@ -8570,10 +8590,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const totalRevenue = totalConversions * conversionValue;
         const profit = totalRevenue - totalSpend;
       
-      // Calculate revenue metrics if conversion value is set AND there is at least one active Google Sheets connection.
-      // (Mappings are still used for computing conversionValue at save-time; requiring mappings here can incorrectly
-      // disable revenue tracking due to mapping-detection edge cases.)
-      const shouldEnableRevenueTracking = conversionValue > 0 && hasAnyActiveGoogleSheetsConnection;
+      // Calculate revenue metrics only if conversion value is set AND there is at least one ACTIVE revenue-tracking connection.
+      // View-only connections must not keep revenue metrics enabled after a revenue source is deleted.
+      const shouldEnableRevenueTracking = conversionValue > 0 && hasAnyActiveRevenueTrackingGoogleSheetsConnection;
       if (shouldEnableRevenueTracking) {
         console.log('✅ Revenue tracking ENABLED');
         

@@ -144,16 +144,21 @@ export default function LinkedInAnalytics() {
   const connectedSources = connectedDataSourcesData?.sources || [];
 
   const deleteSourceMutation = useMutation({
-    mutationFn: async (sourceId: string) => {
-      const resp = await fetch(`/api/google-sheets/${campaignId}/connection?connectionId=${encodeURIComponent(sourceId)}`, { method: 'DELETE' });
+    mutationFn: async (args: { sourceId: string; sourceType: string }) => {
+      const { sourceId, sourceType } = args;
+      const endpoint =
+        sourceType === 'hubspot'
+          ? `/api/hubspot/${campaignId}/connection?connectionId=${encodeURIComponent(sourceId)}`
+          : `/api/google-sheets/${campaignId}/connection?connectionId=${encodeURIComponent(sourceId)}`;
+      const resp = await fetch(endpoint, { method: 'DELETE' });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         throw new Error(json?.error || 'Failed to delete source');
       }
-      return json;
+      return { ...json, sourceId };
     },
-    onSuccess: async (data: any) => {
-      if (selectedSourceId && selectedSourceId === data?.sourceId) {
+    onSuccess: async (data: any, variables: { sourceId: string; sourceType: string }) => {
+      if (selectedSourceId && selectedSourceId === variables.sourceId) {
         setSelectedSourceId(null);
       }
       await Promise.all([
@@ -3856,18 +3861,20 @@ export default function LinkedInAnalytics() {
                               >
                                 View Raw Data
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                title="Edit mappings"
-                                aria-label="Edit mappings"
-                                onClick={() => {
-                                  setSelectedSourceId(source.id);
-                                  setIsEditMappingModalOpen(true);
-                                }}
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
+                              {isSheets && (
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  title="Edit mappings"
+                                  aria-label="Edit mappings"
+                                  onClick={() => {
+                                    setSelectedSourceId(source.id);
+                                    setIsEditMappingModalOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                              )}
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button
@@ -3903,7 +3910,7 @@ export default function LinkedInAnalytics() {
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                                     <AlertDialogAction
-                                      onClick={() => deleteSourceMutation.mutate(source.id)}
+                                      onClick={() => deleteSourceMutation.mutate({ sourceId: source.id, sourceType: source.type })}
                                       className="bg-red-600 hover:bg-red-700"
                                     >
                                       Delete
@@ -8807,6 +8814,7 @@ export default function LinkedInAnalytics() {
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
             queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-data-sources"] });
+            queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
           }}
           autoStartMappingOnGoogleSheetsConnect={false}
           showGoogleSheetsUseCaseStep={true}

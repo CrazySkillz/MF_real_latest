@@ -102,6 +102,22 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const hubspotConnections = pgTable("hubspot_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  portalId: text("portal_id"), // HubSpot hub_id / portal id
+  portalName: text("portal_name"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  clientId: text("client_id"),
+  clientSecret: text("client_secret"),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").notNull().default(true),
+  mappingConfig: text("mapping_config"), // JSON string
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const mappingTemplates = pgTable("mapping_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -730,6 +746,19 @@ export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheet
   isActive: true,
 });
 
+export const insertHubspotConnectionSchema = createInsertSchema(hubspotConnections).pick({
+  campaignId: true,
+  portalId: true,
+  portalName: true,
+  accessToken: true,
+  refreshToken: true,
+  clientId: true,
+  clientSecret: true,
+  expiresAt: true,
+  isActive: true,
+  mappingConfig: true,
+});
+
 export const insertLinkedInConnectionSchema = createInsertSchema(linkedinConnections).pick({
   campaignId: true,
   adAccountId: true,
@@ -1107,6 +1136,8 @@ export type GA4Connection = typeof ga4Connections.$inferSelect;
 export type InsertGA4Connection = z.infer<typeof insertGA4ConnectionSchema>;
 export type GoogleSheetsConnection = typeof googleSheetsConnections.$inferSelect;
 export type InsertGoogleSheetsConnection = z.infer<typeof insertGoogleSheetsConnectionSchema>;
+export type HubspotConnection = typeof hubspotConnections.$inferSelect;
+export type InsertHubspotConnection = z.infer<typeof insertHubspotConnectionSchema>;
 export type LinkedInConnection = typeof linkedinConnections.$inferSelect;
 export type InsertLinkedInConnection = z.infer<typeof insertLinkedInConnectionSchema>;
 export type MetaConnection = typeof metaConnections.$inferSelect;

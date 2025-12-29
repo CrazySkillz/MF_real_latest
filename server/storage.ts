@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, hubspotConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
@@ -43,6 +43,13 @@ export interface IStorage {
   updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined>;
   setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string): Promise<boolean>;
   deleteGoogleSheetsConnection(connectionId: string): Promise<boolean>;
+
+  // HubSpot Connections
+  getHubspotConnections(campaignId: string): Promise<HubspotConnection[]>;
+  getHubspotConnection(campaignId: string): Promise<HubspotConnection | undefined>;
+  createHubspotConnection(connection: InsertHubspotConnection): Promise<HubspotConnection>;
+  updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>): Promise<HubspotConnection | undefined>;
+  deleteHubspotConnection(connectionId: string): Promise<boolean>;
   
   // LinkedIn Connections
   getLinkedInConnection(campaignId: string): Promise<LinkedInConnection | undefined>;
@@ -269,6 +276,7 @@ export class MemStorage implements IStorage {
   private performanceData: Map<string, PerformanceData>;
   private ga4Connections: Map<string, GA4Connection>;
   private googleSheetsConnections: Map<string, GoogleSheetsConnection>; // Key: connection.id
+  private hubspotConnections: Map<string, HubspotConnection>; // Key: connection.id
   private linkedinConnections: Map<string, LinkedInConnection>;
   private metaConnections: Map<string, MetaConnection>;
   private linkedinImportSessions: Map<string, LinkedInImportSession>;
@@ -302,6 +310,7 @@ export class MemStorage implements IStorage {
     this.performanceData = new Map();
     this.ga4Connections = new Map();
     this.googleSheetsConnections = new Map();
+    this.hubspotConnections = new Map();
     this.linkedinConnections = new Map();
     this.metaConnections = new Map();
     this.linkedinImportSessions = new Map();
@@ -1024,6 +1033,75 @@ export class MemStorage implements IStorage {
       }
     }
     
+    return true;
+  }
+
+  // HubSpot Connection methods
+  async getHubspotConnections(campaignId: string): Promise<HubspotConnection[]> {
+    const connections: HubspotConnection[] = [];
+    for (const connection of this.hubspotConnections.values()) {
+      if (connection.campaignId === campaignId && connection.isActive) {
+        connections.push(connection);
+      }
+    }
+    return connections.sort(
+      (a, b) => new Date(a.connectedAt).getTime() - new Date(b.connectedAt).getTime()
+    );
+  }
+
+  async getHubspotConnection(campaignId: string): Promise<HubspotConnection | undefined> {
+    // Return the most recently connected active connection (V1 assumes one per campaign)
+    const connections = await this.getHubspotConnections(campaignId);
+    if (connections.length === 0) return undefined;
+    return connections[connections.length - 1];
+  }
+
+  async createHubspotConnection(connection: InsertHubspotConnection): Promise<HubspotConnection> {
+    const id = randomUUID();
+    const hubspotConnection: HubspotConnection = {
+      id,
+      campaignId: connection.campaignId,
+      portalId: connection.portalId || null,
+      portalName: connection.portalName || null,
+      accessToken: connection.accessToken || null,
+      refreshToken: connection.refreshToken || null,
+      clientId: connection.clientId || null,
+      clientSecret: connection.clientSecret || null,
+      expiresAt: connection.expiresAt || null,
+      isActive: connection.isActive ?? true,
+      mappingConfig: connection.mappingConfig || null,
+      connectedAt: new Date(),
+      createdAt: new Date(),
+    };
+    this.hubspotConnections.set(id, hubspotConnection);
+    return hubspotConnection;
+  }
+
+  async updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>): Promise<HubspotConnection | undefined> {
+    const existing = this.hubspotConnections.get(connectionId);
+    if (!existing) return undefined;
+
+    const updated: HubspotConnection = {
+      ...existing,
+      ...connection,
+      id: existing.id,
+      campaignId: existing.campaignId,
+    };
+
+    this.hubspotConnections.set(connectionId, updated);
+    return updated;
+  }
+
+  async deleteHubspotConnection(connectionId: string): Promise<boolean> {
+    const connection = this.hubspotConnections.get(connectionId);
+    if (!connection) return false;
+
+    // Soft delete
+    const updated: HubspotConnection = {
+      ...connection,
+      isActive: false,
+    };
+    this.hubspotConnections.set(connectionId, updated);
     return true;
   }
 
@@ -2556,6 +2634,53 @@ export class DatabaseStorage implements IStorage {
       }
       throw error;
     }
+  }
+
+  // HubSpot Connection methods
+  async getHubspotConnections(campaignId: string): Promise<HubspotConnection[]> {
+    return await db
+      .select()
+      .from(hubspotConnections)
+      .where(and(eq(hubspotConnections.campaignId, campaignId), eq(hubspotConnections.isActive, true)))
+      .orderBy(hubspotConnections.connectedAt);
+  }
+
+  async getHubspotConnection(campaignId: string): Promise<HubspotConnection | undefined> {
+    const [latest] = await db
+      .select()
+      .from(hubspotConnections)
+      .where(and(eq(hubspotConnections.campaignId, campaignId), eq(hubspotConnections.isActive, true)))
+      .orderBy(desc(hubspotConnections.connectedAt))
+      .limit(1);
+    return latest || undefined;
+  }
+
+  async createHubspotConnection(connection: InsertHubspotConnection): Promise<HubspotConnection> {
+    const connectionData = {
+      ...connection,
+      isActive: connection.isActive !== undefined ? connection.isActive : true,
+      clientId: connection.clientId || null,
+      clientSecret: connection.clientSecret || null,
+    };
+    const [created] = await db.insert(hubspotConnections).values(connectionData).returning();
+    return created;
+  }
+
+  async updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>): Promise<HubspotConnection | undefined> {
+    const [updated] = await db
+      .update(hubspotConnections)
+      .set(connection)
+      .where(eq(hubspotConnections.id, connectionId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteHubspotConnection(connectionId: string): Promise<boolean> {
+    const result = await db
+      .update(hubspotConnections)
+      .set({ isActive: false })
+      .where(eq(hubspotConnections.id, connectionId));
+    return (result.rowCount || 0) > 0;
   }
 
   // LinkedIn Connection methods

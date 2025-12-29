@@ -221,6 +221,32 @@ process.on('uncaughtException', (error: Error) => {
               is_shared BOOLEAN DEFAULT false
             );
           `);
+
+          // Migration 8: HubSpot connections (CRM revenue source)
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS hubspot_connections (
+              id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              portal_id TEXT,
+              portal_name TEXT,
+              access_token TEXT,
+              refresh_token TEXT,
+              client_id TEXT,
+              client_secret TEXT,
+              expires_at TIMESTAMP,
+              is_active BOOLEAN NOT NULL DEFAULT true,
+              mapping_config TEXT,
+              connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          // Backward-compat: ensure newer columns exist if table was created earlier
+          await db.execute(sql`
+            ALTER TABLE hubspot_connections
+            ADD COLUMN IF NOT EXISTS mapping_config TEXT,
+            ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+          `);
           
           log('✅ Database migrations completed successfully');
         } catch (error) {

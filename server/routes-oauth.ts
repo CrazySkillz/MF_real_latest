@@ -836,6 +836,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // HubSpot OAuth - Start connection
+  app.post("/api/auth/hubspot/connect", oauthRateLimiter, async (req, res) => {
+    try {
+      const { campaignId } = req.body;
+      if (!campaignId) {
+        return res.status(400).json({ message: "Campaign ID is required" });
+      }
+
+      const rawBaseUrl =
+        process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/hubspot/callback`;
+
+      const clientId = process.env.HUBSPOT_CLIENT_ID || '';
+      const scope = [
+        'crm.objects.deals.read',
+        'crm.schemas.deals.read',
+      ].join(' ');
+
+      if (!clientId) {
+        return res.status(500).json({ message: "HubSpot OAuth is not configured (missing HUBSPOT_CLIENT_ID)" });
+      }
+
+      const authUrl =
+        `https://app.hubspot.com/oauth/authorize?` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `scope=${encodeURIComponent(scope)}&` +
+        `state=${encodeURIComponent(campaignId)}`;
+
+      res.json({ authUrl, message: "HubSpot OAuth flow initiated" });
+    } catch (error) {
+      console.error('[HubSpot OAuth] Initiation error:', error);
+      res.status(500).json({ message: "Failed to initiate authentication" });
+    }
+  });
+
+  // HubSpot OAuth callback
+  app.get("/api/auth/hubspot/callback", async (req, res) => {
+    try {
+      const { code, state, error } = req.query;
+
+      if (error) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Failed</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Failed</h2>
+              <p>Error: ${error}</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'hubspot_auth_error', error: '${String(error)}' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      if (!code || !state) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>Missing authorization code or state parameter.</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'hubspot_auth_error', error: 'Missing parameters' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      const campaignId = String(state);
+
+      const rawBaseUrl =
+        process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/hubspot/callback`;
+
+      const clientId = process.env.HUBSPOT_CLIENT_ID || '';
+      const clientSecret = process.env.HUBSPOT_CLIENT_SECRET || '';
+      if (!clientId || !clientSecret) {
+        throw new Error('HubSpot OAuth is not configured (missing HUBSPOT_CLIENT_ID/HUBSPOT_CLIENT_SECRET)');
+      }
+
+      const tokenResponse = await fetch('https://api.hubapi.com/oauth/v1/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          code: String(code),
+        }),
+      });
+      const tokens: any = await tokenResponse.json().catch(() => ({}));
+      if (!tokenResponse.ok || !tokens.access_token) {
+        throw new Error(tokens?.message || 'Failed to obtain HubSpot access token');
+      }
+
+      // Best-effort portal details
+      let portalId: string | null = tokens.hub_id ? String(tokens.hub_id) : null;
+      let portalName: string | null = null;
+      try {
+        const infoResp = await fetch('https://api.hubapi.com/account-info/v3/details', {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        });
+        if (infoResp.ok) {
+          const info: any = await infoResp.json().catch(() => ({}));
+          if (info?.portalId) portalId = String(info.portalId);
+          if (info?.accountName) portalName = String(info.accountName);
+        }
+      } catch {
+        // ignore
+      }
+
+      // Create/update active connection for this campaign
+      const existing = await storage.getHubspotConnection(campaignId);
+      const expiresAt = tokens.expires_in ? new Date(Date.now() + Number(tokens.expires_in) * 1000) : undefined;
+      if (existing) {
+        await storage.updateHubspotConnection(existing.id, {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          clientId,
+          clientSecret,
+          expiresAt,
+          portalId,
+          portalName,
+          isActive: true,
+        } as any);
+      } else {
+        await storage.createHubspotConnection({
+          campaignId,
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          clientId,
+          clientSecret,
+          expiresAt,
+          portalId,
+          portalName,
+          isActive: true,
+        } as any);
+      }
+
+      res.send(`
+        <html>
+          <head><title>Authentication Successful</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>✓ HubSpot Connected</h2>
+            <p>You can now close this window.</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'hubspot_auth_success', portalId: ${JSON.stringify(portalId)}, portalName: ${JSON.stringify(portalName)} }, window.location.origin);
+              }
+              setTimeout(() => window.close(), 1200);
+            </script>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      console.error('[HubSpot OAuth] Callback error:', error);
+      res.send(`
+        <html>
+          <head><title>Authentication Error</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>Authentication Error</h2>
+            <p>${error?.message || 'Failed to complete authentication'}</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'hubspot_auth_error', error: ${JSON.stringify(error?.message || 'Failed to complete authentication')} }, window.location.origin);
+              }
+              setTimeout(() => window.close(), 2000);
+            </script>
+          </body>
+        </html>
+      `);
+    }
+  });
+
   // Get spreadsheets for campaign
   app.get("/api/google-sheets/:campaignId/spreadsheets", googleSheetsRateLimiter, async (req, res) => {
     try {
@@ -1085,6 +1277,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('[Google Sheets] Delete connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete connection' });
+    }
+  });
+
+  // Delete/reset HubSpot connection (CRM revenue source)
+  app.delete("/api/hubspot/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { connectionId } = req.query; // Optional: delete specific connection
+
+      const isRevenueTrackingHubspotConnection = (conn: any): boolean => {
+        const raw = conn?.mappingConfig;
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return !!cfg?.campaignProperty && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0 && !!cfg?.revenueProperty;
+        } catch {
+          return false;
+        }
+      };
+
+      let deletedWasRevenueTracking = false;
+      let targetConnId: string | null = connectionId ? String(connectionId) : null;
+      if (!targetConnId) {
+        const latest = await storage.getHubspotConnection(campaignId);
+        targetConnId = latest?.id ? String(latest.id) : null;
+      }
+      if (!targetConnId) {
+        return res.status(404).json({ error: 'No HubSpot connection found' });
+      }
+
+      const before = await storage.getHubspotConnections(campaignId);
+      const target = (before || []).find((c: any) => String(c?.id) === String(targetConnId));
+      deletedWasRevenueTracking = !!target && (target as any).isActive !== false && isRevenueTrackingHubspotConnection(target);
+
+      await storage.deleteHubspotConnection(targetConnId);
+
+      // Determine if any revenue-tracking sources remain (Google Sheets OR HubSpot)
+      const remainingSheets = await storage.getGoogleSheetsConnections(campaignId);
+      const isRevenueTrackingSheet = (conn: any): boolean => {
+        const mappingsRaw = conn.columnMappings || conn.column_mappings;
+        if (!mappingsRaw) return false;
+        try {
+          const mappings = typeof mappingsRaw === 'string' ? JSON.parse(mappingsRaw) : mappingsRaw;
+          if (!Array.isArray(mappings) || mappings.length === 0) return false;
+          const hasIdentifier =
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
+          const hasValueSource =
+            mappings.some((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value') ||
+            mappings.some((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
+          return hasIdentifier && hasValueSource;
+        } catch {
+          return false;
+        }
+      };
+      const remainingRevenueSheets = (remainingSheets || []).filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingSheet);
+
+      const remainingHubspot = await storage.getHubspotConnections(campaignId);
+      const remainingRevenueHubspot = (remainingHubspot || []).filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingHubspotConnection);
+
+      const hasAnyRevenueTrackingSources = remainingRevenueSheets.length > 0 || remainingRevenueHubspot.length > 0;
+
+      let conversionValueCleared = false;
+      if (!hasAnyRevenueTrackingSources || deletedWasRevenueTracking) {
+        // Clear campaign + platform conversion values (same UX rule as Sheets)
+        const campaign = await storage.getCampaign(campaignId);
+        if (campaign?.conversionValue) {
+          await storage.updateCampaign(campaignId, { conversionValue: null } as any);
+          conversionValueCleared = true;
+        }
+
+        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+        if (linkedInConnection?.conversionValue) {
+          await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);
+          conversionValueCleared = true;
+        }
+
+        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+        for (const s of sessions || []) {
+          if (s.conversionValue) {
+            await storage.updateLinkedInImportSession(s.id, { conversionValue: null } as any);
+            conversionValueCleared = true;
+          }
+        }
+
+        const metaConnection = await storage.getMetaConnection(campaignId);
+        if (metaConnection?.conversionValue) {
+          await storage.updateMetaConnection(campaignId, { conversionValue: null } as any);
+          conversionValueCleared = true;
+        }
+      }
+
+      res.json({
+        success: true,
+        message: 'Connection deleted',
+        deletedWasRevenueTracking,
+        conversionValueCleared,
+        remainingRevenueTrackingConnections: remainingRevenueSheets.length + remainingRevenueHubspot.length,
+      });
+    } catch (error: any) {
+      console.error('[HubSpot] Delete connection error:', error);
       res.status(500).json({ error: error.message || 'Failed to delete connection' });
     }
   });
@@ -3133,12 +3427,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const googleSheetsSources = Array.from(dedupedByKey.values());
 
+      // HubSpot sources
+      const hubspotConnectionsRaw: any[] = await storage.getHubspotConnections(campaignId) as any;
+      const hubspotConnectionsAll = (hubspotConnectionsRaw || []).filter(Boolean);
+      const hubspotActive = hubspotConnectionsAll.filter((c: any) => !!c.isActive);
+      const hubspotInactive = hubspotConnectionsAll.filter((c: any) => !c.isActive);
+      const hubspotConnections = hubspotActive.length > 0 ? hubspotActive : hubspotInactive;
+
+      const hubspotSources = (hubspotConnections || []).map((conn: any) => {
+        let hasMappings = false;
+        let usedForRevenueTracking = false;
+        try {
+          const cfgRaw = conn.mappingConfig;
+          const cfg = cfgRaw ? (typeof cfgRaw === 'string' ? JSON.parse(cfgRaw) : cfgRaw) : null;
+          hasMappings = !!cfg && typeof cfg === 'object';
+          usedForRevenueTracking =
+            !!cfg &&
+            !!cfg.campaignProperty &&
+            Array.isArray(cfg.selectedValues) &&
+            cfg.selectedValues.length > 0 &&
+            !!cfg.revenueProperty;
+        } catch {
+          hasMappings = false;
+          usedForRevenueTracking = false;
+        }
+
+        const isActive = !!conn.isActive;
+        const portalLabel = conn.portalName || conn.portalId || 'HubSpot';
+        return {
+          id: conn.id,
+          type: 'hubspot',
+          provider: 'HubSpot',
+          displayName: `HubSpot — ${portalLabel}`,
+          status: isActive ? 'connected' : 'inactive',
+          isActive,
+          connectedAt: conn.connectedAt,
+          hasMappings,
+          usedForRevenueTracking,
+          campaignName: campaign?.name || null,
+          portalId: conn.portalId || null,
+          portalName: conn.portalName || null,
+        };
+      });
+
       res.json({
         success: true,
         campaignId,
         sources: [
           ...googleSheetsSources,
-          // Future: hubspot, salesforce, etc.
+          ...hubspotSources,
         ],
       });
     } catch (error: any) {
@@ -3162,6 +3499,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!conn) {
         conn = await storage.getGoogleSheetsConnection(campaignId, sourceId);
       }
+
+      // If not a Google Sheets source, try HubSpot
+      if (!conn) {
+        const hubspotConns: any[] = await storage.getHubspotConnections(campaignId) as any;
+        const hubConn: any = (hubspotConns || []).find((c: any) => c?.id === sourceId);
+        if (!hubConn) {
+          return res.status(404).json({ error: 'Source not found' });
+        }
+        const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
+
+        let cfg: any = null;
+        try {
+          cfg = hubConn.mappingConfig ? JSON.parse(String(hubConn.mappingConfig)) : null;
+        } catch {
+          cfg = null;
+        }
+
+        const rangeDays = Math.min(Math.max(parseInt(String(cfg?.days || '90'), 10) || 90, 1), 3650);
+        const startMs = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
+        const stageIds = Array.isArray(cfg?.stageIds) && cfg.stageIds.length > 0 ? cfg.stageIds.map((v: any) => String(v)) : ['closedwon'];
+        const propsToFetch = Array.from(new Set([
+          'dealname',
+          'dealstage',
+          'closedate',
+          'hs_currency',
+          String(cfg?.revenueProperty || 'amount'),
+          ...(cfg?.campaignProperty ? [String(cfg.campaignProperty)] : []),
+        ]));
+
+        const filters: any[] = [
+          { propertyName: 'dealstage', operator: 'IN', values: stageIds },
+          { propertyName: 'closedate', operator: 'GTE', value: String(startMs) },
+        ];
+        if (cfg?.campaignProperty && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0) {
+          filters.unshift({ propertyName: String(cfg.campaignProperty), operator: 'IN', values: cfg.selectedValues.map((v: any) => String(v)) });
+        }
+
+        const body: any = {
+          filterGroups: [{ filters }],
+          properties: propsToFetch,
+          limit,
+        };
+
+        const json = await hubspotSearchDeals(accessToken, body);
+        const results = Array.isArray(json?.results) ? json.results : [];
+        const headers = ['id', ...propsToFetch];
+        const rows = results.map((d: any) => {
+          const props = d?.properties || {};
+          return headers.map((h: string) => {
+            if (h === 'id') return d?.id || '';
+            return props[h] ?? '';
+          });
+        });
+
+        return res.json({
+          success: true,
+          sourceId,
+          type: 'hubspot',
+          spreadsheetName: hubConn.portalName || 'HubSpot',
+          spreadsheetId: hubConn.portalId || 'hubspot',
+          sheetName: 'Deals',
+          headers,
+          rows,
+          rowCount: rows.length,
+        });
+      }
+
       if (!conn || !conn.accessToken) {
         return res.status(404).json({ error: 'Source not found or missing access token' });
       }
@@ -3306,6 +3710,348 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // HubSpot connection status
+  app.get("/api/hubspot/:campaignId/status", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const conn: any = await storage.getHubspotConnection(campaignId);
+      if (!conn || !conn.isActive || !conn.accessToken) {
+        return res.json({ connected: false });
+      }
+      res.json({
+        connected: true,
+        connectionId: conn.id,
+        portalId: conn.portalId,
+        portalName: conn.portalName,
+      });
+    } catch (error: any) {
+      console.error('[HubSpot Status] Error:', error);
+      res.json({ connected: false });
+    }
+  });
+
+  // HubSpot deals properties (for mapping wizard)
+  app.get("/api/hubspot/:campaignId/deals/properties", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
+
+      const resp = await fetch('https://api.hubapi.com/crm/v3/properties/deals?archived=false', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json: any = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        return res.status(resp.status).json({ error: json?.message || 'Failed to load deal properties' });
+      }
+
+      const results = Array.isArray(json?.results) ? json.results : [];
+      const properties = results
+        .filter((p: any) => p && (p.hidden !== true))
+        .map((p: any) => ({
+          name: String(p.name),
+          label: String(p.label || p.name),
+          type: String(p.type || ''),
+          fieldType: String(p.fieldType || ''),
+        }));
+
+      // Ensure common fields exist even if hidden in some portals
+      const ensure = (name: string, label: string) => {
+        if (!properties.some((p: any) => p.name === name)) properties.unshift({ name, label, type: 'string', fieldType: '' });
+      };
+      ensure('dealstage', 'Deal stage');
+      ensure('amount', 'Deal amount');
+      ensure('closedate', 'Close date');
+      ensure('hs_currency', 'Currency');
+
+      res.json({ success: true, properties });
+    } catch (error: any) {
+      console.error('[HubSpot Properties] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to load deal properties' });
+    }
+  });
+
+  // HubSpot deals pipelines (for default closed-won stage selection)
+  app.get("/api/hubspot/:campaignId/deals/pipelines", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
+
+      const resp = await fetch('https://api.hubapi.com/crm/v3/pipelines/deals', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json: any = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        return res.status(resp.status).json({ error: json?.message || 'Failed to load pipelines' });
+      }
+
+      const pipelines = Array.isArray(json?.results) ? json.results : [];
+      res.json({ success: true, pipelines });
+    } catch (error: any) {
+      console.error('[HubSpot Pipelines] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to load pipelines' });
+    }
+  });
+
+  function deriveDefaultClosedWonStageIds(pipelines: any[]): string[] {
+    const stageIds: string[] = [];
+    for (const p of pipelines || []) {
+      const stages = Array.isArray(p?.stages) ? p.stages : [];
+      for (const s of stages) {
+        const id = s?.id ? String(s.id) : null;
+        if (!id) continue;
+        const md = s?.metadata || {};
+        const isClosed = String((md as any)?.isClosed ?? '').toLowerCase() === 'true';
+        const probability = String((md as any)?.probability ?? '');
+        const label = String(s?.label || '').toLowerCase();
+        const looksLikeWon = label.includes('closed won') || id.toLowerCase() === 'closedwon';
+        if ((isClosed && probability === '1') || looksLikeWon) {
+          stageIds.push(id);
+        }
+      }
+    }
+    // De-dupe
+    return Array.from(new Set(stageIds)).slice(0, 50);
+  }
+
+  async function hubspotSearchDeals(accessToken: string, body: any): Promise<any> {
+    const resp = await fetch('https://api.hubapi.com/crm/v3/objects/deals/search', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    const json: any = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      throw new Error(json?.message || `HubSpot search failed (${resp.status})`);
+    }
+    return json;
+  }
+
+  // HubSpot unique values for a deal property (used by crosswalk multi-select)
+  app.get("/api/hubspot/:campaignId/deals/unique-values", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const property = String(req.query.property || '').trim();
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || '200'), 10) || 200, 10), 500);
+      const days = Math.min(Math.max(parseInt(String(req.query.days || '90'), 10) || 90, 1), 3650);
+
+      if (!property) {
+        return res.status(400).json({ error: 'Missing property' });
+      }
+
+      const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
+
+      // Default filters: Closed Won-ish stages + last N days (by close date)
+      let stageIds: string[] = ['closedwon'];
+      try {
+        const pipelinesResp = await fetch('https://api.hubapi.com/crm/v3/pipelines/deals', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const pipelinesJson: any = await pipelinesResp.json().catch(() => ({}));
+        if (pipelinesResp.ok) {
+          const pipelines = Array.isArray(pipelinesJson?.results) ? pipelinesJson.results : [];
+          const derived = deriveDefaultClosedWonStageIds(pipelines);
+          if (derived.length > 0) stageIds = derived;
+        }
+      } catch {
+        // ignore
+      }
+
+      const startMs = Date.now() - days * 24 * 60 * 60 * 1000;
+      const counts = new Map<string, number>();
+
+      let after: string | undefined;
+      let pages = 0;
+      while (pages < 10 && counts.size < limit) {
+        const body: any = {
+          filterGroups: [
+            {
+              filters: [
+                { propertyName: 'dealstage', operator: 'IN', values: stageIds },
+                { propertyName: 'closedate', operator: 'GTE', value: String(startMs) },
+              ],
+            },
+          ],
+          properties: [property],
+          limit: 100,
+          after,
+        };
+        const json = await hubspotSearchDeals(accessToken, body);
+        const results = Array.isArray(json?.results) ? json.results : [];
+        for (const d of results) {
+          const vRaw = d?.properties ? d.properties[property] : null;
+          const v = vRaw === undefined || vRaw === null ? '' : String(vRaw).trim();
+          if (!v) continue;
+          counts.set(v, (counts.get(v) || 0) + 1);
+          if (counts.size >= limit) break;
+        }
+        after = json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
+        if (!after) break;
+        pages += 1;
+      }
+
+      const values = Array.from(counts.entries())
+        .map(([value, count]) => ({ value, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+
+      res.json({ success: true, property, values });
+    } catch (error: any) {
+      console.error('[HubSpot Unique Values] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to load unique values' });
+    }
+  });
+
+  // HubSpot save mappings (compute conversion value and unlock LinkedIn revenue metrics)
+  app.post("/api/campaigns/:id/hubspot/save-mappings", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const {
+        campaignProperty,
+        selectedValues,
+        revenueProperty,
+        days,
+        stageIds,
+      } = req.body || {};
+
+      const campaignProp = String(campaignProperty || '').trim();
+      const revenueProp = String(revenueProperty || 'amount').trim();
+      const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
+      const rangeDays = Math.min(Math.max(parseInt(String(days || '90'), 10) || 90, 1), 3650);
+
+      if (!campaignProp) return res.status(400).json({ error: 'campaignProperty is required' });
+      if (selected.length === 0) return res.status(400).json({ error: 'selectedValues is required' });
+      if (!revenueProp) return res.status(400).json({ error: 'revenueProperty is required' });
+
+      const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
+
+      // Determine default closed-won stage ids unless caller provides an explicit list
+      let effectiveStageIds: string[] = Array.isArray(stageIds) && stageIds.length > 0 ? stageIds.map((v: any) => String(v)) : ['closedwon'];
+      if (!Array.isArray(stageIds) || stageIds.length === 0) {
+        try {
+          const pipelinesResp = await fetch('https://api.hubapi.com/crm/v3/pipelines/deals', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const pipelinesJson: any = await pipelinesResp.json().catch(() => ({}));
+          if (pipelinesResp.ok) {
+            const pipelines = Array.isArray(pipelinesJson?.results) ? pipelinesJson.results : [];
+            const derived = deriveDefaultClosedWonStageIds(pipelines);
+            if (derived.length > 0) effectiveStageIds = derived;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const startMs = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
+
+      let totalRevenue = 0;
+      const currencies = new Set<string>();
+
+      let after: string | undefined;
+      let pages = 0;
+      while (pages < 50) {
+        const body: any = {
+          filterGroups: [
+            {
+              filters: [
+                { propertyName: campaignProp, operator: 'IN', values: selected },
+                { propertyName: 'dealstage', operator: 'IN', values: effectiveStageIds },
+                { propertyName: 'closedate', operator: 'GTE', value: String(startMs) },
+              ],
+            },
+          ],
+          properties: [campaignProp, revenueProp, 'hs_currency', 'dealname', 'dealstage', 'closedate'],
+          limit: 100,
+          after,
+        };
+
+        const json = await hubspotSearchDeals(accessToken, body);
+        const results = Array.isArray(json?.results) ? json.results : [];
+        for (const d of results) {
+          const props = d?.properties || {};
+          const rRaw = props[revenueProp];
+          const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+          if (!Number.isFinite(r)) continue;
+          totalRevenue += r;
+
+          const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
+          if (c) currencies.add(c);
+        }
+
+        after = json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
+        if (!after) break;
+        pages += 1;
+      }
+
+      if (currencies.size > 1) {
+        return res.status(400).json({
+          error: `Multiple currencies found for the selected deals (${Array.from(currencies).join(', ')}). Please filter HubSpot deals to a single currency.`,
+          currencies: Array.from(currencies),
+        });
+      }
+
+      // Pull conversions from latest LinkedIn import session
+      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+      const latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+      if (!latestSession) {
+        return res.status(400).json({ error: 'No LinkedIn import session found. Please import LinkedIn metrics first.' });
+      }
+
+      const importMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
+      const canonicalKey = (k: string) => String(k || '').toLowerCase();
+      const totalConversions = (importMetrics || []).reduce((sum: number, m: any) => {
+        const key = canonicalKey(m.metricKey);
+        if (key === 'conversions' || key === 'externalwebsiteconversions') {
+          const v = Number(m.metricValue);
+          if (Number.isFinite(v)) return sum + v;
+        }
+        return sum;
+      }, 0);
+
+      if (!Number.isFinite(totalConversions) || totalConversions <= 0) {
+        return res.status(400).json({ error: 'LinkedIn conversions are 0. Cannot compute conversion value.' });
+      }
+
+      const calculatedConversionValue = Number((totalRevenue / totalConversions).toFixed(2));
+
+      // Persist conversion value across campaign + LinkedIn connection + import session (same pattern as Sheets)
+      await storage.updateCampaign(campaignId, { conversionValue: calculatedConversionValue } as any);
+      await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
+      await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
+
+      // Persist mapping config on the active HubSpot connection
+      const hubspotConn: any = await storage.getHubspotConnection(campaignId);
+      if (hubspotConn) {
+        const mappingConfig = {
+          objectType: 'deals',
+          campaignProperty: campaignProp,
+          selectedValues: selected,
+          revenueProperty: revenueProp,
+          days: rangeDays,
+          stageIds: effectiveStageIds,
+          currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+        };
+        await storage.updateHubspotConnection(hubspotConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
+      }
+
+      res.json({
+        success: true,
+        conversionValueCalculated: true,
+        conversionValue: calculatedConversionValue,
+        totalRevenue: Number(totalRevenue.toFixed(2)),
+        totalConversions,
+        currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+        sessionId: latestSession.id,
+      });
+    } catch (error: any) {
+      console.error('[HubSpot Save Mappings] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to save HubSpot mappings' });
+    }
+  });
+
   // Helper function to refresh Google Sheets access token with robust error handling
   async function refreshGoogleSheetsToken(connection: any) {
     if (!connection.refreshToken || !connection.clientId || !connection.clientSecret) {
@@ -3395,6 +4141,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     console.log('✅ Google Sheets token refreshed successfully for campaign:', connection.campaignId);
     return tokens.access_token;
+  }
+
+  async function refreshHubspotToken(connection: any) {
+    if (!connection.refreshToken || !connection.clientId || !connection.clientSecret) {
+      throw new Error('Missing refresh token or OAuth credentials for HubSpot token refresh');
+    }
+
+    const refreshResponse = await fetch('https://api.hubapi.com/oauth/v1/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: String(connection.refreshToken),
+        client_id: String(connection.clientId),
+        client_secret: String(connection.clientSecret),
+      }),
+    });
+
+    const tokens: any = await refreshResponse.json().catch(() => ({}));
+    if (!refreshResponse.ok || !tokens.access_token) {
+      throw new Error(tokens?.message || 'Failed to refresh HubSpot access token');
+    }
+
+    const expiresAt = tokens.expires_in ? new Date(Date.now() + Number(tokens.expires_in) * 1000) : undefined;
+    const updateData: any = {
+      accessToken: tokens.access_token,
+      expiresAt,
+    };
+    if (tokens.refresh_token) updateData.refreshToken = tokens.refresh_token;
+    await storage.updateHubspotConnection(String(connection.id), updateData);
+    return tokens.access_token as string;
+  }
+
+  async function getHubspotAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; connectionId: string }> {
+    const conn: any = await storage.getHubspotConnection(campaignId);
+    if (!conn || !conn.accessToken) throw new Error('No HubSpot connection found');
+
+    let accessToken = conn.accessToken;
+    try {
+      const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+      if (shouldRefresh && conn.refreshToken) {
+        accessToken = await refreshHubspotToken(conn);
+      }
+    } catch {
+      // ignore and try existing token
+    }
+
+    return { accessToken, connectionId: String(conn.id) };
   }
 
   // Helper function to check if token needs proactive refresh (within 5 minutes of expiry)
@@ -8497,11 +9291,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.er = sanitizeCalculatedMetric('er', parseFloat(er.toFixed(2)));
       }
       
-      // Check active Google Sheets connections
-      // IMPORTANT: Revenue metrics should only be enabled when there is at least one ACTIVE Google Sheets connection
-      // that is explicitly mapped for revenue tracking (identifier + revenue/conversion value source).
-      // View-only connections ("Just connect for viewing / later use") must NOT keep revenue metrics enabled.
+      // Revenue sources (Google Sheets + HubSpot)
+      // IMPORTANT: Revenue metrics should only be enabled when there is at least one ACTIVE *revenue-tracking* source.
+      // View-only sources ("Just connect for viewing / later use") must NOT keep revenue metrics enabled.
       const googleSheetsConnections = await storage.getGoogleSheetsConnections(session.campaignId);
+      const hubspotConnections = await storage.getHubspotConnections(session.campaignId);
 
       const isRevenueTrackingConnection = (conn: any): boolean => {
         const mappingsRaw = conn?.columnMappings || conn?.column_mappings;
@@ -8540,6 +9334,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAnyActiveRevenueTrackingGoogleSheetsConnection =
         googleSheetsConnections.some((c: any) => (c as any)?.isActive !== false && isRevenueTrackingConnection(c));
       let hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
+
+      const isRevenueTrackingHubspotConnection = (conn: any): boolean => {
+        const raw = conn?.mappingConfig;
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return !!cfg?.campaignProperty && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0 && !!cfg?.revenueProperty;
+        } catch {
+          return false;
+        }
+      };
+
+      const hasAnyActiveHubspotConnection = (hubspotConnections || []).some((c: any) => (c as any)?.isActive !== false && !!(c as any)?.accessToken);
+      const hasAnyActiveRevenueTrackingHubspotConnection = (hubspotConnections || []).some((c: any) => (c as any)?.isActive !== false && isRevenueTrackingHubspotConnection(c));
+      const hasAnyActiveSourceConnection = hasAnyActiveGoogleSheetsConnection || hasAnyActiveHubspotConnection;
+      const hasAnyActiveRevenueTrackingSourceConnection = hasAnyActiveRevenueTrackingGoogleSheetsConnection || hasAnyActiveRevenueTrackingHubspotConnection;
       
       // CRITICAL: Refetch campaign to get the latest conversion value (it might have just been updated by save-mappings)
       // The campaign was fetched earlier, but conversion value might have been updated since then
@@ -8567,7 +9377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Determine conversion value (campaign → session → linkedin connection).
       let conversionValue = 0;
-      if (hasAnyActiveGoogleSheetsConnection) {
+      if (hasAnyActiveSourceConnection) {
         const campaignConversionValue = latestCampaign?.conversionValue
         ? parseFloat(latestCampaign.conversionValue.toString()) 
           : 0;
@@ -8583,7 +9393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         // No active Google Sheets connections at all: clear stale conversion values
-        console.log('[LinkedIn Analytics OAuth] ❌ NO active Google Sheets connections - clearing stale conversion values');
+        console.log('[LinkedIn Analytics OAuth] ❌ NO active revenue source connections - clearing stale conversion values');
         
         // Clear stale values
         if (latestCampaign?.conversionValue) {
@@ -8611,7 +9421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calculate revenue metrics only if conversion value is set AND there is at least one ACTIVE revenue-tracking connection.
       // View-only connections must not keep revenue metrics enabled after a revenue source is deleted.
-      const shouldEnableRevenueTracking = conversionValue > 0 && hasAnyActiveRevenueTrackingGoogleSheetsConnection;
+      const shouldEnableRevenueTracking = conversionValue > 0 && hasAnyActiveRevenueTrackingSourceConnection;
       if (shouldEnableRevenueTracking) {
         console.log('✅ Revenue tracking ENABLED');
         

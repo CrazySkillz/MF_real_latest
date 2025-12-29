@@ -6,6 +6,7 @@ import { FileSpreadsheet, Building2, ShoppingCart, Code, Upload, CheckCircle2, M
 import { SimpleGoogleSheetsAuth } from "./SimpleGoogleSheetsAuth";
 import { GoogleSheetsDatasetsView } from "./GoogleSheetsDatasetsView";
 import { GuidedColumnMapping } from "./GuidedColumnMapping";
+import { HubSpotRevenueWizard } from "./HubSpotRevenueWizard";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -38,6 +39,7 @@ export function UploadAdditionalDataModal({
   defaultGoogleSheetsUseCase = 'view'
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
+  const [selectedCrmProvider, setSelectedCrmProvider] = useState<'hubspot' | 'salesforce' | null>(null);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
@@ -75,6 +77,7 @@ export function UploadAdditionalDataModal({
   useEffect(() => {
     if (!isOpen) {
       setSelectedSource(null);
+      setSelectedCrmProvider(null);
       setShowDatasetsView(false);
       setJustConnected(false);
       setShowGuidedMapping(false);
@@ -103,6 +106,7 @@ export function UploadAdditionalDataModal({
 
   const handleSourceSelect = (source: DataSourceType) => {
     setSelectedSource(source);
+    setSelectedCrmProvider(null);
     if (source !== 'google-sheets') {
       setGoogleSheetsUseCase('view');
     }
@@ -215,7 +219,7 @@ export function UploadAdditionalDataModal({
             {/* CRM */}
             <Card 
               className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
-              onClick={() => handleComingSoon('CRM (HubSpot / Salesforce)')}
+              onClick={() => handleSourceSelect('crm')}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -526,6 +530,56 @@ export function UploadAdditionalDataModal({
                   </div>
                 )}
               </>
+            )}
+          </div>
+        ) : selectedSource === 'crm' ? (
+          <div className="mt-4 space-y-4">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSelectedSource(null);
+                setSelectedCrmProvider(null);
+              }}
+              className="mb-2"
+            >
+              ← Back to Options
+            </Button>
+
+            {selectedCrmProvider === null ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card
+                  className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
+                  onClick={() => setSelectedCrmProvider('hubspot')}
+                >
+                  <CardHeader>
+                    <CardTitle className="text-lg">HubSpot</CardTitle>
+                    <CardDescription>
+                      Connect Deals, map attribution, and calculate conversion value to unlock ROI/ROAS.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+
+                <Card className="opacity-60">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Salesforce</CardTitle>
+                    <CardDescription>Coming soon.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button variant="outline" disabled onClick={() => handleComingSoon('Salesforce')}>
+                      Coming soon
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <HubSpotRevenueWizard
+                campaignId={campaignId}
+                onBack={() => setSelectedCrmProvider(null)}
+                onSuccess={() => {
+                  if (onDataConnected) onDataConnected();
+                  setTimeout(() => onClose(), 200);
+                }}
+              />
             )}
           </div>
         ) : selectedSource === 'custom-integration' ? (

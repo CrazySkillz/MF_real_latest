@@ -971,25 +971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Google Sheets] Deleting connection for campaign ${campaignId}${connectionId ? ` (connectionId: ${connectionId})` : ''}`);
 
-      if (connectionId) {
-        // Delete specific connection
-        await storage.deleteGoogleSheetsConnection(connectionId as string);
-      } else {
-        // Delete all connections for this campaign (backward compatibility)
-        const connections = await storage.getGoogleSheetsConnections(campaignId);
-        for (const conn of connections) {
-          await storage.deleteGoogleSheetsConnection(conn.id);
-        }
-      }
-
-      // Check if there are any remaining active Google Sheets connections
-      const remainingConnections = await storage.getGoogleSheetsConnections(campaignId);
-      const hasActiveConnections = remainingConnections.length > 0;
-      
-      // Check if there are any remaining active Google Sheets connections that are USED FOR REVENUE TRACKING.
-      // If no revenue-tracking connections remain, clear conversion values from campaign/platform connections.
-      // This ensures the Overview tab shows the orange warning and revenue metrics disappear when the user deletes
-      // the last mapped revenue/conversion-value source.
+      // Helper: identify whether a connection's mappings are used for revenue tracking (identifier + value source).
       const isRevenueTrackingConnection = (conn: any): boolean => {
         const mappingsRaw = conn.columnMappings || conn.column_mappings;
         if (!mappingsRaw) return false;
@@ -1007,13 +989,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return false;
         }
       };
+
+      // If deleting a specific connection, determine whether it was used for revenue tracking before removal.
+      let deletedWasRevenueTracking = false;
+      if (connectionId) {
+        try {
+          const before = await storage.getGoogleSheetsConnections(campaignId);
+          const target = (before || []).find((c: any) => String(c?.id) === String(connectionId));
+          deletedWasRevenueTracking = !!target && (target as any).isActive !== false && isRevenueTrackingConnection(target);
+        } catch {
+          deletedWasRevenueTracking = false;
+        }
+      }
+
+      if (connectionId) {
+        // Delete specific connection
+        await storage.deleteGoogleSheetsConnection(connectionId as string);
+      } else {
+        // Delete all connections for this campaign (backward compatibility)
+        const connections = await storage.getGoogleSheetsConnections(campaignId);
+        for (const conn of connections) {
+          await storage.deleteGoogleSheetsConnection(conn.id);
+        }
+      }
+
+      // Check if there are any remaining active Google Sheets connections
+      const remainingConnections = await storage.getGoogleSheetsConnections(campaignId);
+      const hasActiveConnections = remainingConnections.length > 0;
       
+      // Check if there are any remaining active Google Sheets connections that are USED FOR REVENUE TRACKING.
       const remainingRevenueTrackingConnections = remainingConnections.filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingConnection);
       const hasRevenueTrackingConnections = remainingRevenueTrackingConnections.length > 0;
       
       let conversionValueCleared = false;
-      if (!hasRevenueTrackingConnections) {
-        console.log(`[Google Sheets] No active revenue-tracking connections remaining - clearing conversion values from platform connections`);
+      // Clean UX rule: if the user deletes a revenue-tracking source, disable revenue metrics immediately.
+      // Even if another mapped source exists, we cannot safely assume conversion value should remain unchanged without recomputation.
+      if (!hasRevenueTrackingConnections || deletedWasRevenueTracking) {
+        console.log(`[Google Sheets] Clearing conversion values from platform connections (deletedWasRevenueTracking=${deletedWasRevenueTracking}, remainingRevenueTracking=${remainingRevenueTrackingConnections.length})`);
         
         // Clear campaign-level conversion value (if it was set from Google Sheets)
         const campaign = await storage.getCampaign(campaignId);
@@ -1063,7 +1075,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`[Google Sheets] Connection deleted successfully`);
-      res.json({ success: true, message: 'Connection deleted', conversionValueCleared });
+      res.json({
+        success: true,
+        message: 'Connection deleted',
+        conversionValueCleared,
+        deletedWasRevenueTracking,
+        remainingRevenueTrackingConnections: remainingRevenueTrackingConnections.length,
+        hasActiveConnections,
+      });
     } catch (error: any) {
       console.error('[Google Sheets] Delete connection error:', error);
       res.status(500).json({ error: error.message || 'Failed to delete connection' });

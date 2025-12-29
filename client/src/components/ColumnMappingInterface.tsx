@@ -803,9 +803,7 @@ export function ColumnMappingInterface({
               // Invalidate queries to ensure fresh data when navigating
               await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-analytics"] });
               await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-              
-              if (onCancel) onCancel();
-              
+
               // IMPORTANT: LinkedIn analytics page requires `?session=...` to load data.
               // Preserve existing session param if present; otherwise fetch latest session for the campaign.
               const urlParams = new URLSearchParams(window.location.search);
@@ -826,10 +824,8 @@ export function ColumnMappingInterface({
                 ? `/campaigns/${campaignId}/linkedin-analytics?session=${encodeURIComponent(session)}&tab=overview`
                 : `/campaigns/${campaignId}/linkedin-analytics?tab=overview`;
 
-              // Navigate immediately - full reload ensures fresh data
-              setTimeout(() => {
-                window.location.href = targetUrl;
-              }, 100);
+              // Navigate immediately. Use replace() to avoid a "double load" flicker caused by closing the modal first.
+              window.location.replace(targetUrl);
             }}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

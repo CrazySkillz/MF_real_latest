@@ -371,16 +371,12 @@ export function UploadAdditionalDataModal({
                   setShowGuidedMapping(false);
                   setNewConnectionInfo(null);
                   
-                  // Close modal immediately
-                  onClose();
-
                   if (googleSheetsOnly) {
                     // In Google Sheets Data page flows, don't force LinkedIn navigation.
                     refetchConnections();
                     if (onDataConnected) onDataConnected();
-                    setTimeout(() => {
-                      window.location.href = originalReturnUrl;
-                    }, 150);
+                    // Use replace() to avoid a "double render" flicker (page shows, disappears, then shows again).
+                    window.location.replace(originalReturnUrl);
                     return;
                   }
 
@@ -418,14 +414,14 @@ export function UploadAdditionalDataModal({
                       ? `/campaigns/${originalCampaignId}/linkedin-analytics?session=${encodeURIComponent(sessionId)}&tab=overview`
                       : `/campaigns/${originalCampaignId}/linkedin-analytics?tab=overview`;
 
-                    console.log('[UploadAdditionalDataModal] 🔄 FULL PAGE RELOAD to:', targetUrl);
-                    window.location.href = targetUrl;
+                    console.log('[UploadAdditionalDataModal] 🔄 NAVIGATE (replace) to:', targetUrl);
+                    // Use replace() to avoid a "double load" flicker caused by closing the modal first.
+                    window.location.replace(targetUrl);
                   };
 
-                  // Give the backend a moment to persist conversion value and mappings.
-                  setTimeout(() => {
-                    void navigateToLinkedInOverview();
-                  }, 300);
+                  // GuidedColumnMapping already waits/polls before calling onMappingComplete,
+                  // so we can navigate immediately without extra delay.
+                  void navigateToLinkedInOverview();
                 }}
                 onCancel={() => {
                   if (mappingLaunchedFromConnect) {

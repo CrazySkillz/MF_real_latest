@@ -71,11 +71,7 @@ export function GuidedColumnMapping({
   const [convValueDateColumn, setConvValueDateColumn] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [skipPlatform, setSkipPlatform] = useState(false);
-  // Crosswalk can support multiple matching values (multi-select) for robustness.
-  // Keep `selectedIdentifierValue` for backwards compatibility / display, but persist as `selectedValues[]`.
-  const [selectedIdentifierValues, setSelectedIdentifierValues] = useState<string[]>([]);
   const [selectedIdentifierValue, setSelectedIdentifierValue] = useState<string | null>(null);
-  const [manualIdentifierValue, setManualIdentifierValue] = useState<string>('');
   const effectiveSheetNames = sheetNames || [];
 
   const inferIdentifierRoute = (col?: DetectedColumn | null): 'campaign_name' | 'campaign_id' => {
@@ -102,9 +98,7 @@ export function GuidedColumnMapping({
 
   // Reset crosswalk selection when identifier column or route changes
   useEffect(() => {
-    setSelectedIdentifierValues([]);
     setSelectedIdentifierValue(null);
-    setManualIdentifierValue('');
   }, [identifierRoute, selectedCampaignName]);
   
   // CRITICAL DEBUG LOG
@@ -280,31 +274,15 @@ export function GuidedColumnMapping({
       setIdentifierRouteAuto(false);
       const choice = findColumnChoice(idMapping);
       if (choice) setSelectedCampaignName(choice);
-      const selectedList: string[] = Array.isArray((idMapping as any)?.selectedValues)
-        ? (idMapping as any).selectedValues.map((v: any) => String(v ?? '').trim()).filter(Boolean)
-        : [];
-      const selectedSingle = String((idMapping as any)?.selectedValue || '').trim();
-      const combined = (selectedList.length > 0 ? selectedList : (selectedSingle ? [selectedSingle] : []))
-        .filter((v, idx, arr) => arr.indexOf(v) === idx);
-      if (combined.length > 0) {
-        setSelectedIdentifierValues(combined);
-        setSelectedIdentifierValue(combined[0]);
-      }
+      const selected = String(idMapping?.selectedValue || '').trim();
+      if (selected) setSelectedIdentifierValue(selected);
     } else if (nameMapping) {
       setIdentifierRoute('campaign_name');
       setIdentifierRouteAuto(false);
       const choice = findColumnChoice(nameMapping);
       if (choice) setSelectedCampaignName(choice);
-      const selectedList: string[] = Array.isArray((nameMapping as any)?.selectedValues)
-        ? (nameMapping as any).selectedValues.map((v: any) => String(v ?? '').trim()).filter(Boolean)
-        : [];
-      const selectedSingle = String((nameMapping as any)?.selectedValue || '').trim();
-      const combined = (selectedList.length > 0 ? selectedList : (selectedSingle ? [selectedSingle] : []))
-        .filter((v, idx, arr) => arr.indexOf(v) === idx);
-      if (combined.length > 0) {
-        setSelectedIdentifierValues(combined);
-        setSelectedIdentifierValue(combined[0]);
-      }
+      const selected = String(nameMapping?.selectedValue || '').trim();
+      if (selected) setSelectedIdentifierValue(selected);
     }
 
     // Value source
@@ -474,13 +452,10 @@ export function GuidedColumnMapping({
       }
       setCurrentStep('crosswalk');
     } else if (currentStep === 'crosswalk') {
-      const effectiveSelectedValues = selectedIdentifierValues.length > 0
-        ? selectedIdentifierValues
-        : (selectedIdentifierValue ? [selectedIdentifierValue] : []);
-      if (effectiveSelectedValues.length === 0) {
+      if (!selectedIdentifierValue) {
         toast({
           title: "Link Required",
-          description: `Please select at least one ${identifierRoute === 'campaign_id' ? 'Campaign ID' : 'Campaign Name'} value that corresponds to "${campaignName}".`,
+          description: `Please select the ${identifierRoute === 'campaign_id' ? 'Campaign ID' : 'Campaign Name'} value that corresponds to "${campaignName}".`,
           variant: "destructive"
         });
         return;
@@ -523,20 +498,16 @@ export function GuidedColumnMapping({
   const handleSave = () => {
     const mappings: any[] = [];
     
-    // Identifier mapping (campaign_name OR campaign_id) + selected crosswalk value(s)
+    // Identifier mapping (campaign_name OR campaign_id) + selected crosswalk value
     if (selectedCampaignName) {
       const identifierColumn = detectedColumns.find(c => c.index.toString() === selectedCampaignName);
       if (identifierColumn) {
-        const effectiveSelectedValues = selectedIdentifierValues.length > 0
-          ? selectedIdentifierValues
-          : (selectedIdentifierValue ? [selectedIdentifierValue] : []);
         mappings.push({
           sourceColumnIndex: identifierColumn.index,
           sourceColumnName: identifierColumn.originalName,
           targetFieldId: identifierRoute === 'campaign_id' ? 'campaign_id' : 'campaign_name',
           targetFieldName: identifierRoute === 'campaign_id' ? 'Campaign ID' : 'Campaign Name',
-          selectedValue: effectiveSelectedValues[0] || null, // backwards compatible
-          selectedValues: effectiveSelectedValues,
+          selectedValue: selectedIdentifierValue,
           matchType: 'manual',
           confidence: 1.0
         });
@@ -924,57 +895,9 @@ export function GuidedColumnMapping({
                     ? 'Select the Campaign ID value for this campaign'
                     : 'Select the Campaign Name value for this campaign'}
                 </Label>
-                {/* Multi-select: choose one value at a time and build a list */}
-                {selectedIdentifierValues.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {selectedIdentifierValues.map((v) => (
-                      <Badge key={v} variant="secondary" className="flex items-center gap-1">
-                        <span className="truncate max-w-[260px]">{v}</span>
-                        <button
-                          type="button"
-                          className="ml-1 text-slate-500 hover:text-slate-900"
-                          onClick={() => {
-                            setSelectedIdentifierValues((prev) => prev.filter((x) => x !== v));
-                            if (selectedIdentifierValue === v) {
-                              setSelectedIdentifierValue(null);
-                            }
-                          }}
-                          aria-label={`Remove ${v}`}
-                        >
-                          ×
-                        </button>
-                      </Badge>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => {
-                        setSelectedIdentifierValues([]);
-                        setSelectedIdentifierValue(null);
-                        setManualIdentifierValue('');
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                )}
-
-                <Select
-                  value=""
-                  onValueChange={(v) => {
-                    const value = String(v || '').trim();
-                    if (!value) return;
-                    setSelectedIdentifierValue(value);
-                    setSelectedIdentifierValues((prev) => {
-                      if (prev.includes(value)) return prev;
-                      return [...prev, value];
-                    });
-                  }}
-                >
+                <Select value={selectedIdentifierValue || ""} onValueChange={setSelectedIdentifierValue}>
                   <SelectTrigger>
-                    <SelectValue placeholder={uniqueValuesLoading ? "Loading values..." : "Add a value..."} />
+                    <SelectValue placeholder={uniqueValuesLoading ? "Loading values..." : "Select a value..."} />
                   </SelectTrigger>
                   <SelectContent>
                     {(uniqueValuesData?.values || []).map((v) => (
@@ -995,45 +918,19 @@ export function GuidedColumnMapping({
                   </p>
                 )}
 
-                <div className="mt-3">
-                  <Label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
-                    Add a value manually
-                  </Label>
-                  <div className="flex gap-2">
+                {/* Fallback: allow manual entry when values cannot be loaded or list is empty */}
+                {(!uniqueValuesLoading && (uniqueValuesError || (uniqueValuesData && (uniqueValuesData.values || []).length === 0))) && (
+                  <div className="mt-3">
+                    <Label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
+                      Or enter a value manually
+                    </Label>
                     <Input
-                      value={manualIdentifierValue}
-                      onChange={(e) => setManualIdentifierValue(e.target.value)}
+                      value={selectedIdentifierValue || ""}
+                      onChange={(e) => setSelectedIdentifierValue(e.target.value)}
                       placeholder={identifierRoute === 'campaign_id' ? "e.g., 301" : "e.g., my_campaign"}
-                      onKeyDown={(e) => {
-                        if (e.key !== 'Enter') return;
-                        e.preventDefault();
-                        const value = manualIdentifierValue.trim();
-                        if (!value) return;
-                        setSelectedIdentifierValue(value);
-                        setSelectedIdentifierValues((prev) => (prev.includes(value) ? prev : [...prev, value]));
-                        setManualIdentifierValue('');
-                      }}
                     />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        const value = manualIdentifierValue.trim();
-                        if (!value) return;
-                        setSelectedIdentifierValue(value);
-                        setSelectedIdentifierValues((prev) => (prev.includes(value) ? prev : [...prev, value]));
-                        setManualIdentifierValue('');
-                      }}
-                    >
-                      Add
-                    </Button>
                   </div>
-                  {uniqueValuesError && (
-                    <p className="text-xs mt-2 text-amber-700 dark:text-amber-400">
-                      Could not load values automatically. You can still add values manually.
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           )}

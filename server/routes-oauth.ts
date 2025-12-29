@@ -11098,30 +11098,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   };
 
                   // 0) If UI provided an explicit crosswalk value, prefer filtering by that exact value first.
-                  const selectedIdValue = String(campaignIdMapping?.selectedValue ?? campaignIdMapping?.campaignIdentifierValue ?? '').trim();
-                  const selectedNameValue = String(campaignNameMapping?.selectedValue ?? campaignNameMapping?.campaignIdentifierValue ?? '').trim();
-                  if (campaignIdMapping && selectedIdValue) {
+                  const selectedIdValuesRaw: any[] = Array.isArray((campaignIdMapping as any)?.selectedValues)
+                    ? (campaignIdMapping as any).selectedValues
+                    : (Array.isArray((campaignIdMapping as any)?.campaignIdentifierValues) ? (campaignIdMapping as any).campaignIdentifierValues : []);
+                  const selectedIdValueSingle = String((campaignIdMapping as any)?.selectedValue ?? (campaignIdMapping as any)?.campaignIdentifierValue ?? '').trim();
+                  const selectedIdValues = [
+                    ...selectedIdValuesRaw.map((v: any) => String(v ?? '').trim()).filter(Boolean),
+                    ...(selectedIdValueSingle ? [selectedIdValueSingle] : []),
+                  ].filter((v, idx, arr) => arr.indexOf(v) === idx);
+
+                  const selectedNameValuesRaw: any[] = Array.isArray((campaignNameMapping as any)?.selectedValues)
+                    ? (campaignNameMapping as any).selectedValues
+                    : (Array.isArray((campaignNameMapping as any)?.campaignIdentifierValues) ? (campaignNameMapping as any).campaignIdentifierValues : []);
+                  const selectedNameValueSingle = String((campaignNameMapping as any)?.selectedValue ?? (campaignNameMapping as any)?.campaignIdentifierValue ?? '').trim();
+                  const selectedNameValues = [
+                    ...selectedNameValuesRaw.map((v: any) => String(v ?? '').trim()).filter(Boolean),
+                    ...(selectedNameValueSingle ? [selectedNameValueSingle] : []),
+                  ].filter((v, idx, arr) => arr.indexOf(v) === idx);
+
+                  if (campaignIdMapping && selectedIdValues.length > 0) {
                     const campaignIdColumnIndex = resolveColumnIndex(campaignIdMapping, headers);
                     if (campaignIdColumnIndex >= 0 && campaignIdColumnIndex < headers.length) {
-                      const selectedNumeric = normalizeNumericId(selectedIdValue);
+                      const selectedNumerics = selectedIdValues.map((v) => normalizeNumericId(v)).filter(Boolean);
                       const filteredBySelectedId = dataRows.filter((row: any[]) => {
                         if (!Array.isArray(row) || row.length <= campaignIdColumnIndex) return false;
                         const numericCandidate = normalizeNumericId(row[campaignIdColumnIndex]);
-                        return !!selectedNumeric && numericCandidate === selectedNumeric;
+                        return !!numericCandidate && selectedNumerics.includes(numericCandidate);
                       });
                       if (filteredBySelectedId.length > 0) {
                         filteredRows = filteredBySelectedId;
                       }
                     }
-                  } else if (campaignNameMapping && selectedNameValue) {
+                  } else if (campaignNameMapping && selectedNameValues.length > 0) {
                     const campaignNameColumnIndex = resolveColumnIndex(campaignNameMapping, headers);
                     if (campaignNameColumnIndex >= 0 && campaignNameColumnIndex < headers.length) {
-                      const selectedLower = selectedNameValue.toLowerCase().trim();
+                      const selectedLowers = selectedNameValues.map((v) => String(v).toLowerCase().trim()).filter(Boolean);
                       const filteredBySelectedName = dataRows.filter((row: any[]) => {
                         if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) return false;
                         const v = String(row[campaignNameColumnIndex] || '').toLowerCase().trim();
                         if (!v) return false;
-                        return v === selectedLower || v.includes(selectedLower) || selectedLower.includes(v);
+                        return selectedLowers.some((selectedLower) =>
+                          v === selectedLower || v.includes(selectedLower) || selectedLower.includes(v)
+                        );
                       });
                       if (filteredBySelectedName.length > 0) {
                         filteredRows = filteredBySelectedName;

@@ -3454,12 +3454,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const isActive = !!conn.isActive;
         // Prefer account name for display; do not show raw numeric IDs in the UI.
-        const portalLabel = conn.portalName || 'HubSpot';
+        // If we don't have an account name yet, show just "HubSpot" (avoid "HubSpot — HubSpot").
+        const portalLabel = conn.portalName ? String(conn.portalName) : null;
         return {
           id: conn.id,
           type: 'hubspot',
           provider: 'HubSpot',
-          displayName: `HubSpot — ${portalLabel}`,
+          displayName: portalLabel ? `HubSpot — ${portalLabel}` : 'HubSpot',
           status: isActive ? 'connected' : 'inactive',
           isActive,
           connectedAt: conn.connectedAt,

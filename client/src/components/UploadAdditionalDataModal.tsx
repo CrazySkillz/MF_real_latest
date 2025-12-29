@@ -575,9 +575,12 @@ export function UploadAdditionalDataModal({
               <HubSpotRevenueWizard
                 campaignId={campaignId}
                 onBack={() => setSelectedCrmProvider(null)}
+                onClose={() => {
+                  if (onDataConnected) onDataConnected();
+                  setTimeout(() => onClose(), 150);
+                }}
                 onSuccess={() => {
                   if (onDataConnected) onDataConnected();
-                  setTimeout(() => onClose(), 200);
                 }}
               />
             )}

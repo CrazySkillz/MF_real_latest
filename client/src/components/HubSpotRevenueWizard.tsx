@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { Building2, CheckCircle2, DollarSign, Target, Link2, ClipboardCheck } from "lucide-react";
 
 type HubSpotProperty = {
   name: string;
@@ -23,11 +24,13 @@ export function HubSpotRevenueWizard(props: {
   campaignId: string;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
+  onClose?: () => void;
 }) {
-  const { campaignId, onBack, onSuccess } = props;
+  const { campaignId, onBack, onSuccess, onClose } = props;
   const { toast } = useToast();
 
-  const [step, setStep] = useState<"connect" | "configure" | "crosswalk" | "review">("connect");
+  type Step = "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
+  const [step, setStep] = useState<Step>("connect");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -42,6 +45,25 @@ export function HubSpotRevenueWizard(props: {
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
+  const [lastSaveResult, setLastSaveResult] = useState<any>(null);
+
+  const steps = useMemo(
+    () => [
+      { id: "connect" as const, label: "Connect", icon: Building2 },
+      { id: "campaign-field" as const, label: "Campaign field", icon: Target },
+      { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
+      { id: "revenue" as const, label: "Revenue", icon: DollarSign },
+      { id: "review" as const, label: "Save", icon: ClipboardCheck },
+    ],
+    []
+  );
+
+  const currentStepIndex = useMemo(() => {
+    const idx = steps.findIndex((s) => s.id === step);
+    if (idx >= 0) return idx;
+    // complete step: treat as end
+    return steps.length;
+  }, [steps, step]);
 
   const connectStatusLabel = useMemo(() => {
     if (portalName) return portalName;
@@ -116,9 +138,9 @@ export function HubSpotRevenueWizard(props: {
           await fetchStatus();
           toast({
             title: "HubSpot Connected",
-            description: "Now select the HubSpot field used to attribute deals to this campaign.",
+            description: "Now select the HubSpot deal field used to attribute deals to this campaign.",
           });
-          setStep("configure");
+          setStep("campaign-field");
         } else if (data.type === "hubspot_auth_error") {
           window.removeEventListener("message", onMessage);
           toast({
@@ -148,7 +170,7 @@ export function HubSpotRevenueWizard(props: {
       try {
         const connected = await fetchStatus();
         if (!mounted) return;
-        if (connected) setStep("configure");
+        if (connected) setStep("campaign-field");
       } catch {
         // ignore
       }
@@ -160,7 +182,7 @@ export function HubSpotRevenueWizard(props: {
 
   // When entering configure step, load properties once
   useEffect(() => {
-    if (step !== "configure") return;
+    if (step !== "campaign-field" && step !== "revenue") return;
     if (properties.length > 0) return;
     (async () => {
       try {
@@ -179,6 +201,11 @@ export function HubSpotRevenueWizard(props: {
     const p = properties.find((x) => x.name === campaignProperty);
     return p?.label || campaignProperty || "Campaign field";
   }, [properties, campaignProperty]);
+
+  const revenuePropertyLabel = useMemo(() => {
+    const p = properties.find((x) => x.name === revenueProperty);
+    return p?.label || revenueProperty || "Revenue field";
+  }, [properties, revenueProperty]);
 
   const save = async () => {
     setIsSaving(true);
@@ -200,7 +227,9 @@ export function HubSpotRevenueWizard(props: {
         title: "HubSpot Mappings Saved",
         description: `Conversion value calculated: $${json?.conversionValue || "0"} per conversion.`,
       });
+      setLastSaveResult(json);
       onSuccess?.(json);
+      setStep("complete");
     } catch (err: any) {
       toast({
         title: "Failed to Save HubSpot Mappings",
@@ -212,42 +241,170 @@ export function HubSpotRevenueWizard(props: {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      {step === "connect" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Connect HubSpot</CardTitle>
-            <CardDescription>
-              Connect your HubSpot account so MetricMind can read Deals and calculate revenue metrics.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center gap-3">
-            <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-              {isConnecting ? "Connecting…" : "Connect HubSpot"}
-            </Button>
-            {onBack && (
-              <Button variant="outline" onClick={onBack} disabled={isConnecting}>
-                Back
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+  const handleNext = async () => {
+    if (step === "connect") {
+      // connect happens via OAuth button; keep Next disabled here
+      return;
+    }
+    if (step === "campaign-field") {
+      if (!campaignProperty) {
+        toast({
+          title: "Select a field",
+          description: "Choose the HubSpot deal field used to attribute deals to this campaign.",
+          variant: "destructive",
+        });
+        return;
+      }
+      await fetchUniqueValues(campaignProperty);
+      setStep("crosswalk");
+      return;
+    }
+    if (step === "crosswalk") {
+      if (selectedValues.length === 0) {
+        toast({
+          title: "Select at least one value",
+          description: "Pick the HubSpot value(s) that should map to this campaign.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setStep("revenue");
+      return;
+    }
+    if (step === "revenue") {
+      if (!revenueProperty) {
+        toast({
+          title: "Select a revenue field",
+          description: "Choose the HubSpot field that represents revenue (usually Deal amount).",
+          variant: "destructive",
+        });
+        return;
+      }
+      setStep("review");
+      return;
+    }
+    if (step === "review") {
+      await save();
+    }
+  };
 
-      {step === "configure" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Configure Deal Attribution</CardTitle>
-            <CardDescription>
-              {connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : ""}Select the HubSpot Deal field that contains your LinkedIn campaign
-              identifier (or any field you want to use to attribute deals to this MetricMind campaign).
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  const handleBackStep = () => {
+    if (step === "campaign-field") return;
+    if (step === "crosswalk") return setStep("campaign-field");
+    if (step === "revenue") return setStep("crosswalk");
+    if (step === "review") return setStep("revenue");
+    if (step === "complete") return setStep("review");
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Step Indicator (similar to GuidedColumnMapping) */}
+      <div className="flex items-center justify-between">
+        {steps.map((s, index) => {
+          const StepIcon = s.icon;
+          const isActive = s.id === step;
+          const isCompleted = index < currentStepIndex;
+          return (
+            <div key={s.id} className="flex items-center flex-1">
+              <div className="flex flex-col items-center flex-1">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                    isActive
+                      ? "bg-blue-600 border-blue-600 text-white"
+                      : isCompleted
+                      ? "bg-green-600 border-green-600 text-white"
+                      : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400"
+                  }`}
+                >
+                  {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
+                </div>
+                <p
+                  className={`text-xs mt-2 text-center ${
+                    isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-slate-400"
+                  }`}
+                >
+                  {s.label}
+                </p>
+              </div>
+              {index < steps.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-2 ${isCompleted ? "bg-green-600" : "bg-slate-200 dark:bg-slate-700"}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Step Content */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {step === "connect" && (
+              <>
+                <Building2 className="w-5 h-5 text-blue-600" />
+                Connect HubSpot
+              </>
+            )}
+            {step === "campaign-field" && (
+              <>
+                <Target className="w-5 h-5 text-blue-600" />
+                Select Campaign Identifier Field
+              </>
+            )}
+            {step === "crosswalk" && (
+              <>
+                <Link2 className="w-5 h-5 text-blue-600" />
+                Link Campaign to HubSpot Value(s)
+              </>
+            )}
+            {step === "revenue" && (
+              <>
+                <DollarSign className="w-5 h-5 text-green-600" />
+                Select Revenue Field
+              </>
+            )}
+            {step === "review" && (
+              <>
+                <ClipboardCheck className="w-5 h-5 text-blue-600" />
+                Review & Save
+              </>
+            )}
+            {step === "complete" && (
+              <>
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                Completed
+              </>
+            )}
+          </CardTitle>
+          <CardDescription>
+            {step === "connect" && "Connect your HubSpot account so MetricMind can read Deals and calculate revenue metrics."}
+            {step === "campaign-field" &&
+              `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : ""}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`}
+            {step === "crosswalk" &&
+              `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
+            {step === "revenue" && "Select the HubSpot field that represents revenue (usually Deal amount) and a lookback window."}
+            {step === "review" && "We’ll compute conversion value as (Revenue ÷ LinkedIn Conversions) and unlock ROI/ROAS."}
+            {step === "complete" && "Conversion value is saved. Revenue metrics should now be unlocked in Overview."}
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {step === "connect" && (
+            <div className="flex items-center gap-3">
+              <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                {isConnecting ? "Connecting…" : "Connect HubSpot"}
+              </Button>
+              {onBack && (
+                <Button variant="outline" onClick={onBack} disabled={isConnecting}>
+                  Back
+                </Button>
+              )}
+            </div>
+          )}
+
+          {step === "campaign-field" && (
+            <div className="space-y-3">
               <div className="space-y-2">
-                <Label>HubSpot field used to attribute deals to this campaign</Label>
+                <Label>HubSpot deal field used to attribute deals to this campaign</Label>
                 <Select value={campaignProperty} onValueChange={(v) => setCampaignProperty(v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a HubSpot deal field…" />
@@ -260,8 +417,69 @@ export function HubSpotRevenueWizard(props: {
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="text-xs text-slate-500">
+                  Tip: pick the HubSpot property your team uses for “LinkedIn campaign” or “UTM campaign”.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === "crosswalk" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm text-slate-600">
+                  Selected: <strong>{selectedValues.length}</strong>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void fetchUniqueValues(campaignProperty)}
+                  disabled={valuesLoading}
+                >
+                  {valuesLoading ? "Refreshing…" : "Refresh values"}
+                </Button>
               </div>
 
+              <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
+                {valuesLoading ? (
+                  <div className="text-sm text-slate-500">Loading values…</div>
+                ) : uniqueValues.length === 0 ? (
+                  <div className="text-sm text-slate-500">No values found. Try increasing the lookback window.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {uniqueValues.map((v) => {
+                      const value = String(v.value);
+                      const checked = selectedValues.includes(value);
+                      return (
+                        <div key={value} className="flex items-start gap-2">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(next) => {
+                              setSelectedValues((prev) => {
+                                if (next) return Array.from(new Set([...prev, value]));
+                                return prev.filter((x) => x !== value);
+                              });
+                            }}
+                          />
+                          <div className="flex-1">
+                            <div className="text-sm">{value}</div>
+                            <div className="text-xs text-slate-500">{v.count} deal(s)</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="text-xs text-slate-500">
+                Default filter: Closed Won deals (best-effort across pipelines) within the last {days} days.
+              </div>
+            </div>
+          )}
+
+          {step === "revenue" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Revenue field</Label>
                 <Select value={revenueProperty} onValueChange={(v) => setRevenueProperty(v)}>
@@ -280,9 +498,7 @@ export function HubSpotRevenueWizard(props: {
                 </Select>
                 <div className="text-xs text-slate-500">Default: Deal amount.</div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Lookback window (days)</Label>
                 <Input
@@ -292,149 +508,67 @@ export function HubSpotRevenueWizard(props: {
                   value={days}
                   onChange={(e) => setDays(Math.min(Math.max(parseInt(e.target.value || "90", 10) || 90, 1), 3650))}
                 />
-                <div className="text-xs text-slate-500">Default: last 90 days (Closed Won).</div>
-              </div>
-              <div className="text-xs text-slate-500 self-end">
-                Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={async () => {
-                  if (!campaignProperty) {
-                    toast({ title: "Select a field", description: "Choose the HubSpot field used for attribution first.", variant: "destructive" });
-                    return;
-                  }
-                  await fetchUniqueValues(campaignProperty);
-                  setStep("crosswalk");
-                }}
-                disabled={!campaignProperty}
-              >
-                Continue
-              </Button>
-              {onBack && (
-                <Button variant="outline" onClick={onBack}>
-                  Back
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === "crosswalk" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Crosswalk (Multi-select)</CardTitle>
-            <CardDescription>
-              Choose the value(s) from <strong>{campaignPropertyLabel}</strong> that should map to this MetricMind campaign. This does not need to match
-              the MetricMind campaign name.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-sm text-slate-600">
-                Selected: <strong>{selectedValues.length}</strong>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => void fetchUniqueValues(campaignProperty)} disabled={valuesLoading}>
-                {valuesLoading ? "Refreshing…" : "Refresh values"}
-              </Button>
-            </div>
-
-            <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
-              {valuesLoading ? (
-                <div className="text-sm text-slate-500">Loading values…</div>
-              ) : uniqueValues.length === 0 ? (
-                <div className="text-sm text-slate-500">No values found. Try increasing the lookback window.</div>
-              ) : (
-                <div className="space-y-2">
-                  {uniqueValues.map((v) => {
-                    const value = String(v.value);
-                    const checked = selectedValues.includes(value);
-                    return (
-                      <div key={value} className="flex items-start gap-2">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(next) => {
-                            setSelectedValues((prev) => {
-                              if (next) return Array.from(new Set([...prev, value]));
-                              return prev.filter((x) => x !== value);
-                            });
-                          }}
-                        />
-                        <div className="flex-1">
-                          <div className="text-sm">{value}</div>
-                          <div className="text-xs text-slate-500">{v.count} deal(s)</div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="text-xs text-slate-500">
+                  Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
                 </div>
-              )}
+              </div>
             </div>
+          )}
 
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => {
-                  if (selectedValues.length === 0) {
-                    toast({
-                      title: "Select at least one value",
-                      description: "Pick the HubSpot value(s) that should map to this campaign.",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  setStep("review");
-                }}
-                disabled={valuesLoading}
-              >
-                Continue
-              </Button>
-              <Button variant="outline" onClick={() => setStep("configure")}>
+          {step === "review" && (
+            <div className="space-y-4">
+              <div className="text-sm space-y-1">
+                <div>
+                  <span className="text-slate-500">Attribution field:</span> <strong>{campaignPropertyLabel}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500">Mapped values:</span> <strong>{selectedValues.length}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500">Revenue field:</span> <strong>{revenuePropertyLabel}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500">Lookback:</span> <strong>{days} days</strong>
+                </div>
+                <div className="text-xs text-slate-500">Deals filter: Closed Won (best-effort across pipelines).</div>
+              </div>
+            </div>
+          )}
+
+          {step === "complete" && (
+            <div className="space-y-3">
+              <div className="text-sm text-slate-700">
+                Saved conversion value:{" "}
+                <strong>${String(lastSaveResult?.conversionValue ?? "0")}</strong> per conversion.
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    onClose?.();
+                  }}
+                >
+                  Back to Campaign Overview
+                </Button>
+                <Button variant="outline" onClick={() => setStep("review")}>
+                  View settings
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Footer nav (hide on connect/complete) */}
+          {step !== "connect" && step !== "complete" && (
+            <div className="flex items-center justify-between pt-2">
+              <Button variant="outline" onClick={handleBackStep} disabled={step === "campaign-field" || valuesLoading || isSaving}>
                 Back
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === "review" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Review & Save</CardTitle>
-            <CardDescription>
-              We’ll sum revenue from HubSpot deals that match your selections, then compute conversion value as Revenue ÷ LinkedIn Conversions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm space-y-1">
-              <div>
-                <span className="text-slate-500">Attribution field:</span> <strong>{campaignPropertyLabel}</strong>
-              </div>
-              <div>
-                <span className="text-slate-500">Mapped values:</span> <strong>{selectedValues.length}</strong>
-              </div>
-              <div>
-                <span className="text-slate-500">Revenue field:</span> <strong>{revenueProperty}</strong>
-              </div>
-              <div>
-                <span className="text-slate-500">Lookback:</span> <strong>{days} days</strong>
-              </div>
-              <div className="text-xs text-slate-500">Default deal filter: Closed Won (best-effort across pipelines).</div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button onClick={() => void save()} disabled={isSaving}>
-                {isSaving ? "Saving…" : "Save Mappings"}
-              </Button>
-              <Button variant="outline" onClick={() => setStep("crosswalk")} disabled={isSaving}>
-                Back
+              <Button onClick={() => void handleNext()} disabled={valuesLoading || isSaving}>
+                {step === "review" ? (isSaving ? "Saving…" : "Save Mappings") : "Continue"}
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

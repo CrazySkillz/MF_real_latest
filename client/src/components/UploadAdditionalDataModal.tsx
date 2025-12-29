@@ -368,9 +368,6 @@ export function UploadAdditionalDataModal({
                   console.log('[UploadAdditionalDataModal] onMappingComplete called');
                   console.log('[UploadAdditionalDataModal] originalReturnUrl:', originalReturnUrl);
                   
-                  setShowGuidedMapping(false);
-                  setNewConnectionInfo(null);
-                  
                   if (googleSheetsOnly) {
                     // In Google Sheets Data page flows, don't force LinkedIn navigation.
                     refetchConnections();
@@ -380,7 +377,17 @@ export function UploadAdditionalDataModal({
                     return;
                   }
 
-                  // Always navigate to LinkedIn Overview with a valid session param.
+                  // Avoid any intermediate UI by navigating FIRST (before any state updates),
+                  // using the existing session param if available.
+                  const urlParams = new URLSearchParams(window.location.search);
+                  const existingSession = urlParams.get('session');
+                  if (existingSession) {
+                    const targetUrl = `/campaigns/${originalCampaignId}/linkedin-analytics?session=${encodeURIComponent(existingSession)}&tab=overview`;
+                    window.location.replace(targetUrl);
+                    return;
+                  }
+
+                  // Fallback: navigate to LinkedIn Overview with a valid session param.
                   // If we land on /linkedin-analytics without ?session=..., the page cannot load the session and the orange warning will remain.
                   const navigateToLinkedInOverview = async () => {
                     let sessionId: string | null = null;

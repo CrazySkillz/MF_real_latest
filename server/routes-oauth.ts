@@ -1209,15 +1209,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const remainingConnections = await storage.getGoogleSheetsConnections(campaignId);
       const hasActiveConnections = remainingConnections.length > 0;
       
-      // Check if there are any remaining active Google Sheets connections that are USED FOR REVENUE TRACKING.
-      const remainingRevenueTrackingConnections = remainingConnections.filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingConnection);
-      const hasRevenueTrackingConnections = remainingRevenueTrackingConnections.length > 0;
+      // Check if there are any remaining active connections that are USED FOR REVENUE TRACKING.
+      // IMPORTANT: Revenue tracking can come from Google Sheets OR HubSpot. Deleting a view-only sheet
+      // must NOT disable revenue metrics if HubSpot is still mapped for revenue.
+      const remainingRevenueTrackingSheets = remainingConnections
+        .filter((c: any) => (c as any).isActive !== false)
+        .filter(isRevenueTrackingConnection);
+
+      const isRevenueTrackingHubspotConnection = (conn: any): boolean => {
+        const raw = conn?.mappingConfig;
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return !!cfg?.campaignProperty && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0 && !!cfg?.revenueProperty;
+        } catch {
+          return false;
+        }
+      };
+
+      const remainingHubspotConnections = await storage.getHubspotConnections(campaignId);
+      const remainingRevenueTrackingHubspot = (remainingHubspotConnections || [])
+        .filter((c: any) => (c as any).isActive !== false)
+        .filter(isRevenueTrackingHubspotConnection);
+
+      const hasAnyRevenueTrackingSources =
+        remainingRevenueTrackingSheets.length > 0 || remainingRevenueTrackingHubspot.length > 0;
       
       let conversionValueCleared = false;
       // Clean UX rule: if the user deletes a revenue-tracking source, disable revenue metrics immediately.
       // Even if another mapped source exists, we cannot safely assume conversion value should remain unchanged without recomputation.
-      if (!hasRevenueTrackingConnections || deletedWasRevenueTracking) {
-        console.log(`[Google Sheets] Clearing conversion values from platform connections (deletedWasRevenueTracking=${deletedWasRevenueTracking}, remainingRevenueTracking=${remainingRevenueTrackingConnections.length})`);
+      if (!hasAnyRevenueTrackingSources || deletedWasRevenueTracking) {
+        console.log(`[Google Sheets] Clearing conversion values from platform connections (deletedWasRevenueTracking=${deletedWasRevenueTracking}, remainingRevenueTrackingSheets=${remainingRevenueTrackingSheets.length}, remainingRevenueTrackingHubspot=${remainingRevenueTrackingHubspot.length})`);
         
         // Clear campaign-level conversion value (if it was set from Google Sheets)
         const campaign = await storage.getCampaign(campaignId);
@@ -1263,7 +1285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionValueCleared = true;
         }
       } else {
-        console.log(`[Google Sheets] ${remainingRevenueTrackingConnections.length} revenue-tracking connection(s) still exist - keeping conversion values`);
+        console.log(`[Google Sheets] Revenue-tracking source(s) still exist (sheets=${remainingRevenueTrackingSheets.length}, hubspot=${remainingRevenueTrackingHubspot.length}) - keeping conversion values`);
       }
 
       console.log(`[Google Sheets] Connection deleted successfully`);
@@ -1272,7 +1294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Connection deleted',
         conversionValueCleared,
         deletedWasRevenueTracking,
-        remainingRevenueTrackingConnections: remainingRevenueTrackingConnections.length,
+        remainingRevenueTrackingConnections: remainingRevenueTrackingSheets.length + remainingRevenueTrackingHubspot.length,
         hasActiveConnections,
       });
     } catch (error: any) {

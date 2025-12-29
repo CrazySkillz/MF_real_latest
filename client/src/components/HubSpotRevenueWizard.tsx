@@ -46,6 +46,7 @@ export function HubSpotRevenueWizard(props: {
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const steps = useMemo(
     () => [
@@ -66,10 +67,9 @@ export function HubSpotRevenueWizard(props: {
   }, [steps, step]);
 
   const connectStatusLabel = useMemo(() => {
-    if (portalName) return portalName;
-    if (portalId) return portalId;
-    return null;
-  }, [portalName, portalId]);
+    // UI requirement: show account name (not numeric portal ID)
+    return portalName || null;
+  }, [portalName]);
 
   const fetchStatus = async () => {
     const resp = await fetch(`/api/hubspot/${campaignId}/status`);
@@ -289,7 +289,7 @@ export function HubSpotRevenueWizard(props: {
   };
 
   const handleBackStep = () => {
-    if (step === "campaign-field") return;
+    if (step === "campaign-field") return setStep("connect");
     if (step === "crosswalk") return setStep("campaign-field");
     if (step === "revenue") return setStep("crosswalk");
     if (step === "review") return setStep("revenue");
@@ -378,7 +378,7 @@ export function HubSpotRevenueWizard(props: {
           <CardDescription>
             {step === "connect" && "Connect your HubSpot account so MetricMind can read Deals and calculate revenue metrics."}
             {step === "campaign-field" &&
-              `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : ""}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`}
+              `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : "HubSpot is connected. "}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
             {step === "revenue" && "Select the HubSpot field that represents revenue (usually Deal amount) and a lookback window."}
@@ -479,7 +479,7 @@ export function HubSpotRevenueWizard(props: {
           )}
 
           {step === "revenue" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Revenue field</Label>
                 <Select value={revenueProperty} onValueChange={(v) => setRevenueProperty(v)}>
@@ -499,19 +499,39 @@ export function HubSpotRevenueWizard(props: {
                 <div className="text-xs text-slate-500">Default: Deal amount.</div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Lookback window (days)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={3650}
-                  value={days}
-                  onChange={(e) => setDays(Math.min(Math.max(parseInt(e.target.value || "90", 10) || 90, 1), 3650))}
-                />
+              <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-slate-500">
                   Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAdvanced((v) => !v)}
+                >
+                  {showAdvanced ? "Hide advanced" : "Advanced"}
+                </Button>
               </div>
+
+              {showAdvanced && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-3">
+                  <div className="space-y-2">
+                    <Label>Lookback window (days)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      value={days}
+                      onChange={(e) =>
+                        setDays(Math.min(Math.max(parseInt(e.target.value || "90", 10) || 90, 1), 3650))
+                      }
+                    />
+                    <div className="text-xs text-slate-500">
+                      Default: last 90 days. This helps keep revenue mapping aligned to the time period you’re analyzing.
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -559,7 +579,7 @@ export function HubSpotRevenueWizard(props: {
           {/* Footer nav (hide on connect/complete) */}
           {step !== "connect" && step !== "complete" && (
             <div className="flex items-center justify-between pt-2">
-              <Button variant="outline" onClick={handleBackStep} disabled={step === "campaign-field" || valuesLoading || isSaving}>
+              <Button variant="outline" onClick={handleBackStep} disabled={valuesLoading || isSaving}>
                 Back
               </Button>
               <Button onClick={() => void handleNext()} disabled={valuesLoading || isSaving}>

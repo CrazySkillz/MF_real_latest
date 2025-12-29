@@ -3453,7 +3453,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const isActive = !!conn.isActive;
-        const portalLabel = conn.portalName || conn.portalId || 'HubSpot';
+        // Prefer account name for display; do not show raw numeric IDs in the UI.
+        const portalLabel = conn.portalName || 'HubSpot';
         return {
           id: conn.id,
           type: 'hubspot',
@@ -3718,11 +3719,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!conn || !conn.isActive || !conn.accessToken) {
         return res.json({ connected: false });
       }
+
+      // Ensure we have a human-friendly account name for UI display.
+      // HubSpot redirect screens + tokens provide hub_id, but not always accountName reliably.
+      // Best-effort hydrate from HubSpot account-info endpoint.
+      const hydrateAccountName = async (): Promise<{ portalId: string | null; portalName: string | null }> => {
+        let accessToken = conn.accessToken;
+        try {
+          const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+          if (shouldRefresh && conn.refreshToken) {
+            accessToken = await refreshHubspotToken(conn);
+          }
+        } catch {
+          // ignore refresh failure; try existing token
+        }
+
+        let portalId: string | null = conn.portalId ? String(conn.portalId) : null;
+        let portalName: string | null = conn.portalName ? String(conn.portalName) : null;
+        if (portalName) return { portalId, portalName };
+
+        try {
+          const infoResp = await fetch('https://api.hubapi.com/account-info/v3/details', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (infoResp.ok) {
+            const info: any = await infoResp.json().catch(() => ({}));
+            if (info?.portalId) portalId = String(info.portalId);
+            if (info?.accountName) portalName = String(info.accountName);
+            if (portalName || portalId) {
+              await storage.updateHubspotConnection(String(conn.id), {
+                portalId,
+                portalName,
+              } as any);
+            }
+          }
+        } catch {
+          // ignore
+        }
+        return { portalId, portalName };
+      };
+
+      const hydrated = await hydrateAccountName();
+
       res.json({
         connected: true,
         connectionId: conn.id,
-        portalId: conn.portalId,
-        portalName: conn.portalName,
+        portalId: hydrated.portalId,
+        portalName: hydrated.portalName,
       });
     } catch (error: any) {
       console.error('[HubSpot Status] Error:', error);

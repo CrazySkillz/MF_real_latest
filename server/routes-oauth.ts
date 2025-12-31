@@ -4357,6 +4357,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: String(f.type || ''),
         }));
 
+      // Defensive: ensure standard Opportunity Name field is present for attribution/crosswalk when users rely on naming conventions.
+      // Salesforce standard API name is "Name" with label "Opportunity Name".
+      if (!simplified.some((f: any) => String(f?.name || '').toLowerCase() === 'name')) {
+        simplified.push({ name: 'Name', label: 'Opportunity Name', type: 'string' });
+      }
+
       res.json({ success: true, fields: simplified });
     } catch (error: any) {
       console.error('[Salesforce Fields] Error:', error);

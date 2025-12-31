@@ -414,6 +414,10 @@ export function SalesforceRevenueWizard(props: {
           {step === "campaign-field" && (
             <div className="space-y-2">
               <Label>Opportunity field used to attribute deals to this campaign</Label>
+              <div className="text-xs text-slate-500">
+                Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}
+                <strong>Opportunity Name</strong> can work only if your opportunity naming convention contains the campaign value you want to map.
+              </div>
               <Select value={campaignField} onValueChange={(v) => setCampaignField(v)} disabled={fieldsLoading}>
                 <SelectTrigger>
                   <SelectValue placeholder={fieldsLoading ? "Loading fields…" : "Select an Opportunity field…"} />

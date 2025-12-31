@@ -621,6 +621,7 @@ export function UploadAdditionalDataModal({
                   campaignId={campaignId}
                   autoConnect={salesforceAutoConnect}
                   onAutoConnectConsumed={() => setSalesforceAutoConnect(false)}
+                  requireOAuth={true}
                   onBack={() => setSelectedCrmProvider(null)}
                   onClose={() => {
                     if (onDataConnected) onDataConnected();

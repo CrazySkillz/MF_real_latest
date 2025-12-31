@@ -23,11 +23,12 @@ export function SalesforceRevenueWizard(props: {
   campaignId: string;
   autoConnect?: boolean;
   onAutoConnectConsumed?: () => void;
+  requireOAuth?: boolean;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
   onClose?: () => void;
 }) {
-  const { campaignId, autoConnect, onAutoConnectConsumed, onBack, onSuccess, onClose } = props;
+  const { campaignId, autoConnect, onAutoConnectConsumed, requireOAuth = false, onBack, onSuccess, onClose } = props;
   const { toast } = useToast();
 
   type Step = "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
@@ -226,29 +227,26 @@ export function SalesforceRevenueWizard(props: {
     // Even if this campaign was previously connected, keep the wizard on "Connect"
     // while the user completes the OAuth flow.
     setStep("connect");
+    setOrgName(null);
+    setOrgId(null);
 
     // Attempt OAuth flow (will reuse the pre-opened window named "salesforce_oauth").
     void openOAuthWindow();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoConnect, isConnecting, onAutoConnectConsumed, openOAuthWindow]);
 
+  // IMPORTANT UX REQUIREMENT:
+  // - Do NOT prepopulate the wizard from an existing saved connection.
+  // - Do NOT show mapping steps until AFTER OAuth completes successfully.
+  // So we intentionally do NOT run a "status check on mount" that advances steps.
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const connected = await fetchStatus();
-        if (!mounted) return;
-        // IMPORTANT UX: if we're auto-starting OAuth (user just picked Salesforce),
-        // do NOT skip ahead to the mapping step based on an existing saved connection.
-        if (connected && !autoConnect) setStep("campaign-field");
-      } catch {
-        // ignore
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [campaignId, autoConnect]);
+    if (!requireOAuth) return;
+    // Ensure the wizard always starts blank at Connect for this flow.
+    setStep("connect");
+    setOrgName(null);
+    setOrgId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId, requireOAuth]);
 
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;

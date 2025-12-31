@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,14 +21,11 @@ type UniqueValue = {
 
 export function SalesforceRevenueWizard(props: {
   campaignId: string;
-  autoConnect?: boolean;
-  onAutoConnectConsumed?: () => void;
-  requireOAuth?: boolean;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
   onClose?: () => void;
 }) {
-  const { campaignId, autoConnect, onAutoConnectConsumed, requireOAuth = false, onBack, onSuccess, onClose } = props;
+  const { campaignId, onBack, onSuccess, onClose } = props;
   const { toast } = useToast();
 
   type Step = "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
@@ -81,6 +78,21 @@ export function SalesforceRevenueWizard(props: {
     }
     return false;
   };
+
+  // IMPORTANT UX: Always start the wizard fresh on "Connect" with no pre-populated org/settings.
+  // OAuth should only happen when the user clicks "Connect Salesforce".
+  useEffect(() => {
+    setStep("connect");
+    setOrgName(null);
+    setOrgId(null);
+    setFields([]);
+    setFieldsError(null);
+    setCampaignField("");
+    setRevenueField("Amount");
+    setUniqueValues([]);
+    setSelectedValues([]);
+    setLastSaveResult(null);
+  }, [campaignId]);
 
   const disconnect = async () => {
     setIsConnecting(true);
@@ -150,7 +162,7 @@ export function SalesforceRevenueWizard(props: {
     }
   };
 
-  const openOAuthWindow = useCallback(async () => {
+  const openOAuthWindow = async () => {
     setIsConnecting(true);
     try {
       const resp = await fetch("/api/auth/salesforce/connect", {
@@ -212,41 +224,7 @@ export function SalesforceRevenueWizard(props: {
     } finally {
       setIsConnecting(false);
     }
-  }, [campaignId, toast]);
-
-  // Auto-start OAuth when user picked Salesforce from the "Connect Additional Data" modal.
-  // We rely on the modal pre-opening the popup synchronously to avoid popup blockers.
-  useEffect(() => {
-    if (!autoConnect) return;
-    if (isConnecting) return;
-
-    // Consume the flag immediately to avoid loops on re-render.
-    onAutoConnectConsumed?.();
-
-    // Ensure the expected sequence: OAuth first, then the guided steps.
-    // Even if this campaign was previously connected, keep the wizard on "Connect"
-    // while the user completes the OAuth flow.
-    setStep("connect");
-    setOrgName(null);
-    setOrgId(null);
-
-    // Attempt OAuth flow (will reuse the pre-opened window named "salesforce_oauth").
-    void openOAuthWindow();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoConnect, isConnecting, onAutoConnectConsumed, openOAuthWindow]);
-
-  // IMPORTANT UX REQUIREMENT:
-  // - Do NOT prepopulate the wizard from an existing saved connection.
-  // - Do NOT show mapping steps until AFTER OAuth completes successfully.
-  // So we intentionally do NOT run a "status check on mount" that advances steps.
-  useEffect(() => {
-    if (!requireOAuth) return;
-    // Ensure the wizard always starts blank at Connect for this flow.
-    setStep("connect");
-    setOrgName(null);
-    setOrgId(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId, requireOAuth]);
+  };
 
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;

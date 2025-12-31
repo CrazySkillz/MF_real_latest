@@ -41,6 +41,7 @@ export function UploadAdditionalDataModal({
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [selectedCrmProvider, setSelectedCrmProvider] = useState<'hubspot' | 'salesforce' | null>(null);
+  const [salesforceAutoConnect, setSalesforceAutoConnect] = useState(false);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
@@ -79,6 +80,7 @@ export function UploadAdditionalDataModal({
     if (!isOpen) {
       setSelectedSource(null);
       setSelectedCrmProvider(null);
+      setSalesforceAutoConnect(false);
       setShowDatasetsView(false);
       setJustConnected(false);
       setShowGuidedMapping(false);
@@ -185,6 +187,35 @@ export function UploadAdditionalDataModal({
       title: "Coming Soon",
       description: `${sourceName} integration will be available soon.`,
     });
+  };
+
+  const startSalesforceConnectFromClick = () => {
+    // UX expectation: choosing Salesforce should open OAuth immediately (even if already connected).
+    // We pre-open the popup *synchronously* to avoid popup blockers, then let the wizard
+    // navigate it to the real OAuth URL.
+    try {
+      const w = window.open("about:blank", "salesforce_oauth", "width=520,height=680");
+      if (!w) {
+        toast({
+          title: "Popup blocked",
+          description: "Please allow popups to connect Salesforce, then try again.",
+          variant: "destructive",
+        });
+      } else {
+        // Optional: show a lightweight loading message in the pre-opened window
+        try {
+          w.document.title = "Connecting Salesforce…";
+          w.document.body.innerHTML = "<p style='font-family: Arial, sans-serif; padding: 16px;'>Opening Salesforce sign-in…</p>";
+        } catch {
+          // ignore cross-browser restrictions
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    setSalesforceAutoConnect(true);
+    setSelectedCrmProvider("salesforce");
   };
 
   return (
@@ -562,7 +593,7 @@ export function UploadAdditionalDataModal({
 
                 <Card
                   className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
-                  onClick={() => setSelectedCrmProvider('salesforce')}
+                  onClick={startSalesforceConnectFromClick}
                 >
                   <CardHeader>
                     <CardTitle className="text-lg">Salesforce</CardTitle>
@@ -588,6 +619,8 @@ export function UploadAdditionalDataModal({
               ) : (
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
+                  autoConnect={salesforceAutoConnect}
+                  onAutoConnectConsumed={() => setSalesforceAutoConnect(false)}
                   onBack={() => setSelectedCrmProvider(null)}
                   onClose={() => {
                     if (onDataConnected) onDataConnected();

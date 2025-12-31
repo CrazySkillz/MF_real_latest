@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,11 +21,13 @@ type UniqueValue = {
 
 export function SalesforceRevenueWizard(props: {
   campaignId: string;
+  autoConnect?: boolean;
+  onAutoConnectConsumed?: () => void;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
   onClose?: () => void;
 }) {
-  const { campaignId, onBack, onSuccess, onClose } = props;
+  const { campaignId, autoConnect, onAutoConnectConsumed, onBack, onSuccess, onClose } = props;
   const { toast } = useToast();
 
   type Step = "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
@@ -147,7 +149,7 @@ export function SalesforceRevenueWizard(props: {
     }
   };
 
-  const openOAuthWindow = async () => {
+  const openOAuthWindow = useCallback(async () => {
     setIsConnecting(true);
     try {
       const resp = await fetch("/api/auth/salesforce/connect", {
@@ -209,7 +211,21 @@ export function SalesforceRevenueWizard(props: {
     } finally {
       setIsConnecting(false);
     }
-  };
+  }, [campaignId, toast]);
+
+  // Auto-start OAuth when user picked Salesforce from the "Connect Additional Data" modal.
+  // We rely on the modal pre-opening the popup synchronously to avoid popup blockers.
+  useEffect(() => {
+    if (!autoConnect) return;
+    if (isConnecting) return;
+
+    // Consume the flag immediately to avoid loops on re-render.
+    onAutoConnectConsumed?.();
+
+    // Attempt OAuth flow (will reuse the pre-opened window named "salesforce_oauth").
+    void openOAuthWindow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoConnect, isConnecting, onAutoConnectConsumed, openOAuthWindow]);
 
   useEffect(() => {
     let mounted = true;

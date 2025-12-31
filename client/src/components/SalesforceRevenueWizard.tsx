@@ -79,6 +79,37 @@ export function SalesforceRevenueWizard(props: {
     return false;
   };
 
+  const disconnect = async () => {
+    setIsConnecting(true);
+    try {
+      const resp = await fetch(`/api/salesforce/${campaignId}/connection`, { method: "DELETE" });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || "Failed to disconnect Salesforce");
+
+      setOrgName(null);
+      setOrgId(null);
+      setFields([]);
+      setFieldsError(null);
+      setCampaignField("");
+      setUniqueValues([]);
+      setSelectedValues([]);
+      setStep("connect");
+
+      toast({
+        title: "Salesforce Disconnected",
+        description: "You can now reconnect to a different org (or reconnect again).",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Failed to Disconnect Salesforce",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
   const fetchFields = async () => {
     setFieldsLoading(true);
     setFieldsError(null);
@@ -413,6 +444,25 @@ export function SalesforceRevenueWizard(props: {
 
           {step === "campaign-field" && (
             <div className="space-y-2">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div className="text-sm text-slate-600">
+                  {connectedLabel ? (
+                    <>
+                      Connected: <strong>{connectedLabel}</strong>
+                    </>
+                  ) : (
+                    "Salesforce is connected."
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                    {isConnecting ? "Reconnecting…" : "Reconnect"}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => void disconnect()} disabled={isConnecting}>
+                    Disconnect
+                  </Button>
+                </div>
+              </div>
               <Label>Opportunity field used to attribute deals to this campaign</Label>
               <div className="text-xs text-slate-500">
                 Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}

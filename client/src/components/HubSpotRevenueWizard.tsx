@@ -365,7 +365,7 @@ export function HubSpotRevenueWizard(props: {
             {step === "review" && (
               <>
                 <ClipboardCheck className="w-5 h-5 text-blue-600" />
-                Review & Save
+                Save Mappings
               </>
             )}
             {step === "complete" && (
@@ -382,7 +382,7 @@ export function HubSpotRevenueWizard(props: {
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
             {step === "revenue" && "Select the HubSpot field that represents revenue (usually Deal amount) and a lookback window."}
-            {step === "review" && "We’ll compute conversion value as (Revenue ÷ LinkedIn Conversions) and unlock ROI/ROAS."}
+            {step === "review" && ""}
             {step === "complete" && "Conversion value is saved. Revenue metrics should now be unlocked in Overview."}
           </CardDescription>
         </CardHeader>
@@ -536,23 +536,7 @@ export function HubSpotRevenueWizard(props: {
           )}
 
           {step === "review" && (
-            <div className="space-y-4">
-              <div className="text-sm space-y-1">
-                <div>
-                  <span className="text-slate-500">Attribution field:</span> <strong>{campaignPropertyLabel}</strong>
-                </div>
-                <div>
-                  <span className="text-slate-500">Mapped values:</span> <strong>{selectedValues.length}</strong>
-                </div>
-                <div>
-                  <span className="text-slate-500">Revenue field:</span> <strong>{revenuePropertyLabel}</strong>
-                </div>
-                <div>
-                  <span className="text-slate-500">Lookback:</span> <strong>{days} days</strong>
-                </div>
-                <div className="text-xs text-slate-500">Deals filter: Closed Won (best-effort across pipelines).</div>
-              </div>
-            </div>
+            <div />
           )}
 
           {step === "complete" && (

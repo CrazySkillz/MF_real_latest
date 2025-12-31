@@ -923,7 +923,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Default login domain (can be overridden to test.salesforce.com later)
       const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
-      const scope = 'api refresh_token';
+      // Some orgs reject certain scope combos (we've seen invalid_scope for refresh_token).
+      // Default to the minimum needed for this integration.
+      // You can override via env var if your org allows/needs more (e.g. "api refresh_token").
+      const scope = (process.env.SALESFORCE_OAUTH_SCOPE || 'api').trim();
 
       // PKCE
       cleanupSalesforcePkce();
@@ -931,7 +934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const codeVerifier = makeCodeVerifier();
       const codeChallenge = makeCodeChallenge(codeVerifier);
       salesforcePkceStore.set(nonce, { campaignId: String(campaignId), codeVerifier, createdAt: Date.now() });
-      const state = `${encodeURIComponent(String(campaignId))}.${nonce}`;
+      const state = `${String(campaignId)}.${nonce}`;
 
       const authUrl =
         `${authBase}/services/oauth2/authorize?` +

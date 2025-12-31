@@ -222,6 +222,11 @@ export function SalesforceRevenueWizard(props: {
     // Consume the flag immediately to avoid loops on re-render.
     onAutoConnectConsumed?.();
 
+    // Ensure the expected sequence: OAuth first, then the guided steps.
+    // Even if this campaign was previously connected, keep the wizard on "Connect"
+    // while the user completes the OAuth flow.
+    setStep("connect");
+
     // Attempt OAuth flow (will reuse the pre-opened window named "salesforce_oauth").
     void openOAuthWindow();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -233,7 +238,9 @@ export function SalesforceRevenueWizard(props: {
       try {
         const connected = await fetchStatus();
         if (!mounted) return;
-        if (connected) setStep("campaign-field");
+        // IMPORTANT UX: if we're auto-starting OAuth (user just picked Salesforce),
+        // do NOT skip ahead to the mapping step based on an existing saved connection.
+        if (connected && !autoConnect) setStep("campaign-field");
       } catch {
         // ignore
       }
@@ -241,7 +248,7 @@ export function SalesforceRevenueWizard(props: {
     return () => {
       mounted = false;
     };
-  }, [campaignId]);
+  }, [campaignId, autoConnect]);
 
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;

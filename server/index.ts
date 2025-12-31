@@ -247,6 +247,35 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS mapping_config TEXT,
             ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
           `);
+
+          // Migration 9: Salesforce connections (CRM revenue source)
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS salesforce_connections (
+              id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              org_id TEXT,
+              org_name TEXT,
+              instance_url TEXT,
+              access_token TEXT,
+              refresh_token TEXT,
+              client_id TEXT,
+              client_secret TEXT,
+              expires_at TIMESTAMP,
+              is_active BOOLEAN NOT NULL DEFAULT true,
+              mapping_config TEXT,
+              connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          await db.execute(sql`
+            ALTER TABLE salesforce_connections
+            ADD COLUMN IF NOT EXISTS org_id TEXT,
+            ADD COLUMN IF NOT EXISTS org_name TEXT,
+            ADD COLUMN IF NOT EXISTS instance_url TEXT,
+            ADD COLUMN IF NOT EXISTS mapping_config TEXT,
+            ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+          `);
           
           log('✅ Database migrations completed successfully');
         } catch (error) {

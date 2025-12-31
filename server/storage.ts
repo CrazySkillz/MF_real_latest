@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, hubspotConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, hubspotConnections, salesforceConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
@@ -50,6 +50,13 @@ export interface IStorage {
   createHubspotConnection(connection: InsertHubspotConnection): Promise<HubspotConnection>;
   updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>): Promise<HubspotConnection | undefined>;
   deleteHubspotConnection(connectionId: string): Promise<boolean>;
+
+  // Salesforce Connections
+  getSalesforceConnections(campaignId: string): Promise<SalesforceConnection[]>;
+  getSalesforceConnection(campaignId: string): Promise<SalesforceConnection | undefined>;
+  createSalesforceConnection(connection: InsertSalesforceConnection): Promise<SalesforceConnection>;
+  updateSalesforceConnection(connectionId: string, connection: Partial<InsertSalesforceConnection>): Promise<SalesforceConnection | undefined>;
+  deleteSalesforceConnection(connectionId: string): Promise<boolean>;
   
   // LinkedIn Connections
   getLinkedInConnection(campaignId: string): Promise<LinkedInConnection | undefined>;
@@ -277,6 +284,7 @@ export class MemStorage implements IStorage {
   private ga4Connections: Map<string, GA4Connection>;
   private googleSheetsConnections: Map<string, GoogleSheetsConnection>; // Key: connection.id
   private hubspotConnections: Map<string, HubspotConnection>; // Key: connection.id
+  private salesforceConnections: Map<string, SalesforceConnection>; // Key: connection.id
   private linkedinConnections: Map<string, LinkedInConnection>;
   private metaConnections: Map<string, MetaConnection>;
   private linkedinImportSessions: Map<string, LinkedInImportSession>;
@@ -311,6 +319,7 @@ export class MemStorage implements IStorage {
     this.ga4Connections = new Map();
     this.googleSheetsConnections = new Map();
     this.hubspotConnections = new Map();
+    this.salesforceConnections = new Map();
     this.linkedinConnections = new Map();
     this.metaConnections = new Map();
     this.linkedinImportSessions = new Map();
@@ -1102,6 +1111,67 @@ export class MemStorage implements IStorage {
       isActive: false,
     };
     this.hubspotConnections.set(connectionId, updated);
+    return true;
+  }
+
+  // Salesforce Connection methods
+  async getSalesforceConnections(campaignId: string): Promise<SalesforceConnection[]> {
+    const connections: SalesforceConnection[] = [];
+    for (const connection of this.salesforceConnections.values()) {
+      if (connection.campaignId === campaignId && connection.isActive) {
+        connections.push(connection);
+      }
+    }
+    return connections.sort(
+      (a, b) => new Date(a.connectedAt).getTime() - new Date(b.connectedAt).getTime()
+    );
+  }
+
+  async getSalesforceConnection(campaignId: string): Promise<SalesforceConnection | undefined> {
+    const connections = await this.getSalesforceConnections(campaignId);
+    if (connections.length === 0) return undefined;
+    return connections[connections.length - 1];
+  }
+
+  async createSalesforceConnection(connection: InsertSalesforceConnection): Promise<SalesforceConnection> {
+    const id = randomUUID();
+    const sfConnection: SalesforceConnection = {
+      id,
+      campaignId: connection.campaignId,
+      orgId: connection.orgId || null,
+      orgName: connection.orgName || null,
+      instanceUrl: connection.instanceUrl || null,
+      accessToken: connection.accessToken || null,
+      refreshToken: connection.refreshToken || null,
+      clientId: connection.clientId || null,
+      clientSecret: connection.clientSecret || null,
+      expiresAt: connection.expiresAt || null,
+      isActive: connection.isActive ?? true,
+      mappingConfig: connection.mappingConfig || null,
+      connectedAt: new Date(),
+      createdAt: new Date(),
+    };
+    this.salesforceConnections.set(id, sfConnection);
+    return sfConnection;
+  }
+
+  async updateSalesforceConnection(connectionId: string, connection: Partial<InsertSalesforceConnection>): Promise<SalesforceConnection | undefined> {
+    const existing = this.salesforceConnections.get(connectionId);
+    if (!existing) return undefined;
+    const updated: SalesforceConnection = {
+      ...existing,
+      ...connection,
+      id: existing.id,
+      campaignId: existing.campaignId,
+    };
+    this.salesforceConnections.set(connectionId, updated);
+    return updated;
+  }
+
+  async deleteSalesforceConnection(connectionId: string): Promise<boolean> {
+    const connection = this.salesforceConnections.get(connectionId);
+    if (!connection) return false;
+    this.salesforceConnections.set(connectionId, { ...connection, isActive: false });
     return true;
   }
 
@@ -2680,6 +2750,53 @@ export class DatabaseStorage implements IStorage {
       .update(hubspotConnections)
       .set({ isActive: false })
       .where(eq(hubspotConnections.id, connectionId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Salesforce Connection methods
+  async getSalesforceConnections(campaignId: string): Promise<SalesforceConnection[]> {
+    return await db
+      .select()
+      .from(salesforceConnections)
+      .where(and(eq(salesforceConnections.campaignId, campaignId), eq(salesforceConnections.isActive, true)))
+      .orderBy(salesforceConnections.connectedAt);
+  }
+
+  async getSalesforceConnection(campaignId: string): Promise<SalesforceConnection | undefined> {
+    const [latest] = await db
+      .select()
+      .from(salesforceConnections)
+      .where(and(eq(salesforceConnections.campaignId, campaignId), eq(salesforceConnections.isActive, true)))
+      .orderBy(desc(salesforceConnections.connectedAt))
+      .limit(1);
+    return latest || undefined;
+  }
+
+  async createSalesforceConnection(connection: InsertSalesforceConnection): Promise<SalesforceConnection> {
+    const connectionData = {
+      ...connection,
+      isActive: connection.isActive !== undefined ? connection.isActive : true,
+      clientId: connection.clientId || null,
+      clientSecret: connection.clientSecret || null,
+    };
+    const [created] = await db.insert(salesforceConnections).values(connectionData).returning();
+    return created;
+  }
+
+  async updateSalesforceConnection(connectionId: string, connection: Partial<InsertSalesforceConnection>): Promise<SalesforceConnection | undefined> {
+    const [updated] = await db
+      .update(salesforceConnections)
+      .set(connection)
+      .where(eq(salesforceConnections.id, connectionId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteSalesforceConnection(connectionId: string): Promise<boolean> {
+    const result = await db
+      .update(salesforceConnections)
+      .set({ isActive: false })
+      .where(eq(salesforceConnections.id, connectionId));
     return (result.rowCount || 0) > 0;
   }
 

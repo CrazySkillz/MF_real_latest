@@ -149,6 +149,8 @@ export default function LinkedInAnalytics() {
       const endpoint =
         sourceType === 'hubspot'
           ? `/api/hubspot/${campaignId}/connection?connectionId=${encodeURIComponent(sourceId)}`
+          : sourceType === 'salesforce'
+          ? `/api/salesforce/${campaignId}/connection?connectionId=${encodeURIComponent(sourceId)}`
           : `/api/google-sheets/${campaignId}/connection?connectionId=${encodeURIComponent(sourceId)}`;
       const resp = await fetch(endpoint, { method: 'DELETE' });
       const json = await resp.json().catch(() => ({}));

@@ -876,6 +876,214 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Salesforce OAuth - Start connection
+  app.post("/api/auth/salesforce/connect", oauthRateLimiter, async (req, res) => {
+    try {
+      const { campaignId } = req.body;
+      if (!campaignId) return res.status(400).json({ message: "Campaign ID is required" });
+
+      const rawBaseUrl =
+        process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/salesforce/callback`;
+
+      const clientId = process.env.SALESFORCE_CLIENT_ID || '';
+      if (!clientId) {
+        return res.status(500).json({ message: "Salesforce OAuth is not configured (missing SALESFORCE_CLIENT_ID)" });
+      }
+
+      // Default login domain (can be overridden to test.salesforce.com later)
+      const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
+      const scope = 'api refresh_token';
+
+      const authUrl =
+        `${authBase}/services/oauth2/authorize?` +
+        `response_type=code&` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `scope=${encodeURIComponent(scope)}&` +
+        `prompt=consent&` +
+        `state=${encodeURIComponent(campaignId)}`;
+
+      res.json({ authUrl, message: "Salesforce OAuth flow initiated" });
+    } catch (error) {
+      console.error('[Salesforce OAuth] Initiation error:', error);
+      res.status(500).json({ message: "Failed to initiate authentication" });
+    }
+  });
+
+  // Salesforce OAuth callback
+  app.get("/api/auth/salesforce/callback", async (req, res) => {
+    try {
+      const { code, state, error } = req.query;
+      if (error) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Failed</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Failed</h2>
+              <p>Error: ${String(error)}</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'salesforce_auth_error', error: ${JSON.stringify(String(error))} }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+      if (!code || !state) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>Missing authorization code or state parameter.</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'salesforce_auth_error', error: 'Missing parameters' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      const campaignId = String(state);
+
+      const rawBaseUrl =
+        process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/salesforce/callback`;
+
+      const clientId = process.env.SALESFORCE_CLIENT_ID || '';
+      const clientSecret = process.env.SALESFORCE_CLIENT_SECRET || '';
+      if (!clientId || !clientSecret) {
+        throw new Error('Salesforce OAuth is not configured (missing SALESFORCE_CLIENT_ID/SALESFORCE_CLIENT_SECRET)');
+      }
+
+      const tokenBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
+      const tokenResp = await fetch(`${tokenBase}/services/oauth2/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          code: String(code),
+        }),
+      });
+      const tokens: any = await tokenResp.json().catch(() => ({}));
+      if (!tokenResp.ok || !tokens.access_token || !tokens.instance_url) {
+        throw new Error(tokens?.error_description || tokens?.error || 'Failed to obtain Salesforce access token');
+      }
+
+      let orgId: string | null = null;
+      let orgName: string | null = null;
+      try {
+        // Identity URL is returned by Salesforce in token response
+        const idUrl = tokens.id ? String(tokens.id) : null;
+        if (idUrl) {
+          const idResp = await fetch(idUrl, { headers: { Authorization: `Bearer ${tokens.access_token}` } });
+          if (idResp.ok) {
+            const ident: any = await idResp.json().catch(() => ({}));
+            if (ident?.organization_id) orgId = String(ident.organization_id);
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      // Best-effort org name via SOQL (requires api scope)
+      try {
+        const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
+        const q = encodeURIComponent('SELECT Name FROM Organization LIMIT 1');
+        const orgResp = await fetch(`${tokens.instance_url}/services/data/${version}/query?q=${q}`, {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        });
+        if (orgResp.ok) {
+          const orgJson: any = await orgResp.json().catch(() => ({}));
+          const rec = Array.isArray(orgJson?.records) ? orgJson.records[0] : null;
+          if (rec?.Name) orgName = String(rec.Name);
+        }
+      } catch {
+        // ignore
+      }
+
+      const expiresAt = tokens.issued_at ? new Date(Number(tokens.issued_at) + 2 * 60 * 60 * 1000) : undefined; // conservative 2h
+
+      const existing = await storage.getSalesforceConnection(campaignId);
+      if (existing) {
+        await storage.updateSalesforceConnection(existing.id, {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          clientId,
+          clientSecret,
+          expiresAt,
+          instanceUrl: tokens.instance_url,
+          orgId,
+          orgName,
+          isActive: true,
+        } as any);
+      } else {
+        await storage.createSalesforceConnection({
+          campaignId,
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          clientId,
+          clientSecret,
+          expiresAt,
+          instanceUrl: tokens.instance_url,
+          orgId,
+          orgName,
+          isActive: true,
+        } as any);
+      }
+
+      res.send(`
+        <html>
+          <head><title>Authentication Successful</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>✓ Salesforce Connected</h2>
+            <p>You can now close this window.</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'salesforce_auth_success', orgId: ${JSON.stringify(orgId)}, orgName: ${JSON.stringify(orgName)} }, window.location.origin);
+              }
+              setTimeout(() => window.close(), 1200);
+            </script>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      console.error('[Salesforce OAuth] Callback error:', error);
+      res.send(`
+        <html>
+          <head><title>Authentication Error</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>Authentication Error</h2>
+            <p>${error?.message || 'Failed to complete authentication'}</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'salesforce_auth_error', error: ${JSON.stringify(error?.message || 'Failed to complete authentication')} }, window.location.origin);
+              }
+              setTimeout(() => window.close(), 2000);
+            </script>
+          </body>
+        </html>
+      `);
+    }
+  });
+
   // HubSpot OAuth callback
   app.get("/api/auth/hubspot/callback", async (req, res) => {
     try {
@@ -1210,8 +1418,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasActiveConnections = remainingConnections.length > 0;
       
       // Check if there are any remaining active connections that are USED FOR REVENUE TRACKING.
-      // IMPORTANT: Revenue tracking can come from Google Sheets OR HubSpot. Deleting a view-only sheet
-      // must NOT disable revenue metrics if HubSpot is still mapped for revenue.
+      // IMPORTANT: Revenue tracking can come from Google Sheets OR HubSpot OR Salesforce.
+      // Deleting a view-only sheet must NOT disable revenue metrics if a CRM is still mapped for revenue.
       const remainingRevenueTrackingSheets = remainingConnections
         .filter((c: any) => (c as any).isActive !== false)
         .filter(isRevenueTrackingConnection);
@@ -1234,12 +1442,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const hasAnyRevenueTrackingSources =
         remainingRevenueTrackingSheets.length > 0 || remainingRevenueTrackingHubspot.length > 0;
+
+      const isRevenueTrackingSalesforceConnection = (conn: any): boolean => {
+        const raw = conn?.mappingConfig;
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return !!cfg?.campaignField && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0 && !!cfg?.revenueField;
+        } catch {
+          return false;
+        }
+      };
+      const remainingSalesforceConnections = await storage.getSalesforceConnections(campaignId);
+      const remainingRevenueTrackingSalesforce = (remainingSalesforceConnections || [])
+        .filter((c: any) => (c as any).isActive !== false)
+        .filter(isRevenueTrackingSalesforceConnection);
+
+      const hasAnyRevenueTrackingSourcesIncludingSalesforce =
+        hasAnyRevenueTrackingSources || remainingRevenueTrackingSalesforce.length > 0;
       
       let conversionValueCleared = false;
       // Clean UX rule: if the user deletes a revenue-tracking source, disable revenue metrics immediately.
       // Even if another mapped source exists, we cannot safely assume conversion value should remain unchanged without recomputation.
-      if (!hasAnyRevenueTrackingSources || deletedWasRevenueTracking) {
-        console.log(`[Google Sheets] Clearing conversion values from platform connections (deletedWasRevenueTracking=${deletedWasRevenueTracking}, remainingRevenueTrackingSheets=${remainingRevenueTrackingSheets.length}, remainingRevenueTrackingHubspot=${remainingRevenueTrackingHubspot.length})`);
+      if (!hasAnyRevenueTrackingSourcesIncludingSalesforce || deletedWasRevenueTracking) {
+        console.log(`[Google Sheets] Clearing conversion values from platform connections (deletedWasRevenueTracking=${deletedWasRevenueTracking}, remainingRevenueTrackingSheets=${remainingRevenueTrackingSheets.length}, remainingRevenueTrackingHubspot=${remainingRevenueTrackingHubspot.length}, remainingRevenueTrackingSalesforce=${remainingRevenueTrackingSalesforce.length})`);
         
         // Clear campaign-level conversion value (if it was set from Google Sheets)
         const campaign = await storage.getCampaign(campaignId);
@@ -1285,7 +1511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionValueCleared = true;
         }
       } else {
-        console.log(`[Google Sheets] Revenue-tracking source(s) still exist (sheets=${remainingRevenueTrackingSheets.length}, hubspot=${remainingRevenueTrackingHubspot.length}) - keeping conversion values`);
+        console.log(`[Google Sheets] Revenue-tracking source(s) still exist (sheets=${remainingRevenueTrackingSheets.length}, hubspot=${remainingRevenueTrackingHubspot.length}, salesforce=${remainingRevenueTrackingSalesforce.length}) - keeping conversion values`);
       }
 
       console.log(`[Google Sheets] Connection deleted successfully`);
@@ -1294,7 +1520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Connection deleted',
         conversionValueCleared,
         deletedWasRevenueTracking,
-        remainingRevenueTrackingConnections: remainingRevenueTrackingSheets.length + remainingRevenueTrackingHubspot.length,
+        remainingRevenueTrackingConnections: remainingRevenueTrackingSheets.length + remainingRevenueTrackingHubspot.length + remainingRevenueTrackingSalesforce.length,
         hasActiveConnections,
       });
     } catch (error: any) {
@@ -1360,7 +1586,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const remainingHubspot = await storage.getHubspotConnections(campaignId);
       const remainingRevenueHubspot = (remainingHubspot || []).filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingHubspotConnection);
 
-      const hasAnyRevenueTrackingSources = remainingRevenueSheets.length > 0 || remainingRevenueHubspot.length > 0;
+      const isRevenueTrackingSalesforceConnection = (conn: any): boolean => {
+        const raw = conn?.mappingConfig;
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return !!cfg?.campaignField && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0 && !!cfg?.revenueField;
+        } catch {
+          return false;
+        }
+      };
+      const remainingSalesforce = await storage.getSalesforceConnections(campaignId);
+      const remainingRevenueSalesforce = (remainingSalesforce || []).filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingSalesforceConnection);
+
+      const hasAnyRevenueTrackingSources =
+        remainingRevenueSheets.length > 0 ||
+        remainingRevenueHubspot.length > 0 ||
+        remainingRevenueSalesforce.length > 0;
 
       let conversionValueCleared = false;
       if (!hasAnyRevenueTrackingSources || deletedWasRevenueTracking) {
@@ -1397,10 +1639,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Connection deleted',
         deletedWasRevenueTracking,
         conversionValueCleared,
-        remainingRevenueTrackingConnections: remainingRevenueSheets.length + remainingRevenueHubspot.length,
+        remainingRevenueTrackingConnections: remainingRevenueSheets.length + remainingRevenueHubspot.length + remainingRevenueSalesforce.length,
       });
     } catch (error: any) {
       console.error('[HubSpot] Delete connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete connection' });
+    }
+  });
+
+  // Delete/reset Salesforce connection (CRM revenue source)
+  app.delete("/api/salesforce/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { connectionId } = req.query; // Optional: delete specific connection
+
+      const isRevenueTrackingSalesforceConnection = (conn: any): boolean => {
+        const raw = conn?.mappingConfig;
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return !!cfg?.campaignField && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0 && !!cfg?.revenueField;
+        } catch {
+          return false;
+        }
+      };
+
+      let deletedWasRevenueTracking = false;
+      let targetConnId: string | null = connectionId ? String(connectionId) : null;
+      if (!targetConnId) {
+        const latest = await storage.getSalesforceConnection(campaignId);
+        targetConnId = latest?.id ? String(latest.id) : null;
+      }
+      if (!targetConnId) {
+        return res.status(404).json({ error: 'No Salesforce connection found' });
+      }
+
+      const before = await storage.getSalesforceConnections(campaignId);
+      const target = (before || []).find((c: any) => String(c?.id) === String(targetConnId));
+      deletedWasRevenueTracking = !!target && (target as any).isActive !== false && isRevenueTrackingSalesforceConnection(target);
+
+      await storage.deleteSalesforceConnection(targetConnId);
+
+      // Determine if any revenue-tracking sources remain (Google Sheets OR HubSpot OR Salesforce)
+      const remainingSheets = await storage.getGoogleSheetsConnections(campaignId);
+      const isRevenueTrackingSheet = (conn: any): boolean => {
+        const mappingsRaw = conn.columnMappings || conn.column_mappings;
+        if (!mappingsRaw) return false;
+        try {
+          const mappings = typeof mappingsRaw === 'string' ? JSON.parse(mappingsRaw) : mappingsRaw;
+          if (!Array.isArray(mappings) || mappings.length === 0) return false;
+          const hasIdentifier =
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
+          const hasValueSource =
+            mappings.some((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value') ||
+            mappings.some((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
+          return hasIdentifier && hasValueSource;
+        } catch {
+          return false;
+        }
+      };
+      const remainingRevenueSheets = (remainingSheets || []).filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingSheet);
+
+      const isRevenueTrackingHubspotConnection = (conn: any): boolean => {
+        const raw = conn?.mappingConfig;
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return !!cfg?.campaignProperty && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0 && !!cfg?.revenueProperty;
+        } catch {
+          return false;
+        }
+      };
+      const remainingHubspot = await storage.getHubspotConnections(campaignId);
+      const remainingRevenueHubspot = (remainingHubspot || []).filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingHubspotConnection);
+
+      const remainingSalesforce = await storage.getSalesforceConnections(campaignId);
+      const remainingRevenueSalesforce = (remainingSalesforce || []).filter((c: any) => (c as any).isActive !== false).filter(isRevenueTrackingSalesforceConnection);
+
+      const hasAnyRevenueTrackingSources =
+        remainingRevenueSheets.length > 0 ||
+        remainingRevenueHubspot.length > 0 ||
+        remainingRevenueSalesforce.length > 0;
+
+      let conversionValueCleared = false;
+      if (!hasAnyRevenueTrackingSources || deletedWasRevenueTracking) {
+        const campaign = await storage.getCampaign(campaignId);
+        if (campaign?.conversionValue) {
+          await storage.updateCampaign(campaignId, { conversionValue: null } as any);
+          conversionValueCleared = true;
+        }
+        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+        if (linkedInConnection?.conversionValue) {
+          await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);
+          conversionValueCleared = true;
+        }
+        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+        for (const s of sessions || []) {
+          if (s.conversionValue) {
+            await storage.updateLinkedInImportSession(s.id, { conversionValue: null } as any);
+            conversionValueCleared = true;
+          }
+        }
+        const metaConnection = await storage.getMetaConnection(campaignId);
+        if (metaConnection?.conversionValue) {
+          await storage.updateMetaConnection(campaignId, { conversionValue: null } as any);
+          conversionValueCleared = true;
+        }
+      }
+
+      res.json({
+        success: true,
+        message: 'Connection deleted',
+        deletedWasRevenueTracking,
+        conversionValueCleared,
+        remainingRevenueTrackingConnections: remainingRevenueSheets.length + remainingRevenueHubspot.length + remainingRevenueSalesforce.length,
+      });
+    } catch (error: any) {
+      console.error('[Salesforce] Delete connection error:', error);
       res.status(500).json({ error: error.message || 'Failed to delete connection' });
     }
   });
@@ -3494,12 +3850,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
 
+      // Salesforce sources
+      const salesforceConnectionsRaw: any[] = await storage.getSalesforceConnections(campaignId) as any;
+      const salesforceConnectionsAll = (salesforceConnectionsRaw || []).filter(Boolean);
+      const salesforceActive = salesforceConnectionsAll.filter((c: any) => !!c.isActive);
+      const salesforceInactive = salesforceConnectionsAll.filter((c: any) => !c.isActive);
+      const salesforceConnections = salesforceActive.length > 0 ? salesforceActive : salesforceInactive;
+
+      const salesforceSources = (salesforceConnections || []).map((conn: any) => {
+        let hasMappings = false;
+        let usedForRevenueTracking = false;
+        try {
+          const cfgRaw = conn.mappingConfig;
+          const cfg = cfgRaw ? (typeof cfgRaw === 'string' ? JSON.parse(cfgRaw) : cfgRaw) : null;
+          hasMappings = !!cfg && typeof cfg === 'object';
+          usedForRevenueTracking =
+            !!cfg &&
+            !!cfg.campaignField &&
+            Array.isArray(cfg.selectedValues) &&
+            cfg.selectedValues.length > 0 &&
+            !!cfg.revenueField;
+        } catch {
+          hasMappings = false;
+          usedForRevenueTracking = false;
+        }
+
+        const isActive = !!conn.isActive;
+        const orgLabel = conn.orgName ? String(conn.orgName) : 'Salesforce';
+        return {
+          id: conn.id,
+          type: 'salesforce',
+          provider: 'Salesforce',
+          displayName: conn.orgName ? `Salesforce — ${orgLabel}` : 'Salesforce',
+          status: isActive ? 'connected' : 'inactive',
+          isActive,
+          connectedAt: conn.connectedAt,
+          hasMappings,
+          usedForRevenueTracking,
+          campaignName: campaign?.name || null,
+          orgId: conn.orgId || null,
+          orgName: conn.orgName || null,
+        };
+      });
+
       res.json({
         success: true,
         campaignId,
         sources: [
           ...googleSheetsSources,
           ...hubspotSources,
+          ...salesforceSources,
         ],
       });
     } catch (error: any) {
@@ -3529,8 +3929,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const hubspotConns: any[] = await storage.getHubspotConnections(campaignId) as any;
         const hubConn: any = (hubspotConns || []).find((c: any) => c?.id === sourceId);
         if (!hubConn) {
-          return res.status(404).json({ error: 'Source not found' });
+          // Try Salesforce
+          const sfConns: any[] = await storage.getSalesforceConnections(campaignId) as any;
+          const sfConn: any = (sfConns || []).find((c: any) => c?.id === sourceId);
+          if (!sfConn) {
+            return res.status(404).json({ error: 'Source not found' });
+          }
+
+          // Salesforce preview: show rows based on saved mappingConfig (if present), otherwise a generic Closed Won sample.
+          const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+          const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
+
+          let cfg: any = null;
+          try {
+            cfg = sfConn.mappingConfig ? JSON.parse(String(sfConn.mappingConfig)) : null;
+          } catch {
+            cfg = null;
+          }
+          const rangeDays = Math.min(Math.max(parseInt(String(cfg?.days || '90'), 10) || 90, 1), 3650);
+          const attribField = cfg?.campaignField ? String(cfg.campaignField) : null;
+          const revenueField = cfg?.revenueField ? String(cfg.revenueField) : 'Amount';
+          const selected = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
+
+          const whereParts: string[] = [
+            `StageName = 'Closed Won'`,
+            `CloseDate = LAST_N_DAYS:${rangeDays}`,
+          ];
+          if (attribField && selected.length > 0) {
+            const quoted = selected.map((v: string) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
+            whereParts.push(`${attribField} IN (${quoted})`);
+          }
+
+          const propsToFetch = Array.from(new Set([
+            'Id',
+            'Name',
+            'StageName',
+            'CloseDate',
+            'CurrencyIsoCode',
+            revenueField,
+            ...(attribField ? [attribField] : []),
+          ]));
+
+          const soql = `SELECT ${propsToFetch.join(', ')} FROM Opportunity WHERE ${whereParts.join(' AND ')} LIMIT ${Math.min(limit, 200)}`;
+          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            return res.status(resp.status).json({ error: json?.[0]?.message || json?.message || 'Failed to load Salesforce preview' });
+          }
+
+          const headers = propsToFetch;
+          const records = Array.isArray(json?.records) ? json.records : [];
+          const rows = records.map((r: any) => headers.map((h: string) => String(r?.[h] ?? '')));
+
+          return res.json({
+            success: true,
+            sourceId,
+            type: 'salesforce',
+            spreadsheetName: sfConn.orgName || 'Salesforce',
+            spreadsheetId: sfConn.orgId || 'salesforce',
+            sheetName: 'Opportunities',
+            headers,
+            rows,
+            rowCount: rows.length,
+          });
         }
+
         const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
         let cfg: any = null;
@@ -3793,6 +4257,240 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[HubSpot Status] Error:', error);
       res.json({ connected: false });
+    }
+  });
+
+  // Salesforce connection status
+  app.get("/api/salesforce/:campaignId/status", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const conn: any = await storage.getSalesforceConnection(campaignId);
+      if (!conn || !conn.isActive || !conn.accessToken || !conn.instanceUrl) {
+        return res.json({ connected: false });
+      }
+      res.json({
+        connected: true,
+        connectionId: conn.id,
+        orgId: conn.orgId,
+        orgName: conn.orgName,
+        instanceUrl: conn.instanceUrl,
+      });
+    } catch (error: any) {
+      console.error('[Salesforce Status] Error:', error);
+      res.json({ connected: false });
+    }
+  });
+
+  // Salesforce Opportunity fields (describe)
+  app.get("/api/salesforce/:campaignId/opportunities/fields", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
+
+      const resp = await fetch(`${instanceUrl}/services/data/${version}/sobjects/Opportunity/describe`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json: any = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        return res.status(resp.status).json({ error: json?.[0]?.message || json?.message || 'Failed to load Opportunity fields' });
+      }
+
+      const fields = Array.isArray(json?.fields) ? json.fields : [];
+      const simplified = fields
+        .filter((f: any) => f && f.name && f.label && f.nillable !== undefined)
+        .map((f: any) => ({
+          name: String(f.name),
+          label: String(f.label),
+          type: String(f.type || ''),
+        }));
+
+      res.json({ success: true, fields: simplified });
+    } catch (error: any) {
+      console.error('[Salesforce Fields] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to load Opportunity fields' });
+    }
+  });
+
+  // Salesforce Opportunity unique values for a field (for crosswalk multi-select)
+  app.get("/api/salesforce/:campaignId/opportunities/unique-values", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const field = String(req.query.field || '').trim();
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || '200'), 10) || 200, 10), 500);
+      const days = Math.min(Math.max(parseInt(String(req.query.days || '90'), 10) || 90, 1), 3650);
+
+      if (!field) return res.status(400).json({ error: 'Missing field' });
+
+      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
+
+      const counts = new Map<string, number>();
+
+      // Prefer aggregate query (fast). Some fields can't be GROUP BY'd; if so, fall back to row scan.
+      const soqlAgg =
+        `SELECT ${field} v, COUNT(Id) c ` +
+        `FROM Opportunity ` +
+        `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null ` +
+        `GROUP BY ${field} ` +
+        `ORDER BY COUNT(Id) DESC ` +
+        `LIMIT ${Math.min(limit, 500)}`;
+
+      const queryUrl = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlAgg)}`;
+      const aggResp = await fetch(queryUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const aggJson: any = await aggResp.json().catch(() => ({}));
+      if (aggResp.ok && Array.isArray(aggJson?.records)) {
+        for (const r of aggJson.records) {
+          const v = r?.v === undefined || r?.v === null ? '' : String(r.v).trim();
+          if (!v) continue;
+          const c = Number(r?.c);
+          counts.set(v, Number.isFinite(c) ? c : 1);
+        }
+      } else {
+        // Fallback scan
+        const soql =
+          `SELECT Id, ${field} ` +
+          `FROM Opportunity ` +
+          `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null ` +
+          `LIMIT 2000`;
+        let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+        let pages = 0;
+        while (nextUrl && pages < 10 && counts.size < limit) {
+          const resp = await fetch(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            return res.status(resp.status).json({ error: json?.[0]?.message || json?.message || 'Failed to load unique values' });
+          }
+          const recs = Array.isArray(json?.records) ? json.records : [];
+          for (const rec of recs) {
+            const v = rec?.[field] === undefined || rec?.[field] === null ? '' : String(rec[field]).trim();
+            if (!v) continue;
+            counts.set(v, (counts.get(v) || 0) + 1);
+            if (counts.size >= limit) break;
+          }
+          nextUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
+          pages += 1;
+        }
+      }
+
+      const values = Array.from(counts.entries())
+        .map(([value, count]) => ({ value, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+
+      res.json({ success: true, field, values });
+    } catch (error: any) {
+      console.error('[Salesforce Unique Values] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to load unique values' });
+    }
+  });
+
+  // Salesforce save mappings (compute conversion value and unlock LinkedIn revenue metrics)
+  app.post("/api/campaigns/:id/salesforce/save-mappings", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { campaignField, selectedValues, revenueField, days } = req.body || {};
+
+      const attribField = String(campaignField || '').trim();
+      const revenue = String(revenueField || 'Amount').trim();
+      const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
+      const rangeDays = Math.min(Math.max(parseInt(String(days || '90'), 10) || 90, 1), 3650);
+
+      if (!attribField) return res.status(400).json({ error: 'campaignField is required' });
+      if (selected.length === 0) return res.status(400).json({ error: 'selectedValues is required' });
+      if (!revenue) return res.status(400).json({ error: 'revenueField is required' });
+
+      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
+
+      // Query opportunities matching crosswalk values
+      const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
+      const soql =
+        `SELECT Id, ${revenue} r, CurrencyIsoCode c ` +
+        `FROM Opportunity ` +
+        `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
+        `LIMIT 2000`;
+
+      let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+      let totalRevenue = 0;
+      const currencies = new Set<string>();
+      let pages = 0;
+      while (nextUrl && pages < 25) {
+        const resp = await fetch(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const json: any = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          return res.status(resp.status).json({ error: json?.[0]?.message || json?.message || 'Failed to load opportunities' });
+        }
+        const recs = Array.isArray(json?.records) ? json.records : [];
+        for (const rec of recs) {
+          const rRaw = rec?.r;
+          const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+          if (Number.isFinite(r)) totalRevenue += r;
+          const c = rec?.c ? String(rec.c).trim() : '';
+          if (c) currencies.add(c);
+        }
+        nextUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
+        pages += 1;
+      }
+
+      if (currencies.size > 1) {
+        return res.status(400).json({
+          error: `Multiple currencies found for the selected opportunities (${Array.from(currencies).join(', ')}). Please filter Salesforce records to a single currency.`,
+          currencies: Array.from(currencies),
+        });
+      }
+
+      // Pull conversions from latest LinkedIn import session
+      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+      const latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+      if (!latestSession) {
+        return res.status(400).json({ error: 'No LinkedIn import session found. Please import LinkedIn metrics first.' });
+      }
+      const importMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
+      const canonicalKey = (k: string) => String(k || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const totalConversions = (importMetrics || []).reduce((sum: number, m: any) => {
+        const key = canonicalKey(m.metricKey);
+        if (key === 'conversions' || key === 'externalwebsiteconversions') {
+          const v = Number(m.metricValue);
+          if (Number.isFinite(v)) return sum + v;
+        }
+        return sum;
+      }, 0);
+      if (!Number.isFinite(totalConversions) || totalConversions <= 0) {
+        return res.status(400).json({ error: 'LinkedIn conversions are 0. Cannot compute conversion value.' });
+      }
+
+      const calculatedConversionValue = Number((totalRevenue / totalConversions).toFixed(2));
+
+      await storage.updateCampaign(campaignId, { conversionValue: calculatedConversionValue } as any);
+      await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
+      await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
+
+      const sfConn: any = await storage.getSalesforceConnection(campaignId);
+      if (sfConn) {
+        const mappingConfig = {
+          objectType: 'opportunity',
+          campaignField: attribField,
+          selectedValues: selected,
+          revenueField: revenue,
+          days: rangeDays,
+          currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+        };
+        await storage.updateSalesforceConnection(sfConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
+      }
+
+      res.json({
+        success: true,
+        conversionValueCalculated: true,
+        conversionValue: calculatedConversionValue,
+        totalRevenue: Number(totalRevenue.toFixed(2)),
+        totalConversions,
+        currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+        sessionId: latestSession.id,
+      });
+    } catch (error: any) {
+      console.error('[Salesforce Save Mappings] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to save Salesforce mappings' });
     }
   });
 
@@ -4238,6 +4936,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (tokens.refresh_token) updateData.refreshToken = tokens.refresh_token;
     await storage.updateHubspotConnection(String(connection.id), updateData);
     return tokens.access_token as string;
+  }
+
+  async function refreshSalesforceToken(connection: any) {
+    if (!connection.refreshToken || !connection.clientId || !connection.clientSecret) {
+      throw new Error('Missing refresh token or OAuth credentials for Salesforce token refresh');
+    }
+    const tokenBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
+    const resp = await fetch(`${tokenBase}/services/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: String(connection.refreshToken),
+        client_id: String(connection.clientId),
+        client_secret: String(connection.clientSecret),
+      }),
+    });
+    const json: any = await resp.json().catch(() => ({}));
+    if (!resp.ok || !json.access_token) {
+      throw new Error(json?.error_description || json?.error || 'Failed to refresh Salesforce access token');
+    }
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    await storage.updateSalesforceConnection(String(connection.id), {
+      accessToken: json.access_token,
+      expiresAt,
+      instanceUrl: json.instance_url || connection.instanceUrl || null,
+    } as any);
+    return json.access_token as string;
+  }
+
+  async function getSalesforceAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; instanceUrl: string; connectionId: string }> {
+    const conn: any = await storage.getSalesforceConnection(campaignId);
+    if (!conn || !conn.accessToken || !conn.instanceUrl) throw new Error('No Salesforce connection found');
+    let accessToken = conn.accessToken;
+    try {
+      const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+      if (shouldRefresh && conn.refreshToken) {
+        accessToken = await refreshSalesforceToken(conn);
+      }
+    } catch {
+      // ignore and try existing token
+    }
+    return { accessToken, instanceUrl: String(conn.instanceUrl), connectionId: String(conn.id) };
   }
 
   async function getHubspotAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; connectionId: string }> {
@@ -9357,11 +10098,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.er = sanitizeCalculatedMetric('er', parseFloat(er.toFixed(2)));
       }
       
-      // Revenue sources (Google Sheets + HubSpot)
+      // Revenue sources (Google Sheets + HubSpot + Salesforce)
       // IMPORTANT: Revenue metrics should only be enabled when there is at least one ACTIVE *revenue-tracking* source.
       // View-only sources ("Just connect for viewing / later use") must NOT keep revenue metrics enabled.
       const googleSheetsConnections = await storage.getGoogleSheetsConnections(session.campaignId);
       const hubspotConnections = await storage.getHubspotConnections(session.campaignId);
+      const salesforceConnections = await storage.getSalesforceConnections(session.campaignId);
 
       const isRevenueTrackingConnection = (conn: any): boolean => {
         const mappingsRaw = conn?.columnMappings || conn?.column_mappings;
@@ -9414,8 +10156,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const hasAnyActiveHubspotConnection = (hubspotConnections || []).some((c: any) => (c as any)?.isActive !== false && !!(c as any)?.accessToken);
       const hasAnyActiveRevenueTrackingHubspotConnection = (hubspotConnections || []).some((c: any) => (c as any)?.isActive !== false && isRevenueTrackingHubspotConnection(c));
-      const hasAnyActiveSourceConnection = hasAnyActiveGoogleSheetsConnection || hasAnyActiveHubspotConnection;
-      const hasAnyActiveRevenueTrackingSourceConnection = hasAnyActiveRevenueTrackingGoogleSheetsConnection || hasAnyActiveRevenueTrackingHubspotConnection;
+      
+      const isRevenueTrackingSalesforceConnection = (conn: any): boolean => {
+        const raw = conn?.mappingConfig;
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return !!cfg?.campaignField && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0 && !!cfg?.revenueField;
+        } catch {
+          return false;
+        }
+      };
+
+      const hasAnyActiveSalesforceConnection = (salesforceConnections || []).some((c: any) => (c as any)?.isActive !== false && !!(c as any)?.accessToken && !!(c as any)?.instanceUrl);
+      const hasAnyActiveRevenueTrackingSalesforceConnection = (salesforceConnections || []).some((c: any) => (c as any)?.isActive !== false && isRevenueTrackingSalesforceConnection(c));
+
+      const hasAnyActiveSourceConnection =
+        hasAnyActiveGoogleSheetsConnection || hasAnyActiveHubspotConnection || hasAnyActiveSalesforceConnection;
+      const hasAnyActiveRevenueTrackingSourceConnection =
+        hasAnyActiveRevenueTrackingGoogleSheetsConnection ||
+        hasAnyActiveRevenueTrackingHubspotConnection ||
+        hasAnyActiveRevenueTrackingSalesforceConnection;
       
       // CRITICAL: Refetch campaign to get the latest conversion value (it might have just been updated by save-mappings)
       // The campaign was fetched earlier, but conversion value might have been updated since then

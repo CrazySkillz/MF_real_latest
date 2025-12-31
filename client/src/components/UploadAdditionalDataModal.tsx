@@ -7,6 +7,7 @@ import { SimpleGoogleSheetsAuth } from "./SimpleGoogleSheetsAuth";
 import { GoogleSheetsDatasetsView } from "./GoogleSheetsDatasetsView";
 import { GuidedColumnMapping } from "./GuidedColumnMapping";
 import { HubSpotRevenueWizard } from "./HubSpotRevenueWizard";
+import { SalesforceRevenueWizard } from "./SalesforceRevenueWizard";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -559,30 +560,44 @@ export function UploadAdditionalDataModal({
                   </CardHeader>
                 </Card>
 
-                <Card className="opacity-60">
+                <Card
+                  className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
+                  onClick={() => setSelectedCrmProvider('salesforce')}
+                >
                   <CardHeader>
                     <CardTitle className="text-lg">Salesforce</CardTitle>
-                    <CardDescription>Coming soon.</CardDescription>
+                    <CardDescription>
+                      Connect Opportunities, map attribution, and calculate conversion value to unlock ROI/ROAS.
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <Button variant="outline" disabled onClick={() => handleComingSoon('Salesforce')}>
-                      Coming soon
-                    </Button>
-                  </CardContent>
                 </Card>
               </div>
             ) : (
-              <HubSpotRevenueWizard
-                campaignId={campaignId}
-                onBack={() => setSelectedCrmProvider(null)}
-                onClose={() => {
-                  if (onDataConnected) onDataConnected();
-                  setTimeout(() => onClose(), 150);
-                }}
-                onSuccess={() => {
-                  if (onDataConnected) onDataConnected();
-                }}
-              />
+              selectedCrmProvider === 'hubspot' ? (
+                <HubSpotRevenueWizard
+                  campaignId={campaignId}
+                  onBack={() => setSelectedCrmProvider(null)}
+                  onClose={() => {
+                    if (onDataConnected) onDataConnected();
+                    setTimeout(() => onClose(), 150);
+                  }}
+                  onSuccess={() => {
+                    if (onDataConnected) onDataConnected();
+                  }}
+                />
+              ) : (
+                <SalesforceRevenueWizard
+                  campaignId={campaignId}
+                  onBack={() => setSelectedCrmProvider(null)}
+                  onClose={() => {
+                    if (onDataConnected) onDataConnected();
+                    setTimeout(() => onClose(), 150);
+                  }}
+                  onSuccess={() => {
+                    if (onDataConnected) onDataConnected();
+                  }}
+                />
+              )
             )}
           </div>
         ) : selectedSource === 'custom-integration' ? (

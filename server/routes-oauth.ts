@@ -905,7 +905,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `client_id=${encodeURIComponent(clientId)}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `scope=${encodeURIComponent(scope)}&` +
-        `prompt=consent&` +
         `state=${encodeURIComponent(campaignId)}`;
 
       res.json({ authUrl, message: "Salesforce OAuth flow initiated" });
@@ -918,17 +917,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Salesforce OAuth callback
   app.get("/api/auth/salesforce/callback", async (req, res) => {
     try {
-      const { code, state, error } = req.query;
+      const { code, state, error, error_description } = req.query as any;
       if (error) {
+        const desc = error_description ? String(error_description) : '';
         return res.send(`
           <html>
             <head><title>Authentication Failed</title></head>
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
               <h2>Authentication Failed</h2>
-              <p>Error: ${String(error)}</p>
+              <p><strong>Error:</strong> ${String(error)}</p>
+              ${desc ? `<p style="max-width: 820px; margin: 12px auto; color: #555;"><strong>Details:</strong> ${desc}</p>` : ''}
               <script>
                 if (window.opener) {
-                  window.opener.postMessage({ type: 'salesforce_auth_error', error: ${JSON.stringify(String(error))} }, window.location.origin);
+                  window.opener.postMessage({ type: 'salesforce_auth_error', error: ${JSON.stringify(String(error))}, details: ${JSON.stringify(desc)} }, window.location.origin);
                 }
                 setTimeout(() => window.close(), 2000);
               </script>

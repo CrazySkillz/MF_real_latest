@@ -113,8 +113,21 @@ export function SalesforceRevenueWizard(props: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId }),
       });
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.message || "Failed to start Salesforce OAuth");
+      const text = await resp.text().catch(() => "");
+      let json: any = {};
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        json = {};
+      }
+      if (!resp.ok) {
+        const msg =
+          json?.message ||
+          json?.error ||
+          (text && text.length < 300 ? text : "") ||
+          `Failed to start Salesforce OAuth (HTTP ${resp.status})`;
+        throw new Error(msg);
+      }
       const authUrl = json?.authUrl;
       if (!authUrl) throw new Error("No auth URL returned");
 

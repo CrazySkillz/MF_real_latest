@@ -37,6 +37,8 @@ export function SalesforceRevenueWizard(props: {
   const [orgId, setOrgId] = useState<string | null>(null);
 
   const [fields, setFields] = useState<SalesforceField[]>([]);
+  const [fieldsLoading, setFieldsLoading] = useState(false);
+  const [fieldsError, setFieldsError] = useState<string | null>(null);
   const [campaignField, setCampaignField] = useState<string>("");
   const [revenueField, setRevenueField] = useState<string>("Amount");
   const [days, setDays] = useState<number>(90);
@@ -78,12 +80,21 @@ export function SalesforceRevenueWizard(props: {
   };
 
   const fetchFields = async () => {
-    const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/fields`);
-    const json = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(json?.error || "Failed to load Opportunity fields");
-    const f = Array.isArray(json?.fields) ? json.fields : [];
-    setFields(f);
-    return f as SalesforceField[];
+    setFieldsLoading(true);
+    setFieldsError(null);
+    try {
+      const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/fields`);
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || "Failed to load Opportunity fields");
+      const f = Array.isArray(json?.fields) ? json.fields : [];
+      setFields(f);
+      if (f.length === 0) {
+        setFieldsError("No Opportunity fields were returned. Please try again.");
+      }
+      return f as SalesforceField[];
+    } finally {
+      setFieldsLoading(false);
+    }
   };
 
   const fetchUniqueValues = async (fieldName: string) => {
@@ -192,6 +203,7 @@ export function SalesforceRevenueWizard(props: {
       try {
         await fetchFields();
       } catch (err: any) {
+        setFieldsError(err?.message || "Failed to load Opportunity fields.");
         toast({
           title: "Failed to Load Salesforce Fields",
           description: err?.message || "Please try again.",
@@ -402,18 +414,37 @@ export function SalesforceRevenueWizard(props: {
           {step === "campaign-field" && (
             <div className="space-y-2">
               <Label>Opportunity field used to attribute deals to this campaign</Label>
-              <Select value={campaignField} onValueChange={(v) => setCampaignField(v)}>
+              <Select value={campaignField} onValueChange={(v) => setCampaignField(v)} disabled={fieldsLoading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select an Opportunity field…" />
+                  <SelectValue placeholder={fieldsLoading ? "Loading fields…" : "Select an Opportunity field…"} />
                 </SelectTrigger>
-                <SelectContent>
-                  {fields.map((f) => (
-                    <SelectItem key={f.name} value={f.name}>
-                      {f.label} ({f.name})
-                    </SelectItem>
-                  ))}
+                <SelectContent className="z-[10000]">
+                  {fields
+                    .slice()
+                    .sort((a, b) => a.label.localeCompare(b.label))
+                    .map((f) => (
+                      <SelectItem key={f.name} value={f.name}>
+                        {f.label} ({f.name})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
+              {fieldsError && (
+                <div className="text-sm text-red-600">
+                  {fieldsError}{" "}
+                  <button
+                    className="underline"
+                    onClick={() => {
+                      void fetchFields();
+                    }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+              {!fieldsError && fields.length === 0 && !fieldsLoading && (
+                <div className="text-sm text-slate-500">No fields loaded yet. Click retry if this persists.</div>
+              )}
             </div>
           )}
 
@@ -470,7 +501,7 @@ export function SalesforceRevenueWizard(props: {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[10000]">
                     {fields
                       .filter((f) => f.type === "currency" || f.type === "double" || f.type === "int" || f.name === "Amount")
                       .map((f) => (
@@ -531,7 +562,14 @@ export function SalesforceRevenueWizard(props: {
               <Button variant="outline" onClick={handleBackStep} disabled={valuesLoading || isSaving}>
                 Back
               </Button>
-              <Button onClick={() => void handleNext()} disabled={valuesLoading || isSaving}>
+              <Button
+                onClick={() => void handleNext()}
+                disabled={
+                  valuesLoading ||
+                  isSaving ||
+                  (step === "campaign-field" && (fieldsLoading || fields.length === 0 || !campaignField))
+                }
+              >
                 {step === "review" ? (isSaving ? "Saving…" : "Save Mappings") : "Continue"}
               </Button>
             </div>

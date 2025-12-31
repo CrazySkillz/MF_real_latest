@@ -8,7 +8,7 @@ import { realGA4Client } from "./real-ga4-client";
 import multer from "multer";
 import { parsePDFMetrics } from "./services/pdf-parser";
 import { nanoid } from "nanoid";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import { snapshotScheduler } from "./scheduler";
 import { detectColumnTypes } from "./utils/column-detection";
 import { discoverSchema } from "./utils/schema-discovery";
@@ -66,6 +66,32 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // ---------------------------------------------------------------------------
+  // Salesforce PKCE support
+  // Some Salesforce orgs require PKCE for the authorization code flow.
+  // We store code_verifier briefly (10 min) keyed by a nonce embedded in `state`.
+  // ---------------------------------------------------------------------------
+  const salesforcePkceStore = new Map<string, { campaignId: string; codeVerifier: string; createdAt: number }>();
+  const SALESFORCE_PKCE_TTL_MS = 10 * 60 * 1000;
+
+  const base64Url = (buf: Buffer) =>
+    buf
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '');
+
+  const makeCodeVerifier = () => base64Url(randomBytes(32));
+  const makeCodeChallenge = (verifier: string) => base64Url(createHash('sha256').update(verifier).digest());
+
+  const cleanupSalesforcePkce = () => {
+    const now = Date.now();
+    for (const [k, v] of salesforcePkceStore.entries()) {
+      if (!v?.createdAt || now - v.createdAt > SALESFORCE_PKCE_TTL_MS) {
+        salesforcePkceStore.delete(k);
+      }
+    }
+  };
   // Build a Sheets A1 range prefix for a tab name.
   // Sheet/tab names with spaces or special characters must be quoted in A1 notation.
   const toA1SheetPrefix = (sheetName?: string | null): string => {
@@ -899,13 +925,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
       const scope = 'api refresh_token';
 
+      // PKCE
+      cleanupSalesforcePkce();
+      const nonce = base64Url(randomBytes(16));
+      const codeVerifier = makeCodeVerifier();
+      const codeChallenge = makeCodeChallenge(codeVerifier);
+      salesforcePkceStore.set(nonce, { campaignId: String(campaignId), codeVerifier, createdAt: Date.now() });
+      const state = `${encodeURIComponent(String(campaignId))}.${nonce}`;
+
       const authUrl =
         `${authBase}/services/oauth2/authorize?` +
         `response_type=code&` +
         `client_id=${encodeURIComponent(clientId)}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `scope=${encodeURIComponent(scope)}&` +
-        `state=${encodeURIComponent(campaignId)}`;
+        `code_challenge=${encodeURIComponent(codeChallenge)}&` +
+        `code_challenge_method=S256&` +
+        `state=${encodeURIComponent(state)}`;
 
       res.json({ authUrl, message: "Salesforce OAuth flow initiated" });
     } catch (error) {
@@ -955,7 +991,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       }
 
-      const campaignId = String(state);
+      // State format: "<campaignId>.<nonce>"
+      const stateStr = String(state || '');
+      const lastDot = stateStr.lastIndexOf('.');
+      const campaignId = lastDot > 0 ? decodeURIComponent(stateStr.slice(0, lastDot)) : stateStr;
+      const nonce = lastDot > 0 ? stateStr.slice(lastDot + 1) : '';
+      cleanupSalesforcePkce();
+      const pkce = nonce ? salesforcePkceStore.get(nonce) : null;
+      const codeVerifier = pkce?.campaignId === String(campaignId) ? pkce.codeVerifier : null;
+      if (nonce) salesforcePkceStore.delete(nonce);
+      if (!codeVerifier) {
+        throw new Error('PKCE verifier missing/expired. Please try connecting Salesforce again.');
+      }
 
       const rawBaseUrl =
         process.env.APP_BASE_URL ||
@@ -981,6 +1028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           client_secret: clientSecret,
           redirect_uri: redirectUri,
           code: String(code),
+          code_verifier: codeVerifier,
         }),
       });
       const tokens: any = await tokenResp.json().catch(() => ({}));

@@ -41,7 +41,6 @@ export function UploadAdditionalDataModal({
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [selectedCrmProvider, setSelectedCrmProvider] = useState<'hubspot' | 'salesforce' | null>(null);
-  const [salesforceAutoConnect, setSalesforceAutoConnect] = useState(false);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
@@ -80,7 +79,6 @@ export function UploadAdditionalDataModal({
     if (!isOpen) {
       setSelectedSource(null);
       setSelectedCrmProvider(null);
-      setSalesforceAutoConnect(false);
       setShowDatasetsView(false);
       setJustConnected(false);
       setShowGuidedMapping(false);
@@ -189,45 +187,34 @@ export function UploadAdditionalDataModal({
     });
   };
 
-  const startSalesforceConnectFromClick = () => {
-    // UX expectation: choosing Salesforce should open OAuth immediately (even if already connected).
-    // We pre-open the popup *synchronously* to avoid popup blockers, then let the wizard
-    // navigate it to the real OAuth URL.
-    try {
-      const w = window.open("about:blank", "salesforce_oauth", "width=520,height=680");
-      if (!w) {
-        toast({
-          title: "Popup blocked",
-          description: "Please allow popups to connect Salesforce, then try again.",
-          variant: "destructive",
-        });
-      } else {
-        // Optional: show a lightweight loading message in the pre-opened window
-        try {
-          w.document.title = "Connecting Salesforce…";
-          w.document.body.innerHTML = "<p style='font-family: Arial, sans-serif; padding: 16px;'>Opening Salesforce sign-in…</p>";
-        } catch {
-          // ignore cross-browser restrictions
-        }
-      }
-    } catch {
-      // ignore
-    }
+  const dialogTitle = (() => {
+    if (googleSheetsOnly) return "Add Google Sheets Dataset";
+    if (selectedSource === "crm" && selectedCrmProvider === "salesforce") return "Connect Salesforce";
+    if (selectedSource === "crm" && selectedCrmProvider === "hubspot") return "Connect HubSpot";
+    if (selectedSource === "google-sheets") return "Connect Google Sheets";
+    if (selectedSource === "custom-integration") return "Connect Custom Integration";
+    return "Connect Additional Data";
+  })();
 
-    setSalesforceAutoConnect(true);
-    setSelectedCrmProvider("salesforce");
-  };
+  const dialogDescription = (() => {
+    if (googleSheetsOnly) return "Connect a Google Sheet or tab to add it to your campaign.";
+    if (selectedSource === "crm" && selectedCrmProvider === "salesforce") {
+      return "Connect Salesforce via OAuth, then follow the guided steps to map Opportunity revenue to this campaign.";
+    }
+    if (selectedSource === "crm" && selectedCrmProvider === "hubspot") {
+      return "Connect HubSpot via OAuth, then follow the guided steps to map deal revenue to this campaign.";
+    }
+    if (selectedSource === "google-sheets") return "Connect one or more Google Sheets tabs for LinkedIn reporting.";
+    if (selectedSource === "custom-integration") return "Set up a webhook or API integration for a custom data source.";
+    return "Connect additional data sources for LinkedIn reporting (revenue/pipeline, lead quality, offline conversions, segments).";
+  })();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{googleSheetsOnly ? 'Add Google Sheets Dataset' : 'Connect Additional Data'}</DialogTitle>
-          <DialogDescription>
-            {googleSheetsOnly
-              ? 'Connect a Google Sheet or tab to add it to your campaign.'
-              : 'Connect additional data sources for LinkedIn reporting (revenue/pipeline, lead quality, offline conversions, segments).'}
-          </DialogDescription>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
 
         {!selectedSource && !googleSheetsOnly ? (
@@ -593,7 +580,7 @@ export function UploadAdditionalDataModal({
 
                 <Card
                   className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
-                  onClick={startSalesforceConnectFromClick}
+                  onClick={() => setSelectedCrmProvider('salesforce')}
                 >
                   <CardHeader>
                     <CardTitle className="text-lg">Salesforce</CardTitle>
@@ -619,9 +606,6 @@ export function UploadAdditionalDataModal({
               ) : (
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
-                  autoConnect={salesforceAutoConnect}
-                  onAutoConnectConsumed={() => setSalesforceAutoConnect(false)}
-                  requireOAuth={true}
                   onBack={() => setSelectedCrmProvider(null)}
                   onClose={() => {
                     if (onDataConnected) onDataConnected();

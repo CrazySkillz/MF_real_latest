@@ -407,7 +407,7 @@ export function SalesforceRevenueWizard(props: {
             {step === "review" && (
               <>
                 <ClipboardCheck className="w-5 h-5 text-blue-600" />
-                Save Mappings
+                Process Revenue Metrics
               </>
             )}
             {step === "complete" && (
@@ -424,7 +424,7 @@ export function SalesforceRevenueWizard(props: {
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignFieldLabel}” that should map to this MetricMind campaign.`}
             {step === "revenue" && "Select the Opportunity field that represents revenue (usually Amount)."}
-            {step === "review" && ""}
+            {step === "review" && "Confirm your selections. We'll pull Closed Won Opportunities and compute conversion value for this campaign."}
             {step === "complete" && "Conversion value is saved. Revenue metrics should now be unlocked in Overview."}
           </CardDescription>
         </CardHeader>
@@ -584,6 +584,9 @@ export function SalesforceRevenueWizard(props: {
               <div className="text-sm text-slate-700">
                 Saved conversion value: <strong>${String(lastSaveResult?.conversionValue ?? "0")}</strong> per conversion.
               </div>
+              <div className="text-sm text-slate-700">
+                Revenue metrics have been processed and are now available in the <strong>Overview</strong> tab.
+              </div>
               <div className="flex items-center gap-2">
                 <Button onClick={() => onClose?.()}>Back to Campaign Overview</Button>
                 <Button variant="outline" onClick={() => setStep("review")}>
@@ -606,7 +609,7 @@ export function SalesforceRevenueWizard(props: {
                   (step === "campaign-field" && (fieldsLoading || fields.length === 0 || !campaignField))
                 }
               >
-                {step === "review" ? (isSaving ? "Saving…" : "Save Mappings") : "Continue"}
+                {step === "review" ? (isSaving ? "Processing…" : "Process Revenue Metrics") : "Continue"}
               </Button>
             </div>
           )}

@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, hubspotConnections, salesforceConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
@@ -57,6 +57,13 @@ export interface IStorage {
   createSalesforceConnection(connection: InsertSalesforceConnection): Promise<SalesforceConnection>;
   updateSalesforceConnection(connectionId: string, connection: Partial<InsertSalesforceConnection>): Promise<SalesforceConnection | undefined>;
   deleteSalesforceConnection(connectionId: string): Promise<boolean>;
+
+  // Shopify Connections
+  getShopifyConnections(campaignId: string): Promise<ShopifyConnection[]>;
+  getShopifyConnection(campaignId: string): Promise<ShopifyConnection | undefined>;
+  createShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection>;
+  updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>): Promise<ShopifyConnection | undefined>;
+  deleteShopifyConnection(connectionId: string): Promise<boolean>;
   
   // LinkedIn Connections
   getLinkedInConnection(campaignId: string): Promise<LinkedInConnection | undefined>;
@@ -285,6 +292,7 @@ export class MemStorage implements IStorage {
   private googleSheetsConnections: Map<string, GoogleSheetsConnection>; // Key: connection.id
   private hubspotConnections: Map<string, HubspotConnection>; // Key: connection.id
   private salesforceConnections: Map<string, SalesforceConnection>; // Key: connection.id
+  private shopifyConnections: Map<string, ShopifyConnection>; // Key: connection.id
   private linkedinConnections: Map<string, LinkedInConnection>;
   private metaConnections: Map<string, MetaConnection>;
   private linkedinImportSessions: Map<string, LinkedInImportSession>;
@@ -320,6 +328,7 @@ export class MemStorage implements IStorage {
     this.googleSheetsConnections = new Map();
     this.hubspotConnections = new Map();
     this.salesforceConnections = new Map();
+    this.shopifyConnections = new Map();
     this.linkedinConnections = new Map();
     this.metaConnections = new Map();
     this.linkedinImportSessions = new Map();
@@ -1172,6 +1181,62 @@ export class MemStorage implements IStorage {
     const connection = this.salesforceConnections.get(connectionId);
     if (!connection) return false;
     this.salesforceConnections.set(connectionId, { ...connection, isActive: false });
+    return true;
+  }
+
+  // Shopify Connection methods
+  async getShopifyConnections(campaignId: string): Promise<ShopifyConnection[]> {
+    const connections: ShopifyConnection[] = [];
+    for (const connection of this.shopifyConnections.values()) {
+      if (connection.campaignId === campaignId && connection.isActive) {
+        connections.push(connection);
+      }
+    }
+    return connections.sort(
+      (a, b) => new Date(a.connectedAt).getTime() - new Date(b.connectedAt).getTime()
+    );
+  }
+
+  async getShopifyConnection(campaignId: string): Promise<ShopifyConnection | undefined> {
+    const connections = await this.getShopifyConnections(campaignId);
+    if (connections.length === 0) return undefined;
+    return connections[connections.length - 1];
+  }
+
+  async createShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection> {
+    const id = randomUUID();
+    const shopifyConnection: ShopifyConnection = {
+      id,
+      campaignId: connection.campaignId,
+      shopDomain: connection.shopDomain,
+      shopName: connection.shopName || null,
+      accessToken: connection.accessToken || null,
+      isActive: connection.isActive ?? true,
+      mappingConfig: connection.mappingConfig || null,
+      connectedAt: new Date(),
+      createdAt: new Date(),
+    };
+    this.shopifyConnections.set(id, shopifyConnection);
+    return shopifyConnection;
+  }
+
+  async updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>): Promise<ShopifyConnection | undefined> {
+    const existing = this.shopifyConnections.get(connectionId);
+    if (!existing) return undefined;
+    const updated: ShopifyConnection = {
+      ...existing,
+      ...connection,
+      id: existing.id,
+      campaignId: existing.campaignId,
+    };
+    this.shopifyConnections.set(connectionId, updated);
+    return updated;
+  }
+
+  async deleteShopifyConnection(connectionId: string): Promise<boolean> {
+    const connection = this.shopifyConnections.get(connectionId);
+    if (!connection) return false;
+    this.shopifyConnections.set(connectionId, { ...connection, isActive: false });
     return true;
   }
 
@@ -2797,6 +2862,54 @@ export class DatabaseStorage implements IStorage {
       .update(salesforceConnections)
       .set({ isActive: false })
       .where(eq(salesforceConnections.id, connectionId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Shopify Connection methods
+  async getShopifyConnections(campaignId: string): Promise<ShopifyConnection[]> {
+    return await db
+      .select()
+      .from(shopifyConnections)
+      .where(and(eq(shopifyConnections.campaignId, campaignId), eq(shopifyConnections.isActive, true)))
+      .orderBy(shopifyConnections.connectedAt);
+  }
+
+  async getShopifyConnection(campaignId: string): Promise<ShopifyConnection | undefined> {
+    const [latest] = await db
+      .select()
+      .from(shopifyConnections)
+      .where(and(eq(shopifyConnections.campaignId, campaignId), eq(shopifyConnections.isActive, true)))
+      .orderBy(desc(shopifyConnections.connectedAt))
+      .limit(1);
+    return latest || undefined;
+  }
+
+  async createShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection> {
+    const connectionData = {
+      ...connection,
+      isActive: connection.isActive !== undefined ? connection.isActive : true,
+      shopName: connection.shopName || null,
+      accessToken: connection.accessToken || null,
+      mappingConfig: connection.mappingConfig || null,
+    };
+    const [created] = await db.insert(shopifyConnections).values(connectionData).returning();
+    return created;
+  }
+
+  async updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>): Promise<ShopifyConnection | undefined> {
+    const [updated] = await db
+      .update(shopifyConnections)
+      .set(connection)
+      .where(eq(shopifyConnections.id, connectionId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteShopifyConnection(connectionId: string): Promise<boolean> {
+    const result = await db
+      .update(shopifyConnections)
+      .set({ isActive: false })
+      .where(eq(shopifyConnections.id, connectionId));
     return (result.rowCount || 0) > 0;
   }
 

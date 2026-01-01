@@ -276,6 +276,30 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS mapping_config TEXT,
             ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
           `);
+
+          // Migration 10: Shopify connections (Ecommerce revenue source)
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS shopify_connections (
+              id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              shop_domain TEXT NOT NULL,
+              shop_name TEXT,
+              access_token TEXT,
+              is_active BOOLEAN NOT NULL DEFAULT true,
+              mapping_config TEXT,
+              connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          await db.execute(sql`
+            ALTER TABLE shopify_connections
+            ADD COLUMN IF NOT EXISTS shop_domain TEXT,
+            ADD COLUMN IF NOT EXISTS shop_name TEXT,
+            ADD COLUMN IF NOT EXISTS access_token TEXT,
+            ADD COLUMN IF NOT EXISTS mapping_config TEXT,
+            ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+          `);
           
           log('✅ Database migrations completed successfully');
         } catch (error) {

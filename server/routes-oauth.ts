@@ -13302,6 +13302,356 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ---------------------------------------------------------------------------
+  // Shopify (Ecommerce) - Connect + Preview + Revenue mappings
+  // NOTE: This is a token-based connection (Shopify Admin API access token).
+  // Users generate a token via a Shopify custom app and paste it into MetricMind.
+  // ---------------------------------------------------------------------------
+
+  const normalizeShopDomain = (input: string) => {
+    const raw = String(input || "").trim();
+    if (!raw) return "";
+    const withoutProto = raw.replace(/^https?:\/\//i, "");
+    const host = withoutProto.split("/")[0].trim();
+    return host.toLowerCase();
+  };
+
+  const shopifyApiFetch = async (args: { shopDomain: string; accessToken: string; path: string }) => {
+    const { shopDomain, accessToken, path } = args;
+    const base = `https://${shopDomain}`;
+    const url = `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+    const resp = await fetch(url, {
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-Type": "application/json",
+      },
+    });
+    const text = await resp.text().catch(() => "");
+    let json: any = {};
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      json = {};
+    }
+    if (!resp.ok) {
+      const msg =
+        json?.errors ||
+        json?.error ||
+        json?.message ||
+        (text && text.length < 300 ? text : "") ||
+        `Shopify API error (HTTP ${resp.status})`;
+      throw new Error(String(msg));
+    }
+    return json;
+  };
+
+  const parseUtm = (urlOrPath: string | null | undefined) => {
+    const s = String(urlOrPath || "").trim();
+    if (!s) return {};
+    try {
+      // landing_site can be a path like "/?utm_campaign=..." or a full URL.
+      const u = s.startsWith("http") ? new URL(s) : new URL(s.startsWith("/") ? `https://dummy.local${s}` : `https://dummy.local/${s}`);
+      const p = u.searchParams;
+      return {
+        utm_campaign: p.get("utm_campaign") || "",
+        utm_source: p.get("utm_source") || "",
+        utm_medium: p.get("utm_medium") || "",
+      };
+    } catch {
+      return {};
+    }
+  };
+
+  const getShopifyConnectionForCampaign = async (campaignId: string) => {
+    const conn: any = await storage.getShopifyConnection(campaignId);
+    if (!conn || !conn.isActive || !conn.accessToken || !conn.shopDomain) {
+      throw new Error("No active Shopify connection found for this campaign.");
+    }
+    return conn as any;
+  };
+
+  app.post("/api/shopify/connect", async (req, res) => {
+    try {
+      const { campaignId, shopDomain, accessToken } = req.body || {};
+      const campaignIdStr = String(campaignId || "").trim();
+      const shop = normalizeShopDomain(shopDomain);
+      const token = String(accessToken || "").trim();
+      if (!campaignIdStr) return res.status(400).json({ error: "campaignId is required" });
+      if (!shop) return res.status(400).json({ error: "shopDomain is required" });
+      if (!token) return res.status(400).json({ error: "accessToken is required" });
+
+      // Validate token by fetching shop info
+      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+      const shopResp = await shopifyApiFetch({
+        shopDomain: shop,
+        accessToken: token,
+        path: `/admin/api/${apiVersion}/shop.json`,
+      });
+      const shopName = shopResp?.shop?.name ? String(shopResp.shop.name) : null;
+
+      // Deactivate existing connections for campaign (single active connection)
+      const existing = await storage.getShopifyConnections(campaignIdStr);
+      for (const c of existing || []) {
+        if ((c as any)?.id) {
+          await storage.updateShopifyConnection((c as any).id, { isActive: false } as any);
+        }
+      }
+
+      const created = await storage.createShopifyConnection({
+        campaignId: campaignIdStr,
+        shopDomain: shop,
+        shopName: shopName,
+        accessToken: token,
+        isActive: true,
+        mappingConfig: null,
+      } as any);
+
+      res.json({
+        success: true,
+        connected: true,
+        id: created.id,
+        shopDomain: shop,
+        shopName,
+      });
+    } catch (error: any) {
+      console.error("[Shopify Connect] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to connect Shopify" });
+    }
+  });
+
+  app.get("/api/shopify/:campaignId/status", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const conn: any = await storage.getShopifyConnection(campaignId);
+      const connected = !!(conn && conn.isActive && conn.accessToken && conn.shopDomain);
+      res.json({
+        connected,
+        shopDomain: connected ? conn.shopDomain : null,
+        shopName: connected ? conn.shopName : null,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to check Shopify connection" });
+    }
+  });
+
+  app.get("/api/shopify/:campaignId/orders/preview", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || "50"), 10) || 50, 1), 100);
+      const columnsParam = String(req.query.columns || "").trim();
+      const columns = columnsParam ? columnsParam.split(",").map((s) => s.trim()).filter(Boolean) : [];
+
+      const conn = await getShopifyConnectionForCampaign(campaignId);
+      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+
+      // Default: last 90 days
+      const createdAtMin = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      const ordersResp = await shopifyApiFetch({
+        shopDomain: conn.shopDomain,
+        accessToken: conn.accessToken,
+        path: `/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`,
+      });
+      const orders: any[] = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
+
+      const availableColumns = [
+        "Order",
+        "Created At",
+        "Total Price",
+        "Currency",
+        "Discount Codes",
+        "Landing Site",
+        "Referring Site",
+        "UTM Campaign",
+        "UTM Source",
+        "UTM Medium",
+      ];
+      const selectedColumns = columns.length > 0 ? columns : ["Order", "Created At", "Total Price", "Currency", "UTM Campaign"];
+      const headers = selectedColumns.filter((h) => availableColumns.includes(h));
+
+      const rows = orders.slice(0, limit).map((o) => {
+        const utm = parseUtm(o?.landing_site || o?.landing_site_ref || "");
+        const discountCodes = Array.isArray(o?.discount_codes)
+          ? o.discount_codes.map((d: any) => d?.code).filter(Boolean).join(", ")
+          : "";
+        const record: Record<string, any> = {
+          "Order": o?.name || o?.order_number || "",
+          "Created At": o?.created_at || "",
+          "Total Price": o?.total_price || "",
+          "Currency": o?.currency || "",
+          "Discount Codes": discountCodes,
+          "Landing Site": o?.landing_site || "",
+          "Referring Site": o?.referring_site || "",
+          "UTM Campaign": (utm as any).utm_campaign || "",
+          "UTM Source": (utm as any).utm_source || "",
+          "UTM Medium": (utm as any).utm_medium || "",
+        };
+        return headers.map((h) => String(record[h] ?? ""));
+      });
+
+      res.json({
+        success: true,
+        headers,
+        rows,
+        rowCount: rows.length,
+      });
+    } catch (error: any) {
+      console.error("[Shopify Preview] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to load Shopify preview" });
+    }
+  });
+
+  app.get("/api/shopify/:campaignId/orders/unique-values", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const field = String(req.query.field || "").trim();
+      const days = Math.min(Math.max(parseInt(String(req.query.days || "90"), 10) || 90, 1), 3650);
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || "300"), 10) || 300, 1), 500);
+
+      const conn = await getShopifyConnectionForCampaign(campaignId);
+      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+      const createdAtMin = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      const ordersResp = await shopifyApiFetch({
+        shopDomain: conn.shopDomain,
+        accessToken: conn.accessToken,
+        path: `/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`,
+      });
+      const orders: any[] = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
+
+      const getValue = (o: any): string => {
+        const utm = parseUtm(o?.landing_site || o?.landing_site_ref || "");
+        if (field === "utm_campaign") return String((utm as any).utm_campaign || "");
+        if (field === "utm_source") return String((utm as any).utm_source || "");
+        if (field === "utm_medium") return String((utm as any).utm_medium || "");
+        if (field === "discount_code") {
+          const codes = Array.isArray(o?.discount_codes) ? o.discount_codes.map((d: any) => d?.code).filter(Boolean) : [];
+          return codes.length > 0 ? String(codes[0]) : "";
+        }
+        return "";
+      };
+
+      const counts = new Map<string, number>();
+      for (const o of orders) {
+        const v = getValue(o).trim();
+        if (!v) continue;
+        counts.set(v, (counts.get(v) || 0) + 1);
+      }
+
+      const values = Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([value, count]) => ({ value, count }));
+
+      res.json({ success: true, field, days, values });
+    } catch (error: any) {
+      console.error("[Shopify Unique Values] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to load Shopify values" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/shopify/save-mappings", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { campaignField, selectedValues, revenueMetric, days } = req.body || {};
+      const field = String(campaignField || "").trim();
+      const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
+      const metric = String(revenueMetric || "total_price").trim();
+      const rangeDays = Math.min(Math.max(parseInt(String(days || "90"), 10) || 90, 1), 3650);
+
+      if (!field) return res.status(400).json({ error: "campaignField is required" });
+      if (selected.length === 0) return res.status(400).json({ error: "selectedValues is required" });
+
+      const conn = await getShopifyConnectionForCampaign(campaignId);
+      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+      const createdAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
+      const ordersResp = await shopifyApiFetch({
+        shopDomain: conn.shopDomain,
+        accessToken: conn.accessToken,
+        path: `/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`,
+      });
+      const orders: any[] = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
+
+      const getFieldValue = (o: any): string => {
+        const utm = parseUtm(o?.landing_site || o?.landing_site_ref || "");
+        if (field === "utm_campaign") return String((utm as any).utm_campaign || "");
+        if (field === "utm_source") return String((utm as any).utm_source || "");
+        if (field === "utm_medium") return String((utm as any).utm_medium || "");
+        if (field === "discount_code") {
+          const codes = Array.isArray(o?.discount_codes) ? o.discount_codes.map((d: any) => d?.code).filter(Boolean) : [];
+          return codes.length > 0 ? String(codes[0]) : "";
+        }
+        return "";
+      };
+
+      const parseMoney = (val: any): number => {
+        const n = Number(String(val ?? "").replace(/[^0-9.\-]/g, ""));
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      let totalRevenue = 0;
+      const matchedOrders: any[] = [];
+      const selectedSet = new Set(selected);
+      for (const o of orders) {
+        const v = getFieldValue(o).trim();
+        if (!v || !selectedSet.has(v)) continue;
+        matchedOrders.push(o);
+        if (metric === "total_price") totalRevenue += parseMoney(o?.total_price);
+        else if (metric === "current_total_price") totalRevenue += parseMoney(o?.current_total_price);
+        else totalRevenue += parseMoney(o?.total_price);
+      }
+
+      // Compute LinkedIn conversion value using latest import session metrics (same pattern as HubSpot/Salesforce)
+      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+      if (!sessions || sessions.length === 0) {
+        return res.status(400).json({ error: "No LinkedIn import session found for this campaign." });
+      }
+      const latestSession = sessions.sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+      const importMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
+      const canonicalKey = (k: any) => String(k || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const totalConversions = (importMetrics || []).reduce((sum: number, m: any) => {
+        const key = canonicalKey(m.metricKey);
+        if (key === "conversions" || key === "externalwebsiteconversions") {
+          const v = Number(m.metricValue);
+          if (Number.isFinite(v)) return sum + v;
+        }
+        return sum;
+      }, 0);
+      if (!Number.isFinite(totalConversions) || totalConversions <= 0) {
+        return res.status(400).json({ error: "LinkedIn conversions are 0. Cannot compute conversion value." });
+      }
+
+      const calculatedConversionValue = Number((totalRevenue / totalConversions).toFixed(2));
+      await storage.updateCampaign(campaignId, { conversionValue: calculatedConversionValue } as any);
+      await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
+      await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
+
+      // Persist mapping config on the active Shopify connection
+      const shopifyConn: any = await storage.getShopifyConnection(campaignId);
+      if (shopifyConn) {
+        const mappingConfig = {
+          objectType: "orders",
+          campaignField: field,
+          selectedValues: selected,
+          revenueMetric: metric,
+          days: rangeDays,
+          shopDomain: conn.shopDomain,
+        };
+        await storage.updateShopifyConnection(shopifyConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
+      }
+
+      res.json({
+        success: true,
+        conversionValueCalculated: true,
+        conversionValue: calculatedConversionValue,
+        totalRevenue: Number(totalRevenue.toFixed(2)),
+        totalConversions: Number(totalConversions.toFixed(2)),
+        matchedOrderCount: matchedOrders.length,
+      });
+    } catch (error: any) {
+      console.error("[Shopify Save Mappings] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to process Shopify revenue metrics" });
+    }
+  });
+
   const server = createServer(app);
   return server;
 }

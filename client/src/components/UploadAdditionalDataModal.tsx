@@ -21,6 +21,8 @@ interface UploadAdditionalDataModalProps {
   onOpenSalesforceViewer?: (args: { sourceId: string }) => void;
   onOpenSalesforceRevenueWizard?: () => void;
   onOpenHubspotRevenueWizard?: () => void;
+  onOpenShopifyViewer?: () => void;
+  onOpenShopifyRevenueWizard?: () => void;
   googleSheetsOnly?: boolean; // If true, skip source selection and go directly to Google Sheets
   autoStartMappingOnGoogleSheetsConnect?: boolean; // If true, immediately launch mapping after connecting sheets
   showGoogleSheetsUseCaseStep?: boolean; // If true, show "How will you use this Google Sheet?"
@@ -39,6 +41,8 @@ export function UploadAdditionalDataModal({
   onOpenSalesforceViewer,
   onOpenSalesforceRevenueWizard,
   onOpenHubspotRevenueWizard,
+  onOpenShopifyViewer,
+  onOpenShopifyRevenueWizard,
   googleSheetsOnly = false,
   autoStartMappingOnGoogleSheetsConnect = false,
   showGoogleSheetsUseCaseStep = false,
@@ -47,7 +51,12 @@ export function UploadAdditionalDataModal({
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [selectedCrmProvider, setSelectedCrmProvider] = useState<'hubspot' | 'salesforce' | null>(null);
   const [salesforceUseCase, setSalesforceUseCase] = useState<'view' | 'revenue' | null>(null);
+  const [selectedEcommerceProvider, setSelectedEcommerceProvider] = useState<'shopify' | null>(null);
+  const [shopifyUseCase, setShopifyUseCase] = useState<'view' | 'revenue' | null>(null);
+  const [shopifyShopDomain, setShopifyShopDomain] = useState<string>('');
+  const [shopifyAccessToken, setShopifyAccessToken] = useState<string>('');
   const [isSalesforceConnecting, setIsSalesforceConnecting] = useState(false);
+  const [isShopifyConnecting, setIsShopifyConnecting] = useState(false);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
@@ -87,7 +96,12 @@ export function UploadAdditionalDataModal({
       setSelectedSource(null);
       setSelectedCrmProvider(null);
       setSalesforceUseCase(null);
+      setSelectedEcommerceProvider(null);
+      setShopifyUseCase(null);
+      setShopifyShopDomain('');
+      setShopifyAccessToken('');
       setIsSalesforceConnecting(false);
+      setIsShopifyConnecting(false);
       setShowDatasetsView(false);
       setJustConnected(false);
       setShowGuidedMapping(false);
@@ -118,8 +132,49 @@ export function UploadAdditionalDataModal({
     setSelectedSource(source);
     setSelectedCrmProvider(null);
     setSalesforceUseCase(null);
+    setSelectedEcommerceProvider(null);
+    setShopifyUseCase(null);
     if (source !== 'google-sheets') {
       setGoogleSheetsUseCase('view');
+    }
+  };
+
+  const connectShopify = async () => {
+    if (!campaignId) return;
+    setIsShopifyConnecting(true);
+    try {
+      const resp = await fetch('/api/shopify/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          shopDomain: shopifyShopDomain,
+          accessToken: shopifyAccessToken,
+        }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || json?.message || `Failed to connect Shopify (HTTP ${resp.status})`);
+
+      toast({
+        title: 'Shopify Connected',
+        description: `Connected to ${json?.shopName || json?.shopDomain || 'your store'}.`,
+      });
+      if (onDataConnected) onDataConnected();
+
+      // Close this modal and open the appropriate next modal.
+      onClose();
+      setTimeout(() => {
+        if ((shopifyUseCase || 'view') === 'view') onOpenShopifyViewer?.();
+        else onOpenShopifyRevenueWizard?.();
+      }, 0);
+    } catch (err: any) {
+      toast({
+        title: 'Shopify Connection Failed',
+        description: err?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsShopifyConnecting(false);
     }
   };
 
@@ -470,9 +525,9 @@ export function UploadAdditionalDataModal({
             </Card>
 
             {/* Ecommerce */}
-            <Card 
+            <Card
               className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
-              onClick={() => handleComingSoon('Ecommerce (Shopify / Stripe)')}
+              onClick={() => handleSourceSelect('ecommerce')}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -883,6 +938,131 @@ export function UploadAdditionalDataModal({
                   </div>
                 </div>
               )
+            )}
+          </div>
+        ) : selectedSource === 'ecommerce' ? (
+          <div className="mt-4 space-y-4">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSelectedSource(null);
+                setSelectedEcommerceProvider(null);
+                setShopifyUseCase(null);
+              }}
+              className="mb-2"
+            >
+              ← Back to Options
+            </Button>
+
+            {selectedEcommerceProvider === null ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card
+                  className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
+                  onClick={() => {
+                    setSelectedEcommerceProvider('shopify');
+                    setShopifyUseCase('view');
+                  }}
+                >
+                  <CardHeader>
+                    <CardTitle className="text-lg">Shopify</CardTitle>
+                    <CardDescription>
+                      Connect Orders and attribute revenue to LinkedIn campaigns to unlock ROI/ROAS.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+
+                <Card className="opacity-60">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Stripe</CardTitle>
+                    <CardDescription>Coming soon.</CardDescription>
+                  </CardHeader>
+                </Card>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <Card className="border-slate-200 dark:border-slate-700">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">How will you use Shopify?</CardTitle>
+                    <CardDescription>
+                      Choose whether to connect for viewing only, or map order revenue to unlock ROI/ROAS.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <RadioGroup
+                      value={shopifyUseCase || 'view'}
+                      onValueChange={(v) => setShopifyUseCase(v as 'view' | 'revenue')}
+                      className="space-y-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        <RadioGroupItem value="view" id="shopify-usecase-view" className="mt-1" />
+                        <div className="space-y-1">
+                          <Label htmlFor="shopify-usecase-view" className="font-medium">
+                            View Shopify data (read-only)
+                          </Label>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            Connect Shopify and browse Orders in MetricMind.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <RadioGroupItem value="revenue" id="shopify-usecase-revenue" className="mt-1" />
+                        <div className="space-y-1">
+                          <Label htmlFor="shopify-usecase-revenue" className="font-medium">
+                            Use for revenue metrics
+                          </Label>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            Map order attribution fields and process revenue metrics to unlock ROI/ROAS.
+                          </p>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Connect Shopify</CardTitle>
+                    <CardDescription>
+                      Enter your Shopify store domain and Admin API access token (Custom App).
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-1">
+                      <Label>Store domain</Label>
+                      <Input
+                        placeholder="mystore.myshopify.com"
+                        value={shopifyShopDomain}
+                        onChange={(e) => setShopifyShopDomain(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Admin API access token</Label>
+                      <Input
+                        type="password"
+                        placeholder="shpat_..."
+                        value={shopifyAccessToken}
+                        onChange={(e) => setShopifyAccessToken(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button onClick={() => void connectShopify()} disabled={isShopifyConnecting}>
+                        {isShopifyConnecting ? 'Connecting…' : 'Connect Shopify'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedEcommerceProvider(null);
+                          setShopifyUseCase(null);
+                        }}
+                        disabled={isShopifyConnecting}
+                      >
+                        Back
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
         ) : selectedSource === 'custom-integration' ? (

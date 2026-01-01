@@ -135,6 +135,19 @@ export const salesforceConnections = pgTable("salesforce_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Shopify connections (Ecommerce revenue source)
+export const shopifyConnections = pgTable("shopify_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  shopDomain: text("shop_domain").notNull(), // e.g. mystore.myshopify.com
+  shopName: text("shop_name"),
+  accessToken: text("access_token"),
+  isActive: boolean("is_active").notNull().default(true),
+  mappingConfig: text("mapping_config"), // JSON string
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const mappingTemplates = pgTable("mapping_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -790,6 +803,15 @@ export const insertSalesforceConnectionSchema = createInsertSchema(salesforceCon
   mappingConfig: true,
 });
 
+export const insertShopifyConnectionSchema = createInsertSchema(shopifyConnections).pick({
+  campaignId: true,
+  shopDomain: true,
+  shopName: true,
+  accessToken: true,
+  isActive: true,
+  mappingConfig: true,
+});
+
 export const insertLinkedInConnectionSchema = createInsertSchema(linkedinConnections).pick({
   campaignId: true,
   adAccountId: true,
@@ -1171,6 +1193,8 @@ export type HubspotConnection = typeof hubspotConnections.$inferSelect;
 export type InsertHubspotConnection = z.infer<typeof insertHubspotConnectionSchema>;
 export type SalesforceConnection = typeof salesforceConnections.$inferSelect;
 export type InsertSalesforceConnection = z.infer<typeof insertSalesforceConnectionSchema>;
+export type ShopifyConnection = typeof shopifyConnections.$inferSelect;
+export type InsertShopifyConnection = z.infer<typeof insertShopifyConnectionSchema>;
 export type LinkedInConnection = typeof linkedinConnections.$inferSelect;
 export type InsertLinkedInConnection = z.infer<typeof insertLinkedInConnectionSchema>;
 export type MetaConnection = typeof metaConnections.$inferSelect;

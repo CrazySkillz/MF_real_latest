@@ -5,6 +5,8 @@ import { SalesforceDataViewerModal } from "@/components/SalesforceDataViewerModa
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
 import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
 import { HubSpotRevenueWizard } from "@/components/HubSpotRevenueWizard";
+import { ShopifyDataViewerModal } from "@/components/ShopifyDataViewerModal";
+import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -117,6 +119,8 @@ export default function LinkedInAnalytics() {
   const [salesforceViewerSourceId, setSalesforceViewerSourceId] = useState<string | null>(null);
   const [isSalesforceRevenueWizardOpen, setIsSalesforceRevenueWizardOpen] = useState(false);
   const [isHubspotRevenueWizardOpen, setIsHubspotRevenueWizardOpen] = useState(false);
+  const [isShopifyViewerOpen, setIsShopifyViewerOpen] = useState(false);
+  const [isShopifyRevenueWizardOpen, setIsShopifyRevenueWizardOpen] = useState(false);
   const [uploadModalDefaultGoogleSheetsUseCase, setUploadModalDefaultGoogleSheetsUseCase] = useState<'view' | 'enhance'>('view');
   const openConnectAdditionalDataModal = (defaultUseCase: 'view' | 'enhance' = 'view') => {
     setUploadModalDefaultGoogleSheetsUseCase(defaultUseCase);
@@ -9052,6 +9056,8 @@ export default function LinkedInAnalytics() {
           onOpenHubspotRevenueWizard={() => {
             setIsHubspotRevenueWizardOpen(true);
           }}
+          onOpenShopifyViewer={() => setIsShopifyViewerOpen(true)}
+          onOpenShopifyRevenueWizard={() => setIsShopifyRevenueWizardOpen(true)}
           autoStartMappingOnGoogleSheetsConnect={false}
           showGoogleSheetsUseCaseStep={true}
           defaultGoogleSheetsUseCase={uploadModalDefaultGoogleSheetsUseCase}
@@ -9113,6 +9119,42 @@ export default function LinkedInAnalytics() {
               }}
               onSuccess={() => {
                 setIsHubspotRevenueWizardOpen(false);
+                void refetchConnectedDataSources();
+                void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Shopify Viewer */}
+      {campaignId && (
+        <ShopifyDataViewerModal
+          open={isShopifyViewerOpen}
+          onOpenChange={setIsShopifyViewerOpen}
+          campaignId={campaignId}
+        />
+      )}
+
+      {/* Shopify Revenue Wizard */}
+      {campaignId && (
+        <Dialog open={isShopifyRevenueWizardOpen} onOpenChange={setIsShopifyRevenueWizardOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Shopify Revenue Metrics</DialogTitle>
+              <DialogDescription>
+                Choose order attribution fields and process revenue metrics for this campaign.
+              </DialogDescription>
+            </DialogHeader>
+            <ShopifyRevenueWizard
+              campaignId={campaignId}
+              onBack={() => setIsShopifyRevenueWizardOpen(false)}
+              onClose={() => {
+                setIsShopifyRevenueWizardOpen(false);
+                void refetchConnectedDataSources();
+              }}
+              onSuccess={() => {
+                setIsShopifyRevenueWizardOpen(false);
                 void refetchConnectedDataSources();
                 void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
               }}

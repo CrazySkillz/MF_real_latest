@@ -42,6 +42,7 @@ export function UploadAdditionalDataModal({
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [selectedCrmProvider, setSelectedCrmProvider] = useState<'hubspot' | 'salesforce' | null>(null);
   const [salesforceUseCase, setSalesforceUseCase] = useState<'view' | 'revenue' | null>(null);
+  const [isSalesforceConnecting, setIsSalesforceConnecting] = useState(false);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
@@ -81,6 +82,7 @@ export function UploadAdditionalDataModal({
       setSelectedSource(null);
       setSelectedCrmProvider(null);
       setSalesforceUseCase(null);
+      setIsSalesforceConnecting(false);
       setShowDatasetsView(false);
       setJustConnected(false);
       setShowGuidedMapping(false);
@@ -188,6 +190,71 @@ export function UploadAdditionalDataModal({
       title: "Coming Soon",
       description: `${sourceName} integration will be available soon.`,
     });
+  };
+
+  const connectSalesforceViewOnly = async () => {
+    if (!campaignId) return;
+    setIsSalesforceConnecting(true);
+    try {
+      const resp = await fetch("/api/auth/salesforce/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      });
+      const text = await resp.text().catch(() => "");
+      let json: any = {};
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        json = {};
+      }
+      if (!resp.ok) {
+        const msg =
+          json?.message ||
+          json?.error ||
+          (text && text.length < 300 ? text : "") ||
+          `Failed to start Salesforce OAuth (HTTP ${resp.status})`;
+        throw new Error(msg);
+      }
+      const authUrl = json?.authUrl;
+      if (!authUrl) throw new Error("No auth URL returned");
+
+      const w = window.open(authUrl, "salesforce_oauth", "width=520,height=680");
+      if (!w) throw new Error("Popup blocked. Please allow popups and try again.");
+
+      const onMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        const data: any = event.data;
+        if (!data || typeof data !== "object") return;
+
+        if (data.type === "salesforce_auth_success") {
+          window.removeEventListener("message", onMessage);
+          toast({
+            title: "Salesforce Connected",
+            description: "You can now view Salesforce data in MetricMind.",
+          });
+          if (onDataConnected) onDataConnected();
+          setTimeout(() => onClose(), 150);
+        } else if (data.type === "salesforce_auth_error") {
+          window.removeEventListener("message", onMessage);
+          toast({
+            title: "Salesforce Connection Failed",
+            description: data.error || "Please try again.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      window.addEventListener("message", onMessage);
+    } catch (err: any) {
+      toast({
+        title: "Salesforce Connection Failed",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSalesforceConnecting(false);
+    }
   };
 
   const dialogTitle = (() => {
@@ -585,7 +652,7 @@ export function UploadAdditionalDataModal({
                   className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
                   onClick={() => {
                     setSelectedCrmProvider('salesforce');
-                    setSalesforceUseCase(null);
+                    setSalesforceUseCase('view');
                   }}
                 >
                   <CardHeader>
@@ -610,56 +677,80 @@ export function UploadAdditionalDataModal({
                   }}
                 />
               ) : (
-                salesforceUseCase === null ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Card
-                        className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
-                        onClick={() => setSalesforceUseCase('view')}
+                <div className="space-y-4">
+                  <Card className="border-slate-200 dark:border-slate-700">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">How will you use Salesforce?</CardTitle>
+                      <CardDescription>
+                        Choose whether to connect for viewing only, or map revenue to unlock ROI/ROAS.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <RadioGroup
+                        value={salesforceUseCase || 'view'}
+                        onValueChange={(v) => setSalesforceUseCase(v as 'view' | 'revenue')}
+                        className="space-y-3"
                       >
-                        <CardHeader>
-                          <CardTitle className="text-lg">View Salesforce Data</CardTitle>
-                          <CardDescription>
-                            Connect Salesforce and view Opportunities in MetricMind (read-only).
-                          </CardDescription>
-                        </CardHeader>
-                      </Card>
+                        <div className="flex items-start gap-3">
+                          <RadioGroupItem value="view" id="sf-usecase-view" className="mt-1" />
+                          <div className="space-y-1">
+                            <Label htmlFor="sf-usecase-view" className="font-medium">
+                              View Salesforce data (read-only)
+                            </Label>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                              Connect Salesforce and view Opportunities in MetricMind.
+                            </p>
+                          </div>
+                        </div>
 
-                      <Card
-                        className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
-                        onClick={() => setSalesforceUseCase('revenue')}
+                        <div className="flex items-start gap-3">
+                          <RadioGroupItem value="revenue" id="sf-usecase-revenue" className="mt-1" />
+                          <div className="space-y-1">
+                            <Label htmlFor="sf-usecase-revenue" className="font-medium">
+                              Use for revenue metrics
+                            </Label>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                              Map Opportunity fields and calculate conversion value to unlock ROI/ROAS.
+                            </p>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    </CardContent>
+                  </Card>
+
+                  {salesforceUseCase === 'view' ? (
+                    <div className="flex items-center gap-2">
+                      <Button onClick={() => void connectSalesforceViewOnly()} disabled={isSalesforceConnecting}>
+                        {isSalesforceConnecting ? "Connecting…" : "Connect Salesforce"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedCrmProvider(null);
+                          setSalesforceUseCase(null);
+                        }}
+                        disabled={isSalesforceConnecting}
                       >
-                        <CardHeader>
-                          <CardTitle className="text-lg">Use for Revenue Metrics</CardTitle>
-                          <CardDescription>
-                            Map Opportunity fields and calculate conversion value to unlock ROI/ROAS.
-                          </CardDescription>
-                        </CardHeader>
-                      </Card>
+                        Back
+                      </Button>
                     </div>
-                  </div>
-                ) : (
-                  <SalesforceRevenueWizard
-                    campaignId={campaignId}
-                    connectOnly={salesforceUseCase === 'view'}
-                    onConnected={() => {
-                      if (onDataConnected) onDataConnected();
-                      // Close after a successful connect-only flow
-                      if (salesforceUseCase === 'view') setTimeout(() => onClose(), 150);
-                    }}
-                    onBack={() => {
-                      setSalesforceUseCase(null);
-                      setSelectedCrmProvider(null);
-                    }}
-                    onClose={() => {
-                      if (onDataConnected) onDataConnected();
-                      setTimeout(() => onClose(), 150);
-                    }}
-                    onSuccess={() => {
-                      if (onDataConnected) onDataConnected();
-                    }}
-                  />
-                )
+                  ) : (
+                    <SalesforceRevenueWizard
+                      campaignId={campaignId}
+                      onBack={() => {
+                        setSelectedCrmProvider(null);
+                        setSalesforceUseCase(null);
+                      }}
+                      onClose={() => {
+                        if (onDataConnected) onDataConnected();
+                        setTimeout(() => onClose(), 150);
+                      }}
+                      onSuccess={() => {
+                        if (onDataConnected) onDataConnected();
+                      }}
+                    />
+                  )}
+                </div>
               )
             )}
           </div>

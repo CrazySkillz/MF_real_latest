@@ -21,8 +21,6 @@ interface UploadAdditionalDataModalProps {
   onDataConnected?: () => void;
   onOpenSalesforceViewer?: (args: { sourceId: string }) => void;
   onOpenSalesforceRevenueWizard?: () => void;
-  onSalesforceOauthTransitionStart?: () => void;
-  onSalesforceOauthTransitionEnd?: () => void;
   googleSheetsOnly?: boolean; // If true, skip source selection and go directly to Google Sheets
   autoStartMappingOnGoogleSheetsConnect?: boolean; // If true, immediately launch mapping after connecting sheets
   showGoogleSheetsUseCaseStep?: boolean; // If true, show "How will you use this Google Sheet?"
@@ -40,8 +38,6 @@ export function UploadAdditionalDataModal({
   onDataConnected,
   onOpenSalesforceViewer,
   onOpenSalesforceRevenueWizard,
-  onSalesforceOauthTransitionStart,
-  onSalesforceOauthTransitionEnd,
   googleSheetsOnly = false,
   autoStartMappingOnGoogleSheetsConnect = false,
   showGoogleSheetsUseCaseStep = false,
@@ -228,7 +224,6 @@ export function UploadAdditionalDataModal({
       if (!authUrl) throw new Error("No auth URL returned");
 
       // Close this modal before launching OAuth (prevents stacked UI).
-      onSalesforceOauthTransitionStart?.();
       onClose();
 
       const w = window.open(authUrl, "salesforce_oauth", "width=520,height=680");
@@ -241,7 +236,6 @@ export function UploadAdditionalDataModal({
 
         if (data.type === "salesforce_auth_success") {
           window.removeEventListener("message", onMessage);
-          onSalesforceOauthTransitionEnd?.();
           toast({
             title: "Salesforce Connected",
             description: "Opening revenue mapping wizard…",
@@ -250,7 +244,6 @@ export function UploadAdditionalDataModal({
           setTimeout(() => onOpenSalesforceRevenueWizard?.(), 0);
         } else if (data.type === "salesforce_auth_error") {
           window.removeEventListener("message", onMessage);
-          onSalesforceOauthTransitionEnd?.();
           toast({
             title: "Salesforce Connection Failed",
             description: data.error || "Please try again.",
@@ -261,7 +254,6 @@ export function UploadAdditionalDataModal({
 
       window.addEventListener("message", onMessage);
     } catch (err: any) {
-      onSalesforceOauthTransitionEnd?.();
       toast({
         title: "Salesforce Connection Failed",
         description: err?.message || "Please try again.",

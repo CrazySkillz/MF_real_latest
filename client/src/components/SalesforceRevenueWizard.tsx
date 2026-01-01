@@ -43,7 +43,8 @@ export function SalesforceRevenueWizard(props: {
   // This is the most universally available field and matches the desired default behavior.
   const [campaignField, setCampaignField] = useState<string>("Name");
   const [revenueField, setRevenueField] = useState<string>("Amount");
-  const [days, setDays] = useState<number>(90);
+  // Testing default: show older mock Opportunities (e.g. Jan 2025) in the Crosswalk list.
+  const [days, setDays] = useState<number>(3650);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);

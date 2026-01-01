@@ -107,24 +107,6 @@ export default function LinkedInAnalytics() {
     }
   }, [location]);
 
-  // Smooth OAuth transitions:
-  // - Prevent scrollbar/layout jumps while the connect modal closes and the wizard/viewer modal opens.
-  // - Only clear the dim overlay once a destination modal is actually open.
-  useEffect(() => {
-    if (!isSalesforceOauthTransitioning) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [isSalesforceOauthTransitioning]);
-
-  useEffect(() => {
-    if (isSalesforceViewerOpen || isSalesforceRevenueWizardOpen) {
-      setIsSalesforceOauthTransitioning(false);
-    }
-  }, [isSalesforceViewerOpen, isSalesforceRevenueWizardOpen]);
-
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
@@ -9060,10 +9042,12 @@ export default function LinkedInAnalytics() {
             queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
           }}
           onOpenSalesforceViewer={({ sourceId }) => {
+            setIsSalesforceOauthTransitioning(false);
             setSalesforceViewerSourceId(sourceId);
             setIsSalesforceViewerOpen(true);
           }}
           onOpenSalesforceRevenueWizard={() => {
+            setIsSalesforceOauthTransitioning(false);
             setIsSalesforceRevenueWizardOpen(true);
           }}
           onSalesforceOauthTransitionStart={() => setIsSalesforceOauthTransitioning(true)}
@@ -9112,7 +9096,7 @@ export default function LinkedInAnalytics() {
 
       {/* Dim the main screen during the OAuth -> wizard transition (prevents a bright flash when the connect modal closes). */}
       {isSalesforceOauthTransitioning && (
-        <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] transition-opacity duration-200 opacity-100" />
+        <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]" />
       )}
       </div>
     </TooltipProvider>

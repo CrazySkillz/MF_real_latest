@@ -39,7 +39,9 @@ export function SalesforceRevenueWizard(props: {
   const [fields, setFields] = useState<SalesforceField[]>([]);
   const [fieldsLoading, setFieldsLoading] = useState(false);
   const [fieldsError, setFieldsError] = useState<string | null>(null);
-  const [campaignField, setCampaignField] = useState<string>("");
+  // Default to Opportunity "Name" (Opportunity Name) for linking deals to campaigns.
+  // This is the most universally available field and matches the desired default behavior.
+  const [campaignField, setCampaignField] = useState<string>("Name");
   const [revenueField, setRevenueField] = useState<string>("Amount");
   const [days, setDays] = useState<number>(90);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -87,43 +89,12 @@ export function SalesforceRevenueWizard(props: {
     setOrgId(null);
     setFields([]);
     setFieldsError(null);
-    setCampaignField("");
+    setCampaignField("Name");
     setRevenueField("Amount");
     setUniqueValues([]);
     setSelectedValues([]);
     setLastSaveResult(null);
   }, [campaignId]);
-
-  const disconnect = async () => {
-    setIsConnecting(true);
-    try {
-      const resp = await fetch(`/api/salesforce/${campaignId}/connection`, { method: "DELETE" });
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.error || "Failed to disconnect Salesforce");
-
-      setOrgName(null);
-      setOrgId(null);
-      setFields([]);
-      setFieldsError(null);
-      setCampaignField("");
-      setUniqueValues([]);
-      setSelectedValues([]);
-      setStep("connect");
-
-      toast({
-        title: "Salesforce Disconnected",
-        description: "You can now reconnect to a different org (or reconnect again).",
-      });
-    } catch (err: any) {
-      toast({
-        title: "Failed to Disconnect Salesforce",
-        description: err?.message || "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsConnecting(false);
-    }
-  };
 
   const fetchFields = async () => {
     setFieldsLoading(true);
@@ -132,12 +103,25 @@ export function SalesforceRevenueWizard(props: {
       const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/fields`);
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load Opportunity fields");
-      const f = Array.isArray(json?.fields) ? json.fields : [];
-      setFields(f);
-      if (f.length === 0) {
+      const f = Array.isArray(json?.fields) ? (json.fields as SalesforceField[]) : [];
+
+      // Ensure Opportunity Name is always present (even if API omits it for any reason).
+      const hasName = f.some((x) => String(x?.name || "").toLowerCase() === "name");
+      const normalized: SalesforceField[] = hasName
+        ? f
+        : [{ name: "Name", label: "Opportunity Name", type: "string" }, ...f];
+
+      setFields(normalized);
+
+      // Default campaign field to Opportunity Name if it's available and nothing else is selected.
+      if (!campaignField || !normalized.some((x) => x.name === campaignField)) {
+        setCampaignField("Name");
+      }
+
+      if (normalized.length === 0) {
         setFieldsError("No Opportunity fields were returned. Please try again.");
       }
-      return f as SalesforceField[];
+      return normalized;
     } finally {
       setFieldsLoading(false);
     }
@@ -443,25 +427,6 @@ export function SalesforceRevenueWizard(props: {
 
           {step === "campaign-field" && (
             <div className="space-y-2">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div className="text-sm text-slate-600">
-                  {connectedLabel ? (
-                    <>
-                      Connected: <strong>{connectedLabel}</strong>
-                    </>
-                  ) : (
-                    "Salesforce is connected."
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                    {isConnecting ? "Reconnecting…" : "Reconnect"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => void disconnect()} disabled={isConnecting}>
-                    Disconnect
-                  </Button>
-                </div>
-              </div>
               <Label>Opportunity field used to attribute deals to this campaign</Label>
               <div className="text-xs text-slate-500">
                 Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}

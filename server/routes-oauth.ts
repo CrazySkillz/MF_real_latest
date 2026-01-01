@@ -4025,9 +4025,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const tryProps = async (includeCurrency: boolean) => {
             const headers = includeCurrency ? [...propsToFetch, 'CurrencyIsoCode'] : propsToFetch;
             const soql = `SELECT ${headers.join(', ')} FROM Opportunity WHERE ${whereParts.join(' AND ')} LIMIT ${Math.min(limit, 200)}`;
-            const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-            const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-            const json: any = await resp.json().catch(() => ({}));
+          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
             return { resp, json, headers };
           };
 
@@ -4472,6 +4472,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Salesforce Opportunity preview (before processing revenue metrics)
+  // Returns sample rows for the chosen attribution field + selected values + revenue field.
+  app.post("/api/salesforce/:campaignId/opportunities/preview", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const { campaignField, selectedValues, revenueField, days, limit } = req.body || {};
+
+      const attribField = String(campaignField || '').trim();
+      const revenue = String(revenueField || 'Amount').trim();
+      const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
+      const rangeDays = Math.min(Math.max(parseInt(String(days || '90'), 10) || 90, 1), 3650);
+      const rowLimit = Math.min(Math.max(parseInt(String(limit || '25'), 10) || 25, 5), 200);
+
+      if (!attribField) return res.status(400).json({ error: 'campaignField is required' });
+      if (selected.length === 0) return res.status(400).json({ error: 'selectedValues is required' });
+      if (!revenue) return res.status(400).json({ error: 'revenueField is required' });
+
+      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
+
+      // Helper: read a dynamic (possibly dotted) field from a record.
+      const readField = (rec: any, path: string): any => {
+        if (!rec || !path) return undefined;
+        if (Object.prototype.hasOwnProperty.call(rec, path)) return rec[path];
+        const parts = String(path).split('.').filter(Boolean);
+        let cur: any = rec;
+        for (const p of parts) {
+          if (!cur) return undefined;
+          cur = cur[p];
+        }
+        return cur;
+      };
+
+      const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
+
+      const buildSoql = (includeCurrency: boolean) => {
+        const baseFields = Array.from(
+          new Set([
+            'Id',
+            'Name',
+            'StageName',
+            'CloseDate',
+            attribField,
+            revenue,
+            ...(includeCurrency ? ['CurrencyIsoCode'] : []),
+          ])
+        );
+        const soql =
+          `SELECT ${baseFields.join(', ')} ` +
+          `FROM Opportunity ` +
+          `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
+          `ORDER BY CloseDate DESC ` +
+          `LIMIT ${rowLimit}`;
+        return { soql, headers: baseFields };
+      };
+
+      const tryQuery = async (includeCurrency: boolean): Promise<{ ok: boolean; headers: string[]; records?: any[]; error?: string }> => {
+        const { soql, headers } = buildSoql(includeCurrency);
+        const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+        const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const json: any = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          const msg = String(json?.[0]?.message || json?.message || 'Failed to load Salesforce preview');
+          return { ok: false, headers, error: msg };
+        }
+        const records = Array.isArray(json?.records) ? json.records : [];
+        return { ok: true, headers, records };
+      };
+
+      let result = await tryQuery(true);
+      if (!result.ok && String(result.error || '').toLowerCase().includes('currencyisocode')) {
+        result = await tryQuery(false);
+      }
+      if (!result.ok) return res.status(400).json({ error: result.error || 'Failed to load Salesforce preview' });
+
+      const headers = result.headers;
+      const records = result.records || [];
+      const rows = records.map((r: any) => headers.map((h: string) => String(readField(r, h) ?? '')));
+
+      res.json({
+        success: true,
+        campaignField: attribField,
+        revenueField: revenue,
+        days: rangeDays,
+        headers,
+        rows,
+        rowCount: rows.length,
+      });
+    } catch (error: any) {
+      console.error('[Salesforce Preview] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to load Salesforce preview' });
+    }
+  });
+
   // Salesforce save mappings (compute conversion value and unlock LinkedIn revenue metrics)
   app.post("/api/campaigns/:id/salesforce/save-mappings", async (req, res) => {
     try {
@@ -4517,13 +4611,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const fetchOppRecords = async (includeCurrency: boolean): Promise<{ records: any[]; includeCurrency: boolean }> => {
         const soql = buildSoql(includeCurrency);
-        let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+      let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
         const all: any[] = [];
-        let pages = 0;
-        while (nextUrl && pages < 25) {
-          const resp = await fetch(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) {
+      let pages = 0;
+      while (nextUrl && pages < 25) {
+        const resp = await fetch(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const json: any = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
             const msg = String(json?.[0]?.message || json?.message || '');
             const isInvalidCurrencyIsoCodeField =
               includeCurrency &&
@@ -4534,8 +4628,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return await fetchOppRecords(false);
             }
             return res.status(resp.status).json({ error: msg || 'Failed to load opportunities' }) as any;
-          }
-          const recs = Array.isArray(json?.records) ? json.records : [];
+        }
+        const recs = Array.isArray(json?.records) ? json.records : [];
           all.push(...recs);
           nextUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
           pages += 1;
@@ -4552,8 +4646,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { records, includeCurrency } = fetched as any;
       for (const rec of records) {
         const rRaw = readField(rec, revenue);
-        const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
-        if (Number.isFinite(r)) totalRevenue += r;
+          const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+          if (Number.isFinite(r)) totalRevenue += r;
         if (includeCurrency) {
           const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : '';
           if (c) currencies.add(c);

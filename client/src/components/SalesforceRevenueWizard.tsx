@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, CheckCircle2, DollarSign, Target, Link2, ClipboardCheck } from "lucide-react";
 
@@ -51,6 +52,11 @@ export function SalesforceRevenueWizard(props: {
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
+
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
+  const [previewRows, setPreviewRows] = useState<string[][]>([]);
 
   const steps = useMemo(
     () => [
@@ -255,6 +261,34 @@ export function SalesforceRevenueWizard(props: {
     return f?.label || revenueField || "Revenue field";
   }, [fields, revenueField]);
 
+  const preview = async () => {
+    setPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignField,
+          selectedValues,
+          revenueField,
+          days,
+          limit: 25,
+        }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || "Failed to load preview");
+      setPreviewHeaders(Array.isArray(json?.headers) ? json.headers : []);
+      setPreviewRows(Array.isArray(json?.rows) ? json.rows : []);
+    } catch (err: any) {
+      setPreviewError(err?.message || "Failed to load preview");
+      setPreviewHeaders([]);
+      setPreviewRows([]);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const save = async () => {
     setIsSaving(true);
     try {
@@ -324,6 +358,9 @@ export function SalesforceRevenueWizard(props: {
         return;
       }
       setStep("review");
+      // Best-effort preview on entry so users can sanity-check before processing.
+      // Don't block navigation if preview fails.
+      void preview();
       return;
     }
     if (step === "review") {
@@ -578,6 +615,61 @@ export function SalesforceRevenueWizard(props: {
           )}
 
           {step === "review" && <div />}
+
+          {step === "review" && (
+            <div className="space-y-3">
+              <div className="text-sm text-slate-700">
+                Preview the Opportunities that will be used to compute revenue for this campaign (Closed Won, last {days} days).
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-slate-500">
+                  Matching on <strong>{campaignFieldDisplay}</strong> · Revenue field <strong>{revenueFieldLabel}</strong> · Selected values{" "}
+                  <strong>{selectedValues.length}</strong>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => void preview()} disabled={previewLoading || isSaving}>
+                  {previewLoading ? "Loading…" : "Refresh preview"}
+                </Button>
+              </div>
+
+              {previewError && <div className="text-sm text-red-600">{previewError}</div>}
+
+              {!previewError && previewHeaders.length > 0 && (
+                <div className="border rounded">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {previewHeaders.map((h) => (
+                          <TableHead key={h} className="whitespace-nowrap">
+                            {h.toLowerCase() === "name" ? "Opportunity Name" : h}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewRows.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={previewHeaders.length} className="text-sm text-slate-500">
+                            No matching Opportunities found for the current filters.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        previewRows.map((row, idx) => (
+                          <TableRow key={idx}>
+                            {row.map((cell, j) => (
+                              <TableCell key={j} className="max-w-[320px] truncate">
+                                {cell}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          )}
 
           {step === "complete" && (
             <div className="space-y-3">

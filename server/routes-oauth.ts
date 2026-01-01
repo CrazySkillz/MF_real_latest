@@ -4017,20 +4017,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'Name',
             'StageName',
             'CloseDate',
-            'CurrencyIsoCode',
             revenueField,
             ...(attribField ? [attribField] : []),
           ]));
 
-          const soql = `SELECT ${propsToFetch.join(', ')} FROM Opportunity WHERE ${whereParts.join(' AND ')} LIMIT ${Math.min(limit, 200)}`;
-          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
+          // Try including CurrencyIsoCode, but fall back for orgs without multi-currency enabled.
+          const tryProps = async (includeCurrency: boolean) => {
+            const headers = includeCurrency ? [...propsToFetch, 'CurrencyIsoCode'] : propsToFetch;
+            const soql = `SELECT ${headers.join(', ')} FROM Opportunity WHERE ${whereParts.join(' AND ')} LIMIT ${Math.min(limit, 200)}`;
+            const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+            const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+            const json: any = await resp.json().catch(() => ({}));
+            return { resp, json, headers };
+          };
+
+          let { resp, json, headers } = await tryProps(true);
+          if (!resp.ok) {
+            const msg = String(json?.[0]?.message || json?.message || '');
+            if (msg.toLowerCase().includes('no such column') && msg.toLowerCase().includes('currencyisocode')) {
+              ({ resp, json, headers } = await tryProps(false));
+            }
+          }
           if (!resp.ok) {
             return res.status(resp.status).json({ error: json?.[0]?.message || json?.message || 'Failed to load Salesforce preview' });
           }
 
-          const headers = propsToFetch;
           const records = Array.isArray(json?.records) ? json.records : [];
           const rows = records.map((r: any) => headers.map((h: string) => String(r?.[h] ?? '')));
 
@@ -4494,35 +4505,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Query opportunities matching crosswalk values
       const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
-      const soql =
+
+      // Some orgs (non-multi-currency) do not have CurrencyIsoCode on Opportunity.
+      // We'll try with CurrencyIsoCode first, then fall back without it if Salesforce reports INVALID_FIELD.
+      const buildSoql = (includeCurrency: boolean) =>
         // Salesforce does not allow aliasing non-aggregate expressions in SOQL.
-        `SELECT Id, ${revenue}, CurrencyIsoCode ` +
+        `SELECT Id, ${revenue}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
         `FROM Opportunity ` +
         `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
         `LIMIT 2000`;
 
-      let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+      const fetchOppRecords = async (includeCurrency: boolean): Promise<{ records: any[]; includeCurrency: boolean }> => {
+        const soql = buildSoql(includeCurrency);
+        let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+        const all: any[] = [];
+        let pages = 0;
+        while (nextUrl && pages < 25) {
+          const resp = await fetch(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            const msg = String(json?.[0]?.message || json?.message || '');
+            const isInvalidCurrencyIsoCodeField =
+              includeCurrency &&
+              msg.toLowerCase().includes('no such column') &&
+              msg.toLowerCase().includes('currencyisocode');
+            if (isInvalidCurrencyIsoCodeField) {
+              // Retry without CurrencyIsoCode
+              return await fetchOppRecords(false);
+            }
+            return res.status(resp.status).json({ error: msg || 'Failed to load opportunities' }) as any;
+          }
+          const recs = Array.isArray(json?.records) ? json.records : [];
+          all.push(...recs);
+          nextUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
+          pages += 1;
+        }
+        return { records: all, includeCurrency };
+      };
+
       let totalRevenue = 0;
       const currencies = new Set<string>();
-      let pages = 0;
-      while (nextUrl && pages < 25) {
-        const resp = await fetch(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-        const json: any = await resp.json().catch(() => ({}));
-        if (!resp.ok) {
-          return res.status(resp.status).json({ error: json?.[0]?.message || json?.message || 'Failed to load opportunities' });
-        }
-        const recs = Array.isArray(json?.records) ? json.records : [];
-        for (const rec of recs) {
-          const rRaw = readField(rec, revenue);
-          const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
-          if (Number.isFinite(r)) totalRevenue += r;
+
+      const fetched = await fetchOppRecords(true);
+      // If fetchOppRecords returned an Express response (error), stop here.
+      if (!fetched || typeof (fetched as any).includeCurrency !== 'boolean') return;
+      const { records, includeCurrency } = fetched as any;
+      for (const rec of records) {
+        const rRaw = readField(rec, revenue);
+        const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+        if (Number.isFinite(r)) totalRevenue += r;
+        if (includeCurrency) {
           const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : '';
           if (c) currencies.add(c);
         }
-        nextUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
-        pages += 1;
       }
 
+      // Only enforce currency homogeneity when CurrencyIsoCode exists in the org.
       if (currencies.size > 1) {
         return res.status(400).json({
           error: `Multiple currencies found for the selected opportunities (${Array.from(currencies).join(', ')}). Please filter Salesforce records to a single currency.`,

@@ -272,14 +272,14 @@ export function SalesforceRevenueWizard(props: {
       if (!resp.ok) throw new Error(json?.error || "Failed to save mappings");
       setLastSaveResult(json);
       toast({
-        title: "Salesforce Mappings Saved",
+        title: "Revenue Metrics Processed",
         description: `Conversion value calculated: $${json?.conversionValue || "0"} per conversion.`,
       });
       onSuccess?.(json);
       setStep("complete");
     } catch (err: any) {
       toast({
-        title: "Failed to Save Salesforce Mappings",
+        title: "Failed to Process Revenue Metrics",
         description: err?.message || "Please try again.",
         variant: "destructive",
       });

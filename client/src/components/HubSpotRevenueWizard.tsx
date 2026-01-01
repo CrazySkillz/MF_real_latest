@@ -196,7 +196,7 @@ export function HubSpotRevenueWizard(props: {
         });
       }
     })();
-  }, [step, properties.length, toast]);
+  }, [step, portalId, properties.length, toast]);
 
   const campaignPropertyLabel = useMemo(() => {
     const p = properties.find((x) => x.name === campaignProperty);
@@ -419,7 +419,7 @@ export function HubSpotRevenueWizard(props: {
                   <SelectTrigger>
                     <SelectValue placeholder="Select a HubSpot deal field…" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[10000]">
                     {properties.map((p) => (
                       <SelectItem key={p.name} value={p.name}>
                         {p.label} ({p.name})
@@ -496,7 +496,7 @@ export function HubSpotRevenueWizard(props: {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[10000]">
                     {properties
                       .filter((p) => p.type === "number" || p.name === "amount")
                       .map((p) => (

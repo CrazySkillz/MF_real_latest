@@ -3912,6 +3912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const salesforceSources = (salesforceConnections || []).map((conn: any) => {
         let hasMappings = false;
         let usedForRevenueTracking = false;
+        let mappingSummary: any = null;
         try {
           const cfgRaw = conn.mappingConfig;
           const cfg = cfgRaw ? (typeof cfgRaw === 'string' ? JSON.parse(cfgRaw) : cfgRaw) : null;
@@ -3922,9 +3923,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             Array.isArray(cfg.selectedValues) &&
             cfg.selectedValues.length > 0 &&
             !!cfg.revenueField;
+
+          if (usedForRevenueTracking) {
+            const campaignField = String(cfg.campaignField || '').trim();
+            const revenueField = String(cfg.revenueField || '').trim();
+            const selectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)).filter(Boolean) : [];
+            const campaignFieldLabel = campaignField.toLowerCase() === 'name' ? 'Opportunity Name' : campaignField;
+            const revenueFieldLabel = revenueField || 'Amount';
+            const sample = selectedValues.slice(0, 1);
+            mappingSummary = {
+              campaignField: campaignFieldLabel,
+              revenueField: revenueFieldLabel,
+              selectedValuesCount: selectedValues.length,
+              selectedValuesSample: sample,
+            };
+          }
         } catch {
           hasMappings = false;
           usedForRevenueTracking = false;
+          mappingSummary = null;
         }
 
         const isActive = !!conn.isActive;
@@ -3939,6 +3956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connectedAt: conn.connectedAt,
           hasMappings,
           usedForRevenueTracking,
+          mappingSummary,
           campaignName: campaign?.name || null,
           orgId: conn.orgId || null,
           orgName: conn.orgName || null,

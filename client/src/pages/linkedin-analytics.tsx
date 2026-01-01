@@ -3872,6 +3872,32 @@ export default function LinkedInAnalytics() {
                               </div>
                             )}
 
+                            {source.type === 'salesforce' && source.mappingSummary && (
+                              <div className="text-xs text-slate-500 space-y-1">
+                                <div>
+                                  Match: <span className="font-medium">{source.mappingSummary.campaignField}</span>
+                                </div>
+                                <div>
+                                  Revenue: <span className="font-medium">{source.mappingSummary.revenueField}</span>
+                                </div>
+                                <div>
+                                  Values:{" "}
+                                  <span className="font-medium">
+                                    {Number(source.mappingSummary.selectedValuesCount || 0)}
+                                  </span>
+                                  {Array.isArray(source.mappingSummary.selectedValuesSample) &&
+                                    source.mappingSummary.selectedValuesSample.length > 0 && (
+                                      <>
+                                        {" "}
+                                        <span className="text-slate-400">
+                                          (e.g. {String(source.mappingSummary.selectedValuesSample[0] || '')})
+                                        </span>
+                                      </>
+                                    )}
+                                </div>
+                              </div>
+                            )}
+
                             <div className="flex flex-wrap gap-2">
                               <Button
                                 variant="outline"

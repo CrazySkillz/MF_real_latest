@@ -158,13 +158,9 @@ export function UploadAdditionalDataModal({
       const w = window.open(authUrl, "shopify_oauth", "width=520,height=680");
       if (!w) throw new Error("Popup blocked. Please allow popups and try again.");
 
-      const onMessage = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
-        const data: any = event.data;
+      const handleResult = (data: any) => {
         if (!data || typeof data !== "object") return;
-
         if (data.type === "shopify_auth_success") {
-          window.removeEventListener("message", onMessage);
           toast({
             title: "Shopify Connected",
             description: `Connected to ${data.shopName || data.shopDomain || "your store"}.`,
@@ -174,17 +170,46 @@ export function UploadAdditionalDataModal({
             if ((shopifyUseCase || "view") === "view") onOpenShopifyViewer?.();
             else onOpenShopifyRevenueWizard?.();
           }, 0);
-        } else if (data.type === "shopify_auth_error") {
-          window.removeEventListener("message", onMessage);
+          return true;
+        }
+        if (data.type === "shopify_auth_error") {
           toast({
             title: "Shopify Connection Failed",
             description: data.error || "Please try again.",
             variant: "destructive",
           });
+          return true;
+        }
+        return false;
+      };
+
+      const onWindowMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        if (handleResult(event.data)) {
+          window.removeEventListener("message", onWindowMessage);
+          try {
+            bc?.close();
+          } catch {}
         }
       };
 
-      window.addEventListener("message", onMessage);
+      // Also listen via BroadcastChannel in case Shopify COOP breaks window.opener.
+      let bc: BroadcastChannel | null = null;
+      try {
+        bc = new BroadcastChannel("metricmind_oauth");
+        bc.onmessage = (ev) => {
+          if (handleResult((ev as any).data)) {
+            window.removeEventListener("message", onWindowMessage);
+            try {
+              bc?.close();
+            } catch {}
+          }
+        };
+      } catch {
+        bc = null;
+      }
+
+      window.addEventListener("message", onWindowMessage);
     } catch (err: any) {
       toast({
         title: 'Shopify Connection Failed',

@@ -1212,6 +1212,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <h2>${ok ? "✓" : ""} ${title}</h2>
             <p style="max-width: 820px; margin: 12px auto; color: #555;">${body}</p>
             <script>
+              // Shopify may set Cross-Origin-Opener-Policy (COOP) on its pages, which can break window.opener.
+              // Use BroadcastChannel as a reliable same-origin signal back to the main app.
+              try {
+                const bc = new BroadcastChannel('metricmind_oauth');
+                bc.postMessage(Object.assign({ type: ${JSON.stringify(type)} }, ${payloadJson}));
+                bc.close();
+              } catch (e) {}
               if (window.opener) {
                 window.opener.postMessage(Object.assign({ type: ${JSON.stringify(type)} }, ${payloadJson}), window.location.origin);
               }

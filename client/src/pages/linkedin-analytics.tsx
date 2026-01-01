@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
+import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -116,7 +117,9 @@ export default function LinkedInAnalytics() {
 
   const [isConnectedDataModalOpen, setIsConnectedDataModalOpen] = useState(false);
   const [isEditMappingModalOpen, setIsEditMappingModalOpen] = useState(false);
+  const [isEditSalesforceWizardOpen, setIsEditSalesforceWizardOpen] = useState(false);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
+  const [salesforceEditConnectionId, setSalesforceEditConnectionId] = useState<string | null>(null);
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
@@ -194,6 +197,22 @@ export default function LinkedInAnalytics() {
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         throw new Error(json?.error || json?.details || 'Failed to load preview');
+      }
+      return json;
+    },
+    staleTime: 0,
+  });
+
+  const { data: salesforceEditConnectionData, isLoading: salesforceEditLoading, error: salesforceEditError } = useQuery<any>({
+    queryKey: ["/api/salesforce", campaignId, "connection", salesforceEditConnectionId],
+    enabled: !!campaignId && !!salesforceEditConnectionId && isEditSalesforceWizardOpen,
+    queryFn: async () => {
+      const resp = await fetch(
+        `/api/salesforce/${campaignId}/connection?connectionId=${encodeURIComponent(String(salesforceEditConnectionId))}`
+      );
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(json?.error || "Failed to load Salesforce connection");
       }
       return json;
     },
@@ -3808,6 +3827,7 @@ export default function LinkedInAnalytics() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {connectedSources.map((source: any) => {
                       const isSheets = source.type === 'google_sheets';
+                      const isSalesforce = source.type === 'salesforce';
                       const otherRevenueSourcesCount = connectedSources.filter(
                         (s: any) => s.id !== source.id && s.usedForRevenueTracking && s.isActive !== false
                       ).length;
@@ -3872,6 +3892,20 @@ export default function LinkedInAnalytics() {
                                   onClick={() => {
                                     setSelectedSourceId(source.id);
                                     setIsEditMappingModalOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {isSalesforce && (
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  title="Edit revenue mapping"
+                                  aria-label="Edit revenue mapping"
+                                  onClick={() => {
+                                    setSalesforceEditConnectionId(source.id);
+                                    setIsEditSalesforceWizardOpen(true);
                                   }}
                                 >
                                   <Pencil className="w-4 h-4" />
@@ -4019,6 +4053,50 @@ export default function LinkedInAnalytics() {
                         />
                       );
                     })()}
+                  </DialogContent>
+                </Dialog>
+
+                {/* Edit Salesforce Revenue Mapping */}
+                <Dialog
+                  open={isEditSalesforceWizardOpen}
+                  onOpenChange={(open) => {
+                    setIsEditSalesforceWizardOpen(open);
+                    if (!open) setSalesforceEditConnectionId(null);
+                  }}
+                >
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Edit Salesforce Revenue Mapping</DialogTitle>
+                      <DialogDescription>
+                        Update the mapping fields and re-process revenue metrics. Changes won’t apply until you click “Process Revenue Metrics”.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    {salesforceEditLoading ? (
+                      <div className="py-10 text-center text-slate-500">Loading mapping…</div>
+                    ) : salesforceEditError ? (
+                      <div className="py-10 text-center text-red-600">
+                        {(salesforceEditError as any)?.message || "Failed to load Salesforce mapping."}
+                      </div>
+                    ) : (
+                      <SalesforceRevenueWizard
+                        campaignId={campaignId!}
+                        mode="edit"
+                        initialMappingConfig={salesforceEditConnectionData?.connection?.mappingConfig || null}
+                        onClose={() => {
+                          setIsEditSalesforceWizardOpen(false);
+                          setSalesforceEditConnectionId(null);
+                          void refetchConnectedDataSources();
+                        }}
+                        onSuccess={() => {
+                          setIsEditSalesforceWizardOpen(false);
+                          setSalesforceEditConnectionId(null);
+                          void refetchConnectedDataSources();
+                          void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                          void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+                        }}
+                      />
+                    )}
                   </DialogContent>
                 </Dialog>
               </TabsContent>

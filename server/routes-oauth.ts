@@ -4323,6 +4323,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get Salesforce connection details (including mappingConfig) for editing/reprocessing
+  app.get("/api/salesforce/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { connectionId } = req.query as any;
+
+      const conns = await storage.getSalesforceConnections(campaignId);
+      const active = (conns || []).filter((c: any) => (c as any).isActive !== false);
+      const selected =
+        connectionId
+          ? active.find((c: any) => String(c?.id) === String(connectionId))
+          : active[active.length - 1];
+
+      if (!selected) return res.status(404).json({ error: "Salesforce connection not found" });
+
+      let mappingConfig: any = null;
+      try {
+        mappingConfig = (selected as any).mappingConfig ? JSON.parse(String((selected as any).mappingConfig)) : null;
+      } catch {
+        mappingConfig = null;
+      }
+
+      res.json({
+        success: true,
+        connection: {
+          id: (selected as any).id,
+          orgId: (selected as any).orgId || null,
+          orgName: (selected as any).orgName || null,
+          isActive: (selected as any).isActive !== false,
+          mappingConfig,
+          connectedAt: (selected as any).connectedAt || null,
+        },
+      });
+    } catch (error: any) {
+      console.error("[Salesforce Connection] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to load Salesforce connection" });
+    }
+  });
+
   // Salesforce connection status
   app.get("/api/salesforce/:campaignId/status", async (req, res) => {
     try {

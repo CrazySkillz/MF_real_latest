@@ -22,11 +22,18 @@ type UniqueValue = {
 
 export function SalesforceRevenueWizard(props: {
   campaignId: string;
+  mode?: "connect" | "edit";
+  initialMappingConfig?: {
+    campaignField?: string;
+    selectedValues?: string[];
+    revenueField?: string;
+    days?: number;
+  } | null;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
   onClose?: () => void;
 }) {
-  const { campaignId, onBack, onSuccess, onClose } = props;
+  const { campaignId, mode = "connect", initialMappingConfig = null, onBack, onSuccess, onClose } = props;
   const { toast } = useToast();
 
   type Step = "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
@@ -88,20 +95,41 @@ export function SalesforceRevenueWizard(props: {
     return false;
   };
 
-  // IMPORTANT UX: Always start the wizard fresh on "Connect" with no pre-populated org/settings.
-  // OAuth should only happen when the user clicks "Connect Salesforce".
+  // IMPORTANT UX:
+  // - connect mode: start fresh on "Connect" with no pre-populated org/settings.
+  // - edit mode: prefill from saved mappingConfig and start at campaign-field.
   useEffect(() => {
-    setStep("connect");
-    setOrgName(null);
-    setOrgId(null);
+    if (mode === "connect") {
+      setStep("connect");
+      setOrgName(null);
+      setOrgId(null);
+      setFields([]);
+      setFieldsError(null);
+      setCampaignField("Name");
+      setRevenueField("Amount");
+      setUniqueValues([]);
+      setSelectedValues([]);
+      setLastSaveResult(null);
+      return;
+    }
+
+    // edit mode: prefill mapping and jump into guided steps
+    const cfg = initialMappingConfig || {};
+    const nextCampaignField = cfg.campaignField ? String(cfg.campaignField) : "Name";
+    const nextRevenueField = cfg.revenueField ? String(cfg.revenueField) : "Amount";
+    const nextSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v) => String(v)) : [];
+    const nextDays = Number.isFinite(Number(cfg.days)) ? Math.min(Math.max(Number(cfg.days), 1), 3650) : days;
+
+    setStep("campaign-field");
     setFields([]);
     setFieldsError(null);
-    setCampaignField("Name");
-    setRevenueField("Amount");
+    setCampaignField(nextCampaignField);
+    setRevenueField(nextRevenueField);
+    setSelectedValues(nextSelectedValues);
     setUniqueValues([]);
-    setSelectedValues([]);
+    setDays(nextDays);
     setLastSaveResult(null);
-  }, [campaignId]);
+  }, [campaignId, mode, initialMappingConfig]);
 
   const fetchFields = async () => {
     setFieldsLoading(true);

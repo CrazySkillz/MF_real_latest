@@ -231,10 +231,32 @@ export function UploadAdditionalDataModal({
           window.removeEventListener("message", onMessage);
           toast({
             title: "Salesforce Connected",
-            description: "You can now view Salesforce data in MetricMind.",
+            description: "Opening Salesforce data preview…",
           });
           if (onDataConnected) onDataConnected();
-          setTimeout(() => onClose(), 150);
+          // Navigate user straight to the Connected Data Sources tab and auto-open the Salesforce raw data modal
+          // (this is where the column chooser lives).
+          (async () => {
+            try {
+              const resp = await fetch(`/api/campaigns/${campaignId}/connected-data-sources`);
+              const json = await resp.json().catch(() => ({}));
+              const sources = Array.isArray(json?.sources) ? json.sources : [];
+              const sf = sources
+                .filter((s: any) => s?.type === 'salesforce' && s?.isActive !== false)
+                .sort((a: any, b: any) => new Date(b?.connectedAt || 0).getTime() - new Date(a?.connectedAt || 0).getTime())[0];
+              const sfId = sf?.id ? String(sf.id) : null;
+
+              const base = new URL(window.location.href);
+              base.searchParams.set('tab', 'connected-data');
+              if (sfId) {
+                base.searchParams.set('openSourceId', sfId);
+              }
+              window.location.href = base.toString();
+            } catch {
+              // fallback: just close the modal; user can use Connected Data Sources tab manually
+              setTimeout(() => onClose(), 150);
+            }
+          })();
         } else if (data.type === "salesforce_auth_error") {
           window.removeEventListener("message", onMessage);
           toast({

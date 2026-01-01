@@ -4385,9 +4385,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const counts = new Map<string, number>();
 
+      // Salesforce does not allow aliasing non-aggregate expressions in SOQL (e.g. "Name v").
+      // Helper: read a dynamic (possibly dotted) field from a record.
+      const readField = (rec: any, path: string): any => {
+        if (!rec || !path) return undefined;
+        // Fast path
+        if (Object.prototype.hasOwnProperty.call(rec, path)) return rec[path];
+        // Nested path (e.g. Owner.Name)
+        const parts = String(path).split('.').filter(Boolean);
+        let cur: any = rec;
+        for (const p of parts) {
+          if (!cur) return undefined;
+          cur = cur[p];
+        }
+        return cur;
+      };
+
       // Prefer aggregate query (fast). Some fields can't be GROUP BY'd; if so, fall back to row scan.
       const soqlAgg =
-        `SELECT ${field} v, COUNT(Id) c ` +
+        `SELECT ${field}, COUNT(Id) c ` +
         `FROM Opportunity ` +
         `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null ` +
         `GROUP BY ${field} ` +
@@ -4399,7 +4415,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const aggJson: any = await aggResp.json().catch(() => ({}));
       if (aggResp.ok && Array.isArray(aggJson?.records)) {
         for (const r of aggJson.records) {
-          const v = r?.v === undefined || r?.v === null ? '' : String(r.v).trim();
+          const raw = readField(r, field);
+          const v = raw === undefined || raw === null ? '' : String(raw).trim();
           if (!v) continue;
           const c = Number(r?.c);
           counts.set(v, Number.isFinite(c) ? c : 1);
@@ -4421,7 +4438,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           const recs = Array.isArray(json?.records) ? json.records : [];
           for (const rec of recs) {
-            const v = rec?.[field] === undefined || rec?.[field] === null ? '' : String(rec[field]).trim();
+            const raw = readField(rec, field);
+            const v = raw === undefined || raw === null ? '' : String(raw).trim();
             if (!v) continue;
             counts.set(v, (counts.get(v) || 0) + 1);
             if (counts.size >= limit) break;
@@ -4461,10 +4479,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
 
+      // Helper: read a dynamic (possibly dotted) field from a record.
+      const readField = (rec: any, path: string): any => {
+        if (!rec || !path) return undefined;
+        if (Object.prototype.hasOwnProperty.call(rec, path)) return rec[path];
+        const parts = String(path).split('.').filter(Boolean);
+        let cur: any = rec;
+        for (const p of parts) {
+          if (!cur) return undefined;
+          cur = cur[p];
+        }
+        return cur;
+      };
+
       // Query opportunities matching crosswalk values
       const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
       const soql =
-        `SELECT Id, ${revenue} r, CurrencyIsoCode c ` +
+        // Salesforce does not allow aliasing non-aggregate expressions in SOQL.
+        `SELECT Id, ${revenue}, CurrencyIsoCode ` +
         `FROM Opportunity ` +
         `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
         `LIMIT 2000`;
@@ -4481,10 +4513,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         const recs = Array.isArray(json?.records) ? json.records : [];
         for (const rec of recs) {
-          const rRaw = rec?.r;
+          const rRaw = readField(rec, revenue);
           const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
           if (Number.isFinite(r)) totalRevenue += r;
-          const c = rec?.c ? String(rec.c).trim() : '';
+          const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : '';
           if (c) currencies.add(c);
         }
         nextUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;

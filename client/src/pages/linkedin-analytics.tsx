@@ -9096,7 +9096,13 @@ export default function LinkedInAnalytics() {
 
       {/* Dim the main screen during the OAuth -> wizard transition (prevents a bright flash when the connect modal closes). */}
       {isSalesforceOauthTransitioning && (
-        <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]" />
+        <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="rounded-lg border border-slate-200 bg-white/90 dark:bg-slate-900/90 dark:border-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 shadow">
+              Connecting to Salesforce…
+            </div>
+          </div>
+        </div>
       )}
       </div>
     </TooltipProvider>

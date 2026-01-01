@@ -69,16 +69,21 @@ class ErrorBoundary extends Component<Props, State> {
                   <p className="text-sm font-mono text-destructive break-all">
                     {this.state.error.toString()}
                   </p>
-                  {this.state.errorInfo && (
-                    <details className="mt-2">
-                      <summary className="text-sm text-muted-foreground cursor-pointer">
-                        Stack trace
-                      </summary>
+                  <details className="mt-2">
+                    <summary className="text-sm text-muted-foreground cursor-pointer">
+                      Stack trace
+                    </summary>
+                    {"stack" in this.state.error && (this.state.error as any).stack && (
+                      <pre className="mt-2 text-xs overflow-auto max-h-48 bg-slate-900 text-slate-100 p-2 rounded">
+                        {(this.state.error as any).stack}
+                      </pre>
+                    )}
+                    {this.state.errorInfo && (
                       <pre className="mt-2 text-xs overflow-auto max-h-48 bg-slate-900 text-slate-100 p-2 rounded">
                         {this.state.errorInfo.componentStack}
                       </pre>
-                    </details>
-                  )}
+                    )}
+                  </details>
                 </div>
               )}
               <div className="flex gap-2">

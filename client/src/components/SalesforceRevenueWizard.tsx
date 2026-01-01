@@ -39,7 +39,9 @@ export function SalesforceRevenueWizard(props: {
   const { toast } = useToast();
 
   type Step = "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
-  const [step, setStep] = useState<Step>("connect");
+  // UX: OAuth happens before this wizard opens (from the Connect Additional Data flow),
+  // so start at Campaign field (no separate Connect step).
+  const [step, setStep] = useState<Step>("campaign-field");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -69,7 +71,6 @@ export function SalesforceRevenueWizard(props: {
 
   const steps = useMemo(
     () => [
-      { id: "connect" as const, label: "Connect", icon: Building2 },
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
       { id: "revenue" as const, label: "Revenue", icon: DollarSign },
@@ -98,11 +99,11 @@ export function SalesforceRevenueWizard(props: {
   };
 
   // IMPORTANT UX:
-  // - connect mode: start fresh on "Connect" with no pre-populated org/settings.
+  // - connect mode: start fresh on "Campaign field" (no Connect step) with no pre-populated org/settings.
   // - edit mode: prefill from saved mappingConfig and start at campaign-field.
   useEffect(() => {
     if (mode === "connect") {
-      setStep("connect");
+      setStep("campaign-field");
       setOrgName(null);
       setOrgId(null);
       setFields([]);
@@ -132,6 +133,18 @@ export function SalesforceRevenueWizard(props: {
     setDays(nextDays);
     setLastSaveResult(null);
   }, [campaignId, mode, initialMappingConfig]);
+
+  // Best-effort: fetch connection status so we can show the connected org name on the first step,
+  // or show an inline Connect CTA if the user somehow gets here without a connection.
+  useEffect(() => {
+    void (async () => {
+      try {
+        await fetchStatus();
+      } catch {
+        // ignore (wizard can still load fields if backend allows; otherwise user can connect)
+      }
+    })();
+  }, [campaignId]);
 
   const fetchFields = async () => {
     setFieldsLoading(true);
@@ -406,7 +419,11 @@ export function SalesforceRevenueWizard(props: {
   };
 
   const handleBackStep = () => {
-    if (step === "campaign-field") return setStep("connect");
+    if (step === "campaign-field") {
+      onBack?.();
+      if (!onBack) onClose?.();
+      return;
+    }
     if (step === "crosswalk") return setStep("campaign-field");
     if (step === "revenue") return setStep("crosswalk");
     if (step === "review") return setStep("revenue");
@@ -454,12 +471,6 @@ export function SalesforceRevenueWizard(props: {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {step === "connect" && (
-              <>
-                <Building2 className="w-5 h-5 text-blue-600" />
-                Connect Salesforce
-              </>
-            )}
             {step === "campaign-field" && (
               <>
                 <Target className="w-5 h-5 text-blue-600" />
@@ -492,7 +503,6 @@ export function SalesforceRevenueWizard(props: {
             )}
           </CardTitle>
           <CardDescription>
-            {step === "connect" && "Connect Salesforce so MetricMind can read Opportunities and calculate revenue metrics."}
             {step === "campaign-field" &&
               `${connectedLabel ? `Connected: ${connectedLabel}. ` : "Salesforce is connected. "}Select the Opportunity field that identifies which deals belong to this MetricMind campaign.`}
             {step === "crosswalk" &&
@@ -504,21 +514,29 @@ export function SalesforceRevenueWizard(props: {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {step === "connect" && (
-            <div className="flex items-center gap-3">
-              <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                {isConnecting ? "Connecting…" : "Connect Salesforce"}
-              </Button>
-              {onBack && (
-                <Button variant="outline" onClick={onBack} disabled={isConnecting}>
-                  Back
-                </Button>
-              )}
-            </div>
-          )}
-
           {step === "campaign-field" && (
             <div className="space-y-2">
+              {!orgId && (
+                <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    Connect Salesforce to continue
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Salesforce must be connected before we can load Opportunity fields.
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                      {isConnecting ? "Connecting…" : "Connect Salesforce"}
+                    </Button>
+                    {onBack && (
+                      <Button variant="outline" onClick={onBack} disabled={isConnecting}>
+                        Back
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
               <Label>Opportunity field used to attribute deals to this campaign</Label>
               <div className="text-xs text-slate-500">
                 Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}

@@ -766,6 +766,26 @@ export function UploadAdditionalDataModal({
                         Back
                       </Button>
                     </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => {
+                          onClose();
+                          setTimeout(() => onOpenSalesforceRevenueWizard?.(), 0);
+                        }}
+                      >
+                        Open Revenue Wizard
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedCrmProvider(null);
+                          setSalesforceUseCase(null);
+                        }}
+                      >
+                        Back
+                      </Button>
+                    </div>
                   )}
                 </div>
               )

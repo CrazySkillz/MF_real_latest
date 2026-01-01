@@ -627,9 +627,6 @@ export function SalesforceRevenueWizard(props: {
                   Matching on <strong>{campaignFieldDisplay}</strong> · Revenue field <strong>{revenueFieldLabel}</strong> · Selected values{" "}
                   <strong>{selectedValues.length}</strong>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => void preview()} disabled={previewLoading || isSaving}>
-                  {previewLoading ? "Loading…" : "Refresh preview"}
-                </Button>
               </div>
 
               {previewError && <div className="text-sm text-red-600">{previewError}</div>}
@@ -639,7 +636,9 @@ export function SalesforceRevenueWizard(props: {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        {previewHeaders.map((h) => (
+                        {previewHeaders
+                          .filter((h) => String(h).toLowerCase() !== "id")
+                          .map((h) => (
                           <TableHead key={h} className="whitespace-nowrap">
                             {h.toLowerCase() === "name" ? "Opportunity Name" : h}
                           </TableHead>
@@ -649,18 +648,23 @@ export function SalesforceRevenueWizard(props: {
                     <TableBody>
                       {previewRows.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={previewHeaders.length} className="text-sm text-slate-500">
+                          <TableCell
+                            colSpan={previewHeaders.filter((h) => String(h).toLowerCase() !== "id").length}
+                            className="text-sm text-slate-500"
+                          >
                             No matching Opportunities found for the current filters.
                           </TableCell>
                         </TableRow>
                       ) : (
                         previewRows.map((row, idx) => (
                           <TableRow key={idx}>
-                            {row.map((cell, j) => (
-                              <TableCell key={j} className="max-w-[320px] truncate">
-                                {cell}
-                              </TableCell>
-                            ))}
+                            {row
+                              .filter((_, j) => String(previewHeaders[j] || "").toLowerCase() !== "id")
+                              .map((cell, j) => (
+                                <TableCell key={j} className="max-w-[320px] truncate">
+                                  {cell}
+                                </TableCell>
+                              ))}
                           </TableRow>
                         ))
                       )}

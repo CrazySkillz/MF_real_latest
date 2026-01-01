@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -77,7 +77,7 @@ export function SalesforceDataViewerModal(props: {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-[360px_1fr] gap-4 h-[calc(90vh-140px)]">
+        <div className="grid grid-cols-1 md:grid-cols-[360px_1fr] gap-4 h-[calc(90vh-200px)]">
           {/* Left: column chooser */}
           <div className="border rounded-lg p-3 flex flex-col min-h-0">
             <div className="flex items-center justify-between gap-2">
@@ -167,9 +167,6 @@ export function SalesforceDataViewerModal(props: {
                   No horizontal scrolling: each row is shown as a vertical record with your selected fields.
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-                Close
-              </Button>
             </div>
 
             {selectedLabels.length > 0 && (
@@ -227,6 +224,20 @@ export function SalesforceDataViewerModal(props: {
             </ScrollArea>
           </div>
         </div>
+
+        <DialogFooter className="flex items-center justify-between sm:justify-between">
+          <div className="text-xs text-slate-500">
+            Tip: you can reopen this anytime from <span className="font-medium">Connected Data Sources → Salesforce → View Raw Data</span>.
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => onOpenChange(false)}>
+              Done
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

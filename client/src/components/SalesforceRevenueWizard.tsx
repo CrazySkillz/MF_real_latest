@@ -107,9 +107,18 @@ export function SalesforceRevenueWizard(props: {
 
       // Ensure Opportunity Name is always present (even if API omits it for any reason).
       const hasName = f.some((x) => String(x?.name || "").toLowerCase() === "name");
-      const normalized: SalesforceField[] = hasName
+      const withName: SalesforceField[] = hasName
         ? f
         : [{ name: "Name", label: "Opportunity Name", type: "string" }, ...f];
+
+      // Normalize display label for Salesforce's standard "Name" field so the UI always shows "Opportunity Name".
+      const normalized: SalesforceField[] = withName.map((field) => {
+        const apiName = String((field as any)?.name || "");
+        if (apiName.toLowerCase() === "name") {
+          return { ...field, name: "Name", label: "Opportunity Name", type: field.type || "string" };
+        }
+        return field;
+      });
 
       setFields(normalized);
 
@@ -231,6 +240,14 @@ export function SalesforceRevenueWizard(props: {
     const f = fields.find((x) => x.name === campaignField);
     return f?.label || campaignField || "Campaign field";
   }, [fields, campaignField]);
+
+  const campaignFieldDisplay = useMemo(() => {
+    if (fieldsLoading) return "Loading fields…";
+    // If we're defaulted to Salesforce API field "Name", always display the friendly label.
+    if (String(campaignField || "").toLowerCase() === "name") return "Opportunity Name";
+    const f = fields.find((x) => x.name === campaignField);
+    return f?.label || "Select an Opportunity field…";
+  }, [campaignField, fields, fieldsLoading]);
 
   const revenueFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === revenueField);
@@ -434,7 +451,7 @@ export function SalesforceRevenueWizard(props: {
               </div>
               <Select value={campaignField} onValueChange={(v) => setCampaignField(v)} disabled={fieldsLoading}>
                 <SelectTrigger>
-                  <SelectValue placeholder={fieldsLoading ? "Loading fields…" : "Select an Opportunity field…"} />
+                  <span>{campaignFieldDisplay}</span>
                 </SelectTrigger>
                 <SelectContent className="z-[10000]">
                   {fields

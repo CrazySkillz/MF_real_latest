@@ -442,7 +442,7 @@ export function SalesforceRevenueWizard(props: {
                     .sort((a, b) => a.label.localeCompare(b.label))
                     .map((f) => (
                       <SelectItem key={f.name} value={f.name}>
-                        {f.label} ({f.name})
+                        {f.label}
                       </SelectItem>
                     ))}
                 </SelectContent>

@@ -107,22 +107,6 @@ export default function LinkedInAnalytics() {
     }
   }, [location]);
 
-  // Auto-open raw data modal when deep-linked from connect flows (e.g., Salesforce "View data" connect).
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const openSourceId = params.get('openSourceId');
-    const tab = params.get('tab');
-    if (!openSourceId) return;
-    if (tab && tab !== 'connected-data') return;
-
-    setSelectedSourceId(openSourceId);
-    setIsConnectedDataModalOpen(true);
-
-    // Clean up the URL param so it doesn't reopen on refresh.
-    params.delete('openSourceId');
-    const next = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState({}, '', next.endsWith('?') ? window.location.pathname : next);
-  }, [location]);
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);

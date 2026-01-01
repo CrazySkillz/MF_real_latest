@@ -12,6 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface UploadAdditionalDataModalProps {
   isOpen: boolean;
@@ -43,6 +46,9 @@ export function UploadAdditionalDataModal({
   const [selectedCrmProvider, setSelectedCrmProvider] = useState<'hubspot' | 'salesforce' | null>(null);
   const [salesforceUseCase, setSalesforceUseCase] = useState<'view' | 'revenue' | null>(null);
   const [isSalesforceConnecting, setIsSalesforceConnecting] = useState(false);
+  const [salesforceViewStep, setSalesforceViewStep] = useState<'connect' | 'preview'>('connect');
+  const [salesforceViewSourceId, setSalesforceViewSourceId] = useState<string | null>(null);
+  const [salesforceViewColumns, setSalesforceViewColumns] = useState<string[]>(["Name", "StageName", "CloseDate", "Amount"]);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
@@ -83,6 +89,9 @@ export function UploadAdditionalDataModal({
       setSelectedCrmProvider(null);
       setSalesforceUseCase(null);
       setIsSalesforceConnecting(false);
+      setSalesforceViewStep('connect');
+      setSalesforceViewSourceId(null);
+      setSalesforceViewColumns(["Name", "StageName", "CloseDate", "Amount"]);
       setShowDatasetsView(false);
       setJustConnected(false);
       setShowGuidedMapping(false);
@@ -231,30 +240,28 @@ export function UploadAdditionalDataModal({
           window.removeEventListener("message", onMessage);
           toast({
             title: "Salesforce Connected",
-            description: "Opening Salesforce data preview…",
+            description: "Connected successfully. Loading preview…",
           });
-          if (onDataConnected) onDataConnected();
-          // Navigate user straight to the Connected Data Sources tab and auto-open the Salesforce raw data modal
-          // (this is where the column chooser lives).
+          // Keep the user in this modal (Google Sheets pattern) and show the in-modal preview + column chooser.
           (async () => {
             try {
-              const resp = await fetch(`/api/campaigns/${campaignId}/connected-data-sources`);
-              const json = await resp.json().catch(() => ({}));
-              const sources = Array.isArray(json?.sources) ? json.sources : [];
+              const resp2 = await fetch(`/api/campaigns/${campaignId}/connected-data-sources`);
+              const json2 = await resp2.json().catch(() => ({}));
+              const sources = Array.isArray(json2?.sources) ? json2.sources : [];
               const sf = sources
                 .filter((s: any) => s?.type === 'salesforce' && s?.isActive !== false)
                 .sort((a: any, b: any) => new Date(b?.connectedAt || 0).getTime() - new Date(a?.connectedAt || 0).getTime())[0];
               const sfId = sf?.id ? String(sf.id) : null;
-
-              const base = new URL(window.location.href);
-              base.searchParams.set('tab', 'connected-data');
-              if (sfId) {
-                base.searchParams.set('openSourceId', sfId);
-              }
-              window.location.href = base.toString();
-            } catch {
-              // fallback: just close the modal; user can use Connected Data Sources tab manually
-              setTimeout(() => onClose(), 150);
+              if (!sfId) throw new Error("Salesforce connected, but no active source was found.");
+              setSalesforceViewSourceId(sfId);
+              setSalesforceViewStep('preview');
+              if (onDataConnected) onDataConnected();
+            } catch (e: any) {
+              toast({
+                title: "Connected, but preview failed to load",
+                description: e?.message || "Please open Connected Data Sources to preview Salesforce data.",
+                variant: "destructive",
+              });
             }
           })();
         } else if (data.type === "salesforce_auth_error") {
@@ -278,6 +285,47 @@ export function UploadAdditionalDataModal({
       setIsSalesforceConnecting(false);
     }
   };
+
+  const { data: salesforceFieldsData } = useQuery({
+    queryKey: ["/api/salesforce", campaignId, "opportunities", "fields"],
+    enabled: isOpen && selectedCrmProvider === 'salesforce' && salesforceUseCase === 'view' && salesforceViewStep === 'preview' && !!campaignId,
+    queryFn: async () => {
+      const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/fields`);
+      if (!resp.ok) throw new Error(`Failed to load Salesforce fields (HTTP ${resp.status})`);
+      return await resp.json();
+    }
+  });
+
+  const {
+    data: salesforceViewPreview,
+    isLoading: salesforceViewPreviewLoading,
+    error: salesforceViewPreviewError,
+  } = useQuery({
+    queryKey: [
+      "/api/campaigns",
+      campaignId,
+      "connected-data-sources",
+      salesforceViewSourceId,
+      "preview",
+      salesforceViewColumns.join(","),
+    ],
+    enabled:
+      isOpen &&
+      selectedCrmProvider === 'salesforce' &&
+      salesforceUseCase === 'view' &&
+      salesforceViewStep === 'preview' &&
+      !!campaignId &&
+      !!salesforceViewSourceId,
+    queryFn: async () => {
+      const columnsParam =
+        salesforceViewColumns.length > 0 ? `&columns=${encodeURIComponent(salesforceViewColumns.join(","))}` : "";
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/connected-data-sources/${salesforceViewSourceId}/preview?limit=50${columnsParam}`
+      );
+      if (!resp.ok) throw new Error(`Failed to load Salesforce preview (HTTP ${resp.status})`);
+      return await resp.json();
+    },
+  });
 
   const dialogTitle = (() => {
     if (googleSheetsOnly) return "Add Google Sheets Dataset";
@@ -741,21 +789,147 @@ export function UploadAdditionalDataModal({
                   </Card>
 
                   {salesforceUseCase === 'view' ? (
-                    <div className="flex items-center gap-2">
-                      <Button onClick={() => void connectSalesforceViewOnly()} disabled={isSalesforceConnecting}>
-                        {isSalesforceConnecting ? "Connecting…" : "Connect Salesforce"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedCrmProvider(null);
-                          setSalesforceUseCase(null);
-                        }}
-                        disabled={isSalesforceConnecting}
-                      >
-                        Back
-                      </Button>
-                    </div>
+                    salesforceViewStep === 'connect' ? (
+                      <div className="flex items-center gap-2">
+                        <Button onClick={() => void connectSalesforceViewOnly()} disabled={isSalesforceConnecting}>
+                          {isSalesforceConnecting ? "Connecting…" : "Connect Salesforce"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCrmProvider(null);
+                            setSalesforceUseCase(null);
+                          }}
+                          disabled={isSalesforceConnecting}
+                        >
+                          Back
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <div className="text-sm font-medium">Salesforce Opportunities (preview)</div>
+                            <div className="text-xs text-slate-500">First 50 rows. Use “Choose columns” to control what’s shown.</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  Choose columns
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[340px] p-3">
+                                <div className="text-sm font-medium mb-2">Select columns to display</div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const all = Array.isArray((salesforceFieldsData as any)?.fields)
+                                        ? (salesforceFieldsData as any).fields
+                                        : [];
+                                      const names = all.map((f: any) => String(f.name)).filter(Boolean).slice(0, 30);
+                                      setSalesforceViewColumns(names);
+                                    }}
+                                  >
+                                    Select all
+                                  </Button>
+                                  <Button type="button" variant="outline" size="sm" onClick={() => setSalesforceViewColumns([])}>
+                                    Clear
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSalesforceViewColumns(["Name", "StageName", "CloseDate", "Amount"])}
+                                  >
+                                    Reset
+                                  </Button>
+                                </div>
+                                <ScrollArea className="h-[280px] border rounded p-2">
+                                  {Array.isArray((salesforceFieldsData as any)?.fields) && (salesforceFieldsData as any).fields.length > 0 ? (
+                                    <div className="space-y-2">
+                                      {(salesforceFieldsData as any).fields
+                                        .slice()
+                                        .sort((a: any, b: any) => String(a.label || '').localeCompare(String(b.label || '')))
+                                        .map((f: any) => {
+                                          const name = String(f.name || '');
+                                          const label = String(f.label || name);
+                                          const checked = salesforceViewColumns.includes(name);
+                                          return (
+                                            <label key={name} className="flex items-start gap-2 text-sm cursor-pointer">
+                                              <Checkbox
+                                                checked={checked}
+                                                onCheckedChange={(next) => {
+                                                  setSalesforceViewColumns((prev) => {
+                                                    const set = new Set(prev);
+                                                    if (next) set.add(name);
+                                                    else set.delete(name);
+                                                    return Array.from(set);
+                                                  });
+                                                }}
+                                              />
+                                              <span className="flex-1">
+                                                <span className="font-medium">{label}</span>
+                                                <span className="text-slate-400"> ({name})</span>
+                                              </span>
+                                            </label>
+                                          );
+                                        })}
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-slate-500">Loading fields…</div>
+                                  )}
+                                </ScrollArea>
+                              </PopoverContent>
+                            </Popover>
+                            <Button variant="outline" size="sm" onClick={() => setSalesforceViewStep('connect')}>
+                              Back
+                            </Button>
+                            <Button size="sm" onClick={() => onClose()}>
+                              Done
+                            </Button>
+                          </div>
+                        </div>
+
+                        {salesforceViewPreviewLoading ? (
+                          <div className="py-10 text-center text-slate-500">Loading preview…</div>
+                        ) : salesforceViewPreviewError ? (
+                          <div className="py-10 text-center text-red-600">
+                            {(salesforceViewPreviewError as any)?.message || 'Failed to load preview.'}
+                          </div>
+                        ) : salesforceViewPreview ? (
+                          <div className="overflow-x-auto border rounded">
+                            <table className="w-full text-sm">
+                              <thead className="bg-slate-50 dark:bg-slate-800">
+                                <tr>
+                                  {((salesforceViewPreview as any).headers || []).map((h: any, i: number) => (
+                                    <th key={i} className="text-left px-3 py-2 font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                                      {String(h || `Col ${i + 1}`)}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {((salesforceViewPreview as any).rows || []).map((row: any[], rIdx: number) => (
+                                  <tr key={rIdx} className="border-t">
+                                    {((salesforceViewPreview as any).headers || []).map((_h: any, cIdx: number) => (
+                                      <td key={cIdx} className="px-3 py-2 whitespace-nowrap">
+                                        {String((row || [])[cIdx] ?? '')}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="py-10 text-center text-slate-500">No preview available.</div>
+                        )}
+                      </div>
+                    )
                   ) : (
                     <SalesforceRevenueWizard
                       campaignId={campaignId}

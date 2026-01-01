@@ -816,41 +816,27 @@ export function UploadAdditionalDataModal({
                     </CardContent>
                   </Card>
 
-                  {salesforceUseCase === 'view' ? (
-                    <div className="flex items-center gap-2">
-                      <Button onClick={() => void connectSalesforceViewOnly()} disabled={isSalesforceConnecting}>
-                        {isSalesforceConnecting ? "Connecting…" : "Connect Salesforce"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedCrmProvider(null);
-                          setSalesforceUseCase(null);
-                        }}
-                        disabled={isSalesforceConnecting}
-                      >
-                        Back
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        onClick={() => void connectSalesforceRevenueFlow()}
-                        disabled={isSalesforceConnecting}
-                      >
-                        {isSalesforceConnecting ? "Connecting…" : "Connect Salesforce"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedCrmProvider(null);
-                          setSalesforceUseCase(null);
-                        }}
-                      >
-                        Back
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => {
+                        if ((salesforceUseCase || 'view') === 'view') void connectSalesforceViewOnly();
+                        else void connectSalesforceRevenueFlow();
+                      }}
+                      disabled={isSalesforceConnecting}
+                    >
+                      {isSalesforceConnecting ? "Connecting…" : "Connect Salesforce"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedCrmProvider(null);
+                        setSalesforceUseCase(null);
+                      }}
+                      disabled={isSalesforceConnecting}
+                    >
+                      Back
+                    </Button>
+                  </div>
                 </div>
               )
             )}

@@ -6,7 +6,6 @@ import { FileSpreadsheet, Building2, ShoppingCart, Code, Upload, CheckCircle2, M
 import { SimpleGoogleSheetsAuth } from "./SimpleGoogleSheetsAuth";
 import { GoogleSheetsDatasetsView } from "./GoogleSheetsDatasetsView";
 import { GuidedColumnMapping } from "./GuidedColumnMapping";
-import { HubSpotRevenueWizard } from "./HubSpotRevenueWizard";
 import { SalesforceRevenueWizard } from "./SalesforceRevenueWizard";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +20,7 @@ interface UploadAdditionalDataModalProps {
   onDataConnected?: () => void;
   onOpenSalesforceViewer?: (args: { sourceId: string }) => void;
   onOpenSalesforceRevenueWizard?: () => void;
+  onOpenHubspotRevenueWizard?: () => void;
   googleSheetsOnly?: boolean; // If true, skip source selection and go directly to Google Sheets
   autoStartMappingOnGoogleSheetsConnect?: boolean; // If true, immediately launch mapping after connecting sheets
   showGoogleSheetsUseCaseStep?: boolean; // If true, show "How will you use this Google Sheet?"
@@ -38,6 +38,7 @@ export function UploadAdditionalDataModal({
   onDataConnected,
   onOpenSalesforceViewer,
   onOpenSalesforceRevenueWizard,
+  onOpenHubspotRevenueWizard,
   googleSheetsOnly = false,
   autoStartMappingOnGoogleSheetsConnect = false,
   showGoogleSheetsUseCaseStep = false,
@@ -194,6 +195,61 @@ export function UploadAdditionalDataModal({
       title: "Coming Soon",
       description: `${sourceName} integration will be available soon.`,
     });
+  };
+
+  const connectHubspotRevenueFlow = async () => {
+    if (!campaignId) return;
+    setIsSalesforceConnecting(true);
+    try {
+      const resp = await fetch("/api/auth/hubspot/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.message || json?.error || "Failed to start HubSpot OAuth");
+      const authUrl = json?.authUrl;
+      if (!authUrl) throw new Error("No auth URL returned");
+
+      // Close this modal before launching OAuth (prevents stacked UI).
+      onClose();
+
+      const w = window.open(authUrl, "hubspot_oauth", "width=520,height=680");
+      if (!w) throw new Error("Popup blocked. Please allow popups and try again.");
+
+      const onMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        const data: any = event.data;
+        if (!data || typeof data !== "object") return;
+
+        if (data.type === "hubspot_auth_success") {
+          window.removeEventListener("message", onMessage);
+          toast({
+            title: "HubSpot Connected",
+            description: "Opening revenue mapping wizard…",
+          });
+          if (onDataConnected) onDataConnected();
+          setTimeout(() => onOpenHubspotRevenueWizard?.(), 0);
+        } else if (data.type === "hubspot_auth_error") {
+          window.removeEventListener("message", onMessage);
+          toast({
+            title: "HubSpot Connection Failed",
+            description: data.error || "Please try again.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      window.addEventListener("message", onMessage);
+    } catch (err: any) {
+      toast({
+        title: "HubSpot Connection Failed",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSalesforceConnecting(false);
+    }
   };
 
   const connectSalesforceRevenueFlow = async () => {
@@ -730,7 +786,7 @@ export function UploadAdditionalDataModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card
                   className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
-                  onClick={() => setSelectedCrmProvider('hubspot')}
+                  onClick={() => void connectHubspotRevenueFlow()}
                 >
                   <CardHeader>
                     <CardTitle className="text-lg">HubSpot</CardTitle>
@@ -756,19 +812,7 @@ export function UploadAdditionalDataModal({
                 </Card>
               </div>
             ) : (
-              selectedCrmProvider === 'hubspot' ? (
-                <HubSpotRevenueWizard
-                  campaignId={campaignId}
-                  onBack={() => setSelectedCrmProvider(null)}
-                  onClose={() => {
-                    if (onDataConnected) onDataConnected();
-                    setTimeout(() => onClose(), 150);
-                  }}
-                  onSuccess={() => {
-                    if (onDataConnected) onDataConnected();
-                  }}
-                />
-              ) : (
+              (
                 <div className="space-y-4">
                   <Card className="border-slate-200 dark:border-slate-700">
                     <CardHeader className="pb-3">

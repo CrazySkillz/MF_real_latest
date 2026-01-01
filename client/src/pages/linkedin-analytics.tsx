@@ -4,6 +4,7 @@ import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModa
 import { SalesforceDataViewerModal } from "@/components/SalesforceDataViewerModal";
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
 import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
+import { HubSpotRevenueWizard } from "@/components/HubSpotRevenueWizard";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -115,6 +116,7 @@ export default function LinkedInAnalytics() {
   const [isSalesforceViewerOpen, setIsSalesforceViewerOpen] = useState(false);
   const [salesforceViewerSourceId, setSalesforceViewerSourceId] = useState<string | null>(null);
   const [isSalesforceRevenueWizardOpen, setIsSalesforceRevenueWizardOpen] = useState(false);
+  const [isHubspotRevenueWizardOpen, setIsHubspotRevenueWizardOpen] = useState(false);
   const [uploadModalDefaultGoogleSheetsUseCase, setUploadModalDefaultGoogleSheetsUseCase] = useState<'view' | 'enhance'>('view');
   const openConnectAdditionalDataModal = (defaultUseCase: 'view' | 'enhance' = 'view') => {
     setUploadModalDefaultGoogleSheetsUseCase(defaultUseCase);
@@ -9047,6 +9049,9 @@ export default function LinkedInAnalytics() {
           onOpenSalesforceRevenueWizard={() => {
             setIsSalesforceRevenueWizardOpen(true);
           }}
+          onOpenHubspotRevenueWizard={() => {
+            setIsHubspotRevenueWizardOpen(true);
+          }}
           autoStartMappingOnGoogleSheetsConnect={false}
           showGoogleSheetsUseCaseStep={true}
           defaultGoogleSheetsUseCase={uploadModalDefaultGoogleSheetsUseCase}
@@ -9081,6 +9086,33 @@ export default function LinkedInAnalytics() {
               }}
               onSuccess={() => {
                 setIsSalesforceRevenueWizardOpen(false);
+                void refetchConnectedDataSources();
+                void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* HubSpot Revenue Wizard (OAuth happens first; wizard starts at campaign field) */}
+      {campaignId && (
+        <Dialog open={isHubspotRevenueWizardOpen} onOpenChange={setIsHubspotRevenueWizardOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>HubSpot Revenue Metrics</DialogTitle>
+              <DialogDescription>
+                Choose Deal fields and process revenue metrics for this campaign.
+              </DialogDescription>
+            </DialogHeader>
+            <HubSpotRevenueWizard
+              campaignId={campaignId}
+              onBack={() => setIsHubspotRevenueWizardOpen(false)}
+              onClose={() => {
+                setIsHubspotRevenueWizardOpen(false);
+                void refetchConnectedDataSources();
+              }}
+              onSuccess={() => {
+                setIsHubspotRevenueWizardOpen(false);
                 void refetchConnectedDataSources();
                 void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
               }}

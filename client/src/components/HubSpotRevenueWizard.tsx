@@ -29,8 +29,9 @@ export function HubSpotRevenueWizard(props: {
   const { campaignId, onBack, onSuccess, onClose } = props;
   const { toast } = useToast();
 
-  type Step = "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
-  const [step, setStep] = useState<Step>("connect");
+  type Step = "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
+  // UX: avoid an intermediate "Connect HubSpot" screen; start at Campaign field.
+  const [step, setStep] = useState<Step>("campaign-field");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -50,7 +51,6 @@ export function HubSpotRevenueWizard(props: {
 
   const steps = useMemo(
     () => [
-      { id: "connect" as const, label: "Connect", icon: Building2 },
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
       { id: "revenue" as const, label: "Revenue", icon: DollarSign },
@@ -183,6 +183,7 @@ export function HubSpotRevenueWizard(props: {
   // When entering configure step, load properties once
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
+    if (!portalId) return; // don't fetch fields until connected
     if (properties.length > 0) return;
     (async () => {
       try {
@@ -242,11 +243,15 @@ export function HubSpotRevenueWizard(props: {
   };
 
   const handleNext = async () => {
-    if (step === "connect") {
-      // connect happens via OAuth button; keep Next disabled here
-      return;
-    }
     if (step === "campaign-field") {
+      if (!portalId) {
+        toast({
+          title: "Connect HubSpot",
+          description: "Please connect HubSpot before selecting deal fields.",
+          variant: "destructive",
+        });
+        return;
+      }
       if (!campaignProperty) {
         toast({
           title: "Select a field",
@@ -289,7 +294,11 @@ export function HubSpotRevenueWizard(props: {
   };
 
   const handleBackStep = () => {
-    if (step === "campaign-field") return setStep("connect");
+    if (step === "campaign-field") {
+      onBack?.();
+      if (!onBack) onClose?.();
+      return;
+    }
     if (step === "crosswalk") return setStep("campaign-field");
     if (step === "revenue") return setStep("crosswalk");
     if (step === "review") return setStep("revenue");
@@ -338,12 +347,6 @@ export function HubSpotRevenueWizard(props: {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {step === "connect" && (
-              <>
-                <Building2 className="w-5 h-5 text-blue-600" />
-                Connect HubSpot
-              </>
-            )}
             {step === "campaign-field" && (
               <>
                 <Target className="w-5 h-5 text-blue-600" />
@@ -376,7 +379,6 @@ export function HubSpotRevenueWizard(props: {
             )}
           </CardTitle>
           <CardDescription>
-            {step === "connect" && "Connect your HubSpot account so MetricMind can read Deals and calculate revenue metrics."}
             {step === "campaign-field" &&
               `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : "HubSpot is connected. "}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`}
             {step === "crosswalk" &&
@@ -388,24 +390,32 @@ export function HubSpotRevenueWizard(props: {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {step === "connect" && (
-            <div className="flex items-center gap-3">
-              <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                {isConnecting ? "Connecting…" : "Connect HubSpot"}
-              </Button>
-              {onBack && (
-                <Button variant="outline" onClick={onBack} disabled={isConnecting}>
-                  Back
-                </Button>
-              )}
-            </div>
-          )}
-
           {step === "campaign-field" && (
             <div className="space-y-3">
+              {!portalId && (
+                <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    Connect HubSpot to continue
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    HubSpot must be connected before we can load Deal properties.
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                      {isConnecting ? "Connecting…" : "Connect HubSpot"}
+                    </Button>
+                    {onBack && (
+                      <Button variant="outline" onClick={onBack} disabled={isConnecting}>
+                        Back
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>HubSpot deal field used to attribute deals to this campaign</Label>
-                <Select value={campaignProperty} onValueChange={(v) => setCampaignProperty(v)}>
+                <Select value={campaignProperty} onValueChange={(v) => setCampaignProperty(v)} disabled={!portalId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a HubSpot deal field…" />
                   </SelectTrigger>

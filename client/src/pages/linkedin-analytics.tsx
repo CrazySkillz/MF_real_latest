@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
+import { SalesforceDataViewerModal } from "@/components/SalesforceDataViewerModal";
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
 import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -112,6 +113,8 @@ export default function LinkedInAnalytics() {
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isUploadDataModalOpen, setIsUploadDataModalOpen] = useState(false);
+  const [isSalesforceViewerOpen, setIsSalesforceViewerOpen] = useState(false);
+  const [salesforceViewerSourceId, setSalesforceViewerSourceId] = useState<string | null>(null);
   const [uploadModalDefaultGoogleSheetsUseCase, setUploadModalDefaultGoogleSheetsUseCase] = useState<'view' | 'enhance'>('view');
   const openConnectAdditionalDataModal = (defaultUseCase: 'view' | 'enhance' = 'view') => {
     setUploadModalDefaultGoogleSheetsUseCase(defaultUseCase);
@@ -9037,9 +9040,22 @@ export default function LinkedInAnalytics() {
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-data-sources"] });
             queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
           }}
+          onOpenSalesforceViewer={({ sourceId }) => {
+            setSalesforceViewerSourceId(sourceId);
+            setIsSalesforceViewerOpen(true);
+          }}
           autoStartMappingOnGoogleSheetsConnect={false}
           showGoogleSheetsUseCaseStep={true}
           defaultGoogleSheetsUseCase={uploadModalDefaultGoogleSheetsUseCase}
+        />
+      )}
+
+      {campaignId && (
+        <SalesforceDataViewerModal
+          open={isSalesforceViewerOpen}
+          onOpenChange={setIsSalesforceViewerOpen}
+          campaignId={campaignId}
+          sourceId={salesforceViewerSourceId}
         />
       )}
       </div>

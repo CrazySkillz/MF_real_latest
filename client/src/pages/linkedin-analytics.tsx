@@ -16,6 +16,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -120,6 +122,7 @@ export default function LinkedInAnalytics() {
   const [isEditSalesforceWizardOpen, setIsEditSalesforceWizardOpen] = useState(false);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [salesforceEditConnectionId, setSalesforceEditConnectionId] = useState<string | null>(null);
+  const [salesforcePreviewColumns, setSalesforcePreviewColumns] = useState<string[]>([]);
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
@@ -145,6 +148,20 @@ export default function LinkedInAnalytics() {
   });
 
   const connectedSources = connectedDataSourcesData?.sources || [];
+
+  const selectedSourceForPreview = useMemo(() => {
+    if (!selectedSourceId) return null;
+    return connectedSources.find((s: any) => s.id === selectedSourceId) || null;
+  }, [connectedSources, selectedSourceId]);
+
+  const isSalesforcePreview = !!selectedSourceForPreview && selectedSourceForPreview.type === 'salesforce';
+
+  // Default columns for Salesforce raw preview (view-only workflow)
+  useEffect(() => {
+    if (!isConnectedDataModalOpen || !isSalesforcePreview) return;
+    if (salesforcePreviewColumns.length > 0) return;
+    setSalesforcePreviewColumns(["Name", "StageName", "CloseDate", "Amount"]);
+  }, [isConnectedDataModalOpen, isSalesforcePreview, salesforcePreviewColumns.length]);
 
   const deleteSourceMutation = useMutation({
     mutationFn: async (args: { sourceId: string; sourceType: string }) => {
@@ -190,14 +207,29 @@ export default function LinkedInAnalytics() {
   });
 
   const { data: selectedSourcePreview, isLoading: previewLoading, error: previewError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "connected-data-sources", selectedSourceId, "preview"],
+    queryKey: ["/api/campaigns", campaignId, "connected-data-sources", selectedSourceId, "preview", isSalesforcePreview ? salesforcePreviewColumns.join(",") : ""],
     enabled: !!campaignId && !!selectedSourceId && isConnectedDataModalOpen,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/connected-data-sources/${selectedSourceId}/preview?limit=50`);
+      const columnsParam = isSalesforcePreview && salesforcePreviewColumns.length > 0
+        ? `&columns=${encodeURIComponent(salesforcePreviewColumns.join(","))}`
+        : "";
+      const resp = await fetch(`/api/campaigns/${campaignId}/connected-data-sources/${selectedSourceId}/preview?limit=50${columnsParam}`);
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         throw new Error(json?.error || json?.details || 'Failed to load preview');
       }
+      return json;
+    },
+    staleTime: 0,
+  });
+
+  const { data: salesforceFieldsData } = useQuery<any>({
+    queryKey: ["/api/salesforce", campaignId, "opportunities", "fields"],
+    enabled: !!campaignId && isConnectedDataModalOpen && isSalesforcePreview,
+    queryFn: async () => {
+      const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/fields`);
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || "Failed to load Salesforce fields");
       return json;
     },
     staleTime: 0,
@@ -4009,6 +4041,88 @@ export default function LinkedInAnalytics() {
                           {selectedSourcePreview.spreadsheetName || selectedSourcePreview.spreadsheetId}
                           {selectedSourcePreview.sheetName ? ` • ${selectedSourcePreview.sheetName}` : ''}
                         </div>
+
+                        {isSalesforcePreview && (
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs text-slate-500">
+                              Columns: <span className="font-medium">{salesforcePreviewColumns.length}</span>
+                            </div>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  Choose columns
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[340px] p-3">
+                                <div className="text-sm font-medium mb-2">Select columns to display</div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const all = Array.isArray(salesforceFieldsData?.fields) ? salesforceFieldsData.fields : [];
+                                      const names = all.map((f: any) => String(f.name)).filter(Boolean).slice(0, 30);
+                                      setSalesforcePreviewColumns(names);
+                                    }}
+                                  >
+                                    Select all
+                                  </Button>
+                                  <Button type="button" variant="outline" size="sm" onClick={() => setSalesforcePreviewColumns([])}>
+                                    Clear
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSalesforcePreviewColumns(["Name", "StageName", "CloseDate", "Amount"])}
+                                  >
+                                    Reset
+                                  </Button>
+                                </div>
+                                <ScrollArea className="h-[280px] border rounded p-2">
+                                  {Array.isArray(salesforceFieldsData?.fields) && salesforceFieldsData.fields.length > 0 ? (
+                                    <div className="space-y-2">
+                                      {salesforceFieldsData.fields
+                                        .slice()
+                                        .sort((a: any, b: any) => String(a.label || '').localeCompare(String(b.label || '')))
+                                        .map((f: any) => {
+                                          const name = String(f.name || '');
+                                          const label = String(f.label || name);
+                                          const checked = salesforcePreviewColumns.includes(name);
+                                          return (
+                                            <label key={name} className="flex items-start gap-2 text-sm cursor-pointer">
+                                              <Checkbox
+                                                checked={checked}
+                                                onCheckedChange={(next) => {
+                                                  setSalesforcePreviewColumns((prev) => {
+                                                    const set = new Set(prev);
+                                                    if (next) set.add(name);
+                                                    else set.delete(name);
+                                                    return Array.from(set);
+                                                  });
+                                                }}
+                                              />
+                                              <span className="flex-1">
+                                                <span className="font-medium">{label}</span>
+                                                <span className="text-slate-400"> ({name})</span>
+                                              </span>
+                                            </label>
+                                          );
+                                        })}
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-slate-500">Loading fields…</div>
+                                  )}
+                                </ScrollArea>
+                                <div className="text-xs text-slate-500 mt-2">
+                                  Note: row filtering (Closed Won + date window) is unchanged; this only controls displayed columns.
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        )}
+
                         <div className="overflow-x-auto border rounded">
                           <table className="w-full text-sm">
                             <thead className="bg-slate-50 dark:bg-slate-800">

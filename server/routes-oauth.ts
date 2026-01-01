@@ -3984,6 +3984,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const sourceId = req.params.sourceId;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 10), 200);
+      const columnsParam = String((req.query as any)?.columns || '').trim();
+      const parseColumns = (raw: string): string[] => {
+        if (!raw) return [];
+        return raw
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          // Safe SOQL identifier-ish: allow dotted paths (Owner.Name) and underscores.
+          .filter((s) => /^[A-Za-z_][A-Za-z0-9_.]*$/.test(s))
+          .slice(0, 30);
+      };
+      const requestedColumns = parseColumns(columnsParam);
 
       // NOTE: `sourceId` is the Google Sheets *connection id* (not spreadsheetId).
       // Pull from the campaign's connections list and find by id.
@@ -4030,14 +4042,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             whereParts.push(`${attribField} IN (${quoted})`);
           }
 
-          const propsToFetch = Array.from(new Set([
-            'Id',
+          const defaultCols = [
             'Name',
             'StageName',
             'CloseDate',
             revenueField,
             ...(attribField ? [attribField] : []),
-          ]));
+          ];
+          const propsToFetch = Array.from(new Set((requestedColumns.length > 0 ? requestedColumns : defaultCols)));
 
           // Try including CurrencyIsoCode, but fall back for orgs without multi-currency enabled.
           const tryProps = async (includeCurrency: boolean) => {

@@ -115,6 +115,7 @@ export default function LinkedInAnalytics() {
   const [isUploadDataModalOpen, setIsUploadDataModalOpen] = useState(false);
   const [isSalesforceViewerOpen, setIsSalesforceViewerOpen] = useState(false);
   const [salesforceViewerSourceId, setSalesforceViewerSourceId] = useState<string | null>(null);
+  const [isSalesforceRevenueWizardOpen, setIsSalesforceRevenueWizardOpen] = useState(false);
   const [uploadModalDefaultGoogleSheetsUseCase, setUploadModalDefaultGoogleSheetsUseCase] = useState<'view' | 'enhance'>('view');
   const openConnectAdditionalDataModal = (defaultUseCase: 'view' | 'enhance' = 'view') => {
     setUploadModalDefaultGoogleSheetsUseCase(defaultUseCase);
@@ -9044,6 +9045,9 @@ export default function LinkedInAnalytics() {
             setSalesforceViewerSourceId(sourceId);
             setIsSalesforceViewerOpen(true);
           }}
+          onOpenSalesforceRevenueWizard={() => {
+            setIsSalesforceRevenueWizardOpen(true);
+          }}
           autoStartMappingOnGoogleSheetsConnect={false}
           showGoogleSheetsUseCaseStep={true}
           defaultGoogleSheetsUseCase={uploadModalDefaultGoogleSheetsUseCase}
@@ -9057,6 +9061,33 @@ export default function LinkedInAnalytics() {
           campaignId={campaignId}
           sourceId={salesforceViewerSourceId}
         />
+      )}
+
+      {/* Salesforce Revenue Wizard (separate modal for a cleaner flow) */}
+      {campaignId && (
+        <Dialog open={isSalesforceRevenueWizardOpen} onOpenChange={setIsSalesforceRevenueWizardOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Salesforce Revenue Metrics</DialogTitle>
+              <DialogDescription>
+                Connect Salesforce, choose Opportunity fields, and process revenue metrics for this campaign.
+              </DialogDescription>
+            </DialogHeader>
+            <SalesforceRevenueWizard
+              campaignId={campaignId}
+              onBack={() => setIsSalesforceRevenueWizardOpen(false)}
+              onClose={() => {
+                setIsSalesforceRevenueWizardOpen(false);
+                void refetchConnectedDataSources();
+              }}
+              onSuccess={() => {
+                setIsSalesforceRevenueWizardOpen(false);
+                void refetchConnectedDataSources();
+                void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
       </div>
     </TooltipProvider>

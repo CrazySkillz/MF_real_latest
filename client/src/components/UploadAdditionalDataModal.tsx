@@ -20,6 +20,7 @@ interface UploadAdditionalDataModalProps {
   returnUrl?: string;
   onDataConnected?: () => void;
   onOpenSalesforceViewer?: (args: { sourceId: string }) => void;
+  onOpenSalesforceRevenueWizard?: () => void;
   googleSheetsOnly?: boolean; // If true, skip source selection and go directly to Google Sheets
   autoStartMappingOnGoogleSheetsConnect?: boolean; // If true, immediately launch mapping after connecting sheets
   showGoogleSheetsUseCaseStep?: boolean; // If true, show "How will you use this Google Sheet?"
@@ -36,6 +37,7 @@ export function UploadAdditionalDataModal({
   returnUrl,
   onDataConnected,
   onOpenSalesforceViewer,
+  onOpenSalesforceRevenueWizard,
   googleSheetsOnly = false,
   autoStartMappingOnGoogleSheetsConnect = false,
   showGoogleSheetsUseCaseStep = false,
@@ -714,10 +716,9 @@ export function UploadAdditionalDataModal({
                           const next = v as 'view' | 'revenue';
                           setSalesforceUseCase(next);
                           if (next === 'revenue') {
-                            // Open the revenue wizard as a full-screen flow for a cleaner UI.
-                            const returnTo = originalReturnUrl || (window.location.pathname + window.location.search);
-                            setTimeout(() => onClose(), 0);
-                            window.location.href = `/campaigns/${campaignId}/salesforce-revenue-wizard?returnTo=${encodeURIComponent(returnTo)}`;
+                            // Open revenue mapping as a separate modal (Google Sheets pattern: keep this modal focused on selection).
+                            onClose();
+                            setTimeout(() => onOpenSalesforceRevenueWizard?.(), 0);
                           }
                         }}
                         className="space-y-3"
@@ -765,21 +766,6 @@ export function UploadAdditionalDataModal({
                         Back
                       </Button>
                     </div>
-                  ) : (
-                    <SalesforceRevenueWizard
-                      campaignId={campaignId}
-                      onBack={() => {
-                        setSelectedCrmProvider(null);
-                        setSalesforceUseCase(null);
-                      }}
-                      onClose={() => {
-                        if (onDataConnected) onDataConnected();
-                        setTimeout(() => onClose(), 150);
-                      }}
-                      onSuccess={() => {
-                        if (onDataConnected) onDataConnected();
-                      }}
-                    />
                   )}
                 </div>
               )

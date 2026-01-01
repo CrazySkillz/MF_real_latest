@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 type SalesforceField = { name: string; label?: string };
 
@@ -19,6 +20,7 @@ export function SalesforceDataViewerModal(props: {
   const { open, onOpenChange, campaignId, sourceId } = props;
   const [search, setSearch] = useState("");
   const [columns, setColumns] = useState<string[]>(["Name", "StageName", "CloseDate", "Amount"]);
+  const { toast } = useToast();
 
   const { data: fieldsData, isLoading: fieldsLoading, error: fieldsError } = useQuery({
     queryKey: ["/api/salesforce", campaignId, "opportunities", "fields"],
@@ -33,7 +35,11 @@ export function SalesforceDataViewerModal(props: {
   const fields: SalesforceField[] = useMemo(() => {
     const raw = Array.isArray((fieldsData as any)?.fields) ? (fieldsData as any).fields : [];
     return raw
-      .map((f: any) => ({ name: String(f?.name || ""), label: f?.label ? String(f.label) : undefined }))
+      .map((f: any) => {
+        const name = String(f?.name || "");
+        const label = name === "Name" ? "Opportunity Name" : (f?.label ? String(f.label) : undefined);
+        return { name, label };
+      })
       .filter((f: SalesforceField) => !!f.name);
   }, [fieldsData]);
 
@@ -64,7 +70,7 @@ export function SalesforceDataViewerModal(props: {
 
   const selectedLabels = useMemo(() => {
     const map = new Map(fields.map((f) => [f.name, f.label || f.name]));
-    return columns.map((c) => ({ name: c, label: map.get(c) || c }));
+    return columns.map((c) => ({ name: c, label: (c === "Name" ? "Opportunity Name" : (map.get(c) || c)) }));
   }, [columns, fields]);
 
   return (
@@ -233,7 +239,15 @@ export function SalesforceDataViewerModal(props: {
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={() => onOpenChange(false)}>
+            <Button
+              onClick={() => {
+                toast({
+                  title: "Salesforce dataset ready",
+                  description: "You can find it anytime in the Connected Data Sources section.",
+                });
+                onOpenChange(false);
+              }}
+            >
               Done
             </Button>
           </div>

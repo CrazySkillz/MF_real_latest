@@ -196,6 +196,74 @@ export function UploadAdditionalDataModal({
     });
   };
 
+  const connectSalesforceRevenueFlow = async () => {
+    if (!campaignId) return;
+    setIsSalesforceConnecting(true);
+    try {
+      const resp = await fetch("/api/auth/salesforce/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      });
+      const text = await resp.text().catch(() => "");
+      let json: any = {};
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        json = {};
+      }
+      if (!resp.ok) {
+        const msg =
+          json?.message ||
+          json?.error ||
+          (text && text.length < 300 ? text : "") ||
+          `Failed to start Salesforce OAuth (HTTP ${resp.status})`;
+        throw new Error(msg);
+      }
+      const authUrl = json?.authUrl;
+      if (!authUrl) throw new Error("No auth URL returned");
+
+      // Close this modal before launching OAuth (prevents stacked UI).
+      onClose();
+
+      const w = window.open(authUrl, "salesforce_oauth", "width=520,height=680");
+      if (!w) throw new Error("Popup blocked. Please allow popups and try again.");
+
+      const onMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        const data: any = event.data;
+        if (!data || typeof data !== "object") return;
+
+        if (data.type === "salesforce_auth_success") {
+          window.removeEventListener("message", onMessage);
+          toast({
+            title: "Salesforce Connected",
+            description: "Opening revenue mapping wizard…",
+          });
+          if (onDataConnected) onDataConnected();
+          setTimeout(() => onOpenSalesforceRevenueWizard?.(), 0);
+        } else if (data.type === "salesforce_auth_error") {
+          window.removeEventListener("message", onMessage);
+          toast({
+            title: "Salesforce Connection Failed",
+            description: data.error || "Please try again.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      window.addEventListener("message", onMessage);
+    } catch (err: any) {
+      toast({
+        title: "Salesforce Connection Failed",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSalesforceConnecting(false);
+    }
+  };
+
   const connectSalesforceViewOnly = async () => {
     if (!campaignId) return;
     setIsSalesforceConnecting(true);
@@ -716,9 +784,7 @@ export function UploadAdditionalDataModal({
                           const next = v as 'view' | 'revenue';
                           setSalesforceUseCase(next);
                           if (next === 'revenue') {
-                            // Open revenue mapping as a separate modal (Google Sheets pattern: keep this modal focused on selection).
-                            onClose();
-                            setTimeout(() => onOpenSalesforceRevenueWizard?.(), 0);
+                            // Revenue flow: show Connect Salesforce button; wizard only appears after OAuth succeeds.
                           }
                         }}
                         className="space-y-3"
@@ -769,12 +835,10 @@ export function UploadAdditionalDataModal({
                   ) : (
                     <div className="flex items-center gap-2">
                       <Button
-                        onClick={() => {
-                          onClose();
-                          setTimeout(() => onOpenSalesforceRevenueWizard?.(), 0);
-                        }}
+                        onClick={() => void connectSalesforceRevenueFlow()}
+                        disabled={isSalesforceConnecting}
                       >
-                        Open Revenue Wizard
+                        {isSalesforceConnecting ? "Connecting…" : "Connect Salesforce"}
                       </Button>
                       <Button
                         variant="outline"

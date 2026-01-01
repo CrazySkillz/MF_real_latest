@@ -710,7 +710,16 @@ export function UploadAdditionalDataModal({
                     <CardContent className="pt-0">
                       <RadioGroup
                         value={salesforceUseCase || 'view'}
-                        onValueChange={(v) => setSalesforceUseCase(v as 'view' | 'revenue')}
+                        onValueChange={(v) => {
+                          const next = v as 'view' | 'revenue';
+                          setSalesforceUseCase(next);
+                          if (next === 'revenue') {
+                            // Open the revenue wizard as a full-screen flow for a cleaner UI.
+                            const returnTo = originalReturnUrl || (window.location.pathname + window.location.search);
+                            setTimeout(() => onClose(), 0);
+                            window.location.href = `/campaigns/${campaignId}/salesforce-revenue-wizard?returnTo=${encodeURIComponent(returnTo)}`;
+                          }
+                        }}
                         className="space-y-3"
                       >
                         <div className="flex items-start gap-3">

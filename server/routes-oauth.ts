@@ -8,7 +8,7 @@ import { realGA4Client } from "./real-ga4-client";
 import multer from "multer";
 import { parsePDFMetrics } from "./services/pdf-parser";
 import { nanoid } from "nanoid";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHash, createHmac, timingSafeEqual } from "crypto";
 import { snapshotScheduler } from "./scheduler";
 import { detectColumnTypes } from "./utils/column-detection";
 import { discoverSchema } from "./utils/schema-discovery";
@@ -74,6 +74,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const salesforcePkceStore = new Map<string, { campaignId: string; codeVerifier: string; createdAt: number }>();
   const SALESFORCE_PKCE_TTL_MS = 10 * 60 * 1000;
 
+  // ---------------------------------------------------------------------------
+  // Shopify OAuth support
+  // We store an OAuth nonce briefly (10 min) keyed by state.
+  // ---------------------------------------------------------------------------
+  const shopifyOauthStore = new Map<string, { campaignId: string; shopDomain: string; createdAt: number }>();
+  const SHOPIFY_OAUTH_TTL_MS = 10 * 60 * 1000;
+
   const base64Url = (buf: Buffer) =>
     buf
       .toString('base64')
@@ -89,6 +96,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     for (const [k, v] of salesforcePkceStore.entries()) {
       if (!v?.createdAt || now - v.createdAt > SALESFORCE_PKCE_TTL_MS) {
         salesforcePkceStore.delete(k);
+      }
+    }
+  };
+
+  const cleanupShopifyOauth = () => {
+    const now = Date.now();
+    for (const [k, v] of shopifyOauthStore.entries()) {
+      if (!v?.createdAt || now - v.createdAt > SHOPIFY_OAUTH_TTL_MS) {
+        shopifyOauthStore.delete(k);
       }
     }
   };
@@ -953,6 +969,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Shopify OAuth - Start connection
+  app.post("/api/auth/shopify/connect", oauthRateLimiter, async (req, res) => {
+    try {
+      const { campaignId, shopDomain } = req.body || {};
+      const campaignIdStr = String(campaignId || "").trim();
+      const shop = String(shopDomain || "")
+        .trim()
+        .replace(/^https?:\/\//i, "")
+        .split("/")[0]
+        .toLowerCase();
+
+      if (!campaignIdStr) return res.status(400).json({ message: "Campaign ID is required" });
+      if (!shop) return res.status(400).json({ message: "Shop domain is required" });
+
+      const clientId = process.env.SHOPIFY_CLIENT_ID || "";
+      const scope = String(process.env.SHOPIFY_SCOPES || "read_orders,read_customers").trim();
+      if (!clientId) {
+        return res.status(500).json({ message: "Shopify OAuth is not configured (missing SHOPIFY_CLIENT_ID)" });
+      }
+
+      const rawBaseUrl =
+        process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get("host")}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, "");
+      const redirectUri = `${baseUrl}/api/auth/shopify/callback`;
+
+      cleanupShopifyOauth();
+      const nonce = base64Url(randomBytes(16));
+      const state = `${campaignIdStr}.${nonce}`;
+      shopifyOauthStore.set(nonce, { campaignId: campaignIdStr, shopDomain: shop, createdAt: Date.now() });
+
+      const authUrl =
+        `https://${shop}/admin/oauth/authorize?` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `scope=${encodeURIComponent(scope)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `state=${encodeURIComponent(state)}`;
+
+      res.json({ authUrl, message: "Shopify OAuth flow initiated" });
+    } catch (error: any) {
+      console.error("[Shopify OAuth] Initiation error:", error);
+      res.status(500).json({ message: "Failed to initiate Shopify authentication" });
+    }
+  });
+
   // Salesforce OAuth callback
   app.get("/api/auth/salesforce/callback", async (req, res) => {
     try {
@@ -1132,6 +1195,189 @@ export async function registerRoutes(app: Express): Promise<Server> {
             </script>
           </body>
         </html>
+      `);
+    }
+  });
+
+  // Shopify OAuth callback
+  // Verifies HMAC, exchanges code for token, stores Shopify connection, and notifies opener via postMessage.
+  app.get("/api/auth/shopify/callback", async (req, res) => {
+    const sendPopup = (args: { ok: boolean; type: string; payload?: any; title: string; body: string }) => {
+      const { ok, type, payload, title, body } = args;
+      const payloadJson = payload ? JSON.stringify(payload) : "{}";
+      return res.send(`
+        <html>
+          <head><title>${title}</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>${ok ? "✓" : ""} ${title}</h2>
+            <p style="max-width: 820px; margin: 12px auto; color: #555;">${body}</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage(Object.assign({ type: ${JSON.stringify(type)} }, ${payloadJson}), window.location.origin);
+              }
+              setTimeout(() => window.close(), ${ok ? 1500 : 2000});
+            </script>
+          </body>
+        </html>
+      `);
+    };
+
+    try {
+      const q: any = req.query || {};
+      const code = q.code ? String(q.code) : "";
+      const shop = q.shop ? String(q.shop).toLowerCase() : "";
+      const state = q.state ? String(q.state) : "";
+      const hmac = q.hmac ? String(q.hmac) : "";
+
+      if (q.error) {
+        const err = String(q.error);
+        const desc = q.error_description ? String(q.error_description) : "";
+        return sendPopup({
+          ok: false,
+          type: "shopify_auth_error",
+          payload: { error: err, details: desc },
+          title: "Authentication Failed",
+          body: `${err}${desc ? ` — ${desc}` : ""}`,
+        });
+      }
+
+      if (!code || !shop || !state || !hmac) {
+        return sendPopup({
+          ok: false,
+          type: "shopify_auth_error",
+          payload: { error: "Missing parameters" },
+          title: "Authentication Error",
+          body: "Missing required OAuth parameters (code/shop/state/hmac).",
+        });
+      }
+
+      // State format: "<campaignId>.<nonce>"
+      const lastDot = state.lastIndexOf(".");
+      const campaignId = lastDot > 0 ? state.slice(0, lastDot) : "";
+      const nonce = lastDot > 0 ? state.slice(lastDot + 1) : "";
+      const stored = nonce ? shopifyOauthStore.get(nonce) : null;
+      if (!stored || stored.campaignId !== campaignId) {
+        return sendPopup({
+          ok: false,
+          type: "shopify_auth_error",
+          payload: { error: "Invalid state" },
+          title: "Authentication Error",
+          body: "Invalid or expired state. Please try connecting again.",
+        });
+      }
+      if (stored.shopDomain !== shop) {
+        return sendPopup({
+          ok: false,
+          type: "shopify_auth_error",
+          payload: { error: "Shop mismatch" },
+          title: "Authentication Error",
+          body: "Shop mismatch. Please try connecting again.",
+        });
+      }
+
+      // Verify HMAC per Shopify docs
+      const secret = process.env.SHOPIFY_CLIENT_SECRET || "";
+      if (!secret) {
+        return sendPopup({
+          ok: false,
+          type: "shopify_auth_error",
+          payload: { error: "Shopify OAuth not configured" },
+          title: "Configuration Error",
+          body: "Missing SHOPIFY_CLIENT_SECRET.",
+        });
+      }
+
+      const params = new URLSearchParams();
+      Object.keys(q)
+        .filter((k) => k !== "hmac" && k !== "signature")
+        .sort()
+        .forEach((k) => {
+          const val = q[k];
+          if (val === undefined || val === null) return;
+          params.append(k, String(val));
+        });
+      const message = params.toString();
+      const digest = createHmac("sha256", secret).update(message).digest("hex");
+      const safeEq = (a: string, b: string) => {
+        const ba = Buffer.from(a, "utf8");
+        const bb = Buffer.from(b, "utf8");
+        if (ba.length !== bb.length) return false;
+        return timingSafeEqual(ba, bb);
+      };
+      if (!safeEq(digest, hmac)) {
+        return sendPopup({
+          ok: false,
+          type: "shopify_auth_error",
+          payload: { error: "HMAC validation failed" },
+          title: "Authentication Error",
+          body: "HMAC validation failed. Please try connecting again.",
+        });
+      }
+
+      // Exchange code for access token
+      const clientId = process.env.SHOPIFY_CLIENT_ID || "";
+      const tokenResp = await fetch(`https://${shop}/admin/oauth/access_token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: clientId, client_secret: secret, code }),
+      });
+      const tokenJson: any = await tokenResp.json().catch(() => ({}));
+      if (!tokenResp.ok || !tokenJson?.access_token) {
+        const msg = tokenJson?.error_description || tokenJson?.error || "Failed to exchange token";
+        return sendPopup({
+          ok: false,
+          type: "shopify_auth_error",
+          payload: { error: msg },
+          title: "Authentication Error",
+          body: String(msg),
+        });
+      }
+      const accessToken = String(tokenJson.access_token);
+
+      // Fetch shop name
+      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+      let shopName: string | null = null;
+      try {
+        const shopResp = await fetch(`https://${shop}/admin/api/${apiVersion}/shop.json`, {
+          headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
+        });
+        const shopJson: any = await shopResp.json().catch(() => ({}));
+        if (shopResp.ok && shopJson?.shop?.name) shopName = String(shopJson.shop.name);
+      } catch {
+        shopName = null;
+      }
+
+      // Deactivate existing connections for campaign and create new one
+      const existing = await storage.getShopifyConnections(campaignId);
+      for (const c of existing || []) {
+        if ((c as any)?.id) await storage.updateShopifyConnection((c as any).id, { isActive: false } as any);
+      }
+      const created = await storage.createShopifyConnection({
+        campaignId,
+        shopDomain: shop,
+        shopName,
+        accessToken,
+        isActive: true,
+        mappingConfig: null,
+      } as any);
+
+      // One-time use state
+      shopifyOauthStore.delete(nonce);
+
+      return sendPopup({
+        ok: true,
+        type: "shopify_auth_success",
+        payload: { shopDomain: shop, shopName: shopName || null, connectionId: created.id },
+        title: "Authentication Successful",
+        body: "Shopify connected. You can now return to MetricMind.",
+      });
+    } catch (error: any) {
+      console.error("[Shopify OAuth] Callback error:", error);
+      return res.send(`
+        <html><body><script>
+          if (window.opener) window.opener.postMessage({ type: 'shopify_auth_error', error: ${JSON.stringify(error?.message || "Failed")} }, window.location.origin);
+          setTimeout(() => window.close(), 2000);
+        </script></body></html>
       `);
     }
   });

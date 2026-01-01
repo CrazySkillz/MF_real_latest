@@ -54,7 +54,6 @@ export function UploadAdditionalDataModal({
   const [selectedEcommerceProvider, setSelectedEcommerceProvider] = useState<'shopify' | null>(null);
   const [shopifyUseCase, setShopifyUseCase] = useState<'view' | 'revenue' | null>(null);
   const [shopifyShopDomain, setShopifyShopDomain] = useState<string>('');
-  const [shopifyAccessToken, setShopifyAccessToken] = useState<string>('');
   const [isSalesforceConnecting, setIsSalesforceConnecting] = useState(false);
   const [isShopifyConnecting, setIsShopifyConnecting] = useState(false);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
@@ -99,7 +98,6 @@ export function UploadAdditionalDataModal({
       setSelectedEcommerceProvider(null);
       setShopifyUseCase(null);
       setShopifyShopDomain('');
-      setShopifyAccessToken('');
       setIsSalesforceConnecting(false);
       setIsShopifyConnecting(false);
       setShowDatasetsView(false);
@@ -143,30 +141,49 @@ export function UploadAdditionalDataModal({
     if (!campaignId) return;
     setIsShopifyConnecting(true);
     try {
-      const resp = await fetch('/api/shopify/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId,
-          shopDomain: shopifyShopDomain,
-          accessToken: shopifyAccessToken,
-        }),
+      const resp = await fetch("/api/auth/shopify/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, shopDomain: shopifyShopDomain }),
       });
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.error || json?.message || `Failed to connect Shopify (HTTP ${resp.status})`);
+      if (!resp.ok) throw new Error(json?.message || json?.error || `Failed to start Shopify OAuth (HTTP ${resp.status})`);
+      const authUrl = json?.authUrl;
+      if (!authUrl) throw new Error("No auth URL returned");
 
-      toast({
-        title: 'Shopify Connected',
-        description: `Connected to ${json?.shopName || json?.shopDomain || 'your store'}.`,
-      });
-      if (onDataConnected) onDataConnected();
-
-      // Close this modal and open the appropriate next modal.
+      // Close this modal before launching OAuth (prevents stacked UI).
       onClose();
-      setTimeout(() => {
-        if ((shopifyUseCase || 'view') === 'view') onOpenShopifyViewer?.();
-        else onOpenShopifyRevenueWizard?.();
-      }, 0);
+
+      const w = window.open(authUrl, "shopify_oauth", "width=520,height=680");
+      if (!w) throw new Error("Popup blocked. Please allow popups and try again.");
+
+      const onMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        const data: any = event.data;
+        if (!data || typeof data !== "object") return;
+
+        if (data.type === "shopify_auth_success") {
+          window.removeEventListener("message", onMessage);
+          toast({
+            title: "Shopify Connected",
+            description: `Connected to ${data.shopName || data.shopDomain || "your store"}.`,
+          });
+          if (onDataConnected) onDataConnected();
+          setTimeout(() => {
+            if ((shopifyUseCase || "view") === "view") onOpenShopifyViewer?.();
+            else onOpenShopifyRevenueWizard?.();
+          }, 0);
+        } else if (data.type === "shopify_auth_error") {
+          window.removeEventListener("message", onMessage);
+          toast({
+            title: "Shopify Connection Failed",
+            description: data.error || "Please try again.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      window.addEventListener("message", onMessage);
     } catch (err: any) {
       toast({
         title: 'Shopify Connection Failed',
@@ -1024,7 +1041,7 @@ export function UploadAdditionalDataModal({
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Connect Shopify</CardTitle>
                     <CardDescription>
-                      Enter your Shopify store domain and Admin API access token (Custom App).
+                      Enter your Shopify store domain and connect via OAuth.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -1034,15 +1051,6 @@ export function UploadAdditionalDataModal({
                         placeholder="mystore.myshopify.com"
                         value={shopifyShopDomain}
                         onChange={(e) => setShopifyShopDomain(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Admin API access token</Label>
-                      <Input
-                        type="password"
-                        placeholder="shpat_..."
-                        value={shopifyAccessToken}
-                        onChange={(e) => setShopifyAccessToken(e.target.value)}
                       />
                     </div>
                     <div className="flex items-center gap-2">

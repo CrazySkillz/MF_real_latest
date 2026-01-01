@@ -41,6 +41,7 @@ export function UploadAdditionalDataModal({
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [selectedCrmProvider, setSelectedCrmProvider] = useState<'hubspot' | 'salesforce' | null>(null);
+  const [salesforceUseCase, setSalesforceUseCase] = useState<'view' | 'revenue' | null>(null);
   const [showDatasetsView, setShowDatasetsView] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [showGuidedMapping, setShowGuidedMapping] = useState(false);
@@ -79,6 +80,7 @@ export function UploadAdditionalDataModal({
     if (!isOpen) {
       setSelectedSource(null);
       setSelectedCrmProvider(null);
+      setSalesforceUseCase(null);
       setShowDatasetsView(false);
       setJustConnected(false);
       setShowGuidedMapping(false);
@@ -108,6 +110,7 @@ export function UploadAdditionalDataModal({
   const handleSourceSelect = (source: DataSourceType) => {
     setSelectedSource(source);
     setSelectedCrmProvider(null);
+    setSalesforceUseCase(null);
     if (source !== 'google-sheets') {
       setGoogleSheetsUseCase('view');
     }
@@ -580,7 +583,10 @@ export function UploadAdditionalDataModal({
 
                 <Card
                   className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
-                  onClick={() => setSelectedCrmProvider('salesforce')}
+                  onClick={() => {
+                    setSelectedCrmProvider('salesforce');
+                    setSalesforceUseCase(null);
+                  }}
                 >
                   <CardHeader>
                     <CardTitle className="text-lg">Salesforce</CardTitle>
@@ -604,17 +610,56 @@ export function UploadAdditionalDataModal({
                   }}
                 />
               ) : (
-                <SalesforceRevenueWizard
-                  campaignId={campaignId}
-                  onBack={() => setSelectedCrmProvider(null)}
-                  onClose={() => {
-                    if (onDataConnected) onDataConnected();
-                    setTimeout(() => onClose(), 150);
-                  }}
-                  onSuccess={() => {
-                    if (onDataConnected) onDataConnected();
-                  }}
-                />
+                salesforceUseCase === null ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Card
+                        className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
+                        onClick={() => setSalesforceUseCase('view')}
+                      >
+                        <CardHeader>
+                          <CardTitle className="text-lg">View Salesforce Data</CardTitle>
+                          <CardDescription>
+                            Connect Salesforce and view Opportunities in MetricMind (read-only).
+                          </CardDescription>
+                        </CardHeader>
+                      </Card>
+
+                      <Card
+                        className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
+                        onClick={() => setSalesforceUseCase('revenue')}
+                      >
+                        <CardHeader>
+                          <CardTitle className="text-lg">Use for Revenue Metrics</CardTitle>
+                          <CardDescription>
+                            Map Opportunity fields and calculate conversion value to unlock ROI/ROAS.
+                          </CardDescription>
+                        </CardHeader>
+                      </Card>
+                    </div>
+                  </div>
+                ) : (
+                  <SalesforceRevenueWizard
+                    campaignId={campaignId}
+                    connectOnly={salesforceUseCase === 'view'}
+                    onConnected={() => {
+                      if (onDataConnected) onDataConnected();
+                      // Close after a successful connect-only flow
+                      if (salesforceUseCase === 'view') setTimeout(() => onClose(), 150);
+                    }}
+                    onBack={() => {
+                      setSalesforceUseCase(null);
+                      setSelectedCrmProvider(null);
+                    }}
+                    onClose={() => {
+                      if (onDataConnected) onDataConnected();
+                      setTimeout(() => onClose(), 150);
+                    }}
+                    onSuccess={() => {
+                      if (onDataConnected) onDataConnected();
+                    }}
+                  />
+                )
               )
             )}
           </div>

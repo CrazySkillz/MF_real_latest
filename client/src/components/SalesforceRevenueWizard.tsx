@@ -29,11 +29,13 @@ export function SalesforceRevenueWizard(props: {
     revenueField?: string;
     days?: number;
   } | null;
+  connectOnly?: boolean;
+  onConnected?: () => void;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
   onClose?: () => void;
 }) {
-  const { campaignId, mode = "connect", initialMappingConfig = null, onBack, onSuccess, onClose } = props;
+  const { campaignId, mode = "connect", initialMappingConfig = null, connectOnly = false, onConnected, onBack, onSuccess, onClose } = props;
   const { toast } = useToast();
 
   type Step = "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
@@ -229,8 +231,15 @@ export function SalesforceRevenueWizard(props: {
           await fetchStatus();
           toast({
             title: "Salesforce Connected",
-            description: "Now select the Opportunity field used to attribute deals to this campaign.",
+            description: connectOnly
+              ? "Connection saved. You can now view Salesforce data in MetricMind."
+              : "Now select the Opportunity field used to attribute deals to this campaign.",
           });
+          if (connectOnly) {
+            onConnected?.();
+            onClose?.();
+            return;
+          }
           setStep("campaign-field");
         } else if (data.type === "salesforce_auth_error") {
           window.removeEventListener("message", onMessage);

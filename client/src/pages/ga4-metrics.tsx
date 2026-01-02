@@ -672,17 +672,53 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: true,
   });
 
+  const { data: metaSummary } = useQuery<any>({
+    queryKey: [`/api/meta/${campaignId}/summary`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchIntervalInBackground: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/meta/${campaignId}/summary`);
+      if (!resp.ok) return null;
+      return resp.json();
+    },
+  });
+
+  // Optional spend import via Google Sheets (if connected for this campaign).
+  const { data: sheetsSpendData } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/google-sheets-data`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchIntervalInBackground: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
+      if (!resp.ok) return null;
+      const json = await resp.json().catch(() => null);
+      return json;
+    },
+  });
+
   const spendLinkedIn = parseNum(linkedinSpendMetrics?.spend);
   const spendCustom = parseNum(customIntegrationSpend?.metrics?.spend ?? customIntegrationSpend?.spend);
+  const spendMeta = parseNum(metaSummary?.summary?.spend ?? metaSummary?.summary?.totalSpend ?? metaSummary?.spend);
+  const spendSheets = parseNum(sheetsSpendData?.summary?.totalSpend ?? sheetsSpendData?.summary?.metrics?.totalSpend ?? sheetsSpendData?.summary?.metrics?.["Spend (USD)"] ?? sheetsSpendData?.summary?.metrics?.Cost ?? sheetsSpendData?.summary?.metrics?.Budget);
   const spendCampaignBudget = parseNum((campaign as any)?.budget ?? (campaign as any)?.spend);
 
-  // Prefer real platform spend; fall back to campaign budget only if no platform spend exists.
-  const totalSpendForFinancials =
-    spendLinkedIn + spendCustom > 0 ? spendLinkedIn + spendCustom : spendCampaignBudget;
+  // Prefer platform spend; if none exists, use Sheets spend; otherwise fall back to campaign budget only.
+  const platformSpend = spendLinkedIn + spendMeta + spendCustom;
+  const totalSpendForFinancials = platformSpend > 0 ? platformSpend : (spendSheets > 0 ? spendSheets : spendCampaignBudget);
 
   const spendSources: string[] = [];
   if (spendLinkedIn > 0) spendSources.push("LinkedIn Ads");
+  if (spendMeta > 0) spendSources.push("Meta Ads");
   if (spendCustom > 0) spendSources.push("Custom Integration");
+  if (spendSources.length === 0 && spendSheets > 0) spendSources.push("Google Sheets");
   if (spendSources.length === 0 && spendCampaignBudget > 0) spendSources.push("Campaign budget");
 
   const financialRevenue = Number(breakdownTotals.revenue || ga4Metrics?.revenue || 0);
@@ -1178,7 +1214,10 @@ export default function GA4Metrics() {
                           <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
                             <p className="text-sm font-medium text-slate-900 dark:text-white">Financial metrics need a spend source</p>
                             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                              Connect LinkedIn/Meta (or import spend via Sheets) to calculate ROAS/ROI/CPA. Revenue and conversions are shown above from GA4.
+                              Connect LinkedIn/Meta (or import spend via Google Sheets, or set a campaign budget) to calculate ROAS/ROI/CPA. Revenue and conversions are shown above from GA4.
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                              Spend detected: LinkedIn ${spendLinkedIn.toFixed(2)}, Meta ${spendMeta.toFixed(2)}, Custom ${spendCustom.toFixed(2)}, Sheets ${spendSheets.toFixed(2)}, Budget ${spendCampaignBudget.toFixed(2)}
                             </p>
                           </div>
                         )}

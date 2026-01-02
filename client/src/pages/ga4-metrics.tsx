@@ -506,10 +506,17 @@ export default function GA4Metrics() {
       // Current backend shape (routes-oauth.ts): { success, metrics, propertyId, ... }
       if (data?.success === true && data?.metrics) {
         const m = data.metrics || {};
+        const users =
+          m.users ??
+          m.totalUsers ??
+          // Backend `analytics.ts` uses `impressions` as a compatibility field for "users"
+          m.impressions ??
+          0;
+        const sessions = m.sessions ?? m.clicks ?? 0;
         return {
-          sessions: m.sessions || 0,
+          sessions,
           pageviews: m.pageviews || 0,
-          users: m.users || 0,
+          users,
           bounceRate: m.bounceRate || 0,
           conversions: m.conversions || 0,
           revenue: m.revenue || 0,
@@ -519,8 +526,9 @@ export default function GA4Metrics() {
           usersByDevice: m.usersByDevice || { desktop: 0, mobile: 0, tablet: 0 },
           acquisitionData: m.acquisitionData || { organic: 0, direct: 0, social: 0, referral: 0 },
           realTimeUsers: m.realTimeUsers || 0,
-          impressions: m.sessions || 0,
-          newUsers: m.newUsers || m.users || 0,
+          impressions: m.impressions ?? users ?? 0,
+          clicks: m.clicks ?? sessions ?? 0,
+          newUsers: m.newUsers ?? users ?? 0,
           engagedSessions: m.engagedSessions || 0,
           engagementRate: m.engagementRate || (m.bounceRate ? (100 - m.bounceRate) : 0),
           eventCount: m.eventCount || 0,

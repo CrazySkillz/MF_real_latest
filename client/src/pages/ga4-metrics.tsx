@@ -1237,16 +1237,32 @@ export default function GA4Metrics() {
                           </>
                         ) : (
                           <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
-                            <p className="text-sm font-medium text-slate-900 dark:text-white">Financial metrics need a spend source</p>
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">Add spend to unlock ROAS / ROI / CPA</p>
                             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                              Connect LinkedIn/Meta (or import spend via Google Sheets, or set a campaign budget) to calculate ROAS/ROI/CPA. Revenue and conversions are shown above from GA4.
+                              Revenue and conversions are coming from GA4. To calculate ROAS/ROI/CPA, MetricMind also needs a spend source (ad platforms, Google Sheets, campaign budget, or a manual override).
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                              Spend detected: LinkedIn ${spendLinkedIn.toFixed(2)}, Meta ${spendMeta.toFixed(2)}, Custom ${spendCustom.toFixed(2)}, Sheets ${spendSheets.toFixed(2)}, Budget ${spendCampaignBudget.toFixed(2)}
-                            </p>
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                              <Link href={`/campaigns/${campaignId}/linkedin-analytics`}>
+                                <Button variant="outline" size="sm">Connect LinkedIn spend</Button>
+                              </Link>
+                              <Link href={`/campaigns/${campaignId}/meta-analytics`}>
+                                <Button variant="outline" size="sm">Connect Meta spend</Button>
+                              </Link>
+                              <Link href={`/campaigns/${campaignId}/google-sheets-data`}>
+                                <Button variant="outline" size="sm">Connect Google Sheets spend</Button>
+                              </Link>
+                            </div>
+                            <details className="mt-3">
+                              <summary className="cursor-pointer text-xs text-slate-600 dark:text-slate-400 select-none">
+                                Show spend sources checked
+                              </summary>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                Spend detected: LinkedIn ${spendLinkedIn.toFixed(2)}, Meta ${spendMeta.toFixed(2)}, Custom ${spendCustom.toFixed(2)}, Sheets ${spendSheets.toFixed(2)}, Budget ${spendCampaignBudget.toFixed(2)}
+                              </p>
+                            </details>
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
                               <div className="flex-1">
-                                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Manual spend override (for this period)</label>
+                                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Enter spend manually (for this period)</label>
                                 <Input
                                   value={manualSpendInput}
                                   onChange={(e) => setManualSpendInput(e.target.value)}

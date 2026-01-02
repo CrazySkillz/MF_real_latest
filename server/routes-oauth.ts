@@ -443,175 +443,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ga4DateRange = '30daysAgo';
       }
 
-      // If we have multiple connections, aggregate metrics
-      if (connections.length === 1) {
-        // Single connection - use existing logic
-        const connection = connections[0];
-        if (connection.method === 'access_token') {
-          const metrics = await ga4Service.getMetricsWithAutoRefresh(campaignId, storage, ga4DateRange);
-          
-          res.json({
-            success: true,
-            metrics,
-            propertyId: connection.propertyId,
-            propertyName: connection.propertyName,
-            displayName: connection.displayName,
-            totalProperties: 1,
-            lastUpdated: new Date().toISOString()
-          });
-        } else {
-          // Service account method would require additional setup
-          res.json({
-            error: "Service account metrics not yet implemented",
-            method: connection.method
-          });
-        }
-      } else {
-        // Multiple connections - aggregate metrics
-        console.log(`Aggregating metrics from ${connections.length} GA4 properties`);
-        
-        const aggregatedMetrics = {
-          sessions: 0,
-          pageviews: 0,
-          users: 0,
-          newUsers: 0,
-          bounceRate: 0,
-          conversions: 0,
-          revenue: 0,
-          avgSessionDuration: 0,
-          userEngagementDuration: 0,
-          engagedSessions: 0,
-          engagementRate: 0,
-          eventCount: 0,
-          eventsPerSession: 0
-        };
+      // Always fetch real metrics for a single, well-defined GA4 property:
+      // - If propertyId is provided: use that exact property for this campaign
+      // - Otherwise: use the primary connection (or first active)
+      const primaryConnection = connections.find((c: any) => c?.isPrimary) || connections[0];
+      const selectedConnection = propertyId ? connections[0] : primaryConnection;
 
-        let propertiesProcessed = 0;
-        let bounceRateSum = 0;
-        let engagementRateSum = 0;
+      if (!selectedConnection) {
+        return res.status(404).json({ error: "No GA4 connection found for this campaign." });
+      }
 
-        // For demonstration, simulate aggregated metrics from multiple properties
-        for (const connection of connections) {
-          if (connection.method === 'access_token') {
-            try {
-              // In a real implementation, this would fetch metrics from each property
-              // For now, simulate realistic aggregated data
-              const baseMultiplier = 1 + (Math.random() * 0.5); // 1.0 to 1.5x
-              
-              aggregatedMetrics.sessions += Math.floor((2000 + Math.random() * 1000) * baseMultiplier);
-              aggregatedMetrics.pageviews += Math.floor((5000 + Math.random() * 3000) * baseMultiplier);
-              aggregatedMetrics.users += Math.floor((1500 + Math.random() * 800) * baseMultiplier);
-              aggregatedMetrics.newUsers += Math.floor((800 + Math.random() * 400) * baseMultiplier);
-              aggregatedMetrics.conversions += Math.floor((50 + Math.random() * 30) * baseMultiplier);
-              aggregatedMetrics.revenue += Math.floor((8000 + Math.random() * 5000) * baseMultiplier);
-              aggregatedMetrics.eventCount += Math.floor((15000 + Math.random() * 8000) * baseMultiplier);
-              aggregatedMetrics.engagedSessions += Math.floor((1200 + Math.random() * 600) * baseMultiplier);
-              aggregatedMetrics.userEngagementDuration += Math.floor((180 + Math.random() * 120) * baseMultiplier);
-
-              // For rates, we'll average them across properties
-              bounceRateSum += (35 + Math.random() * 20); // 35-55%
-              engagementRateSum += (60 + Math.random() * 20); // 60-80%
-              
-              propertiesProcessed++;
-            } catch (error) {
-              console.error(`Error fetching metrics for property ${connection.propertyId}:`, error);
-            }
-          }
-        }
-
-        // Calculate averages for rate metrics
-        if (propertiesProcessed > 0) {
-          aggregatedMetrics.bounceRate = bounceRateSum / propertiesProcessed;
-          aggregatedMetrics.engagementRate = engagementRateSum / propertiesProcessed;
-          aggregatedMetrics.avgSessionDuration = aggregatedMetrics.userEngagementDuration / aggregatedMetrics.sessions;
-          aggregatedMetrics.eventsPerSession = aggregatedMetrics.eventCount / aggregatedMetrics.sessions;
-        }
-
-        res.json({
-          success: true,
-          metrics: aggregatedMetrics,
-          totalProperties: connections.length,
-          propertiesProcessed,
-          properties: connections.map(conn => ({
-            id: conn.id,
-            propertyId: conn.propertyId,
-            propertyName: conn.propertyName,
-            displayName: conn.displayName,
-            isPrimary: conn.isPrimary
-          })),
-          aggregated: true,
-          lastUpdated: new Date().toISOString()
+      if (selectedConnection.method !== 'access_token') {
+        return res.status(400).json({
+          success: false,
+          error: "GA4 connection method not supported for metrics fetch",
+          method: selectedConnection.method
         });
       }
+
+      const metrics = await ga4Service.getMetricsWithAutoRefresh(
+        campaignId,
+        storage,
+        ga4DateRange,
+        selectedConnection.propertyId
+      );
+
+      res.json({
+        success: true,
+        metrics,
+        propertyId: selectedConnection.propertyId,
+        propertyName: selectedConnection.propertyName,
+        displayName: selectedConnection.displayName,
+        totalProperties: connections.length,
+        properties: connections.map((conn: any) => ({
+          id: conn.id,
+          propertyId: conn.propertyId,
+          propertyName: conn.propertyName,
+          displayName: conn.displayName,
+          isPrimary: conn.isPrimary
+        })),
+        lastUpdated: new Date().toISOString()
+      });
     } catch (error) {
       console.error('GA4 metrics error:', error);
       
-      // Handle token expiration gracefully with fallback data
+      // Don't return mock metrics here — instead, return a structured error so the UI can prompt reconnect.
       if (error instanceof Error && (error.message === 'AUTO_REFRESH_NEEDED' || (error as any).isAutoRefreshNeeded)) {
-        console.log('Providing fallback analytics data while token refresh is needed');
-        res.json({
-          sessions: 2847,
-          pageviews: 8521,
-          users: 2156,
-          bounceRate: 42.8,
-          conversions: 67,
-          revenue: 12450.50,
-          avgSessionDuration: 195,
-          topPages: [
-            { page: '/products', views: 1234, uniqueViews: 987 },
-            { page: '/pricing', views: 856, uniqueViews: 743 },
-            { page: '/features', views: 642, uniqueViews: 521 }
-          ],
-          usersByDevice: {
-            desktop: 1423,
-            mobile: 1098,
-            tablet: 326
-          },
-          acquisitionData: {
-            organic: 1245,
-            direct: 892,
-            social: 456,
-            referral: 254
-          },
-          realTimeUsers: 23,
-          _isFallbackData: true,
-          _message: "Using cached analytics data - connection refresh in progress"
-        });
-      } else if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
-        console.log('Providing fallback analytics data while token expired');
-        res.json({
-          sessions: 2847,
-          pageviews: 8521,
-          users: 2156,
-          bounceRate: 42.8,
-          conversions: 67,
-          revenue: 12450.50,
-          avgSessionDuration: 195,
-          topPages: [
-            { page: '/products', views: 1234, uniqueViews: 987 },
-            { page: '/pricing', views: 856, uniqueViews: 743 },
-            { page: '/features', views: 642, uniqueViews: 521 }
-          ],
-          usersByDevice: {
-            desktop: 1423,
-            mobile: 1098,
-            tablet: 326
-          },
-          acquisitionData: {
-            organic: 1245,
-            direct: 892,
-            social: 456,
-            referral: 254
-          },
-          realTimeUsers: 23,
-          _isFallbackData: true,
-          _message: "Using cached analytics data - please reconnect for live data"
-        });
-      } else {
-        res.status(500).json({ 
-          error: error instanceof Error ? error.message : 'Failed to fetch GA4 metrics' 
+        return res.status(401).json({
+          success: false,
+          error: 'AUTO_REFRESH_NEEDED',
+          requiresReauthorization: true,
+          message: 'GA4 token refresh is required. Please reconnect Google Analytics.'
         });
       }
+      if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
+        return res.status(401).json({
+          success: false,
+          error: 'TOKEN_EXPIRED',
+          requiresReauthorization: true,
+          message: 'GA4 token expired. Please reconnect Google Analytics.'
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch GA4 metrics'
+      });
     }
   });
 

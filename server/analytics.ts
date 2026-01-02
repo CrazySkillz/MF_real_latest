@@ -191,8 +191,8 @@ export class GoogleAnalytics4Service {
     }
   }
 
-  async getTimeSeriesData(campaignId: string, storage: any, dateRange = '30daysAgo'): Promise<any[]> {
-    const connection = await storage.getGA4Connection(campaignId);
+  async getTimeSeriesData(campaignId: string, storage: any, dateRange = '30daysAgo', propertyId?: string): Promise<any[]> {
+    const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection || connection.method !== 'access_token') {
       throw new Error('No valid access token connection found');
     }
@@ -226,7 +226,7 @@ export class GoogleAnalytics4Service {
               connection.clientSecret || undefined
             );
             
-            await storage.updateGA4ConnectionTokens(campaignId, {
+            await storage.updateGA4ConnectionTokens(connection.id, {
               accessToken: refreshResult.access_token,
               refreshToken: connection.refreshToken,
               expiresAt: new Date(Date.now() + (refreshResult.expires_in * 1000))
@@ -345,8 +345,8 @@ export class GoogleAnalytics4Service {
     }
   }
 
-  async getMetricsWithAutoRefresh(campaignId: string, storage: any, dateRange = 'today'): Promise<GA4Metrics> {
-    const connection = await storage.getGA4Connection(campaignId);
+  async getMetricsWithAutoRefresh(campaignId: string, storage: any, dateRange = 'today', propertyId?: string): Promise<GA4Metrics> {
+    const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection || connection.method !== 'access_token') {
       throw new Error('No valid access token connection found');
     }
@@ -399,7 +399,7 @@ export class GoogleAnalytics4Service {
             );
             
             // Update the connection with new access token
-            await storage.updateGA4ConnectionTokens(campaignId, {
+            await storage.updateGA4ConnectionTokens(connection.id, {
               accessToken: refreshResult.access_token,
               refreshToken: connection.refreshToken, // Keep the same refresh token
               expiresAt: new Date(Date.now() + (refreshResult.expires_in * 1000))

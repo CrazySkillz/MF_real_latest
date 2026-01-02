@@ -21,6 +21,9 @@ interface GA4Metrics {
   eventCount: number;
   eventsPerSession: number;
   screenPageViewsPerSession: number;
+  // Some GA4 setups (test/import/MP) can yield 0 sessions even when users exist.
+  // In those cases we derive a session-like count from users so the UI isn't empty.
+  sessionsDerivedFromUsers?: boolean;
 }
 
 import { JWT } from "google-auth-library";
@@ -919,10 +922,15 @@ export class GoogleAnalytics4Service {
       // so adding it into historical users/pageviews will produce misleading results.
       const finalUsers = totalUsers;
       const finalPageviews = totalPageviews;
+      const finalSessions = totalSessions > 0 ? totalSessions : (totalUsers > 0 ? totalUsers : 0);
+      const sessionsDerivedFromUsers = totalSessions === 0 && totalUsers > 0;
       
       console.log('GA4 metrics (historical + realtime separated) for', dateRange, ':', {
         historicalUsers: totalUsers,
         historicalPageviews: totalPageviews,
+        historicalSessions: totalSessions,
+        finalSessions,
+        sessionsDerivedFromUsers,
         realtimeActiveUsers,
         realtimePageviews,
         apiDateRange: `${dateRange} to today`
@@ -930,8 +938,8 @@ export class GoogleAnalytics4Service {
       
       return {
         impressions: finalUsers,
-        clicks: totalSessions, 
-        sessions: totalSessions,
+        clicks: finalSessions,
+        sessions: finalSessions,
         pageviews: finalPageviews,
         bounceRate: rowCount > 0 ? totalBounceRate / rowCount : 0,
         averageSessionDuration: rowCount > 0 ? totalSessionDuration / rowCount : 0,
@@ -942,8 +950,9 @@ export class GoogleAnalytics4Service {
         engagedSessions: totalEngagedSessions,
         engagementRate: rowCount > 0 ? totalEngagementRate / rowCount : 0,
         eventCount: totalEventCount,
-        eventsPerSession: totalSessions > 0 ? totalEventCount / totalSessions : 0,
-        screenPageViewsPerSession: totalSessions > 0 ? totalPageviews / totalSessions : 0,
+        eventsPerSession: finalSessions > 0 ? totalEventCount / finalSessions : 0,
+        screenPageViewsPerSession: finalSessions > 0 ? totalPageviews / finalSessions : 0,
+        sessionsDerivedFromUsers,
       };
     } catch (error) {
       console.error('Error fetching GA4 metrics:', error);

@@ -6,6 +6,7 @@ import { startKPIScheduler } from "./kpi-scheduler";
 import { startReportScheduler } from "./report-scheduler";
 import { startLinkedInScheduler } from "./linkedin-scheduler";
 import { startGoogleSheetsTokenScheduler } from "./google-sheets-token-scheduler";
+import { startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
@@ -339,6 +340,13 @@ process.on('uncaughtException', (error: Error) => {
           startGoogleSheetsTokenScheduler();
         } catch (error) {
           console.error('Failed to start Google Sheets token refresh scheduler:', error);
+        }
+
+        // Start daily auto-refresh + auto-process scheduler (LinkedIn refresh + HubSpot/Salesforce/Shopify revenue reprocess)
+        try {
+          startDailyAutoRefreshScheduler();
+        } catch (error) {
+          console.error('Failed to start daily auto-refresh scheduler:', error);
         }
       }, 5000); // 5 second delay
     });

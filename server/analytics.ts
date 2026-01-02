@@ -67,8 +67,8 @@ export class GoogleAnalytics4Service {
     limit: number = 2000
   ): Promise<{
     rows: Array<Record<string, any>>;
-    totals: { sessions: number; pageviews: number; conversions: number; revenue: number };
-    meta: { propertyId: string; revenueMetric: string; dimensions: string[]; rowCount: number };
+    totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number };
+    meta: { propertyId: string; revenueMetric: string; dimensions: string[]; rowCount: number; sessionsDerivedFromUsers: boolean };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection) {
@@ -121,9 +121,9 @@ export class GoogleAnalytics4Service {
           dimensions,
           metrics: [
             { name: 'sessions' },
-            // Include pageviews so we still get rows even if sessions/conversions/revenue are 0.
-            // Some properties (or data-import/testing setups) may have screenPageViews events but no session_start events.
-            { name: 'screenPageViews' },
+            // Use totalUsers as a compatible "base" metric for acquisition dimensions.
+            // (screenPageViews is often incompatible with channel/source/medium dimensions)
+            { name: 'totalUsers' },
             { name: 'conversions' },
             { name: metricName },
           ],
@@ -232,10 +232,11 @@ export class GoogleAnalytics4Service {
     }
 
     const rows: any[] = [];
-    let totalSessions = 0;
-    let totalPageviews = 0;
+    let totalSessionsRaw = 0;
+    let totalUsers = 0;
     let totalConversions = 0;
     let totalRevenue = 0;
+    let derivedSessionsCount = 0;
 
     const fmtDate = (yyyymmdd: string) => {
       const s = String(yyyymmdd || '');
@@ -255,24 +256,35 @@ export class GoogleAnalytics4Service {
         campaign: String(dims[4]?.value || ''),
         device: String(dims[5]?.value || ''),
         country: String(dims[6]?.value || ''),
-        sessions: Number.parseInt(mets[0]?.value || '0', 10) || 0,
-        pageviews: Number.parseInt(mets[1]?.value || '0', 10) || 0,
+        sessionsRaw: Number.parseInt(mets[0]?.value || '0', 10) || 0,
+        users: Number.parseInt(mets[1]?.value || '0', 10) || 0,
         conversions: Number.parseInt(mets[2]?.value || '0', 10) || 0,
         revenue: Number.parseFloat(mets[3]?.value || '0') || 0,
       };
 
-      totalSessions += d.sessions;
-      totalPageviews += d.pageviews;
+      // If sessions are not being recorded for this property (common in test/import setups),
+      // derive a "session-like" count from users so the UI is not empty.
+      const sessionsDisplay = d.sessionsRaw > 0 ? d.sessionsRaw : d.users;
+      if (d.sessionsRaw === 0 && d.users > 0) derivedSessionsCount += 1;
+
+      d.sessions = sessionsDisplay;
+
+      totalSessionsRaw += d.sessionsRaw;
+      totalUsers += d.users;
       totalConversions += d.conversions;
       totalRevenue += d.revenue;
       rows.push(d);
     }
 
+    const sessionsDerivedFromUsers = totalSessionsRaw === 0 && totalUsers > 0 && derivedSessionsCount > 0;
+    const totalSessions = rows.reduce((sum: number, r: any) => sum + (Number(r.sessions) || 0), 0);
+
     return {
       rows,
       totals: {
         sessions: totalSessions,
-        pageviews: totalPageviews,
+        sessionsRaw: totalSessionsRaw,
+        users: totalUsers,
         conversions: totalConversions,
         revenue: Number(totalRevenue.toFixed(2)),
       },
@@ -281,6 +293,7 @@ export class GoogleAnalytics4Service {
         revenueMetric: chosenRevenueMetric,
         dimensions: chosenDims.map((d: any) => d.name),
         rowCount: rows.length,
+        sessionsDerivedFromUsers,
       },
     };
   }

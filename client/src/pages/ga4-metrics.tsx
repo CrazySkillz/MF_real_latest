@@ -607,7 +607,7 @@ export default function GA4Metrics() {
     sessions: Number(ga4Breakdown?.totals?.sessions || 0),
     conversions: Number(ga4Breakdown?.totals?.conversions || 0),
     revenue: Number(ga4Breakdown?.totals?.revenue || 0),
-    pageviews: Number(ga4Breakdown?.totals?.pageviews || 0),
+    users: Number(ga4Breakdown?.totals?.users || 0),
   };
 
   const connectedPropertyCount =
@@ -964,7 +964,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Page Views</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(breakdownTotals.pageviews || ga4Metrics?.pageviews || 0)}
+                              {formatNumber(ga4Metrics?.pageviews || 0)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
                           </div>
@@ -1039,7 +1039,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Users</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(ga4Metrics?.users || 0)}
+                              {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Unique across properties</p>
                           </div>
@@ -1166,7 +1166,7 @@ export default function GA4Metrics() {
                                 <th className="text-left p-2">Device</th>
                                 <th className="text-left p-2">Country</th>
                                 <th className="text-right p-2">Sessions</th>
-                                <th className="text-right p-2">Pageviews</th>
+                                <th className="text-right p-2">Users</th>
                                 <th className="text-right p-2">Conversions</th>
                                 <th className="text-right p-2">Revenue</th>
                               </tr>
@@ -1182,7 +1182,7 @@ export default function GA4Metrics() {
                                   <td className="p-2 whitespace-nowrap">{r.device}</td>
                                   <td className="p-2 whitespace-nowrap">{r.country}</td>
                                   <td className="p-2 text-right">{formatNumber(Number(r.sessions || 0))}</td>
-                                  <td className="p-2 text-right">{formatNumber(Number(r.pageviews || 0))}</td>
+                                  <td className="p-2 text-right">{formatNumber(Number(r.users || 0))}</td>
                                   <td className="p-2 text-right">{formatNumber(Number(r.conversions || 0))}</td>
                                   <td className="p-2 text-right">
                                     ${Number(r.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

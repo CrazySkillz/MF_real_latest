@@ -941,264 +941,330 @@ export default function GA4Metrics() {
                     </div>
                   </div>
 
-                  {/* Key Metrics - Aggregated from all properties */}
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Sessions</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
-                          </div>
-                          <Users className="w-8 h-8 text-blue-500" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                  {/* Re-organized metrics: Outcomes / Scale / Acquisition / Engagement / Behavior / Diagnostics */}
+                  <div className="space-y-8">
+                    {/* Outcomes */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Outcomes</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Did it work / business impact</p>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  ${breakdownTotals.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">From GA4 revenue metric</p>
+                              </div>
+                              <DollarSign className="w-8 h-8 text-green-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Page Views</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(ga4Metrics?.pageviews || 0)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
-                          </div>
-                          <Globe className="w-8 h-8 text-green-500" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Conversions</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0)}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                              </div>
+                              <Target className="w-8 h-8 text-emerald-500" />
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Bounce Rate</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatPercentage(rateToPercent(ga4Metrics?.bounceRate || 0))}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Weighted average</p>
-                          </div>
-                          <TrendingUp className="w-8 h-8 text-orange-500" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Rate</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatPercentage(
+                                    (breakdownTotals.sessions || ga4Metrics?.sessions || 0) > 0
+                                      ? ((breakdownTotals.conversions || ga4Metrics?.conversions || 0) / (breakdownTotals.sessions || ga4Metrics?.sessions || 1)) * 100
+                                      : 0
+                                  )}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign overall</p>
+                              </div>
+                              <Target className="w-8 h-8 text-indigo-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Session Duration</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatDuration(ga4Metrics?.averageSessionDuration || 0)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Weighted average</p>
-                          </div>
-                          <Clock className="w-8 h-8 text-purple-500" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {/* Scale */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Scale</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">How much volume</p>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Users</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Unique across properties</p>
+                              </div>
+                              <Users className="w-8 h-8 text-blue-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Conversions</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
-                          </div>
-                          <Target className="w-8 h-8 text-emerald-500" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Sessions</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                              </div>
+                              <Users className="w-8 h-8 text-blue-500" />
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              ${breakdownTotals.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">From GA4 revenue metric</p>
-                          </div>
-                          <DollarSign className="w-8 h-8 text-green-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">New Users</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatNumber(ga4Metrics?.newUsers || 0)}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                              </div>
+                              <Users className="w-8 h-8 text-emerald-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Users</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Unique across properties</p>
-                          </div>
-                          <Users className="w-8 h-8 text-blue-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {/* Acquisition */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Acquisition</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Where is it coming from (Channel / Source / Medium / Campaign)</p>
+                      </div>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">New Users</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(ga4Metrics?.newUsers || 0)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
-                          </div>
-                          <Users className="w-8 h-8 text-emerald-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                      {/* Acquisition breakdown table */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>GA4 Acquisition Breakdown</CardTitle>
+                          <CardDescription>
+                            Date / Channel / Source / Medium / Campaign / Device / Country — Sessions / Users / Conversions / Revenue
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          {breakdownLoading ? (
+                            <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                          ) : Array.isArray(ga4Breakdown?.rows) && ga4Breakdown.rows.length > 0 ? (
+                            <div className="rounded-md border overflow-hidden">
+                              <div className="max-h-[420px] overflow-auto">
+                                <table className="min-w-[1040px] w-full text-sm">
+                                  <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
+                                    <tr>
+                                      <th className="text-left font-medium px-3 py-2">Date</th>
+                                      <th className="text-left font-medium px-3 py-2">Channel</th>
+                                      <th className="text-left font-medium px-3 py-2">Source</th>
+                                      <th className="text-left font-medium px-3 py-2">Medium</th>
+                                      <th className="text-left font-medium px-3 py-2">Campaign</th>
+                                      <th className="text-left font-medium px-3 py-2">Device</th>
+                                      <th className="text-left font-medium px-3 py-2">Country</th>
+                                      <th className="text-right font-medium px-3 py-2 tabular-nums">Sessions</th>
+                                      <th className="text-right font-medium px-3 py-2 tabular-nums">Users</th>
+                                      <th className="text-right font-medium px-3 py-2 tabular-nums">Conversions</th>
+                                      <th className="text-right font-medium px-3 py-2 tabular-nums">Revenue</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {ga4Breakdown.rows.slice(0, 200).map((r: any, idx: number) => (
+                                      <tr
+                                        key={`${r.date}-${r.channel}-${r.source}-${r.medium}-${r.campaign}-${r.device}-${r.country}-${idx}`}
+                                        className="border-b last:border-b-0"
+                                      >
+                                        <td className="px-3 py-2 whitespace-nowrap">{r.date}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{r.channel}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{r.source}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{r.medium}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap max-w-[260px] truncate" title={String(r.campaign || '')}>
+                                          {r.campaign}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{r.device}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{r.country}</td>
+                                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(Number(r.sessions || 0))}</td>
+                                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(Number(r.users || 0))}</td>
+                                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(Number(r.conversions || 0))}</td>
+                                        <td className="px-3 py-2 text-right tabular-nums">
+                                          ${Number(r.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              No GA4 breakdown rows returned for this date range. If you expect rows, verify that GA4 has data for the selected period and that revenue/conversions are configured as GA4 metrics.
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engaged Sessions</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(ga4Metrics?.engagedSessions || 0)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
-                          </div>
-                          <Target className="w-8 h-8 text-violet-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {/* Engagement */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Engagement</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Explains why performance changed (quality)</p>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatPercentage(rateToPercent(ga4Metrics?.engagementRate || 0))}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
+                              </div>
+                              <TrendingUp className="w-8 h-8 text-rose-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatPercentage(rateToPercent(ga4Metrics?.engagementRate || 0))}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
-                          </div>
-                          <TrendingUp className="w-8 h-8 text-rose-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engaged Sessions</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatNumber(ga4Metrics?.engagedSessions || 0)}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                              </div>
+                              <Target className="w-8 h-8 text-violet-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Events</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(ga4Metrics?.eventCount || 0)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
-                          </div>
-                          <MousePointer className="w-8 h-8 text-cyan-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Events per Session</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {(ga4Metrics?.eventsPerSession || 0).toFixed(2)}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
+                              </div>
+                              <BarChart3 className="w-8 h-8 text-amber-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Events per Session</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {(ga4Metrics?.eventsPerSession || 0).toFixed(2)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
-                          </div>
-                          <BarChart3 className="w-8 h-8 text-amber-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Events</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatNumber(ga4Metrics?.eventCount || 0)}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                              </div>
+                              <MousePointer className="w-8 h-8 text-cyan-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Rate</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatPercentage(
-                                (breakdownTotals.sessions || ga4Metrics?.sessions || 0) > 0
-                                  ? ((breakdownTotals.conversions || ga4Metrics?.conversions || 0) / (breakdownTotals.sessions || ga4Metrics?.sessions || 1)) * 100
-                                  : 0
-                              )}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign overall</p>
-                          </div>
-                          <Target className="w-8 h-8 text-indigo-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {/* Behavior */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Behavior</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">What did people do on-site</p>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <Card>
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Page Views</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {formatNumber(ga4Metrics?.pageviews || 0)}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                              </div>
+                              <Globe className="w-8 h-8 text-green-500" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
 
-                  {/* Acquisition breakdown table */}
-                  <Card className="mt-8">
-                    <CardHeader>
-                      <CardTitle>GA4 Acquisition Breakdown</CardTitle>
-                      <CardDescription>
-                        Date / Channel / Source / Medium / Campaign / Device / Country — Sessions / Conversions / Revenue
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {breakdownLoading ? (
-                        <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                      ) : Array.isArray(ga4Breakdown?.rows) && ga4Breakdown.rows.length > 0 ? (
-                        <div className="overflow-auto max-h-[420px] border rounded-md">
-                          <table className="w-full text-sm">
-                            <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 border-b">
-                              <tr>
-                                <th className="text-left p-2">Date</th>
-                                <th className="text-left p-2">Channel</th>
-                                <th className="text-left p-2">Source</th>
-                                <th className="text-left p-2">Medium</th>
-                                <th className="text-left p-2">Campaign</th>
-                                <th className="text-left p-2">Device</th>
-                                <th className="text-left p-2">Country</th>
-                                <th className="text-right p-2">Sessions</th>
-                                <th className="text-right p-2">Users</th>
-                                <th className="text-right p-2">Conversions</th>
-                                <th className="text-right p-2">Revenue</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {ga4Breakdown.rows.slice(0, 200).map((r: any, idx: number) => (
-                                <tr key={`${r.date}-${r.channel}-${r.source}-${r.medium}-${r.campaign}-${r.device}-${r.country}-${idx}`} className="border-b">
-                                  <td className="p-2 whitespace-nowrap">{r.date}</td>
-                                  <td className="p-2 whitespace-nowrap">{r.channel}</td>
-                                  <td className="p-2 whitespace-nowrap">{r.source}</td>
-                                  <td className="p-2 whitespace-nowrap">{r.medium}</td>
-                                  <td className="p-2 whitespace-nowrap">{r.campaign}</td>
-                                  <td className="p-2 whitespace-nowrap">{r.device}</td>
-                                  <td className="p-2 whitespace-nowrap">{r.country}</td>
-                                  <td className="p-2 text-right">{formatNumber(Number(r.sessions || 0))}</td>
-                                  <td className="p-2 text-right">{formatNumber(Number(r.users || 0))}</td>
-                                  <td className="p-2 text-right">{formatNumber(Number(r.conversions || 0))}</td>
-                                  <td className="p-2 text-right">
-                                    ${Number(r.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                    {/* Diagnostics */}
+                    <details className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                      <summary className="cursor-pointer select-none px-4 py-3">
+                        <div>
+                          <p className="text-base font-semibold text-slate-900 dark:text-white">Diagnostics (Analyst / QA)</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            Less exec-facing; can be misleading for very new / test data
+                          </p>
                         </div>
-                      ) : (
-                        <div className="text-sm text-slate-600 dark:text-slate-400">
-                          No GA4 breakdown rows returned for this date range. If you expect rows, verify that GA4 has data for the selected period and that revenue/conversions are configured as GA4 metrics.
+                      </summary>
+                      <div className="px-4 pb-4 pt-2">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                          <Card>
+                            <CardContent className="p-6">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Bounce Rate</p>
+                                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {formatPercentage(rateToPercent(ga4Metrics?.bounceRate || 0))}
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Weighted average</p>
+                                </div>
+                                <TrendingUp className="w-8 h-8 text-orange-500" />
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <Card>
+                            <CardContent className="p-6">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Session Duration</p>
+                                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {formatDuration(ga4Metrics?.averageSessionDuration || 0)}
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Weighted average</p>
+                                </div>
+                                <Clock className="w-8 h-8 text-purple-500" />
+                              </div>
+                            </CardContent>
+                          </Card>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                      </div>
+                    </details>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

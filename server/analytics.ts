@@ -602,16 +602,18 @@ export class GoogleAnalytics4Service {
         avgSessionDuration: rowCount > 0 ? totalSessionDuration / rowCount : 0
       });
 
-      // Return authentic data from Google Analytics API based on requested date range
-      // Combine historical data with real-time activity when available
-      const finalUsers = totalUsers + realtimeActiveUsers;
-      const finalPageviews = totalPageviews + realtimePageviews;
+      // IMPORTANT:
+      // Keep historical and realtime metrics separate.
+      // GA4 realtime "activeUsers" overlaps with historical totals (and is for last ~30 minutes),
+      // so adding it into historical users/pageviews will produce misleading results.
+      const finalUsers = totalUsers;
+      const finalPageviews = totalPageviews;
       
-      console.log('GA4 authentic metrics for', dateRange, ':', {
+      console.log('GA4 metrics (historical + realtime separated) for', dateRange, ':', {
         historicalUsers: totalUsers,
-        realtimeUsers: realtimeActiveUsers,
-        finalUsers,
-        finalPageviews,
+        historicalPageviews: totalPageviews,
+        realtimeActiveUsers,
+        realtimePageviews,
         apiDateRange: `${dateRange} to today`
       });
       

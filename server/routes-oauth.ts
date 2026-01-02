@@ -66,6 +66,11 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Render/infra health checks should be fast and never depend on DB/OAuth.
+  // Render defaults to checking "/" but that can depend on static serving; provide an explicit health endpoint.
+  app.get("/health", (_req, res) => res.status(200).send("ok"));
+  app.get("/api/health", (_req, res) => res.status(200).json({ ok: true }));
+
   // ---------------------------------------------------------------------------
   // Salesforce PKCE support
   // Some Salesforce orgs require PKCE for the authorization code flow.

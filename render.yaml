@@ -7,4 +7,5 @@ services:
     autoDeploy: true
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start
+    healthCheckPath: /health
 

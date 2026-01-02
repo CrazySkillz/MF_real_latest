@@ -590,6 +590,32 @@ export default function GA4Metrics() {
     },
   });
 
+  const { data: ga4Breakdown, isLoading: breakdownLoading } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange],
+    enabled: !!campaignId && !!ga4Connection?.connected,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-breakdown?dateRange=${dateRange}`);
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) {
+        throw new Error(json?.message || json?.error || "Failed to fetch GA4 breakdown");
+      }
+      return json as any;
+    },
+  });
+
+  const breakdownTotals = {
+    sessions: Number(ga4Breakdown?.totals?.sessions || 0),
+    conversions: Number(ga4Breakdown?.totals?.conversions || 0),
+    revenue: Number(ga4Breakdown?.totals?.revenue || 0),
+  };
+
+  const connectedPropertyCount =
+    Number(ga4Connection?.totalConnections || 0) ||
+    (Array.isArray(ga4Connection?.connections) ? ga4Connection.connections.length : 0) ||
+    1;
+
+  const rateToPercent = (v: number) => (v <= 1 ? v * 100 : v);
+
   // Geographic data query
   const { data: geographicData, isLoading: geoLoading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-geographic", dateRange],
@@ -901,9 +927,13 @@ export default function GA4Metrics() {
                           <Globe className="w-5 h-5 text-blue-600" />
                         </div>
                         <div>
-                          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">Multi-Property Campaign Analytics</h3>
+                          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                            {connectedPropertyCount > 1 ? 'Multi-Property Campaign Analytics' : 'GA4 Property Analytics'}
+                          </h3>
                           <p className="text-sm text-blue-700 dark:text-blue-300">
-                            Showing aggregated data from all 5 connected GA4 properties for {campaign?.name}
+                            {connectedPropertyCount > 1
+                              ? `Showing aggregated data from ${connectedPropertyCount} connected GA4 properties for ${campaign?.name}`
+                              : `Showing metrics for the connected GA4 property for ${campaign?.name}`}
                           </p>
                         </div>
                       </div>
@@ -918,7 +948,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Sessions</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(18337)}
+                              {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
                           </div>
@@ -933,7 +963,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Page Views</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(45323)}
+                              {formatNumber(ga4Metrics?.pageviews || 0)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
                           </div>
@@ -948,7 +978,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Bounce Rate</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatPercentage(39.3)}
+                              {formatPercentage(rateToPercent(ga4Metrics?.bounceRate || 0))}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Weighted average</p>
                           </div>
@@ -963,7 +993,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Session Duration</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatDuration(236)}
+                              {formatDuration(ga4Metrics?.averageSessionDuration || 0)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Weighted average</p>
                           </div>
@@ -978,7 +1008,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Conversions</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(329)}
+                              {formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
                           </div>
@@ -991,9 +1021,24 @@ export default function GA4Metrics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              ${breakdownTotals.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">From GA4 revenue metric</p>
+                          </div>
+                          <DollarSign className="w-8 h-8 text-green-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Users</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(14250)}
+                              {formatNumber(ga4Metrics?.users || 0)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Unique across properties</p>
                           </div>
@@ -1008,7 +1053,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">New Users</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(9876)}
+                              {formatNumber(ga4Metrics?.newUsers || 0)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
                           </div>
@@ -1023,7 +1068,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engaged Sessions</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(11589)}
+                              {formatNumber(ga4Metrics?.engagedSessions || 0)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
                           </div>
@@ -1038,7 +1083,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatPercentage(63.2)}
+                              {formatPercentage(rateToPercent(ga4Metrics?.engagementRate || 0))}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
                           </div>
@@ -1053,7 +1098,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Events</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {formatNumber(127890)}
+                              {formatNumber(ga4Metrics?.eventCount || 0)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
                           </div>
@@ -1068,7 +1113,7 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Events per Session</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              6.97
+                              {(ga4Metrics?.eventsPerSession || 0).toFixed(2)}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
                           </div>
@@ -1083,7 +1128,11 @@ export default function GA4Metrics() {
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Rate</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              1.79%
+                              {formatPercentage(
+                                (breakdownTotals.sessions || ga4Metrics?.sessions || 0) > 0
+                                  ? ((breakdownTotals.conversions || ga4Metrics?.conversions || 0) / (breakdownTotals.sessions || ga4Metrics?.sessions || 1)) * 100
+                                  : 0
+                              )}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign overall</p>
                           </div>
@@ -1091,6 +1140,62 @@ export default function GA4Metrics() {
                         </div>
                       </CardContent>
                     </Card>
+
+                  {/* Acquisition breakdown table */}
+                  <Card className="mt-8">
+                    <CardHeader>
+                      <CardTitle>GA4 Acquisition Breakdown</CardTitle>
+                      <CardDescription>
+                        Date / Channel / Source / Medium / Campaign / Device / Country — Sessions / Conversions / Revenue
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {breakdownLoading ? (
+                        <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                      ) : Array.isArray(ga4Breakdown?.rows) && ga4Breakdown.rows.length > 0 ? (
+                        <div className="overflow-auto max-h-[420px] border rounded-md">
+                          <table className="w-full text-sm">
+                            <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 border-b">
+                              <tr>
+                                <th className="text-left p-2">Date</th>
+                                <th className="text-left p-2">Channel</th>
+                                <th className="text-left p-2">Source</th>
+                                <th className="text-left p-2">Medium</th>
+                                <th className="text-left p-2">Campaign</th>
+                                <th className="text-left p-2">Device</th>
+                                <th className="text-left p-2">Country</th>
+                                <th className="text-right p-2">Sessions</th>
+                                <th className="text-right p-2">Conversions</th>
+                                <th className="text-right p-2">Revenue</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {ga4Breakdown.rows.slice(0, 200).map((r: any, idx: number) => (
+                                <tr key={`${r.date}-${r.channel}-${r.source}-${r.medium}-${r.campaign}-${r.device}-${r.country}-${idx}`} className="border-b">
+                                  <td className="p-2 whitespace-nowrap">{r.date}</td>
+                                  <td className="p-2 whitespace-nowrap">{r.channel}</td>
+                                  <td className="p-2 whitespace-nowrap">{r.source}</td>
+                                  <td className="p-2 whitespace-nowrap">{r.medium}</td>
+                                  <td className="p-2 whitespace-nowrap">{r.campaign}</td>
+                                  <td className="p-2 whitespace-nowrap">{r.device}</td>
+                                  <td className="p-2 whitespace-nowrap">{r.country}</td>
+                                  <td className="p-2 text-right">{formatNumber(Number(r.sessions || 0))}</td>
+                                  <td className="p-2 text-right">{formatNumber(Number(r.conversions || 0))}</td>
+                                  <td className="p-2 text-right">
+                                    ${Number(r.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          No GA4 breakdown rows returned for this date range. If you expect rows, verify that GA4 has data for the selected period and that revenue/conversions are configured as GA4 metrics.
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1798,263 +1903,55 @@ export default function GA4Metrics() {
                       </p>
                     </div>
 
-                    {/* Mock data for multiple properties */}
                     <Card>
-                      <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead className="bg-slate-50 dark:bg-slate-800">
-                              <tr className="border-b border-slate-200 dark:border-slate-700">
-                                <th className="text-left p-4 text-sm font-medium text-slate-900 dark:text-white">Property Name</th>
-                                <th className="text-left p-4 text-sm font-medium text-slate-900 dark:text-white">Website URL</th>
-                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Sessions</th>
-                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Page Views</th>
-                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Bounce Rate</th>
-                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Avg Duration</th>
-                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Conversions</th>
-                                <th className="text-right p-4 text-sm font-medium text-slate-900 dark:text-white">Engagement Rate</th>
-                                <th className="text-center p-4 text-sm font-medium text-slate-900 dark:text-white">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {[
-                                {
-                                  id: "1",
-                                  name: "Summer Splash - Main Landing",
-                                  websiteUrl: "summersplash.brandco.com",
-                                  sessions: 4872,
-                                  pageViews: 12450,
-                                  bounceRate: 34.2,
-                                  avgDuration: 245,
-                                  conversions: 89,
-                                  engagementRate: 68.7,
-                                  status: "primary",
-                                  isPrimary: true
-                                },
-                                {
-                                  id: "2", 
-                                  name: "Summer Splash - US Market",
-                                  websiteUrl: "us.brandco.com/summer",
-                                  sessions: 3421,
-                                  pageViews: 8965,
-                                  bounceRate: 41.5,
-                                  avgDuration: 198,
-                                  conversions: 67,
-                                  engagementRate: 61.3,
-                                  status: "active",
-                                  isPrimary: false
-                                },
-                                {
-                                  id: "3",
-                                  name: "Summer Splash - European Hub", 
-                                  websiteUrl: "eu.brandco.com/summer",
-                                  sessions: 2847,
-                                  pageViews: 7234,
-                                  bounceRate: 38.9,
-                                  avgDuration: 267,
-                                  conversions: 52,
-                                  engagementRate: 64.8,
-                                  status: "active",
-                                  isPrimary: false
-                                },
-                                {
-                                  id: "4",
-                                  name: "Summer Products Showcase",
-                                  websiteUrl: "products.brandco.com/summer-collection",
-                                  sessions: 1963,
-                                  pageViews: 6798,
-                                  bounceRate: 29.4,
-                                  avgDuration: 312,
-                                  conversions: 78,
-                                  engagementRate: 72.1,
-                                  status: "active",
-                                  isPrimary: false
-                                },
-                                {
-                                  id: "5",
-                                  name: "Summer Mobile Experience",
-                                  websiteUrl: "m.summersplash.brandco.com",
-                                  sessions: 5234,
-                                  pageViews: 9876,
-                                  bounceRate: 52.3,
-                                  avgDuration: 156,
-                                  conversions: 43,
-                                  engagementRate: 48.9,
-                                  status: "active",
-                                  isPrimary: false
-                                }
-                              ].map((property, index) => (
-                                <tr key={property.id} className={`border-b border-slate-100 dark:border-slate-800 ${index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-950'}`}>
-                                  <td className="p-4">
-                                    <div className="flex items-center space-x-3">
-                                      <div className="flex-shrink-0">
-                                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                                      </div>
-                                      <div>
-                                        <div className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
-                                          {property.name}
-                                          {property.isPrimary && (
-                                            <Badge className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5">Primary</Badge>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="p-4">
-                                    <div className="text-sm text-slate-600 dark:text-slate-400">{property.websiteUrl}</div>
-                                  </td>
-                                  <td className="p-4 text-right">
-                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                                      {formatNumber(property.sessions)}
-                                    </div>
-                                  </td>
-                                  <td className="p-4 text-right">
-                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                                      {formatNumber(property.pageViews)}
-                                    </div>
-                                  </td>
-                                  <td className="p-4 text-right">
-                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                                      {formatPercentage(property.bounceRate)}
-                                    </div>
-                                  </td>
-                                  <td className="p-4 text-right">
-                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                                      {formatDuration(property.avgDuration)}
-                                    </div>
-                                  </td>
-                                  <td className="p-4 text-right">
-                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                                      {formatNumber(property.conversions)}
-                                    </div>
-                                  </td>
-                                  <td className="p-4 text-right">
-                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                                      {formatPercentage(property.engagementRate)}
-                                    </div>
-                                  </td>
-                                  <td className="p-4 text-center">
-                                    {property.status === "primary" ? (
-                                      <Badge className="bg-blue-100 text-blue-800">Primary</Badge>
-                                    ) : (
-                                      <Badge className="bg-green-100 text-green-800">Active</Badge>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Summary Insights */}
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-                              {formatNumber(18337)}
-                            </div>
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
-                              Total Combined Sessions
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-                              {formatNumber(45323)}
-                            </div>
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
-                              Total Combined Page Views
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-                              329
-                            </div>
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
-                              Total Campaign Conversions
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-                              63.2%
-                            </div>
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
-                              Avg. Engagement Rate
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Top Performing Property */}
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Top Converting Property</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-3">
-                            <h4 className="font-semibold text-slate-900 dark:text-white">Summer Products Showcase</h4>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <span className="text-slate-600 dark:text-slate-400">Conversion Rate:</span>
-                                <div className="font-medium text-green-600">3.98%</div>
-                              </div>
-                              <div>
-                                <span className="text-slate-600 dark:text-slate-400">Engagement:</span>
-                                <div className="font-medium text-blue-600">72.1%</div>
-                              </div>
-                            </div>
+                      <CardContent className="p-6">
+                        {connectedPropertyCount <= 1 ? (
+                          <div className="space-y-4">
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                              Product-focused landing pages are generating the highest conversion rates with extended session durations.
+                              This campaign has a single GA4 property connected. Showing the current property’s metrics.
+                            </p>
+                            <div className="overflow-auto border rounded-md">
+                              <table className="w-full text-sm">
+                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                  <tr>
+                                    <th className="text-left p-3">Property</th>
+                                    <th className="text-right p-3">Sessions</th>
+                                    <th className="text-right p-3">Pageviews</th>
+                                    <th className="text-right p-3">Conversions</th>
+                                    <th className="text-right p-3">Revenue</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr className="border-b">
+                                    <td className="p-3">
+                                      <div className="font-medium text-slate-900 dark:text-white">
+                                        {(ga4Connection?.connections?.[0]?.displayName || ga4Connection?.connections?.[0]?.propertyName) ?? 'Primary property'}
+                                      </div>
+                                      <div className="text-xs text-slate-500">Property ID: {ga4Connection?.connections?.[0]?.propertyId}</div>
+                                    </td>
+                                    <td className="p-3 text-right">{formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}</td>
+                                    <td className="p-3 text-right">{formatNumber(ga4Metrics?.pageviews || 0)}</td>
+                                    <td className="p-3 text-right">{formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0)}</td>
+                                    <td className="p-3 text-right">
+                                      ${breakdownTotals.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                              Connected properties are listed above. Per-property metrics comparison is not shown here to avoid displaying placeholder data.
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-500">
+                              Tip: set a property as Primary, then use the date range selector to view its totals.
                             </p>
                           </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Property Performance Insights</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between py-2">
-                              <span className="text-sm text-slate-600 dark:text-slate-400">Best Engagement Rate</span>
-                              <span className="text-sm font-medium text-slate-900 dark:text-white">Summer Products (72.1%)</span>
-                            </div>
-                            <div className="flex items-center justify-between py-2">
-                              <span className="text-sm text-slate-600 dark:text-slate-400">Highest Traffic Volume</span>
-                              <span className="text-sm font-medium text-slate-900 dark:text-white">Mobile Experience (5.2K)</span>
-                            </div>
-                            <div className="flex items-center justify-between py-2">
-                              <span className="text-sm text-slate-600 dark:text-slate-400">Lowest Bounce Rate</span>
-                              <span className="text-sm font-medium text-slate-900 dark:text-white">Summer Products (29.4%)</span>
-                            </div>
-                            <div className="flex items-center justify-between py-2">
-                              <span className="text-sm text-slate-600 dark:text-slate-400">Longest Session Time</span>
-                              <span className="text-sm font-medium text-slate-900 dark:text-white">Summer Products (5m 12s)</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+                        )}
+                      </CardContent>
+                    </Card>
                   </div>
                 </TabsContent>
 

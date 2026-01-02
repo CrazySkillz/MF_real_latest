@@ -12,6 +12,7 @@ interface GA4Metrics {
   bounceRate: number;
   averageSessionDuration: number;
   conversions: number;
+  revenue?: number;
   activeUsers?: number;
   newUsers: number;
   userEngagementDuration: number;
@@ -48,6 +49,123 @@ export class GoogleAnalytics4Service {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const credentials = { propertyId: normalizedPropertyId, measurementId: '', accessToken };
     return this.getMetrics(credentials, accessToken, dateRange);
+  }
+
+  /**
+   * Fetches an acquisition-style breakdown matching common marketing tables:
+   * Date, Channel, Source, Medium, Campaign, Device, Country, Sessions, Conversions, Revenue.
+   *
+   * Uses GA4 Data API runReport with session-scoped dimensions.
+   */
+  async getAcquisitionBreakdown(
+    campaignId: string,
+    storage: any,
+    dateRange = '30daysAgo',
+    propertyId?: string,
+    limit: number = 2000
+  ): Promise<{ rows: Array<Record<string, any>>; totals: { sessions: number; conversions: number; revenue: number } }> {
+    const connection = await storage.getGA4Connection(campaignId, propertyId);
+    if (!connection || connection.method !== 'access_token') {
+      throw new Error('No valid access token connection found');
+    }
+    if (!connection.accessToken) {
+      const tokenExpiredError = new Error('TOKEN_EXPIRED');
+      (tokenExpiredError as any).isTokenExpired = true;
+      throw tokenExpiredError;
+    }
+
+    const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
+
+    const fetchReport = async (metricName: 'totalRevenue' | 'purchaseRevenue') => {
+      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${connection.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+          dimensions: [
+            { name: 'date' },
+            { name: 'sessionDefaultChannelGroup' },
+            { name: 'sessionSource' },
+            { name: 'sessionMedium' },
+            { name: 'sessionCampaignName' },
+            { name: 'deviceCategory' },
+            { name: 'country' },
+          ],
+          metrics: [
+            { name: 'sessions' },
+            { name: 'conversions' },
+            { name: metricName },
+          ],
+          orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+          limit: Math.min(Math.max(limit, 1), 10000),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`GA4 API Error: ${errorText}`);
+      }
+      return response.json();
+    };
+
+    let data: any;
+    try {
+      data = await fetchReport('totalRevenue');
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      // Some properties may not support totalRevenue; retry with purchaseRevenue.
+      if (msg.toLowerCase().includes('totalrevenue')) {
+        data = await fetchReport('purchaseRevenue');
+      } else {
+        throw e;
+      }
+    }
+
+    const rows: any[] = [];
+    let totalSessions = 0;
+    let totalConversions = 0;
+    let totalRevenue = 0;
+
+    const fmtDate = (yyyymmdd: string) => {
+      const s = String(yyyymmdd || '');
+      if (s.length === 8) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+      return s;
+    };
+
+    for (const row of Array.isArray(data?.rows) ? data.rows : []) {
+      const dims = Array.isArray(row?.dimensionValues) ? row.dimensionValues : [];
+      const mets = Array.isArray(row?.metricValues) ? row.metricValues : [];
+
+      const d = {
+        date: fmtDate(dims[0]?.value || ''),
+        channel: String(dims[1]?.value || ''),
+        source: String(dims[2]?.value || ''),
+        medium: String(dims[3]?.value || ''),
+        campaign: String(dims[4]?.value || ''),
+        device: String(dims[5]?.value || ''),
+        country: String(dims[6]?.value || ''),
+        sessions: Number.parseInt(mets[0]?.value || '0', 10) || 0,
+        conversions: Number.parseInt(mets[1]?.value || '0', 10) || 0,
+        revenue: Number.parseFloat(mets[2]?.value || '0') || 0,
+      };
+
+      totalSessions += d.sessions;
+      totalConversions += d.conversions;
+      totalRevenue += d.revenue;
+      rows.push(d);
+    }
+
+    return {
+      rows,
+      totals: {
+        sessions: totalSessions,
+        conversions: totalConversions,
+        revenue: Number(totalRevenue.toFixed(2)),
+      },
+    };
   }
 
   // Get geographic breakdown of users

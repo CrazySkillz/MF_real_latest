@@ -2240,6 +2240,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GA4 acquisition-style breakdown table (Date / Channel / Source / Medium / Campaign / Device / Country)
+  app.get("/api/campaigns/:id/ga4-breakdown", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const dateRange = String(req.query.dateRange || '30days');
+      const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
+
+      // Convert date range to GA4 format
+      let ga4DateRange = '30daysAgo';
+      switch (dateRange) {
+        case '7days':
+          ga4DateRange = '7daysAgo';
+          break;
+        case '30days':
+          ga4DateRange = '30daysAgo';
+          break;
+        case '90days':
+          ga4DateRange = '90daysAgo';
+          break;
+        default:
+          ga4DateRange = '30daysAgo';
+      }
+
+      const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, propertyId, limit);
+
+      res.json({
+        success: true,
+        propertyId,
+        dateRange,
+        totals: result.totals,
+        rows: result.rows,
+        lastUpdated: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error('[GA4 Breakdown] Error:', error);
+      if (error instanceof Error && (error.message === 'AUTO_REFRESH_NEEDED' || (error as any).isAutoRefreshNeeded)) {
+        return res.status(401).json({
+          success: false,
+          error: 'AUTO_REFRESH_NEEDED',
+          requiresReauthorization: true,
+          message: 'GA4 token refresh is required. Please reconnect Google Analytics.',
+        });
+      }
+      if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
+        return res.status(401).json({
+          success: false,
+          error: 'TOKEN_EXPIRED',
+          requiresReauthorization: true,
+          message: 'GA4 token expired. Please reconnect Google Analytics.',
+        });
+      }
+      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch GA4 breakdown' });
+    }
+  });
+
   // Geographic breakdown endpoint - Updated for multiple connections
   app.get('/api/campaigns/:id/ga4-geographic', async (req, res) => {
     try {

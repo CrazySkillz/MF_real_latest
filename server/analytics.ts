@@ -23,15 +23,38 @@ interface GA4Metrics {
 }
 
 export class GoogleAnalytics4Service {
+  /**
+   * GA4 Data API expects a numeric property id in URLs:
+   *   https://analyticsdata.googleapis.com/v1beta/properties/{propertyId}:runReport
+   *
+   * But some flows may provide ids like:
+   * - "properties/123456789"
+   * - "/properties/123456789"
+   * - "accounts/111/properties/123456789"
+   *
+   * Normalize to the numeric id so we always query the intended GA4 property.
+   */
+  private normalizeGA4PropertyId(propertyId: string): string {
+    const raw = String(propertyId || "").trim();
+    if (!raw) return raw;
+
+    const match = raw.match(/properties\/(\d+)/i);
+    if (match && match[1]) return match[1];
+
+    return raw.replace(/^\/+/, "");
+  }
+
   async getMetricsWithToken(propertyId: string, accessToken: string, dateRange = 'today'): Promise<GA4Metrics> {
-    const credentials = { propertyId, measurementId: '', accessToken };
+    const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+    const credentials = { propertyId: normalizedPropertyId, measurementId: '', accessToken };
     return this.getMetrics(credentials, accessToken, dateRange);
   }
 
   // Get geographic breakdown of users
   async getGeographicMetrics(propertyId: string, accessToken: string, dateRange = 'today'): Promise<any> {
     try {
-      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+      const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -73,6 +96,7 @@ export class GoogleAnalytics4Service {
       const data = await response.json();
       
       console.log('GA4 Geographic API Response:', {
+        propertyId: normalizedPropertyId,
         totalRows: data.rows?.length || 0,
         hasData: !!data.rows && data.rows.length > 0
       });
@@ -254,7 +278,8 @@ export class GoogleAnalytics4Service {
   async getTimeSeriesWithToken(propertyId: string, accessToken: string, dateRange = '30daysAgo'): Promise<any[]> {
     try {
       // Get daily data for the specified date range
-      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+      const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -295,7 +320,7 @@ export class GoogleAnalytics4Service {
 
       const data = await response.json();
       
-      console.log('GA4 Time Series API Response for property', propertyId, ':', {
+      console.log('GA4 Time Series API Response for property', normalizedPropertyId, ':', {
         totalRows: data.rows?.length || 0,
         dateRange: `${dateRange} to today`,
         hasData: !!data.rows && data.rows.length > 0
@@ -431,8 +456,9 @@ export class GoogleAnalytics4Service {
 
   async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = 'today'): Promise<GA4Metrics> {
     try {
+      const normalizedPropertyId = this.normalizeGA4PropertyId(credentials.propertyId);
       // First try to get real-time data
-      const realtimeResponse = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${credentials.propertyId}:runRealtimeReport`, {
+      const realtimeResponse = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runRealtimeReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -460,7 +486,7 @@ export class GoogleAnalytics4Service {
       }
 
       // Then get historical data for context
-      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${credentials.propertyId}:runReport`, {
+      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -495,7 +521,7 @@ export class GoogleAnalytics4Service {
 
       const data = await response.json();
       
-      console.log('GA4 API Response for property', credentials.propertyId, ':', {
+      console.log('GA4 API Response for property', normalizedPropertyId, ':', {
         totalRows: data.rows?.length || 0,
         dateRange: dateRange,
         requestedDateRange: dateRange,

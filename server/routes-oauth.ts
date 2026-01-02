@@ -2316,6 +2316,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { dateRange = '7days', propertyId } = req.query;
 
+      const toGa4StartDate = (dr: string) => {
+        const v = String(dr || '').toLowerCase();
+        switch (v) {
+          case '7days':
+            return '7daysAgo';
+          case '30days':
+            return '30daysAgo';
+          case '90days':
+            return '90daysAgo';
+          default:
+            return '7daysAgo';
+        }
+      };
+
+      // Lightweight deterministic RNG for stable simulated outputs across refreshes.
+      const hashToSeed = (s: string) => {
+        let h = 2166136261;
+        for (let i = 0; i < s.length; i++) {
+          h ^= s.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+      };
+
+      const mulberry32 = (a: number) => {
+        return function () {
+          let t = (a += 0x6D2B79F5);
+          t = Math.imul(t ^ (t >>> 15), t | 1);
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      };
+
+      const hasUsefulGeo = (geo: any) => {
+        const top = Array.isArray(geo?.topCountries) ? geo.topCountries : [];
+        const cleaned = top
+          .map((c: any) => ({ country: String(c?.country || '').trim(), users: Number(c?.users || 0) }))
+          .filter((c: any) => !!c.country && c.country.toLowerCase() !== 'unknown' && c.country.toLowerCase() !== '(not set)' && c.users > 0);
+
+        const uniqueCountries = new Set(cleaned.map((c: any) => c.country.toLowerCase()));
+        // UI uses a threshold of >5 countries for the map/table; match that here.
+        return uniqueCountries.size >= 6;
+      };
+
+      const simulateGeo = (opts: { totalUsers: number; totalSessions: number; totalPageviews: number; seedKey: string }) => {
+        const totalUsers = Math.max(0, Math.floor(opts.totalUsers || 0));
+        const totalSessions = Math.max(0, Math.floor(opts.totalSessions || 0));
+        const totalPageviews = Math.max(0, Math.floor(opts.totalPageviews || 0));
+
+        const seed = hashToSeed(opts.seedKey);
+        const rand = mulberry32(seed);
+
+        // A realistic "global marketing" distribution (not perfect, but believable for demos)
+        const countries = [
+          { country: 'United States of America', cities: [['New York', 'New York'], ['San Francisco', 'California'], ['Austin', 'Texas']] },
+          { country: 'United Kingdom', cities: [['London', 'England'], ['Manchester', 'England']] },
+          { country: 'Canada', cities: [['Toronto', 'Ontario'], ['Vancouver', 'British Columbia']] },
+          { country: 'Germany', cities: [['Berlin', 'Berlin'], ['Munich', 'Bavaria']] },
+          { country: 'France', cities: [['Paris', 'Île-de-France'], ['Lyon', 'Auvergne-Rhône-Alpes']] },
+          { country: 'Australia', cities: [['Sydney', 'New South Wales'], ['Melbourne', 'Victoria']] },
+          { country: 'Netherlands', cities: [['Amsterdam', 'North Holland'], ['Rotterdam', 'South Holland']] },
+          { country: 'Sweden', cities: [['Stockholm', 'Stockholm'], ['Gothenburg', 'Västra Götaland']] },
+          { country: 'Spain', cities: [['Madrid', 'Community of Madrid'], ['Barcelona', 'Catalonia']] },
+          { country: 'Italy', cities: [['Milan', 'Lombardy'], ['Rome', 'Lazio']] },
+          { country: 'Brazil', cities: [['São Paulo', 'São Paulo'], ['Rio de Janeiro', 'Rio de Janeiro']] },
+          { country: 'India', cities: [['Bengaluru', 'Karnataka'], ['Mumbai', 'Maharashtra']] },
+          { country: 'Japan', cities: [['Tokyo', 'Tokyo'], ['Osaka', 'Osaka']] },
+          { country: 'Singapore', cities: [['Singapore', 'Singapore']] },
+        ];
+
+        // Pick 10-14 countries deterministically
+        const desiredCount = Math.min(Math.max(10, Math.floor(10 + rand() * 5)), countries.length);
+        const shuffled = [...countries].sort(() => rand() - 0.5);
+        const picked = shuffled.slice(0, desiredCount);
+
+        // Generate weights and normalize
+        const rawWeights = picked.map(() => 0.5 + rand() * 1.5);
+        const weightSum = rawWeights.reduce((a, b) => a + b, 0) || 1;
+
+        // Allocate users
+        const userAlloc: number[] = [];
+        let userRemaining = totalUsers;
+        for (let i = 0; i < picked.length; i++) {
+          const share = rawWeights[i] / weightSum;
+          const v = i === picked.length - 1 ? userRemaining : Math.max(0, Math.floor(totalUsers * share));
+          userAlloc.push(v);
+          userRemaining -= v;
+        }
+
+        // Allocate sessions and pageviews proportionally (with light randomness but deterministic)
+        const sessionAlloc: number[] = [];
+        let sessionRemaining = totalSessions;
+        for (let i = 0; i < picked.length; i++) {
+          const share = totalUsers > 0 ? userAlloc[i] / totalUsers : 1 / picked.length;
+          const v = i === picked.length - 1 ? sessionRemaining : Math.max(0, Math.floor(totalSessions * share));
+          sessionAlloc.push(v);
+          sessionRemaining -= v;
+        }
+
+        const pageviewAlloc: number[] = [];
+        let pageviewRemaining = totalPageviews;
+        for (let i = 0; i < picked.length; i++) {
+          const share = totalSessions > 0 ? sessionAlloc[i] / totalSessions : 1 / picked.length;
+          const v = i === picked.length - 1 ? pageviewRemaining : Math.max(0, Math.floor(totalPageviews * share));
+          pageviewAlloc.push(v);
+          pageviewRemaining -= v;
+        }
+
+        const topCountries = picked
+          .map((c, i) => ({
+            country: c.country,
+            users: userAlloc[i],
+            sessions: sessionAlloc[i],
+            pageviews: pageviewAlloc[i],
+          }))
+          .sort((a, b) => (b.users || 0) - (a.users || 0))
+          .filter((c) => (c.users || 0) > 0)
+          .slice(0, 20);
+
+        // Location detail rows (city/region)
+        const data: any[] = [];
+        for (const c of topCountries.slice(0, 10)) {
+          const def = picked.find((p) => p.country === c.country);
+          const cityPairs = def?.cities || [[c.country, c.country]];
+          const [city, region] = cityPairs[Math.floor(rand() * cityPairs.length)];
+          data.push({
+            city,
+            region,
+            country: c.country,
+            users: Math.max(1, Math.floor((c.users || 1) * (0.2 + rand() * 0.4))),
+            pageviews: Math.max(1, Math.floor((c.pageviews || 1) * (0.2 + rand() * 0.5))),
+            sessions: Math.max(1, Math.floor((c.sessions || 1) * (0.2 + rand() * 0.4))),
+          });
+        }
+
+        return {
+          success: true,
+          data,
+          topCountries,
+          totalLocations: data.length,
+          totalUsers: totalUsers,
+          totalSessions: totalSessions,
+          totalPageviews: totalPageviews,
+          isSimulated: true,
+          simulationReason: 'GA4 did not return useful geographic distribution for this property/date range; showing simulated geo for demo/testing.',
+        };
+      };
+
       // Get all connections or a specific one
       let connections;
       if (propertyId) {
@@ -2398,6 +2546,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // If GA4 geo is empty/unknown/single-country (common for MP test data), return simulated geo so the UI can be tested.
+      if (!hasUsefulGeo(geographicData)) {
+        let totalUsers = 2500;
+        let totalSessions = 4000;
+        let totalPageviews = 6000;
+        try {
+          const m = await ga4Service.getMetricsWithAutoRefresh(id, storage, toGa4StartDate(String(dateRange)), primaryConnection.propertyId);
+          totalUsers = Math.max(0, Math.floor(Number((m as any)?.impressions || 0)));
+          totalSessions = Math.max(0, Math.floor(Number((m as any)?.sessions || 0)));
+          totalPageviews = Math.max(0, Math.floor(Number((m as any)?.pageviews || 0)));
+          // Ensure at least a small dataset for demos
+          if (totalUsers < 50) totalUsers = 2500;
+          if (totalSessions < 50) totalSessions = 4000;
+          if (totalPageviews < 50) totalPageviews = 6000;
+        } catch (e) {
+          // ignore and use defaults
+        }
+
+        geographicData = simulateGeo({
+          totalUsers,
+          totalSessions,
+          totalPageviews,
+          seedKey: `${id}:${primaryConnection.propertyId}:${String(dateRange)}`,
+        });
+      }
+
       res.json({
         success: true,
         ...geographicData,
@@ -2415,21 +2589,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('GA4 geographic data error:', error);
-      // Provide fallback geographic data instead of error
+      // Provide simulated geographic data instead of failing the UI (demo/testing friendly).
       res.json({
         success: true,
-        countries: [
-          { country: 'United States', users: 1245, sessions: 2156, bounceRate: 35.2 },
-          { country: 'Canada', users: 456, sessions: 789, bounceRate: 42.1 },
-          { country: 'United Kingdom', users: 234, sessions: 387, bounceRate: 38.7 },
-          { country: 'Germany', users: 189, sessions: 298, bounceRate: 44.3 },
-          { country: 'France', users: 156, sessions: 245, bounceRate: 41.8 }
+        isSimulated: true,
+        simulationReason: 'GA4 geographic fetch failed; showing simulated geo for demo/testing.',
+        topCountries: [
+          { country: 'United States of America', users: 1247, sessions: 1856, pageviews: 3122 },
+          { country: 'United Kingdom', users: 834, sessions: 1243, pageviews: 2101 },
+          { country: 'Canada', users: 567, sessions: 892, pageviews: 1467 },
+          { country: 'Germany', users: 445, sessions: 678, pageviews: 1099 },
+          { country: 'France', users: 389, sessions: 523, pageviews: 947 },
+          { country: 'Australia', users: 234, sessions: 356, pageviews: 612 },
+          { country: 'Japan', users: 198, sessions: 289, pageviews: 501 },
+          { country: 'Netherlands', users: 167, sessions: 245, pageviews: 419 },
+          { country: 'Sweden', users: 143, sessions: 201, pageviews: 362 },
+          { country: 'Brazil', users: 134, sessions: 198, pageviews: 347 },
         ],
+        data: [
+          { city: 'New York', region: 'New York', country: 'United States of America', users: 347, sessions: 512, pageviews: 892 },
+          { city: 'London', region: 'England', country: 'United Kingdom', users: 234, sessions: 361, pageviews: 612 },
+          { city: 'Toronto', region: 'Ontario', country: 'Canada', users: 198, sessions: 289, pageviews: 456 },
+          { city: 'Berlin', region: 'Berlin', country: 'Germany', users: 167, sessions: 245, pageviews: 389 },
+          { city: 'Paris', region: 'Île-de-France', country: 'France', users: 143, sessions: 198, pageviews: 324 },
+          { city: 'Sydney', region: 'New South Wales', country: 'Australia', users: 112, sessions: 156, pageviews: 267 },
+          { city: 'Tokyo', region: 'Tokyo', country: 'Japan', users: 98, sessions: 143, pageviews: 234 },
+          { city: 'Amsterdam', region: 'North Holland', country: 'Netherlands', users: 87, sessions: 128, pageviews: 198 },
+          { city: 'Stockholm', region: 'Stockholm', country: 'Sweden', users: 76, sessions: 112, pageviews: 167 },
+          { city: 'São Paulo', region: 'São Paulo', country: 'Brazil', users: 65, sessions: 94, pageviews: 143 },
+        ],
+        totalLocations: 20,
         totalUsers: 2280,
         totalSessions: 3875,
+        totalPageviews: 6200,
         _isFallbackData: true,
-        _message: "Using cached geographic data - connection refresh in progress",
-        lastUpdated: new Date().toISOString()
+        _message: 'Using simulated geographic data - connection refresh in progress',
+        lastUpdated: new Date().toISOString(),
       });
     }
   });

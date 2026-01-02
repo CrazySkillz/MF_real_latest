@@ -67,7 +67,7 @@ export class GoogleAnalytics4Service {
     limit: number = 2000
   ): Promise<{
     rows: Array<Record<string, any>>;
-    totals: { sessions: number; conversions: number; revenue: number };
+    totals: { sessions: number; pageviews: number; conversions: number; revenue: number };
     meta: { propertyId: string; revenueMetric: string; dimensions: string[]; rowCount: number };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
@@ -121,6 +121,9 @@ export class GoogleAnalytics4Service {
           dimensions,
           metrics: [
             { name: 'sessions' },
+            // Include pageviews so we still get rows even if sessions/conversions/revenue are 0.
+            // Some properties (or data-import/testing setups) may have screenPageViews events but no session_start events.
+            { name: 'screenPageViews' },
             { name: 'conversions' },
             { name: metricName },
           ],
@@ -230,6 +233,7 @@ export class GoogleAnalytics4Service {
 
     const rows: any[] = [];
     let totalSessions = 0;
+    let totalPageviews = 0;
     let totalConversions = 0;
     let totalRevenue = 0;
 
@@ -252,11 +256,13 @@ export class GoogleAnalytics4Service {
         device: String(dims[5]?.value || ''),
         country: String(dims[6]?.value || ''),
         sessions: Number.parseInt(mets[0]?.value || '0', 10) || 0,
-        conversions: Number.parseInt(mets[1]?.value || '0', 10) || 0,
-        revenue: Number.parseFloat(mets[2]?.value || '0') || 0,
+        pageviews: Number.parseInt(mets[1]?.value || '0', 10) || 0,
+        conversions: Number.parseInt(mets[2]?.value || '0', 10) || 0,
+        revenue: Number.parseFloat(mets[3]?.value || '0') || 0,
       };
 
       totalSessions += d.sessions;
+      totalPageviews += d.pageviews;
       totalConversions += d.conversions;
       totalRevenue += d.revenue;
       rows.push(d);
@@ -266,6 +272,7 @@ export class GoogleAnalytics4Service {
       rows,
       totals: {
         sessions: totalSessions,
+        pageviews: totalPageviews,
         conversions: totalConversions,
         revenue: Number(totalRevenue.toFixed(2)),
       },

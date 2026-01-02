@@ -501,34 +501,84 @@ export default function GA4Metrics() {
     enabled: !!campaignId && !!ga4Connection?.connected,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics?dateRange=${dateRange}`);
-      const data = await response.json();
-      
-      // Professional SaaS platforms display data even during connectivity issues
-      // Backend provides fallback data instead of errors
-      return {
-        sessions: data.sessions || 0,
-        pageviews: data.pageviews || 0,
-        users: data.users || 0,
-        bounceRate: data.bounceRate || 0,
-        conversions: data.conversions || 0,
-        revenue: data.revenue || 0,
-        avgSessionDuration: data.avgSessionDuration || 0,
-        averageSessionDuration: data.avgSessionDuration || 0,
-        topPages: data.topPages || [],
-        usersByDevice: data.usersByDevice || { desktop: 0, mobile: 0, tablet: 0 },
-        acquisitionData: data.acquisitionData || { organic: 0, direct: 0, social: 0, referral: 0 },
-        realTimeUsers: data.realTimeUsers || 0,
-        impressions: data.sessions || 0, // Map sessions to impressions for display compatibility
-        newUsers: data.users || 0, // Map users to newUsers for display compatibility
-        engagedSessions: data.sessions || 0, // Map sessions for display compatibility
-        engagementRate: data.bounceRate ? (100 - data.bounceRate) : 60, // Calculate engagement from bounce rate
-        eventCount: (data.sessions || 0) * 8, // Estimate events based on sessions
-        eventsPerSession: 8.2, // Typical GA4 events per session
-        propertyId: data.propertyId,
-        lastUpdated: data.lastUpdated,
-        _isFallbackData: data._isFallbackData,
-        _message: data._message
-      };
+      const data = await response.json().catch(() => ({} as any));
+
+      // Current backend shape (routes-oauth.ts): { success, metrics, propertyId, ... }
+      if (data?.success === true && data?.metrics) {
+        const m = data.metrics || {};
+        return {
+          sessions: m.sessions || 0,
+          pageviews: m.pageviews || 0,
+          users: m.users || 0,
+          bounceRate: m.bounceRate || 0,
+          conversions: m.conversions || 0,
+          revenue: m.revenue || 0,
+          avgSessionDuration: m.averageSessionDuration || 0,
+          averageSessionDuration: m.averageSessionDuration || 0,
+          topPages: m.topPages || [],
+          usersByDevice: m.usersByDevice || { desktop: 0, mobile: 0, tablet: 0 },
+          acquisitionData: m.acquisitionData || { organic: 0, direct: 0, social: 0, referral: 0 },
+          realTimeUsers: m.realTimeUsers || 0,
+          impressions: m.sessions || 0,
+          newUsers: m.newUsers || m.users || 0,
+          engagedSessions: m.engagedSessions || 0,
+          engagementRate: m.engagementRate || (m.bounceRate ? (100 - m.bounceRate) : 0),
+          eventCount: m.eventCount || 0,
+          eventsPerSession: m.eventsPerSession || 0,
+          propertyId: data.propertyId,
+          lastUpdated: data.lastUpdated,
+          _isFallbackData: false,
+          _message: undefined,
+        };
+      }
+
+      // Legacy/demo shape (older route): flat metrics at top-level
+      if (typeof data?.sessions !== "undefined" || typeof data?.pageviews !== "undefined") {
+        return {
+          sessions: data.sessions || 0,
+          pageviews: data.pageviews || 0,
+          users: data.users || 0,
+          bounceRate: data.bounceRate || 0,
+          conversions: data.conversions || 0,
+          revenue: data.revenue || 0,
+          avgSessionDuration: data.avgSessionDuration || data.averageSessionDuration || 0,
+          averageSessionDuration: data.avgSessionDuration || data.averageSessionDuration || 0,
+          topPages: data.topPages || [],
+          usersByDevice: data.usersByDevice || { desktop: 0, mobile: 0, tablet: 0 },
+          acquisitionData: data.acquisitionData || { organic: 0, direct: 0, social: 0, referral: 0 },
+          realTimeUsers: data.realTimeUsers || 0,
+          impressions: data.sessions || 0,
+          newUsers: data.newUsers || data.users || 0,
+          engagedSessions: data.engagedSessions || data.sessions || 0,
+          engagementRate: data.engagementRate || (data.bounceRate ? (100 - data.bounceRate) : 0),
+          eventCount: data.eventCount || 0,
+          eventsPerSession: data.eventsPerSession || 0,
+          propertyId: data.propertyId,
+          lastUpdated: data.lastUpdated,
+          _isFallbackData: !!data._isFallbackData,
+          _message: data._message,
+        };
+      }
+
+      // Auth/token errors should not silently display fake data.
+      if (!response.ok && data?.requiresReauthorization) {
+        throw new Error(data?.message || "Google Analytics needs to be reconnected.");
+      }
+
+      throw new Error(data?.error || "Failed to fetch GA4 metrics");
+    },
+  });
+
+  const { data: ga4TimeSeries, isLoading: timeSeriesLoading } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "ga4-timeseries", dateRange],
+    enabled: !!campaignId && !!ga4Connection?.connected,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-timeseries?dateRange=${dateRange}`);
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) {
+        throw new Error(json?.error || "Failed to fetch GA4 time series data");
+      }
+      return Array.isArray(json?.data) ? json.data : [];
     },
   });
 
@@ -545,15 +595,7 @@ export default function GA4Metrics() {
     },
   });
 
-  // Sample time series data (placeholder data for demonstration)
-  const timeSeriesData = [
-    { date: "Jan", sessions: 1250, pageviews: 3400, conversions: 45 },
-    { date: "Feb", sessions: 1680, pageviews: 4200, conversions: 62 },
-    { date: "Mar", sessions: 1420, pageviews: 3800, conversions: 51 },
-    { date: "Apr", sessions: 1890, pageviews: 4800, conversions: 78 },
-    { date: "May", sessions: 2100, pageviews: 5200, conversions: 89 },
-    { date: "Jun", sessions: 1950, pageviews: 4900, conversions: 82 },
-  ];
+  const timeSeriesData = ga4TimeSeries || [];
 
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);

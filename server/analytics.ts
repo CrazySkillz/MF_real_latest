@@ -254,6 +254,32 @@ export class GoogleAnalytics4Service {
       { name: 'medium' },
     ];
 
+    // First-user acquisition dimensions (often populated even when session-scoped dims appear as (not set)).
+    // Not all properties expose all of these, so we attempt them opportunistically.
+    const firstUserFull = [
+      { name: 'date' },
+      { name: 'firstUserDefaultChannelGroup' },
+      { name: 'firstUserSource' },
+      { name: 'firstUserMedium' },
+      { name: 'firstUserCampaignName' },
+      { name: 'deviceCategory' },
+      { name: 'country' },
+    ];
+    const firstUserNoCampaign = [
+      { name: 'date' },
+      { name: 'firstUserDefaultChannelGroup' },
+      { name: 'firstUserSource' },
+      { name: 'firstUserMedium' },
+      { name: 'deviceCategory' },
+      { name: 'country' },
+    ];
+    const firstUserCore = [
+      { name: 'date' },
+      { name: 'firstUserDefaultChannelGroup' },
+      { name: 'firstUserSource' },
+      { name: 'firstUserMedium' },
+    ];
+
     const fetchWithRevenueFallback = async (dimensions: Array<{ name: string }>) => {
       try {
         return { data: await fetchReport('totalRevenue', dimensions), revenueMetric: 'totalRevenue' as const };
@@ -274,27 +300,75 @@ export class GoogleAnalytics4Service {
       { name: 'legacyFull', dims: legacyFull },
       { name: 'legacyNoCampaign', dims: legacyNoCampaign },
       { name: 'legacyCore', dims: legacyCore },
+      { name: 'firstUserFull', dims: firstUserFull },
+      { name: 'firstUserNoCampaign', dims: firstUserNoCampaign },
+      { name: 'firstUserCore', dims: firstUserCore },
     ];
 
     let chosenDims: Array<{ name: string }> = sessionScopedFull;
     let chosenRevenueMetric: string = 'totalRevenue';
     let data: any = null;
 
+    const isUninformativeRow = (dimValues: any[], dimsNames: string[]) => {
+      // Heuristic: if acquisition fields are all "(not set)" / "Unassigned", treat as uninformative.
+      // This happens frequently for Measurement Protocol or imported test data.
+      const get = (idx: number) => String(dimValues?.[idx]?.value ?? '');
+      // Expected order for our candidates:
+      // date, channelGroup, source, medium, campaign?, device, country
+      const channel = get(1);
+      const source = get(2);
+      const medium = get(3);
+      const campaign = get(4);
+
+      const isNotSet = (v: string) => {
+        const s = v.trim().toLowerCase();
+        return s === '(not set)' || s === '(not provided)' || s === '' || s === 'null';
+      };
+      const isUnassigned = (v: string) => v.trim().toLowerCase() === 'unassigned';
+
+      const hasSourceMedium = !isNotSet(source) || !isNotSet(medium);
+      const hasCampaign = !isNotSet(campaign);
+      const hasChannel = !isUnassigned(channel) && !isNotSet(channel);
+
+      // If none are present, it's uninformative
+      if (!hasSourceMedium && !hasCampaign && !hasChannel) return true;
+
+      return false;
+    };
+
+    let lastError: any = null;
     for (const candidate of dimensionCandidates) {
-      const result = await fetchWithRevenueFallback(candidate.dims);
-      const d = result.data;
-      const rowCount = Array.isArray(d?.rows) ? d.rows.length : 0;
-      if (rowCount > 0) {
+      try {
+        const result = await fetchWithRevenueFallback(candidate.dims);
+        const d = result.data;
+        const rowsArr = Array.isArray(d?.rows) ? d.rows : [];
+        const rowCount = rowsArr.length;
+
+        // If we got rows but they're all "Unassigned/(not set)", keep trying other dimension sets.
+        const dimsNames = candidate.dims.map((x) => x.name);
+        const hasAnyInformative = rowsArr.some((r: any) => !isUninformativeRow(r?.dimensionValues || [], dimsNames));
+
+        if (rowCount > 0 && hasAnyInformative) {
+          data = d;
+          chosenDims = candidate.dims;
+          chosenRevenueMetric = result.revenueMetric;
+          break;
+        }
+
+        // Keep last attempt for debugging if all are empty/uninformative
         data = d;
         chosenDims = candidate.dims;
         chosenRevenueMetric = result.revenueMetric;
-        break;
+      } catch (e: any) {
+        // Dimension/metric incompatibility, unknown dimensions, or other GA4 API errors.
+        // Try the next candidate instead of failing the whole endpoint.
+        lastError = e;
+        continue;
       }
+    }
 
-      // Keep last attempt for debugging if all are empty
-      data = d;
-      chosenDims = candidate.dims;
-      chosenRevenueMetric = result.revenueMetric;
+    if (!data && lastError) {
+      throw lastError;
     }
 
     const rows: any[] = [];

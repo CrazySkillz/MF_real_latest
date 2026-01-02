@@ -309,16 +309,25 @@ export class GoogleAnalytics4Service {
     let chosenRevenueMetric: string = 'totalRevenue';
     let data: any = null;
 
+    const indexOfAny = (dimsNames: string[], candidates: string[]) => {
+      const set = new Set(candidates);
+      return dimsNames.findIndex((n) => set.has(String(n || '')));
+    };
+
+    const getDim = (dimValues: any[], idx: number) => (idx >= 0 ? String(dimValues?.[idx]?.value ?? '') : '');
+
     const isUninformativeRow = (dimValues: any[], dimsNames: string[]) => {
       // Heuristic: if acquisition fields are all "(not set)" / "Unassigned", treat as uninformative.
-      // This happens frequently for Measurement Protocol or imported test data.
-      const get = (idx: number) => String(dimValues?.[idx]?.value ?? '');
-      // Expected order for our candidates:
-      // date, channelGroup, source, medium, campaign?, device, country
-      const channel = get(1);
-      const source = get(2);
-      const medium = get(3);
-      const campaign = get(4);
+      // IMPORTANT: Use dimension-name lookup (not fixed indexes) because candidate dimension sets differ.
+      const idxChannel = indexOfAny(dimsNames, ['sessionDefaultChannelGroup', 'defaultChannelGroup', 'firstUserDefaultChannelGroup']);
+      const idxSource = indexOfAny(dimsNames, ['sessionSource', 'source', 'firstUserSource']);
+      const idxMedium = indexOfAny(dimsNames, ['sessionMedium', 'medium', 'firstUserMedium']);
+      const idxCampaign = indexOfAny(dimsNames, ['sessionCampaignName', 'campaignName', 'firstUserCampaignName']);
+
+      const channel = getDim(dimValues, idxChannel);
+      const source = getDim(dimValues, idxSource);
+      const medium = getDim(dimValues, idxMedium);
+      const campaign = getDim(dimValues, idxCampaign);
 
       const isNotSet = (v: string) => {
         const s = v.trim().toLowerCase();
@@ -326,14 +335,13 @@ export class GoogleAnalytics4Service {
       };
       const isUnassigned = (v: string) => v.trim().toLowerCase() === 'unassigned';
 
-      const hasSourceMedium = !isNotSet(source) || !isNotSet(medium);
+      const hasSource = !isNotSet(source);
+      const hasMedium = !isNotSet(medium);
       const hasCampaign = !isNotSet(campaign);
       const hasChannel = !isUnassigned(channel) && !isNotSet(channel);
 
-      // If none are present, it's uninformative
-      if (!hasSourceMedium && !hasCampaign && !hasChannel) return true;
-
-      return false;
+      // If none are present, it's uninformative.
+      return !(hasSource || hasMedium || hasCampaign || hasChannel);
     };
 
     let lastError: any = null;
@@ -384,18 +392,27 @@ export class GoogleAnalytics4Service {
       return s;
     };
 
+    const chosenDimNames = chosenDims.map((d: any) => String(d?.name || ''));
+    const idxDate = indexOfAny(chosenDimNames, ['date']);
+    const idxChannel = indexOfAny(chosenDimNames, ['sessionDefaultChannelGroup', 'defaultChannelGroup', 'firstUserDefaultChannelGroup']);
+    const idxSource = indexOfAny(chosenDimNames, ['sessionSource', 'source', 'firstUserSource']);
+    const idxMedium = indexOfAny(chosenDimNames, ['sessionMedium', 'medium', 'firstUserMedium']);
+    const idxCampaign = indexOfAny(chosenDimNames, ['sessionCampaignName', 'campaignName', 'firstUserCampaignName']);
+    const idxDevice = indexOfAny(chosenDimNames, ['deviceCategory']);
+    const idxCountry = indexOfAny(chosenDimNames, ['country']);
+
     for (const row of Array.isArray(data?.rows) ? data.rows : []) {
       const dims = Array.isArray(row?.dimensionValues) ? row.dimensionValues : [];
       const mets = Array.isArray(row?.metricValues) ? row.metricValues : [];
 
       const d = {
-        date: fmtDate(dims[0]?.value || ''),
-        channel: String(dims[1]?.value || ''),
-        source: String(dims[2]?.value || ''),
-        medium: String(dims[3]?.value || ''),
-        campaign: String(dims[4]?.value || ''),
-        device: String(dims[5]?.value || ''),
-        country: String(dims[6]?.value || ''),
+        date: fmtDate(getDim(dims, idxDate)),
+        channel: getDim(dims, idxChannel),
+        source: getDim(dims, idxSource),
+        medium: getDim(dims, idxMedium),
+        campaign: getDim(dims, idxCampaign),
+        device: getDim(dims, idxDevice),
+        country: getDim(dims, idxCountry),
         sessionsRaw: Number.parseInt(mets[0]?.value || '0', 10) || 0,
         users: Number.parseInt(mets[1]?.value || '0', 10) || 0,
         conversions: Number.parseInt(mets[2]?.value || '0', 10) || 0,

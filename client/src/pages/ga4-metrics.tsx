@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Label, Tooltip, Legend } from "recharts";
 import InteractiveWorldMap from "@/components/InteractiveWorldMap";
 import SimpleGeographicMap from "@/components/SimpleGeographicMap";
 import WorldMapSVG from "@/components/WorldMapSVG";
@@ -646,6 +646,21 @@ export default function GA4Metrics() {
     return `${value.toFixed(1)}%`;
   };
 
+  const getDateRangeLabel = (range: string) => {
+    switch (String(range || "").toLowerCase()) {
+      case "7days":
+        return "Last 7 days";
+      case "30days":
+        return "Last 30 days";
+      case "90days":
+        return "Last 90 days";
+      default:
+        return "Last 30 days";
+    }
+  };
+
+  const selectedPeriodLabel = getDateRangeLabel(dateRange);
+
   if (campaignLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -1271,15 +1286,23 @@ export default function GA4Metrics() {
                     <Card>
                       <CardHeader>
                         <CardTitle>Sessions Over Time</CardTitle>
-                        <CardDescription>Daily session trends for the selected period</CardDescription>
+                        <CardDescription>Daily sessions — {selectedPeriodLabel}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="h-80">
                           <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={timeSeriesData}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-                              <YAxis stroke="#64748b" fontSize={12} />
+                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={8}>
+                                <Label value="Date" position="insideBottom" offset={-5} style={{ fill: "#64748b", fontSize: 12 }} />
+                              </XAxis>
+                              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => formatNumber(Number(v) || 0)}>
+                                <Label value="Sessions" angle={-90} position="insideLeft" style={{ fill: "#64748b", fontSize: 12, textAnchor: "middle" }} />
+                              </YAxis>
+                              <Tooltip
+                                formatter={(value: any, name: any) => [formatNumber(Number(value) || 0), String(name || "Sessions")]}
+                                labelFormatter={(label) => `Date: ${label}`}
+                              />
                               <Line
                                 type="monotone"
                                 dataKey="sessions"
@@ -1296,17 +1319,26 @@ export default function GA4Metrics() {
                     <Card>
                       <CardHeader>
                         <CardTitle>Page Views vs Sessions</CardTitle>
-                        <CardDescription>Comparison of page views and sessions</CardDescription>
+                        <CardDescription>Sessions and page views — {selectedPeriodLabel}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="h-80">
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={timeSeriesData}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-                              <YAxis stroke="#64748b" fontSize={12} />
-                              <Bar dataKey="sessions" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                              <Bar dataKey="pageviews" fill="#10b981" radius={[4, 4, 0, 0]} />
+                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={8}>
+                                <Label value="Date" position="insideBottom" offset={-5} style={{ fill: "#64748b", fontSize: 12 }} />
+                              </XAxis>
+                              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => formatNumber(Number(v) || 0)}>
+                                <Label value="Count" angle={-90} position="insideLeft" style={{ fill: "#64748b", fontSize: 12, textAnchor: "middle" }} />
+                              </YAxis>
+                              <Tooltip
+                                formatter={(value: any, name: any) => [formatNumber(Number(value) || 0), String(name || "")]}
+                                labelFormatter={(label) => `Date: ${label}`}
+                              />
+                              <Legend verticalAlign="top" height={24} />
+                              <Bar name="Sessions" dataKey="sessions" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                              <Bar name="Page Views" dataKey="pageviews" fill="#10b981" radius={[4, 4, 0, 0]} />
                             </BarChart>
                           </ResponsiveContainer>
                         </div>

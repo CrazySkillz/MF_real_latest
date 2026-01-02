@@ -76,7 +76,10 @@ export class GoogleAnalytics4Service {
 
     const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
 
-    const fetchReport = async (metricName: 'totalRevenue' | 'purchaseRevenue') => {
+    const fetchReport = async (
+      metricName: 'totalRevenue' | 'purchaseRevenue',
+      dimensions: Array<{ name: string }>
+    ) => {
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
@@ -85,15 +88,7 @@ export class GoogleAnalytics4Service {
         },
         body: JSON.stringify({
           dateRanges: [{ startDate: dateRange, endDate: 'today' }],
-          dimensions: [
-            { name: 'date' },
-            { name: 'sessionDefaultChannelGroup' },
-            { name: 'sessionSource' },
-            { name: 'sessionMedium' },
-            { name: 'sessionCampaignName' },
-            { name: 'deviceCategory' },
-            { name: 'country' },
-          ],
+          dimensions,
           metrics: [
             { name: 'sessions' },
             { name: 'conversions' },
@@ -111,16 +106,49 @@ export class GoogleAnalytics4Service {
       return response.json();
     };
 
-    let data: any;
-    try {
-      data = await fetchReport('totalRevenue');
-    } catch (e: any) {
-      const msg = String(e?.message || '');
-      // Some properties may not support totalRevenue; retry with purchaseRevenue.
-      if (msg.toLowerCase().includes('totalrevenue')) {
-        data = await fetchReport('purchaseRevenue');
-      } else {
+    const sessionScopedDimensions = [
+      { name: 'date' },
+      { name: 'sessionDefaultChannelGroup' },
+      { name: 'sessionSource' },
+      { name: 'sessionMedium' },
+      { name: 'sessionCampaignName' },
+      { name: 'deviceCategory' },
+      { name: 'country' },
+    ];
+
+    // Fallback dimension names (some properties/reporting setups expose these without the `session*` prefix).
+    const legacyDimensions = [
+      { name: 'date' },
+      { name: 'defaultChannelGroup' },
+      { name: 'source' },
+      { name: 'medium' },
+      { name: 'campaignName' },
+      { name: 'deviceCategory' },
+      { name: 'country' },
+    ];
+
+    const fetchWithRevenueFallback = async (dimensions: Array<{ name: string }>) => {
+      try {
+        return await fetchReport('totalRevenue', dimensions);
+      } catch (e: any) {
+        const msg = String(e?.message || '');
+        // Some properties may not support totalRevenue; retry with purchaseRevenue.
+        if (msg.toLowerCase().includes('totalrevenue')) {
+          return await fetchReport('purchaseRevenue', dimensions);
+        }
         throw e;
+      }
+    };
+
+    // First attempt: session-scoped dimensions (preferred for acquisition reporting).
+    let data: any = await fetchWithRevenueFallback(sessionScopedDimensions);
+
+    // If GA4 returns no rows, try fallback dimension set.
+    if (!Array.isArray(data?.rows) || data.rows.length === 0) {
+      const fallbackData: any = await fetchWithRevenueFallback(legacyDimensions);
+      // Only use fallback if it actually returns rows.
+      if (Array.isArray(fallbackData?.rows) && fallbackData.rows.length > 0) {
+        data = fallbackData;
       }
     }
 

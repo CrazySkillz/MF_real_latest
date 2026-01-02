@@ -148,14 +148,18 @@ export default function GA4Metrics() {
       switch (template.name) {
         case "ROI (Return on Investment)":
           // ROI = (Revenue - Cost) / Cost × 100
-          const revenue = sheetsData?.totalRevenue || (ga4Data?.conversions || 0) * 25; // Assuming $25 per conversion
-          const cost = sheetsData?.totalSpend || 500; // Default cost
+          const revenue =
+            Number(sheetsData?.summary?.totalRevenue || sheetsData?.totalRevenue || 0) ||
+            Number(ga4Data?.revenue || 0);
+          const cost = Number(sheetsData?.summary?.totalSpend || sheetsData?.totalSpend || 0);
           return cost > 0 ? (((revenue - cost) / cost) * 100).toFixed(2) : "0.00";
           
         case "ROAS (Return on Ad Spend)":
           // ROAS = Revenue / Ad Spend
-          const adRevenue = sheetsData?.totalRevenue || (ga4Data?.conversions || 0) * 25;
-          const adSpend = sheetsData?.totalSpend || 500;
+          const adRevenue =
+            Number(sheetsData?.summary?.totalRevenue || sheetsData?.totalRevenue || 0) ||
+            Number(ga4Data?.revenue || 0);
+          const adSpend = Number(sheetsData?.summary?.totalSpend || sheetsData?.totalSpend || 0);
           return adSpend > 0 ? (adRevenue / adSpend).toFixed(2) : "0.00";
           
         case "CTR (Click-Through Rate)":
@@ -172,8 +176,8 @@ export default function GA4Metrics() {
           
         case "CPA (Cost Per Acquisition)":
           // CPA = Total Ad Spend / Conversions
-          const totalSpend = sheetsData?.totalSpend || 500;
-          const totalConversions = sheetsData?.totalConversions || ga4Data?.conversions || 1;
+          const totalSpend = Number(sheetsData?.summary?.totalSpend || sheetsData?.totalSpend || 0);
+          const totalConversions = Number(sheetsData?.summary?.totalConversions || sheetsData?.totalConversions || ga4Data?.conversions || 1);
           return totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : "0.00";
           
         case "LTV/CAC Ratio":
@@ -181,7 +185,9 @@ export default function GA4Metrics() {
           const avgOrderValue = 75; // Assumed average order value
           const repeatPurchases = 3; // Assumed repeat purchases
           const ltv = avgOrderValue * repeatPurchases;
-          const cac = sheetsData?.totalSpend || 500 / (sheetsData?.totalConversions || ga4Data?.conversions || 1);
+          const cacSpend = Number(sheetsData?.summary?.totalSpend || sheetsData?.totalSpend || 0);
+          const cacConv = Number(sheetsData?.summary?.totalConversions || sheetsData?.totalConversions || ga4Data?.conversions || 1);
+          const cac = cacConv > 0 ? cacSpend / cacConv : 0;
           return cac > 0 ? (ltv / cac).toFixed(2) : "0.00";
           
         default:
@@ -454,6 +460,13 @@ export default function GA4Metrics() {
     enabled: !!campaignId,
   });
 
+  // Helper: safely parse numbers from API payloads
+  const parseNum = (val: any): number => {
+    if (val === null || val === undefined || val === "") return 0;
+    const n = typeof val === "string" ? parseFloat(val) : Number(val);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   // Check GA4 connection status - Updated for multiple connections
   const { data: ga4Connection } = useQuery({
     queryKey: ["/api/ga4/check-connection", campaignId],
@@ -636,6 +649,48 @@ export default function GA4Metrics() {
     revenue: Number(ga4Breakdown?.totals?.revenue || 0),
     users: Number(ga4Breakdown?.totals?.users || 0),
   };
+
+  // Spend sources for Financial metrics (ROAS/ROI/CPA).
+  // We compute these only when we have a real spend source to keep numbers trustworthy.
+  const { data: linkedinSpendMetrics } = useQuery<any>({
+    queryKey: [`/api/linkedin/metrics/${campaignId}`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchIntervalInBackground: true,
+  });
+
+  const { data: customIntegrationSpend } = useQuery<any>({
+    queryKey: [`/api/custom-integration/${campaignId}`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchIntervalInBackground: true,
+  });
+
+  const spendLinkedIn = parseNum(linkedinSpendMetrics?.spend);
+  const spendCustom = parseNum(customIntegrationSpend?.metrics?.spend ?? customIntegrationSpend?.spend);
+  const spendCampaignBudget = parseNum((campaign as any)?.budget ?? (campaign as any)?.spend);
+
+  // Prefer real platform spend; fall back to campaign budget only if no platform spend exists.
+  const totalSpendForFinancials =
+    spendLinkedIn + spendCustom > 0 ? spendLinkedIn + spendCustom : spendCampaignBudget;
+
+  const spendSources: string[] = [];
+  if (spendLinkedIn > 0) spendSources.push("LinkedIn Ads");
+  if (spendCustom > 0) spendSources.push("Custom Integration");
+  if (spendSources.length === 0 && spendCampaignBudget > 0) spendSources.push("Campaign budget");
+
+  const financialRevenue = Number(breakdownTotals.revenue || ga4Metrics?.revenue || 0);
+  const financialConversions = Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0);
+  const financialSpend = Number(totalSpendForFinancials || 0);
+  const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
+  const financialROI = financialSpend > 0 ? ((financialRevenue - financialSpend) / financialSpend) * 100 : 0;
+  const financialCPA = financialConversions > 0 ? financialSpend / financialConversions : 0;
 
   const connectedPropertyCount =
     Number(ga4Connection?.totalConnections || 0) ||
@@ -1045,6 +1100,88 @@ export default function GA4Metrics() {
                             </div>
                           </CardContent>
                         </Card>
+                      </div>
+
+                      {/* Financial metrics (only when spend exists) */}
+                      <div className="mt-4">
+                        {financialSpend > 0 ? (
+                          <>
+                            <div className="mb-3">
+                              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial (Spend-based)</h4>
+                              <p className="text-xs text-slate-600 dark:text-slate-400">
+                                Spend source: {spendSources.length > 0 ? spendSources.join(" + ") : "Unknown"} — {selectedPeriodLabel}
+                              </p>
+                            </div>
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        ${financialSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">From connected spend source</p>
+                                    </div>
+                                    <DollarSign className="w-8 h-8 text-slate-500" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {financialROAS.toFixed(2)}x
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</p>
+                                    </div>
+                                    <TrendingUp className="w-8 h-8 text-green-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {formatPercentage(financialROI)}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</p>
+                                    </div>
+                                    <TrendingUp className="w-8 h-8 text-emerald-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        ${financialCPA.toFixed(2)}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Spend ÷ Conversions</p>
+                                    </div>
+                                    <Target className="w-8 h-8 text-blue-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">Financial metrics need a spend source</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                              Connect LinkedIn/Meta (or import spend via Sheets) to calculate ROAS/ROI/CPA. Revenue and conversions are shown above from GA4.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
 

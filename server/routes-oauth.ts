@@ -2283,6 +2283,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('[GA4 Breakdown] Error:', error);
+      if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {
+        return res.status(404).json({
+          success: false,
+          error: 'NO_GA4_CONNECTION',
+          message: 'No GA4 connection found for this campaign. Please connect Google Analytics.',
+        });
+      }
       if (error instanceof Error && (error.message === 'AUTO_REFRESH_NEEDED' || (error as any).isAutoRefreshNeeded)) {
         return res.status(401).json({
           success: false,

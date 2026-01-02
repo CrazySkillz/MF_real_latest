@@ -23,6 +23,8 @@ interface GA4Metrics {
   screenPageViewsPerSession: number;
 }
 
+import { JWT } from "google-auth-library";
+
 export class GoogleAnalytics4Service {
   /**
    * GA4 Data API expects a numeric property id in URLs:
@@ -69,10 +71,34 @@ export class GoogleAnalytics4Service {
     meta: { propertyId: string; revenueMetric: string; dimensions: string[]; rowCount: number };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
-    if (!connection || connection.method !== 'access_token') {
-      throw new Error('No valid access token connection found');
+    if (!connection) {
+      throw new Error('NO_GA4_CONNECTION');
     }
-    if (!connection.accessToken) {
+
+    // Prefer stored OAuth access token; fall back to service-account if configured.
+    let accessToken: string | null = connection.accessToken ? String(connection.accessToken) : null;
+    if (!accessToken && connection.serviceAccountKey) {
+      try {
+        const keyObj = typeof connection.serviceAccountKey === 'string'
+          ? JSON.parse(connection.serviceAccountKey)
+          : connection.serviceAccountKey;
+        const email = String(keyObj?.client_email || '');
+        const key = String(keyObj?.private_key || '');
+        if (email && key) {
+          const jwt = new JWT({
+            email,
+            key,
+            scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+          });
+          const tokenResp = await jwt.getAccessToken();
+          accessToken = tokenResp?.token ? String(tokenResp.token) : null;
+        }
+      } catch (e) {
+        console.error('[GA4 Breakdown] Failed to get service-account token:', e);
+      }
+    }
+
+    if (!accessToken) {
       const tokenExpiredError = new Error('TOKEN_EXPIRED');
       (tokenExpiredError as any).isTokenExpired = true;
       throw tokenExpiredError;
@@ -87,7 +113,7 @@ export class GoogleAnalytics4Service {
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${connection.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

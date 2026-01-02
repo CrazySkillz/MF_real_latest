@@ -458,6 +458,12 @@ export default function GA4Metrics() {
   const { data: ga4Connection } = useQuery({
     queryKey: ["/api/ga4/check-connection", campaignId],
     enabled: !!campaignId,
+    // Make the page frictionless: keep connection state fresh without requiring manual refresh.
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+    refetchIntervalInBackground: true,
     queryFn: async () => {
       const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
       if (!response.ok) return { connected: false, totalConnections: 0, connections: [] };
@@ -469,6 +475,11 @@ export default function GA4Metrics() {
   const { data: allGA4Connections } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-connections"],
     enabled: !!campaignId && !!ga4Connection?.connected,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchIntervalInBackground: true,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-connections`);
       if (!response.ok) return { success: false, connections: [] };
@@ -499,6 +510,12 @@ export default function GA4Metrics() {
   const { data: ga4Metrics, isLoading: ga4Loading, error: ga4Error } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics", dateRange],
     enabled: !!campaignId && !!ga4Connection?.connected,
+    // Auto-refresh: users shouldn't need to refresh the page to get new GA4 data.
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+    refetchIntervalInBackground: true,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics?dateRange=${dateRange}`);
       const data = await response.json().catch(() => ({} as any));
@@ -580,6 +597,11 @@ export default function GA4Metrics() {
   const { data: ga4TimeSeries, isLoading: timeSeriesLoading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-timeseries", dateRange],
     enabled: !!campaignId && !!ga4Connection?.connected,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/ga4-timeseries?dateRange=${dateRange}`);
       const json = await resp.json().catch(() => ({} as any));
@@ -593,6 +615,11 @@ export default function GA4Metrics() {
   const { data: ga4Breakdown, isLoading: breakdownLoading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange],
     enabled: !!campaignId && !!ga4Connection?.connected,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/ga4-breakdown?dateRange=${dateRange}`);
       const json = await resp.json().catch(() => ({} as any));
@@ -621,6 +648,11 @@ export default function GA4Metrics() {
   const { data: geographicData, isLoading: geoLoading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-geographic", dateRange],
     enabled: !!campaignId && !!ga4Connection?.connected,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchIntervalInBackground: true,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-geographic?dateRange=${dateRange}`);
       const data = await response.json();

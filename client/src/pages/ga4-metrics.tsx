@@ -101,6 +101,8 @@ export default function GA4Metrics() {
   const [showKPIDialog, setShowKPIDialog] = useState(false);
   const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
   const [deleteKPIId, setDeleteKPIId] = useState<string | null>(null);
+  const [manualSpendInput, setManualSpendInput] = useState<string>("");
+  const [manualSpendOverride, setManualSpendOverride] = useState<number>(0);
   
   // Benchmark-related state
   const [showCreateBenchmark, setShowCreateBenchmark] = useState(false);
@@ -119,6 +121,21 @@ export default function GA4Metrics() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Load saved manual spend override per campaign + dateRange (local-only, for frictionless MVP testing).
+  useEffect(() => {
+    try {
+      if (!campaignId) return;
+      const key = `ga4SpendOverride:${campaignId}:${dateRange}`;
+      const raw = window.localStorage.getItem(key);
+      const n = raw ? Number(raw) : 0;
+      const v = Number.isFinite(n) ? n : 0;
+      setManualSpendOverride(v > 0 ? v : 0);
+      setManualSpendInput(v > 0 ? String(v) : "");
+    } catch {
+      // ignore
+    }
+  }, [campaignId, dateRange]);
 
   const kpiForm = useForm<KPIFormData>({
     resolver: zodResolver(kpiFormSchema),
@@ -712,13 +729,21 @@ export default function GA4Metrics() {
 
   // Prefer platform spend; if none exists, use Sheets spend; otherwise fall back to campaign budget only.
   const platformSpend = spendLinkedIn + spendMeta + spendCustom;
-  const totalSpendForFinancials = platformSpend > 0 ? platformSpend : (spendSheets > 0 ? spendSheets : spendCampaignBudget);
+  const totalSpendForFinancials =
+    platformSpend > 0
+      ? platformSpend
+      : spendSheets > 0
+        ? spendSheets
+        : manualSpendOverride > 0
+          ? manualSpendOverride
+          : spendCampaignBudget;
 
   const spendSources: string[] = [];
   if (spendLinkedIn > 0) spendSources.push("LinkedIn Ads");
   if (spendMeta > 0) spendSources.push("Meta Ads");
   if (spendCustom > 0) spendSources.push("Custom Integration");
   if (spendSources.length === 0 && spendSheets > 0) spendSources.push("Google Sheets");
+  if (spendSources.length === 0 && manualSpendOverride > 0) spendSources.push("Manual override");
   if (spendSources.length === 0 && spendCampaignBudget > 0) spendSources.push("Campaign budget");
 
   const financialRevenue = Number(breakdownTotals.revenue || ga4Metrics?.revenue || 0);
@@ -1219,6 +1244,57 @@ export default function GA4Metrics() {
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                               Spend detected: LinkedIn ${spendLinkedIn.toFixed(2)}, Meta ${spendMeta.toFixed(2)}, Custom ${spendCustom.toFixed(2)}, Sheets ${spendSheets.toFixed(2)}, Budget ${spendCampaignBudget.toFixed(2)}
                             </p>
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                              <div className="flex-1">
+                                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Manual spend override (for this period)</label>
+                                <Input
+                                  value={manualSpendInput}
+                                  onChange={(e) => setManualSpendInput(e.target.value)}
+                                  placeholder="e.g., 2500"
+                                />
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  Saves locally for this campaign + date range. Source will display as “Manual override”.
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => {
+                                    const n = Number(manualSpendInput);
+                                    if (!Number.isFinite(n) || n <= 0) {
+                                      toast({ title: "Enter a valid spend amount", description: "Spend must be a positive number." });
+                                      return;
+                                    }
+                                    try {
+                                      const key = `ga4SpendOverride:${campaignId}:${dateRange}`;
+                                      window.localStorage.setItem(key, String(n));
+                                    } catch {
+                                      // ignore
+                                    }
+                                    setManualSpendOverride(n);
+                                    toast({ title: "Spend saved", description: "Financial metrics will now calculate using the manual spend override." });
+                                  }}
+                                  variant="default"
+                                >
+                                  Save spend
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    try {
+                                      const key = `ga4SpendOverride:${campaignId}:${dateRange}`;
+                                      window.localStorage.removeItem(key);
+                                    } catch {
+                                      // ignore
+                                    }
+                                    setManualSpendOverride(0);
+                                    setManualSpendInput("");
+                                    toast({ title: "Spend cleared", description: "Connect a spend source to calculate ROAS/ROI/CPA." });
+                                  }}
+                                  variant="outline"
+                                >
+                                  Clear
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>

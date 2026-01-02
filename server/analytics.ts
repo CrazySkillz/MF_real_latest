@@ -63,7 +63,11 @@ export class GoogleAnalytics4Service {
     dateRange = '30daysAgo',
     propertyId?: string,
     limit: number = 2000
-  ): Promise<{ rows: Array<Record<string, any>>; totals: { sessions: number; conversions: number; revenue: number } }> {
+  ): Promise<{
+    rows: Array<Record<string, any>>;
+    totals: { sessions: number; conversions: number; revenue: number };
+    meta: { propertyId: string; revenueMetric: string; dimensions: string[]; rowCount: number };
+  }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection || connection.method !== 'access_token') {
       throw new Error('No valid access token connection found');
@@ -106,7 +110,7 @@ export class GoogleAnalytics4Service {
       return response.json();
     };
 
-    const sessionScopedDimensions = [
+    const sessionScopedFull = [
       { name: 'date' },
       { name: 'sessionDefaultChannelGroup' },
       { name: 'sessionSource' },
@@ -115,9 +119,23 @@ export class GoogleAnalytics4Service {
       { name: 'deviceCategory' },
       { name: 'country' },
     ];
+    const sessionScopedNoCampaign = [
+      { name: 'date' },
+      { name: 'sessionDefaultChannelGroup' },
+      { name: 'sessionSource' },
+      { name: 'sessionMedium' },
+      { name: 'deviceCategory' },
+      { name: 'country' },
+    ];
+    const sessionScopedCore = [
+      { name: 'date' },
+      { name: 'sessionDefaultChannelGroup' },
+      { name: 'sessionSource' },
+      { name: 'sessionMedium' },
+    ];
 
-    // Fallback dimension names (some properties/reporting setups expose these without the `session*` prefix).
-    const legacyDimensions = [
+    // Fallback dimension names (some properties expose these without the `session*` prefix).
+    const legacyFull = [
       { name: 'date' },
       { name: 'defaultChannelGroup' },
       { name: 'source' },
@@ -126,30 +144,62 @@ export class GoogleAnalytics4Service {
       { name: 'deviceCategory' },
       { name: 'country' },
     ];
+    const legacyNoCampaign = [
+      { name: 'date' },
+      { name: 'defaultChannelGroup' },
+      { name: 'source' },
+      { name: 'medium' },
+      { name: 'deviceCategory' },
+      { name: 'country' },
+    ];
+    const legacyCore = [
+      { name: 'date' },
+      { name: 'defaultChannelGroup' },
+      { name: 'source' },
+      { name: 'medium' },
+    ];
 
     const fetchWithRevenueFallback = async (dimensions: Array<{ name: string }>) => {
       try {
-        return await fetchReport('totalRevenue', dimensions);
+        return { data: await fetchReport('totalRevenue', dimensions), revenueMetric: 'totalRevenue' as const };
       } catch (e: any) {
         const msg = String(e?.message || '');
         // Some properties may not support totalRevenue; retry with purchaseRevenue.
         if (msg.toLowerCase().includes('totalrevenue')) {
-          return await fetchReport('purchaseRevenue', dimensions);
+          return { data: await fetchReport('purchaseRevenue', dimensions), revenueMetric: 'purchaseRevenue' as const };
         }
         throw e;
       }
     };
 
-    // First attempt: session-scoped dimensions (preferred for acquisition reporting).
-    let data: any = await fetchWithRevenueFallback(sessionScopedDimensions);
+    const dimensionCandidates: Array<{ name: string; dims: Array<{ name: string }> }> = [
+      { name: 'sessionScopedFull', dims: sessionScopedFull },
+      { name: 'sessionScopedNoCampaign', dims: sessionScopedNoCampaign },
+      { name: 'sessionScopedCore', dims: sessionScopedCore },
+      { name: 'legacyFull', dims: legacyFull },
+      { name: 'legacyNoCampaign', dims: legacyNoCampaign },
+      { name: 'legacyCore', dims: legacyCore },
+    ];
 
-    // If GA4 returns no rows, try fallback dimension set.
-    if (!Array.isArray(data?.rows) || data.rows.length === 0) {
-      const fallbackData: any = await fetchWithRevenueFallback(legacyDimensions);
-      // Only use fallback if it actually returns rows.
-      if (Array.isArray(fallbackData?.rows) && fallbackData.rows.length > 0) {
-        data = fallbackData;
+    let chosenDims: Array<{ name: string }> = sessionScopedFull;
+    let chosenRevenueMetric: string = 'totalRevenue';
+    let data: any = null;
+
+    for (const candidate of dimensionCandidates) {
+      const result = await fetchWithRevenueFallback(candidate.dims);
+      const d = result.data;
+      const rowCount = Array.isArray(d?.rows) ? d.rows.length : 0;
+      if (rowCount > 0) {
+        data = d;
+        chosenDims = candidate.dims;
+        chosenRevenueMetric = result.revenueMetric;
+        break;
       }
+
+      // Keep last attempt for debugging if all are empty
+      data = d;
+      chosenDims = candidate.dims;
+      chosenRevenueMetric = result.revenueMetric;
     }
 
     const rows: any[] = [];
@@ -192,6 +242,12 @@ export class GoogleAnalytics4Service {
         sessions: totalSessions,
         conversions: totalConversions,
         revenue: Number(totalRevenue.toFixed(2)),
+      },
+      meta: {
+        propertyId: normalizedPropertyId,
+        revenueMetric: chosenRevenueMetric,
+        dimensions: chosenDims.map((d: any) => d.name),
+        rowCount: rows.length,
       },
     };
   }

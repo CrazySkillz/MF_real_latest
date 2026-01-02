@@ -2252,6 +2252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateRange = String(req.query.dateRange || '30days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
+      const debug = String(req.query.debug || '').toLowerCase() === '1' || String(req.query.debug || '').toLowerCase() === 'true';
 
       // Convert date range to GA4 format
       let ga4DateRange = '30daysAgo';
@@ -2277,6 +2278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateRange,
         totals: result.totals,
         rows: result.rows,
+        ...(debug ? { meta: result.meta } : {}),
         lastUpdated: new Date().toISOString(),
       });
     } catch (error: any) {

@@ -106,6 +106,17 @@ export class GoogleAnalytics4Service {
 
     const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
 
+    const isAuthErrorText = (txt: string) => {
+      const t = String(txt || '').toLowerCase();
+      return (
+        t.includes('"code": 401') ||
+        t.includes('unauthenticated') ||
+        t.includes('invalid authentication credentials') ||
+        t.includes('request had invalid authentication credentials') ||
+        t.includes('invalid_grant')
+      );
+    };
+
     const fetchReport = async (
       metricName: 'totalRevenue' | 'purchaseRevenue',
       dimensions: Array<{ name: string }>
@@ -134,6 +145,58 @@ export class GoogleAnalytics4Service {
 
       if (!response.ok) {
         const errorText = await response.text();
+        // If this is an auth error and we have a refresh token, attempt one automatic refresh + retry.
+        if (isAuthErrorText(errorText)) {
+          if (connection.refreshToken) {
+            try {
+              const refreshResult = await this.refreshAccessToken(
+                String(connection.refreshToken),
+                (connection.clientId as any) || undefined,
+                (connection.clientSecret as any) || undefined
+              );
+              await storage.updateGA4ConnectionTokens(connection.id, {
+                accessToken: refreshResult.access_token,
+                refreshToken: String(connection.refreshToken),
+                expiresAt: new Date(Date.now() + (refreshResult.expires_in * 1000)),
+              });
+              accessToken = refreshResult.access_token;
+
+              const retry = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+                  dimensions,
+                  metrics: [
+                    { name: 'sessions' },
+                    { name: 'totalUsers' },
+                    { name: 'conversions' },
+                    { name: metricName },
+                  ],
+                  orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+                  limit: Math.min(Math.max(limit, 1), 10000),
+                }),
+              });
+              if (!retry.ok) {
+                const retryText = await retry.text();
+                throw new Error(`GA4 API Error: ${retryText}`);
+              }
+              return retry.json();
+            } catch (refreshError: any) {
+              const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
+              (autoRefreshError as any).isAutoRefreshNeeded = true;
+              throw autoRefreshError;
+            }
+          }
+
+          const tokenExpiredError = new Error('TOKEN_EXPIRED');
+          (tokenExpiredError as any).isTokenExpired = true;
+          throw tokenExpiredError;
+        }
+
         throw new Error(`GA4 API Error: ${errorText}`);
       }
       return response.json();

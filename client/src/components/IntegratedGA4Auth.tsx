@@ -25,6 +25,24 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
     setIsConnecting(false);
   }, []);
 
+  // IMPORTANT: define this before any useEffect dependency arrays reference it,
+  // otherwise we can trigger a TDZ runtime error in production builds.
+  const checkConnectionStatus = useCallback(async () => {
+    try {
+      const response = await apiRequest("GET", `/api/campaigns/${campaignId}/ga4-connection-status`);
+      const data = await response.json();
+
+      if (data.connected) {
+        setAuthCompleted(true);
+        onSuccess();
+      }
+    } catch (error) {
+      console.error("Failed to verify connection status:", error);
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [campaignId, onSuccess]);
+
   useEffect(() => {
     const handlePopupMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
@@ -62,22 +80,6 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
 
     return () => clearInterval(interval);
   }, [cleanupPopup, checkConnectionStatus, authCompleted]);
-
-  const checkConnectionStatus = useCallback(async () => {
-    try {
-      const response = await apiRequest("GET", `/api/campaigns/${campaignId}/ga4-connection-status`);
-      const data = await response.json();
-
-      if (data.connected) {
-        setAuthCompleted(true);
-        onSuccess();
-      }
-    } catch (error) {
-      console.error("Failed to verify connection status:", error);
-    } finally {
-      setIsConnecting(false);
-    }
-  }, [campaignId, onSuccess]);
 
   const startOAuthFlow = useCallback(async () => {
     setIsConnecting(true);

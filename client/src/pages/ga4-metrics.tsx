@@ -709,6 +709,35 @@ export default function GA4Metrics() {
     },
   });
 
+  // Resolve spend source labels for the Financial section (so we don't show a broken/undefined label).
+  const { data: spendSourcesResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/spend-sources`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchIntervalInBackground: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources`);
+      if (!resp.ok) return { success: false, sources: [] };
+      return resp.json().catch(() => ({ success: false, sources: [] }));
+    },
+  });
+
+  const spendSourceLabels = useMemo(() => {
+    const ids = Array.isArray(spendTotals?.sourceIds) ? spendTotals.sourceIds.map(String) : [];
+    const sources = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
+    const labels: string[] = [];
+    for (const id of ids) {
+      const s = sources.find((x: any) => String(x?.id) === String(id));
+      if (!s) continue;
+      const label = String(s.displayName || s.sourceType || "").trim();
+      if (label) labels.push(label);
+    }
+    return labels;
+  }, [spendTotals?.sourceIds, spendSourcesResp]);
+
   const spendLinkedIn = parseNum(linkedinSpendMetrics?.spend);
   const spendCustom = parseNum(customIntegrationSpend?.metrics?.spend ?? customIntegrationSpend?.spend);
   const spendMeta = parseNum(metaSummary?.summary?.spend ?? metaSummary?.summary?.totalSpend ?? metaSummary?.spend);
@@ -1139,7 +1168,7 @@ export default function GA4Metrics() {
                             <div className="mb-3">
                               <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial (Spend-based)</h4>
                               <p className="text-xs text-slate-600 dark:text-slate-400">
-                                Spend source: {spendSources.length > 0 ? spendSources.join(" + ") : "Unknown"} — {selectedPeriodLabel}
+                                Spend source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} — {selectedPeriodLabel}
                               </p>
                             </div>
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -4,9 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
+import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
+import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 
-type SpendSourceMode = "ad_platforms" | "google_sheets" | "csv" | "manual";
+type SpendSourceMode = "ad_platforms" | "google_sheets" | "upload" | "paste" | "manual";
 
 type CsvPreview = {
   success: boolean;
@@ -33,12 +37,15 @@ export function AddSpendWizardModal(props: {
 }) {
   const { toast } = useToast();
   const [step, setStep] = useState<"choose" | "csv_map" | "sheets_pick" | "sheets_map">("choose");
-  const [mode, setMode] = useState<SpendSourceMode>("csv");
+  const [mode, setMode] = useState<SpendSourceMode>("upload");
 
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null);
   const [isCsvPreviewing, setIsCsvPreviewing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pasteText, setPasteText] = useState<string>("");
+  const [showSheetsConnect, setShowSheetsConnect] = useState(false);
+  const [showPlatformConnect, setShowPlatformConnect] = useState<null | "linkedin" | "meta">(null);
 
   const [dateColumn, setDateColumn] = useState<string>("");
   const [spendColumn, setSpendColumn] = useState<string>("");
@@ -56,7 +63,7 @@ export function AddSpendWizardModal(props: {
   useEffect(() => {
     if (!props.open) {
       setStep("choose");
-      setMode("csv");
+      setMode("upload");
       setCsvFile(null);
       setCsvPreview(null);
       setIsCsvPreviewing(false);
@@ -67,6 +74,9 @@ export function AddSpendWizardModal(props: {
       setCampaignValue("");
       setDisplayName("");
       setManualAmount("");
+      setPasteText("");
+      setShowSheetsConnect(false);
+      setShowPlatformConnect(null);
       setSheetsConnections([]);
       setSelectedSheetConnectionId("");
       setSheetsPreview(null);
@@ -139,6 +149,63 @@ export function AddSpendWizardModal(props: {
       setStep("csv_map");
     } catch (e: any) {
       toast({ title: "CSV preview failed", description: e?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsCsvPreviewing(false);
+    }
+  };
+
+  const parsePastedTable = (raw: string) => {
+    const text = String(raw || "").replace(/\r\n/g, "\n").trim();
+    if (!text) return null;
+    const lines = text.split("\n").filter(Boolean);
+    if (!lines.length) return null;
+
+    // Prefer tab-delimited (common when copying from Excel/Sheets), otherwise fallback to comma.
+    const delim = lines[0].includes("\t") ? "\t" : ",";
+    const split = (line: string) => line.split(delim).map((c) => String(c ?? "").trim());
+
+    const headers = split(lines[0]).filter((h) => !!h);
+    if (!headers.length) return null;
+
+    const sampleRows: Array<Record<string, string>> = [];
+    for (const line of lines.slice(1, 1 + 25)) {
+      const cells = split(line);
+      const row: Record<string, string> = {};
+      headers.forEach((h, idx) => {
+        row[h] = String(cells[idx] ?? "");
+      });
+      sampleRows.push(row);
+    }
+
+    // Build a CSV file to reuse the existing server-side CSV pipeline.
+    const escapeCsv = (v: string) => {
+      const s = String(v ?? "");
+      if (s.includes('"') || s.includes(",") || s.includes("\n")) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+    const csvLines: string[] = [];
+    csvLines.push(headers.map(escapeCsv).join(","));
+    for (const r of sampleRows) {
+      csvLines.push(headers.map((h) => escapeCsv(String((r as any)[h] ?? ""))).join(","));
+    }
+    const csvText = csvLines.join("\n");
+    const file = new File([csvText], "pasted_spend.csv", { type: "text/csv" });
+
+    return { headers, sampleRows, rowCount: Math.max(lines.length - 1, 0), file };
+  };
+
+  const previewPaste = async () => {
+    setIsCsvPreviewing(true);
+    try {
+      const parsed = parsePastedTable(pasteText);
+      if (!parsed) throw new Error("Paste a table with a header row (Date, Spend, optional Campaign).");
+      setCsvFile(parsed.file);
+      setCsvPreview({ success: true, fileName: "Pasted table", headers: parsed.headers, sampleRows: parsed.sampleRows, rowCount: parsed.rowCount });
+      setStep("csv_map");
+    } catch (e: any) {
+      toast({ title: "Paste preview failed", description: e?.message || "Please try again.", variant: "destructive" });
     } finally {
       setIsCsvPreviewing(false);
     }
@@ -322,36 +389,68 @@ export function AddSpendWizardModal(props: {
                 <SelectContent className="z-[10000]">
                   <SelectItem value="ad_platforms">Ad platforms (LinkedIn / Meta / Custom)</SelectItem>
                   <SelectItem value="google_sheets">Google Sheets</SelectItem>
-                  <SelectItem value="csv">CSV upload</SelectItem>
+                  <SelectItem value="upload">Upload file</SelectItem>
+                  <SelectItem value="paste">Paste table (Excel / Sheets)</SelectItem>
                   <SelectItem value="manual">Manual entry</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {mode === "google_sheets" && (
               <div className="rounded-lg border p-4 space-y-4">
-                <div className="space-y-2">
-                  <Label>Choose Google Sheet</Label>
-                  <Select value={selectedSheetConnectionId} onValueChange={setSelectedSheetConnectionId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={sheetsConnections.length ? "Select a connected sheet" : "No connected Google Sheets"} />
-                    </SelectTrigger>
-                    <SelectContent className="z-[10000]">
-                      {sheetsConnections.map((c: any) => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                          {c.spreadsheetName || c.spreadsheetId}{c.sheetName ? ` — ${c.sheetName}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    This uses your existing Google Sheets connection for the campaign.
-                  </p>
-                </div>
+                {sheetsConnections.length === 0 || showSheetsConnect ? (
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium">Connect Google Sheets</div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      No Sheets are connected to this campaign yet. Connect once, then we’ll let you pick a sheet/tab.
+                    </p>
+                    <SimpleGoogleSheetsAuth
+                      campaignId={props.campaignId}
+                      selectionMode="append"
+                      onSuccess={async () => {
+                        setShowSheetsConnect(false);
+                        try {
+                          const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections`);
+                          const json = await resp.json().catch(() => null);
+                          const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
+                          setSheetsConnections(conns.filter((c: any) => c && c.isActive !== false));
+                          toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
+                        } catch {
+                          // ignore
+                        }
+                      }}
+                      onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Choose Google Sheet</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
+                        Connect another
+                      </Button>
+                    </div>
+                    <Select value={selectedSheetConnectionId} onValueChange={setSelectedSheetConnectionId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={"Select a connected sheet"} />
+                      </SelectTrigger>
+                      <SelectContent className="z-[10000]">
+                        {sheetsConnections.map((c: any) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {c.spreadsheetName || c.spreadsheetId}{c.sheetName ? ` — ${c.sheetName}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      This uses your Google Sheets connection for this campaign.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {mode === "ad_platforms" && (
-              <div className="rounded-lg border p-4 space-y-2">
+              <div className="rounded-lg border p-4 space-y-4">
                 <div className="text-sm text-slate-700 dark:text-slate-300">
                   Detected spend (latest available):
                 </div>
@@ -367,13 +466,58 @@ export function AddSpendWizardModal(props: {
                 <div className="text-sm pt-2">
                   Total: <span className="font-semibold">{props.currency || "USD"} {(props.platformSpend?.total || 0).toFixed(2)}</span>
                 </div>
+
+                {!(props.platformSpend?.total && props.platformSpend.total > 0) && (
+                  <div className="pt-3 border-t space-y-3">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      No platform spend detected yet. Connect a platform below (or use Upload/Paste/Manual).
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" onClick={() => setShowPlatformConnect("meta")}>
+                        Connect Meta (test mode)
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setShowPlatformConnect("linkedin")}>
+                        Connect LinkedIn
+                      </Button>
+                    </div>
+                    {showPlatformConnect === "meta" && (
+                      <div className="rounded-md border p-3">
+                        <SimpleMetaAuth
+                          campaignId={props.campaignId}
+                          onSuccess={() => {
+                            toast({ title: "Meta connected", description: "Re-open Add spend to use the detected spend." });
+                            props.onProcessed?.();
+                            setShowPlatformConnect(null);
+                          }}
+                          onError={(err) => toast({ title: "Meta connect failed", description: err, variant: "destructive" })}
+                        />
+                      </div>
+                    )}
+                    {showPlatformConnect === "linkedin" && (
+                      <div className="rounded-md border p-3">
+                        <LinkedInConnectionFlow
+                          campaignId={props.campaignId}
+                          mode="new"
+                          onConnectionSuccess={() => {
+                            toast({ title: "LinkedIn connected", description: "Re-open Add spend to use detected spend (after importing a campaign)." });
+                            props.onProcessed?.();
+                            setShowPlatformConnect(null);
+                          }}
+                          onImportComplete={() => {
+                            props.onProcessed?.();
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
-            {mode === "csv" && (
+            {mode === "upload" && (
               <div className="rounded-lg border p-4 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="csv-file">Upload CSV</Label>
+                  <Label htmlFor="csv-file">Upload file (CSV)</Label>
                   <Input
                     id="csv-file"
                     type="file"
@@ -382,6 +526,24 @@ export function AddSpendWizardModal(props: {
                   />
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     Required columns: Date + Spend. Optional: Campaign (for multi-campaign files).
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {mode === "paste" && (
+              <div className="rounded-lg border p-4 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="paste-table">Paste table</Label>
+                  <Textarea
+                    id="paste-table"
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    placeholder={"Paste from Excel/Google Sheets with a header row.\nExample:\nDate\tSpend\tCampaign\n2026-01-01\t125.50\tbrand_awareness"}
+                    className="min-h-[140px] font-mono text-xs"
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Works with tab-delimited (copy/paste) or comma-delimited text. We’ll preview it before processing.
                   </p>
                 </div>
               </div>
@@ -404,8 +566,13 @@ export function AddSpendWizardModal(props: {
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
-              {mode === "csv" && (
+              {mode === "upload" && (
                 <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
+                  {isCsvPreviewing ? "Previewing..." : "Next"}
+                </Button>
+              )}
+              {mode === "paste" && (
+                <Button onClick={previewPaste} disabled={!pasteText.trim() || isCsvPreviewing}>
                   {isCsvPreviewing ? "Previewing..." : "Next"}
                 </Button>
               )}

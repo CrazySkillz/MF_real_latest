@@ -370,13 +370,36 @@ export function AddSpendWizardModal(props: {
                     <SimpleGoogleSheetsAuth
                       campaignId={props.campaignId}
                       selectionMode="append"
-                      onSuccess={async () => {
+                      onSuccess={async (info) => {
                         setShowSheetsConnect(false);
+                        const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
+                        // Optimistically select the just-created connection so the field immediately shows a value
+                        // (even before we finish refreshing the connections list).
+                        if (preferredId) {
+                          setSelectedSheetConnectionId(preferredId);
+                          setSheetsConnections((prev) => {
+                            const exists = prev.some((c: any) => String(c?.id) === preferredId);
+                            if (exists) return prev;
+                            const optimistic = {
+                              id: preferredId,
+                              spreadsheetId: info?.spreadsheetId || "",
+                              spreadsheetName: info?.spreadsheetId || "Google Sheet",
+                              sheetName: Array.isArray(info?.sheetNames) ? info?.sheetNames?.[0] : undefined,
+                              isActive: true,
+                            };
+                            return [optimistic, ...prev];
+                          });
+                        }
                         try {
                           const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections`);
                           const json = await resp.json().catch(() => null);
                           const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
-                          setSheetsConnections(conns.filter((c: any) => c && c.isActive !== false));
+                          const filtered = conns.filter((c: any) => c && c.isActive !== false);
+                          setSheetsConnections(filtered);
+                          // If we don't have a selection yet, auto-select when there's only one option.
+                          if (!preferredId && !selectedSheetConnectionId && filtered.length === 1) {
+                            setSelectedSheetConnectionId(String(filtered[0].id));
+                          }
                           toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
                         } catch {
                           // ignore
@@ -390,7 +413,7 @@ export function AddSpendWizardModal(props: {
                     <div className="flex items-center justify-between gap-2">
                       <Label>Choose Google Sheet</Label>
                       <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
-                        Connect another
+                        Change sheet/tab
                       </Button>
                     </div>
                     <Select value={selectedSheetConnectionId} onValueChange={setSelectedSheetConnectionId}>

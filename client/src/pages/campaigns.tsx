@@ -126,7 +126,7 @@ const platforms = [
   }
 ];
 
-function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLinkedInImportComplete, onPlatformsChange }: DataConnectorsStepProps & { campaignData: CampaignFormData }) {
+function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLinkedInImportComplete, onPlatformsChange, onGA4CampaignFilterSelected }: DataConnectorsStepProps & { campaignData: CampaignFormData; onGA4CampaignFilterSelected?: (value: string) => void }) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({});
@@ -138,7 +138,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const [showGA4CampaignSelector, setShowGA4CampaignSelector] = useState(false);
   const [ga4CampaignValues, setGA4CampaignValues] = useState<Array<{ name: string; users: number }>>([]);
   const [selectedGA4CampaignValue, setSelectedGA4CampaignValue] = useState<string>('');
-  const [ga4CampaignTargetCampaignId, setGA4CampaignTargetCampaignId] = useState<string>('');
+  // Campaign filter to scope GA4 to a single campaignName (utm_campaign)
   const [isGA4CampaignLoading, setIsGA4CampaignLoading] = useState(false);
   const [showCustomIntegrationModal, setShowCustomIntegrationModal] = useState(false);
   const [customIntegrationEmail, setCustomIntegrationEmail] = useState('');
@@ -326,6 +326,24 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
           title: "GA4 Connected!",
           description: "Google Analytics is now linked to this campaign."
         });
+
+        // Immediately prompt for GA4 campaignName filter (still within the New Campaign flow)
+        try {
+          setIsGA4CampaignLoading(true);
+          const valsResp = await fetch(`/api/campaigns/temp-campaign-setup/ga4-campaign-values?dateRange=30days&limit=50`);
+          const valsJson = await valsResp.json().catch(() => null);
+          const vals = Array.isArray(valsJson?.campaigns) ? valsJson.campaigns : [];
+          setGA4CampaignValues(vals);
+          setSelectedGA4CampaignValue(vals[0]?.name || '');
+          setShowGA4CampaignSelector(true);
+        } catch (e) {
+          console.warn('Failed to fetch GA4 campaign values:', e);
+          setGA4CampaignValues([]);
+          setSelectedGA4CampaignValue('');
+          setShowGA4CampaignSelector(true);
+        } finally {
+          setIsGA4CampaignLoading(false);
+        }
       } else {
         throw new Error(data?.message || data?.error || "Failed to connect property");
       }
@@ -349,7 +367,6 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   };
 
   const saveGA4CampaignFilter = async () => {
-    if (!ga4CampaignTargetCampaignId) return;
     const value = String(selectedGA4CampaignValue || '').trim();
     if (!value) {
       toast({
@@ -360,15 +377,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
       return;
     }
     try {
-      const resp = await fetch(`/api/campaigns/${encodeURIComponent(ga4CampaignTargetCampaignId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ga4CampaignFilter: value })
-      });
-      if (!resp.ok) {
-        const j = await resp.json().catch(() => null);
-        throw new Error(j?.message || j?.error || "Failed to save");
-      }
+      onGA4CampaignFilterSelected?.(value);
       toast({
         title: "GA4 campaign selected",
         description: `This campaign will track GA4 campaign "${value}".`
@@ -990,6 +999,7 @@ export default function Campaigns() {
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [linkedInImportComplete, setLinkedInImportComplete] = useState(false);
   const [connectedPlatformsInDialog, setConnectedPlatformsInDialog] = useState<string[]>([]);
+  const [ga4CampaignFilterForNewCampaign, setGa4CampaignFilterForNewCampaign] = useState<string>("");
   
   // Debug: log whenever connectedPlatformsInDialog changes
   useEffect(() => {
@@ -1167,6 +1177,7 @@ export default function Campaigns() {
       // Create campaign with connected platforms data - no artificial metrics
       const campaignWithPlatforms = {
         ...campaignData,
+        ga4CampaignFilter: ga4CampaignFilterForNewCampaign || undefined,
         industry: campaignData.industry || undefined, // Include industry for benchmark generation
         platform: selectedPlatforms.join(', '), // Store connected platforms
         status: "active" as const,
@@ -1211,26 +1222,6 @@ export default function Campaigns() {
             // Invalidate and refetch connection status queries
             await queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", (newCampaign as any).id] });
             await queryClient.refetchQueries({ queryKey: ["/api/ga4/check-connection", (newCampaign as any).id] });
-
-            // Prompt to select GA4 campaignName so analytics can be scoped to a single campaign
-            try {
-              const newId = String((newCampaign as any).id);
-              setGA4CampaignTargetCampaignId(newId);
-              setIsGA4CampaignLoading(true);
-              const valsResp = await fetch(`/api/campaigns/${encodeURIComponent(newId)}/ga4-campaign-values?dateRange=30days&limit=50`);
-              const valsJson = await valsResp.json().catch(() => null);
-              const vals = Array.isArray(valsJson?.campaigns) ? valsJson.campaigns : [];
-              setGA4CampaignValues(vals);
-              setSelectedGA4CampaignValue(vals[0]?.name || '');
-              setShowGA4CampaignSelector(true);
-            } catch (e) {
-              console.warn('Failed to fetch GA4 campaign values:', e);
-              setGA4CampaignValues([]);
-              setSelectedGA4CampaignValue('');
-              setShowGA4CampaignSelector(true);
-            } finally {
-              setIsGA4CampaignLoading(false);
-            }
           } else {
             console.error('❌ GA4 transfer failed:', result.error);
           }
@@ -1724,6 +1715,7 @@ export default function Campaigns() {
                           campaignData={campaignData!}
                           onLinkedInImportComplete={() => setLinkedInImportComplete(true)}
                           onPlatformsChange={setConnectedPlatformsInDialog}
+                          onGA4CampaignFilterSelected={(value) => setGa4CampaignFilterForNewCampaign(value)}
                         />
                       </div>
                       

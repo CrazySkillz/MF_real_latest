@@ -48,12 +48,20 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
   useEffect(() => {
     const interval = setInterval(() => {
       if (popupRef.current && popupRef.current.closed) {
-        cleanupPopup();
+        // If the popup was closed without a postMessage, do a final status check.
+        // This preserves a fallback path while preventing the property selector from
+        // appearing before the user actually finishes OAuth.
+        popupRef.current = null;
+        if (!authCompleted) {
+          void checkConnectionStatus();
+        } else {
+          cleanupPopup();
+        }
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [cleanupPopup]);
+  }, [cleanupPopup, checkConnectionStatus, authCompleted]);
 
   const checkConnectionStatus = useCallback(async () => {
     try {
@@ -99,12 +107,8 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
       }
 
       popupRef.current = popup;
-
-      setTimeout(() => {
-        if (popupRef.current && !popupRef.current.closed) {
-          checkConnectionStatus();
-        }
-      }, 3000);
+      // Do not call checkConnectionStatus while the popup is still open.
+      // We rely on postMessage for the happy path, and on the "popup closed" handler for fallback.
     } catch (error: any) {
       console.error("Integrated GA4 connection error:", error);
       cleanupPopup();

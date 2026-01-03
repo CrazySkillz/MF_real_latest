@@ -1200,6 +1200,11 @@ export default function GA4Metrics() {
                             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                               Revenue and conversions come from GA4. To calculate ROAS/ROI/CPA, add spend from any source (ad platform, spreadsheet, or manual entry).
                             </p>
+                            {Array.isArray(spendSourcesResp?.sources) && spendSourcesResp.sources.length > 0 && (
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                Spend has been imported, but it’s <span className="font-medium">{(spendTotals?.totalSpend || 0) > 0 ? "not showing yet" : "$0.00"}</span> for the selected period (<span className="font-medium">{getDateRangeLabel(dateRange)}</span>). This usually means the spend dates in your sheet/file are outside the selected range.
+                              </p>
+                            )}
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                               <Button variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
                                 Add spend
@@ -1212,6 +1217,7 @@ export default function GA4Metrics() {
                               currency={(campaign as any)?.currency || "USD"}
                               onProcessed={() => {
                                 queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`, dateRange] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`] });
                               }}
                             />
                           </div>

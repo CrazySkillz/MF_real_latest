@@ -58,6 +58,7 @@ export function AddSpendWizardModal(props: {
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
 
   const prefillKeyRef = useRef<string | null>(null);
+  const suppressCampaignResetRef = useRef(false);
   const [autoPreviewSheetOnOpen, setAutoPreviewSheetOnOpen] = useState(false);
   const [isEditPrefillLoading, setIsEditPrefillLoading] = useState(false);
   const [csvPrefillMapping, setCsvPrefillMapping] = useState<any>(null);
@@ -121,7 +122,11 @@ export function AddSpendWizardModal(props: {
       setStep("choose");
       if (mapDate) setDateColumn(mapDate);
       if (mapSpend) setSpendColumn(mapSpend);
-      if (mapCampaignCol) setCampaignKeyColumn(mapCampaignCol);
+      if (mapCampaignCol) {
+        // Prevent the "campaign column changed" effect from wiping prefilled values.
+        suppressCampaignResetRef.current = true;
+        setCampaignKeyColumn(mapCampaignCol);
+      }
       if (mapCampaignVals.length) setCampaignKeyValues(mapCampaignVals);
 
       const connectionId = String(mapping?.connectionId || "").trim();
@@ -142,7 +147,10 @@ export function AddSpendWizardModal(props: {
       setStep("choose");
       setCsvPrefillMapping(mapping);
       setCsvEditNotice("To edit a CSV import, please re-upload the same (or updated) file. We'll prefill the mappings once it’s previewed.");
-      if (mapCampaignCol) setCampaignKeyColumn(mapCampaignCol);
+      if (mapCampaignCol) {
+        suppressCampaignResetRef.current = true;
+        setCampaignKeyColumn(mapCampaignCol);
+      }
       if (mapCampaignVals.length) setCampaignKeyValues(mapCampaignVals);
       if (mapDate) setDateColumn(mapDate);
       if (mapSpend) setSpendColumn(mapSpend);
@@ -222,6 +230,10 @@ export function AddSpendWizardModal(props: {
 
   // Reset selected campaign values when the identifier column changes.
   useEffect(() => {
+    if (suppressCampaignResetRef.current) {
+      suppressCampaignResetRef.current = false;
+      return;
+    }
     setCampaignKeyValues([]);
     setCampaignKeySearch("");
   }, [campaignKeyColumn]);
@@ -709,7 +721,7 @@ export function AddSpendWizardModal(props: {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Campaign value(s) (optional)</Label>
+                    <Label>Campaign value(s)</Label>
                     <Input
                       value={campaignKeySearch}
                       onChange={(e) => setCampaignKeySearch(e.target.value)}

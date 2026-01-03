@@ -42,7 +42,6 @@ export function AddSpendWizardModal(props: {
   const [spendColumn, setSpendColumn] = useState<string>("");
   const [showColumnMapping, setShowColumnMapping] = useState(false);
 
-  const [scopeToCampaign, setScopeToCampaign] = useState(false);
   const [campaignKeyColumn, setCampaignKeyColumn] = useState<string>("");
   const [campaignKeyValues, setCampaignKeyValues] = useState<string[]>([]);
   const [campaignKeySearch, setCampaignKeySearch] = useState<string>("");
@@ -67,7 +66,6 @@ export function AddSpendWizardModal(props: {
       setDateColumn("");
       setSpendColumn("");
       setShowColumnMapping(false);
-      setScopeToCampaign(false);
       setCampaignKeyColumn("");
       setCampaignKeyValues([]);
       setCampaignKeySearch("");
@@ -243,20 +241,21 @@ export function AddSpendWizardModal(props: {
       toast({ title: "Missing mappings", description: "Select both Date and Spend columns.", variant: "destructive" });
       return;
     }
-    if (scopeToCampaign && (!campaignKeyColumn || campaignKeyValues.length === 0)) {
-      toast({ title: "Campaign mapping required", description: "Select the campaign ID/name column and at least one value.", variant: "destructive" });
+    if ((campaignKeyColumn && campaignKeyValues.length === 0) || (!campaignKeyColumn && campaignKeyValues.length > 0)) {
+      toast({ title: "Campaign mapping incomplete", description: "Select a campaign identifier column and at least one value (or leave both empty).", variant: "destructive" });
       return;
     }
 
     setIsProcessing(true);
     try {
+      const hasCampaignScope = !!campaignKeyColumn && campaignKeyValues.length > 0;
       const mapping = {
         displayName: csvFile.name,
         dateColumn,
         spendColumn,
-        campaignColumn: scopeToCampaign ? (campaignKeyColumn || null) : null,
-        campaignValue: scopeToCampaign && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
-        campaignValues: scopeToCampaign ? campaignKeyValues : null,
+        campaignColumn: hasCampaignScope ? campaignKeyColumn : null,
+        campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
+        campaignValues: hasCampaignScope ? campaignKeyValues : null,
         currency: props.currency || "USD",
       };
       const fd = new FormData();
@@ -285,19 +284,20 @@ export function AddSpendWizardModal(props: {
       toast({ title: "Missing mappings", description: "Select both Date and Spend columns.", variant: "destructive" });
       return;
     }
-    if (scopeToCampaign && (!campaignKeyColumn || campaignKeyValues.length === 0)) {
-      toast({ title: "Campaign mapping required", description: "Select the campaign ID/name column and at least one value.", variant: "destructive" });
+    if ((campaignKeyColumn && campaignKeyValues.length === 0) || (!campaignKeyColumn && campaignKeyValues.length > 0)) {
+      toast({ title: "Campaign mapping incomplete", description: "Select a campaign identifier column and at least one value (or leave both empty).", variant: "destructive" });
       return;
     }
     setIsProcessing(true);
     try {
+      const hasCampaignScope = !!campaignKeyColumn && campaignKeyValues.length > 0;
       const mapping = {
         displayName: (sheetsPreview?.spreadsheetName ? `${sheetsPreview.spreadsheetName}${sheetsPreview.sheetName ? ` (${sheetsPreview.sheetName})` : ""}` : "Google Sheets spend"),
         dateColumn,
         spendColumn,
-        campaignColumn: scopeToCampaign ? (campaignKeyColumn || null) : null,
-        campaignValue: scopeToCampaign && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
-        campaignValues: scopeToCampaign ? campaignKeyValues : null,
+        campaignColumn: hasCampaignScope ? campaignKeyColumn : null,
+        campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
+        campaignValues: hasCampaignScope ? campaignKeyValues : null,
         currency: props.currency || "USD",
       };
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/sheets/process`, {
@@ -572,80 +572,65 @@ export function AddSpendWizardModal(props: {
               )}
 
               <div className="pt-2 border-t space-y-3">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="scope-to-campaign"
-                    checked={scopeToCampaign}
-                    onCheckedChange={(v) => {
-                      const next = Boolean(v);
-                      setScopeToCampaign(next);
-                      if (!next) {
-                        setCampaignKeyColumn("");
-                        setCampaignKeyValues([]);
-                        setCampaignKeySearch("");
-                      }
-                    }}
-                  />
-                  <Label htmlFor="scope-to-campaign">Scope spend rows to this campaign (optional)</Label>
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">Campaign mapping (optional)</div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    If this dataset includes multiple campaigns, select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign. If not, leave blank.
+                  </p>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Use this if your dataset includes multiple campaigns, or if the campaign is only identifiable by a Campaign ID column.
-                </p>
 
-                {scopeToCampaign && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Campaign identifier column</Label>
-                      <Select
-                        value={campaignKeyColumn || CAMPAIGN_COL_NONE}
-                        onValueChange={(v) => setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v)}
-                      >
-                        <SelectTrigger><SelectValue placeholder="Select column (Campaign ID or Campaign Name)" /></SelectTrigger>
-                        <SelectContent className="z-[10000]">
-                          <SelectItem value={CAMPAIGN_COL_NONE}>(choose a column)</SelectItem>
-                          {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Campaign value(s)</Label>
-                      <Input
-                        value={campaignKeySearch}
-                        onChange={(e) => setCampaignKeySearch(e.target.value)}
-                        placeholder="Search values…"
-                        disabled={!campaignKeyColumn}
-                      />
-                      <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
-                        {!campaignKeyColumn ? (
-                          <div className="text-xs text-slate-500 dark:text-slate-400">Select a campaign identifier column first.</div>
-                        ) : uniqueCampaignKeyValues.length === 0 ? (
-                          <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
-                        ) : (
-                          uniqueCampaignKeyValues.map((val) => (
-                            <div key={val} className="flex items-start gap-2">
-                              <Checkbox
-                                checked={campaignKeyValues.includes(val)}
-                                onCheckedChange={(checked) => {
-                                  const next = Boolean(checked);
-                                  setCampaignKeyValues((prev) => {
-                                    if (next) return prev.includes(val) ? prev : [...prev, val];
-                                    return prev.filter((x) => x !== val);
-                                  });
-                                }}
-                              />
-                              <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      {campaignKeyValues.length > 0 && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Selected {campaignKeyValues.length} value{campaignKeyValues.length === 1 ? "" : "s"}.
-                        </p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Campaign identifier column</Label>
+                    <Select
+                      value={campaignKeyColumn || CAMPAIGN_COL_NONE}
+                      onValueChange={(v) => setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v)}
+                    >
+                      <SelectTrigger><SelectValue placeholder="(optional) Select column" /></SelectTrigger>
+                      <SelectContent className="z-[10000]">
+                        <SelectItem value={CAMPAIGN_COL_NONE}>(leave blank)</SelectItem>
+                        {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Campaign value(s)</Label>
+                    <Input
+                      value={campaignKeySearch}
+                      onChange={(e) => setCampaignKeySearch(e.target.value)}
+                      placeholder="Search values…"
+                      disabled={!campaignKeyColumn}
+                    />
+                    <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
+                      {!campaignKeyColumn ? (
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Select an identifier column to see values.</div>
+                      ) : uniqueCampaignKeyValues.length === 0 ? (
+                        <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
+                      ) : (
+                        uniqueCampaignKeyValues.map((val) => (
+                          <div key={val} className="flex items-start gap-2">
+                            <Checkbox
+                              checked={campaignKeyValues.includes(val)}
+                              onCheckedChange={(checked) => {
+                                const next = Boolean(checked);
+                                setCampaignKeyValues((prev) => {
+                                  if (next) return prev.includes(val) ? prev : [...prev, val];
+                                  return prev.filter((x) => x !== val);
+                                });
+                              }}
+                            />
+                            <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
+                          </div>
+                        ))
                       )}
                     </div>
+                    {campaignKeyValues.length > 0 && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Selected {campaignKeyValues.length} value{campaignKeyValues.length === 1 ? "" : "s"}.
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
 

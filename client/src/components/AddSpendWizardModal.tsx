@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 
-type SpendSourceMode = "ad_platforms" | "google_sheets" | "upload" | "paste" | "manual";
+type SpendSourceMode = "google_sheets" | "upload" | "paste" | "manual";
 
 type CsvPreview = {
   success: boolean;
@@ -334,7 +334,7 @@ export function AddSpendWizardModal(props: {
     }
   };
 
-  const processAdPlatforms = async () => {
+  const processConnectorDerivedSpend = async () => {
     const total = props.platformSpend?.total ?? 0;
     if (!(total > 0)) {
       toast({ title: "No platform spend detected", description: "Connect a platform or import spend via CSV/Manual.", variant: "destructive" });
@@ -347,7 +347,7 @@ export function AddSpendWizardModal(props: {
         meta: props.platformSpend?.meta || 0,
         custom: props.platformSpend?.custom || 0,
       };
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/ad-platforms`, {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/connectors`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: total, currency: props.currency || "USD", breakdown }),
@@ -386,7 +386,7 @@ export function AddSpendWizardModal(props: {
                 </div>
                 <Button
                   type="button"
-                  onClick={processAdPlatforms}
+                  onClick={processConnectorDerivedSpend}
                   disabled={isProcessing || !((props.platformSpend?.total ?? 0) > 0)}
                 >
                   {isProcessing ? "Saving..." : "Use detected connector spend"}

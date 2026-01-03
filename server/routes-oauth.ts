@@ -198,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/spend/process/ad-platforms", async (req, res) => {
+  const processConnectorDerivedSpend = async (req: any, res: any) => {
     try {
       const campaignId = req.params.id;
       const amount = parseNum((req.body as any)?.amount);
@@ -212,8 +212,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const source = await storage.createSpendSource({
         campaignId,
-        sourceType: "ad_platforms",
-        displayName: "Ad platforms spend",
+        sourceType: "connector_derived",
+        displayName: "Connector-derived spend",
         currency: cur,
         mappingConfig: breakdown ? JSON.stringify(breakdown) : null,
         isActive: true,
@@ -231,9 +231,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, sourceId: source.id, date, amount, currency: cur });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to process ad platform spend" });
+      res.status(500).json({ success: false, error: e?.message || "Failed to process connector-derived spend" });
     }
-  });
+  };
+
+  // New canonical endpoint name (preferred)
+  app.post("/api/campaigns/:id/spend/process/connectors", processConnectorDerivedSpend);
+  // Backwards-compatible alias (older clients may still call this)
+  app.post("/api/campaigns/:id/spend/process/ad-platforms", processConnectorDerivedSpend);
 
   app.post("/api/campaigns/:id/spend/csv/preview", uploadCsv.single("file"), async (req, res) => {
     try {

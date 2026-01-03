@@ -2571,15 +2571,16 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <div className="space-y-2">
                 <Label htmlFor="benchmark-industry">Industry (Optional)</Label>
                 <Select
-                  value={benchmarkForm.industry}
+                  value={benchmarkForm.industry || "__none__"}
                   onValueChange={async (value) => {
+                    const nextIndustry = value === "__none__" ? "" : value;
                     // Update industry
-                    setBenchmarkForm({ ...benchmarkForm, industry: value });
+                    setBenchmarkForm({ ...benchmarkForm, industry: nextIndustry });
                     
                     // If industry selected and metric selected, auto-fill benchmark value
-                    if (value && value !== 'other' && benchmarkForm.metric) {
+                    if (nextIndustry && nextIndustry !== 'other' && benchmarkForm.metric) {
                       try {
-                        const response = await fetch(`/api/industry-benchmarks/${value}/${benchmarkForm.metric}`);
+                        const response = await fetch(`/api/industry-benchmarks/${nextIndustry}/${benchmarkForm.metric}`);
                         if (response.ok) {
                           const data = await response.json();
                           setBenchmarkForm(prev => ({
@@ -2598,7 +2599,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     <SelectValue placeholder="Select industry for auto-fill or leave blank" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None (Enter custom value)</SelectItem>
+                    <SelectItem value="__none__">None (Enter custom value)</SelectItem>
                     {industryData?.industries.map((industry) => (
                       <SelectItem key={industry.value} value={industry.value}>
                         {industry.label}

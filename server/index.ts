@@ -127,6 +127,33 @@ process.on('uncaughtException', (error: Error) => {
             ALTER TABLE campaigns
             ADD COLUMN IF NOT EXISTS ga4_campaign_filter TEXT;
           `);
+
+          // Spend tables for GA4 financials (generic spend ingestion from any source)
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS spend_sources (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              source_type TEXT NOT NULL,
+              display_name TEXT,
+              currency TEXT,
+              mapping_config TEXT,
+              is_active BOOLEAN NOT NULL DEFAULT true,
+              connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS spend_records (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              spend_source_id TEXT NOT NULL,
+              date TEXT NOT NULL,
+              spend DECIMAL(12, 2) NOT NULL,
+              currency TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
           
           // Migration 3: Create KPI periods table
           await db.execute(sql`

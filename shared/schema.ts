@@ -73,6 +73,30 @@ export const ga4Connections = pgTable("ga4_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Spend sources (manual, csv, google_sheets, ad_platforms, etc.)
+export const spendSources = pgTable("spend_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  sourceType: text("source_type").notNull(), // 'manual' | 'csv' | 'google_sheets' | 'ad_platforms' | 'custom'
+  displayName: text("display_name"),
+  currency: text("currency"),
+  mappingConfig: text("mapping_config"), // JSON string (mappings + filters)
+  isActive: boolean("is_active").notNull().default(true),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Normalized spend rows (typically daily)
+export const spendRecords = pgTable("spend_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  spendSourceId: text("spend_source_id").notNull(),
+  date: text("date").notNull(), // YYYY-MM-DD
+  spend: decimal("spend", { precision: 12, scale: 2 }).notNull(),
+  currency: text("currency"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -765,6 +789,23 @@ export const insertGA4ConnectionSchema = createInsertSchema(ga4Connections).pick
   expiresAt: true,
 });
 
+export const insertSpendSourceSchema = createInsertSchema(spendSources).pick({
+  campaignId: true,
+  sourceType: true,
+  displayName: true,
+  currency: true,
+  mappingConfig: true,
+  isActive: true,
+});
+
+export const insertSpendRecordSchema = createInsertSchema(spendRecords).pick({
+  campaignId: true,
+  spendSourceId: true,
+  date: true,
+  spend: true,
+  currency: true,
+});
+
 export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheetsConnections).pick({
   campaignId: true,
   spreadsheetId: true,
@@ -1190,6 +1231,10 @@ export type PerformanceData = typeof performanceData.$inferSelect;
 export type InsertPerformanceData = z.infer<typeof insertPerformanceDataSchema>;
 export type GA4Connection = typeof ga4Connections.$inferSelect;
 export type InsertGA4Connection = z.infer<typeof insertGA4ConnectionSchema>;
+export type SpendSource = typeof spendSources.$inferSelect;
+export type InsertSpendSource = z.infer<typeof insertSpendSourceSchema>;
+export type SpendRecord = typeof spendRecords.$inferSelect;
+export type InsertSpendRecord = z.infer<typeof insertSpendRecordSchema>;
 export type GoogleSheetsConnection = typeof googleSheetsConnections.$inferSelect;
 export type InsertGoogleSheetsConnection = z.infer<typeof insertGoogleSheetsConnectionSchema>;
 export type HubspotConnection = typeof hubspotConnections.$inferSelect;

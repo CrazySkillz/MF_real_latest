@@ -17,4 +17,6 @@ export const pool: Pool | null = connectionString
     })
   : null;
 
-export const db = pool ? drizzle(pool, { schema }) : null;
+// Type as any so downstream code (DatabaseStorage) doesn't become a noisy `db | null` union.
+// At runtime, DatabaseStorage should never be used unless DATABASE_URL is set.
+export const db: any = pool ? drizzle(pool, { schema }) : null;

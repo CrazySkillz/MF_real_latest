@@ -22,6 +22,7 @@ import SimpleGeographicMap from "@/components/SimpleGeographicMap";
 import WorldMapSVG from "@/components/WorldMapSVG";
 import { SiGoogle } from "react-icons/si";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
+import { AddSpendWizardModal } from "@/components/AddSpendWizardModal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -101,10 +102,8 @@ export default function GA4Metrics() {
   const [showKPIDialog, setShowKPIDialog] = useState(false);
   const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
   const [deleteKPIId, setDeleteKPIId] = useState<string | null>(null);
-  const [manualSpendInput, setManualSpendInput] = useState<string>("");
-  const [manualSpendOverride, setManualSpendOverride] = useState<number>(0);
   const [showSpendDialog, setShowSpendDialog] = useState(false);
-  const [spendMode, setSpendMode] = useState<"auto" | "platform" | "sheets" | "budget" | "manual">("auto");
+  // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
   
   // Benchmark-related state
   const [showCreateBenchmark, setShowCreateBenchmark] = useState(false);
@@ -124,46 +123,8 @@ export default function GA4Metrics() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Load saved manual spend override per campaign + dateRange (local-only, for frictionless MVP testing).
-  useEffect(() => {
-    try {
-      if (!campaignId) return;
-      const key = `ga4SpendOverride:${campaignId}:${dateRange}`;
-      const raw = window.localStorage.getItem(key);
-      const n = raw ? Number(raw) : 0;
-      const v = Number.isFinite(n) ? n : 0;
-      setManualSpendOverride(v > 0 ? v : 0);
-      setManualSpendInput(v > 0 ? String(v) : "");
-    } catch {
-      // ignore
-    }
-  }, [campaignId, dateRange]);
-
-  // Persist spend mode selection per campaign (so users aren't re-prompted).
-  useEffect(() => {
-    try {
-      if (!campaignId) return;
-      const key = `ga4SpendMode:${campaignId}`;
-      window.localStorage.setItem(key, spendMode);
-    } catch {
-      // ignore
-    }
-  }, [campaignId, spendMode]);
-
-  useEffect(() => {
-    try {
-      if (!campaignId) return;
-      const key = `ga4SpendMode:${campaignId}`;
-      const raw = window.localStorage.getItem(key) as any;
-      if (raw === "auto" || raw === "platform" || raw === "sheets" || raw === "budget" || raw === "manual") {
-        setSpendMode(raw);
-      }
-    } catch {
-      // ignore
-    }
-    // Only load on first mount for a campaign
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId]);
+  // Spend is now persisted server-side (via the Add Spend wizard), so we no longer store
+  // manual overrides or spend mode in localStorage.
 
   const kpiForm = useForm<KPIFormData>({
     resolver: zodResolver(kpiFormSchema),
@@ -732,9 +693,9 @@ export default function GA4Metrics() {
     },
   });
 
-  // Optional spend import via Google Sheets (if connected for this campaign).
-  const { data: sheetsSpendData } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/google-sheets-data`],
+  // Spend totals are persisted server-side by the Add Spend wizard.
+  const { data: spendTotals } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/spend-totals`, dateRange],
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -742,68 +703,17 @@ export default function GA4Metrics() {
     refetchInterval: 10 * 60 * 1000, // 10 minutes
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-data`);
-      if (!resp.ok) return null;
-      const json = await resp.json().catch(() => null);
-      return json;
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-totals?dateRange=${encodeURIComponent(dateRange)}`);
+      if (!resp.ok) return { success: false, totalSpend: 0 };
+      return resp.json().catch(() => ({ success: false, totalSpend: 0 }));
     },
   });
 
   const spendLinkedIn = parseNum(linkedinSpendMetrics?.spend);
   const spendCustom = parseNum(customIntegrationSpend?.metrics?.spend ?? customIntegrationSpend?.spend);
   const spendMeta = parseNum(metaSummary?.summary?.spend ?? metaSummary?.summary?.totalSpend ?? metaSummary?.spend);
-  const spendSheets = parseNum(sheetsSpendData?.summary?.totalSpend ?? sheetsSpendData?.summary?.metrics?.totalSpend ?? sheetsSpendData?.summary?.metrics?.["Spend (USD)"] ?? sheetsSpendData?.summary?.metrics?.Cost ?? sheetsSpendData?.summary?.metrics?.Budget);
-  const spendCampaignBudget = parseNum((campaign as any)?.budget ?? (campaign as any)?.spend);
-
-  // Prefer platform spend; if none exists, use Sheets spend; otherwise fall back to campaign budget only.
   const platformSpend = spendLinkedIn + spendMeta + spendCustom;
-  const totalSpendForFinancials = (() => {
-    switch (spendMode) {
-      case "platform":
-        return platformSpend;
-      case "sheets":
-        return spendSheets;
-      case "budget":
-        return spendCampaignBudget;
-      case "manual":
-        return manualSpendOverride;
-      case "auto":
-      default:
-        return platformSpend > 0
-          ? platformSpend
-          : spendSheets > 0
-            ? spendSheets
-            : manualSpendOverride > 0
-              ? manualSpendOverride
-              : spendCampaignBudget;
-    }
-  })();
-
-  const spendSources: string[] = (() => {
-    if (spendMode === "platform") {
-      const src: string[] = [];
-      if (spendLinkedIn > 0) src.push("LinkedIn Ads");
-      if (spendMeta > 0) src.push("Meta Ads");
-      if (spendCustom > 0) src.push("Custom Integration");
-      return src.length ? src : ["Ad platforms"];
-    }
-    if (spendMode === "sheets") return ["Google Sheets"];
-    if (spendMode === "budget") return ["Campaign budget"];
-    if (spendMode === "manual") return ["Manual entry"];
-
-    // auto
-    if (platformSpend > 0) {
-      const src: string[] = [];
-      if (spendLinkedIn > 0) src.push("LinkedIn Ads");
-      if (spendMeta > 0) src.push("Meta Ads");
-      if (spendCustom > 0) src.push("Custom Integration");
-      return src.length ? src : ["Ad platforms"];
-    }
-    if (spendSheets > 0) return ["Google Sheets"];
-    if (manualSpendOverride > 0) return ["Manual entry"];
-    if (spendCampaignBudget > 0) return ["Campaign budget"];
-    return [];
-  })();
+  const totalSpendForFinancials = Number(spendTotals?.totalSpend || 0);
 
   const financialRevenue = Number(breakdownTotals.revenue || ga4Metrics?.revenue || 0);
   const financialConversions = Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0);
@@ -1241,7 +1151,9 @@ export default function GA4Metrics() {
                                       <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                         ${financialSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                       </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">From connected spend source</p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        From spend sources ({Array.isArray(spendTotals?.sourceIds) ? spendTotals.sourceIds.length : 0})
+                                      </p>
                                     </div>
                                     <DollarSign className="w-8 h-8 text-slate-500" />
                                   </div>
@@ -1305,125 +1217,21 @@ export default function GA4Metrics() {
                                 Add spend
                               </Button>
                             </div>
-
-                            <Dialog open={showSpendDialog} onOpenChange={setShowSpendDialog}>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Add spend</DialogTitle>
-                                  <DialogDescription>
-                                    Choose where spend should come from for ROAS/ROI/CPA. This doesn’t change your GA4 data.
-                                  </DialogDescription>
-                                </DialogHeader>
-
-                                <div className="space-y-4">
-                                  <div className="space-y-2">
-                                    <p className="text-sm font-medium text-slate-900 dark:text-white">Spend source</p>
-                                    <Select value={spendMode} onValueChange={(v: any) => setSpendMode(v)}>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select spend source" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="auto">Auto (best available)</SelectItem>
-                                        <SelectItem value="platform" disabled={platformSpend <= 0}>
-                                          Ad platforms (detected: ${platformSpend.toFixed(2)})
-                                        </SelectItem>
-                                        <SelectItem value="sheets" disabled={spendSheets <= 0}>
-                                          Google Sheets (detected: ${spendSheets.toFixed(2)})
-                                        </SelectItem>
-                                        <SelectItem value="budget" disabled={spendCampaignBudget <= 0}>
-                                          Campaign budget (detected: ${spendCampaignBudget.toFixed(2)})
-                                        </SelectItem>
-                                        <SelectItem value="manual">Enter manually</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                                      Current period: {selectedPeriodLabel}
-                                    </p>
-                                  </div>
-
-                                  <div className="rounded-md border border-slate-200 dark:border-slate-800 p-3">
-                                    <p className="text-sm font-medium text-slate-900 dark:text-white">Detected spend</p>
-                                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                                      Ad platforms: ${platformSpend.toFixed(2)} (LinkedIn ${spendLinkedIn.toFixed(2)}, Meta ${spendMeta.toFixed(2)}, Custom ${spendCustom.toFixed(2)})<br />
-                                      Google Sheets: ${spendSheets.toFixed(2)}<br />
-                                      Campaign budget: ${spendCampaignBudget.toFixed(2)}
-                                    </p>
-                                  </div>
-
-                                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                                    <Link href={`/campaigns/${campaignId}/google-sheets-data`}>
-                                      <Button variant="outline" size="sm">Connect spend via Google Sheets</Button>
-                                    </Link>
-                                    <Link href={`/campaigns/${campaignId}/linkedin-analytics`}>
-                                      <Button variant="outline" size="sm">Connect LinkedIn (optional)</Button>
-                                    </Link>
-                                    <Link href={`/campaigns/${campaignId}/meta-analytics`}>
-                                      <Button variant="outline" size="sm">Connect Meta (optional)</Button>
-                                    </Link>
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <p className="text-sm font-medium text-slate-900 dark:text-white">Manual spend</p>
-                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                                      <div className="flex-1">
-                                        <Input
-                                          value={manualSpendInput}
-                                          onChange={(e) => setManualSpendInput(e.target.value)}
-                                          placeholder="e.g., 2500"
-                                        />
-                                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                                          This will apply to {selectedPeriodLabel} for this campaign.
-                                        </p>
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <Button
-                                          onClick={() => {
-                                            const n = Number(manualSpendInput);
-                                            if (!Number.isFinite(n) || n <= 0) {
-                                              toast({ title: "Enter a valid spend amount", description: "Spend must be a positive number." });
-                                              return;
-                                            }
-                                            try {
-                                              const key = `ga4SpendOverride:${campaignId}:${dateRange}`;
-                                              window.localStorage.setItem(key, String(n));
-                                            } catch {
-                                              // ignore
-                                            }
-                                            setManualSpendOverride(n);
-                                            setSpendMode("manual");
-                                            toast({ title: "Spend saved", description: "ROAS/ROI/CPA will now calculate using your entered spend." });
-                                            setShowSpendDialog(false);
-                                          }}
-                                        >
-                                          Save
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          onClick={() => {
-                                            try {
-                                              const key = `ga4SpendOverride:${campaignId}:${dateRange}`;
-                                              window.localStorage.removeItem(key);
-                                            } catch {
-                                              // ignore
-                                            }
-                                            setManualSpendOverride(0);
-                                            setManualSpendInput("");
-                                            if (spendMode === "manual") setSpendMode("auto");
-                                            toast({ title: "Cleared", description: "Manual spend removed." });
-                                          }}
-                                        >
-                                          Clear
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex justify-end gap-2">
-                                    <Button variant="outline" onClick={() => setShowSpendDialog(false)}>Close</Button>
-                                  </div>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
+                            <AddSpendWizardModal
+                              campaignId={campaignId}
+                              open={showSpendDialog}
+                              onOpenChange={setShowSpendDialog}
+                              currency={(campaign as any)?.currency || "USD"}
+                              platformSpend={{
+                                linkedin: spendLinkedIn,
+                                meta: spendMeta,
+                                custom: spendCustom,
+                                total: platformSpend,
+                              }}
+                              onProcessed={() => {
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`, dateRange] });
+                              }}
+                            />
                           </div>
                         )}
                       </div>

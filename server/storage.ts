@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, spendSources, spendRecords, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
@@ -34,6 +34,16 @@ export interface IStorage {
   updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined>;
   setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean>;
   deleteGA4Connection(connectionId: string): Promise<boolean>;
+
+  // Spend (generic)
+  getSpendSources(campaignId: string): Promise<SpendSource[]>;
+  getSpendSource(campaignId: string, sourceId: string): Promise<SpendSource | undefined>;
+  createSpendSource(source: InsertSpendSource): Promise<SpendSource>;
+  updateSpendSource(sourceId: string, source: Partial<InsertSpendSource>): Promise<SpendSource | undefined>;
+  deleteSpendSource(sourceId: string): Promise<boolean>;
+  deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
+  createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]>;
+  getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }>;
   
   // Google Sheets Connections
   getGoogleSheetsConnections(campaignId: string): Promise<GoogleSheetsConnection[]>;
@@ -289,6 +299,8 @@ export class MemStorage implements IStorage {
   private integrations: Map<string, Integration>;
   private performanceData: Map<string, PerformanceData>;
   private ga4Connections: Map<string, GA4Connection>;
+  private spendSources: Map<string, SpendSource>;
+  private spendRecords: Map<string, SpendRecord>;
   private googleSheetsConnections: Map<string, GoogleSheetsConnection>; // Key: connection.id
   private hubspotConnections: Map<string, HubspotConnection>; // Key: connection.id
   private salesforceConnections: Map<string, SalesforceConnection>; // Key: connection.id
@@ -325,6 +337,8 @@ export class MemStorage implements IStorage {
     this.integrations = new Map();
     this.performanceData = new Map();
     this.ga4Connections = new Map();
+    this.spendSources = new Map();
+    this.spendRecords = new Map();
     this.googleSheetsConnections = new Map();
     this.hubspotConnections = new Map();
     this.salesforceConnections = new Map();
@@ -910,6 +924,100 @@ export class MemStorage implements IStorage {
 
   async deleteGA4Connection(connectionId: string): Promise<boolean> {
     return this.ga4Connections.delete(connectionId);
+  }
+
+  // Spend methods
+  async getSpendSources(campaignId: string): Promise<SpendSource[]> {
+    return Array.from(this.spendSources.values())
+      .filter((s) => s.campaignId === campaignId && (s as any).isActive !== false);
+  }
+
+  async getSpendSource(campaignId: string, sourceId: string): Promise<SpendSource | undefined> {
+    const s = this.spendSources.get(sourceId);
+    if (!s) return undefined;
+    if (s.campaignId !== campaignId) return undefined;
+    if ((s as any).isActive === false) return undefined;
+    return s;
+  }
+
+  async createSpendSource(source: InsertSpendSource): Promise<SpendSource> {
+    const id = randomUUID();
+    const now = new Date();
+    const spendSource: SpendSource = {
+      id,
+      campaignId: source.campaignId,
+      sourceType: source.sourceType,
+      displayName: (source as any).displayName ?? null,
+      currency: (source as any).currency ?? null,
+      mappingConfig: (source as any).mappingConfig ?? null,
+      isActive: (source as any).isActive ?? true,
+      connectedAt: (now as any),
+      createdAt: (now as any),
+    } as any;
+    this.spendSources.set(id, spendSource);
+    return spendSource;
+  }
+
+  async updateSpendSource(sourceId: string, source: Partial<InsertSpendSource>): Promise<SpendSource | undefined> {
+    const existing = this.spendSources.get(sourceId);
+    if (!existing) return undefined;
+    const updated: SpendSource = { ...(existing as any), ...(source as any) } as any;
+    this.spendSources.set(sourceId, updated);
+    return updated;
+  }
+
+  async deleteSpendSource(sourceId: string): Promise<boolean> {
+    const existing = this.spendSources.get(sourceId);
+    if (!existing) return false;
+    this.spendSources.set(sourceId, { ...(existing as any), isActive: false } as any);
+    return true;
+  }
+
+  async deleteSpendRecordsBySource(sourceId: string): Promise<boolean> {
+    for (const [id, rec] of this.spendRecords.entries()) {
+      if ((rec as any).spendSourceId === sourceId) this.spendRecords.delete(id);
+    }
+    return true;
+  }
+
+  async createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]> {
+    const created: SpendRecord[] = [];
+    for (const r of records) {
+      const id = randomUUID();
+      const now = new Date();
+      const rec: SpendRecord = {
+        id,
+        campaignId: r.campaignId,
+        spendSourceId: r.spendSourceId,
+        date: r.date,
+        spend: (r as any).spend as any,
+        currency: (r as any).currency ?? null,
+        createdAt: (now as any),
+      } as any;
+      this.spendRecords.set(id, rec);
+      created.push(rec);
+    }
+    return created;
+  }
+
+  async getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }> {
+    const start = new Date(startDate + "T00:00:00Z").getTime();
+    const end = new Date(endDate + "T23:59:59Z").getTime();
+    let total = 0;
+    const sourceIds = new Set<string>();
+    let currency: string | undefined = undefined;
+
+    for (const rec of this.spendRecords.values()) {
+      if (rec.campaignId !== campaignId) continue;
+      const t = new Date(String((rec as any).date) + "T00:00:00Z").getTime();
+      if (Number.isNaN(t) || t < start || t > end) continue;
+      const v = parseFloat(String((rec as any).spend ?? "0"));
+      if (!Number.isNaN(v)) total += v;
+      sourceIds.add(String((rec as any).spendSourceId));
+      if (!currency && (rec as any).currency) currency = String((rec as any).currency);
+    }
+
+    return { totalSpend: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
   // Google Sheets Connection methods
@@ -2274,6 +2382,89 @@ export class DatabaseStorage implements IStorage {
       .delete(ga4Connections)
       .where(eq(ga4Connections.id, connectionId));
     return (result.rowCount || 0) > 0;
+  }
+
+  // Spend methods
+  async getSpendSources(campaignId: string): Promise<SpendSource[]> {
+    return db.select().from(spendSources)
+      .where(and(eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, true)))
+      .orderBy(desc(spendSources.connectedAt));
+  }
+
+  async getSpendSource(campaignId: string, sourceId: string): Promise<SpendSource | undefined> {
+    const [s] = await db.select().from(spendSources)
+      .where(and(eq(spendSources.id, sourceId), eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, true)));
+    return s || undefined;
+  }
+
+  async createSpendSource(source: InsertSpendSource): Promise<SpendSource> {
+    const [s] = await db
+      .insert(spendSources)
+      .values({
+        ...source,
+        isActive: source.isActive !== undefined ? source.isActive : true,
+      } as any)
+      .returning();
+    return s;
+  }
+
+  async updateSpendSource(sourceId: string, source: Partial<InsertSpendSource>): Promise<SpendSource | undefined> {
+    const [s] = await db
+      .update(spendSources)
+      .set(source as any)
+      .where(eq(spendSources.id, sourceId))
+      .returning();
+    return s || undefined;
+  }
+
+  async deleteSpendSource(sourceId: string): Promise<boolean> {
+    const result = await db
+      .update(spendSources)
+      .set({ isActive: false } as any)
+      .where(eq(spendSources.id, sourceId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async deleteSpendRecordsBySource(sourceId: string): Promise<boolean> {
+    const result = await db
+      .delete(spendRecords)
+      .where(eq(spendRecords.spendSourceId, sourceId));
+    return (result.rowCount || 0) >= 0;
+  }
+
+  async createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]> {
+    if (!records.length) return [];
+    return db
+      .insert(spendRecords)
+      .values(records as any)
+      .returning();
+  }
+
+  async getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }> {
+    // spend_records.date is stored as YYYY-MM-DD; lexicographic compare works.
+    const rows = await db
+      .select({
+        spend: spendRecords.spend,
+        currency: spendRecords.currency,
+        spendSourceId: spendRecords.spendSourceId,
+      })
+      .from(spendRecords)
+      .where(and(
+        eq(spendRecords.campaignId, campaignId),
+        sql`${spendRecords.date} >= ${startDate}`,
+        sql`${spendRecords.date} <= ${endDate}`
+      ));
+
+    let total = 0;
+    const sourceIds = new Set<string>();
+    let currency: string | undefined = undefined;
+    for (const r of rows as any[]) {
+      const v = parseFloat(String(r.spend ?? "0"));
+      if (!Number.isNaN(v)) total += v;
+      sourceIds.add(String(r.spendSourceId));
+      if (!currency && r.currency) currency = String(r.currency);
+    }
+    return { totalSpend: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
   // Google Sheets Connection methods

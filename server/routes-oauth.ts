@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import multer from "multer";
+import { parseCsvText } from "./utils/csv";
 import { parsePDFMetrics } from "./services/pdf-parser";
 import { nanoid } from "nanoid";
 import { randomBytes, createHash, createHmac, timingSafeEqual } from "crypto";
@@ -70,6 +71,407 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Render defaults to checking "/" but that can depend on static serving; provide an explicit health endpoint.
   app.get("/health", (_req, res) => res.status(200).send("ok"));
   app.get("/api/health", (_req, res) => res.status(200).json({ ok: true }));
+
+  // ============================================================================
+  // Spend ingestion (generic, campaign-scoped)
+  // ============================================================================
+  const uploadCsv = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (_req, file, cb) => {
+      const ok =
+        file.mimetype === "text/csv" ||
+        file.mimetype === "application/csv" ||
+        file.mimetype === "application/vnd.ms-excel" ||
+        file.originalname.toLowerCase().endsWith(".csv");
+      cb(ok ? null : new Error("Only CSV files are allowed"), ok);
+    },
+  });
+
+  const parseNum = (val: any): number => {
+    if (val === null || val === undefined || val === "") return 0;
+    const str = String(val).replace(/[$,]/g, "").trim();
+    const n = parseFloat(str);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const normalizeDate = (val: any): string | null => {
+    const s = String(val || "").trim();
+    if (!s) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m1 = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (m1) {
+      const y = m1[1];
+      const mo = String(m1[2]).padStart(2, "0");
+      const d = String(m1[3]).padStart(2, "0");
+      return `${y}-${mo}-${d}`;
+    }
+    const m2 = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m2) {
+      const mo = String(m2[1]).padStart(2, "0");
+      const d = String(m2[2]).padStart(2, "0");
+      const y = m2[3];
+      return `${y}-${mo}-${d}`;
+    }
+    const dt = new Date(s);
+    if (!Number.isNaN(dt.getTime())) {
+      const y = dt.getUTCFullYear();
+      const mo = String(dt.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(dt.getUTCDate()).padStart(2, "0");
+      return `${y}-${mo}-${d}`;
+    }
+    return null;
+  };
+
+  const getDateRangeBounds = (dateRange: string) => {
+    const now = new Date();
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const days =
+      String(dateRange).toLowerCase() === "7days" ? 7 :
+      String(dateRange).toLowerCase() === "90days" ? 90 : 30;
+    const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+    const fmt = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    return { startDate: fmt(start), endDate: fmt(end) };
+  };
+
+  const toA1Prefix = (sheetName?: string | null): string => {
+    if (!sheetName) return "";
+    const escaped = String(sheetName).replace(/'/g, "''");
+    return `'${escaped}'!`;
+  };
+
+  app.get("/api/campaigns/:id/spend-sources", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const sources = await storage.getSpendSources(campaignId);
+      res.json({ success: true, sources });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch spend sources" });
+    }
+  });
+
+  app.get("/api/campaigns/:id/spend-totals", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const dateRange = String(req.query.dateRange || "30days");
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const totals = await storage.getSpendTotalForRange(campaignId, startDate, endDate);
+      res.json({ success: true, dateRange, startDate, endDate, ...totals });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch spend totals" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/spend/process/manual", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const amount = parseNum((req.body as any)?.amount);
+      const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
+      if (!(amount > 0)) {
+        return res.status(400).json({ success: false, error: "Amount must be > 0" });
+      }
+      const campaign = await storage.getCampaign(campaignId);
+      const cur = currency || (campaign as any)?.currency || "USD";
+
+      const source = await storage.createSpendSource({
+        campaignId,
+        sourceType: "manual",
+        displayName: "Manual spend",
+        currency: cur,
+        mappingConfig: null as any,
+        isActive: true,
+      } as any);
+
+      const now = new Date();
+      const date = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+      await storage.createSpendRecords([{
+        campaignId,
+        spendSourceId: source.id,
+        date,
+        spend: amount.toFixed(2) as any,
+        currency: cur,
+      } as any]);
+
+      res.json({ success: true, sourceId: source.id, date, amount, currency: cur });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to process manual spend" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/spend/process/ad-platforms", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const amount = parseNum((req.body as any)?.amount);
+      const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
+      const breakdown = (req.body as any)?.breakdown || null;
+      if (!(amount > 0)) {
+        return res.status(400).json({ success: false, error: "Amount must be > 0" });
+      }
+      const campaign = await storage.getCampaign(campaignId);
+      const cur = currency || (campaign as any)?.currency || "USD";
+
+      const source = await storage.createSpendSource({
+        campaignId,
+        sourceType: "ad_platforms",
+        displayName: "Ad platforms spend",
+        currency: cur,
+        mappingConfig: breakdown ? JSON.stringify(breakdown) : null,
+        isActive: true,
+      } as any);
+
+      const now = new Date();
+      const date = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+      await storage.createSpendRecords([{
+        campaignId,
+        spendSourceId: source.id,
+        date,
+        spend: amount.toFixed(2) as any,
+        currency: cur,
+      } as any]);
+
+      res.json({ success: true, sourceId: source.id, date, amount, currency: cur });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to process ad platform spend" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/spend/csv/preview", uploadCsv.single("file"), async (req, res) => {
+    try {
+      if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
+      const file = (req as any).file as any;
+      const csvText = Buffer.from(file.buffer).toString("utf-8");
+      const parsed = parseCsvText(csvText, 5000);
+      res.json({
+        success: true,
+        fileName: file.originalname,
+        headers: parsed.headers,
+        sampleRows: parsed.rows.slice(0, 25),
+        rowCount: parsed.rows.length,
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to preview CSV" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/spend/csv/process", uploadCsv.single("file"), async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
+      const file = (req as any).file as any;
+      const mapping = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
+      if (!mapping?.dateColumn || !mapping?.spendColumn) {
+        return res.status(400).json({ success: false, error: "dateColumn and spendColumn are required" });
+      }
+
+      const csvText = Buffer.from(file.buffer).toString("utf-8");
+      const parsed = parseCsvText(csvText);
+
+      const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
+      const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
+
+      const grouped = new Map<string, number>();
+      let kept = 0;
+      for (const row of parsed.rows) {
+        if (campaignCol && campaignValue) {
+          const v = String((row as any)[campaignCol] ?? "").trim();
+          if (v !== campaignValue) continue;
+        }
+        const d = normalizeDate((row as any)[mapping.dateColumn]);
+        if (!d) continue;
+        const spend = parseNum((row as any)[mapping.spendColumn]);
+        if (!(spend > 0)) continue;
+        kept++;
+        grouped.set(d, (grouped.get(d) || 0) + spend);
+      }
+
+      const campaign = await storage.getCampaign(campaignId);
+      const currency = mapping.currency || (campaign as any)?.currency || "USD";
+
+      const source = await storage.createSpendSource({
+        campaignId,
+        sourceType: "csv",
+        displayName: mapping.displayName || file.originalname,
+        currency,
+        mappingConfig: JSON.stringify(mapping),
+        isActive: true,
+      } as any);
+
+      await storage.deleteSpendRecordsBySource(source.id);
+
+      const records = Array.from(grouped.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, total]) => ({
+          campaignId,
+          spendSourceId: source.id,
+          date,
+          spend: total.toFixed(2) as any,
+          currency,
+        }));
+
+      await storage.createSpendRecords(records as any);
+
+      const totalSpend = records.reduce((sum, r: any) => sum + parseFloat(String(r.spend)), 0);
+      res.json({
+        success: true,
+        sourceId: source.id,
+        currency,
+        rowCount: parsed.rows.length,
+        keptRows: kept,
+        days: records.length,
+        totalSpend: Number(totalSpend.toFixed(2)),
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to process CSV spend" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/spend/sheets/preview", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const connectionId = String((req.body as any)?.connectionId || "").trim();
+      if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
+
+      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
+      if (!conn.accessToken) return res.status(400).json({ success: false, error: "Google Sheets access token missing; reconnect Google Sheets." });
+
+      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
+      const resp = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+        { headers: { "Authorization": `Bearer ${conn.accessToken}` } }
+      );
+      if (!resp.ok) {
+        const txt = await resp.text();
+        return res.status(400).json({ success: false, error: `Failed to fetch sheet: ${txt}` });
+      }
+
+      const json = await resp.json().catch(() => ({} as any));
+      const values: any[][] = Array.isArray(json?.values) ? json.values : [];
+      const headerRow = values[0] || [];
+      const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
+
+      const rows: Array<Record<string, string>> = [];
+      for (let i = 1; i < values.length; i++) {
+        const r = values[i] || [];
+        if (r.every((v) => String(v || "").trim() === "")) continue;
+        const obj: Record<string, string> = {};
+        for (let c = 0; c < headers.length; c++) obj[headers[c]] = String(r[c] ?? "").trim();
+        rows.push(obj);
+      }
+
+      res.json({
+        success: true,
+        connectionId,
+        spreadsheetId: conn.spreadsheetId,
+        spreadsheetName: conn.spreadsheetName,
+        sheetName: conn.sheetName,
+        headers,
+        sampleRows: rows.slice(0, 25),
+        rowCount: rows.length,
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to preview sheet" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/spend/sheets/process", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const connectionId = String((req.body as any)?.connectionId || "").trim();
+      const mapping = (req.body as any)?.mapping || null;
+      if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
+      if (!mapping?.dateColumn || !mapping?.spendColumn) {
+        return res.status(400).json({ success: false, error: "dateColumn and spendColumn are required" });
+      }
+
+      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
+      if (!conn.accessToken) return res.status(400).json({ success: false, error: "Google Sheets access token missing; reconnect Google Sheets." });
+
+      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
+      const resp = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+        { headers: { "Authorization": `Bearer ${conn.accessToken}` } }
+      );
+      if (!resp.ok) {
+        const txt = await resp.text();
+        return res.status(400).json({ success: false, error: `Failed to fetch sheet: ${txt}` });
+      }
+
+      const json = await resp.json().catch(() => ({} as any));
+      const values: any[][] = Array.isArray(json?.values) ? json.values : [];
+      const headerRow = values[0] || [];
+      const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
+
+      const rows: Array<Record<string, string>> = [];
+      for (let i = 1; i < values.length; i++) {
+        const r = values[i] || [];
+        if (r.every((v) => String(v || "").trim() === "")) continue;
+        const obj: Record<string, string> = {};
+        for (let c = 0; c < headers.length; c++) obj[headers[c]] = String(r[c] ?? "").trim();
+        rows.push(obj);
+      }
+
+      const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
+      const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
+
+      const grouped = new Map<string, number>();
+      let kept = 0;
+      for (const row of rows) {
+        if (campaignCol && campaignValue) {
+          const v = String((row as any)[campaignCol] ?? "").trim();
+          if (v !== campaignValue) continue;
+        }
+        const d = normalizeDate((row as any)[mapping.dateColumn]);
+        if (!d) continue;
+        const spend = parseNum((row as any)[mapping.spendColumn]);
+        if (!(spend > 0)) continue;
+        kept++;
+        grouped.set(d, (grouped.get(d) || 0) + spend);
+      }
+
+      const campaign = await storage.getCampaign(campaignId);
+      const currency = mapping.currency || (campaign as any)?.currency || "USD";
+
+      const source = await storage.createSpendSource({
+        campaignId,
+        sourceType: "google_sheets",
+        displayName: mapping.displayName || `${conn.spreadsheetName || "Google Sheet"}${conn.sheetName ? ` (${conn.sheetName})` : ""}`,
+        currency,
+        mappingConfig: JSON.stringify({ ...mapping, connectionId, spreadsheetId: conn.spreadsheetId, sheetName: conn.sheetName || null }),
+        isActive: true,
+      } as any);
+
+      await storage.deleteSpendRecordsBySource(source.id);
+
+      const records = Array.from(grouped.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, total]) => ({
+          campaignId,
+          spendSourceId: source.id,
+          date,
+          spend: total.toFixed(2) as any,
+          currency,
+        }));
+
+      await storage.createSpendRecords(records as any);
+      const totalSpend = records.reduce((sum, r: any) => sum + parseFloat(String(r.spend)), 0);
+
+      res.json({
+        success: true,
+        sourceId: source.id,
+        currency,
+        rowCount: rows.length,
+        keptRows: kept,
+        days: records.length,
+        totalSpend: Number(totalSpend.toFixed(2)),
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to process sheet spend" });
+    }
+  });
 
   // ---------------------------------------------------------------------------
   // Salesforce PKCE support

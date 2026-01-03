@@ -31,6 +31,13 @@ $brandSessions = 40
 $launchSessions = 12
 $purchaseRatePct = 25   # % of sessions that will include a purchase
 
+# Safety: default to DRY RUN so we never keep inflating GA4 revenue/events by accident.
+# To actually send events, run with:
+#   powershell -ExecutionPolicy Bypass -File .\scripts\seed_ga4_campaign_filter_test.ps1 -SendEvents
+param(
+  [switch]$SendEvents
+)
+
 # ====== HELPERS ======
 function Invoke-Json($method, $url, $body) {
   $json = $null
@@ -39,6 +46,7 @@ function Invoke-Json($method, $url, $body) {
 }
 
 function Send-GA4($body, $userAgent) {
+  if (-not $SendEvents) { return }
   $uri = "https://www.google-analytics.com/mp/collect?measurement_id=$measurementId&api_secret=$apiSecret"
   $headers = @{}
   if ($userAgent) { $headers["User-Agent"] = $userAgent }
@@ -153,8 +161,12 @@ Write-Host ("- launch_campaign id: " + $launch.id)
 
 Write-Host ""
 Write-Host "== Sending GA4 traffic for BOTH campaigns (so GA4 property contains multiple campaigns) =="
-Send-CampaignTraffic $brandCampaignName $brandSessions
-Send-CampaignTraffic $launchCampaignName $launchSessions
+if (-not $SendEvents) {
+  Write-Host "DRY RUN: Not sending GA4 events (use -SendEvents to enable)."
+} else {
+  Send-CampaignTraffic $brandCampaignName $brandSessions
+  Send-CampaignTraffic $launchCampaignName $launchSessions
+}
 
 Write-Host ""
 Write-Host "Next steps in MetricMind:"

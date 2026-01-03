@@ -43,6 +43,8 @@ export function AddSpendWizardModal(props: {
   const [campaignValue, setCampaignValue] = useState<string>("");
   const [displayName, setDisplayName] = useState<string>("");
 
+  const CAMPAIGN_COL_NONE = "__none__";
+
   const [manualAmount, setManualAmount] = useState<string>("");
 
   const [sheetsConnections, setSheetsConnections] = useState<Array<any>>([]);
@@ -540,10 +542,17 @@ export function AddSpendWizardModal(props: {
                 </div>
                 <div className="space-y-2">
                   <Label>Campaign column (optional)</Label>
-                  <Select value={campaignColumn} onValueChange={(v) => { setCampaignColumn(v); setCampaignValue(""); }}>
+                  <Select
+                    value={campaignColumn || CAMPAIGN_COL_NONE}
+                    onValueChange={(v) => {
+                      const next = v === CAMPAIGN_COL_NONE ? "" : v;
+                      setCampaignColumn(next);
+                      setCampaignValue("");
+                    }}
+                  >
                     <SelectTrigger><SelectValue placeholder="(none)" /></SelectTrigger>
                     <SelectContent className="z-[10000]">
-                      <SelectItem value="">(none)</SelectItem>
+                      <SelectItem value={CAMPAIGN_COL_NONE}>(none)</SelectItem>
                       {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                     </SelectContent>
                   </Select>

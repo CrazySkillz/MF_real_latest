@@ -380,20 +380,100 @@ export function AddSpendWizardModal(props: {
 
         {step === "choose" && (
           <div className="space-y-6">
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-sm font-medium">Spend connectors (optional)</div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Connectors are optional. You can import spend from <span className="font-medium">any source</span> using Paste/Upload/Sheets below.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={processAdPlatforms}
+                  disabled={isProcessing || !((props.platformSpend?.total ?? 0) > 0)}
+                >
+                  {isProcessing ? "Saving..." : "Use detected connector spend"}
+                </Button>
+              </div>
+
+              <div className="grid gap-2 md:grid-cols-2">
+                <div className="text-sm">
+                  LinkedIn: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.linkedin || 0).toFixed(2)}</span>
+                </div>
+                <div className="text-sm">
+                  Meta: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.meta || 0).toFixed(2)}</span>
+                </div>
+                <div className="text-sm">
+                  Custom connector: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.custom || 0).toFixed(2)}</span>
+                </div>
+                <div className="text-sm">
+                  Total: <span className="font-semibold">{props.currency || "USD"} {(props.platformSpend?.total || 0).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-2 border-t">
+                <Button type="button" variant="outline" onClick={() => setShowPlatformConnect("meta")}>
+                  Connect Meta (test mode)
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowPlatformConnect("linkedin")}>
+                  Connect LinkedIn
+                </Button>
+                <div className="text-xs text-slate-500 dark:text-slate-400 self-center">
+                  More connectors can be added later; import works for any platform/export today.
+                </div>
+              </div>
+
+              {showPlatformConnect === "meta" && (
+                <div className="rounded-md border p-3">
+                  <SimpleMetaAuth
+                    campaignId={props.campaignId}
+                    onSuccess={() => {
+                      toast({ title: "Meta connected", description: "Re-open Add spend to use detected spend." });
+                      props.onProcessed?.();
+                      setShowPlatformConnect(null);
+                    }}
+                    onError={(err) => toast({ title: "Meta connect failed", description: err, variant: "destructive" })}
+                  />
+                </div>
+              )}
+              {showPlatformConnect === "linkedin" && (
+                <div className="rounded-md border p-3">
+                  <LinkedInConnectionFlow
+                    campaignId={props.campaignId}
+                    mode="new"
+                    onConnectionSuccess={() => {
+                      toast({ title: "LinkedIn connected", description: "Import a LinkedIn campaign to populate detected spend." });
+                      props.onProcessed?.();
+                      setShowPlatformConnect(null);
+                    }}
+                    onImportComplete={() => {
+                      props.onProcessed?.();
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
-              <Label>Spend source</Label>
-              <Select value={mode} onValueChange={(v: any) => setMode(v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select spend source" />
-                </SelectTrigger>
-                <SelectContent className="z-[10000]">
-                  <SelectItem value="ad_platforms">Ad platforms (LinkedIn / Meta / Custom)</SelectItem>
-                  <SelectItem value="google_sheets">Google Sheets</SelectItem>
-                  <SelectItem value="upload">Upload file</SelectItem>
-                  <SelectItem value="paste">Paste table (Excel / Sheets)</SelectItem>
-                  <SelectItem value="manual">Manual entry</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Import spend dataset (recommended)</Label>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant={mode === "paste" ? "default" : "outline"} onClick={() => setMode("paste")}>
+                  Paste table (Excel / Sheets)
+                </Button>
+                <Button type="button" variant={mode === "google_sheets" ? "default" : "outline"} onClick={() => setMode("google_sheets")}>
+                  Google Sheets
+                </Button>
+                <Button type="button" variant={mode === "upload" ? "default" : "outline"} onClick={() => setMode("upload")}>
+                  Upload file (CSV)
+                </Button>
+                <Button type="button" variant={mode === "manual" ? "default" : "outline"} onClick={() => setMode("manual")}>
+                  Manual
+                </Button>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                These options work for spend exports from any platform (Google Ads, TikTok, X, DV360, Amazon, etc.).
+              </p>
             </div>
             {mode === "google_sheets" && (
               <div className="rounded-lg border p-4 space-y-4">
@@ -444,71 +524,6 @@ export function AddSpendWizardModal(props: {
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       This uses your Google Sheets connection for this campaign.
                     </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {mode === "ad_platforms" && (
-              <div className="rounded-lg border p-4 space-y-4">
-                <div className="text-sm text-slate-700 dark:text-slate-300">
-                  Detected spend (latest available):
-                </div>
-                <div className="text-sm">
-                  LinkedIn: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.linkedin || 0).toFixed(2)}</span>
-                </div>
-                <div className="text-sm">
-                  Meta: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.meta || 0).toFixed(2)}</span>
-                </div>
-                <div className="text-sm">
-                  Custom: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.custom || 0).toFixed(2)}</span>
-                </div>
-                <div className="text-sm pt-2">
-                  Total: <span className="font-semibold">{props.currency || "USD"} {(props.platformSpend?.total || 0).toFixed(2)}</span>
-                </div>
-
-                {!(props.platformSpend?.total && props.platformSpend.total > 0) && (
-                  <div className="pt-3 border-t space-y-3">
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                      No platform spend detected yet. Connect a platform below (or use Upload/Paste/Manual).
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="outline" onClick={() => setShowPlatformConnect("meta")}>
-                        Connect Meta (test mode)
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => setShowPlatformConnect("linkedin")}>
-                        Connect LinkedIn
-                      </Button>
-                    </div>
-                    {showPlatformConnect === "meta" && (
-                      <div className="rounded-md border p-3">
-                        <SimpleMetaAuth
-                          campaignId={props.campaignId}
-                          onSuccess={() => {
-                            toast({ title: "Meta connected", description: "Re-open Add spend to use the detected spend." });
-                            props.onProcessed?.();
-                            setShowPlatformConnect(null);
-                          }}
-                          onError={(err) => toast({ title: "Meta connect failed", description: err, variant: "destructive" })}
-                        />
-                      </div>
-                    )}
-                    {showPlatformConnect === "linkedin" && (
-                      <div className="rounded-md border p-3">
-                        <LinkedInConnectionFlow
-                          campaignId={props.campaignId}
-                          mode="new"
-                          onConnectionSuccess={() => {
-                            toast({ title: "LinkedIn connected", description: "Re-open Add spend to use detected spend (after importing a campaign)." });
-                            props.onProcessed?.();
-                            setShowPlatformConnect(null);
-                          }}
-                          onImportComplete={() => {
-                            props.onProcessed?.();
-                          }}
-                        />
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -584,11 +599,6 @@ export function AddSpendWizardModal(props: {
               {mode === "manual" && (
                 <Button onClick={processManual} disabled={isProcessing}>
                   {isProcessing ? "Saving..." : "Process spend"}
-                </Button>
-              )}
-              {mode === "ad_platforms" && (
-                <Button onClick={processAdPlatforms} disabled={isProcessing}>
-                  {isProcessing ? "Saving..." : "Use this spend"}
                 </Button>
               )}
             </div>

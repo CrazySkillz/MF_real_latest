@@ -85,14 +85,17 @@ function Send-CampaignTraffic($utmCampaign, $sessionCount) {
     $baseTsMicros = [int64](($nowMs - $offsetMs) * 1000)
 
     $events = New-Object System.Collections.Generic.List[object]
+    $landingUrl = "https://example.com/?utm_source=google&utm_medium=cpc&utm_campaign=$utmCampaign"
     $events.Add(@{
       name="page_view";
       params=@{
         ga_session_id=$sid;
         ga_session_number=1;
         engagement_time_msec=(Get-Random -Minimum 50 -Maximum 400);
-        page_location="https://example.com/";
+        # Most reliable way for GA4 to populate campaignName is UTMs on page_location
+        page_location=$landingUrl;
         page_title=("Landing " + $utmCampaign);
+        # Redundant UTM params (kept for robustness)
         utm_source="google";
         utm_medium="cpc";
         utm_campaign=$utmCampaign;
@@ -124,6 +127,7 @@ function Send-CampaignTraffic($utmCampaign, $sessionCount) {
           currency="USD";
           value=$value;
           transaction_id=$tx;
+          page_location=$landingUrl;
           utm_source="google";
           utm_medium="cpc";
           utm_campaign=$utmCampaign;
@@ -156,7 +160,7 @@ Write-Host ""
 Write-Host "Next steps in MetricMind:"
 Write-Host "1) Connect BOTH campaigns to the SAME GA4 property (yesop / propertyId=498536418) via the UI."
 Write-Host "2) Ensure the GA4 campaign filter is set (it was pre-set to the campaign name by this script)."
-Write-Host "3) Wait ~15–60 minutes, then open each campaign's GA4 Metrics page and verify:"
+Write-Host "3) Wait ~15-60 minutes, then open each campaigns GA4 Metrics page and verify:"
 Write-Host "   - brand_awareness shows only brand_awareness data"
 Write-Host "   - launch_campaign shows only launch_campaign data"
 Write-Host ""

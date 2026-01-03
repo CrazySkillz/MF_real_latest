@@ -573,20 +573,20 @@ export function AddSpendWizardModal(props: {
 
               <div className="pt-2 border-t space-y-3">
                 <div className="space-y-1">
-                  <div className="text-sm font-medium">Campaign mapping (optional)</div>
+                  <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    If this dataset includes multiple campaigns, select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign. If not, leave blank.
+                    If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign.
                   </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Campaign identifier column</Label>
+                    <Label>Campaign identifier column (only for multi-campaign datasets)</Label>
                     <Select
                       value={campaignKeyColumn || CAMPAIGN_COL_NONE}
                       onValueChange={(v) => setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v)}
                     >
-                      <SelectTrigger><SelectValue placeholder="(optional) Select column" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Leave blank if not needed" /></SelectTrigger>
                       <SelectContent className="z-[10000]">
                         <SelectItem value={CAMPAIGN_COL_NONE}>(leave blank)</SelectItem>
                         {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
@@ -594,7 +594,7 @@ export function AddSpendWizardModal(props: {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Campaign value(s)</Label>
+                    <Label>Campaign value(s) (optional)</Label>
                     <Input
                       value={campaignKeySearch}
                       onChange={(e) => setCampaignKeySearch(e.target.value)}

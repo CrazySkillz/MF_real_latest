@@ -515,7 +515,7 @@ export class GoogleAnalytics4Service {
       throw tokenExpiredError;
     }
 
-    const run = async (accessToken: string) => {
+    const run = async (accessToken: string, dimensionName: 'campaignName' | 'sessionCampaignName' | 'firstUserCampaignName') => {
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
@@ -524,7 +524,7 @@ export class GoogleAnalytics4Service {
         },
         body: JSON.stringify({
           dateRanges: [{ startDate: dateRange, endDate: 'today' }],
-          dimensions: [{ name: 'campaignName' }],
+          dimensions: [{ name: dimensionName }],
           metrics: [{ name: 'totalUsers' }],
           orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
           limit: Math.min(Math.max(limit, 1), 200),
@@ -547,8 +547,34 @@ export class GoogleAnalytics4Service {
       return campaigns;
     };
 
+    const merge = (lists: Array<Array<{ name: string; users: number }>>) => {
+      const map = new Map<string, number>();
+      for (const list of lists) {
+        for (const c of list) {
+          const key = String(c.name || '').trim();
+          if (!key) continue;
+          const existing = map.get(key) || 0;
+          map.set(key, Math.max(existing, Number(c.users || 0)));
+        }
+      }
+      return Array.from(map.entries())
+        .map(([name, users]) => ({ name, users }))
+        .sort((a, b) => (b.users || 0) - (a.users || 0))
+        .slice(0, Math.min(Math.max(limit, 1), 200));
+    };
+
+    const isMostlyEmpty = (list: Array<{ name: string; users: number }>) =>
+      !list?.length || list.every((c) => !c?.name || c.name === '(not set)' || (c.users || 0) <= 0);
+
     try {
-      const campaigns = await run(connection.accessToken);
+      // Try multiple campaign dimensions and merge:
+      // - sessionCampaignName: most common expectation for "campaign" in acquisition reports
+      // - campaignName: legacy/general
+      // - firstUserCampaignName: sometimes available earlier for new users
+      const a = await run(connection.accessToken, 'sessionCampaignName').catch(() => []);
+      const b = isMostlyEmpty(a) ? await run(connection.accessToken, 'campaignName').catch(() => []) : [];
+      const c = (isMostlyEmpty(a) && isMostlyEmpty(b)) ? await run(connection.accessToken, 'firstUserCampaignName').catch(() => []) : [];
+      const campaigns = merge([a, b, c]);
       return { propertyId: normalizedPropertyId, campaigns };
     } catch (e: any) {
       const msg = String(e?.message || '');
@@ -569,7 +595,10 @@ export class GoogleAnalytics4Service {
           refreshToken: connection.refreshToken,
           expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
         });
-        const campaigns = await run(refresh.access_token);
+        const a = await run(refresh.access_token, 'sessionCampaignName').catch(() => []);
+        const b = isMostlyEmpty(a) ? await run(refresh.access_token, 'campaignName').catch(() => []) : [];
+        const c = (isMostlyEmpty(a) && isMostlyEmpty(b)) ? await run(refresh.access_token, 'firstUserCampaignName').catch(() => []) : [];
+        const campaigns = merge([a, b, c]);
         return { propertyId: normalizedPropertyId, campaigns };
       }
       throw e;

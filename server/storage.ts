@@ -1009,11 +1009,14 @@ export class MemStorage implements IStorage {
 
     for (const rec of this.spendRecords.values()) {
       if (rec.campaignId !== campaignId) continue;
+      const srcId = String((rec as any).spendSourceId);
+      const src = this.spendSources.get(srcId);
+      if (!src || (src as any).isActive === false) continue;
       const t = new Date(String((rec as any).date) + "T00:00:00Z").getTime();
       if (Number.isNaN(t) || t < start || t > end) continue;
       const v = parseFloat(String((rec as any).spend ?? "0"));
       if (!Number.isNaN(v)) total += v;
-      sourceIds.add(String((rec as any).spendSourceId));
+      sourceIds.add(srcId);
       if (!currency && (rec as any).currency) currency = String((rec as any).currency);
     }
 
@@ -2449,8 +2452,10 @@ export class DatabaseStorage implements IStorage {
         spendSourceId: spendRecords.spendSourceId,
       })
       .from(spendRecords)
+      .innerJoin(spendSources, eq(spendSources.id, spendRecords.spendSourceId))
       .where(and(
         eq(spendRecords.campaignId, campaignId),
+        eq(spendSources.isActive, true),
         sql`${spendRecords.date} >= ${startDate}`,
         sql`${spendRecords.date} <= ${endDate}`
       ));
@@ -2459,10 +2464,12 @@ export class DatabaseStorage implements IStorage {
     const sourceIds = new Set<string>();
     let currency: string | undefined = undefined;
     for (const r of rows as any[]) {
-      const v = parseFloat(String(r.spend ?? "0"));
+      const v = parseFloat(String((r as any).spendRecords?.spend ?? (r as any).spend ?? "0"));
       if (!Number.isNaN(v)) total += v;
-      sourceIds.add(String(r.spendSourceId));
-      if (!currency && r.currency) currency = String(r.currency);
+      const sid = String((r as any).spendRecords?.spendSourceId ?? (r as any).spendSourceId);
+      if (sid) sourceIds.add(sid);
+      const cur = (r as any).spendRecords?.currency ?? (r as any).currency;
+      if (!currency && cur) currency = String(cur);
     }
     return { totalSpend: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }

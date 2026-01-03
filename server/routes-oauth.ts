@@ -162,6 +162,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Keep spend totals predictable: whenever a user "processes spend" for a campaign,
+  // we deactivate prior spend sources so totals don't silently double-count across imports.
+  const deactivateSpendSourcesForCampaign = async (campaignId: string) => {
+    try {
+      const existing = await storage.getSpendSources(campaignId);
+      for (const s of existing || []) {
+        if (!s) continue;
+        await storage.deleteSpendSource(String((s as any).id));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   app.post("/api/campaigns/:id/spend/process/manual", async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -172,6 +186,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
+
+      await deactivateSpendSourcesForCampaign(campaignId);
 
       const source = await storage.createSpendSource({
         campaignId,
@@ -209,6 +225,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
+
+      await deactivateSpendSourcesForCampaign(campaignId);
 
       const source = await storage.createSpendSource({
         campaignId,
@@ -291,6 +309,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
+
+      await deactivateSpendSourcesForCampaign(campaignId);
 
       const source = await storage.createSpendSource({
         campaignId,
@@ -439,6 +459,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
+
+      await deactivateSpendSourcesForCampaign(campaignId);
 
       const source = await storage.createSpendSource({
         campaignId,

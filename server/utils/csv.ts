@@ -29,6 +29,13 @@ export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
       return count;
     };
 
+    // Strong hint: if the header line clearly uses one delimiter, prefer it.
+    const headerLine = lines[0] || "";
+    for (const d of candidates) {
+      const headerCount = countDelims(headerLine, d);
+      if (headerCount >= 2) return d;
+    }
+
     let best = ",";
     let bestScore = -1;
     for (const d of candidates) {

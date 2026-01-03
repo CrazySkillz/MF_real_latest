@@ -211,10 +211,24 @@ export function AddSpendWizardModal(props: {
     return lc.find((x) => x.l === "spend" || x.l.includes("spend") || x.l.includes("cost") || x.l.includes("amount"))?.h || "";
   }, [headers]);
 
+  const inferredCampaignColumn = useMemo(() => {
+    if (!headers.length) return "";
+    const lc = headers.map((h) => ({ h, l: h.toLowerCase() }));
+    // Prefer explicit id, then name, then generic "campaign"
+    return (
+      lc.find((x) => x.l === "campaign id" || x.l === "campaign_id" || x.l.includes("campaign id") || x.l.includes("campaign_id"))?.h ||
+      lc.find((x) => x.l === "campaign name" || x.l === "campaign_name" || x.l.includes("campaign name") || x.l.includes("campaign_name"))?.h ||
+      lc.find((x) => x.l === "campaign" || x.l.includes("campaign"))?.h ||
+      ""
+    );
+  }, [headers]);
+
   useEffect(() => {
     if (!csvPreview?.success) return;
     if (!dateColumn && inferredDateColumn) setDateColumn(inferredDateColumn);
     if (!spendColumn && inferredSpendColumn) setSpendColumn(inferredSpendColumn);
+    // Auto-suggest campaign identifier column so values are immediately visible/selectable (no selection required).
+    if (!campaignKeyColumn && inferredCampaignColumn) setCampaignKeyColumn(inferredCampaignColumn);
   }, [csvPreview, inferredDateColumn, inferredSpendColumn, dateColumn, spendColumn]);
 
   // If we are editing a CSV spend source and the user re-uploads a file, try to apply the saved mapping.
@@ -368,9 +382,9 @@ export function AddSpendWizardModal(props: {
       setSheetsPreview(null);
       setCsvPreview(null);
       setStep("choose");
-      if (!filtered || filtered.length === 0) {
-        setShowSheetsConnect(true);
-      }
+      // Stay on the Google Sheets view, but don't force the connect flow open.
+      // We'll show a lightweight empty state with a Connect button instead.
+      if (!filtered || filtered.length === 0) setShowSheetsConnect(false);
       toast({ title: "Google Sheet removed", description: "You can now upload a CSV or connect a different sheet." });
     } catch (e: any) {
       toast({ title: "Remove failed", description: e?.message || "Please try again.", variant: "destructive" });
@@ -544,7 +558,46 @@ export function AddSpendWizardModal(props: {
             </div>
             {mode === "google_sheets" && (
               <div className="rounded-lg border p-4 space-y-4">
-                {sheetsConnections.length === 0 || showSheetsConnect ? (
+                {sheetsConnections.length === 0 ? (
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium">Google Sheets</div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      No Sheets are connected to this campaign yet.
+                    </p>
+                    {!showSheetsConnect ? (
+                      <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
+                        Connect Google Sheets
+                      </Button>
+                    ) : (
+                      <SimpleGoogleSheetsAuth
+                        campaignId={props.campaignId}
+                        selectionMode="append"
+                        onSuccess={async (info) => {
+                          setShowSheetsConnect(false);
+                          const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
+                          if (preferredId) {
+                            setSelectedSheetConnectionId(preferredId);
+                            setSheetsConnections((prev) => {
+                              const exists = prev.some((c: any) => String(c?.id) === preferredId);
+                              if (exists) return prev;
+                              const optimistic = {
+                                id: preferredId,
+                                spreadsheetId: info?.spreadsheetId || "",
+                                spreadsheetName: info?.spreadsheetId || "Google Sheet",
+                                sheetName: Array.isArray(info?.sheetNames) ? info?.sheetNames?.[0] : undefined,
+                                isActive: true,
+                              };
+                              return [optimistic, ...prev];
+                            });
+                          }
+                          await refreshSheetsConnections();
+                          toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
+                        }}
+                        onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
+                      />
+                    )}
+                  </div>
+                ) : showSheetsConnect ? (
                   <div className="space-y-3">
                     <div className="text-sm font-medium">Connect Google Sheets</div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -574,13 +627,9 @@ export function AddSpendWizardModal(props: {
                           });
                         }
                         try {
-                          const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections`);
-                          const json = await resp.json().catch(() => null);
-                          const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
-                          const filtered = conns.filter((c: any) => c && c.isActive !== false);
-                          setSheetsConnections(filtered);
+                          const filtered = await refreshSheetsConnections();
                           // If we don't have a selection yet, auto-select when there's only one option.
-                          if (!preferredId && !selectedSheetConnectionId && filtered.length === 1) {
+                          if (!preferredId && !selectedSheetConnectionId && filtered && filtered.length === 1) {
                             setSelectedSheetConnectionId(String(filtered[0].id));
                           }
                           toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });

@@ -7,8 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
-import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
-import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 
 type SpendSourceMode = "ad_platforms" | "google_sheets" | "upload" | "paste" | "manual";
 
@@ -45,7 +43,6 @@ export function AddSpendWizardModal(props: {
   const [isProcessing, setIsProcessing] = useState(false);
   const [pasteText, setPasteText] = useState<string>("");
   const [showSheetsConnect, setShowSheetsConnect] = useState(false);
-  const [showPlatformConnect, setShowPlatformConnect] = useState<null | "linkedin" | "meta">(null);
 
   const [dateColumn, setDateColumn] = useState<string>("");
   const [spendColumn, setSpendColumn] = useState<string>("");
@@ -76,7 +73,6 @@ export function AddSpendWizardModal(props: {
       setManualAmount("");
       setPasteText("");
       setShowSheetsConnect(false);
-      setShowPlatformConnect(null);
       setSheetsConnections([]);
       setSelectedSheetConnectionId("");
       setSheetsPreview(null);
@@ -399,10 +395,10 @@ export function AddSpendWizardModal(props: {
 
               <div className="grid gap-2 md:grid-cols-2">
                 <div className="text-sm">
-                  LinkedIn: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.linkedin || 0).toFixed(2)}</span>
+                  Connector A: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.linkedin || 0).toFixed(2)}</span>
                 </div>
                 <div className="text-sm">
-                  Meta: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.meta || 0).toFixed(2)}</span>
+                  Connector B: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.meta || 0).toFixed(2)}</span>
                 </div>
                 <div className="text-sm">
                   Custom connector: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.custom || 0).toFixed(2)}</span>
@@ -413,46 +409,10 @@ export function AddSpendWizardModal(props: {
               </div>
 
               <div className="flex flex-wrap gap-2 pt-2 border-t">
-                <Button type="button" variant="outline" onClick={() => setShowPlatformConnect("meta")}>
-                  Connect Meta (test mode)
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setShowPlatformConnect("linkedin")}>
-                  Connect LinkedIn
-                </Button>
                 <div className="text-xs text-slate-500 dark:text-slate-400 self-center">
-                  More connectors can be added later; import works for any platform/export today.
+                  Manage spend connectors from Connected Platforms. Import works for any platform/export today.
                 </div>
               </div>
-
-              {showPlatformConnect === "meta" && (
-                <div className="rounded-md border p-3">
-                  <SimpleMetaAuth
-                    campaignId={props.campaignId}
-                    onSuccess={() => {
-                      toast({ title: "Meta connected", description: "Re-open Add spend to use detected spend." });
-                      props.onProcessed?.();
-                      setShowPlatformConnect(null);
-                    }}
-                    onError={(err) => toast({ title: "Meta connect failed", description: err, variant: "destructive" })}
-                  />
-                </div>
-              )}
-              {showPlatformConnect === "linkedin" && (
-                <div className="rounded-md border p-3">
-                  <LinkedInConnectionFlow
-                    campaignId={props.campaignId}
-                    mode="new"
-                    onConnectionSuccess={() => {
-                      toast({ title: "LinkedIn connected", description: "Import a LinkedIn campaign to populate detected spend." });
-                      props.onProcessed?.();
-                      setShowPlatformConnect(null);
-                    }}
-                    onImportComplete={() => {
-                      props.onProcessed?.();
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             <div className="space-y-2">

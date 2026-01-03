@@ -2396,7 +2396,9 @@ export class DatabaseStorage implements IStorage {
 
   async getSpendSource(campaignId: string, sourceId: string): Promise<SpendSource | undefined> {
     const [s] = await db.select().from(spendSources)
-      .where(and(eq(spendSources.id, sourceId), eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, true)));
+      // Some DBs have spend_sources.id as UUID while our API passes string IDs.
+      // Cast to text to avoid "operator does not exist: uuid = text".
+      .where(and(sql`${spendSources.id}::text = ${sourceId}`, eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, true)));
     return s || undefined;
   }
 
@@ -2415,7 +2417,7 @@ export class DatabaseStorage implements IStorage {
     const [s] = await db
       .update(spendSources)
       .set(source as any)
-      .where(eq(spendSources.id, sourceId))
+      .where(sql`${spendSources.id}::text = ${sourceId}`)
       .returning();
     return s || undefined;
   }
@@ -2424,7 +2426,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .update(spendSources)
       .set({ isActive: false } as any)
-      .where(eq(spendSources.id, sourceId));
+      .where(sql`${spendSources.id}::text = ${sourceId}`);
     return (result.rowCount || 0) > 0;
   }
 
@@ -2452,7 +2454,8 @@ export class DatabaseStorage implements IStorage {
         spendSourceId: spendRecords.spendSourceId,
       })
       .from(spendRecords)
-      .innerJoin(spendSources, eq(spendSources.id, spendRecords.spendSourceId))
+      // Cast spend_sources.id to text for compatibility with spend_records.spend_source_id stored as text.
+      .innerJoin(spendSources, sql`${spendSources.id}::text = ${spendRecords.spendSourceId}`)
       .where(and(
         eq(spendRecords.campaignId, campaignId),
         eq(spendSources.isActive, true),

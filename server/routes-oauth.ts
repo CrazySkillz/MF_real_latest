@@ -416,6 +416,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const dateRange = req.query.dateRange as string || '30days';
       const propertyId = req.query.propertyId as string; // Optional - get specific property
+
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignFilter = (campaign as any)?.ga4CampaignFilter || campaign?.name || undefined;
       
       // Get all connections or a specific one
       let connections;
@@ -470,7 +473,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignId,
         storage,
         ga4DateRange,
-        selectedConnection.propertyId
+        selectedConnection.propertyId,
+        campaignFilter
       );
 
       res.json({
@@ -2201,6 +2205,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const dateRange = req.query.dateRange as string || '30days';
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignFilter = (campaign as any)?.ga4CampaignFilter || campaign?.name || undefined;
       const connection = await storage.getGA4Connection(campaignId);
       
       if (!connection || connection.method !== 'access_token') {
@@ -2227,7 +2233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ga4DateRange = '30daysAgo';
         }
         
-        const timeSeriesData = await ga4Service.getTimeSeriesData(campaignId, storage, ga4DateRange);
+        const timeSeriesData = await ga4Service.getTimeSeriesData(campaignId, storage, ga4DateRange, connection.propertyId, campaignFilter);
         
         res.json({
           success: true,
@@ -2253,6 +2259,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
       const debug = String(req.query.debug || '').toLowerCase() === '1' || String(req.query.debug || '').toLowerCase() === 'true';
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignFilter = (campaign as any)?.ga4CampaignFilter || campaign?.name || undefined;
 
       // Convert date range to GA4 format
       let ga4DateRange = '30daysAgo';
@@ -2270,7 +2278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ga4DateRange = '30daysAgo';
       }
 
-      const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, propertyId, limit);
+      const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, propertyId, limit, campaignFilter);
 
       res.json({
         success: true,
@@ -2315,6 +2323,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { dateRange = '7days', propertyId } = req.query;
+      const campaign = await storage.getCampaign(id);
+      const campaignFilter = (campaign as any)?.ga4CampaignFilter || campaign?.name || undefined;
 
       const toGa4StartDate = (dr: string) => {
         const v = String(dr || '').toLowerCase();
@@ -2508,7 +2518,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         geographicData = await ga4Service.getGeographicMetrics(
           primaryConnection.propertyId,
           primaryConnection.accessToken,
-          dateRange as string
+          dateRange as string,
+          campaignFilter
         );
       } catch (authError: any) {
         console.log('Geographic API failed, attempting token refresh:', authError.message);
@@ -2534,7 +2545,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             geographicData = await ga4Service.getGeographicMetrics(
               primaryConnection.propertyId,
               tokenData.access_token,
-              dateRange as string
+              dateRange as string,
+              campaignFilter
             );
           } catch (refreshError) {
             console.log('Token refresh failed for geographic data, using fallback');
@@ -2552,7 +2564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let totalSessions = 4000;
         let totalPageviews = 6000;
         try {
-          const m = await ga4Service.getMetricsWithAutoRefresh(id, storage, toGa4StartDate(String(dateRange)), primaryConnection.propertyId);
+          const m = await ga4Service.getMetricsWithAutoRefresh(id, storage, toGa4StartDate(String(dateRange)), primaryConnection.propertyId, campaignFilter);
           totalUsers = Math.max(0, Math.floor(Number((m as any)?.impressions || 0)));
           totalSessions = Math.max(0, Math.floor(Number((m as any)?.sessions || 0)));
           totalPageviews = Math.max(0, Math.floor(Number((m as any)?.pageviews || 0)));

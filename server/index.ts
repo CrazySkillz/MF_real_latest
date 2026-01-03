@@ -117,6 +117,12 @@ process.on('uncaughtException', (error: Error) => {
             ALTER TABLE notifications 
             ADD COLUMN IF NOT EXISTS metadata TEXT;
           `);
+
+          // Migration: Add GA4 campaign filter to campaigns (so each MetricMind campaign maps to one GA4 campaign)
+          await db.execute(sql`
+            ALTER TABLE campaigns
+            ADD COLUMN IF NOT EXISTS ga4_campaign_filter TEXT;
+          `);
           
           // Migration 3: Create KPI periods table
           await db.execute(sql`

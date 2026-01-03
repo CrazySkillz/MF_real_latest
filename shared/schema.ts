@@ -11,6 +11,8 @@ export const campaigns = pgTable("campaigns", {
   budget: decimal("budget", { precision: 10, scale: 2 }),
   currency: text("currency").notNull().default("USD"),
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Average revenue per conversion for ROI calculations
+  // GA4 attribution filter so each MetricMind campaign maps to a single GA4 campaign/UTM campaign
+  ga4CampaignFilter: text("ga4_campaign_filter"),
   type: text("type"),
   platform: text("platform"),
   impressions: integer("impressions").notNull().default(0),
@@ -682,6 +684,7 @@ export const insertCampaignSchema = createInsertSchema(campaigns)
     budget: true,
     currency: true,
     conversionValue: true,
+    ga4CampaignFilter: true,
     type: true,
     platform: true,
     impressions: true,

@@ -34,7 +34,61 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [showClientIdInput, setShowClientIdInput] = useState(false);
+  const [ga4CampaignFilter, setGa4CampaignFilter] = useState('');
+  const [isSavingFilter, setIsSavingFilter] = useState(false);
   const { toast } = useToast();
+
+  // Prefill GA4 campaign filter with the MetricMind campaign name (user can edit).
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const resp = await fetch(`/api/campaigns/${campaignId}`);
+        if (!resp.ok) return;
+        const c = await resp.json().catch(() => null);
+        if (!mounted || !c) return;
+        const existing = String(c.ga4CampaignFilter || '').trim();
+        const fallback = String(c.name || '').trim();
+        setGa4CampaignFilter(existing || fallback);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [campaignId]);
+
+  const saveCampaignFilter = async () => {
+    const value = String(ga4CampaignFilter || '').trim();
+    if (!value) {
+      toast({
+        title: "Campaign filter required",
+        description: "Enter the GA4 campaign name (typically your utm_campaign value).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingFilter(true);
+    try {
+      await apiRequest("PATCH", `/api/campaigns/${campaignId}`, { ga4CampaignFilter: value });
+      toast({
+        title: "GA4 campaign selected",
+        description: "MetricMind will now filter GA4 analytics to this campaign only.",
+      });
+      setConnectionStep('connected');
+      onConnectionSuccess?.();
+    } catch (e: any) {
+      toast({
+        title: "Failed to save filter",
+        description: e?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingFilter(false);
+    }
+  };
 
   const handleTokenConnect = async () => {
     console.log('GA4 Connect button clicked!', { campaignId, accessToken: accessToken.substring(0, 10) + '...', propertyId });
@@ -68,8 +122,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       console.log('GA4 response data:', data);
 
       if (data.success) {
-        setConnectionStep('connected');
-        onConnectionSuccess?.();
+        setConnectionStep('filter');
         toast({
           title: "GA4 Connected!",
           description: "Successfully connected! Your real Google Analytics data will now be available."
@@ -299,8 +352,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const data = await response.json();
       
       if (data.success) {
-        setConnectionStep('connected');
-        onConnectionSuccess?.();
+        setConnectionStep('filter');
         toast({
           title: "GA4 Connected!",
           description: "Your Google Analytics is now connected with automatic token refresh."
@@ -344,8 +396,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const data = await response.json();
 
       if (data.success) {
-        setConnectionStep('connected');
-        onConnectionSuccess?.();
+        setConnectionStep('filter');
         toast({
           title: "GA4 Connected!",
           description: "Successfully connected! Your real Google Analytics data will now be available."
@@ -369,6 +420,39 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     }
   };
 
+
+  if (connectionStep === 'filter') {
+    return (
+      <Card className="w-full max-w-2xl">
+        <CardHeader className="text-center">
+          <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+            <BarChart3 className="w-6 h-6 text-blue-600" />
+          </div>
+          <CardTitle>Choose GA4 campaign to track</CardTitle>
+          <CardDescription>
+            GA4 properties include many campaigns. MetricMind will filter analytics to a single GA4 campaign for this campaign.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="ga4-campaign-filter">GA4 Campaign name (utm_campaign)</Label>
+            <Input
+              id="ga4-campaign-filter"
+              value={ga4CampaignFilter}
+              onChange={(e) => setGa4CampaignFilter(e.target.value)}
+              placeholder="e.g., brand_awareness_campaign"
+            />
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              Tip: This usually matches the UTM campaign used in your links (e.g., <code className="px-1">utm_campaign</code>).
+            </p>
+          </div>
+          <Button className="w-full" onClick={saveCampaignFilter} disabled={isSavingFilter}>
+            {isSavingFilter ? "Saving..." : "Save and finish"}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (connectionStep === 'connected') {
     return (

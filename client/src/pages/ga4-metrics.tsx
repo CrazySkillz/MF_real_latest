@@ -103,6 +103,7 @@ export default function GA4Metrics() {
   const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
   const [deleteKPIId, setDeleteKPIId] = useState<string | null>(null);
   const [showSpendDialog, setShowSpendDialog] = useState(false);
+  const [showDeleteSpendDialog, setShowDeleteSpendDialog] = useState(false);
   // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
   
   // Benchmark-related state
@@ -1139,9 +1140,26 @@ export default function GA4Metrics() {
                                   </p>
                                 </div>
                                 {activeSpendSource && (
-                                  <Button variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
-                                    Edit spend mapping
-                                  </Button>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => setShowSpendDialog(true)}
+                                      aria-label="Edit spend mapping"
+                                      title="Edit spend mapping"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => setShowDeleteSpendDialog(true)}
+                                      aria-label="Remove spend"
+                                      title="Remove spend"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -1245,6 +1263,42 @@ export default function GA4Metrics() {
                         queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
                       }}
                     />
+
+                    <AlertDialog open={showDeleteSpendDialog} onOpenChange={setShowDeleteSpendDialog}>
+                      <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-slate-900 dark:text-white">Remove spend data?</AlertDialogTitle>
+                          <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                            This will remove spend from Financial metrics (ROAS/ROI/CPA) for this campaign until you add spend again.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={async () => {
+                              try {
+                                const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources`, { method: "DELETE" });
+                                const json = await resp.json().catch(() => null);
+                                if (!resp.ok || json?.success === false) {
+                                  throw new Error(json?.error || "Failed to remove spend");
+                                }
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
+                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
+                              } catch (e) {
+                                // swallow; the page has other error toasts elsewhere
+                                console.error(e);
+                              } finally {
+                                setShowDeleteSpendDialog(false);
+                              }
+                            }}
+                          >
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
 
                     {/* Scale */}
                     <div>

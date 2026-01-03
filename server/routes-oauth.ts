@@ -150,6 +150,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Remove all active spend sources for a campaign (and therefore remove ROAS/ROI/CPA until re-imported).
+  app.delete("/api/campaigns/:id/spend-sources", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const existing = await storage.getSpendSources(campaignId);
+      for (const s of existing || []) {
+        if (!s) continue;
+        await storage.deleteSpendSource(String((s as any).id));
+      }
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to remove spend sources" });
+    }
+  });
+
   app.get("/api/campaigns/:id/spend-totals", async (req, res) => {
     try {
       const campaignId = req.params.id;

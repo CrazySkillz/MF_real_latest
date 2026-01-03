@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
+import { Loader2 } from "lucide-react";
 
 type SpendSourceMode = "google_sheets" | "upload" | "paste" | "manual";
 
@@ -58,6 +59,7 @@ export function AddSpendWizardModal(props: {
 
   const prefillKeyRef = useRef<string | null>(null);
   const [autoPreviewSheetOnOpen, setAutoPreviewSheetOnOpen] = useState(false);
+  const [isEditPrefillLoading, setIsEditPrefillLoading] = useState(false);
   const [csvPrefillMapping, setCsvPrefillMapping] = useState<any>(null);
   const [csvEditNotice, setCsvEditNotice] = useState<string>("");
 
@@ -125,6 +127,7 @@ export function AddSpendWizardModal(props: {
       const connectionId = String(mapping?.connectionId || "").trim();
       if (connectionId) {
         setSelectedSheetConnectionId(connectionId);
+        setIsEditPrefillLoading(true);
         setAutoPreviewSheetOnOpen(true);
       } else {
         // If we don't know the connection id, user can re-select in the sheet picker.
@@ -329,7 +332,7 @@ export function AddSpendWizardModal(props: {
     if (!selectedSheetConnectionId) return;
     setAutoPreviewSheetOnOpen(false);
     // Fire and forget; it will set step to sheets_map.
-    previewSheet();
+    previewSheet().finally(() => setIsEditPrefillLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.open, autoPreviewSheetOnOpen, mode, selectedSheetConnectionId]);
 
@@ -453,7 +456,16 @@ export function AddSpendWizardModal(props: {
           </DialogDescription>
         </DialogHeader>
 
-        {step === "choose" && (
+        {isEditPrefillLoading ? (
+          <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
+            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading your sheet preview…
+            </div>
+          </div>
+        ) : null}
+
+        {!isEditPrefillLoading && step === "choose" && (
           <div className="space-y-6">
             <div className="space-y-2">
               <Label>Import spend dataset (recommended)</Label>
@@ -684,7 +696,7 @@ export function AddSpendWizardModal(props: {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Campaign identifier column (only for multi-campaign datasets)</Label>
+                    <Label>Campaign identifier for multi-campaign datasets</Label>
                     <Select
                       value={campaignKeyColumn || CAMPAIGN_COL_NONE}
                       onValueChange={(v) => setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v)}

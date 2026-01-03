@@ -103,6 +103,10 @@ process.on('uncaughtException', (error: Error) => {
       // Run database migrations on startup
       setTimeout(async () => {
         try {
+          if (!db) {
+            log('No DATABASE_URL configured; skipping database migrations and schedulers (using in-memory storage).');
+            return;
+          }
           log('Running database migrations...');
           
           // Migration 1: Add KPI campaign scope columns

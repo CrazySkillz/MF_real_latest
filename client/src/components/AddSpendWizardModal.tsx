@@ -56,6 +56,7 @@ export function AddSpendWizardModal(props: {
   const [selectedSheetConnectionId, setSelectedSheetConnectionId] = useState<string>("");
   const [sheetsPreview, setSheetsPreview] = useState<any>(null);
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
+  const [isRemovingSheet, setIsRemovingSheet] = useState(false);
 
   const prefillKeyRef = useRef<string | null>(null);
   const suppressCampaignResetRef = useRef(false);
@@ -336,6 +337,48 @@ export function AddSpendWizardModal(props: {
     }
   };
 
+  const refreshSheetsConnections = async () => {
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections`);
+      const json = await resp.json().catch(() => null);
+      const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
+      const filtered = conns.filter((c: any) => c && c.isActive !== false);
+      setSheetsConnections(filtered);
+      return filtered;
+    } catch {
+      return null;
+    }
+  };
+
+  const removeSelectedSheetConnection = async () => {
+    if (!selectedSheetConnectionId) return;
+    setIsRemovingSheet(true);
+    try {
+      const resp = await fetch(
+        `/api/google-sheets/${encodeURIComponent(props.campaignId)}/connection?connectionId=${encodeURIComponent(selectedSheetConnectionId)}`,
+        { method: "DELETE" }
+      );
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || json?.success === false) {
+        throw new Error(json?.error || "Failed to remove Google Sheets connection");
+      }
+      // Refresh list and reset selection
+      const filtered = await refreshSheetsConnections();
+      setSelectedSheetConnectionId("");
+      setSheetsPreview(null);
+      setCsvPreview(null);
+      setStep("choose");
+      if (!filtered || filtered.length === 0) {
+        setShowSheetsConnect(true);
+      }
+      toast({ title: "Google Sheet removed", description: "You can now upload a CSV or connect a different sheet." });
+    } catch (e: any) {
+      toast({ title: "Remove failed", description: e?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsRemovingSheet(false);
+    }
+  };
+
   // When editing a Google Sheets spend source, auto-preview to jump directly to mapping.
   useEffect(() => {
     if (!props.open) return;
@@ -552,9 +595,20 @@ export function AddSpendWizardModal(props: {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <Label>Choose Google Sheet</Label>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
-                        Change sheet/tab
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
+                          Change sheet/tab
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={removeSelectedSheetConnection}
+                          disabled={!selectedSheetConnectionId || isRemovingSheet}
+                        >
+                          {isRemovingSheet ? "Removing..." : "Remove"}
+                        </Button>
+                      </div>
                     </div>
                     <Select value={selectedSheetConnectionId} onValueChange={setSelectedSheetConnectionId}>
                       <SelectTrigger>

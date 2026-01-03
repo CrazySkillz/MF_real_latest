@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ export function AddSpendWizardModal(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currency?: string;
+  initialSource?: { id?: string; sourceType?: string; mappingConfig?: string | null; displayName?: string | null };
   onProcessed?: () => void;
 }) {
   const { toast } = useToast();
@@ -55,8 +56,14 @@ export function AddSpendWizardModal(props: {
   const [sheetsPreview, setSheetsPreview] = useState<any>(null);
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
 
+  const prefillKeyRef = useRef<string | null>(null);
+  const [autoPreviewSheetOnOpen, setAutoPreviewSheetOnOpen] = useState(false);
+  const [csvPrefillMapping, setCsvPrefillMapping] = useState<any>(null);
+  const [csvEditNotice, setCsvEditNotice] = useState<string>("");
+
   useEffect(() => {
     if (!props.open) {
+      prefillKeyRef.current = null;
       setStep("choose");
       setMode("upload");
       setCsvFile(null);
@@ -76,8 +83,75 @@ export function AddSpendWizardModal(props: {
       setSelectedSheetConnectionId("");
       setSheetsPreview(null);
       setIsSheetsLoading(false);
+      setAutoPreviewSheetOnOpen(false);
+      setCsvPrefillMapping(null);
+      setCsvEditNotice("");
     }
   }, [props.open]);
+
+  // Prefill when editing an existing spend source (e.g., after ROAS/ROI are computed).
+  useEffect(() => {
+    if (!props.open) return;
+    if (!props.initialSource) return;
+
+    const src = props.initialSource as any;
+    const key = String(src?.id || "") + "|" + String(src?.sourceType || "") + "|" + String(src?.mappingConfig || "");
+    if (prefillKeyRef.current === key) return;
+    prefillKeyRef.current = key;
+
+    let mapping: any = null;
+    try {
+      mapping = src?.mappingConfig ? JSON.parse(String(src.mappingConfig)) : null;
+    } catch {
+      mapping = null;
+    }
+
+    const sourceType = String(src?.sourceType || "").toLowerCase();
+    const mapDate = mapping?.dateColumn ? String(mapping.dateColumn) : "";
+    const mapSpend = mapping?.spendColumn ? String(mapping.spendColumn) : "";
+    const mapCampaignCol = mapping?.campaignColumn ? String(mapping.campaignColumn) : "";
+    const mapCampaignVals = Array.isArray(mapping?.campaignValues)
+      ? mapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
+      : (mapping?.campaignValue ? [String(mapping.campaignValue).trim()] : []);
+
+    if (sourceType === "google_sheets") {
+      setMode("google_sheets");
+      setStep("choose");
+      if (mapDate) setDateColumn(mapDate);
+      if (mapSpend) setSpendColumn(mapSpend);
+      if (mapCampaignCol) setCampaignKeyColumn(mapCampaignCol);
+      if (mapCampaignVals.length) setCampaignKeyValues(mapCampaignVals);
+
+      const connectionId = String(mapping?.connectionId || "").trim();
+      if (connectionId) {
+        setSelectedSheetConnectionId(connectionId);
+        setAutoPreviewSheetOnOpen(true);
+      } else {
+        // If we don't know the connection id, user can re-select in the sheet picker.
+        setShowSheetsConnect(false);
+      }
+      return;
+    }
+
+    if (sourceType === "csv") {
+      // CSV cannot be reprocessed without re-uploading the file. Prefill mappings after upload/preview.
+      setMode("upload");
+      setStep("choose");
+      setCsvPrefillMapping(mapping);
+      setCsvEditNotice("To edit a CSV import, please re-upload the same (or updated) file. We'll prefill the mappings once it’s previewed.");
+      if (mapCampaignCol) setCampaignKeyColumn(mapCampaignCol);
+      if (mapCampaignVals.length) setCampaignKeyValues(mapCampaignVals);
+      if (mapDate) setDateColumn(mapDate);
+      if (mapSpend) setSpendColumn(mapSpend);
+      return;
+    }
+
+    if (sourceType === "manual") {
+      setMode("manual");
+      setStep("choose");
+      return;
+    }
+  }, [props.open, props.initialSource]);
 
   useEffect(() => {
     if (!props.open) return;
@@ -130,6 +204,18 @@ export function AddSpendWizardModal(props: {
     if (!dateColumn && inferredDateColumn) setDateColumn(inferredDateColumn);
     if (!spendColumn && inferredSpendColumn) setSpendColumn(inferredSpendColumn);
   }, [csvPreview, inferredDateColumn, inferredSpendColumn, dateColumn, spendColumn]);
+
+  // If we are editing a CSV spend source and the user re-uploads a file, try to apply the saved mapping.
+  useEffect(() => {
+    if (!csvPreview?.success) return;
+    if (!csvPrefillMapping) return;
+    const mapDate = csvPrefillMapping?.dateColumn ? String(csvPrefillMapping.dateColumn) : "";
+    const mapSpend = csvPrefillMapping?.spendColumn ? String(csvPrefillMapping.spendColumn) : "";
+    const mapCampaignCol = csvPrefillMapping?.campaignColumn ? String(csvPrefillMapping.campaignColumn) : "";
+    if (mapDate && headers.includes(mapDate)) setDateColumn(mapDate);
+    if (mapSpend && headers.includes(mapSpend)) setSpendColumn(mapSpend);
+    if (mapCampaignCol && headers.includes(mapCampaignCol)) setCampaignKeyColumn(mapCampaignCol);
+  }, [csvPreview?.success, csvPrefillMapping, headers]);
 
   // Reset selected campaign values when the identifier column changes.
   useEffect(() => {
@@ -234,6 +320,18 @@ export function AddSpendWizardModal(props: {
       setIsSheetsLoading(false);
     }
   };
+
+  // When editing a Google Sheets spend source, auto-preview to jump directly to mapping.
+  useEffect(() => {
+    if (!props.open) return;
+    if (!autoPreviewSheetOnOpen) return;
+    if (mode !== "google_sheets") return;
+    if (!selectedSheetConnectionId) return;
+    setAutoPreviewSheetOnOpen(false);
+    // Fire and forget; it will set step to sheets_map.
+    previewSheet();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.open, autoPreviewSheetOnOpen, mode, selectedSheetConnectionId]);
 
   const processCsv = async () => {
     if (!csvFile) return;
@@ -456,6 +554,11 @@ export function AddSpendWizardModal(props: {
 
             {mode === "upload" && (
               <div className="rounded-lg border p-4 space-y-4">
+                {csvEditNotice && (
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    {csvEditNotice}
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="csv-file">Upload file (CSV)</Label>
                   <Input

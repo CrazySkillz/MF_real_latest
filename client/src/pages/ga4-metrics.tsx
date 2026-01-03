@@ -701,6 +701,12 @@ export default function GA4Metrics() {
     }
     return labels;
   }, [spendTotals?.sourceIds, spendSourcesResp]);
+
+  const activeSpendSource = useMemo(() => {
+    const sources = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
+    // Backend returns only active sources; pick the most recent if multiple.
+    return sources?.[0] || null;
+  }, [spendSourcesResp]);
   const totalSpendForFinancials = Number(spendTotals?.totalSpend || 0);
 
   const financialRevenue = Number(breakdownTotals.revenue || ga4Metrics?.revenue || 0);
@@ -1125,10 +1131,19 @@ export default function GA4Metrics() {
                         {financialSpend > 0 ? (
                           <>
                             <div className="mb-3">
-                              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial (Spend-based)</h4>
-                              <p className="text-xs text-slate-600 dark:text-slate-400">
-                                Spend source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} — {selectedPeriodLabel}
-                              </p>
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial (Spend-based)</h4>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                                    Spend source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} — {selectedPeriodLabel}
+                                  </p>
+                                </div>
+                                {activeSpendSource && (
+                                  <Button variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
+                                    Edit spend mapping
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                               <Card>
@@ -1210,22 +1225,26 @@ export default function GA4Metrics() {
                                 Add spend
                               </Button>
                             </div>
-                            <AddSpendWizardModal
-                              campaignId={campaignId}
-                              open={showSpendDialog}
-                              onOpenChange={setShowSpendDialog}
-                              currency={(campaign as any)?.currency || "USD"}
-                              onProcessed={() => {
-                                // Refresh spend immediately; invalidate broadly in case dateRange changed.
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
-                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                              }}
-                            />
+                            {/* Modal is rendered below so it can be opened from both empty and filled states */}
                           </div>
                         )}
                       </div>
                     </div>
+
+                    {/* Spend import / edit modal (rendered always so it can be opened even when spend exists) */}
+                    <AddSpendWizardModal
+                      campaignId={campaignId}
+                      open={showSpendDialog}
+                      onOpenChange={setShowSpendDialog}
+                      currency={(campaign as any)?.currency || "USD"}
+                      initialSource={activeSpendSource || undefined}
+                      onProcessed={() => {
+                        // Refresh spend immediately; invalidate broadly in case dateRange changed.
+                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
+                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
+                        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
+                      }}
+                    />
 
                     {/* Scale */}
                     <div>

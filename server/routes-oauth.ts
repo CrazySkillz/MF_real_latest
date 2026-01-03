@@ -820,7 +820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyId = req.query.propertyId as string; // Optional - get specific property
 
       const campaign = await storage.getCampaign(campaignId);
-      const campaignFilter = (campaign as any)?.ga4CampaignFilter || campaign?.name || undefined;
+      const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
       
       // Get all connections or a specific one
       let connections;
@@ -2608,7 +2608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const dateRange = req.query.dateRange as string || '30days';
       const campaign = await storage.getCampaign(campaignId);
-      const campaignFilter = (campaign as any)?.ga4CampaignFilter || campaign?.name || undefined;
+      const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
       const connection = await storage.getGA4Connection(campaignId);
       
       if (!connection || connection.method !== 'access_token') {
@@ -2653,6 +2653,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // List GA4 campaign values (campaignName) for the connected property so the UI can pick a single campaign filter.
+  app.get("/api/campaigns/:id/ga4-campaign-values", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const dateRange = String(req.query.dateRange || '30days');
+      const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 200);
+
+      let ga4DateRange = '30daysAgo';
+      switch (dateRange) {
+        case '7days':
+          ga4DateRange = '7daysAgo';
+          break;
+        case '30days':
+          ga4DateRange = '30daysAgo';
+          break;
+        case '90days':
+          ga4DateRange = '90daysAgo';
+          break;
+        default:
+          ga4DateRange = '30daysAgo';
+      }
+
+      const result = await ga4Service.getCampaignValues(campaignId, storage, ga4DateRange, propertyId, limit);
+      res.json({ success: true, dateRange, ...result });
+    } catch (error: any) {
+      console.error('[GA4 Campaign Values] Error:', error);
+      if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {
+        return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
+      }
+      if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
+        return res.status(401).json({ success: false, error: 'TOKEN_EXPIRED' });
+      }
+      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch GA4 campaign values' });
+    }
+  });
+
   // GA4 acquisition-style breakdown table (Date / Channel / Source / Medium / Campaign / Device / Country)
   app.get("/api/campaigns/:id/ga4-breakdown", async (req, res) => {
     try {
@@ -2662,7 +2699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
       const debug = String(req.query.debug || '').toLowerCase() === '1' || String(req.query.debug || '').toLowerCase() === 'true';
       const campaign = await storage.getCampaign(campaignId);
-      const campaignFilter = (campaign as any)?.ga4CampaignFilter || campaign?.name || undefined;
+      const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
 
       // Convert date range to GA4 format
       let ga4DateRange = '30daysAgo';
@@ -2726,7 +2763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { dateRange = '7days', propertyId } = req.query;
       const campaign = await storage.getCampaign(id);
-      const campaignFilter = (campaign as any)?.ga4CampaignFilter || campaign?.name || undefined;
+      const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
 
       const toGa4StartDate = (dr: string) => {
         const v = String(dr || '').toLowerCase();

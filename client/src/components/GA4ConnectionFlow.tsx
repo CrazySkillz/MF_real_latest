@@ -22,7 +22,7 @@ interface GA4Property {
 export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4ConnectionFlowProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionStep, setConnectionStep] = useState<'connect' | 'connected'>('connect');
+  const [connectionStep, setConnectionStep] = useState<'connect' | 'filter' | 'connected'>('connect');
   const [accessToken, setAccessToken] = useState('');
   const [refreshToken, setRefreshToken] = useState('');
   const [propertyId, setPropertyId] = useState('');
@@ -36,7 +36,10 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [showClientIdInput, setShowClientIdInput] = useState(false);
   const [ga4CampaignFilter, setGa4CampaignFilter] = useState('');
   const [isSavingFilter, setIsSavingFilter] = useState(false);
+  const [availableCampaigns, setAvailableCampaigns] = useState<Array<{ name: string; users: number }>>([]);
+  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
   const { toast } = useToast();
+  const [didLoadCampaigns, setDidLoadCampaigns] = useState(false);
 
   // Prefill GA4 campaign filter with the MetricMind campaign name (user can edit).
   useEffect(() => {
@@ -89,6 +92,28 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       setIsSavingFilter(false);
     }
   };
+
+  const loadGa4CampaignValues = async () => {
+    setIsLoadingCampaigns(true);
+    try {
+      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-campaign-values?dateRange=30days&limit=50`);
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || !json?.success) return;
+      const rows = Array.isArray(json.campaigns) ? json.campaigns : [];
+      setAvailableCampaigns(rows);
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingCampaigns(false);
+    }
+  };
+
+  useEffect(() => {
+    if (connectionStep !== 'filter') return;
+    if (didLoadCampaigns) return;
+    setDidLoadCampaigns(true);
+    void loadGa4CampaignValues();
+  }, [connectionStep, didLoadCampaigns]);
 
   const handleTokenConnect = async () => {
     console.log('GA4 Connect button clicked!', { campaignId, accessToken: accessToken.substring(0, 10) + '...', propertyId });
@@ -436,12 +461,28 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="ga4-campaign-filter">GA4 Campaign name (utm_campaign)</Label>
-            <Input
-              id="ga4-campaign-filter"
-              value={ga4CampaignFilter}
-              onChange={(e) => setGa4CampaignFilter(e.target.value)}
-              placeholder="e.g., brand_awareness_campaign"
-            />
+            {availableCampaigns.length > 0 ? (
+              <select
+                id="ga4-campaign-filter"
+                value={ga4CampaignFilter}
+                onChange={(e) => setGa4CampaignFilter(e.target.value)}
+                className="w-full mt-2 p-2 border rounded-md bg-white dark:bg-slate-800"
+              >
+                <option value="">Choose a campaign…</option>
+                {availableCampaigns.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.name} (users: {c.users})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                id="ga4-campaign-filter"
+                value={ga4CampaignFilter}
+                onChange={(e) => setGa4CampaignFilter(e.target.value)}
+                placeholder={isLoadingCampaigns ? "Loading campaigns…" : "e.g., brand_awareness"}
+              />
+            )}
             <p className="text-xs text-slate-600 dark:text-slate-400">
               Tip: This usually matches the UTM campaign used in your links (e.g., <code className="px-1">utm_campaign</code>).
             </p>

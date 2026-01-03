@@ -494,6 +494,88 @@ export class GoogleAnalytics4Service {
     };
   }
 
+  /**
+   * Fetch unique GA4 campaign values (campaignName) for a property so the UI can let the user
+   * choose which GA4 campaign a MetricMind campaign should track.
+   */
+  async getCampaignValues(
+    campaignId: string,
+    storage: any,
+    dateRange = '30daysAgo',
+    propertyId?: string,
+    limit: number = 50
+  ): Promise<{ propertyId: string; campaigns: Array<{ name: string; users: number }> }> {
+    const connection = await storage.getGA4Connection(campaignId, propertyId);
+    if (!connection) throw new Error('NO_GA4_CONNECTION');
+
+    const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
+    if (!connection.accessToken) {
+      const tokenExpiredError = new Error('TOKEN_EXPIRED');
+      (tokenExpiredError as any).isTokenExpired = true;
+      throw tokenExpiredError;
+    }
+
+    const run = async (accessToken: string) => {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+          dimensions: [{ name: 'campaignName' }],
+          metrics: [{ name: 'totalUsers' }],
+          orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+          limit: Math.min(Math.max(limit, 1), 200),
+        }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`GA4 API Error: ${txt}`);
+      }
+      const json = await resp.json().catch(() => ({} as any));
+      const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
+      const campaigns: Array<{ name: string; users: number }> = [];
+      for (const r of rows) {
+        const name = String(r?.dimensionValues?.[0]?.value || '').trim();
+        const users = parseInt(String(r?.metricValues?.[0]?.value || '0'), 10) || 0;
+        if (!name) continue;
+        if (name === '(not set)') continue;
+        campaigns.push({ name, users });
+      }
+      return campaigns;
+    };
+
+    try {
+      const campaigns = await run(connection.accessToken);
+      return { propertyId: normalizedPropertyId, campaigns };
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      const isAuth =
+        msg.includes('"code": 401') ||
+        msg.toLowerCase().includes('unauthenticated') ||
+        msg.toLowerCase().includes('invalid authentication credentials') ||
+        msg.toLowerCase().includes('request had invalid authentication credentials') ||
+        msg.toLowerCase().includes('invalid_grant');
+      if (isAuth && connection.refreshToken) {
+        const refresh = await this.refreshAccessToken(
+          connection.refreshToken,
+          connection.clientId || undefined,
+          connection.clientSecret || undefined
+        );
+        await storage.updateGA4ConnectionTokens(connection.id, {
+          accessToken: refresh.access_token,
+          refreshToken: connection.refreshToken,
+          expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
+        });
+        const campaigns = await run(refresh.access_token);
+        return { propertyId: normalizedPropertyId, campaigns };
+      }
+      throw e;
+    }
+  }
+
   // Get geographic breakdown of users
   async getGeographicMetrics(propertyId: string, accessToken: string, dateRange = 'today', campaignFilter?: string): Promise<any> {
     try {

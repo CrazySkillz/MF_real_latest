@@ -135,6 +135,11 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const [selectedGA4Property, setSelectedGA4Property] = useState<string>('');
   const [showPropertySelector, setShowPropertySelector] = useState(false);
   const [isGA4PropertyLoading, setIsGA4PropertyLoading] = useState(false);
+  const [showGA4CampaignSelector, setShowGA4CampaignSelector] = useState(false);
+  const [ga4CampaignValues, setGA4CampaignValues] = useState<Array<{ name: string; users: number }>>([]);
+  const [selectedGA4CampaignValue, setSelectedGA4CampaignValue] = useState<string>('');
+  const [ga4CampaignTargetCampaignId, setGA4CampaignTargetCampaignId] = useState<string>('');
+  const [isGA4CampaignLoading, setIsGA4CampaignLoading] = useState(false);
   const [showCustomIntegrationModal, setShowCustomIntegrationModal] = useState(false);
   const [customIntegrationEmail, setCustomIntegrationEmail] = useState('');
   const [allowedEmailAddresses, setAllowedEmailAddresses] = useState('');
@@ -341,6 +346,41 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const handleComplete = () => {
     // Pass platform IDs directly - don't convert to names
     onComplete(selectedPlatforms);
+  };
+
+  const saveGA4CampaignFilter = async () => {
+    if (!ga4CampaignTargetCampaignId) return;
+    const value = String(selectedGA4CampaignValue || '').trim();
+    if (!value) {
+      toast({
+        title: "GA4 campaign required",
+        description: "Select a GA4 campaign (campaignName) to scope analytics for this campaign.",
+        variant: "destructive"
+      });
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/campaigns/${encodeURIComponent(ga4CampaignTargetCampaignId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ga4CampaignFilter: value })
+      });
+      if (!resp.ok) {
+        const j = await resp.json().catch(() => null);
+        throw new Error(j?.message || j?.error || "Failed to save");
+      }
+      toast({
+        title: "GA4 campaign selected",
+        description: `This campaign will track GA4 campaign "${value}".`
+      });
+      setShowGA4CampaignSelector(false);
+    } catch (e: any) {
+      toast({
+        title: "Failed to save",
+        description: e?.message || "Could not save GA4 campaign filter. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -879,6 +919,64 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
           </DialogContent>
         </Dialog>
       )}
+
+      {/* GA4 Campaign Selection Modal (after connection is transferred to the new campaign) */}
+      {showGA4CampaignSelector && (
+        <Dialog open={showGA4CampaignSelector} onOpenChange={setShowGA4CampaignSelector}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Select GA4 campaign to track</DialogTitle>
+              <DialogDescription>
+                Choose the GA4 <strong>campaignName</strong> value you want this MetricMind campaign to track (e.g., <code>brand_awareness</code>).
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {isGA4CampaignLoading ? (
+                <p className="text-sm text-slate-600 dark:text-slate-400">Loading GA4 campaigns…</p>
+              ) : ga4CampaignValues.length > 0 ? (
+                <div className="space-y-2">
+                  <Label>GA4 campaignName</Label>
+                  <Select value={selectedGA4CampaignValue} onValueChange={setSelectedGA4CampaignValue}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a GA4 campaign" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[10000]">
+                      {ga4CampaignValues.map((c) => (
+                        <SelectItem key={c.name} value={c.name}>
+                          {c.name} (users: {c.users})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="ga4-campaign-input">GA4 campaignName</Label>
+                  <Input
+                    id="ga4-campaign-input"
+                    value={selectedGA4CampaignValue}
+                    onChange={(e) => setSelectedGA4CampaignValue(e.target.value)}
+                    placeholder="e.g., brand_awareness"
+                  />
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    If GA4 reporting is delayed, the list may be empty—enter the expected UTM campaign value.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowGA4CampaignSelector(false)}>
+                  Skip
+                </Button>
+                <Button className="flex-1" onClick={saveGA4CampaignFilter} disabled={isGA4CampaignLoading}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
@@ -1113,6 +1211,26 @@ export default function Campaigns() {
             // Invalidate and refetch connection status queries
             await queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", (newCampaign as any).id] });
             await queryClient.refetchQueries({ queryKey: ["/api/ga4/check-connection", (newCampaign as any).id] });
+
+            // Prompt to select GA4 campaignName so analytics can be scoped to a single campaign
+            try {
+              const newId = String((newCampaign as any).id);
+              setGA4CampaignTargetCampaignId(newId);
+              setIsGA4CampaignLoading(true);
+              const valsResp = await fetch(`/api/campaigns/${encodeURIComponent(newId)}/ga4-campaign-values?dateRange=30days&limit=50`);
+              const valsJson = await valsResp.json().catch(() => null);
+              const vals = Array.isArray(valsJson?.campaigns) ? valsJson.campaigns : [];
+              setGA4CampaignValues(vals);
+              setSelectedGA4CampaignValue(vals[0]?.name || '');
+              setShowGA4CampaignSelector(true);
+            } catch (e) {
+              console.warn('Failed to fetch GA4 campaign values:', e);
+              setGA4CampaignValues([]);
+              setSelectedGA4CampaignValue('');
+              setShowGA4CampaignSelector(true);
+            } finally {
+              setIsGA4CampaignLoading(false);
+            }
           } else {
             console.error('❌ GA4 transfer failed:', result.error);
           }

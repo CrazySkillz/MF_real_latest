@@ -24,13 +24,6 @@ export function AddSpendWizardModal(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currency?: string;
-  // Optional ad-platform spend values (already fetched by parent)
-  platformSpend?: {
-    linkedin?: number;
-    meta?: number;
-    custom?: number;
-    total?: number;
-  };
   onProcessed?: () => void;
 }) {
   const { toast } = useToast();
@@ -334,36 +327,6 @@ export function AddSpendWizardModal(props: {
     }
   };
 
-  const processConnectorDerivedSpend = async () => {
-    const total = props.platformSpend?.total ?? 0;
-    if (!(total > 0)) {
-      toast({ title: "No platform spend detected", description: "Connect a platform or import spend via CSV/Manual.", variant: "destructive" });
-      return;
-    }
-    setIsProcessing(true);
-    try {
-      const breakdown = {
-        linkedin: props.platformSpend?.linkedin || 0,
-        meta: props.platformSpend?.meta || 0,
-        custom: props.platformSpend?.custom || 0,
-      };
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/connectors`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: total, currency: props.currency || "USD", breakdown }),
-      });
-      const json = await resp.json().catch(() => null);
-      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save platform spend");
-      toast({ title: "Spend saved", description: "Platform spend is now available for financial metrics." });
-      props.onProcessed?.();
-      props.onOpenChange(false);
-    } catch (e: any) {
-      toast({ title: "Save failed", description: e?.message || "Please try again.", variant: "destructive" });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="max-w-3xl">
@@ -376,45 +339,6 @@ export function AddSpendWizardModal(props: {
 
         {step === "choose" && (
           <div className="space-y-6">
-            <div className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm font-medium">Spend connectors (optional)</div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Connectors are optional. You can import spend from <span className="font-medium">any source</span> using Paste/Upload/Sheets below.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  onClick={processConnectorDerivedSpend}
-                  disabled={isProcessing || !((props.platformSpend?.total ?? 0) > 0)}
-                >
-                  {isProcessing ? "Saving..." : "Use detected connector spend"}
-                </Button>
-              </div>
-
-              <div className="grid gap-2 md:grid-cols-2">
-                <div className="text-sm">
-                  Connector A: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.linkedin || 0).toFixed(2)}</span>
-                </div>
-                <div className="text-sm">
-                  Connector B: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.meta || 0).toFixed(2)}</span>
-                </div>
-                <div className="text-sm">
-                  Custom connector: <span className="font-medium">{props.currency || "USD"} {(props.platformSpend?.custom || 0).toFixed(2)}</span>
-                </div>
-                <div className="text-sm">
-                  Total: <span className="font-semibold">{props.currency || "USD"} {(props.platformSpend?.total || 0).toFixed(2)}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 pt-2 border-t">
-                <div className="text-xs text-slate-500 dark:text-slate-400 self-center">
-                  Manage spend connectors from Connected Platforms. Import works for any platform/export today.
-                </div>
-              </div>
-            </div>
-
             <div className="space-y-2">
               <Label>Import spend dataset (recommended)</Label>
               <div className="flex flex-wrap gap-2">

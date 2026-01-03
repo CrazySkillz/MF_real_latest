@@ -657,42 +657,6 @@ export default function GA4Metrics() {
   };
 
   // Spend sources for Financial metrics (ROAS/ROI/CPA).
-  // We compute these only when we have a real spend source to keep numbers trustworthy.
-  const { data: linkedinSpendMetrics } = useQuery<any>({
-    queryKey: [`/api/linkedin/metrics/${campaignId}`],
-    enabled: !!campaignId,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000, // 10 minutes
-    refetchIntervalInBackground: true,
-  });
-
-  const { data: customIntegrationSpend } = useQuery<any>({
-    queryKey: [`/api/custom-integration/${campaignId}`],
-    enabled: !!campaignId,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000, // 10 minutes
-    refetchIntervalInBackground: true,
-  });
-
-  const { data: metaSummary } = useQuery<any>({
-    queryKey: [`/api/meta/${campaignId}/summary`],
-    enabled: !!campaignId,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000, // 10 minutes
-    refetchIntervalInBackground: true,
-    queryFn: async () => {
-      const resp = await fetch(`/api/meta/${campaignId}/summary`);
-      if (!resp.ok) return null;
-      return resp.json();
-    },
-  });
-
   // Spend totals are persisted server-side by the Add Spend wizard.
   const { data: spendTotals } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/spend-totals`, dateRange],
@@ -737,11 +701,6 @@ export default function GA4Metrics() {
     }
     return labels;
   }, [spendTotals?.sourceIds, spendSourcesResp]);
-
-  const spendLinkedIn = parseNum(linkedinSpendMetrics?.spend);
-  const spendCustom = parseNum(customIntegrationSpend?.metrics?.spend ?? customIntegrationSpend?.spend);
-  const spendMeta = parseNum(metaSummary?.summary?.spend ?? metaSummary?.summary?.totalSpend ?? metaSummary?.spend);
-  const platformSpend = spendLinkedIn + spendMeta + spendCustom;
   const totalSpendForFinancials = Number(spendTotals?.totalSpend || 0);
 
   const financialRevenue = Number(breakdownTotals.revenue || ga4Metrics?.revenue || 0);
@@ -1251,12 +1210,6 @@ export default function GA4Metrics() {
                               open={showSpendDialog}
                               onOpenChange={setShowSpendDialog}
                               currency={(campaign as any)?.currency || "USD"}
-                              platformSpend={{
-                                linkedin: spendLinkedIn,
-                                meta: spendMeta,
-                                custom: spendCustom,
-                                total: platformSpend,
-                              }}
                               onProcessed={() => {
                                 queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`, dateRange] });
                               }}

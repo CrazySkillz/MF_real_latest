@@ -291,13 +291,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
       const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
+      const campaignValues: string[] | null = Array.isArray(mapping.campaignValues)
+        ? (mapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v))
+        : null;
+      const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
 
       const grouped = new Map<string, number>();
       let kept = 0;
       for (const row of parsed.rows) {
-        if (campaignCol && campaignValue) {
+        if (campaignCol && (campaignValueSet || campaignValue)) {
           const v = String((row as any)[campaignCol] ?? "").trim();
-          if (v !== campaignValue) continue;
+          if (campaignValueSet) {
+            if (!campaignValueSet.has(v)) continue;
+          } else if (campaignValue && v !== campaignValue) {
+            continue;
+          }
         }
         const d = normalizeDate((row as any)[mapping.dateColumn]);
         if (!d) continue;
@@ -441,13 +449,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
       const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
+      const campaignValues: string[] | null = Array.isArray(mapping.campaignValues)
+        ? (mapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v))
+        : null;
+      const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
 
       const grouped = new Map<string, number>();
       let kept = 0;
       for (const row of rows) {
-        if (campaignCol && campaignValue) {
+        if (campaignCol && (campaignValueSet || campaignValue)) {
           const v = String((row as any)[campaignCol] ?? "").trim();
-          if (v !== campaignValue) continue;
+          if (campaignValueSet) {
+            if (!campaignValueSet.has(v)) continue;
+          } else if (campaignValue && v !== campaignValue) {
+            continue;
+          }
         }
         const d = normalizeDate((row as any)[mapping.dateColumn]);
         if (!d) continue;

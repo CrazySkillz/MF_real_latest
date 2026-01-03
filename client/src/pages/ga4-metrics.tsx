@@ -1216,8 +1216,10 @@ export default function GA4Metrics() {
                               onOpenChange={setShowSpendDialog}
                               currency={(campaign as any)?.currency || "USD"}
                               onProcessed={() => {
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`, dateRange] });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`] });
+                                // Refresh spend immediately; invalidate broadly in case dateRange changed.
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
+                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
                               }}
                             />
                           </div>

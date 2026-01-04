@@ -145,7 +145,9 @@ export function AddSpendWizardModal(props: {
     if (sourceType === "csv") {
       // CSV cannot be reprocessed without re-uploading the file. Prefill mappings after upload/preview.
       setMode("upload");
-      setStep("choose");
+      setStep("csv_map");
+      setCsvPreview(null);
+      setCsvFile(null);
       setCsvPrefillMapping(mapping);
       setCsvEditNotice("To edit a CSV import, please re-upload the same (or updated) file. We'll prefill the mappings once it’s previewed.");
       if (mapCampaignCol) {
@@ -186,19 +188,6 @@ export function AddSpendWizardModal(props: {
   const headers = csvPreview?.headers || [];
   const sampleRows = csvPreview?.sampleRows || [];
 
-  const uniqueCampaignKeyValues = useMemo(() => {
-    if (!campaignKeyColumn) return [];
-    const set = new Set<string>();
-    for (const r of sampleRows) {
-      const v = String((r as any)[campaignKeyColumn] ?? "").trim();
-      if (v) set.add(v);
-    }
-    const all = Array.from(set);
-    const q = campaignKeySearch.trim().toLowerCase();
-    const filtered = q ? all.filter((x) => x.toLowerCase().includes(q)) : all;
-    return filtered.slice(0, 200);
-  }, [campaignKeyColumn, sampleRows, campaignKeySearch]);
-
   const inferredDateColumn = useMemo(() => {
     if (!headers.length) return "";
     const lc = headers.map((h) => ({ h, l: h.toLowerCase() }));
@@ -223,13 +212,37 @@ export function AddSpendWizardModal(props: {
     );
   }, [headers]);
 
+  const effectiveCampaignColumn = useMemo(
+    () => campaignKeyColumn || inferredCampaignColumn || "",
+    [campaignKeyColumn, inferredCampaignColumn]
+  );
+
   useEffect(() => {
     if (!csvPreview?.success) return;
     if (!dateColumn && inferredDateColumn) setDateColumn(inferredDateColumn);
     if (!spendColumn && inferredSpendColumn) setSpendColumn(inferredSpendColumn);
-    // Auto-suggest campaign identifier column so values are immediately visible/selectable (no selection required).
-    if (!campaignKeyColumn && inferredCampaignColumn) setCampaignKeyColumn(inferredCampaignColumn);
   }, [csvPreview, inferredDateColumn, inferredSpendColumn, dateColumn, spendColumn]);
+
+  const uniqueCampaignKeyValues = useMemo(() => {
+    if (!effectiveCampaignColumn) return [];
+    const set = new Set<string>();
+    for (const r of sampleRows) {
+      const v = String((r as any)[effectiveCampaignColumn] ?? "").trim();
+      if (v) set.add(v);
+    }
+    const all = Array.from(set);
+    const q = campaignKeySearch.trim().toLowerCase();
+    const filtered = q ? all.filter((x) => x.toLowerCase().includes(q)) : all;
+    return filtered.slice(0, 200);
+  }, [effectiveCampaignColumn, sampleRows, campaignKeySearch]);
+
+  const previewRows = useMemo(() => {
+    if (!Array.isArray(sampleRows) || sampleRows.length === 0) return [];
+    if (campaignKeyValues.length === 0) return sampleRows;
+    if (!effectiveCampaignColumn) return sampleRows;
+    const set = new Set(campaignKeyValues);
+    return sampleRows.filter((r: any) => set.has(String(r?.[effectiveCampaignColumn] ?? "").trim()));
+  }, [sampleRows, campaignKeyValues, effectiveCampaignColumn]);
 
   // If we are editing a CSV spend source and the user re-uploads a file, try to apply the saved mapping.
   useEffect(() => {
@@ -418,12 +431,12 @@ export function AddSpendWizardModal(props: {
 
     setIsProcessing(true);
     try {
-      const hasCampaignScope = !!campaignKeyColumn && campaignKeyValues.length > 0;
+      const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;
       const mapping = {
         displayName: csvFile.name,
         dateColumn,
         spendColumn,
-        campaignColumn: hasCampaignScope ? campaignKeyColumn : null,
+        campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
         campaignValues: hasCampaignScope ? campaignKeyValues : null,
         currency: props.currency || "USD",
@@ -460,12 +473,12 @@ export function AddSpendWizardModal(props: {
     }
     setIsProcessing(true);
     try {
-      const hasCampaignScope = !!campaignKeyColumn && campaignKeyValues.length > 0;
+      const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;
       const mapping = {
         displayName: (sheetsPreview?.spreadsheetName ? `${sheetsPreview.spreadsheetName}${sheetsPreview.sheetName ? ` (${sheetsPreview.sheetName})` : ""}` : "Google Sheets spend"),
         dateColumn,
         spendColumn,
-        campaignColumn: hasCampaignScope ? campaignKeyColumn : null,
+        campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
         campaignValues: hasCampaignScope ? campaignKeyValues : null,
         currency: props.currency || "USD",
@@ -692,6 +705,7 @@ export function AddSpendWizardModal(props: {
                     id="csv-file"
                     type="file"
                     accept=".csv,text/csv"
+                    className="cursor-pointer"
                     onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
                   />
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -762,7 +776,38 @@ export function AddSpendWizardModal(props: {
 
         {(step === "csv_map" || step === "sheets_map") && (
           <div className="space-y-6">
-            <div className="rounded-lg border p-4 space-y-4">
+            {step === "csv_map" && !csvPreview?.success ? (
+              <div className="rounded-lg border p-4 space-y-4">
+                {csvEditNotice && (
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    {csvEditNotice}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="csv-file-remap">Upload file (CSV)</Label>
+                  <Input
+                    id="csv-file-remap"
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="cursor-pointer"
+                    onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    After preview, you can adjust columns and re-process spend.
+                  </p>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <Button variant="outline" onClick={() => setStep("choose")}>Back</Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
+                      {isCsvPreviewing ? "Previewing..." : "Preview"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg border p-4 space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
                   <div className="text-sm font-medium">Columns</div>
@@ -816,9 +861,9 @@ export function AddSpendWizardModal(props: {
                       value={campaignKeyColumn || CAMPAIGN_COL_NONE}
                       onValueChange={(v) => setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v)}
                     >
-                      <SelectTrigger><SelectValue placeholder="Leave blank if not needed" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
                       <SelectContent className="z-[10000]">
-                        <SelectItem value={CAMPAIGN_COL_NONE}>(leave blank)</SelectItem>
+                        <SelectItem value={CAMPAIGN_COL_NONE}>Search values...</SelectItem>
                         {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -829,11 +874,11 @@ export function AddSpendWizardModal(props: {
                       value={campaignKeySearch}
                       onChange={(e) => setCampaignKeySearch(e.target.value)}
                       placeholder="Search values…"
-                      disabled={!campaignKeyColumn}
+                      disabled={!effectiveCampaignColumn}
                     />
                     <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
-                      {!campaignKeyColumn ? (
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Select an identifier column to see values.</div>
+                      {!effectiveCampaignColumn ? (
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Upload/preview data to see campaign values.</div>
                       ) : uniqueCampaignKeyValues.length === 0 ? (
                         <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
                       ) : (
@@ -863,10 +908,11 @@ export function AddSpendWizardModal(props: {
                 </div>
               </div>
             </div>
+            )}
 
-            {sampleRows.length > 0 && (
+            {previewRows.length > 0 && (
               <div className="rounded-lg border p-4">
-                <div className="text-sm font-medium mb-3">Preview (first {Math.min(sampleRows.length, 5)} rows)</div>
+                <div className="text-sm font-medium mb-3">Preview (first {Math.min(previewRows.length, 5)} rows)</div>
                 <div className="overflow-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -877,7 +923,7 @@ export function AddSpendWizardModal(props: {
                       </tr>
                     </thead>
                     <tbody>
-                      {sampleRows.slice(0, 5).map((r, idx) => (
+                      {previewRows.slice(0, 5).map((r, idx) => (
                         <tr key={idx} className="border-b last:border-b-0">
                           {headers.slice(0, 6).map((h) => (
                             <td key={h} className="py-2 pr-4 text-slate-700 dark:text-slate-300">{String((r as any)[h] ?? "")}</td>

@@ -209,7 +209,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sourceType: "manual",
         displayName: "Manual spend",
         currency: cur,
-        mappingConfig: null as any,
+        // Persist the last manual amount so the edit modal (pencil) can prefill the input.
+        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur }),
         isActive: true,
       } as any);
 

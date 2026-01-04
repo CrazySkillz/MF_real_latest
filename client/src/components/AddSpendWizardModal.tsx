@@ -179,6 +179,13 @@ export function AddSpendWizardModal(props: {
     if (sourceType === "manual") {
       setMode("manual");
       setStep("choose");
+      const savedAmount =
+        (mapping && typeof (mapping as any).amount === "number") ? Number((mapping as any).amount) :
+        (mapping && typeof (mapping as any).amount === "string") ? parseFloat(String((mapping as any).amount)) :
+        null;
+      if (savedAmount && Number.isFinite(savedAmount)) {
+        setManualAmount(String(savedAmount));
+      }
       return;
     }
   }, [props.open, props.initialSource]);

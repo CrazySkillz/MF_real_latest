@@ -765,6 +765,44 @@ export default function GA4Metrics() {
     return String(kpi?.currentValue ?? "0.00");
   };
 
+  const computeKpiProgress = (kpi: any) => {
+    const current = parseFloat(String(getLiveKpiValue(kpi) || "0"));
+    const target = parseFloat(String(kpi?.targetValue || "0"));
+    const safeCurrent = Number.isFinite(current) ? current : 0;
+    const safeTarget = Number.isFinite(target) ? target : 0;
+
+    // Direction: most exec KPIs here are "higher is better".
+    // CPA is "lower is better" (cost per conversion).
+    const name = String(kpi?.name || "").toLowerCase();
+    const lowerIsBetter = name === "cpa";
+
+    let ratio = 0;
+    if (lowerIsBetter) {
+      // progress = target / current (<= target is good). Clamp later.
+      ratio = safeCurrent > 0 ? (safeTarget / safeCurrent) : 0;
+    } else {
+      ratio = safeTarget > 0 ? (safeCurrent / safeTarget) : 0;
+    }
+
+    const pct = Math.max(0, Math.min(ratio * 100, 100));
+    const status =
+      ratio >= 0.8 ? "on_track" :
+      ratio >= 0.6 ? "needs_attention" :
+      "behind";
+    const color =
+      ratio >= 0.8 ? "bg-green-500" :
+      ratio >= 0.6 ? "bg-yellow-500" :
+      "bg-red-500";
+
+    return {
+      ratio,
+      pct,
+      labelPct: (ratio * 100).toFixed(1),
+      status,
+      color,
+    };
+  };
+
   const connectedPropertyCount =
     Number(ga4Connection?.totalConnections || 0) ||
     (Array.isArray(ga4Connection?.connections) ? ga4Connection.connections.length : 0) ||
@@ -1884,65 +1922,44 @@ export default function GA4Metrics() {
                                         </Badge>
                                       </div>
                                     </div>
-                                    <div className="flex items-center justify-between mt-3 text-xs text-slate-500 dark:text-slate-400">
-                                      <div className="flex items-center space-x-4">
-                                        <span>📊 {kpi.timeframe || 'monthly'} tracking</span>
-                                        <span>📈 {kpi.rollingAverage || '7day'} average</span>
-                                        <span>📅 {kpi.trackingPeriod || 30}-day period</span>
-                                        {kpi.alertsEnabled && (
-                                          <span className="flex items-center space-x-1">
-                                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                                            <span>🔔 Alerts on</span>
-                                          </span>
-                                        )}
-                                      </div>
-                                      {kpi.targetDate && (
-                                        <span>🎯 Due: {new Date(kpi.targetDate).toLocaleDateString()}</span>
-                                      )}
-                                    </div>
+                                    {/* Removed time-based tracking labels for a cleaner exec view */}
                                     
                                     {/* KPI Progress and Alignment Status */}
                                     <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Progress to Target</span>
-                                        <span className="text-sm text-slate-500 dark:text-slate-400">
-                                          {((parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) * 100).toFixed(1)}%
-                                        </span>
-                                      </div>
-                                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                        <div 
-                                          className={`h-2 rounded-full transition-all duration-300 ${
-                                            (parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.8 
-                                              ? "bg-green-500" 
-                                              : (parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.6 
-                                              ? "bg-yellow-500" 
-                                              : "bg-red-500"
-                                          }`}
-                                          style={{ 
-                                            width: `${Math.min((parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) * 100, 100)}%` 
-                                          }}
-                                        ></div>
-                                      </div>
-                                      <div className="flex items-center justify-between mt-2 text-xs">
-                                        <span className={`font-medium ${
-                                          (parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.8 
-                                            ? "text-green-600 dark:text-green-400" 
-                                            : (parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.6 
-                                            ? "text-yellow-600 dark:text-yellow-400" 
-                                            : "text-red-600 dark:text-red-400"
-                                        }`}>
-                                          {(parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.8 
-                                            ? "✓ On Track" 
-                                            : (parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.6 
-                                            ? "⚠ Needs Attention" 
-                                            : "⚠ Behind Target"}
-                                        </span>
-                                        {kpi.alertThreshold && (
-                                          <span className="text-slate-500 dark:text-slate-400">
-                                            Alert at {kpi.alertThreshold}% of target
-                                          </span>
-                                        )}
-                                      </div>
+                                      {(() => {
+                                        const p = computeKpiProgress(kpi);
+                                        return (
+                                          <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Progress to Target</span>
+                                              <span className="text-sm text-slate-500 dark:text-slate-400">
+                                                {p.labelPct}%
+                                              </span>
+                                            </div>
+                                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                              <div
+                                                className={`h-2 rounded-full transition-all duration-300 ${p.color}`}
+                                                style={{ width: `${p.pct}%` }}
+                                              />
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs">
+                                              <span className={`font-medium ${
+                                                p.status === "on_track"
+                                                  ? "text-green-600 dark:text-green-400"
+                                                  : p.status === "needs_attention"
+                                                  ? "text-yellow-600 dark:text-yellow-400"
+                                                  : "text-red-600 dark:text-red-400"
+                                              }`}>
+                                                {p.status === "on_track"
+                                                  ? "✓ On Track"
+                                                  : p.status === "needs_attention"
+                                                  ? "⚠ Needs Attention"
+                                                  : "⚠ Behind Target"}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 </div>

@@ -110,13 +110,15 @@ export default function GA4Metrics() {
   
   // Benchmark-related state
   const [showCreateBenchmark, setShowCreateBenchmark] = useState(false);
+  const [selectedBenchmarkTemplate, setSelectedBenchmarkTemplate] = useState<any>(null);
   const [newBenchmark, setNewBenchmark] = useState({
     name: "",
     category: "",
-    benchmarkType: "",
+    benchmarkType: "industry",
     unit: "",
     benchmarkValue: "",
     currentValue: "",
+    metric: "",
     industry: "",
     geoLocation: "",
     description: "",
@@ -403,13 +405,15 @@ export default function GA4Metrics() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`] });
       setShowCreateBenchmark(false);
+      setSelectedBenchmarkTemplate(null);
       setNewBenchmark({
         name: "",
         category: "",
-        benchmarkType: "",
+        benchmarkType: "industry",
         unit: "",
         benchmarkValue: "",
         currentValue: "",
+        metric: "",
         industry: "",
         geoLocation: "",
         description: "",
@@ -442,6 +446,10 @@ export default function GA4Metrics() {
   // Benchmark handlers
   const handleCreateBenchmark = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newBenchmark.metric) {
+      toast({ title: "Please select a benchmark template", variant: "destructive" });
+      return;
+    }
     if (!newBenchmark.name || !newBenchmark.category || !newBenchmark.benchmarkValue || !newBenchmark.unit) {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
       return;
@@ -592,6 +600,28 @@ export default function GA4Metrics() {
       return response.json();
     },
   });
+
+  // Fetch industries list (used for Benchmarks -> Industry type)
+  const { data: industryData } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
+    queryKey: ["/api/industry-benchmarks"],
+    staleTime: Infinity,
+    queryFn: async () => {
+      const resp = await fetch("/api/industry-benchmarks");
+      if (!resp.ok) return { industries: [] };
+      return resp.json();
+    },
+  });
+
+  const industries = industryData?.industries || [];
+
+  const deriveBenchmarkCategoryFromMetric = (metric: string): string => {
+    const m = String(metric || "").toLowerCase();
+    if (m === "revenue") return "revenue";
+    if (m === "conversions" || m === "conversionrate") return "conversion";
+    if (m === "users" || m === "sessions" || m === "pageviews") return "traffic";
+    if (m === "engagementrate") return "engagement";
+    return "performance";
+  };
 
   const { data: ga4Metrics, isLoading: ga4Loading, error: ga4Error } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics", dateRange],
@@ -2100,7 +2130,57 @@ export default function GA4Metrics() {
                               Set up a new performance benchmark to track against industry standards or custom targets
                             </DialogDescription>
                           </DialogHeader>
-                          <form onSubmit={handleCreateBenchmark} className="space-y-3">
+                          <form onSubmit={handleCreateBenchmark} className="space-y-6">
+                            {/* Select Benchmark Template (mirrors KPI modal template grid) */}
+                            <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                              <div>
+                                <h4 className="font-medium text-slate-900 dark:text-white">Select Benchmark Template</h4>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                  Choose a metric to benchmark, then fill in the benchmark details below.
+                                </p>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                {[
+                                  { name: "Total Users", metric: "users", unit: "count", description: "Users for the selected period" },
+                                  { name: "Total Sessions", metric: "sessions", unit: "count", description: "Sessions for the selected period" },
+                                  { name: "Total Page Views", metric: "pageviews", unit: "count", description: "Page views for the selected period" },
+                                  { name: "Total Conversions", metric: "conversions", unit: "count", description: "Conversions for the selected period" },
+                                  { name: "Revenue", metric: "revenue", unit: "$", description: "Revenue for the selected period" },
+                                  { name: "Conversion Rate", metric: "conversionRate", unit: "%", description: "Conversions ÷ Sessions × 100" },
+                                  { name: "Engagement Rate", metric: "engagementRate", unit: "%", description: "Engaged sessions rate proxy" },
+                                ].map((template) => (
+                                  <div
+                                    key={template.metric}
+                                    className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                      selectedBenchmarkTemplate?.metric === template.metric
+                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                        : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                                    }`}
+                                    onClick={() => {
+                                      setSelectedBenchmarkTemplate(template);
+                                      const derivedCategory = deriveBenchmarkCategoryFromMetric(template.metric);
+                                      setNewBenchmark((prev) => ({
+                                        ...prev,
+                                        metric: template.metric,
+                                        category: derivedCategory,
+                                        name: prev.name || template.name,
+                                        unit: prev.unit || template.unit,
+                                      }));
+                                    }}
+                                  >
+                                    <div className="font-medium text-sm text-slate-900 dark:text-white">
+                                      {template.name}
+                                    </div>
+                                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                      {template.description}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Benchmark Name + Unit */}
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -2109,85 +2189,43 @@ export default function GA4Metrics() {
                                 <input
                                   type="text"
                                   value={newBenchmark.name}
-                                  onChange={(e) => setNewBenchmark({...newBenchmark, name: e.target.value})}
+                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, name: e.target.value })}
                                   className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  placeholder="e.g., Industry Average CTR"
+                                  placeholder="e.g., Target sessions for this campaign"
                                   required
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                  Category *
-                                </label>
-                                <select
-                                  value={newBenchmark.category}
-                                  onChange={(e) => setNewBenchmark({...newBenchmark, category: e.target.value})}
-                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  required
-                                >
-                                  <option value="">Select Category</option>
-                                  <option value="engagement">Engagement</option>
-                                  <option value="conversion">Conversion</option>
-                                  <option value="traffic">Traffic</option>
-                                  <option value="revenue">Revenue</option>
-                                  <option value="performance">Performance</option>
-                                </select>
-                              </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                  Benchmark Type *
-                                </label>
-                                <select
-                                  value={newBenchmark.benchmarkType}
-                                  onChange={(e) => setNewBenchmark({...newBenchmark, benchmarkType: e.target.value})}
-                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  required
-                                >
-                                  <option value="">Select Type</option>
-                                  <option value="industry">Industry Standard</option>
-                                  <option value="competitor">Competitor</option>
-                                  <option value="historical">Historical Performance</option>
-                                  <option value="goal">Custom Goal</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                   Unit *
                                 </label>
-                                <select
+                                <input
+                                  type="text"
                                   value={newBenchmark.unit}
-                                  onChange={(e) => setNewBenchmark({...newBenchmark, unit: e.target.value})}
+                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, unit: e.target.value })}
                                   className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  placeholder="count, %, $, ratio"
                                   required
-                                >
-                                  <option value="">Select Unit</option>
-                                  <option value="%">Percentage (%)</option>
-                                  <option value="$">Currency ($)</option>
-                                  <option value="ratio">Ratio</option>
-                                  <option value="count">Count</option>
-                                  <option value="seconds">Seconds</option>
-                                </select>
+                                />
                               </div>
                             </div>
 
+                            {/* Description */}
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                Description
+                              </label>
+                              <textarea
+                                value={newBenchmark.description}
+                                onChange={(e) => setNewBenchmark({ ...newBenchmark, description: e.target.value })}
+                                className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                rows={3}
+                                placeholder="What is this benchmark and why does it matter?"
+                              />
+                            </div>
+
+                            {/* Current Value + Benchmark Value */}
                             <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                  Benchmark Value *
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={newBenchmark.benchmarkValue}
-                                  onChange={(e) => setNewBenchmark({...newBenchmark, benchmarkValue: e.target.value})}
-                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  placeholder="e.g., 2.5"
-                                  required
-                                />
-                              </div>
                               <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                   Current Value
@@ -2196,67 +2234,89 @@ export default function GA4Metrics() {
                                   type="number"
                                   step="0.01"
                                   value={newBenchmark.currentValue}
-                                  onChange={(e) => setNewBenchmark({...newBenchmark, currentValue: e.target.value})}
+                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, currentValue: e.target.value })}
                                   className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  placeholder="e.g., 3.2"
+                                  placeholder="Auto-filled for Industry benchmarks (or enter manually)"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  Benchmark Value *
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={newBenchmark.benchmarkValue}
+                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, benchmarkValue: e.target.value })}
+                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  placeholder="Enter your benchmark target"
+                                  required
                                 />
                               </div>
                             </div>
 
+                            {/* Benchmark Type */}
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                  Industry
+                                  Benchmark Type *
                                 </label>
-                                <input
-                                  type="text"
-                                  value={newBenchmark.industry}
-                                  onChange={(e) => setNewBenchmark({...newBenchmark, industry: e.target.value})}
+                                <select
+                                  value={newBenchmark.benchmarkType || "industry"}
+                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, benchmarkType: e.target.value })}
                                   className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  placeholder="e.g., E-commerce, SaaS"
-                                />
+                                  required
+                                >
+                                  <option value="industry">Industry</option>
+                                  <option value="goal">Custom</option>
+                                </select>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                  Geography
-                                </label>
-                                <input
-                                  type="text"
-                                  value={newBenchmark.geoLocation}
-                                  onChange={(e) => setNewBenchmark({...newBenchmark, geoLocation: e.target.value})}
-                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  placeholder="e.g., Global, US, Europe"
-                                />
-                              </div>
+
+                              {newBenchmark.benchmarkType === "industry" && (
+                                <div>
+                                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                    Industry
+                                  </label>
+                                  <select
+                                    value={newBenchmark.industry}
+                                    onChange={async (e) => {
+                                      const industry = e.target.value;
+                                      setNewBenchmark({ ...newBenchmark, industry });
+                                      if (!industry || !newBenchmark.metric) return;
+                                      try {
+                                        const resp = await fetch(
+                                          `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(newBenchmark.metric)}`
+                                        );
+                                        if (!resp.ok) return;
+                                        const data = await resp.json().catch(() => null);
+                                        if (data && typeof data.value !== "undefined") {
+                                          setNewBenchmark((prev) => ({
+                                            ...prev,
+                                            currentValue: String(data.value),
+                                            unit: prev.unit || data.unit || prev.unit,
+                                          }));
+                                        }
+                                      } catch {
+                                        // ignore - industry benchmarks are best-effort
+                                      }
+                                    }}
+                                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                  >
+                                    <option value="">Select industry</option>
+                                    {(industries || []).map((i) => (
+                                      <option key={i.value} value={i.value}>
+                                        {i.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Selecting an industry will auto-fill Current Value for the chosen metric.
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                Description
-                              </label>
-                              <textarea
-                                value={newBenchmark.description}
-                                onChange={(e) => setNewBenchmark({...newBenchmark, description: e.target.value})}
-                                className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                rows={3}
-                                placeholder="Describe the benchmark and its source..."
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                Source
-                              </label>
-                              <input
-                                type="text"
-                                value={newBenchmark.source}
-                                onChange={(e) => setNewBenchmark({...newBenchmark, source: e.target.value})}
-                                className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                placeholder="e.g., Google Analytics Benchmarks, Industry Report 2024"
-                              />
-                            </div>
-
-                            <div className="flex justify-end space-x-3 pt-4">
+                            <div className="flex justify-end space-x-3 pt-2">
                               <Button type="button" variant="outline" onClick={() => setShowCreateBenchmark(false)}>
                                 Cancel
                               </Button>

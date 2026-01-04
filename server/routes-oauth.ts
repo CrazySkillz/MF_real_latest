@@ -9369,6 +9369,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms/:platformType/kpis", async (req, res) => {
     try {
       const { platformType } = req.params;
+
+      const toNullableDecimalString = (v: any) => {
+        if (v === '' || v === null || typeof v === 'undefined') return null;
+        // Drizzle-Zod decimal fields commonly expect strings; accept numbers too.
+        if (typeof v === 'number') return String(v);
+        return String(v);
+      };
       
       // Convert empty strings to null for numeric and optional text fields
       const requestData = {
@@ -9376,9 +9383,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformType: platformType,
         campaignId: req.body.campaignId || null, // Preserve campaignId from request
         metric: req.body.metric === '' ? null : req.body.metric,
-        targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
-        currentValue: req.body.currentValue === '' ? null : req.body.currentValue,
-        alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
+        targetValue: toNullableDecimalString(req.body.targetValue),
+        currentValue: toNullableDecimalString(req.body.currentValue),
+        alertThreshold: toNullableDecimalString(req.body.alertThreshold),
         emailRecipients: req.body.emailRecipients === '' ? null : req.body.emailRecipients,
         timeframe: req.body.timeframe || "monthly",
         trackingPeriod: req.body.trackingPeriod || 30,
@@ -9408,13 +9415,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { kpiId } = req.params;
       
+      const toNullableDecimalString = (v: any) => {
+        if (v === '' || v === null || typeof v === 'undefined') return null;
+        if (typeof v === 'number') return String(v);
+        return String(v);
+      };
+
       // Convert empty strings to null for numeric and optional text fields
       const updateData = {
         ...req.body,
         metric: req.body.metric === '' ? null : req.body.metric,
-        targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
-        currentValue: req.body.currentValue === '' ? null : req.body.currentValue,
-        alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
+        targetValue: toNullableDecimalString(req.body.targetValue),
+        currentValue: toNullableDecimalString(req.body.currentValue),
+        alertThreshold: toNullableDecimalString(req.body.alertThreshold),
         emailRecipients: req.body.emailRecipients === '' ? null : req.body.emailRecipients,
         targetDate: req.body.targetDate ? new Date(req.body.targetDate) : req.body.targetDate === null ? null : undefined
       };

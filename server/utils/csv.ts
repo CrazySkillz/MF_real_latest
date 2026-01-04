@@ -5,7 +5,11 @@ export type ParsedCsv = {
 
 // Simple, robust-enough delimited text parser for typical exports (handles quotes and delimiter chars in quotes).
 export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
-  const text = String(csvText || "").replace(/^\uFEFF/, ""); // strip BOM
+  const text = String(csvText || "")
+    .replace(/^\uFEFF/, "") // strip BOM
+    // Normalize line endings. Some exports use CR-only which would otherwise collapse rows.
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
 
   // Detect delimiter from the first non-empty line(s). Many "CSV" exports use ; or tabs depending on locale.
   const detectDelimiter = (): string => {
@@ -109,19 +113,25 @@ export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
   }
 
   const headerRow = rows[0] || [];
-  // Fallback: if we somehow parsed only one column but the header line clearly contains the delimiter,
-  // re-split naively for unquoted exports.
+  // Fallback: if we parsed only one column, try to recover by splitting on a common delimiter present in the header.
   let headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
   if (headers.length === 1) {
-    const firstLine = (text.split("\n")[0] || "").replace(/\r/g, "");
+    const firstLine = (text.split("\n")[0] || "");
     const hasQuotes = firstLine.includes('"');
-    if (!hasQuotes && firstLine.includes(delim)) {
-      headers = firstLine.split(delim).map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
+
+    const candidates = [",", ";", "\t", "|"];
+    const headerCell = String(headerRow[0] ?? "");
+    const bestDelim =
+      candidates.find((d) => headerCell.split(d).length >= 3) || // at least 3 columns
+      (candidates.find((d) => firstLine.split(d).length >= 3) || null);
+
+    if (!hasQuotes && bestDelim) {
+      headers = headerCell.split(bestDelim).map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
       // Rebuild rows using naive split (safe for non-quoted exports)
       rows.length = 0;
-      const rawLines = text.split("\n").map((l) => l.replace(/\r/g, "")).filter((l) => l.length > 0);
+      const rawLines = text.split("\n").filter((l) => l.length > 0);
       for (let i = 0; i < rawLines.length; i++) {
-        const parts = rawLines[i].split(delim);
+        const parts = rawLines[i].split(bestDelim);
         rows.push(parts);
         if (maxRows && rows.length >= maxRows) break;
       }

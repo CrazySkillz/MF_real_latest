@@ -1550,51 +1550,6 @@ export default function GA4Metrics() {
                         </Card>
                       </div>
                     </div>
-
-                    {/* Diagnostics */}
-                    <details className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                      <summary className="cursor-pointer select-none px-4 py-3">
-                        <div>
-                          <p className="text-base font-semibold text-slate-900 dark:text-white">Diagnostics (Analyst / QA)</p>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
-                            Less exec-facing; can be misleading for very new / test data
-                          </p>
-                        </div>
-                      </summary>
-                      <div className="px-4 pb-4 pt-2">
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                          <Card>
-                            <CardContent className="p-6">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Bounce Rate</p>
-                                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatPercentage(rateToPercent(ga4Metrics?.bounceRate || 0))}
-                                  </p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Weighted average</p>
-                                </div>
-                                <TrendingUp className="w-8 h-8 text-orange-500" />
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          <Card>
-                            <CardContent className="p-6">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Session Duration</p>
-                                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatDuration(ga4Metrics?.averageSessionDuration || 0)}
-                                  </p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Weighted average</p>
-                                </div>
-                                <Clock className="w-8 h-8 text-purple-500" />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      </div>
-                    </details>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

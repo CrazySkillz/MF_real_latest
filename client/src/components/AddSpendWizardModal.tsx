@@ -39,6 +39,7 @@ export function AddSpendWizardModal(props: {
   const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null);
   const [isCsvPreviewing, setIsCsvPreviewing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [csvInputKey, setCsvInputKey] = useState(0);
   const [pasteText, setPasteText] = useState<string>("");
   const [showSheetsConnect, setShowSheetsConnect] = useState(false);
 
@@ -75,6 +76,7 @@ export function AddSpendWizardModal(props: {
       setMode("upload");
       setCsvFile(null);
       setCsvPreview(null);
+      setCsvInputKey((k) => k + 1);
       setIsCsvPreviewing(false);
       setIsProcessing(false);
       setDateColumn("");
@@ -313,6 +315,14 @@ export function AddSpendWizardModal(props: {
     } finally {
       setIsCsvPreviewing(false);
     }
+  };
+
+  const clearCsvFile = () => {
+    setCsvFile(null);
+    setCsvPreview(null);
+    setCsvPrefillMapping(null);
+    setCsvEditNotice("");
+    setCsvInputKey((k) => k + 1); // forces <input type="file"> to reset
   };
 
   const parsePastedTable = (raw: string) => {
@@ -736,8 +746,16 @@ export function AddSpendWizardModal(props: {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="csv-file">Upload file (CSV)</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="csv-file">Upload file (CSV)</Label>
+                    {csvFile && (
+                      <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
+                        Remove file
+                      </Button>
+                    )}
+                  </div>
                   <Input
+                    key={`csv-file-${csvInputKey}`}
                     id="csv-file"
                     type="file"
                     accept=".csv,text/csv"
@@ -745,7 +763,7 @@ export function AddSpendWizardModal(props: {
                     onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
                   />
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Required columns: Date + Spend. Optional: Campaign (for multi-campaign files).
+                    Required columns: Spend. Optional: Date + Campaign (for multi-campaign files).
                   </p>
                 </div>
               </div>
@@ -847,8 +865,16 @@ export function AddSpendWizardModal(props: {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="csv-file-remap">Upload file (CSV)</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="csv-file-remap">Upload file (CSV)</Label>
+                    {csvFile && (
+                      <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
+                        Remove file
+                      </Button>
+                    )}
+                  </div>
                   <Input
+                    key={`csv-file-remap-${csvInputKey}`}
                     id="csv-file-remap"
                     type="file"
                     accept=".csv,text/csv"

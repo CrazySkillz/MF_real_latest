@@ -147,61 +147,45 @@ export default function GA4Metrics() {
     },
   });
 
-  // Function to calculate current KPI value based on template and platform data
-  const calculateKPIValue = (template: any, ga4Data: any, sheetsData: any) => {
-    if (!template) return "0.00";
-    
+  // KPI templates should be executive-grade and consistent with the GA4 Overview's spend/revenue logic.
+  // We compute "current" values live elsewhere; this helper is used only when creating a KPI from a template
+  // (to store an initial snapshot value) and uses GA4 Breakdown + Spend totals (not legacy Sheets spend).
+  const calculateKPIValueFromSources = (templateName: string, sources: {
+    revenue: number;
+    conversions: number;
+    sessions: number;
+    users: number;
+    spend: number;
+  }) => {
     try {
-      switch (template.name) {
-        case "ROI (Return on Investment)":
-          // ROI = (Revenue - Cost) / Cost × 100
-          const revenue =
-            Number(sheetsData?.summary?.totalRevenue || sheetsData?.totalRevenue || 0) ||
-            Number(ga4Data?.revenue || 0);
-          const cost = Number(sheetsData?.summary?.totalSpend || sheetsData?.totalSpend || 0);
-          return cost > 0 ? (((revenue - cost) / cost) * 100).toFixed(2) : "0.00";
-          
-        case "ROAS (Return on Ad Spend)":
-          // ROAS = Revenue / Ad Spend
-          const adRevenue =
-            Number(sheetsData?.summary?.totalRevenue || sheetsData?.totalRevenue || 0) ||
-            Number(ga4Data?.revenue || 0);
-          const adSpend = Number(sheetsData?.summary?.totalSpend || sheetsData?.totalSpend || 0);
-          return adSpend > 0 ? (adRevenue / adSpend).toFixed(2) : "0.00";
-          
-        case "CTR (Click-Through Rate)":
-          // CTR = Clicks / Impressions × 100
-          const clicks = sheetsData?.totalClicks || ga4Data?.clicks || 0;
-          const impressions = sheetsData?.totalImpressions || ga4Data?.impressions || 0;
-          return impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : "0.00";
-          
+      const revenue = Number(sources.revenue || 0);
+      const conversions = Number(sources.conversions || 0);
+      const sessions = Number(sources.sessions || 0);
+      const users = Number(sources.users || 0);
+      const spend = Number(sources.spend || 0);
+
+      switch (templateName) {
+        case "Revenue":
+          return revenue.toFixed(2);
+        case "Total Conversions":
+          return String(Math.round(conversions));
         case "Conversion Rate":
-          // Conversion Rate = Conversions / Clicks × 100
-          const conversions = sheetsData?.totalConversions || ga4Data?.conversions || 0;
-          const totalClicks = sheetsData?.totalClicks || ga4Data?.clicks || 0;
-          return totalClicks > 0 ? ((conversions / totalClicks) * 100).toFixed(2) : "0.00";
-          
-        case "CPA (Cost Per Acquisition)":
-          // CPA = Total Ad Spend / Conversions
-          const totalSpend = Number(sheetsData?.summary?.totalSpend || sheetsData?.totalSpend || 0);
-          const totalConversions = Number(sheetsData?.summary?.totalConversions || sheetsData?.totalConversions || ga4Data?.conversions || 1);
-          return totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : "0.00";
-          
-        case "LTV/CAC Ratio":
-          // LTV/CAC = Customer Lifetime Value / Customer Acquisition Cost
-          const avgOrderValue = 75; // Assumed average order value
-          const repeatPurchases = 3; // Assumed repeat purchases
-          const ltv = avgOrderValue * repeatPurchases;
-          const cacSpend = Number(sheetsData?.summary?.totalSpend || sheetsData?.totalSpend || 0);
-          const cacConv = Number(sheetsData?.summary?.totalConversions || sheetsData?.totalConversions || ga4Data?.conversions || 1);
-          const cac = cacConv > 0 ? cacSpend / cacConv : 0;
-          return cac > 0 ? (ltv / cac).toFixed(2) : "0.00";
-          
+          return sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : "0.00";
+        case "Total Users":
+          return String(Math.round(users));
+        case "Total Sessions":
+          return String(Math.round(sessions));
+        case "ROAS":
+          return spend > 0 ? (revenue / spend).toFixed(2) : "0.00";
+        case "ROI":
+          return spend > 0 ? (((revenue - spend) / spend) * 100).toFixed(2) : "0.00";
+        case "CPA":
+          return conversions > 0 ? (spend / conversions).toFixed(2) : "0.00";
         default:
           return "0.00";
       }
-    } catch (error) {
-      console.error("Error calculating KPI value:", error);
+    } catch (e) {
+      console.error("Error calculating KPI value:", e);
       return "0.00";
     }
   };
@@ -209,20 +193,35 @@ export default function GA4Metrics() {
   // Create KPI mutation
   const createKPIMutation = useMutation({
     mutationFn: async (data: KPIFormData) => {
-      // Calculate current value if using a template
+      // Store an initial snapshot currentValue (optional), but ensure it matches the GA4 Overview logic:
+      // GA4 Breakdown totals + Spend totals (+ LinkedIn spend fallback).
       let calculatedValue = "0.00";
       if (selectedKPITemplate) {
-        // Fetch current platform data for calculation
         try {
-          const [ga4Response, sheetsResponse] = await Promise.all([
-            fetch(`/api/campaigns/${campaignId}/ga4-metrics?dateRange=${dateRange}`).catch(() => null),
-            fetch(`/api/campaigns/${campaignId}/google-sheets-data`).catch(() => null)
+          const [breakdownResp, spendResp, linkedInResp] = await Promise.all([
+            fetch(`/api/campaigns/${campaignId}/ga4-breakdown?dateRange=${dateRange}`).catch(() => null),
+            fetch(`/api/campaigns/${campaignId}/spend-totals?dateRange=${encodeURIComponent(dateRange)}`).catch(() => null),
+            fetch(`/api/linkedin/metrics/${campaignId}`).catch(() => null),
           ]);
-          
-          const ga4Data = ga4Response?.ok ? await ga4Response.json() : null;
-          const sheetsData = sheetsResponse?.ok ? await sheetsResponse.json() : null;
-          
-          calculatedValue = calculateKPIValue(selectedKPITemplate, ga4Data?.metrics, sheetsData);
+          const breakdown = breakdownResp?.ok ? await breakdownResp.json().catch(() => null) : null;
+          const spendTotals = spendResp?.ok ? await spendResp.json().catch(() => null) : null;
+          const linkedInAgg = linkedInResp?.ok ? await linkedInResp.json().catch(() => null) : null;
+
+          const revenue = Number(breakdown?.totals?.revenue || 0);
+          const conversions = Number(breakdown?.totals?.conversions || 0);
+          const sessions = Number(breakdown?.totals?.sessions || 0);
+          const users = Number(breakdown?.totals?.users || 0);
+          const persistedSpend = Number(spendTotals?.totalSpend || 0);
+          const linkedInSpend = Number(linkedInAgg?.spend || 0);
+          const spend = persistedSpend > 0 ? persistedSpend : linkedInSpend;
+
+          calculatedValue = calculateKPIValueFromSources(selectedKPITemplate.name, {
+            revenue,
+            conversions,
+            sessions,
+            users,
+            spend,
+          });
         } catch (error) {
           console.error("Error fetching platform data for KPI calculation:", error);
         }
@@ -233,7 +232,8 @@ export default function GA4Metrics() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          currentValue: calculatedValue // Set the calculated current value
+          campaignId, // Scope KPI to this MetricMind campaign
+          currentValue: calculatedValue // initial snapshot; live value is computed in the UI
         }),
       });
       
@@ -245,7 +245,7 @@ export default function GA4Metrics() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
       setShowKPIDialog(false);
       kpiForm.reset();
       toast({ title: "KPI created successfully" });
@@ -291,7 +291,7 @@ export default function GA4Metrics() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
       toast({ title: "KPI deleted successfully" });
     },
     onError: (error) => {
@@ -400,11 +400,11 @@ export default function GA4Metrics() {
     const numValue = parseFloat(value);
     switch (unit) {
       case "%":
-        return `${numValue}%`;
+        return `${numValue.toFixed(2)}%`;
       case "$":
-        return `$${numValue.toLocaleString()}`;
+        return `$${numValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       case "ratio":
-        return `${numValue}:1`;
+        return `${numValue.toFixed(2)}x`;
       default:
         return numValue.toLocaleString();
     }
@@ -509,9 +509,10 @@ export default function GA4Metrics() {
 
   // Fetch platform KPIs
   const { data: platformKPIs = [], isLoading: kpisLoading } = useQuery({
-    queryKey: [`/api/platforms/google_analytics/kpis`],
+    queryKey: [`/api/platforms/google_analytics/kpis`, campaignId],
+    enabled: !!campaignId,
     queryFn: async () => {
-      const response = await fetch(`/api/platforms/google_analytics/kpis`);
+      const response = await fetch(`/api/platforms/google_analytics/kpis?campaignId=${encodeURIComponent(String(campaignId))}`);
       if (!response.ok) throw new Error("Failed to fetch KPIs");
       return response.json();
     },
@@ -738,6 +739,27 @@ export default function GA4Metrics() {
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = financialSpend > 0 ? ((financialRevenue - financialSpend) / financialSpend) * 100 : 0;
   const financialCPA = financialConversions > 0 ? financialSpend / financialConversions : 0;
+
+  const getLiveKpiValue = (kpi: any): string => {
+    const name = String(kpi?.name || "").trim();
+    // Use the same sources as the GA4 Overview:
+    // - Revenue/Conversions/Sessions/Users from GA4 breakdown totals
+    // - Spend from spend-totals with LinkedIn fallback
+    if (name === "Revenue") return Number(breakdownTotals.revenue || 0).toFixed(2);
+    if (name === "Total Conversions") return String(Math.round(Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0)));
+    if (name === "Conversion Rate") {
+      const s = Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0);
+      const c = Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0);
+      return s > 0 ? ((c / s) * 100).toFixed(2) : "0.00";
+    }
+    if (name === "Total Users") return String(Math.round(Number(breakdownTotals.users || ga4Metrics?.users || 0)));
+    if (name === "Total Sessions") return String(Math.round(Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0)));
+    if (name === "ROAS") return financialSpend > 0 ? Number(financialROAS || 0).toFixed(2) : "0.00";
+    if (name === "ROI") return financialSpend > 0 ? Number(financialROI || 0).toFixed(2) : "0.00";
+    if (name === "CPA") return financialConversions > 0 ? Number(financialCPA || 0).toFixed(2) : "0.00";
+    // Fallback to stored value for any legacy/custom KPI.
+    return String(kpi?.currentValue ?? "0.00");
+  };
 
   const connectedPropertyCount =
     Number(ga4Connection?.totalConnections || 0) ||
@@ -1843,7 +1865,7 @@ export default function GA4Metrics() {
                                       <div>
                                         <span className="text-xs text-slate-500 dark:text-slate-400">Current: </span>
                                         <span className="font-medium text-slate-900 dark:text-white">
-                                          {formatValue(kpi.currentValue || "0", kpi.unit)}
+                                          {formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
                                         </span>
                                       </div>
                                       <div>
@@ -1880,34 +1902,34 @@ export default function GA4Metrics() {
                                       <div className="flex items-center justify-between mb-2">
                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Progress to Target</span>
                                         <span className="text-sm text-slate-500 dark:text-slate-400">
-                                          {((parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) * 100).toFixed(1)}%
+                                          {((parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) * 100).toFixed(1)}%
                                         </span>
                                       </div>
                                       <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                                         <div 
                                           className={`h-2 rounded-full transition-all duration-300 ${
-                                            (parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.8 
+                                            (parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.8 
                                               ? "bg-green-500" 
-                                              : (parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.6 
+                                              : (parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.6 
                                               ? "bg-yellow-500" 
                                               : "bg-red-500"
                                           }`}
                                           style={{ 
-                                            width: `${Math.min((parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) * 100, 100)}%` 
+                                            width: `${Math.min((parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) * 100, 100)}%` 
                                           }}
                                         ></div>
                                       </div>
                                       <div className="flex items-center justify-between mt-2 text-xs">
                                         <span className={`font-medium ${
-                                          (parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.8 
+                                          (parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.8 
                                             ? "text-green-600 dark:text-green-400" 
-                                            : (parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.6 
+                                            : (parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.6 
                                             ? "text-yellow-600 dark:text-yellow-400" 
                                             : "text-red-600 dark:text-red-400"
                                         }`}>
-                                          {(parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.8 
+                                          {(parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.8 
                                             ? "✓ On Track" 
-                                            : (parseFloat(kpi.currentValue || "0") / parseFloat(kpi.targetValue)) >= 0.6 
+                                            : (parseFloat(getLiveKpiValue(kpi) || "0") / parseFloat(kpi.targetValue)) >= 0.6 
                                             ? "⚠ Needs Attention" 
                                             : "⚠ Behind Target"}
                                         </span>
@@ -2360,46 +2382,60 @@ export default function GA4Metrics() {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { 
-                      name: "ROI (Return on Investment)", 
-                      formula: "(Revenue - Cost) / Cost × 100",
-                      unit: "%",
-                      description: "Measures the efficiency of investment relative to its cost",
-                      targetValue: "200"
-                    },
-                    { 
-                      name: "ROAS (Return on Ad Spend)", 
-                      formula: "Revenue / Ad Spend",
+                      name: "ROAS",
+                      formula: "Revenue ÷ Spend",
                       unit: "ratio",
-                      description: "Revenue generated for every dollar spent on advertising",
-                      targetValue: "4.0"
+                      description: "Revenue generated per dollar of spend",
+                      targetValue: "4.00"
                     },
-                    { 
-                      name: "CTR (Click-Through Rate)", 
-                      formula: "Clicks / Impressions × 100",
+                    {
+                      name: "ROI",
+                      formula: "(Revenue − Spend) ÷ Spend × 100",
                       unit: "%",
-                      description: "Percentage of people who click on ads after seeing them",
-                      targetValue: "2.5"
+                      description: "Return relative to spend (revenue-based ROI)",
+                      targetValue: "200.00"
                     },
-                    { 
-                      name: "Conversion Rate", 
-                      formula: "Conversions / Clicks × 100",
-                      unit: "%",
-                      description: "Percentage of clicks that result in desired actions",
-                      targetValue: "3.8"
-                    },
-                    { 
-                      name: "CPA (Cost Per Acquisition)", 
-                      formula: "Total Ad Spend / Conversions",
+                    {
+                      name: "CPA",
+                      formula: "Spend ÷ Conversions",
                       unit: "$",
-                      description: "Average cost to acquire one customer",
-                      targetValue: "45"
+                      description: "Average cost per conversion",
+                      targetValue: "45.00"
                     },
-                    { 
-                      name: "LTV/CAC Ratio", 
-                      formula: "Customer Lifetime Value / Customer Acquisition Cost",
-                      unit: "ratio",
-                      description: "Ratio of customer value to acquisition cost",
-                      targetValue: "3.0"
+                    {
+                      name: "Revenue",
+                      formula: "GA4 revenue total",
+                      unit: "$",
+                      description: "Total revenue in GA4 for the selected period",
+                      targetValue: "10000.00"
+                    },
+                    {
+                      name: "Total Conversions",
+                      formula: "GA4 conversions total",
+                      unit: "count",
+                      description: "Total GA4 conversions for the selected period",
+                      targetValue: "100"
+                    },
+                    {
+                      name: "Conversion Rate",
+                      formula: "Conversions ÷ Sessions × 100",
+                      unit: "%",
+                      description: "Overall conversion rate for the selected period",
+                      targetValue: "3.50"
+                    },
+                    {
+                      name: "Total Users",
+                      formula: "GA4 total users",
+                      unit: "count",
+                      description: "Total users for the selected period",
+                      targetValue: "10000"
+                    },
+                    {
+                      name: "Total Sessions",
+                      formula: "GA4 sessions total",
+                      unit: "count",
+                      description: "Total sessions for the selected period",
+                      targetValue: "15000"
                     }
                   ].map((template) => (
                     <div

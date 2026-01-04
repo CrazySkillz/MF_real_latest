@@ -144,13 +144,27 @@ export function AddSpendWizardModal(props: {
     }
 
     if (sourceType === "csv") {
-      // CSV cannot be reprocessed without re-uploading the file. Prefill mappings after upload/preview.
+      // CSV cannot be reprocessed without re-uploading the file. But we can still show the saved mappings immediately.
       setMode("upload");
       setStep("csv_map");
-      setCsvPreview(null);
       setCsvFile(null);
       setCsvPrefillMapping(mapping);
-      setCsvEditNotice("To edit a CSV import, please re-upload the same (or updated) file. We'll prefill the mappings once it’s previewed.");
+      setCsvEditNotice("To edit a CSV import, please re-upload the same (or updated) file. We'll re-process spend using your updated mappings after preview.");
+      // If we saved preview metadata (headers + sample rows) in mappingConfig, hydrate it so the mapping UI renders immediately.
+      const savedHeaders = Array.isArray(mapping?.csvHeaders) ? mapping.csvHeaders.map((h: any) => String(h ?? "")).filter(Boolean) : [];
+      const savedSampleRows = Array.isArray(mapping?.csvSampleRows) ? mapping.csvSampleRows : [];
+      const savedRowCount = Number.isFinite(mapping?.csvRowCount) ? Number(mapping.csvRowCount) : undefined;
+      if (savedHeaders.length) {
+        setCsvPreview({
+          success: true,
+          fileName: mapping?.displayName || src?.displayName || "CSV spend",
+          headers: savedHeaders,
+          sampleRows: savedSampleRows,
+          rowCount: savedRowCount,
+        });
+      } else {
+        setCsvPreview(null);
+      }
       if (mapCampaignCol) {
         suppressCampaignResetRef.current = true;
         setCampaignKeyColumn(mapCampaignCol);
@@ -446,6 +460,11 @@ export function AddSpendWizardModal(props: {
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
         campaignValues: hasCampaignScope ? campaignKeyValues : null,
         currency: props.currency || "USD",
+        // Persist lightweight preview metadata so "Edit" can reopen directly into a pre-filled mapping UI.
+        // This is NOT used for processing (the user must re-upload to reprocess); it's purely for UX.
+        csvHeaders: Array.isArray(csvPreview?.headers) ? csvPreview?.headers : undefined,
+        csvSampleRows: Array.isArray(csvPreview?.sampleRows) ? csvPreview?.sampleRows : undefined,
+        csvRowCount: typeof csvPreview?.rowCount === "number" ? csvPreview?.rowCount : undefined,
       };
       const fd = new FormData();
       fd.append("file", csvFile);

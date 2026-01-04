@@ -30,6 +30,7 @@ export function AddSpendWizardModal(props: {
   onProcessed?: () => void;
 }) {
   const { toast } = useToast();
+  const isEditing = Boolean(props.initialSource?.id);
   const [step, setStep] = useState<"choose" | "csv_map" | "sheets_pick" | "sheets_map">("choose");
   const [mode, setMode] = useState<SpendSourceMode>("upload");
 
@@ -474,7 +475,7 @@ export function AddSpendWizardModal(props: {
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process spend");
 
       toast({
-        title: "Spend processed",
+        title: isEditing ? "Spend updated" : "Spend processed",
         description: `Imported ${json.days} day(s), total ${props.currency || "USD"} ${json.totalSpend}.`,
       });
       props.onProcessed?.();
@@ -516,7 +517,7 @@ export function AddSpendWizardModal(props: {
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process spend");
       toast({
-        title: "Spend processed",
+        title: isEditing ? "Spend updated" : "Spend processed",
         description: `Imported ${json.days} day(s), total ${props.currency || "USD"} ${json.totalSpend}.`,
       });
       props.onProcessed?.();
@@ -792,7 +793,7 @@ export function AddSpendWizardModal(props: {
               )}
               {mode === "manual" && (
                 <Button onClick={processManual} disabled={isProcessing}>
-                  {isProcessing ? "Saving..." : "Process spend"}
+                  {isProcessing ? "Saving..." : (isEditing ? "Update spend" : "Process spend")}
                 </Button>
               )}
             </div>
@@ -994,7 +995,7 @@ export function AddSpendWizardModal(props: {
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => props.onOpenChange(false)} disabled={isProcessing}>Cancel</Button>
                 <Button onClick={step === "csv_map" ? processCsv : processSheets} disabled={isProcessing}>
-                  {isProcessing ? "Processing..." : "Process spend"}
+                  {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Process spend")}
                 </Button>
               </div>
             </div>

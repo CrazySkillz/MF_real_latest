@@ -623,6 +623,38 @@ export default function GA4Metrics() {
     return "performance";
   };
 
+  const getLiveBenchmarkCurrentValue = (metric: string): number => {
+    const m = String(metric || "");
+    const users =
+      Number(breakdownTotals?.users || 0) ||
+      Number((ga4Metrics as any)?.users || (ga4Metrics as any)?.totalUsers || (ga4Metrics as any)?.impressions || 0);
+    const sessions = Number(breakdownTotals?.sessions || 0) || Number((ga4Metrics as any)?.sessions || 0);
+    const pageviews = Number((ga4Metrics as any)?.pageviews || 0);
+    const conversions = Number(breakdownTotals?.conversions || 0) || Number((ga4Metrics as any)?.conversions || 0);
+    const revenue = Number(breakdownTotals?.revenue || 0);
+
+    switch (m) {
+      case "users":
+        return users;
+      case "sessions":
+        return sessions;
+      case "pageviews":
+        return pageviews;
+      case "conversions":
+        return conversions;
+      case "revenue":
+        return revenue;
+      case "conversionRate":
+        return sessions > 0 ? (conversions / sessions) * 100 : 0;
+      case "engagementRate": {
+        const er = Number((ga4Metrics as any)?.engagementRate || 0);
+        return Number.isFinite(er) && er > 0 ? er : 0;
+      }
+      default:
+        return 0;
+    }
+  };
+
   const { data: ga4Metrics, isLoading: ga4Loading, error: ga4Error } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics", dateRange],
     enabled: !!campaignId && !!ga4Connection?.connected,
@@ -2159,6 +2191,7 @@ export default function GA4Metrics() {
                                     }`}
                                     onClick={() => {
                                       setSelectedBenchmarkTemplate(template);
+                                      const liveCurrent = getLiveBenchmarkCurrentValue(template.metric);
                                       const derivedCategory = deriveBenchmarkCategoryFromMetric(template.metric);
                                       setNewBenchmark((prev) => ({
                                         ...prev,
@@ -2166,6 +2199,7 @@ export default function GA4Metrics() {
                                         category: derivedCategory,
                                         name: prev.name || template.name,
                                         unit: prev.unit || template.unit,
+                                        currentValue: String(liveCurrent),
                                       }));
                                     }}
                                   >
@@ -2292,7 +2326,7 @@ export default function GA4Metrics() {
                                         if (data && typeof data.value !== "undefined") {
                                           setNewBenchmark((prev) => ({
                                             ...prev,
-                                            currentValue: String(data.value),
+                                            benchmarkValue: String(data.value),
                                             unit: prev.unit || data.unit || prev.unit,
                                           }));
                                         }

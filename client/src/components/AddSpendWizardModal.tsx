@@ -26,6 +26,7 @@ export function AddSpendWizardModal(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currency?: string;
+  dateRange?: string; // used when a dataset has no date column (we distribute spend across the selected period)
   initialSource?: { id?: string; sourceType?: string; mappingConfig?: string | null; displayName?: string | null };
   onProcessed?: () => void;
 }) {
@@ -448,12 +449,12 @@ export function AddSpendWizardModal(props: {
 
   const processCsv = async () => {
     if (!csvFile) return;
-    if (!dateColumn || !spendColumn) {
-      toast({ title: "Missing mappings", description: "Select both Date and Spend columns.", variant: "destructive" });
+    if (!spendColumn) {
+      toast({ title: "Missing mappings", description: "Select a Spend column.", variant: "destructive" });
       return;
     }
-    if ((campaignKeyColumn && campaignKeyValues.length === 0) || (!campaignKeyColumn && campaignKeyValues.length > 0)) {
-      toast({ title: "Campaign mapping incomplete", description: "Select a campaign identifier column and at least one value (or leave both empty).", variant: "destructive" });
+    if (campaignKeyValues.length > 0 && !effectiveCampaignColumn) {
+      toast({ title: "Campaign mapping incomplete", description: "Select a campaign identifier column (or clear campaign values).", variant: "destructive" });
       return;
     }
 
@@ -462,12 +463,13 @@ export function AddSpendWizardModal(props: {
       const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;
       const mapping = {
         displayName: csvFile.name,
-        dateColumn,
+        dateColumn: dateColumn || null,
         spendColumn,
         campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
         campaignValues: hasCampaignScope ? campaignKeyValues : null,
         currency: props.currency || "USD",
+        dateRange: props.dateRange || "30days",
         // Persist lightweight preview metadata so "Edit" can reopen directly into a pre-filled mapping UI.
         // This is NOT used for processing (the user must re-upload to reprocess); it's purely for UX.
         csvHeaders: Array.isArray(csvPreview?.headers) ? csvPreview?.headers : undefined,
@@ -496,12 +498,12 @@ export function AddSpendWizardModal(props: {
 
   const processSheets = async () => {
     if (!selectedSheetConnectionId) return;
-    if (!dateColumn || !spendColumn) {
-      toast({ title: "Missing mappings", description: "Select both Date and Spend columns.", variant: "destructive" });
+    if (!spendColumn) {
+      toast({ title: "Missing mappings", description: "Select a Spend column.", variant: "destructive" });
       return;
     }
-    if ((campaignKeyColumn && campaignKeyValues.length === 0) || (!campaignKeyColumn && campaignKeyValues.length > 0)) {
-      toast({ title: "Campaign mapping incomplete", description: "Select a campaign identifier column and at least one value (or leave both empty).", variant: "destructive" });
+    if (campaignKeyValues.length > 0 && !effectiveCampaignColumn) {
+      toast({ title: "Campaign mapping incomplete", description: "Select a campaign identifier column (or clear campaign values).", variant: "destructive" });
       return;
     }
     setIsProcessing(true);
@@ -509,12 +511,13 @@ export function AddSpendWizardModal(props: {
       const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;
       const mapping = {
         displayName: (sheetsPreview?.spreadsheetName ? `${sheetsPreview.spreadsheetName}${sheetsPreview.sheetName ? ` (${sheetsPreview.sheetName})` : ""}` : "Google Sheets spend"),
-        dateColumn,
+        dateColumn: dateColumn || null,
         spendColumn,
         campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
         campaignValues: hasCampaignScope ? campaignKeyValues : null,
         currency: props.currency || "USD",
+        dateRange: props.dateRange || "30days",
       };
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/sheets/process`, {
         method: "POST",

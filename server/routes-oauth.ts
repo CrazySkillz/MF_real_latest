@@ -134,6 +134,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { startDate: fmt(start), endDate: fmt(end) };
   };
 
+  const enumerateDatesInclusive = (startDate: string, endDate: string): string[] => {
+    const start = new Date(startDate + "T00:00:00Z");
+    const end = new Date(endDate + "T00:00:00Z");
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+    const out: string[] = [];
+    for (let t = start.getTime(); t <= end.getTime(); t += 24 * 60 * 60 * 1000) {
+      const d = new Date(t);
+      out.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`);
+      if (out.length > 4000) break; // safety
+    }
+    return out;
+  };
+
   const toA1Prefix = (sheetName?: string | null): string => {
     if (!sheetName) return "";
     const escaped = String(sheetName).replace(/'/g, "''");
@@ -298,8 +311,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
       const file = (req as any).file as any;
       const mapping = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
-      if (!mapping?.dateColumn || !mapping?.spendColumn) {
-        return res.status(400).json({ success: false, error: "dateColumn and spendColumn are required" });
+      if (!mapping?.spendColumn) {
+        return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
 
       const csvText = Buffer.from(file.buffer).toString("utf-8");
@@ -314,6 +327,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const grouped = new Map<string, number>();
       let kept = 0;
+      const hasDateColumn = !!mapping?.dateColumn;
+      const spendCol = String(mapping.spendColumn);
+      const dateCol = hasDateColumn ? String(mapping.dateColumn) : null;
+      const dateRange = String(mapping?.dateRange || "30days");
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const periodDays = enumerateDatesInclusive(startDate, endDate);
+      let totalWithoutDate = 0;
+
       for (const row of parsed.rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
           const v = String((row as any)[campaignCol] ?? "").trim();
@@ -323,12 +344,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
         }
-        const d = normalizeDate((row as any)[mapping.dateColumn]);
-        if (!d) continue;
-        const spend = parseNum((row as any)[mapping.spendColumn]);
+        const spend = parseNum((row as any)[spendCol]);
         if (!(spend > 0)) continue;
         kept++;
-        grouped.set(d, (grouped.get(d) || 0) + spend);
+        if (dateCol) {
+          const d = normalizeDate((row as any)[dateCol]);
+          if (!d) continue;
+          grouped.set(d, (grouped.get(d) || 0) + spend);
+        } else {
+          totalWithoutDate += spend;
+        }
+      }
+
+      if (!dateCol) {
+        const days = periodDays.length || 1;
+        const totalCents = Math.round(totalWithoutDate * 100);
+        const base = Math.floor(totalCents / days);
+        const remainder = totalCents - base * days;
+        const targetDays = periodDays.length ? periodDays : [endDate];
+        for (let i = 0; i < targetDays.length; i++) {
+          const cents = base + (i === targetDays.length - 1 ? remainder : 0);
+          const v = cents / 100;
+          if (v <= 0) continue;
+          grouped.set(targetDays[i], (grouped.get(targetDays[i]) || 0) + v);
+        }
       }
 
       const campaign = await storage.getCampaign(campaignId);
@@ -430,8 +469,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionId = String((req.body as any)?.connectionId || "").trim();
       const mapping = (req.body as any)?.mapping || null;
       if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
-      if (!mapping?.dateColumn || !mapping?.spendColumn) {
-        return res.status(400).json({ success: false, error: "dateColumn and spendColumn are required" });
+      if (!mapping?.spendColumn) {
+        return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
 
       const connections = await storage.getGoogleSheetsConnections(campaignId);
@@ -472,6 +511,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const grouped = new Map<string, number>();
       let kept = 0;
+      const hasDateColumn = !!mapping?.dateColumn;
+      const spendCol = String(mapping.spendColumn);
+      const dateCol = hasDateColumn ? String(mapping.dateColumn) : null;
+      const dateRange = String(mapping?.dateRange || "30days");
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const periodDays = enumerateDatesInclusive(startDate, endDate);
+      let totalWithoutDate = 0;
+
       for (const row of rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
           const v = String((row as any)[campaignCol] ?? "").trim();
@@ -481,12 +528,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
         }
-        const d = normalizeDate((row as any)[mapping.dateColumn]);
-        if (!d) continue;
-        const spend = parseNum((row as any)[mapping.spendColumn]);
+        const spend = parseNum((row as any)[spendCol]);
         if (!(spend > 0)) continue;
         kept++;
-        grouped.set(d, (grouped.get(d) || 0) + spend);
+        if (dateCol) {
+          const d = normalizeDate((row as any)[dateCol]);
+          if (!d) continue;
+          grouped.set(d, (grouped.get(d) || 0) + spend);
+        } else {
+          totalWithoutDate += spend;
+        }
+      }
+
+      if (!dateCol) {
+        const days = periodDays.length || 1;
+        const totalCents = Math.round(totalWithoutDate * 100);
+        const base = Math.floor(totalCents / days);
+        const remainder = totalCents - base * days;
+        const targetDays = periodDays.length ? periodDays : [endDate];
+        for (let i = 0; i < targetDays.length; i++) {
+          const cents = base + (i === targetDays.length - 1 ? remainder : 0);
+          const v = cents / 100;
+          if (v <= 0) continue;
+          grouped.set(targetDays[i], (grouped.get(targetDays[i]) || 0) + v);
+        }
       }
 
       const campaign = await storage.getCampaign(campaignId);

@@ -1255,6 +1255,7 @@ export default function GA4Metrics() {
                       open={showSpendDialog}
                       onOpenChange={setShowSpendDialog}
                       currency={(campaign as any)?.currency || "USD"}
+                      dateRange={dateRange}
                       initialSource={activeSpendSource || undefined}
                       onProcessed={() => {
                         // Refresh spend immediately; invalidate broadly in case dateRange changed.

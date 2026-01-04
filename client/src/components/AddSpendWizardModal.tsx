@@ -60,6 +60,7 @@ export function AddSpendWizardModal(props: {
 
   const prefillKeyRef = useRef<string | null>(null);
   const suppressCampaignResetRef = useRef(false);
+  const campaignKeyTouchedRef = useRef(false);
   const [autoPreviewSheetOnOpen, setAutoPreviewSheetOnOpen] = useState(false);
   const [isEditPrefillLoading, setIsEditPrefillLoading] = useState(false);
   const [csvPrefillMapping, setCsvPrefillMapping] = useState<any>(null);
@@ -221,6 +222,11 @@ export function AddSpendWizardModal(props: {
     if (!csvPreview?.success) return;
     if (!dateColumn && inferredDateColumn) setDateColumn(inferredDateColumn);
     if (!spendColumn && inferredSpendColumn) setSpendColumn(inferredSpendColumn);
+    // If a campaign identifier column is present (e.g. "Campaign") and the user hasn't explicitly picked/cleared it,
+    // auto-select it so the UI reflects the detected identifier.
+    if (!campaignKeyColumn && inferredCampaignColumn && !campaignKeyTouchedRef.current) {
+      setCampaignKeyColumn(inferredCampaignColumn);
+    }
   }, [csvPreview, inferredDateColumn, inferredSpendColumn, dateColumn, spendColumn]);
 
   const uniqueCampaignKeyValues = useMemo(() => {
@@ -783,6 +789,33 @@ export function AddSpendWizardModal(props: {
                     {csvEditNotice}
                   </div>
                 )}
+                {(dateColumn || spendColumn || campaignKeyColumn || campaignKeyValues.length > 0) && (
+                  <div className="rounded-md bg-slate-50 dark:bg-slate-900 border p-3">
+                    <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Current mapping</div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                      Date: <span className="font-medium">{dateColumn || "—"}</span> · Spend: <span className="font-medium">{spendColumn || "—"}</span>
+                      {campaignKeyColumn ? (
+                        <>
+                          {" "}· Campaign: <span className="font-medium">{campaignKeyColumn}</span>
+                        </>
+                      ) : null}
+                    </div>
+                    {campaignKeyValues.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {campaignKeyValues.slice(0, 6).map((v) => (
+                          <span key={v} className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-700 dark:text-slate-300">
+                            {v}
+                          </span>
+                        ))}
+                        {campaignKeyValues.length > 6 && (
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-500 dark:text-slate-400">
+                            +{campaignKeyValues.length - 6} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="csv-file-remap">Upload file (CSV)</Label>
                   <Input
@@ -793,7 +826,7 @@ export function AddSpendWizardModal(props: {
                     onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
                   />
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    After preview, you can adjust columns and re-process spend.
+                    Re-upload the CSV to preview rows, adjust columns, and re-process spend.
                   </p>
                 </div>
                 <div className="flex justify-between gap-2">
@@ -859,7 +892,10 @@ export function AddSpendWizardModal(props: {
                     <Label>Campaign identifier for multi-campaign datasets</Label>
                     <Select
                       value={campaignKeyColumn || CAMPAIGN_COL_NONE}
-                      onValueChange={(v) => setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v)}
+                      onValueChange={(v) => {
+                        campaignKeyTouchedRef.current = true;
+                        setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
+                      }}
                     >
                       <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
                       <SelectContent className="z-[10000]">
@@ -899,11 +935,6 @@ export function AddSpendWizardModal(props: {
                         ))
                       )}
                     </div>
-                    {campaignKeyValues.length > 0 && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Selected {campaignKeyValues.length} value{campaignKeyValues.length === 1 ? "" : "s"}.
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>

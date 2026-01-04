@@ -102,6 +102,7 @@ export default function GA4Metrics() {
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const [showKPIDialog, setShowKPIDialog] = useState(false);
   const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
+  const [editingKPI, setEditingKPI] = useState<any>(null);
   const [deleteKPIId, setDeleteKPIId] = useState<string | null>(null);
   const [showSpendDialog, setShowSpendDialog] = useState(false);
   const [showDeleteSpendDialog, setShowDeleteSpendDialog] = useState(false);
@@ -148,6 +149,24 @@ export default function GA4Metrics() {
       alertFrequency: "daily",
     },
   });
+
+  const stripNumberFormatting = (s: string) => String(s || "").replace(/,/g, "").trim();
+
+  const formatNumberByUnit = (raw: string, unit: string) => {
+    const cleaned = stripNumberFormatting(raw);
+    if (!cleaned) return "";
+    const n = Number(cleaned);
+    if (!Number.isFinite(n)) return raw;
+    const decimals = unit === "count" ? 0 : 2;
+    return n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  };
+
+  const openCreateKPI = () => {
+    setEditingKPI(null);
+    setSelectedKPITemplate(null);
+    kpiForm.reset({ ...kpiForm.getValues(), name: "", description: "", unit: "%", currentValue: "", targetValue: "", priority: "medium" });
+    setShowKPIDialog(true);
+  };
 
   // KPI templates should be executive-grade and consistent with the GA4 Overview's spend/revenue logic.
   // We compute "current" values live elsewhere; this helper is used only when creating a KPI from a template
@@ -237,7 +256,8 @@ export default function GA4Metrics() {
           campaignId, // Scope KPI to this MetricMind campaign
           // Prefer the user-visible current value (prefilled live when selecting a template).
           // Fallback to the computed value if for any reason the field is empty.
-          currentValue: (data as any)?.currentValue || calculatedValue
+          currentValue: stripNumberFormatting((data as any)?.currentValue) || calculatedValue,
+          targetValue: stripNumberFormatting((data as any)?.targetValue),
         }),
       });
       
@@ -260,6 +280,38 @@ export default function GA4Metrics() {
         title: "Failed to create KPI", 
         description: error.message || "An unexpected error occurred",
         variant: "destructive" 
+      });
+    },
+  });
+
+  const updateKPIMutation = useMutation({
+    mutationFn: async (payload: { kpiId: string; data: KPIFormData }) => {
+      const resp = await fetch(`/api/platforms/google_analytics/kpis/${encodeURIComponent(payload.kpiId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...payload.data,
+          campaignId,
+          currentValue: stripNumberFormatting((payload.data as any)?.currentValue),
+          targetValue: stripNumberFormatting((payload.data as any)?.targetValue),
+        }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok) throw new Error(json?.message || json?.error || "Failed to update KPI");
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
+      setShowKPIDialog(false);
+      setEditingKPI(null);
+      kpiForm.reset();
+      toast({ title: "KPI updated successfully" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update KPI",
+        description: error?.message || "An unexpected error occurred",
+        variant: "destructive",
       });
     },
   });
@@ -308,8 +360,17 @@ export default function GA4Metrics() {
     },
   });
 
-  const onCreateKPI = async (data: KPIFormData) => {
-    createKPIMutation.mutate(data);
+  const onSubmitKPI = async (data: KPIFormData) => {
+    const cleaned: KPIFormData = {
+      ...data,
+      currentValue: stripNumberFormatting(data.currentValue),
+      targetValue: stripNumberFormatting(data.targetValue),
+    };
+    if (editingKPI?.id) {
+      updateKPIMutation.mutate({ kpiId: String(editingKPI.id), data: cleaned });
+      return;
+    }
+    createKPIMutation.mutate(cleaned);
   };
 
   const onDeleteKPI = (kpiId: string) => {
@@ -1868,9 +1929,9 @@ export default function GA4Metrics() {
                         <CardTitle>Key Performance Indicators</CardTitle>
                       </div>
                       <div>
-                        <Button size="sm" onClick={() => setShowKPIDialog(true)}>
+                        <Button size="sm" onClick={openCreateKPI}>
                           <Plus className="w-4 h-4 mr-2" />
-                          Create Platform KPI
+                          Create KPI
                         </Button>
                       </div>
                     </CardHeader>
@@ -1886,7 +1947,7 @@ export default function GA4Metrics() {
                           <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No KPIs yet</h3>
                           <p className="text-slate-600 dark:text-slate-400 mb-4">
-                            Create your first platform-level KPI to track Google Analytics performance metrics with time-based analytics and rolling averages.
+                            Create your first KPI to track GA4 performance for this campaign.
                           </p>
                         </div>
                       ) : (
@@ -1964,6 +2025,34 @@ export default function GA4Metrics() {
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingKPI(kpi);
+                                      setSelectedKPITemplate(null);
+                                      // Prefill modal fields
+                                      kpiForm.reset({
+                                        ...kpiForm.getValues(),
+                                        name: String(kpi?.name || ""),
+                                        description: String(kpi?.description || ""),
+                                        unit: String(kpi?.unit || "%"),
+                                        currentValue: formatNumberByUnit(String(getLiveKpiValue(kpi) || "0"), String(kpi?.unit || "%")),
+                                        targetValue: formatNumberByUnit(String(kpi?.targetValue || ""), String(kpi?.unit || "%")),
+                                        priority: (kpi?.priority || "medium") as any,
+                                        alertsEnabled: Boolean(kpi?.alertsEnabled ?? true),
+                                        alertThreshold: typeof kpi?.alertThreshold === "number" ? kpi.alertThreshold : Number(kpi?.alertThreshold || 80),
+                                        emailNotifications: Boolean(kpi?.emailNotifications ?? false),
+                                        slackNotifications: Boolean(kpi?.slackNotifications ?? false),
+                                        alertFrequency: (kpi?.alertFrequency || "daily") as any,
+                                      });
+                                      setShowKPIDialog(true);
+                                    }}
+                                    title="Edit KPI"
+                                    aria-label="Edit KPI"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -2385,14 +2474,14 @@ export default function GA4Metrics() {
       <Dialog open={showKPIDialog} onOpenChange={setShowKPIDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
           <DialogHeader className="pb-4 pr-8">
-            <DialogTitle>Create New KPI</DialogTitle>
+            <DialogTitle>{editingKPI ? "Edit KPI" : "Create New KPI"}</DialogTitle>
             <DialogDescription>
               Set up a key performance indicator for Google Analytics.
             </DialogDescription>
           </DialogHeader>
           
           <Form {...kpiForm}>
-            <form onSubmit={kpiForm.handleSubmit(onCreateKPI)} className="space-y-6">
+            <form onSubmit={kpiForm.handleSubmit(onSubmitKPI)} className="space-y-6">
               {/* KPI Template Selection */}
               <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
                 <h4 className="font-medium text-slate-900 dark:text-white">Select KPI Template</h4>
@@ -2407,56 +2496,48 @@ export default function GA4Metrics() {
                       formula: "Revenue ÷ Spend",
                       unit: "ratio",
                       description: "Revenue generated per dollar of spend",
-                      targetValue: "4.00"
                     },
                     {
                       name: "ROI",
                       formula: "(Revenue − Spend) ÷ Spend × 100",
                       unit: "%",
                       description: "Return relative to spend (revenue-based ROI)",
-                      targetValue: "200.00"
                     },
                     {
                       name: "CPA",
                       formula: "Spend ÷ Conversions",
                       unit: "$",
                       description: "Average cost per conversion",
-                      targetValue: "45.00"
                     },
                     {
                       name: "Revenue",
                       formula: "GA4 revenue total",
                       unit: "$",
                       description: "Total revenue in GA4 for the selected period",
-                      targetValue: "10000.00"
                     },
                     {
                       name: "Total Conversions",
                       formula: "GA4 conversions total",
                       unit: "count",
                       description: "Total GA4 conversions for the selected period",
-                      targetValue: "100"
                     },
                     {
                       name: "Conversion Rate",
                       formula: "Conversions ÷ Sessions × 100",
                       unit: "%",
                       description: "Overall conversion rate for the selected period",
-                      targetValue: "3.50"
                     },
                     {
                       name: "Total Users",
                       formula: "GA4 total users",
                       unit: "count",
                       description: "Total users for the selected period",
-                      targetValue: "10000"
                     },
                     {
                       name: "Total Sessions",
                       formula: "GA4 sessions total",
                       unit: "count",
                       description: "Total sessions for the selected period",
-                      targetValue: "15000"
                     }
                   ].map((template) => (
                     <div
@@ -2471,7 +2552,8 @@ export default function GA4Metrics() {
                         kpiForm.setValue("name", template.name);
                         kpiForm.setValue("unit", template.unit);
                         kpiForm.setValue("description", template.description);
-                        kpiForm.setValue("targetValue", template.targetValue);
+                        // Target is intentionally left blank for new KPIs (user must set it explicitly).
+                        kpiForm.setValue("targetValue", "");
                         // Prefill current value from the same live sources as the GA4 Overview (no extra fetch).
                         const liveCurrent = calculateKPIValueFromSources(template.name, {
                           revenue: Number(breakdownTotals.revenue || 0),
@@ -2480,7 +2562,7 @@ export default function GA4Metrics() {
                           users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
                           spend: Number(financialSpend || 0),
                         });
-                        kpiForm.setValue("currentValue", liveCurrent);
+                        kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, template.unit));
                       }}
                     >
                       <div className="font-medium text-sm text-slate-900 dark:text-white">
@@ -2573,10 +2655,11 @@ export default function GA4Metrics() {
                       <FormLabel>Current Value</FormLabel>
                       <FormControl>
                         <Input
-                          type="number"
-                          step="0.01"
+                          type="text"
                           placeholder="Current value"
-                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          onBlur={(e) => field.onChange(formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -2592,10 +2675,11 @@ export default function GA4Metrics() {
                       <FormLabel>Target Value</FormLabel>
                       <FormControl>
                         <Input
-                          type="number"
-                          step="0.01"
+                          type="text"
                           placeholder="Target goal"
-                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          onBlur={(e) => field.onChange(formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
                         />
                       </FormControl>
                       <FormMessage />

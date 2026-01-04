@@ -674,6 +674,23 @@ export default function GA4Metrics() {
     },
   });
 
+  // Auto-fallback: if the campaign already has LinkedIn spend via the standard LinkedIn import flow,
+  // surface it in GA4 Financials without forcing the user to "Add spend".
+  const { data: linkedInAggregated } = useQuery<any>({
+    queryKey: [`/api/linkedin/metrics/${campaignId}`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchIntervalInBackground: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/linkedin/metrics/${campaignId}`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+
   // Resolve spend source labels for the Financial section (so we don't show a broken/undefined label).
   const { data: spendSourcesResp } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/spend-sources`],
@@ -691,6 +708,9 @@ export default function GA4Metrics() {
   });
 
   const spendSourceLabels = useMemo(() => {
+    const linkedInSpend = Number((linkedInAggregated as any)?.spend || 0);
+    const persistedSpend = Number(spendTotals?.totalSpend || 0);
+    if (!(persistedSpend > 0) && linkedInSpend > 0) return ["LinkedIn Ads"];
     const ids = Array.isArray(spendTotals?.sourceIds) ? spendTotals.sourceIds.map(String) : [];
     const sources = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
     const labels: string[] = [];
@@ -701,18 +721,20 @@ export default function GA4Metrics() {
       if (label) labels.push(label);
     }
     return labels;
-  }, [spendTotals?.sourceIds, spendSourcesResp]);
+  }, [linkedInAggregated, spendTotals?.totalSpend, spendTotals?.sourceIds, spendSourcesResp]);
 
   const activeSpendSource = useMemo(() => {
     const sources = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
     // Backend returns only active sources; pick the most recent if multiple.
     return sources?.[0] || null;
   }, [spendSourcesResp]);
+  const linkedInSpendForFinancials = Number((linkedInAggregated as any)?.spend || 0);
   const totalSpendForFinancials = Number(spendTotals?.totalSpend || 0);
+  const usingAutoLinkedInSpend = !(totalSpendForFinancials > 0) && linkedInSpendForFinancials > 0;
 
   const financialRevenue = Number(breakdownTotals.revenue || ga4Metrics?.revenue || 0);
   const financialConversions = Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0);
-  const financialSpend = Number(totalSpendForFinancials || 0);
+  const financialSpend = Number((totalSpendForFinancials > 0 ? totalSpendForFinancials : (usingAutoLinkedInSpend ? linkedInSpendForFinancials : 0)) || 0);
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = financialSpend > 0 ? ((financialRevenue - financialSpend) / financialSpend) * 100 : 0;
   const financialCPA = financialConversions > 0 ? financialSpend / financialConversions : 0;
@@ -1139,26 +1161,34 @@ export default function GA4Metrics() {
                                     Spend source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} — {selectedPeriodLabel}
                                   </p>
                                 </div>
-                                {activeSpendSource && (
+                                {(activeSpendSource || financialSpend > 0) && (
                                   <div className="flex items-center gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => setShowSpendDialog(true)}
-                                      aria-label="Edit spend mapping"
-                                      title="Edit spend mapping"
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => setShowDeleteSpendDialog(true)}
-                                      aria-label="Remove spend"
-                                      title="Remove spend"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    {activeSpendSource ? (
+                                      <>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => setShowSpendDialog(true)}
+                                          aria-label="Edit spend mapping"
+                                          title="Edit spend mapping"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => setShowDeleteSpendDialog(true)}
+                                          aria-label="Remove spend"
+                                          title="Remove spend"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <Button variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
+                                        Override spend
+                                      </Button>
+                                    )}
                                   </div>
                                 )}
                               </div>

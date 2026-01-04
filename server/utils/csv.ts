@@ -117,24 +117,52 @@ export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
   let headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
   if (headers.length === 1) {
     const firstLine = (text.split("\n")[0] || "");
-    const hasQuotes = firstLine.includes('"');
-
     const candidates = [",", ";", "\t", "|"];
     const headerCell = String(headerRow[0] ?? "");
+
+    // Heuristic: some "CSV" exports end up as a single column where each row is itself a comma-separated string.
+    // Example rows[0] = ["date,Campaign,spend"], rows[1] = ["2026-01-01,foo,123"].
+    // If splitting the single cell produces a consistent column count across several rows, treat it as embedded CSV.
+    const chooseEmbeddedDelimiter = (): string | null => {
+      const sample = rows.slice(0, Math.min(rows.length, 6));
+      if (sample.length < 2) return null;
+      if (!sample.every((r) => Array.isArray(r) && r.length === 1)) return null;
+
+      for (const d of candidates) {
+        const lens = sample
+          .map((r) => String(r?.[0] ?? ""))
+          .filter((s) => s.trim().length > 0)
+          .map((s) => s.split(d).length);
+        if (lens.length < 2) continue;
+        const firstLen = lens[0];
+        if (firstLen < 3) continue; // need at least 3 columns to be confident
+        const consistent = lens.every((n) => n === firstLen);
+        if (consistent) return d;
+      }
+      return null;
+    };
+
+    const embeddedDelim = chooseEmbeddedDelimiter();
     const bestDelim =
+      embeddedDelim ||
       candidates.find((d) => headerCell.split(d).length >= 3) || // at least 3 columns
       (candidates.find((d) => firstLine.split(d).length >= 3) || null);
 
-    if (!hasQuotes && bestDelim) {
-      headers = headerCell.split(bestDelim).map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
-      // Rebuild rows using naive split (safe for non-quoted exports)
-      rows.length = 0;
-      const rawLines = text.split("\n").filter((l) => l.length > 0);
-      for (let i = 0; i < rawLines.length; i++) {
-        const parts = rawLines[i].split(bestDelim);
-        rows.push(parts);
-        if (maxRows && rows.length >= maxRows) break;
+    if (bestDelim) {
+      // Rebuild rows by splitting the single-cell rows using the chosen delimiter.
+      const rebuilt: string[][] = [];
+      for (const r of rows) {
+        if (Array.isArray(r) && r.length === 1) {
+          rebuilt.push(String(r[0] ?? "").split(bestDelim));
+        } else {
+          rebuilt.push(r);
+        }
       }
+      // Replace the parsed rows in-place
+      rows.length = 0;
+      for (const r of rebuilt) rows.push(r);
+      const newHeaderRow = rows[0] || [];
+      headers = newHeaderRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
     }
   }
 

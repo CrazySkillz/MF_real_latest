@@ -56,6 +56,7 @@ const kpiFormSchema = z.object({
   name: z.string().min(1, "KPI name is required"),
   description: z.string().optional(),
   unit: z.string().min(1, "Unit is required"),
+  currentValue: z.string().min(1, "Current value is required"),
   targetValue: z.string().min(1, "Target value is required"),
   priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   timeframe: z.enum(["daily", "weekly", "monthly", "quarterly"]).default("monthly"),
@@ -133,6 +134,7 @@ export default function GA4Metrics() {
       name: "",
       description: "",
       unit: "%",
+      currentValue: "",
       targetValue: "",
       priority: "medium",
       timeframe: "monthly",
@@ -233,7 +235,9 @@ export default function GA4Metrics() {
         body: JSON.stringify({
           ...data,
           campaignId, // Scope KPI to this MetricMind campaign
-          currentValue: calculatedValue // initial snapshot; live value is computed in the UI
+          // Prefer the user-visible current value (prefilled live when selecting a template).
+          // Fallback to the computed value if for any reason the field is empty.
+          currentValue: (data as any)?.currentValue || calculatedValue
         }),
       });
       
@@ -2451,6 +2455,15 @@ export default function GA4Metrics() {
                         kpiForm.setValue("unit", template.unit);
                         kpiForm.setValue("description", template.description);
                         kpiForm.setValue("targetValue", template.targetValue);
+                        // Prefill current value from the same live sources as the GA4 Overview (no extra fetch).
+                        const liveCurrent = calculateKPIValueFromSources(template.name, {
+                          revenue: Number(breakdownTotals.revenue || 0),
+                          conversions: Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
+                          sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
+                          users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
+                          spend: Number(financialSpend || 0),
+                        });
+                        kpiForm.setValue("currentValue", liveCurrent);
                       }}
                     >
                       <div className="font-medium text-sm text-slate-900 dark:text-white">
@@ -2537,6 +2550,25 @@ export default function GA4Metrics() {
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={kpiForm.control}
+                  name="currentValue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Current Value</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Current value"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={kpiForm.control}
                   name="targetValue"
                   render={({ field }) => (
                     <FormItem>
@@ -2553,127 +2585,31 @@ export default function GA4Metrics() {
                     </FormItem>
                   )}
                 />
-                
-                <FormField
-                  control={kpiForm.control}
-                  name="priority"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Priority</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Medium" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="critical">Critical</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
-              
-              <div className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
-                <h4 className="font-medium text-slate-900 dark:text-white">Time-Based Tracking</h4>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={kpiForm.control}
-                    name="timeframe"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tracking Timeframe</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                            <SelectItem value="quarterly">Quarterly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={kpiForm.control}
-                    name="trackingPeriod"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tracking Period (days)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="1"
-                            max="365"
-                            placeholder="30"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                            value={field.value || ''}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={kpiForm.control}
-                    name="rollingAverage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Rolling Average</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="1day">1-day (raw values)</SelectItem>
-                            <SelectItem value="7day">7-day rolling average</SelectItem>
-                            <SelectItem value="30day">30-day rolling average</SelectItem>
-                            <SelectItem value="none">No smoothing</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={kpiForm.control}
-                    name="targetDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Target Date (optional)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                            value={field.value || ''}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
+
+              <FormField
+                control={kpiForm.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Medium" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <div className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
                 <h4 className="font-medium text-slate-900 dark:text-white">Alert Settings</h4>

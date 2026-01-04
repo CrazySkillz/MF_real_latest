@@ -2539,15 +2539,22 @@ export default function GA4Metrics() {
                       unit: "count",
                       description: "Total sessions for the selected period",
                     }
-                  ].map((template) => (
+                  ].map((template) => {
+                    const requiresSpend = template.name === "ROAS" || template.name === "ROI" || template.name === "CPA";
+                    const spendAvailable = Number(financialSpend || 0) > 0;
+                    const disabled = requiresSpend && !spendAvailable;
+                    return (
                     <div
                       key={template.name}
-                      className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                      className={`p-3 border-2 rounded-lg transition-all ${
+                        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                      } ${
                         selectedKPITemplate?.name === template.name
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                           : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
                       }`}
                       onClick={() => {
+                        if (disabled) return;
                         setSelectedKPITemplate(template);
                         kpiForm.setValue("name", template.name);
                         kpiForm.setValue("unit", template.unit);
@@ -2568,8 +2575,14 @@ export default function GA4Metrics() {
                       <div className="font-medium text-sm text-slate-900 dark:text-white">
                         {template.name}
                       </div>
+                      {disabled && (
+                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                          Spend required (add spend to unlock)
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 
                 <div className="text-center">

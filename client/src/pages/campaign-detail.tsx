@@ -259,6 +259,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportMode, setExportMode] = useState<'download' | 'schedule'>('download');
+  const [showAdvancedKpiTemplates, setShowAdvancedKpiTemplates] = useState(false);
   const [editingKPI, setEditingKPI] = useState<any>(null);
   const [scheduleForm, setScheduleForm] = useState({
     frequency: 'monthly',
@@ -987,6 +988,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         setShowCreateDialog(open);
         if (!open) {
           // Reset form when closing the dialog
+          setShowAdvancedKpiTemplates(false);
           setKpiForm({
             name: '',
             description: '',
@@ -1008,39 +1010,56 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           <DialogHeader>
             <DialogTitle>Create Campaign KPI</DialogTitle>
             <DialogDescription>
-              Create a KPI with aggregated metrics from all connected platforms. Track overall campaign performance with cross-platform totals and blended performance metrics.
+              Choose a KPI template to auto-fill the metric and current value, then set a target.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {/* KPI Template Selection (tiles) */}
             <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
               <div>
-                <h4 className="font-medium text-slate-900 dark:text-white">Select KPI Template</h4>
+                <h4 className="font-medium text-slate-900 dark:text-white">Choose a KPI</h4>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Choose a KPI to auto-fill the metric, unit, and current value. “Connected” KPIs work with whatever platforms and data sources you’ve connected.
+                  Start with the core executive KPIs. Use Advanced metrics only if you need website/app traffic numbers.
                 </p>
               </div>
 
-              {!Boolean(outcomeTotals?.webAnalytics?.connected || outcomeTotals?.ga4?.connected) && (
-                <div className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
-                  <div className="text-sm font-medium text-amber-900 dark:text-amber-200">Web Analytics is not connected</div>
-                  <div className="text-xs text-amber-800 dark:text-amber-300 mt-1">
-                    This is OK—MetricMind is platform-agnostic. You can still track spend, offsite revenue (CRM/Shopify), and blended KPIs. To unlock onsite traffic/outcome KPIs, connect a web analytics source (GA4) or use Custom Integration to send website/app metrics.
-                  </div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-slate-600 dark:text-slate-400">
+                  {Boolean(outcomeTotals?.webAnalytics?.connected || outcomeTotals?.ga4?.connected)
+                    ? "Website/app metrics available."
+                    : "Website/app metrics not connected (optional)."}
                 </div>
-              )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAdvancedKpiTemplates((v) => !v)}
+                  data-testid="button-toggle-advanced-kpi-templates"
+                >
+                  {showAdvancedKpiTemplates ? "Hide advanced metrics" : "Advanced metrics"}
+                </Button>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { name: "Revenue (Connected)", metric: "total-revenue", unit: "$", category: "Revenue", description: "GA4 revenue if connected, plus offsite revenue marked NOT in GA4" },
-                  { name: "Conversions (Connected)", metric: "total-conversions", unit: "", category: "Performance", description: "GA4 conversions if connected, otherwise sum across connected platforms" },
-                  { name: "Total Spend (Unified)", metric: "total-spend", unit: "$", category: "Cost Efficiency", description: "Imported spend or platform spend fallback" },
+                  // Core (always shown)
+                  { name: "Revenue", metric: "total-revenue", unit: "$", category: "Revenue", description: "Total revenue (website + connected offsite sources)" },
+                  { name: "Conversions", metric: "total-conversions", unit: "", category: "Performance", description: "Total conversions across connected sources" },
+                  { name: "Spend", metric: "total-spend", unit: "$", category: "Cost Efficiency", description: "Total marketing spend (imports or platform spend)" },
                   { name: "ROAS", metric: "roas", unit: "x", category: "Performance", description: "Connected revenue ÷ spend" },
                   { name: "ROI", metric: "roi", unit: "%", category: "Performance", description: "(Connected revenue − spend) ÷ spend × 100" },
-                  { name: "CPA", metric: "cpa", unit: "$", category: "Cost Efficiency", description: "Spend ÷ connected conversions" },
-                  { name: "Onsite Revenue (Web Analytics)", metric: "ga4-revenue", unit: "$", category: "Revenue", description: "Website/app revenue tracked in your web analytics source" },
-                  { name: "Onsite Conversions (Web Analytics)", metric: "ga4-conversions", unit: "", category: "Performance", description: "Onsite conversions tracked in your web analytics source" },
-                  { name: "Onsite Conversion Rate (Web Analytics)", metric: "ga4-conversion-rate", unit: "%", category: "Performance", description: "Onsite conversions ÷ sessions × 100" },
+                  { name: "CPA", metric: "cpa", unit: "$", category: "Cost Efficiency", description: "Spend ÷ conversions" },
+                  // Advanced (optional)
+                  ...(showAdvancedKpiTemplates
+                    ? [
+                        { name: "Website Revenue", metric: "ga4-revenue", unit: "$", category: "Revenue", description: "Revenue tracked in your website analytics" },
+                        { name: "Website Conversions", metric: "ga4-conversions", unit: "", category: "Performance", description: "Conversions tracked in your website analytics" },
+                        { name: "Website Conversion Rate", metric: "ga4-conversion-rate", unit: "%", category: "Performance", description: "Website conversions ÷ sessions × 100" },
+                        { name: "Website Users", metric: "ga4-users", unit: "", category: "Engagement", description: "Unique users (website analytics)" },
+                        { name: "Website Sessions", metric: "ga4-sessions", unit: "", category: "Engagement", description: "Sessions (website analytics)" },
+                        { name: "Offsite Revenue", metric: "offsite-revenue", unit: "$", category: "Revenue", description: "Revenue from CRM/Shopify/etc. marked offsite" },
+                      ]
+                    : []),
                 ].map((template) => {
                   const webAnalyticsConnected = Boolean(outcomeTotals?.webAnalytics?.connected || outcomeTotals?.ga4?.connected);
                   const unifiedSpend = parseNumSafe(outcomeTotals?.spend?.unifiedSpend);
@@ -1074,11 +1093,16 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       }}
                       data-testid={`campaign-kpi-template-${template.metric}`}
                     >
-                      <div className="font-medium text-sm text-slate-900 dark:text-white">{template.name}</div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-medium text-sm text-slate-900 dark:text-white">{template.name}</div>
+                        {template.metric.startsWith("ga4-") && (
+                          <Badge variant="secondary" className="text-[10px] px-2 py-0.5">Website analytics</Badge>
+                        )}
+                      </div>
                       <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                         {disabled
                           ? !webAnalyticsConnected && requiresWebAnalytics
-                            ? "Web analytics connection required"
+                            ? "Connect website analytics (optional)"
                             : "Spend required"
                           : template.description}
                       </div>
@@ -1125,18 +1149,13 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <SelectSeparator />
                     
                     <SelectGroup>
-                      <SelectLabel>💰 Revenue breakdown</SelectLabel>
+                      <SelectLabel>🔎 Advanced (optional)</SelectLabel>
                       <SelectItem value="offsite-revenue">Revenue (Offsite / CRM / Shopify)</SelectItem>
-                      <SelectItem value="ga4-revenue">Revenue (Onsite / Web Analytics)</SelectItem>
-                    </SelectGroup>
-                    <SelectSeparator />
-                    
-                    <SelectGroup>
-                      <SelectLabel>👥 Onsite traffic (Web Analytics)</SelectLabel>
-                      <SelectItem value="ga4-conversions">Onsite Conversions (Web Analytics)</SelectItem>
-                      <SelectItem value="ga4-conversion-rate">Onsite Conversion Rate (Web Analytics)</SelectItem>
-                      <SelectItem value="ga4-users">Users (Web Analytics)</SelectItem>
-                      <SelectItem value="ga4-sessions">Sessions (Web Analytics)</SelectItem>
+                      <SelectItem value="ga4-revenue">Revenue (Website / Analytics)</SelectItem>
+                      <SelectItem value="ga4-conversions">Conversions (Website / Analytics)</SelectItem>
+                      <SelectItem value="ga4-conversion-rate">Conversion Rate (Website / Analytics)</SelectItem>
+                      <SelectItem value="ga4-users">Users (Website / Analytics)</SelectItem>
+                      <SelectItem value="ga4-sessions">Sessions (Website / Analytics)</SelectItem>
                     </SelectGroup>
                     <SelectSeparator />
                     

@@ -3705,12 +3705,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
             users: parseNum(m.users),
             sessions: parseNum(m.sessions),
             pageviews: parseNum(m.pageviews),
+            revenue: parseNum((m as any).revenue),
             lastUploadedAt: m.uploadedAt || null,
           };
         }
       } catch (e: any) {
         custom = { connected: !!customIntegration, error: e?.message || "Custom integration unavailable" };
       }
+
+      // Web Analytics (platform-agnostic outcome source):
+      // Prefer GA4 when connected; otherwise allow Custom Integration to serve as the web analytics outcome source.
+      const webAnalyticsProvider =
+        ga4Totals?.connected === true
+          ? "ga4"
+          : custom?.connected === true
+          ? "custom_integration"
+          : null;
+      const webAnalytics = {
+        connected: Boolean(webAnalyticsProvider),
+        provider: webAnalyticsProvider,
+        revenue:
+          webAnalyticsProvider === "ga4"
+            ? parseNum(ga4Totals.revenue)
+            : webAnalyticsProvider === "custom_integration"
+            ? parseNum(custom?.revenue)
+            : 0,
+        conversions:
+          webAnalyticsProvider === "ga4"
+            ? parseNum(ga4Totals.conversions)
+            : webAnalyticsProvider === "custom_integration"
+            ? parseNum(custom?.conversions)
+            : 0,
+        sessions:
+          webAnalyticsProvider === "ga4"
+            ? parseNum(ga4Totals.sessions)
+            : webAnalyticsProvider === "custom_integration"
+            ? parseNum(custom?.sessions)
+            : 0,
+        users:
+          webAnalyticsProvider === "ga4"
+            ? parseNum(ga4Totals.users)
+            : webAnalyticsProvider === "custom_integration"
+            ? parseNum(custom?.users)
+            : 0,
+      };
 
       // Unified spend rule:
       // - If the user imported spend (persistedSpend > 0), use that as campaign marketing spend.
@@ -3761,7 +3799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // ignore
       }
 
-      const onsiteRevenue = parseNum(ga4Totals.revenue);
+      const onsiteRevenue = parseNum(webAnalytics.revenue);
       const totalRevenueUnified = parseFloat((onsiteRevenue + offsiteRevenueTotal).toFixed(2));
 
       res.json({
@@ -3769,6 +3807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignId,
         dateRange,
         ga4: ga4Totals,
+        webAnalytics,
         spend: {
           persistedSpend,
           unifiedSpend,

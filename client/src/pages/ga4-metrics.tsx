@@ -79,6 +79,7 @@ interface Benchmark {
   category: string;
   name: string;
   description?: string;
+  metric?: string;
   benchmarkValue: string;
   currentValue?: string;
   unit: string;
@@ -111,6 +112,7 @@ export default function GA4Metrics() {
   // Benchmark-related state
   const [showCreateBenchmark, setShowCreateBenchmark] = useState(false);
   const [selectedBenchmarkTemplate, setSelectedBenchmarkTemplate] = useState<any>(null);
+  const [editingBenchmark, setEditingBenchmark] = useState<Benchmark | null>(null);
   const [newBenchmark, setNewBenchmark] = useState({
     name: "",
     category: "",
@@ -406,6 +408,7 @@ export default function GA4Metrics() {
       queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`] });
       setShowCreateBenchmark(false);
       setSelectedBenchmarkTemplate(null);
+      setEditingBenchmark(null);
       setNewBenchmark({
         name: "",
         category: "",
@@ -423,6 +426,46 @@ export default function GA4Metrics() {
     },
     onError: (error) => {
       toast({ title: "Failed to create benchmark", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateBenchmarkMutation = useMutation({
+    mutationFn: async ({ benchmarkId, data }: { benchmarkId: string; data: any }) => {
+      const response = await fetch(`/api/benchmarks/${benchmarkId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          platformType: "google_analytics",
+          period: "monthly",
+          status: "active",
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to update benchmark");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`] });
+      setShowCreateBenchmark(false);
+      setSelectedBenchmarkTemplate(null);
+      setEditingBenchmark(null);
+      setNewBenchmark({
+        name: "",
+        category: "",
+        benchmarkType: "industry",
+        unit: "",
+        benchmarkValue: "",
+        currentValue: "",
+        metric: "",
+        industry: "",
+        geoLocation: "",
+        description: "",
+        source: "",
+      });
+      toast({ title: "Benchmark updated successfully" });
+    },
+    onError: (error) => {
+      toast({ title: "Failed to update benchmark", description: error.message, variant: "destructive" });
     },
   });
 
@@ -454,12 +497,31 @@ export default function GA4Metrics() {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
       return;
     }
+    if (editingBenchmark?.id) {
+      updateBenchmarkMutation.mutate({ benchmarkId: String(editingBenchmark.id), data: newBenchmark });
+      return;
+    }
     createBenchmarkMutation.mutate(newBenchmark);
   };
 
   const handleEditBenchmark = (benchmark: Benchmark) => {
-    // For now, just show a toast - full edit functionality can be added later
-    toast({ title: "Edit functionality coming soon" });
+    setEditingBenchmark(benchmark);
+    setShowCreateBenchmark(true);
+    const metric = (benchmark as any).metric || "";
+    setSelectedBenchmarkTemplate(metric ? { metric } : null);
+    setNewBenchmark({
+      name: benchmark.name || "",
+      category: benchmark.category || "",
+      benchmarkType: benchmark.benchmarkType || "industry",
+      unit: benchmark.unit || "",
+      benchmarkValue: String(benchmark.benchmarkValue ?? ""),
+      currentValue: String(benchmark.currentValue ?? ""),
+      metric: metric,
+      industry: benchmark.industry || "",
+      geoLocation: benchmark.geoLocation || "",
+      description: benchmark.description || "",
+      source: benchmark.source || "",
+    });
   };
 
   const handleDeleteBenchmark = (benchmarkId: string) => {
@@ -618,6 +680,7 @@ export default function GA4Metrics() {
     const m = String(metric || "").toLowerCase();
     if (m === "revenue") return "revenue";
     if (m === "conversions" || m === "conversionrate") return "conversion";
+    if (m === "roas" || m === "roi" || m === "cpa") return "financial";
     if (m === "users" || m === "sessions" || m === "pageviews") return "traffic";
     if (m === "engagementrate") return "engagement";
     return "performance";
@@ -634,6 +697,12 @@ export default function GA4Metrics() {
     const revenue = Number(breakdownTotals?.revenue || 0);
 
     switch (m) {
+      case "roas":
+        return Number(financialROAS || 0);
+      case "roi":
+        return Number(financialROI || 0);
+      case "cpa":
+        return Number(financialCPA || 0);
       case "users":
         return users;
       case "sessions":
@@ -2144,9 +2213,36 @@ export default function GA4Metrics() {
                           Track and measure performance against industry standards and custom targets
                         </p>
                       </div>
-                      <Dialog open={showCreateBenchmark} onOpenChange={setShowCreateBenchmark}>
+                      <Dialog
+                        open={showCreateBenchmark}
+                        onOpenChange={(open) => {
+                          setShowCreateBenchmark(open);
+                          if (!open) {
+                            setSelectedBenchmarkTemplate(null);
+                            setEditingBenchmark(null);
+                            setNewBenchmark({
+                              name: "",
+                              category: "",
+                              benchmarkType: "industry",
+                              unit: "",
+                              benchmarkValue: "",
+                              currentValue: "",
+                              metric: "",
+                              industry: "",
+                              geoLocation: "",
+                              description: "",
+                              source: "",
+                            });
+                          }
+                        }}
+                      >
                         <DialogTrigger asChild>
-                          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Button
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => {
+                              setEditingBenchmark(null);
+                            }}
+                          >
                             <Plus className="w-4 h-4 mr-2" />
                             Create Benchmark
                           </Button>
@@ -2157,9 +2253,11 @@ export default function GA4Metrics() {
                             <span className="sr-only">Close</span>
                           </DialogClose>
                           <DialogHeader className="pb-3">
-                            <DialogTitle className="pr-8 text-lg">Create New Benchmark</DialogTitle>
+                            <DialogTitle className="pr-8 text-lg">{editingBenchmark ? "Edit Benchmark" : "Create New Benchmark"}</DialogTitle>
                             <DialogDescription className="text-sm">
-                              Set up a new performance benchmark to track against industry standards or custom targets
+                              {editingBenchmark
+                                ? "Update this benchmark to reflect your latest targets or industry standard."
+                                : "Set up a new performance benchmark to track against industry standards or custom targets"}
                             </DialogDescription>
                           </DialogHeader>
                           <form onSubmit={handleCreateBenchmark} className="space-y-6">
@@ -2174,43 +2272,58 @@ export default function GA4Metrics() {
 
                               <div className="grid grid-cols-2 gap-3">
                                 {[
-                                  { name: "Total Users", metric: "users", unit: "count", description: "Users for the selected period" },
-                                  { name: "Total Sessions", metric: "sessions", unit: "count", description: "Sessions for the selected period" },
-                                  { name: "Total Page Views", metric: "pageviews", unit: "count", description: "Page views for the selected period" },
-                                  { name: "Total Conversions", metric: "conversions", unit: "count", description: "Conversions for the selected period" },
-                                  { name: "Revenue", metric: "revenue", unit: "$", description: "Revenue for the selected period" },
+                                  { name: "ROAS", metric: "roas", unit: "ratio", description: "Revenue ÷ Spend" },
+                                  { name: "ROI", metric: "roi", unit: "%", description: "(Revenue − Spend) ÷ Spend × 100" },
+                                  { name: "CPA", metric: "cpa", unit: "$", description: "Spend ÷ Conversions" },
+                                  { name: "Revenue", metric: "revenue", unit: "$", description: "Total revenue in GA4 for the selected period" },
+                                  { name: "Total Conversions", metric: "conversions", unit: "count", description: "Total GA4 conversions for the selected period" },
                                   { name: "Conversion Rate", metric: "conversionRate", unit: "%", description: "Conversions ÷ Sessions × 100" },
-                                  { name: "Engagement Rate", metric: "engagementRate", unit: "%", description: "Engaged sessions rate proxy" },
-                                ].map((template) => (
-                                  <div
-                                    key={template.metric}
-                                    className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                                      selectedBenchmarkTemplate?.metric === template.metric
-                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                                        : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
-                                    }`}
-                                    onClick={() => {
-                                      setSelectedBenchmarkTemplate(template);
-                                      const liveCurrent = getLiveBenchmarkCurrentValue(template.metric);
-                                      const derivedCategory = deriveBenchmarkCategoryFromMetric(template.metric);
-                                      setNewBenchmark((prev) => ({
-                                        ...prev,
-                                        metric: template.metric,
-                                        category: derivedCategory,
-                                        name: prev.name || template.name,
-                                        unit: prev.unit || template.unit,
-                                        currentValue: String(liveCurrent),
-                                      }));
-                                    }}
-                                  >
-                                    <div className="font-medium text-sm text-slate-900 dark:text-white">
-                                      {template.name}
+                                  { name: "Total Users", metric: "users", unit: "count", description: "Total users for the selected period" },
+                                  { name: "Total Sessions", metric: "sessions", unit: "count", description: "Total sessions for the selected period" },
+                                ].map((template) => {
+                                  const requiresSpend = template.metric === "roas" || template.metric === "roi" || template.metric === "cpa";
+                                  const spendAvailable = Number(financialSpend || 0) > 0;
+                                  const disabled = requiresSpend && !spendAvailable;
+                                  return (
+                                    <div
+                                      key={template.metric}
+                                      className={`p-3 border-2 rounded-lg transition-all ${
+                                        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                                      } ${
+                                        selectedBenchmarkTemplate?.metric === template.metric
+                                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                          : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                                      }`}
+                                      onClick={() => {
+                                        if (disabled) return;
+                                        setSelectedBenchmarkTemplate(template);
+                                        const liveCurrent = getLiveBenchmarkCurrentValue(template.metric);
+                                        const derivedCategory = deriveBenchmarkCategoryFromMetric(template.metric);
+                                        setNewBenchmark((prev) => ({
+                                          ...prev,
+                                          metric: template.metric,
+                                          category: derivedCategory,
+                                          name: prev.name || template.name,
+                                          unit: prev.unit || template.unit,
+                                          currentValue: String(liveCurrent),
+                                        }));
+                                      }}
+                                    >
+                                      <div className="font-medium text-sm text-slate-900 dark:text-white">
+                                        {template.name}
+                                      </div>
+                                      {disabled ? (
+                                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                                          Spend required (add spend to unlock)
+                                        </div>
+                                      ) : (
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                          {template.description}
+                                        </div>
+                                      )}
                                     </div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                                      {template.description}
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
 
@@ -2270,7 +2383,7 @@ export default function GA4Metrics() {
                                   value={newBenchmark.currentValue}
                                   onChange={(e) => setNewBenchmark({ ...newBenchmark, currentValue: e.target.value })}
                                   className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  placeholder="Auto-filled for Industry benchmarks (or enter manually)"
+                                  placeholder="Auto-filled from GA4 for the selected metric (edit if needed)"
                                 />
                               </div>
                               <div>
@@ -2283,7 +2396,7 @@ export default function GA4Metrics() {
                                   value={newBenchmark.benchmarkValue}
                                   onChange={(e) => setNewBenchmark({ ...newBenchmark, benchmarkValue: e.target.value })}
                                   className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  placeholder="Enter your benchmark target"
+                                  placeholder="Enter your benchmark target (or select an industry)"
                                   required
                                 />
                               </div>
@@ -2344,7 +2457,7 @@ export default function GA4Metrics() {
                                     ))}
                                   </select>
                                   <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    Selecting an industry will auto-fill Current Value for the chosen metric.
+                                    Selecting an industry will auto-fill the Benchmark Value for the chosen metric.
                                   </div>
                                 </div>
                               )}
@@ -2355,7 +2468,7 @@ export default function GA4Metrics() {
                                 Cancel
                               </Button>
                               <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-                                Create Benchmark
+                                {editingBenchmark ? "Update Benchmark" : "Create Benchmark"}
                               </Button>
                             </div>
                           </form>

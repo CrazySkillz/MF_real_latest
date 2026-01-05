@@ -244,15 +244,15 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     enabled: !!campaign.id,
   });
 
-  // Fetch metrics from all connected platforms
-  const { data: customIntegration } = useQuery<any>({
-    queryKey: [`/api/custom-integration/${campaign.id}`],
+  // Outcome-centric campaign totals (dynamic: GA4 outcomes + unified spend + all connected platform inputs)
+  const { data: outcomeTotals } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/outcome-totals`, "30days"],
     enabled: !!campaign.id,
-  });
-
-  const { data: linkedinMetrics } = useQuery<any>({
-    queryKey: [`/api/linkedin/metrics/${campaign.id}`],
-    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/outcome-totals?dateRange=30days`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
   });
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -282,6 +282,116 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     alertCondition: 'below' as 'below' | 'above' | 'equals',
     alertEmails: '',
   });
+
+  const parseNumSafe = (val: any): number => {
+    if (val === null || val === undefined || val === '') return 0;
+    const n = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : Number(val);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const getLiveCampaignMetric = (key: string): { value: string; unit: string; category: string } => {
+    const ot = outcomeTotals || {};
+    const ga4 = ot?.ga4 || {};
+    const spend = ot?.spend || {};
+    const rev = ot?.revenue || {};
+    const unifiedSpend = parseNumSafe(spend?.unifiedSpend);
+    const onsiteRevenue = parseNumSafe(rev?.onsiteRevenue ?? ga4?.revenue);
+    const offsiteRevenue = parseNumSafe(rev?.offsiteRevenue);
+    const totalRevenue = parseNumSafe(rev?.totalRevenue);
+    const conversions = parseNumSafe(ga4?.conversions);
+    const sessions = parseNumSafe(ga4?.sessions);
+    const users = parseNumSafe(ga4?.users);
+
+    const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
+    const roas = unifiedSpend > 0 ? (onsiteRevenue / unifiedSpend) : 0;
+    const roi = unifiedSpend > 0 ? (((onsiteRevenue - unifiedSpend) / unifiedSpend) * 100) : 0;
+    const cpa = conversions > 0 ? (unifiedSpend / conversions) : 0;
+
+    switch (String(key || '')) {
+      case 'ga4-revenue':
+        return { value: formatNumber(onsiteRevenue), unit: '$', category: 'Revenue' };
+      case 'offsite-revenue':
+        return { value: formatNumber(offsiteRevenue), unit: '$', category: 'Revenue' };
+      case 'total-revenue':
+        return { value: formatNumber(totalRevenue), unit: '$', category: 'Revenue' };
+      case 'ga4-conversions':
+        return { value: formatNumber(conversions), unit: '', category: 'Performance' };
+      case 'ga4-conversion-rate':
+        return { value: formatNumber(conversionRate), unit: '%', category: 'Performance' };
+      case 'total-spend':
+        return { value: formatNumber(unifiedSpend), unit: '$', category: 'Cost Efficiency' };
+      case 'roas':
+        return { value: formatNumber(roas), unit: 'x', category: 'Performance' };
+      case 'roi':
+        return { value: formatNumber(roi), unit: '%', category: 'Performance' };
+      case 'cpa':
+        return { value: formatNumber(cpa), unit: '$', category: 'Cost Efficiency' };
+      case 'ga4-users':
+        return { value: formatNumber(users), unit: '', category: 'Engagement' };
+      case 'ga4-sessions':
+        return { value: formatNumber(sessions), unit: '', category: 'Engagement' };
+      default:
+        return { value: '', unit: '', category: '' };
+    }
+  };
+
+  const getLiveCampaignMetricNumber = (key: string): number | null => {
+    const ot = outcomeTotals || {};
+    const ga4 = ot?.ga4 || {};
+    const spend = ot?.spend || {};
+    const rev = ot?.revenue || {};
+    const unifiedSpend = parseNumSafe(spend?.unifiedSpend);
+    const onsiteRevenue = parseNumSafe(rev?.onsiteRevenue ?? ga4?.revenue);
+    const offsiteRevenue = parseNumSafe(rev?.offsiteRevenue);
+    const totalRevenue = parseNumSafe(rev?.totalRevenue);
+    const conversions = parseNumSafe(ga4?.conversions);
+    const sessions = parseNumSafe(ga4?.sessions);
+    const users = parseNumSafe(ga4?.users);
+
+    const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
+    const roas = unifiedSpend > 0 ? onsiteRevenue / unifiedSpend : 0;
+    const roi = unifiedSpend > 0 ? ((onsiteRevenue - unifiedSpend) / unifiedSpend) * 100 : 0;
+    const cpa = conversions > 0 ? unifiedSpend / conversions : 0;
+
+    switch (String(key || '')) {
+      case 'ga4-revenue':
+        return onsiteRevenue;
+      case 'offsite-revenue':
+        return offsiteRevenue;
+      case 'total-revenue':
+        return totalRevenue;
+      case 'ga4-conversions':
+        return conversions;
+      case 'ga4-conversion-rate':
+        return conversionRate;
+      case 'total-spend':
+        return unifiedSpend;
+      case 'roas':
+        return roas;
+      case 'roi':
+        return roi;
+      case 'cpa':
+        return cpa;
+      case 'ga4-users':
+        return users;
+      case 'ga4-sessions':
+        return sessions;
+      default:
+        return null;
+    }
+  };
+
+  const isLowerBetterMetric = (metricKey: string) => {
+    const m = String(metricKey || '').toLowerCase();
+    return m === 'cpa';
+  };
+
+  const getKpiCurrentNumber = (kpi: any): number => {
+    const m = String(kpi?.metric || '');
+    const live = getLiveCampaignMetricNumber(m);
+    if (typeof live === 'number' && Number.isFinite(live)) return live;
+    return parseNumSafe(kpi?.currentValue);
+  };
 
   const createKpiMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -402,14 +512,15 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
   const handleEditKPI = (kpi: any) => {
     setEditingKPI(kpi);
+    const live = kpi?.metric ? getLiveCampaignMetric(String(kpi.metric)) : { value: '', unit: '', category: '' };
     setKpiForm({
       name: kpi.name,
       description: kpi.description || '',
       metric: kpi.metric || '',
-      currentValue: kpi.currentValue ? formatInputNumber(kpi.currentValue.toString()) : '',
+      currentValue: live.value ? formatInputNumber(live.value) : (kpi.currentValue ? formatInputNumber(kpi.currentValue.toString()) : ''),
       targetValue: kpi.targetValue ? formatInputNumber(kpi.targetValue.toString()) : '',
-      unit: kpi.unit || '',
-      category: kpi.category || '',
+      unit: live.unit || kpi.unit || '',
+      category: live.category || kpi.category || '',
       timeframe: kpi.timeframe || 'Monthly',
       targetDate: kpi.targetDate ? new Date(kpi.targetDate).toISOString().split('T')[0] : '',
       alertEnabled: kpi.emailNotifications || false,
@@ -660,13 +771,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-kpis-above-target">
                       {kpis.filter(k => {
-                        // Parse values as floats (decimal fields come from DB as strings)
-                        const currentStr = typeof k.currentValue === 'string' ? k.currentValue.replace(/,/g, '') : String(k.currentValue);
-                        const targetStr = typeof k.targetValue === 'string' ? k.targetValue.replace(/,/g, '') : String(k.targetValue);
-                        const current = parseFloat(currentStr) || 0;
-                        const target = parseFloat(targetStr) || 1;
-                        const progress = (current / target) * 100;
-                        return progress >= 100;
+                        const current = getKpiCurrentNumber(k);
+                        const target = parseNumSafe(k?.targetValue) || 0;
+                        const lowerBetter = isLowerBetterMetric(String(k?.metric || ''));
+                        if (target <= 0) return false;
+                        return lowerBetter ? current <= target : current >= target;
                       }).length}
                     </p>
                   </div>
@@ -682,13 +791,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
                     <p className="text-2xl font-bold text-red-600" data-testid="text-kpis-below-target">
                       {kpis.filter(k => {
-                        // Parse values as floats (decimal fields come from DB as strings)
-                        const currentStr = typeof k.currentValue === 'string' ? k.currentValue.replace(/,/g, '') : String(k.currentValue);
-                        const targetStr = typeof k.targetValue === 'string' ? k.targetValue.replace(/,/g, '') : String(k.targetValue);
-                        const current = parseFloat(currentStr) || 0;
-                        const target = parseFloat(targetStr) || 1;
-                        const progress = (current / target) * 100;
-                        return progress < 100;
+                        const current = getKpiCurrentNumber(k);
+                        const target = parseNumSafe(k?.targetValue) || 0;
+                        const lowerBetter = isLowerBetterMetric(String(k?.metric || ''));
+                        if (target <= 0) return false;
+                        return lowerBetter ? current > target : current < target;
                       }).length}
                     </p>
                   </div>
@@ -706,13 +813,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       {kpis.length > 0
                         ? (
                             kpis.reduce((sum, k) => {
-                              // Parse values as floats (decimal fields come from DB as strings)
-                              const currentStr = typeof k.currentValue === 'string' ? k.currentValue.replace(/,/g, '') : String(k.currentValue);
-                              const targetStr = typeof k.targetValue === 'string' ? k.targetValue.replace(/,/g, '') : String(k.targetValue);
-                              const current = parseFloat(currentStr) || 0;
-                              const target = parseFloat(targetStr) || 1;
-                              const progress = target > 0 ? (current / target) * 100 : 0;
-                              return sum + progress;
+                              const current = getKpiCurrentNumber(k);
+                              const target = parseNumSafe(k?.targetValue) || 0;
+                              if (!(target > 0)) return sum;
+                              const lowerBetter = isLowerBetterMetric(String(k?.metric || ''));
+                              const ratio = lowerBetter ? (current > 0 ? target / current : 0) : (current / target);
+                              return sum + (ratio * 100);
                             }, 0) / kpis.length
                           ).toFixed(1)
                         : '0.0'}%
@@ -727,10 +833,16 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           {/* KPIs Grid */}
           <div className="grid gap-6 lg:grid-cols-2">
             {kpis.map((kpi) => {
-              // Calculate progress percentage correctly
-              const current = parseFloat(kpi.currentValue) || 0;
-              const target = parseFloat(kpi.targetValue) || 1;
-              const progressPercent = Math.round((current / target) * 100);
+              const current = getKpiCurrentNumber(kpi);
+              const target = parseNumSafe(kpi.targetValue) || 0;
+              const lowerBetter = isLowerBetterMetric(String(kpi?.metric || ''));
+              const ratio = target > 0 ? (lowerBetter ? (current > 0 ? target / current : 0) : (current / target)) : 0;
+              const progressPercent = Math.round(Math.max(0, Math.min(ratio * 100, 100)));
+              const liveDisplay = (() => {
+                const m = String(kpi?.metric || '');
+                const live = getLiveCampaignMetric(m);
+                return live.value ? live.value : (kpi.currentValue?.toString() || '0');
+              })();
               
               return (
           <Card key={kpi.id}>
@@ -805,7 +917,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current</div>
                   <div className="text-xl font-bold text-slate-900 dark:text-white">
-                    {kpi.currentValue}
+                    {liveDisplay}
                   </div>
                 </div>
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -893,113 +1005,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <Select
                   value={kpiForm.metric || ''}
                   onValueChange={(value) => {
-                    // Auto-populate with aggregated data across ALL platforms
-                    let currentValue = '';
-                    let unit = '';
-                    let category = '';
-                    
-                    // Aggregate data from LinkedIn and Custom Integration
-                    const liMetrics = linkedinMetrics || {};
-                    const ciMetrics = customIntegration?.metrics || {};
-                    
-                    // Helper to safely parse numbers
-                    const parseNum = (val: any): number => {
-                      const num = typeof val === 'string' ? parseFloat(val) : val;
-                      return isNaN(num) ? 0 : num;
-                    };
-                    
-                    switch(value) {
-                      // Core Aggregated Metrics (sum across ALL platforms)
-                      case 'total-impressions':
-                        const liImpressions = parseNum(liMetrics.impressions);
-                        const ciPageviews = parseNum(ciMetrics.pageviews);
-                        currentValue = formatNumber(liImpressions + ciPageviews);
-                        category = 'Performance';
-                        break;
-                      case 'total-clicks':
-                        const liClicks = parseNum(liMetrics.clicks);
-                        currentValue = formatNumber(liClicks);
-                        category = 'Engagement';
-                        break;
-                      case 'total-conversions':
-                        const liConversions = parseNum(liMetrics.conversions);
-                        currentValue = formatNumber(liConversions);
-                        category = 'Performance';
-                        break;
-                      case 'total-leads':
-                        const liLeads = parseNum(liMetrics.leads);
-                        currentValue = formatNumber(liLeads);
-                        category = 'Performance';
-                        break;
-                      case 'total-spend':
-                        const liSpend = parseNum(liMetrics.spend);
-                        currentValue = formatNumber(liSpend);
-                        unit = '$';
-                        category = 'Cost Efficiency';
-                        break;
-                      case 'total-engagements':
-                        const liEngagements = parseNum(liMetrics.engagements);
-                        const ciSessions = parseNum(ciMetrics.sessions);
-                        currentValue = formatNumber(liEngagements + ciSessions);
-                        category = 'Engagement';
-                        break;
-                      
-                      // Calculated Blended Metrics (using aggregated totals)
-                      case 'overall-ctr':
-                        const totalClicks = parseNum(liMetrics.clicks);
-                        const totalImpressions = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
-                        currentValue = formatNumber(totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0);
-                        unit = '%';
-                        category = 'Performance';
-                        break;
-                      case 'blended-cpc':
-                        const totalSpend = parseNum(liMetrics.spend);
-                        const clicks = parseNum(liMetrics.clicks);
-                        currentValue = formatNumber(clicks > 0 ? totalSpend / clicks : 0);
-                        unit = '$';
-                        category = 'Cost Efficiency';
-                        break;
-                      case 'blended-cpm':
-                        const spendForCpm = parseNum(liMetrics.spend);
-                        const impressionsForCpm = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
-                        currentValue = formatNumber(impressionsForCpm > 0 ? (spendForCpm / impressionsForCpm) * 1000 : 0);
-                        unit = '$';
-                        category = 'Cost Efficiency';
-                        break;
-                      case 'campaign-cvr':
-                        const conversions = parseNum(liMetrics.conversions);
-                        const clicksForCvr = parseNum(liMetrics.clicks);
-                        currentValue = formatNumber(clicksForCvr > 0 ? (conversions / clicksForCvr) * 100 : 0);
-                        unit = '%';
-                        category = 'Performance';
-                        break;
-                      case 'campaign-cpa':
-                        const spendForCpa = parseNum(liMetrics.spend);
-                        const conversionsForCpa = parseNum(liMetrics.conversions);
-                        currentValue = formatNumber(conversionsForCpa > 0 ? spendForCpa / conversionsForCpa : 0);
-                        unit = '$';
-                        category = 'Cost Efficiency';
-                        break;
-                      case 'campaign-cpl':
-                        const spendForCpl = parseNum(liMetrics.spend);
-                        const leadsForCpl = parseNum(liMetrics.leads);
-                        currentValue = formatNumber(leadsForCpl > 0 ? spendForCpl / leadsForCpl : 0);
-                        unit = '$';
-                        category = 'Cost Efficiency';
-                        break;
-                      
-                      // Audience & Engagement (from Custom Integration)
-                      case 'total-users':
-                        currentValue = formatNumber(parseNum(ciMetrics.users));
-                        category = 'Engagement';
-                        break;
-                      case 'total-sessions':
-                        currentValue = formatNumber(parseNum(ciMetrics.sessions));
-                        category = 'Engagement';
-                        break;
-                    }
-                    
-                    setKpiForm({ ...kpiForm, metric: value, currentValue, unit, category });
+                    const live = getLiveCampaignMetric(value);
+                    setKpiForm({ ...kpiForm, metric: value, currentValue: live.value, unit: live.unit, category: live.category });
                   }}
                 >
                   <SelectTrigger id="kpi-metric" data-testid="select-campaign-kpi-metric">
@@ -1008,31 +1015,28 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <SelectContent className="max-h-[400px]">
                     {/* Aggregated Campaign Metrics - Always visible */}
                     <SelectGroup>
-                      <SelectLabel>ðŸ“Š Core Campaign Metrics</SelectLabel>
-                      <SelectItem value="total-impressions">Total Impressions</SelectItem>
-                      <SelectItem value="total-clicks">Total Clicks</SelectItem>
-                      <SelectItem value="total-conversions">Total Conversions</SelectItem>
-                      <SelectItem value="total-leads">Total Leads</SelectItem>
-                      <SelectItem value="total-spend">Total Spend</SelectItem>
-                      <SelectItem value="total-engagements">Total Engagements</SelectItem>
+                      <SelectLabel>📊 Outcome KPIs (recommended)</SelectLabel>
+                      <SelectItem value="ga4-revenue">Revenue (GA4)</SelectItem>
+                      <SelectItem value="ga4-conversions">Conversions (GA4)</SelectItem>
+                      <SelectItem value="ga4-conversion-rate">Conversion Rate (GA4)</SelectItem>
+                      <SelectItem value="total-spend">Total Spend (Unified)</SelectItem>
+                      <SelectItem value="roas">ROAS (GA4 revenue ÷ spend)</SelectItem>
+                      <SelectItem value="roi">ROI ((GA4 revenue − spend) ÷ spend)</SelectItem>
+                      <SelectItem value="cpa">CPA (spend ÷ GA4 conversions)</SelectItem>
                     </SelectGroup>
                     <SelectSeparator />
                     
                     <SelectGroup>
-                      <SelectLabel>ðŸ“ˆ Blended Performance Metrics</SelectLabel>
-                      <SelectItem value="overall-ctr">Overall CTR (Click-Through Rate)</SelectItem>
-                      <SelectItem value="blended-cpc">Blended CPC (Cost Per Click)</SelectItem>
-                      <SelectItem value="blended-cpm">Blended CPM (Cost Per Mille)</SelectItem>
-                      <SelectItem value="campaign-cvr">Campaign CVR (Conversion Rate)</SelectItem>
-                      <SelectItem value="campaign-cpa">Campaign CPA (Cost Per Acquisition)</SelectItem>
-                      <SelectItem value="campaign-cpl">Campaign CPL (Cost Per Lead)</SelectItem>
+                      <SelectLabel>💰 Revenue extensions</SelectLabel>
+                      <SelectItem value="offsite-revenue">Revenue (Offsite / CRM / Shopify)</SelectItem>
+                      <SelectItem value="total-revenue">Total Revenue (GA4 + Offsite)</SelectItem>
                     </SelectGroup>
                     <SelectSeparator />
                     
                     <SelectGroup>
-                      <SelectLabel>ðŸ‘¥ Audience Metrics</SelectLabel>
-                      <SelectItem value="total-users">Total Users</SelectItem>
-                      <SelectItem value="total-sessions">Total Sessions</SelectItem>
+                      <SelectLabel>👥 Audience (GA4)</SelectLabel>
+                      <SelectItem value="ga4-users">Users (GA4)</SelectItem>
+                      <SelectItem value="ga4-sessions">Sessions (GA4)</SelectItem>
                     </SelectGroup>
                     <SelectSeparator />
                     
@@ -1247,105 +1251,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <Select
                 value={kpiForm.metric}
                 onValueChange={(value) => {
-                  let currentValue = '';
-                  let unit = '';
-                  let category = '';
-                  
-                  const liMetrics = linkedinMetrics || {};
-                  const ciMetrics = customIntegration?.metrics || {};
-                  
-                  const parseNum = (val: any): number => {
-                    const num = typeof val === 'string' ? parseFloat(val) : val;
-                    return isNaN(num) ? 0 : num;
-                  };
-                  
-                  switch(value) {
-                    case 'total-impressions':
-                      const liImpressions = parseNum(liMetrics.impressions);
-                      const ciPageviews = parseNum(ciMetrics.pageviews);
-                      currentValue = formatNumber(liImpressions + ciPageviews);
-                      category = 'Performance';
-                      break;
-                    case 'total-clicks':
-                      const liClicks = parseNum(liMetrics.clicks);
-                      currentValue = formatNumber(liClicks);
-                      category = 'Engagement';
-                      break;
-                    case 'total-conversions':
-                      const liConversions = parseNum(liMetrics.conversions);
-                      currentValue = formatNumber(liConversions);
-                      category = 'Performance';
-                      break;
-                    case 'total-leads':
-                      const liLeads = parseNum(liMetrics.leads);
-                      currentValue = formatNumber(liLeads);
-                      category = 'Performance';
-                      break;
-                    case 'total-spend':
-                      const liSpend = parseNum(liMetrics.spend);
-                      currentValue = formatNumber(liSpend);
-                      unit = '$';
-                      category = 'Cost Efficiency';
-                      break;
-                    case 'total-engagements':
-                      const liEngagements = parseNum(liMetrics.engagements);
-                      const ciSessions = parseNum(ciMetrics.sessions);
-                      currentValue = formatNumber(liEngagements + ciSessions);
-                      category = 'Engagement';
-                      break;
-                    case 'overall-ctr':
-                      const totalClicks = parseNum(liMetrics.clicks);
-                      const totalImpressions = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
-                      currentValue = formatNumber(totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0);
-                      unit = '%';
-                      category = 'Performance';
-                      break;
-                    case 'blended-cpc':
-                      const totalSpend = parseNum(liMetrics.spend);
-                      const clicks = parseNum(liMetrics.clicks);
-                      currentValue = formatNumber(clicks > 0 ? totalSpend / clicks : 0);
-                      unit = '$';
-                      category = 'Cost Efficiency';
-                      break;
-                    case 'blended-cpm':
-                      const spendForCpm = parseNum(liMetrics.spend);
-                      const impressionsForCpm = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
-                      currentValue = formatNumber(impressionsForCpm > 0 ? (spendForCpm / impressionsForCpm) * 1000 : 0);
-                      unit = '$';
-                      category = 'Cost Efficiency';
-                      break;
-                    case 'campaign-cvr':
-                      const conversions = parseNum(liMetrics.conversions);
-                      const clicksForCvr = parseNum(liMetrics.clicks);
-                      currentValue = formatNumber(clicksForCvr > 0 ? (conversions / clicksForCvr) * 100 : 0);
-                      unit = '%';
-                      category = 'Performance';
-                      break;
-                    case 'campaign-cpa':
-                      const spendForCpa = parseNum(liMetrics.spend);
-                      const conversionsForCpa = parseNum(liMetrics.conversions);
-                      currentValue = formatNumber(conversionsForCpa > 0 ? spendForCpa / conversionsForCpa : 0);
-                      unit = '$';
-                      category = 'Cost Efficiency';
-                      break;
-                    case 'campaign-cpl':
-                      const spendForCpl = parseNum(liMetrics.spend);
-                      const leadsForCpl = parseNum(liMetrics.leads);
-                      currentValue = formatNumber(leadsForCpl > 0 ? spendForCpl / leadsForCpl : 0);
-                      unit = '$';
-                      category = 'Cost Efficiency';
-                      break;
-                    case 'total-users':
-                      currentValue = formatNumber(parseNum(ciMetrics.users));
-                      category = 'Engagement';
-                      break;
-                    case 'total-sessions':
-                      currentValue = formatNumber(parseNum(ciMetrics.sessions));
-                      category = 'Engagement';
-                      break;
-                  }
-                  
-                  setKpiForm({ ...kpiForm, metric: value, currentValue, unit, category });
+                  const live = getLiveCampaignMetric(value);
+                  setKpiForm({ ...kpiForm, metric: value, currentValue: live.value, unit: live.unit, category: live.category });
                 }}
               >
                 <SelectTrigger id="edit-kpi-metric" data-testid="select-edit-campaign-kpi-metric">
@@ -1353,31 +1260,28 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 </SelectTrigger>
                 <SelectContent className="max-h-[400px]">
                   <SelectGroup>
-                    <SelectLabel>ðŸ“Š Core Campaign Metrics</SelectLabel>
-                    <SelectItem value="total-impressions">Total Impressions</SelectItem>
-                    <SelectItem value="total-clicks">Total Clicks</SelectItem>
-                    <SelectItem value="total-conversions">Total Conversions</SelectItem>
-                    <SelectItem value="total-leads">Total Leads</SelectItem>
-                    <SelectItem value="total-spend">Total Spend</SelectItem>
-                    <SelectItem value="total-engagements">Total Engagements</SelectItem>
+                    <SelectLabel>📊 Outcome KPIs (recommended)</SelectLabel>
+                    <SelectItem value="ga4-revenue">Revenue (GA4)</SelectItem>
+                    <SelectItem value="ga4-conversions">Conversions (GA4)</SelectItem>
+                    <SelectItem value="ga4-conversion-rate">Conversion Rate (GA4)</SelectItem>
+                    <SelectItem value="total-spend">Total Spend (Unified)</SelectItem>
+                    <SelectItem value="roas">ROAS (GA4 revenue ÷ spend)</SelectItem>
+                    <SelectItem value="roi">ROI ((GA4 revenue − spend) ÷ spend)</SelectItem>
+                    <SelectItem value="cpa">CPA (spend ÷ GA4 conversions)</SelectItem>
                   </SelectGroup>
                   <SelectSeparator />
                   
                   <SelectGroup>
-                    <SelectLabel>ðŸ“ˆ Blended Performance Metrics</SelectLabel>
-                    <SelectItem value="overall-ctr">Overall CTR (Click-Through Rate)</SelectItem>
-                    <SelectItem value="blended-cpc">Blended CPC (Cost Per Click)</SelectItem>
-                    <SelectItem value="blended-cpm">Blended CPM (Cost Per Mille)</SelectItem>
-                    <SelectItem value="campaign-cvr">Campaign CVR (Conversion Rate)</SelectItem>
-                    <SelectItem value="campaign-cpa">Campaign CPA (Cost Per Acquisition)</SelectItem>
-                    <SelectItem value="campaign-cpl">Campaign CPL (Cost Per Lead)</SelectItem>
+                    <SelectLabel>💰 Revenue extensions</SelectLabel>
+                    <SelectItem value="offsite-revenue">Revenue (Offsite / CRM / Shopify)</SelectItem>
+                    <SelectItem value="total-revenue">Total Revenue (GA4 + Offsite)</SelectItem>
                   </SelectGroup>
                   <SelectSeparator />
                   
                   <SelectGroup>
-                    <SelectLabel>ðŸ‘¥ Audience Metrics</SelectLabel>
-                    <SelectItem value="total-users">Total Users</SelectItem>
-                    <SelectItem value="total-sessions">Total Sessions</SelectItem>
+                    <SelectLabel>👥 Audience (GA4)</SelectLabel>
+                    <SelectItem value="ga4-users">Users (GA4)</SelectItem>
+                    <SelectItem value="ga4-sessions">Sessions (GA4)</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>

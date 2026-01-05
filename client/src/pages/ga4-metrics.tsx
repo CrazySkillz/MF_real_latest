@@ -2303,8 +2303,10 @@ export default function GA4Metrics() {
                                           ...prev,
                                           metric: template.metric,
                                           category: derivedCategory,
-                                          name: prev.name || template.name,
-                                          unit: prev.unit || template.unit,
+                                          // When selecting a template, keep name/unit in sync with the selected metric
+                                          // so switching tiles (e.g. ROAS -> ROI) updates both fields predictably.
+                                          name: editingBenchmark ? prev.name || template.name : template.name,
+                                          unit: editingBenchmark ? prev.unit || template.unit : template.unit,
                                           currentValue: String(liveCurrent),
                                         }));
                                       }}

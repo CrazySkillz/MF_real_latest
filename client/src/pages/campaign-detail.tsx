@@ -994,19 +994,28 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <div>
                 <h4 className="font-medium text-slate-900 dark:text-white">Select KPI Template</h4>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Choose an outcome KPI to auto-fill the metric, unit, and current value.
+                  Choose an outcome KPI to auto-fill the metric, unit, and current value. Onsite outcomes come from GA4.
                 </p>
               </div>
 
+              {!Boolean(outcomeTotals?.ga4?.connected) && (
+                <div className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+                  <div className="text-sm font-medium text-amber-900 dark:text-amber-200">GA4 is not connected</div>
+                  <div className="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                    Onsite metrics (Revenue/Conversions/Conversion Rate) and derived KPIs like ROAS/ROI/CPA require GA4. You can still set spend and offsite revenue KPIs, or connect GA4 to unlock onsite outcomes.
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { name: "Revenue (GA4)", metric: "ga4-revenue", unit: "$", category: "Revenue", description: "Onsite revenue tracked in GA4" },
+                  { name: "Onsite Revenue (GA4)", metric: "ga4-revenue", unit: "$", category: "Revenue", description: "Website/app revenue tracked in GA4" },
                   { name: "Total Spend (Unified)", metric: "total-spend", unit: "$", category: "Cost Efficiency", description: "Imported spend or platform spend fallback" },
                   { name: "ROAS", metric: "roas", unit: "x", category: "Performance", description: "GA4 revenue ÷ spend" },
                   { name: "ROI", metric: "roi", unit: "%", category: "Performance", description: "(GA4 revenue − spend) ÷ spend × 100" },
                   { name: "CPA", metric: "cpa", unit: "$", category: "Cost Efficiency", description: "Spend ÷ GA4 conversions" },
-                  { name: "Conversions (GA4)", metric: "ga4-conversions", unit: "", category: "Performance", description: "GA4 conversions total" },
-                  { name: "Conversion Rate (GA4)", metric: "ga4-conversion-rate", unit: "%", category: "Performance", description: "GA4 conversions ÷ GA4 sessions × 100" },
+                  { name: "Onsite Conversions (GA4)", metric: "ga4-conversions", unit: "", category: "Performance", description: "Conversions completed on-site (GA4)" },
+                  { name: "Onsite Conversion Rate (GA4)", metric: "ga4-conversion-rate", unit: "%", category: "Performance", description: "GA4 conversions ÷ GA4 sessions × 100" },
                   { name: "Total Revenue (GA4 + Offsite)", metric: "total-revenue", unit: "$", category: "Revenue", description: "GA4 revenue + offsite revenue marked NOT in GA4" },
                 ].map((template) => {
                   const ga4Connected = Boolean(outcomeTotals?.ga4?.connected);
@@ -1044,7 +1053,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                         {disabled
                           ? !ga4Connected && requiresGA4
-                            ? "GA4 required"
+                            ? "GA4 required (onsite outcomes)"
                             : "Spend required"
                           : template.description}
                       </div>
@@ -1081,9 +1090,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     {/* Aggregated Campaign Metrics - Always visible */}
                     <SelectGroup>
                       <SelectLabel>📊 Outcome KPIs (recommended)</SelectLabel>
-                      <SelectItem value="ga4-revenue">Revenue (GA4)</SelectItem>
-                      <SelectItem value="ga4-conversions">Conversions (GA4)</SelectItem>
-                      <SelectItem value="ga4-conversion-rate">Conversion Rate (GA4)</SelectItem>
+                      <SelectItem value="ga4-revenue">Onsite Revenue (GA4)</SelectItem>
+                      <SelectItem value="ga4-conversions">Onsite Conversions (GA4)</SelectItem>
+                      <SelectItem value="ga4-conversion-rate">Onsite Conversion Rate (GA4)</SelectItem>
                       <SelectItem value="total-spend">Total Spend (Unified)</SelectItem>
                       <SelectItem value="roas">ROAS (GA4 revenue ÷ spend)</SelectItem>
                       <SelectItem value="roi">ROI ((GA4 revenue − spend) ÷ spend)</SelectItem>
@@ -1326,9 +1335,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <SelectContent className="max-h-[400px]">
                   <SelectGroup>
                     <SelectLabel>📊 Outcome KPIs (recommended)</SelectLabel>
-                    <SelectItem value="ga4-revenue">Revenue (GA4)</SelectItem>
-                    <SelectItem value="ga4-conversions">Conversions (GA4)</SelectItem>
-                    <SelectItem value="ga4-conversion-rate">Conversion Rate (GA4)</SelectItem>
+                    <SelectItem value="ga4-revenue">Onsite Revenue (GA4)</SelectItem>
+                    <SelectItem value="ga4-conversions">Onsite Conversions (GA4)</SelectItem>
+                    <SelectItem value="ga4-conversion-rate">Onsite Conversion Rate (GA4)</SelectItem>
                     <SelectItem value="total-spend">Total Spend (Unified)</SelectItem>
                     <SelectItem value="roas">ROAS (GA4 revenue ÷ spend)</SelectItem>
                     <SelectItem value="roi">ROI ((GA4 revenue − spend) ÷ spend)</SelectItem>

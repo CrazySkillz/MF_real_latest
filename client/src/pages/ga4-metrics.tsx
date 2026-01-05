@@ -2300,6 +2300,8 @@ export default function GA4Metrics() {
                                       onClick={() => {
                                         if (disabled) return;
                                         setSelectedBenchmarkTemplate(template);
+                                        const industry = newBenchmark.industry;
+                                        const isIndustryType = (newBenchmark.benchmarkType || "industry") === "industry";
                                         const liveCurrent = getLiveBenchmarkCurrentValue(template.metric);
                                         const derivedCategory = deriveBenchmarkCategoryFromMetric(template.metric);
                                         setNewBenchmark((prev) => ({
@@ -2311,7 +2313,31 @@ export default function GA4Metrics() {
                                           name: editingBenchmark ? prev.name || template.name : template.name,
                                           unit: editingBenchmark ? prev.unit || template.unit : template.unit,
                                           currentValue: String(liveCurrent),
+                                          // If we're benchmarking against Industry, avoid leaving a stale benchmarkValue
+                                          // from the previously selected metric; we'll refetch below.
+                                          benchmarkValue: isIndustryType && industry ? "" : prev.benchmarkValue,
                                         }));
+
+                                        // If an industry is already selected, switching metrics should refetch the
+                                        // industry benchmark for the new metric and populate Benchmark Value.
+                                        if (isIndustryType && industry) {
+                                          fetch(
+                                            `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(template.metric)}`
+                                          )
+                                            .then((resp) => (resp.ok ? resp.json().catch(() => null) : null))
+                                            .then((data) => {
+                                              if (data && typeof data.value !== "undefined") {
+                                                setNewBenchmark((prev) => ({
+                                                  ...prev,
+                                                  benchmarkValue: String(data.value),
+                                                  unit: prev.unit || data.unit || prev.unit,
+                                                }));
+                                              }
+                                            })
+                                            .catch(() => {
+                                              // ignore - industry benchmarks are best-effort
+                                            });
+                                        }
                                       }}
                                     >
                                       <div className="font-medium text-sm text-slate-900 dark:text-white">

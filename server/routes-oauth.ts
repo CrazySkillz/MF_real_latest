@@ -3562,6 +3562,239 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * Campaign Outcome Totals (Outcome-centric)
+   * - GA4 is the source of truth for onsite outcomes (revenue, conversions, sessions, users)
+   * - Platform connections contribute inputs (spend, clicks, impressions, leads)
+   * - Revenue sources connected via LinkedIn "additional data" (HubSpot/Salesforce/Shopify) can optionally be classified
+   *   as offsite revenue (not tracked in GA4) and will be reported separately to avoid double-counting.
+   */
+  app.get("/api/campaigns/:id/outcome-totals", async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || "");
+      const dateRange = String(req.query.dateRange || "30days");
+
+      const parseNum = (v: any): number => {
+        if (v === null || typeof v === "undefined" || v === "") return 0;
+        const n = typeof v === "string" ? parseFloat(v) : Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      const toGa4DateRange = (dr: string) => {
+        switch (String(dr || "").toLowerCase()) {
+          case "7days":
+            return "7daysAgo";
+          case "30days":
+            return "30daysAgo";
+          case "90days":
+            return "90daysAgo";
+          default:
+            return "30daysAgo";
+        }
+      };
+
+      const [campaign, linkedInConn, metaConn, customIntegration] = await Promise.all([
+        storage.getCampaign(campaignId),
+        storage.getLinkedInConnection(campaignId),
+        storage.getMetaConnection(campaignId),
+        storage.getCustomIntegration(campaignId),
+      ]);
+
+      // GA4 totals
+      let ga4Totals: any = {
+        connected: false,
+        revenue: 0,
+        conversions: 0,
+        sessions: 0,
+        users: 0,
+      };
+      try {
+        const ga4DateRange = toGa4DateRange(dateRange);
+        const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
+        const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, undefined, 2000, campaignFilter);
+        ga4Totals = {
+          connected: true,
+          revenue: parseNum(result?.totals?.revenue),
+          conversions: parseNum(result?.totals?.conversions),
+          sessions: parseNum(result?.totals?.sessions),
+          users: parseNum(result?.totals?.users),
+        };
+      } catch (e: any) {
+        // Best-effort: allow this endpoint to return even if GA4 is not connected.
+        ga4Totals = { ...ga4Totals, connected: false, error: e?.message || "GA4 unavailable" };
+      }
+
+      // Persisted spend totals (manual/CSV/Sheets imports)
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const spendTotals = await storage.getSpendTotalForRange(campaignId, startDate, endDate);
+      const persistedSpend = parseNum((spendTotals as any)?.totalSpend);
+
+      // LinkedIn aggregated platform inputs (from latest import session)
+      let linkedIn: any = { connected: false };
+      let linkedInSpend = 0;
+      try {
+        if (linkedInConn && linkedInConn.adAccountId) {
+          const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+          const latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+          if (latestSession) {
+            const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
+            const aggregated: Record<string, number> = {};
+            const keys = Array.from(new Set((metrics || []).map((m: any) => m.metricKey)));
+            keys.forEach((k: string) => {
+              const total = (metrics || [])
+                .filter((m: any) => m.metricKey === k)
+                .reduce((sum: number, m: any) => sum + parseNum(m.metricValue), 0);
+              aggregated[k] = parseFloat(total.toFixed(2));
+            });
+            linkedInSpend = parseNum(aggregated.spend);
+            linkedIn = {
+              connected: true,
+              spend: linkedInSpend,
+              clicks: parseNum(aggregated.clicks),
+              impressions: parseNum(aggregated.impressions),
+              conversions: parseNum(aggregated.conversions),
+              leads: parseNum(aggregated.leads),
+              conversionValue: latestSession.conversionValue ? parseNum(latestSession.conversionValue) : 0,
+              attributedRevenue: parseNum(aggregated.revenue),
+              roas: parseNum(aggregated.roas),
+              roi: parseNum(aggregated.roi),
+              lastImportedAt: latestSession.importedAt,
+            };
+          } else {
+            linkedIn = { connected: true, hasImport: false };
+          }
+        }
+      } catch (e: any) {
+        linkedIn = { connected: !!(linkedInConn && linkedInConn.adAccountId), error: e?.message || "LinkedIn unavailable" };
+      }
+
+      // Meta summary inputs (currently mock-backed)
+      let meta: any = { connected: false };
+      let metaSpend = 0;
+      try {
+        if (metaConn) {
+          const { generateMetaMockData } = await import("./utils/metaMockData");
+          const mockData = generateMetaMockData(metaConn.adAccountId, metaConn.adAccountName || "Meta Ad Account");
+          const s = mockData?.summary || {};
+          metaSpend = parseNum(s?.spend);
+          meta = {
+            connected: true,
+            spend: metaSpend,
+            clicks: parseNum(s?.clicks),
+            impressions: parseNum(s?.impressions),
+            conversions: parseNum(s?.conversions),
+            // leads not reliably available in current meta mock shape
+          };
+        }
+      } catch (e: any) {
+        meta = { connected: !!metaConn, error: e?.message || "Meta unavailable" };
+      }
+
+      // Custom integration inputs (webhook-fed)
+      let custom: any = { connected: false };
+      try {
+        if (customIntegration) {
+          const latest = await storage.getLatestCustomIntegrationMetrics(campaignId);
+          const m: any = latest || {};
+          custom = {
+            connected: true,
+            spend: parseNum(m.spend),
+            clicks: parseNum(m.clicks),
+            impressions: parseNum(m.impressions),
+            conversions: parseNum(m.conversions),
+            users: parseNum(m.users),
+            sessions: parseNum(m.sessions),
+            pageviews: parseNum(m.pageviews),
+            lastUploadedAt: m.uploadedAt || null,
+          };
+        }
+      } catch (e: any) {
+        custom = { connected: !!customIntegration, error: e?.message || "Custom integration unavailable" };
+      }
+
+      // Unified spend rule:
+      // - If the user imported spend (persistedSpend > 0), use that as campaign marketing spend.
+      // - Otherwise, fall back to sum of connected ad-platform spends (LinkedIn + Meta today; extend as platforms are added).
+      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend).toFixed(2));
+      const unifiedSpend = persistedSpend > 0 ? persistedSpend : platformSpendFallback;
+      const spendSource = persistedSpend > 0 ? "persisted_spend_sources" : "platform_spend_fallback";
+
+      // Offsite revenue sources (best-effort; populated by mapping wizards when configured)
+      const parseMappingConfig = (raw: any) => {
+        if (!raw) return null;
+        try {
+          return typeof raw === "string" ? JSON.parse(raw) : raw;
+        } catch {
+          return null;
+        }
+      };
+
+      const revenueSources: any[] = [];
+      let offsiteRevenueTotal = 0;
+      try {
+        const [hubspotConn, sfConn, shopifyConn] = await Promise.all([
+          storage.getHubspotConnection(campaignId),
+          storage.getSalesforceConnection(campaignId),
+          storage.getShopifyConnection(campaignId),
+        ]);
+        const hubs = [
+          { type: "hubspot", conn: hubspotConn },
+          { type: "salesforce", conn: sfConn },
+          { type: "shopify", conn: shopifyConn },
+        ];
+        for (const s of hubs) {
+          const cfg = parseMappingConfig((s.conn as any)?.mappingConfig);
+          if (!cfg) continue;
+          const revenueClassification = String(cfg.revenueClassification || "");
+          const lastTotalRevenue = parseNum(cfg.lastTotalRevenue);
+          const offsite = revenueClassification === "offsite_not_in_ga4";
+          revenueSources.push({
+            type: s.type,
+            connected: true,
+            revenueClassification: revenueClassification || null,
+            lastTotalRevenue: lastTotalRevenue || 0,
+            offsite,
+          });
+          if (offsite && lastTotalRevenue > 0) offsiteRevenueTotal += lastTotalRevenue;
+        }
+      } catch {
+        // ignore
+      }
+
+      const onsiteRevenue = parseNum(ga4Totals.revenue);
+      const totalRevenueUnified = parseFloat((onsiteRevenue + offsiteRevenueTotal).toFixed(2));
+
+      res.json({
+        success: true,
+        campaignId,
+        dateRange,
+        ga4: ga4Totals,
+        spend: {
+          persistedSpend,
+          unifiedSpend,
+          spendSource,
+          startDate,
+          endDate,
+          ...(spendTotals || {}),
+        },
+        platforms: {
+          linkedin: linkedIn,
+          meta,
+          customIntegration: custom,
+        },
+        revenue: {
+          onsiteRevenue,
+          offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
+          totalRevenue: totalRevenueUnified,
+        },
+        revenueSources,
+      });
+    } catch (error: any) {
+      console.error("[Outcome Totals] Error:", error);
+      res.status(500).json({ success: false, error: error?.message || "Failed to compute outcome totals" });
+    }
+  });
+
   // New route: Get all GA4 connections for a campaign
   app.get("/api/campaigns/:id/ga4-connections", async (req, res) => {
     try {
@@ -5629,7 +5862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/salesforce/save-mappings", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { campaignField, selectedValues, revenueField, days } = req.body || {};
+      const { campaignField, selectedValues, revenueField, days, revenueClassification } = req.body || {};
 
       const attribField = String(campaignField || '').trim();
       const revenue = String(revenueField || 'Amount').trim();
@@ -5749,6 +5982,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const sfConn: any = await storage.getSalesforceConnection(campaignId);
       if (sfConn) {
+        const rcRaw = String(revenueClassification || '').trim();
+        const rc =
+          rcRaw === 'offsite_not_in_ga4' || rcRaw === 'onsite_in_ga4' ? rcRaw : 'onsite_in_ga4';
         const mappingConfig = {
           objectType: 'opportunity',
           campaignField: attribField,
@@ -5756,6 +5992,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenueField: revenue,
           days: rangeDays,
           currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+          revenueClassification: rc,
+          lastTotalRevenue: Number(totalRevenue.toFixed(2)),
         };
         await storage.updateSalesforceConnection(sfConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }
@@ -5957,6 +6195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignProperty,
         selectedValues,
         revenueProperty,
+        revenueClassification,
         days,
         stageIds,
       } = req.body || {};
@@ -6070,6 +6309,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Persist mapping config on the active HubSpot connection
       const hubspotConn: any = await storage.getHubspotConnection(campaignId);
       if (hubspotConn) {
+        const rcRaw = String(revenueClassification || '').trim();
+        const rc =
+          rcRaw === 'offsite_not_in_ga4' || rcRaw === 'onsite_in_ga4' ? rcRaw : 'onsite_in_ga4';
         const mappingConfig = {
           objectType: 'deals',
           campaignProperty: campaignProp,
@@ -6078,6 +6320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           days: rangeDays,
           stageIds: effectiveStageIds,
           currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+          revenueClassification: rc,
+          lastTotalRevenue: Number(totalRevenue.toFixed(2)),
         };
         await storage.updateHubspotConnection(hubspotConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }
@@ -14554,7 +14798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/shopify/save-mappings", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { campaignField, selectedValues, revenueMetric, days } = req.body || {};
+      const { campaignField, selectedValues, revenueMetric, revenueClassification, days } = req.body || {};
       const field = String(campaignField || "").trim();
       const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
       const metric = String(revenueMetric || "total_price").trim();
@@ -14630,6 +14874,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Persist mapping config on the active Shopify connection
       const shopifyConn: any = await storage.getShopifyConnection(campaignId);
       if (shopifyConn) {
+        const rcRaw = String(revenueClassification || "").trim();
+        const rc =
+          rcRaw === "offsite_not_in_ga4" || rcRaw === "onsite_in_ga4" ? rcRaw : "onsite_in_ga4";
         const mappingConfig = {
           objectType: "orders",
           campaignField: field,
@@ -14637,6 +14884,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenueMetric: metric,
           days: rangeDays,
           shopDomain: conn.shopDomain,
+          revenueClassification: rc,
+          lastTotalRevenue: Number(totalRevenue.toFixed(2)),
         };
         await storage.updateShopifyConnection(shopifyConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }

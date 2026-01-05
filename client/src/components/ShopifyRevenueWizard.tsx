@@ -24,6 +24,7 @@ export function ShopifyRevenueWizard(props: {
   const [days, setDays] = useState<number>(90);
   const [campaignField, setCampaignField] = useState<string>("utm_campaign");
   const [revenueMetric, setRevenueMetric] = useState<string>("total_price");
+  const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("onsite_in_ga4");
   const [valuesLoading, setValuesLoading] = useState(false);
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
@@ -115,6 +116,7 @@ export function ShopifyRevenueWizard(props: {
             campaignField,
             selectedValues,
             revenueMetric,
+            revenueClassification,
             days,
           }),
         });
@@ -308,6 +310,26 @@ export function ShopifyRevenueWizard(props: {
                   onChange={(e) => setDays(Math.min(Math.max(parseInt(e.target.value || "90", 10) || 90, 1), 3650))}
                 />
                 <div className="text-xs text-slate-500">Default: last 90 days.</div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Is this revenue already tracked in GA4?</Label>
+                <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>
+                  <SelectTrigger>
+                    <span>
+                      {revenueClassification === "onsite_in_ga4"
+                        ? "Yes — it’s onsite revenue (also tracked in GA4)"
+                        : "No — it’s offsite revenue (NOT tracked in GA4)"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent className="z-[10000]">
+                    <SelectItem value="onsite_in_ga4">Yes — it’s onsite revenue (also tracked in GA4)</SelectItem>
+                    <SelectItem value="offsite_not_in_ga4">No — it’s offsite revenue (NOT tracked in GA4)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-slate-500">
+                  If you choose “No”, this revenue can be included in campaign-level total revenue without double counting GA4.
+                </div>
               </div>
             </div>
           )}

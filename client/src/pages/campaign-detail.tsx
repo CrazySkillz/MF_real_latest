@@ -989,6 +989,71 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* KPI Template Selection (tiles) */}
+            <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+              <div>
+                <h4 className="font-medium text-slate-900 dark:text-white">Select KPI Template</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Choose an outcome KPI to auto-fill the metric, unit, and current value.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { name: "Revenue (GA4)", metric: "ga4-revenue", unit: "$", category: "Revenue", description: "Onsite revenue tracked in GA4" },
+                  { name: "Total Spend (Unified)", metric: "total-spend", unit: "$", category: "Cost Efficiency", description: "Imported spend or platform spend fallback" },
+                  { name: "ROAS", metric: "roas", unit: "x", category: "Performance", description: "GA4 revenue ÷ spend" },
+                  { name: "ROI", metric: "roi", unit: "%", category: "Performance", description: "(GA4 revenue − spend) ÷ spend × 100" },
+                  { name: "CPA", metric: "cpa", unit: "$", category: "Cost Efficiency", description: "Spend ÷ GA4 conversions" },
+                  { name: "Conversions (GA4)", metric: "ga4-conversions", unit: "", category: "Performance", description: "GA4 conversions total" },
+                  { name: "Conversion Rate (GA4)", metric: "ga4-conversion-rate", unit: "%", category: "Performance", description: "GA4 conversions ÷ GA4 sessions × 100" },
+                  { name: "Total Revenue (GA4 + Offsite)", metric: "total-revenue", unit: "$", category: "Revenue", description: "GA4 revenue + offsite revenue marked NOT in GA4" },
+                ].map((template) => {
+                  const ga4Connected = Boolean(outcomeTotals?.ga4?.connected);
+                  const unifiedSpend = parseNumSafe(outcomeTotals?.spend?.unifiedSpend);
+                  const requiresGA4 = template.metric.startsWith("ga4-") || template.metric === "roas" || template.metric === "roi" || template.metric === "cpa" || template.metric === "total-revenue";
+                  const requiresSpend = template.metric === "roas" || template.metric === "roi" || template.metric === "cpa";
+                  const disabled = (requiresGA4 && !ga4Connected) || (requiresSpend && !(unifiedSpend > 0));
+                  const isSelected = kpiForm.metric === template.metric;
+
+                  return (
+                    <div
+                      key={template.metric}
+                      className={`p-3 border-2 rounded-lg transition-all ${
+                        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                      } ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                      }`}
+                      onClick={() => {
+                        if (disabled) return;
+                        const live = getLiveCampaignMetric(template.metric);
+                        setKpiForm((prev) => ({
+                          ...prev,
+                          name: prev.name || template.name,
+                          metric: template.metric,
+                          currentValue: live.value,
+                          unit: live.unit || template.unit,
+                          category: live.category || template.category,
+                        }));
+                      }}
+                      data-testid={`campaign-kpi-template-${template.metric}`}
+                    >
+                      <div className="font-medium text-sm text-slate-900 dark:text-white">{template.name}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                        {disabled
+                          ? !ga4Connected && requiresGA4
+                            ? "GA4 required"
+                            : "Spend required"
+                          : template.description}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="kpi-name">KPI Name *</Label>

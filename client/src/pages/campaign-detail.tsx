@@ -690,12 +690,16 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     };
 
     const metric = String(cfg.metric || '');
-    if (metric === 'conversion-rate') {
-      const type = cfg.definition === 'website' ? 'Website' : cfg.definition === 'click' ? 'Click' : '';
-      if (type) parts.push(`${type} CR`);
+    if (metric === 'conversion-rate-website') {
+      parts.push('Website CR');
       push('Conv', cfg.inputs.conversions);
-      if (cfg.definition === 'website') push('Sessions', cfg.inputs.sessions);
-      if (cfg.definition === 'click') push('Clicks', cfg.inputs.clicks);
+      push('Sessions', cfg.inputs.sessions);
+      return parts.join(' • ');
+    }
+    if (metric === 'conversion-rate-click') {
+      parts.push('Click CR');
+      push('Conv', cfg.inputs.conversions);
+      push('Clicks', cfg.inputs.clicks);
       return parts.join(' • ');
     }
 

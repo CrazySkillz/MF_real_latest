@@ -1308,14 +1308,16 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Achieved</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-kpis-above-target">
                       {kpis.filter(k => {
                         const current = getKpiCurrentNumber(k);
                         const target = parseNumSafe(k?.targetValue) || 0;
                         const lowerBetter = isLowerBetterMetric(String(k?.metric || ''));
                         if (target <= 0) return false;
-                        return lowerBetter ? current <= target : current >= target;
+                        const ratio = lowerBetter ? (current > 0 ? target / current : 0) : (current / target);
+                        const pct = ratio * 100;
+                        return pct >= 100;
                       }).length}
                     </p>
                   </div>
@@ -1328,14 +1330,16 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
                     <p className="text-2xl font-bold text-red-600" data-testid="text-kpis-below-target">
                       {kpis.filter(k => {
                         const current = getKpiCurrentNumber(k);
                         const target = parseNumSafe(k?.targetValue) || 0;
                         const lowerBetter = isLowerBetterMetric(String(k?.metric || ''));
                         if (target <= 0) return false;
-                        return lowerBetter ? current > target : current < target;
+                        const ratio = lowerBetter ? (current > 0 ? target / current : 0) : (current / target);
+                        const pct = ratio * 100;
+                        return pct < 70;
                       }).length}
                     </p>
                   </div>
@@ -1377,7 +1381,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               const target = parseNumSafe(kpi.targetValue) || 0;
               const lowerBetter = isLowerBetterMetric(String(kpi?.metric || ''));
               const ratio = target > 0 ? (lowerBetter ? (current > 0 ? target / current : 0) : (current / target)) : 0;
-              const progressPercent = Math.round(Math.max(0, Math.min(ratio * 100, 100)));
+              const progressPercentRaw = Math.max(0, Math.min(ratio * 100, 100));
+              const progressPercentLabel = progressPercentRaw.toFixed(1);
               const liveDisplay = formatValueWithUnit(current, String(kpi?.unit || ''));
               const sourcesSelectedRaw = formatSourcesSelected(kpi?.calculationConfig);
               const shouldShowSources = isTileMetric(String(kpi?.metric || '')) || Boolean(kpi?.calculationConfig);
@@ -1477,15 +1482,15 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600 dark:text-slate-400">Progress</span>
-                  <span className="font-medium">{progressPercent}%</span>
+                  <span className="font-medium">{progressPercentLabel}%</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                   <div 
                     className={`h-2 rounded-full transition-all ${
-                      progressPercent >= 100 ? 'bg-green-600' : 
-                      progressPercent >= 70 ? 'bg-yellow-600' : 'bg-red-600'
+                      progressPercentRaw >= 100 ? 'bg-green-600' : 
+                      progressPercentRaw >= 70 ? 'bg-yellow-600' : 'bg-red-600'
                     }`}
-                    style={{ width: `${Math.min(progressPercent, 100)}%` }}
+                    style={{ width: `${progressPercentRaw}%` }}
                   />
                 </div>
               </div>

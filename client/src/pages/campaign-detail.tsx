@@ -306,6 +306,37 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     inputs: Partial<Record<CalcInputKey, string[]>>;
   };
 
+  const getMetricDisplayName = (metric: string): string => {
+    switch (String(metric || '')) {
+      case 'roas':
+        return 'ROAS';
+      case 'roi':
+        return 'ROI';
+      case 'cpa':
+        return 'CPA';
+      case 'cpl':
+        return 'CPL';
+      case 'ctr':
+        return 'CTR';
+      case 'revenue':
+        return 'Revenue';
+      case 'spend':
+        return 'Spend';
+      case 'conversions':
+        return 'Conversions';
+      case 'conversion-rate':
+        return 'Conversion Rate';
+      case 'users':
+        return 'Users';
+      case 'sessions':
+        return 'Sessions';
+      case 'leads':
+        return 'Leads';
+      default:
+        return String(metric || '');
+    }
+  };
+
   const normalizeCalcConfig = (raw: any): CalcConfig | null => {
     if (!raw) return null;
     if (typeof raw === 'string') {
@@ -452,8 +483,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (metric === 'roas') {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
       const spend = sumSelected('spend', cfg.inputs?.spend || []);
-      const roas = spend > 0 ? revenue / spend : 0;
-      return { value: roas, unit: 'x' };
+      const roasPct = spend > 0 ? (revenue / spend) * 100 : 0;
+      return { value: roasPct, unit: '%' };
     }
     if (metric === 'roi') {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
@@ -598,8 +629,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const getMetricDisplayUnit = (metric: string): string => {
     const m = String(metric || '');
     if (m === 'revenue' || m === 'spend' || m === 'cpa' || m === 'cpl') return '$';
-    if (m === 'roi' || m === 'ctr' || m === 'conversion-rate') return '%';
-    if (m === 'roas') return 'x';
+    if (m === 'roi' || m === 'ctr' || m === 'conversion-rate' || m === 'roas') return '%';
     return '';
   };
 
@@ -1401,15 +1431,17 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             {kpis.map((kpi) => {
               const current = getKpiCurrentNumber(kpi);
               const target = parseNumSafe(kpi.targetValue) || 0;
-              const lowerBetter = isLowerBetterMetric(String(kpi?.metric || ''));
+              const metricKey = String(kpi?.metric || '');
+              const displayUnit = isTileMetric(metricKey) ? getMetricDisplayUnit(metricKey) : String(kpi?.unit || '');
+              const lowerBetter = isLowerBetterMetric(metricKey);
               const ratio = target > 0 ? (lowerBetter ? (current > 0 ? target / current : 0) : (current / target)) : 0;
               const progressPercentRaw = Math.max(0, Math.min(ratio * 100, 100));
               const progressPercentLabel = progressPercentRaw.toFixed(1);
-              const liveDisplay = formatValueWithUnit(current, String(kpi?.unit || ''));
+              const liveDisplay = formatValueWithUnit(current, displayUnit);
               const sourcesSelectedRaw = formatSourcesSelected(kpi?.calculationConfig);
               const shouldShowSources = isTileMetric(String(kpi?.metric || '')) || Boolean(kpi?.calculationConfig);
               const sourcesSelected = sourcesSelectedRaw || (shouldShowSources ? '—' : '');
-              const targetDisplay = formatValueWithUnit(target, String(kpi?.unit || ''));
+              const targetDisplay = formatValueWithUnit(target, displayUnit);
               
               return (
           <Card key={kpi.id}>
@@ -1603,7 +1635,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         });
                         setKpiForm((prev) => ({
                           ...prev,
-                          name: prev.name || template.name,
+                          name: template.name,
                           metric: template.metric,
                           currentValue: '',
                           unit: getMetricDisplayUnit(template.metric),
@@ -1806,7 +1838,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   onValueChange={(value) => {
                     setKpiCalculationConfig(isTileMetric(value) ? { metric: value, inputs: {} } : null);
                     const unit = isTileMetric(value) ? getMetricDisplayUnit(value) : '';
-                    setKpiForm({ ...kpiForm, metric: value, currentValue: '', unit });
+                    setKpiForm({ ...kpiForm, name: getMetricDisplayName(value), metric: value, currentValue: '', unit });
                   }}
                 >
                   <SelectTrigger id="kpi-metric" data-testid="select-campaign-kpi-metric">
@@ -2024,7 +2056,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 onValueChange={(value) => {
                   setKpiCalculationConfig(isTileMetric(value) ? { metric: value, inputs: {} } : null);
                   const unit = isTileMetric(value) ? getMetricDisplayUnit(value) : '';
-                  setKpiForm({ ...kpiForm, metric: value, currentValue: '', unit });
+                  setKpiForm({ ...kpiForm, name: getMetricDisplayName(value), metric: value, currentValue: '', unit });
                 }}
               >
                 <SelectTrigger id="edit-kpi-metric" data-testid="select-edit-campaign-kpi-metric">

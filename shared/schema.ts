@@ -460,6 +460,8 @@ export const benchmarks = pgTable("benchmarks", {
   benchmarkType: text("benchmark_type").notNull().default("industry"), // 'industry', 'competitor', 'historical', 'goal'
   competitorName: text("competitor_name"), // Name of competitor (when benchmarkType is 'competitor')
   source: text("source"), // 'Google Analytics Benchmarks', 'Facebook Industry Reports', 'Internal Historical Data'
+  // Stores user-selected source inputs for campaign-level benchmarks (similar to KPI calculationConfig).
+  calculationConfig: jsonb("calculation_config"),
   industry: text("industry"), // 'E-commerce', 'SaaS', 'Healthcare', etc.
   geoLocation: text("geo_location"), // 'Global', 'US', 'Europe', etc.
   period: text("period").notNull().default("monthly"), // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
@@ -942,6 +944,7 @@ export const insertBenchmarkSchema = createInsertSchema(benchmarks).pick({
   benchmarkType: true,
   competitorName: true,
   source: true,
+  calculationConfig: true,
   industry: true,
   geoLocation: true,
   period: true,

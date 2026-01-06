@@ -122,6 +122,12 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS calculation_config JSONB;
           `);
 
+          // Migration: Add Benchmark calculation config (stores user-selected source inputs for campaign-level benchmarks)
+          await db.execute(sql`
+            ALTER TABLE benchmarks
+            ADD COLUMN IF NOT EXISTS calculation_config JSONB;
+          `);
+
           // Migration: Widen KPI numeric columns to avoid DECIMAL overflow for enterprise-scale values.
           await db.execute(sql`
             ALTER TABLE kpis

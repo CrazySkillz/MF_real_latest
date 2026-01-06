@@ -2445,6 +2445,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
   const [exportMode, setExportMode] = useState<'download' | 'schedule'>('download');
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
   const [selectedBenchmarkTemplate, setSelectedBenchmarkTemplate] = useState<any>(null);
+  const [benchmarkCalculationConfig, setBenchmarkCalculationConfig] = useState<any>(null);
   const [scheduleForm, setScheduleForm] = useState({
     frequency: 'monthly',
     recipients: '',
@@ -2472,6 +2473,258 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     if (val === null || val === undefined || val === '') return 0;
     const n = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : Number(val);
     return Number.isFinite(n) ? n : 0;
+  };
+
+  type BenchCalcInputKey = 'revenue' | 'spend' | 'conversions' | 'sessions' | 'users' | 'clicks' | 'impressions';
+  type BenchCalcConfig = {
+    metric: string;
+    inputs: Partial<Record<BenchCalcInputKey, string[]>>;
+  };
+
+  const normalizeBenchCalcConfig = (raw: any): BenchCalcConfig | null => {
+    if (!raw) return null;
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    }
+    return raw as BenchCalcConfig;
+  };
+
+  const getConnectedPlatformFlags = () => {
+    const ot = outcomeTotals || {};
+    const platforms = ot?.platforms || {};
+    const revenueSources = ot?.revenueSources || [];
+    return {
+      ga4: Boolean(ot?.ga4?.connected),
+      customIntegration: Boolean(platforms?.customIntegration?.connected),
+      linkedin: Boolean(platforms?.linkedin?.connected),
+      meta: Boolean(platforms?.meta?.connected),
+      shopify: Boolean((revenueSources || []).some((s: any) => s?.type === 'shopify' && s?.connected)),
+      hubspot: Boolean((revenueSources || []).some((s: any) => s?.type === 'hubspot' && s?.connected)),
+      salesforce: Boolean((revenueSources || []).some((s: any) => s?.type === 'salesforce' && s?.connected)),
+    };
+  };
+
+  const getRevenueSourceValue = (sourceId: string): number => {
+    const ot = outcomeTotals || {};
+    const platforms = ot?.platforms || {};
+    const revenueSources = ot?.revenueSources || [];
+    if (sourceId === 'ga4') return parseNumSafe(ot?.ga4?.revenue);
+    if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.revenue);
+    if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.attributedRevenue);
+    const found = (revenueSources || []).find((s: any) => String(s?.type || '') === sourceId);
+    if (found) return parseNumSafe(found?.lastTotalRevenue);
+    return 0;
+  };
+
+  const getMetricSourceValue = (inputKey: BenchCalcInputKey, sourceId: string): number => {
+    const ot = outcomeTotals || {};
+    const platforms = ot?.platforms || {};
+    const spend = ot?.spend || {};
+
+    if (inputKey === 'revenue') return getRevenueSourceValue(sourceId);
+    if (inputKey === 'spend') {
+      if (sourceId === 'imported_spend') return parseNumSafe(spend?.persistedSpend);
+      if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.spend);
+      if (sourceId === 'meta') return parseNumSafe(platforms?.meta?.spend);
+      if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.spend);
+      return 0;
+    }
+
+    if (sourceId === 'ga4') {
+      if (inputKey === 'conversions') return parseNumSafe(ot?.ga4?.conversions);
+      if (inputKey === 'sessions') return parseNumSafe(ot?.ga4?.sessions);
+      if (inputKey === 'users') return parseNumSafe(ot?.ga4?.users);
+      return 0;
+    }
+
+    if (sourceId === 'custom_integration') {
+      if (inputKey === 'conversions') return parseNumSafe(platforms?.customIntegration?.conversions);
+      if (inputKey === 'sessions') return parseNumSafe(platforms?.customIntegration?.sessions);
+      if (inputKey === 'users') return parseNumSafe(platforms?.customIntegration?.users);
+      if (inputKey === 'clicks') return parseNumSafe(platforms?.customIntegration?.clicks);
+      if (inputKey === 'impressions') return parseNumSafe(platforms?.customIntegration?.impressions);
+      return 0;
+    }
+
+    if (sourceId === 'linkedin') {
+      if (inputKey === 'conversions') return parseNumSafe(platforms?.linkedin?.conversions);
+      if (inputKey === 'clicks') return parseNumSafe(platforms?.linkedin?.clicks);
+      if (inputKey === 'impressions') return parseNumSafe(platforms?.linkedin?.impressions);
+      return 0;
+    }
+
+    if (sourceId === 'meta') {
+      if (inputKey === 'conversions') return parseNumSafe(platforms?.meta?.conversions);
+      if (inputKey === 'clicks') return parseNumSafe(platforms?.meta?.clicks);
+      if (inputKey === 'impressions') return parseNumSafe(platforms?.meta?.impressions);
+      return 0;
+    }
+
+    return 0;
+  };
+
+  const sumSelected = (inputKey: BenchCalcInputKey, sourceIds: string[] = []) => {
+    return (sourceIds || []).reduce((sum, id) => sum + getMetricSourceValue(inputKey, id), 0);
+  };
+
+  const computeCurrentFromBenchConfig = (rawConfig: any): { value: number | null; unit: string } => {
+    const cfg = normalizeBenchCalcConfig(rawConfig);
+    if (!cfg || !cfg.metric) return { value: null, unit: '' };
+    const metric = String(cfg.metric);
+
+    if (metric === 'revenue') {
+      const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
+      return { value: revenue, unit: '$' };
+    }
+    if (metric === 'spend') {
+      const spend = sumSelected('spend', cfg.inputs?.spend || []);
+      return { value: spend, unit: '$' };
+    }
+    if (metric === 'conversions') {
+      const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
+      return { value: conv, unit: 'count' };
+    }
+    if (metric === 'users') {
+      const users = sumSelected('users', cfg.inputs?.users || []);
+      return { value: users, unit: 'count' };
+    }
+    if (metric === 'ctr') {
+      const clicks = sumSelected('clicks', cfg.inputs?.clicks || []);
+      const impressions = sumSelected('impressions', cfg.inputs?.impressions || []);
+      const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+      return { value: ctr, unit: '%' };
+    }
+    if (metric === 'conversion-rate-website') {
+      const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
+      const sessions = sumSelected('sessions', cfg.inputs?.sessions || []);
+      const rate = sessions > 0 ? (conv / sessions) * 100 : 0;
+      return { value: rate, unit: '%' };
+    }
+    if (metric === 'conversion-rate-click') {
+      const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
+      const clicks = sumSelected('clicks', cfg.inputs?.clicks || []);
+      const rate = clicks > 0 ? (conv / clicks) * 100 : 0;
+      return { value: rate, unit: '%' };
+    }
+    if (metric === 'roas') {
+      const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
+      const spend = sumSelected('spend', cfg.inputs?.spend || []);
+      const roasPct = spend > 0 ? (revenue / spend) * 100 : 0;
+      return { value: roasPct, unit: '%' };
+    }
+    if (metric === 'roi') {
+      const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
+      const spend = sumSelected('spend', cfg.inputs?.spend || []);
+      const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+      return { value: roi, unit: '%' };
+    }
+    if (metric === 'cpa') {
+      const spend = sumSelected('spend', cfg.inputs?.spend || []);
+      const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
+      const cpa = conv > 0 ? spend / conv : 0;
+      return { value: cpa, unit: '$' };
+    }
+    return { value: null, unit: '' };
+  };
+
+  const getBenchInputOptions = (inputKey: BenchCalcInputKey) => {
+    const connected = getConnectedPlatformFlags();
+    const ot = outcomeTotals || {};
+    const platforms = ot?.platforms || {};
+    const spend = ot?.spend || {};
+
+    const base: Array<{ id: string; label: string; enabled: boolean; reason?: string; value?: number }> = [];
+
+    if (inputKey === 'revenue') {
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getRevenueSourceValue('ga4') });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: getRevenueSourceValue('custom_integration') });
+      if (connected.shopify) base.push({ id: 'shopify', label: 'Shopify', enabled: true, value: getRevenueSourceValue('shopify') });
+      if (connected.hubspot) base.push({ id: 'hubspot', label: 'HubSpot', enabled: true, value: getRevenueSourceValue('hubspot') });
+      if (connected.salesforce) base.push({ id: 'salesforce', label: 'Salesforce', enabled: true, value: getRevenueSourceValue('salesforce') });
+      if (connected.linkedin) {
+        const has = platforms?.linkedin?.attributedRevenue !== undefined && platforms?.linkedin?.attributedRevenue !== null;
+        const v = getRevenueSourceValue('linkedin');
+        base.push({
+          id: 'linkedin',
+          label: 'LinkedIn',
+          enabled: Boolean(has && v > 0),
+          reason: 'Revenue not connected for this platform',
+          value: v,
+        });
+      }
+      if (connected.meta) {
+        base.push({ id: 'meta', label: 'Meta', enabled: false, reason: 'Revenue not connected for this platform' });
+      }
+      return base;
+    }
+
+    if (inputKey === 'spend') {
+      const imported = parseNumSafe(spend?.persistedSpend) > 0;
+      base.push({
+        id: 'imported_spend',
+        label: 'Imported Spend',
+        enabled: imported,
+        reason: imported ? undefined : 'No imported spend connected',
+        value: parseNumSafe(spend?.persistedSpend),
+      });
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.spend) });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.spend) });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.spend) });
+      return base;
+    }
+
+    if (inputKey === 'conversions') {
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe(ot?.ga4?.conversions) });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.conversions) });
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.conversions) });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.conversions) });
+      return base;
+    }
+
+    if (inputKey === 'sessions') {
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe(ot?.ga4?.sessions) });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.sessions) });
+      return base;
+    }
+
+    if (inputKey === 'users') {
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe(ot?.ga4?.users) });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.users) });
+      return base;
+    }
+
+    if (inputKey === 'clicks') {
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.clicks) });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.clicks) });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.clicks) });
+      return base;
+    }
+
+    if (inputKey === 'impressions') {
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.impressions) });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.impressions) });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.impressions) });
+      return base;
+    }
+
+    return base;
+  };
+
+  const toggleBenchSource = (inputKey: BenchCalcInputKey, sourceId: string, checked: boolean) => {
+    setBenchmarkCalculationConfig((prevRaw: any) => {
+      const prev = normalizeBenchCalcConfig(prevRaw) || { metric: String(benchmarkForm.metric || ''), inputs: {} };
+      const nextInputs = { ...(prev.inputs || {}) } as any;
+      const cur = Array.isArray(nextInputs[inputKey]) ? [...nextInputs[inputKey]] : [];
+      const idx = cur.indexOf(sourceId);
+      if (checked && idx === -1) cur.push(sourceId);
+      if (!checked && idx !== -1) cur.splice(idx, 1);
+      nextInputs[inputKey] = cur;
+      return { ...prev, metric: String(benchmarkForm.metric || ''), inputs: nextInputs };
+    });
   };
 
   const isLowerBetterBenchmarkMetric = (metricKey: string) => {
@@ -2655,6 +2908,75 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
     return { available: true };
   };
+
+  const getRequiredInputsForMetric = (metric: string): BenchCalcInputKey[] => {
+    const tpl = CAMPAIGN_BENCHMARK_TEMPLATES.find((t) => t.metric === String(metric || ''));
+    const req = (tpl?.requires || []) as BenchCalcInputKey[];
+    return req;
+  };
+
+  const isBenchConfigCompleteForMetric = (metric: string, rawConfig: any): boolean => {
+    const cfg = normalizeBenchCalcConfig(rawConfig);
+    if (!cfg) return false;
+    const req = getRequiredInputsForMetric(metric);
+    if (!req.length) return true;
+    return req.every((k) => (cfg.inputs?.[k] || []).length > 0);
+  };
+
+  const formatBenchmarkSourcesSelected = (rawConfig: any): string => {
+    const cfg = normalizeBenchCalcConfig(rawConfig) as any;
+    if (!cfg || !cfg.inputs) return '';
+    const parts: string[] = [];
+    const add = (label: string, ids: string[] | undefined) => {
+      const uniq = Array.from(new Set((ids || []).filter(Boolean)));
+      if (!uniq.length) return;
+      const pretty = uniq
+        .map((id) => {
+          switch (id) {
+            case 'ga4':
+              return 'GA4';
+            case 'custom_integration':
+              return 'Custom Integration';
+            case 'imported_spend':
+              return 'Imported Spend';
+            case 'linkedin':
+              return 'LinkedIn';
+            case 'meta':
+              return 'Meta';
+            case 'shopify':
+              return 'Shopify';
+            case 'hubspot':
+              return 'HubSpot';
+            case 'salesforce':
+              return 'Salesforce';
+            default:
+              return String(id);
+          }
+        })
+        .join('+');
+      parts.push(`${label}(${pretty})`);
+    };
+    add('Rev', cfg.inputs.revenue);
+    add('Spend', cfg.inputs.spend);
+    add('Conv', cfg.inputs.conversions);
+    add('Sessions', cfg.inputs.sessions);
+    add('Users', cfg.inputs.users);
+    add('Clicks', cfg.inputs.clicks);
+    add('Impr', cfg.inputs.impressions);
+    return parts.join(' • ');
+  };
+
+  // Keep Current Value in sync with selected sources (no defaults; computed preview becomes the stored currentValue snapshot).
+  useEffect(() => {
+    const m = String(benchmarkForm.metric || '');
+    if (!isTemplateMetric(m)) return;
+    const computed = computeCurrentFromBenchConfig(benchmarkCalculationConfig);
+    setBenchmarkForm((prev) => ({
+      ...prev,
+      unit: prev.unit || computed.unit || prev.unit,
+      currentValue: computed.value === null ? '' : formatNumber(computed.value),
+    }));
+  }, [benchmarkCalculationConfig, benchmarkForm.metric]);
 
   // Fetch industry list
   const { data: industryData } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
@@ -2842,6 +3164,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       emailRecipients: ''
     });
     setSelectedBenchmarkTemplate(null);
+    setBenchmarkCalculationConfig(null);
   };
 
   const handleBenchmarkSubmit = () => {
@@ -2849,6 +3172,16 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       toast({
         title: "Validation Error",
         description: "Please fill in required fields (Name, Benchmark Value)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const metricKey = String(benchmarkForm.metric || '');
+    if (isTemplateMetric(metricKey) && !isBenchConfigCompleteForMetric(metricKey, benchmarkCalculationConfig)) {
+      toast({
+        title: "Select sources",
+        description: "Please select the connected data sources used to compute the Current Value.",
         variant: "destructive",
       });
       return;
@@ -2865,6 +3198,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       campaignId: campaign.id,
       platformType: null, // Campaign-level benchmark
       ...benchmarkForm,
+      calculationConfig: isTemplateMetric(metricKey) ? normalizeBenchCalcConfig(benchmarkCalculationConfig) : null,
       benchmarkValue: cleanNumber(benchmarkForm.benchmarkValue),
       currentValue: benchmarkForm.currentValue ? cleanNumber(benchmarkForm.currentValue) : 0,
       alertThreshold: benchmarkForm.alertsEnabled ? cleanNumber(benchmarkForm.alertThreshold) : null,
@@ -2883,6 +3217,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const metric = String(benchmark.metric || '');
     const matchedTemplate = CAMPAIGN_BENCHMARK_TEMPLATES.find((t) => t.metric === metric) || null;
     setSelectedBenchmarkTemplate(matchedTemplate);
+    setBenchmarkCalculationConfig(benchmark?.calculationConfig || null);
     setBenchmarkForm({
       metric,
       name: benchmark.name || '',
@@ -3107,6 +3442,14 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                     {benchmark.description || 'No description provided'}
                   </p>
+                  {(() => {
+                    const sourcesSelected = formatBenchmarkSourcesSelected(benchmark.calculationConfig);
+                    return (
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                        <span className="font-medium">Sources selected:</span> {sourcesSelected || '—'}
+                      </div>
+                    );
+                  })()}
                   {benchmark.metric && (
                     <div className="mt-2">
                       <Badge 
@@ -3334,7 +3677,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <div>
                 <div className="font-medium text-slate-900 dark:text-white">Select Benchmark Template</div>
                 <div className="text-sm text-slate-600 dark:text-slate-400">
-                  Pick a metric to benchmark. Current Value will be auto-filled from your campaign’s connected data.
+                  Pick a metric to benchmark, then choose which connected sources to use for the Current Value (no defaults).
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -3353,7 +3696,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       onClick={async () => {
                         if (disabled) return;
                         setSelectedBenchmarkTemplate(template);
-                        const live = getLiveBenchmarkCurrentValue(template.metric);
+                        // No defaults: user chooses sources before Current Value is computed.
+                        setBenchmarkCalculationConfig({ metric: template.metric, inputs: {} });
 
                         // Keep name/unit/metric in sync with the selected template.
                         setBenchmarkForm((prev) => ({
@@ -3362,7 +3706,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                           category: template.category,
                           name: template.name,
                           unit: template.unit,
-                          currentValue: formatNumber(live.value),
+                          currentValue: '',
                           // If industry type + industry already chosen, clear stale benchmarkValue and refetch below.
                           benchmarkValue: prev.benchmarkType === 'industry' && prev.industry ? '' : prev.benchmarkValue,
                         }));
@@ -3399,6 +3743,90 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 })}
               </div>
             </div>
+
+            {/* Sources used for Current Value (no defaults) */}
+            {isTemplateMetric(String(benchmarkForm.metric || '')) && (
+              <div className="space-y-3 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div>
+                  <div className="font-medium text-slate-900 dark:text-white">Sources used for Current Value</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400">
+                    Select the sources you want included. Current Value will update once the required inputs are selected.
+                  </div>
+                </div>
+
+                {getRequiredInputsForMetric(String(benchmarkForm.metric || '')).map((key) => {
+                  const options = getBenchInputOptions(key);
+                  const cfg = normalizeBenchCalcConfig(benchmarkCalculationConfig) as any;
+                  const selectedIds: string[] = cfg?.inputs?.[key] || [];
+                  const label =
+                    key === 'revenue'
+                      ? 'Revenue'
+                      : key === 'spend'
+                      ? 'Spend'
+                      : key === 'conversions'
+                      ? 'Conversions'
+                      : key === 'sessions'
+                      ? 'Sessions'
+                      : key === 'users'
+                      ? 'Users'
+                      : key === 'clicks'
+                      ? 'Clicks'
+                      : key === 'impressions'
+                      ? 'Impressions'
+                      : key;
+
+                  return (
+                    <div key={key} className="space-y-2">
+                      <div className="text-sm font-medium text-slate-900 dark:text-white">{label} sources</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {options.map((opt) => {
+                          const checked = selectedIds.includes(opt.id);
+                          const disabled = !opt.enabled;
+                          return (
+                            <label
+                              key={opt.id}
+                              className={`flex items-start gap-3 p-3 rounded-md border ${
+                                disabled
+                                  ? 'opacity-50 cursor-not-allowed border-slate-200 dark:border-slate-700'
+                                  : 'cursor-pointer border-slate-200 dark:border-slate-700 hover:border-blue-300'
+                              }`}
+                            >
+                              <Checkbox
+                                checked={checked}
+                                disabled={disabled}
+                                onCheckedChange={(c) => toggleBenchSource(key, opt.id, Boolean(c))}
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="text-sm font-medium text-slate-900 dark:text-white">{opt.label}</div>
+                                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                                    {typeof opt.value === 'number' ? formatNumber(opt.value) : ''}
+                                  </div>
+                                </div>
+                                {disabled && opt.reason && (
+                                  <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">{opt.reason}</div>
+                                )}
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <div className="text-xs text-slate-600 dark:text-slate-400">Current Value (preview)</div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {(() => {
+                      const computed = computeCurrentFromBenchConfig(benchmarkCalculationConfig);
+                      if (computed.value === null) return '—';
+                      return `${formatNumber(computed.value)}${computed.unit === '$' ? '' : computed.unit ? ` ${computed.unit}` : ''}`;
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Benchmark Name + Unit */}
             <div className="grid grid-cols-2 gap-4">
@@ -3445,9 +3873,17 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 <Label htmlFor="current-value">Current Value</Label>
                 <Input
                   id="current-value"
-                  placeholder="0"
+                  placeholder={
+                    isTemplateMetric(String(benchmarkForm.metric || ''))
+                      ? (isBenchConfigCompleteForMetric(String(benchmarkForm.metric || ''), benchmarkCalculationConfig)
+                          ? 'Computed from selected sources'
+                          : 'Select sources to compute')
+                      : '0'
+                  }
                   value={benchmarkForm.currentValue}
+                  readOnly={isTemplateMetric(String(benchmarkForm.metric || ''))}
                   onChange={(e) => {
+                    if (isTemplateMetric(String(benchmarkForm.metric || ''))) return;
                     let value = e.target.value.replace(/[^\d.]/g, '');
                     const parts = value.split('.');
                     if (parts.length > 2) value = parts[0] + '.' + parts.slice(1).join('');
@@ -3629,7 +4065,12 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
             </Button>
             <Button 
               onClick={handleBenchmarkSubmit} 
-              disabled={createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending}
+              disabled={
+                createBenchmarkMutation.isPending ||
+                updateBenchmarkMutation.isPending ||
+                (isTemplateMetric(String(benchmarkForm.metric || '')) &&
+                  !isBenchConfigCompleteForMetric(String(benchmarkForm.metric || ''), benchmarkCalculationConfig))
+              }
               data-testid="button-benchmark-submit"
             >
               {editingBenchmark ? 'Update Benchmark' : 'Create Benchmark'}

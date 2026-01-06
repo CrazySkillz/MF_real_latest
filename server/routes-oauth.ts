@@ -19,6 +19,8 @@ import { transformData, filterRowsByCampaignAndPlatform, calculateConversionValu
 import { enrichRows, inferMissingFields } from "./utils/data-enrichment";
 import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
@@ -9772,6 +9774,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;
+
+      // Ensure DB has the column for user-selected input configs (deployed environments may not have run migrations yet).
+      if (db) {
+        try {
+          await db.execute(sql`
+            ALTER TABLE kpis
+            ADD COLUMN IF NOT EXISTS calculation_config JSONB;
+          `);
+        } catch (e) {
+          // Best-effort: do not block request on migration attempt; actual insert may still fail and surface below.
+          console.error("[KPI Create] Failed to ensure calculation_config column:", e);
+        }
+      }
       
       // Convert numeric values to strings for decimal fields
       const requestData = {
@@ -9804,6 +9819,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/campaigns/:id/kpis/:kpiId", async (req, res) => {
     try {
       const { kpiId } = req.params;
+
+      // Ensure DB has the column for user-selected input configs (deployed environments may not have run migrations yet).
+      if (db) {
+        try {
+          await db.execute(sql`
+            ALTER TABLE kpis
+            ADD COLUMN IF NOT EXISTS calculation_config JSONB;
+          `);
+        } catch (e) {
+          console.error("[KPI Update] Failed to ensure calculation_config column:", e);
+        }
+      }
       
       // Convert numeric values to strings for decimal fields
       const updateData: any = {

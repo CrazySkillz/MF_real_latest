@@ -2639,6 +2639,12 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
     const base: Array<{ id: string; label: string; enabled: boolean; reason?: string; value?: number }> = [];
 
+    // Helper to include a connected platform in the list (enabled/disabled) so the user
+    // always sees all connected sources, even when not applicable for the selected input.
+    const pushConnected = (id: string, label: string, enabled: boolean, value?: number, reason?: string) => {
+      base.push({ id, label, enabled, value, reason });
+    };
+
     if (inputKey === 'revenue') {
       if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getRevenueSourceValue('ga4') });
       if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: getRevenueSourceValue('custom_integration') });
@@ -2671,43 +2677,50 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
         reason: imported ? undefined : 'No imported spend connected',
         value: parseNumSafe(spend?.persistedSpend),
       });
-      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.spend) });
-      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.spend) });
-      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.spend) });
+      if (connected.ga4) pushConnected('ga4', 'GA4', false, undefined, 'Spend is not a GA4 metric');
+      if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', true, parseNumSafe(platforms?.linkedin?.spend));
+      if (connected.meta) pushConnected('meta', 'Meta', true, parseNumSafe(platforms?.meta?.spend));
+      if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.spend));
       return base;
     }
 
     if (inputKey === 'conversions') {
-      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe(ot?.ga4?.conversions) });
-      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.conversions) });
-      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.conversions) });
-      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.conversions) });
+      if (connected.ga4) pushConnected('ga4', 'GA4', true, parseNumSafe(ot?.ga4?.conversions));
+      if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.conversions));
+      if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', true, parseNumSafe(platforms?.linkedin?.conversions));
+      if (connected.meta) pushConnected('meta', 'Meta', true, parseNumSafe(platforms?.meta?.conversions));
       return base;
     }
 
     if (inputKey === 'sessions') {
-      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe(ot?.ga4?.sessions) });
-      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.sessions) });
+      if (connected.ga4) pushConnected('ga4', 'GA4', true, parseNumSafe(ot?.ga4?.sessions));
+      if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.sessions));
+      if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', false, undefined, 'Sessions is a web analytics metric');
+      if (connected.meta) pushConnected('meta', 'Meta', false, undefined, 'Sessions is a web analytics metric');
       return base;
     }
 
     if (inputKey === 'users') {
-      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe(ot?.ga4?.users) });
-      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.users) });
+      if (connected.ga4) pushConnected('ga4', 'GA4', true, parseNumSafe(ot?.ga4?.users));
+      if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.users));
+      if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', false, undefined, 'Users is a web analytics metric');
+      if (connected.meta) pushConnected('meta', 'Meta', false, undefined, 'Users is a web analytics metric');
       return base;
     }
 
     if (inputKey === 'clicks') {
-      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.clicks) });
-      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.clicks) });
-      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.clicks) });
+      if (connected.ga4) pushConnected('ga4', 'GA4', false, undefined, 'Clicks is an ad-platform metric');
+      if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', true, parseNumSafe(platforms?.linkedin?.clicks));
+      if (connected.meta) pushConnected('meta', 'Meta', true, parseNumSafe(platforms?.meta?.clicks));
+      if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.clicks));
       return base;
     }
 
     if (inputKey === 'impressions') {
-      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.impressions) });
-      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.impressions) });
-      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.impressions) });
+      if (connected.ga4) pushConnected('ga4', 'GA4', false, undefined, 'Impressions is an ad-platform metric');
+      if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', true, parseNumSafe(platforms?.linkedin?.impressions));
+      if (connected.meta) pushConnected('meta', 'Meta', true, parseNumSafe(platforms?.meta?.impressions));
+      if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.impressions));
       return base;
     }
 

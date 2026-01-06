@@ -314,8 +314,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         return 'ROI';
       case 'cpa':
         return 'CPA';
-      case 'cpl':
-        return 'CPL';
       case 'ctr':
         return 'CTR';
       case 'revenue':
@@ -324,14 +322,14 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         return 'Spend';
       case 'conversions':
         return 'Conversions';
-      case 'conversion-rate':
-        return 'Conversion Rate';
+      case 'conversion-rate-website':
+        return 'Conversion Rate (website)';
+      case 'conversion-rate-click':
+        return 'Conversion Rate (click-based)';
       case 'users':
         return 'Users';
       case 'sessions':
         return 'Sessions';
-      case 'leads':
-        return 'Leads';
       default:
         return String(metric || '');
     }
@@ -462,21 +460,17 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
       return { value: ctr, unit: '%' };
     }
-    if (metric === 'conversion-rate') {
-      const def = cfg.definition;
-      if (def === 'website') {
-        const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
-        const sessions = sumSelected('sessions', cfg.inputs?.sessions || []);
-        const rate = sessions > 0 ? (conv / sessions) * 100 : 0;
-        return { value: rate, unit: '%' };
-      }
-      if (def === 'click') {
-        const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
-        const clicks = sumSelected('clicks', cfg.inputs?.clicks || []);
-        const rate = clicks > 0 ? (conv / clicks) * 100 : 0;
-        return { value: rate, unit: '%' };
-      }
-      return { value: null, unit: '%' };
+    if (metric === 'conversion-rate-website') {
+      const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
+      const sessions = sumSelected('sessions', cfg.inputs?.sessions || []);
+      const rate = sessions > 0 ? (conv / sessions) * 100 : 0;
+      return { value: rate, unit: '%' };
+    }
+    if (metric === 'conversion-rate-click') {
+      const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
+      const clicks = sumSelected('clicks', cfg.inputs?.clicks || []);
+      const rate = clicks > 0 ? (conv / clicks) * 100 : 0;
+      return { value: rate, unit: '%' };
     }
 
     // Derived efficiency metrics (blended)
@@ -619,7 +613,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (m === 'sessions') return ['sessions'];
     if (m === 'leads') return ['leads'];
     if (m === 'ctr') return ['clicks', 'impressions'];
-    if (m === 'conversion-rate') return ['conversions']; // definition picks denominator inputs
+    if (m === 'conversion-rate-website') return ['conversions', 'sessions'];
+    if (m === 'conversion-rate-click') return ['conversions', 'clicks'];
     if (m === 'roi' || m === 'roas') return ['revenue', 'spend'];
     if (m === 'cpa') return ['spend', 'conversions'];
     if (m === 'cpl') return ['spend', 'leads'];
@@ -629,7 +624,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const getMetricDisplayUnit = (metric: string): string => {
     const m = String(metric || '');
     if (m === 'revenue' || m === 'spend' || m === 'cpa' || m === 'cpl') return '$';
-    if (m === 'roi' || m === 'ctr' || m === 'conversion-rate' || m === 'roas') return '%';
+    if (m === 'roi' || m === 'ctr' || m === 'conversion-rate-website' || m === 'conversion-rate-click' || m === 'roas') return '%';
     return '';
   };
 
@@ -640,12 +635,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       'roi',
       'spend',
       'conversions',
-      'conversion-rate',
+      'conversion-rate-website',
+      'conversion-rate-click',
       'cpa',
-      'leads',
-      'cpl',
       'users',
-      'sessions',
       'ctr',
     ].includes(String(metric || ''));
   };
@@ -654,14 +647,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const m = String(metric || '');
     const required = getRequiredInputsForMetric(m);
     if (!required.length) return null;
-
-    // Conversion rate requires conversions + (sessions OR clicks) depending on definition selected later.
-    if (m === 'conversion-rate') {
-      const hasConv = getInputOptions('conversions').some(o => o.enabled);
-      const hasSessions = getInputOptions('sessions').some(o => o.enabled);
-      const hasClicks = getInputOptions('clicks').some(o => o.enabled);
-      return hasConv && (hasSessions || hasClicks) ? null : 'Required inputs not connected';
-    }
 
     for (const input of required) {
       const hasAny = getInputOptions(input).some(o => o.enabled);
@@ -747,12 +732,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const cfg = normalizeCalcConfig(rawConfig);
     if (!cfg) return false;
     const m = String(metric || '');
-    if (m === 'conversion-rate') {
-      if (!cfg.definition) return false;
-      const convOk = (cfg.inputs?.conversions || []).length > 0;
-      const denomOk = cfg.definition === 'website' ? (cfg.inputs?.sessions || []).length > 0 : (cfg.inputs?.clicks || []).length > 0;
-      return convOk && denomOk;
-    }
     const requiredInputs = getRequiredInputsForMetric(m);
     return requiredInputs.every((k) => (cfg.inputs?.[k] || []).length > 0);
   };
@@ -1022,36 +1001,15 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       }
 
       const metric = String(cfg.metric || '');
-      if (metric === 'conversion-rate') {
-        if (!cfg.definition) {
-          toast({
-            title: "Select Conversion Rate Type",
-            description: "Choose Website (Conversions ÷ Sessions) or Click (Conversions ÷ Clicks).",
-            variant: "destructive",
-          });
-          return;
-        }
-        const convOk = (cfg.inputs?.conversions || []).length > 0;
-        const denomOk = cfg.definition === 'website' ? (cfg.inputs?.sessions || []).length > 0 : (cfg.inputs?.clicks || []).length > 0;
-        if (!convOk || !denomOk) {
-          toast({
-            title: "Select Sources",
-            description: "Select the required sources to compute Conversion Rate.",
-            variant: "destructive",
-          });
-          return;
-        }
-      } else {
-        const requiredInputs = getRequiredInputsForMetric(metric);
-        const ok = requiredInputs.every((k) => (cfg.inputs?.[k] || []).length > 0);
-        if (!ok) {
-          toast({
-            title: "Select Sources",
-            description: "Select the required sources to compute the Current Value for this KPI.",
-            variant: "destructive",
-          });
-          return;
-        }
+      const requiredInputs = getRequiredInputsForMetric(metric);
+      const ok = requiredInputs.every((k) => (cfg.inputs?.[k] || []).length > 0);
+      if (!ok) {
+        toast({
+          title: "Select Sources",
+          description: "Select the required sources to compute the Current Value for this KPI.",
+          variant: "destructive",
+        });
+        return;
       }
     }
 
@@ -1605,13 +1563,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   { name: "CPA", metric: "cpa", category: "Cost Efficiency", description: "Spend ÷ Conversions" },
                   { name: "Revenue", metric: "revenue", category: "Revenue", description: "Total revenue (selected sources)" },
                   { name: "Conversions", metric: "conversions", category: "Performance", description: "Total conversions (selected sources)" },
-                  { name: "Conversion Rate", metric: "conversion-rate", category: "Performance", description: "Choose Website or Click-based rate" },
                   { name: "Users", metric: "users", category: "Engagement", description: "Total users (selected sources)" },
-                  { name: "Sessions", metric: "sessions", category: "Engagement", description: "Total sessions (selected sources)" },
                   { name: "Spend", metric: "spend", category: "Cost Efficiency", description: "Total spend (selected sources)" },
-                  { name: "Leads", metric: "leads", category: "Performance", description: "Total leads (selected sources)" },
-                  { name: "CPL", metric: "cpl", category: "Cost Efficiency", description: "Spend ÷ Leads" },
                   { name: "CTR", metric: "ctr", category: "Performance", description: "Clicks ÷ Impressions × 100" },
+                  { name: "Conversion Rate (website)", metric: "conversion-rate-website", category: "Performance", description: "Conversions ÷ Sessions × 100" },
+                  { name: "Conversion Rate (click-based)", metric: "conversion-rate-click", category: "Performance", description: "Conversions ÷ Clicks × 100" },
                 ].map((template) => {
                   const reason = getTileDisabledReason(template.metric);
                   const disabled = Boolean(reason);
@@ -1668,61 +1624,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   </div>
                 </div>
 
-                {/* Conversion Rate type selection */}
-                {String(kpiForm.metric) === 'conversion-rate' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Conversion Rate Type *</Label>
-                      <Select
-                        value={String((normalizeCalcConfig(kpiCalculationConfig) as any)?.definition || '')}
-                        onValueChange={(value) => {
-                          setKpiCalculationConfig((prev: any) => ({
-                            ...(normalizeCalcConfig(prev) || { metric: 'conversion-rate', inputs: {} }),
-                            definition: value as any,
-                            // Reset denominator selections when switching types
-                            inputs: {
-                              ...(normalizeCalcConfig(prev) || { inputs: {} }).inputs,
-                              sessions: [],
-                              clicks: [],
-                            },
-                          }));
-                        }}
-                      >
-                        <SelectTrigger data-testid="select-campaign-kpi-conversion-rate-type">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="website">Website (Conversions ÷ Sessions)</SelectItem>
-                          <SelectItem value="click">Click (Conversions ÷ Clicks)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Current Value (preview)</Label>
-                      <Input
-                        value={(() => {
-                          const computed = computeCurrentFromConfig(kpiCalculationConfig);
-                          if (computed.value === null) return '';
-                          return formatNumber(computed.value);
-                        })()}
-                        readOnly
-                        placeholder="—"
-                        data-testid="input-campaign-kpi-current-preview"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {/* Required inputs */}
                 {(() => {
                   const cfg = normalizeCalcConfig(kpiCalculationConfig);
                   const metric = String(kpiForm.metric || '');
                   const required = getRequiredInputsForMetric(metric);
-                  const def = metric === 'conversion-rate' ? (cfg as any)?.definition : null;
-                  const requiredWithDenom =
-                    metric === 'conversion-rate'
-                      ? (def === 'website' ? ['conversions', 'sessions'] : def === 'click' ? ['conversions', 'clicks'] : ['conversions'])
-                      : required;
+                  const requiredWithDenom = required;
 
                   const computed = computeCurrentFromConfig(kpiCalculationConfig);
                   const preview = computed.value === null ? '—' : formatNumber(computed.value);
@@ -1746,18 +1653,15 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
                   return (
                     <div className="space-y-4">
-                      {/* Preview for non-conversion-rate metrics */}
-                      {metric !== 'conversion-rate' && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <div className="text-xs text-slate-600 dark:text-slate-400">Current Value (preview)</div>
-                            <div className="text-lg font-semibold text-slate-900 dark:text-white">{preview}</div>
-                          </div>
-                          <div className="text-xs text-slate-500 self-end">
-                            Required inputs must be selected before you can create this KPI.
-                          </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Current Value (preview)</div>
+                          <div className="text-lg font-semibold text-slate-900 dark:text-white">{preview}</div>
                         </div>
-                      )}
+                        <div className="text-xs text-slate-500 self-end">
+                          Required inputs must be selected before you can create this KPI.
+                        </div>
+                      </div>
 
                       {requiredWithDenom.map((inputKey: any) => {
                         const key = inputKey as CalcInputKey;
@@ -1853,13 +1757,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       <SelectItem value="cpa">CPA</SelectItem>
                       <SelectItem value="revenue">Revenue</SelectItem>
                       <SelectItem value="conversions">Conversions</SelectItem>
-                      <SelectItem value="conversion-rate">Conversion Rate</SelectItem>
                       <SelectItem value="users">Users</SelectItem>
-                      <SelectItem value="sessions">Sessions</SelectItem>
                       <SelectItem value="spend">Spend</SelectItem>
-                      <SelectItem value="leads">Leads</SelectItem>
-                      <SelectItem value="cpl">CPL</SelectItem>
                       <SelectItem value="ctr">CTR</SelectItem>
+                      <SelectItem value="conversion-rate-website">Conversion Rate (website)</SelectItem>
+                      <SelectItem value="conversion-rate-click">Conversion Rate (click-based)</SelectItem>
                     </SelectGroup>
                     <SelectSeparator />
                     
@@ -2070,13 +1972,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <SelectItem value="cpa">CPA</SelectItem>
                     <SelectItem value="revenue">Revenue</SelectItem>
                     <SelectItem value="conversions">Conversions</SelectItem>
-                    <SelectItem value="conversion-rate">Conversion Rate</SelectItem>
                     <SelectItem value="users">Users</SelectItem>
-                    <SelectItem value="sessions">Sessions</SelectItem>
                     <SelectItem value="spend">Spend</SelectItem>
-                    <SelectItem value="leads">Leads</SelectItem>
-                    <SelectItem value="cpl">CPL</SelectItem>
                     <SelectItem value="ctr">CTR</SelectItem>
+                    <SelectItem value="conversion-rate-website">Conversion Rate (website)</SelectItem>
+                    <SelectItem value="conversion-rate-click">Conversion Rate (click-based)</SelectItem>
                   </SelectGroup>
                   <SelectSeparator />
                   
@@ -2098,43 +1998,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   </div>
                 </div>
 
-                {String(kpiForm.metric) === 'conversion-rate' && (
-                  <div className="space-y-2">
-                    <Label>Conversion Rate Type *</Label>
-                    <Select
-                      value={String((normalizeCalcConfig(kpiCalculationConfig) as any)?.definition || '')}
-                      onValueChange={(value) => {
-                        setKpiCalculationConfig((prev: any) => ({
-                          ...(normalizeCalcConfig(prev) || { metric: 'conversion-rate', inputs: {} }),
-                          definition: value as any,
-                          inputs: {
-                            ...(normalizeCalcConfig(prev) || { inputs: {} }).inputs,
-                            sessions: [],
-                            clicks: [],
-                          },
-                        }));
-                      }}
-                    >
-                      <SelectTrigger data-testid="select-edit-campaign-kpi-conversion-rate-type">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="website">Website (Conversions ÷ Sessions)</SelectItem>
-                        <SelectItem value="click">Click (Conversions ÷ Clicks)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
                 {(() => {
                   const cfg = normalizeCalcConfig(kpiCalculationConfig);
                   const metric = String(kpiForm.metric || '');
                   const required = getRequiredInputsForMetric(metric);
-                  const def = metric === 'conversion-rate' ? (cfg as any)?.definition : null;
-                  const requiredWithDenom =
-                    metric === 'conversion-rate'
-                      ? (def === 'website' ? ['conversions', 'sessions'] : def === 'click' ? ['conversions', 'clicks'] : ['conversions'])
-                      : required;
+                  const requiredWithDenom = required;
 
                   const toggle = (inputKey: CalcInputKey, sourceId: string) => {
                     setKpiCalculationConfig((prev: any) => {

@@ -640,6 +640,71 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     return null;
   };
 
+  const formatSourceLabel = (id: string): string => {
+    switch (String(id || '')) {
+      case 'ga4':
+        return 'GA4';
+      case 'linkedin':
+        return 'LinkedIn';
+      case 'meta':
+        return 'Meta';
+      case 'custom_integration':
+        return 'Custom Integration';
+      case 'imported_spend':
+        return 'Imported Spend';
+      case 'shopify':
+        return 'Shopify';
+      case 'hubspot':
+        return 'HubSpot';
+      case 'salesforce':
+        return 'Salesforce';
+      default:
+        return String(id || '');
+    }
+  };
+
+  const formatSourcesSelected = (rawConfig: any): string => {
+    const cfg = normalizeCalcConfig(rawConfig) as any;
+    if (!cfg || !cfg.inputs) return '';
+
+    const parts: string[] = [];
+    const push = (label: string, ids: string[] | undefined) => {
+      const uniq = Array.from(new Set((ids || []).filter(Boolean)));
+      if (!uniq.length) return;
+      parts.push(`${label}(${uniq.map(formatSourceLabel).join('+')})`);
+    };
+
+    const metric = String(cfg.metric || '');
+    if (metric === 'conversion-rate') {
+      const type = cfg.definition === 'website' ? 'Website' : cfg.definition === 'click' ? 'Click' : '';
+      if (type) parts.push(`${type} CR`);
+      push('Conv', cfg.inputs.conversions);
+      if (cfg.definition === 'website') push('Sessions', cfg.inputs.sessions);
+      if (cfg.definition === 'click') push('Clicks', cfg.inputs.clicks);
+      return parts.join(' • ');
+    }
+
+    push('Rev', cfg.inputs.revenue);
+    push('Spend', cfg.inputs.spend);
+    push('Conv', cfg.inputs.conversions);
+    push('Leads', cfg.inputs.leads);
+    push('Users', cfg.inputs.users);
+    push('Sessions', cfg.inputs.sessions);
+    push('Clicks', cfg.inputs.clicks);
+    push('Impr', cfg.inputs.impressions);
+
+    // Keep it short for cards
+    return parts.slice(0, 3).join(' • ') + (parts.length > 3 ? ' • …' : '');
+  };
+
+  const formatValueWithUnit = (value: number, unit: string): string => {
+    const u = String(unit || '').trim();
+    if (u === '$') return `$${formatNumber(value)}`;
+    if (u === '%') return `${formatNumber(value)}%`;
+    if (u === 'x') return `${formatNumber(value)}x`;
+    return formatNumber(value);
+  };
+
   const isConfigCompleteForMetric = (metric: string, rawConfig: any): boolean => {
     if (!isTileMetric(metric)) return true;
     const cfg = normalizeCalcConfig(rawConfig);
@@ -1305,11 +1370,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               const lowerBetter = isLowerBetterMetric(String(kpi?.metric || ''));
               const ratio = target > 0 ? (lowerBetter ? (current > 0 ? target / current : 0) : (current / target)) : 0;
               const progressPercent = Math.round(Math.max(0, Math.min(ratio * 100, 100)));
-              const liveDisplay = (() => {
-                const m = String(kpi?.metric || '');
-                const live = getLiveCampaignMetric(m);
-                return live.value ? live.value : (kpi.currentValue?.toString() || '0');
-              })();
+              const liveDisplay = formatValueWithUnit(current, String(kpi?.unit || ''));
+              const sourcesSelected = formatSourcesSelected(kpi?.calculationConfig);
               
               return (
           <Card key={kpi.id}>
@@ -1334,6 +1396,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                           <BarChart3 className="w-3 h-3 mr-1" />
                           Metric: {kpi.metric}
                         </Badge>
+                        {sourcesSelected && (
+                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400" data-testid={`text-kpi-sources-${kpi.id}`}>
+                            <span className="font-medium">Sources selected:</span> {sourcesSelected}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1792,36 +1859,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="kpi-timeframe">Timeframe</Label>
-                <Select
-                  value={kpiForm.timeframe}
-                  onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
-                >
-                  <SelectTrigger id="kpi-timeframe" data-testid="select-campaign-kpi-timeframe">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Daily">Daily</SelectItem>
-                    <SelectItem value="Weekly">Weekly</SelectItem>
-                    <SelectItem value="Monthly">Monthly</SelectItem>
-                    <SelectItem value="Quarterly">Quarterly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="kpi-target-date">Target Date (Optional)</Label>
-                <Input
-                  id="kpi-target-date"
-                  type="date"
-                  value={kpiForm.targetDate}
-                  onChange={(e) => setKpiForm({ ...kpiForm, targetDate: e.target.value })}
-                  data-testid="input-campaign-kpi-target-date"
-                />
-              </div>
-            </div>
-
             {/* Email Alerts Section */}
             <div className="space-y-3 pt-4 border-t">
               <div className="flex items-center space-x-2">
@@ -2161,36 +2198,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   value={kpiForm.unit}
                   onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
                   data-testid="input-edit-campaign-kpi-unit"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-kpi-timeframe">Timeframe</Label>
-                <Select
-                  value={kpiForm.timeframe}
-                  onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
-                >
-                  <SelectTrigger id="edit-kpi-timeframe" data-testid="select-edit-campaign-kpi-timeframe">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Daily">Daily</SelectItem>
-                    <SelectItem value="Weekly">Weekly</SelectItem>
-                    <SelectItem value="Monthly">Monthly</SelectItem>
-                    <SelectItem value="Quarterly">Quarterly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-kpi-target-date">Target Date (Optional)</Label>
-                <Input
-                  id="edit-kpi-target-date"
-                  type="date"
-                  value={kpiForm.targetDate}
-                  onChange={(e) => setKpiForm({ ...kpiForm, targetDate: e.target.value })}
-                  data-testid="input-edit-campaign-kpi-target-date"
                 />
               </div>
             </div>

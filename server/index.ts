@@ -115,6 +115,12 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS apply_to TEXT DEFAULT 'all',
             ADD COLUMN IF NOT EXISTS specific_campaign_id TEXT;
           `);
+
+          // Migration: Add KPI calculation config (stores user-selected source inputs for blended campaign KPIs)
+          await db.execute(sql`
+            ALTER TABLE kpis
+            ADD COLUMN IF NOT EXISTS calculation_config JSONB;
+          `);
           
           // Migration 2: Add notifications metadata column
           await db.execute(sql`

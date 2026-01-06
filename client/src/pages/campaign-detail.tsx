@@ -1371,7 +1371,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               const ratio = target > 0 ? (lowerBetter ? (current > 0 ? target / current : 0) : (current / target)) : 0;
               const progressPercent = Math.round(Math.max(0, Math.min(ratio * 100, 100)));
               const liveDisplay = formatValueWithUnit(current, String(kpi?.unit || ''));
-              const sourcesSelected = formatSourcesSelected(kpi?.calculationConfig);
+              const sourcesSelectedRaw = formatSourcesSelected(kpi?.calculationConfig);
+              const shouldShowSources = isTileMetric(String(kpi?.metric || '')) || Boolean(kpi?.calculationConfig);
+              const sourcesSelected = sourcesSelectedRaw || (shouldShowSources ? '—' : '');
               
               return (
           <Card key={kpi.id}>
@@ -1386,6 +1388,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <CardDescription className="text-sm">
                       {kpi.description}
                     </CardDescription>
+                    {shouldShowSources && (
+                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-400" data-testid={`text-kpi-sources-${kpi.id}`}>
+                        <span className="font-medium">Sources selected:</span> {sourcesSelected}
+                      </div>
+                    )}
                     {kpi.metric && (
                       <div className="mt-2">
                         <Badge 
@@ -1396,11 +1403,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                           <BarChart3 className="w-3 h-3 mr-1" />
                           Metric: {kpi.metric}
                         </Badge>
-                        {sourcesSelected && (
-                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400" data-testid={`text-kpi-sources-${kpi.id}`}>
-                            <span className="font-medium">Sources selected:</span> {sourcesSelected}
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>

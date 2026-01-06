@@ -3315,19 +3315,52 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     return lowerBetter ? ((benchmark - current) / benchmark) * 100 : ((current - benchmark) / benchmark) * 100;
   };
 
+  // Direction-aware progress to benchmark.
+  // 100% means meeting benchmark. >100% means outperforming. <100% means underperforming.
+  const getBenchmarkProgressPct = (metricKey: string, currentValue: number, benchmarkValue: number): number => {
+    if (!Number.isFinite(currentValue) || !Number.isFinite(benchmarkValue) || benchmarkValue <= 0) return 0;
+    const lowerBetter = isLowerBetterBenchmarkMetric(metricKey);
+    if (lowerBetter) {
+      // If lower is better, being below the benchmark is good.
+      // progress = benchmark/current (e.g. current 50 vs benchmark 100 => 200%)
+      if (currentValue <= 0) return 100;
+      return (benchmarkValue / currentValue) * 100;
+    }
+    return (currentValue / benchmarkValue) * 100;
+  };
+
+  const getBenchmarkPerformanceBucket = (progressPct: number): 'on_track' | 'needs_attention' | 'behind' => {
+    // Same thresholds as campaign-level KPIs for consistency:
+    // On Track ≥ 90%, Needs Attention 70–89.9%, Behind < 70%.
+    if (!Number.isFinite(progressPct)) return 'behind';
+    if (progressPct >= 90) return 'on_track';
+    if (progressPct >= 70) return 'needs_attention';
+    return 'behind';
+  };
+
   // Calculate summary stats
-  const aboveTargetCount = benchmarks.filter((b) => {
+  const onTrackCount = benchmarks.filter((b) => {
+    const metricKey = String(b.metric || '');
     const current = parseFloat(String((b.currentValue as any) ?? '0').replace(/,/g, '') || '0');
     const benchmark = parseFloat(String((b.benchmarkValue as any) ?? '0').replace(/,/g, '') || '0');
-    const status = getBenchmarkStatus(String(b.metric || ''), current, benchmark);
-    return status === 'above';
+    const progress = getBenchmarkProgressPct(metricKey, current, benchmark);
+    return getBenchmarkPerformanceBucket(progress) === 'on_track';
   }).length;
 
-  const belowTargetCount = benchmarks.filter((b) => {
+  const needsAttentionCount = benchmarks.filter((b) => {
+    const metricKey = String(b.metric || '');
     const current = parseFloat(String((b.currentValue as any) ?? '0').replace(/,/g, '') || '0');
     const benchmark = parseFloat(String((b.benchmarkValue as any) ?? '0').replace(/,/g, '') || '0');
-    const status = getBenchmarkStatus(String(b.metric || ''), current, benchmark);
-    return status === 'below';
+    const progress = getBenchmarkProgressPct(metricKey, current, benchmark);
+    return getBenchmarkPerformanceBucket(progress) === 'needs_attention';
+  }).length;
+
+  const behindCount = benchmarks.filter((b) => {
+    const metricKey = String(b.metric || '');
+    const current = parseFloat(String((b.currentValue as any) ?? '0').replace(/,/g, '') || '0');
+    const benchmark = parseFloat(String((b.benchmarkValue as any) ?? '0').replace(/,/g, '') || '0');
+    const progress = getBenchmarkProgressPct(metricKey, current, benchmark);
+    return getBenchmarkPerformanceBucket(progress) === 'behind';
   }).length;
 
   const avgImprovement =
@@ -3384,7 +3417,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       {benchmarks.length > 0 ? (
         <>
           {/* Benchmark Summary Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -3403,9 +3436,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-above-target">
-                      {aboveTargetCount}
+                      {onTrackCount}
                     </p>
                   </div>
                   <CheckCircle2 className="w-8 h-8 text-green-500" />
@@ -3417,9 +3450,23 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
-                    <p className="text-2xl font-bold text-red-600" data-testid="text-below-target">
-                      {belowTargetCount}
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
+                    <p className="text-2xl font-bold text-yellow-600" data-testid="text-below-target">
+                      {needsAttentionCount}
+                    </p>
+                  </div>
+                  <AlertCircle className="w-8 h-8 text-yellow-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Behind</p>
+                    <p className="text-2xl font-bold text-red-600" data-testid="text-avg-improvement">
+                      {behindCount}
                     </p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-red-500" />
@@ -3432,7 +3479,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Improvement</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-avg-improvement">
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-avg-improvement-percent">
                       {avgImprovement.toFixed(1)}%
                     </p>
                   </div>
@@ -3574,26 +3621,13 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 const current = parseFloat(String(benchmark.currentValue).replace(/,/g, ''));
                 const benchmarkVal = parseFloat(String(benchmark.benchmarkValue).replace(/,/g, ''));
                 const metricKey = String(benchmark.metric || '');
-                const lowerBetter = isLowerBetterBenchmarkMetric(metricKey);
+                const progressTowardBenchmark = getBenchmarkProgressPct(metricKey, current, benchmarkVal);
+                const bucket = getBenchmarkPerformanceBucket(progressTowardBenchmark);
                 
-                // Progress: % of benchmark achieved (direction-aware). For lower-is-better metrics,
-                // being below benchmark is good, so progress is benchmark/current.
-                const progressTowardBenchmark =
-                  benchmarkVal > 0
-                    ? lowerBetter
-                      ? (current > 0 ? (benchmarkVal / current) * 100 : 100)
-                      : (current / benchmarkVal) * 100
-                    : 0;
-                
-                // Performance comparison
-                const diff = current - benchmarkVal;
-                const percentDiff = benchmarkVal > 0
-                  ? (lowerBetter ? ((benchmarkVal - current) / benchmarkVal) * 100 : ((current - benchmarkVal) / benchmarkVal) * 100)
-                  : 0;
-                
-                // Status determination: "Above benchmark" means "better than benchmark"
-                const isAboveBenchmark = lowerBetter ? current <= benchmarkVal : current >= benchmarkVal;
-                const isBelowBenchmark = !isAboveBenchmark;
+                const percentDiff = calculateImprovement(metricKey, current, benchmarkVal);
+                const isOnTrack = bucket === 'on_track';
+                const isNeedsAttention = bucket === 'needs_attention';
+                const isBehind = bucket === 'behind';
                 
                 return (
                   <div className="mt-4 space-y-3">
@@ -3602,8 +3636,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
                           <span className="text-slate-600 dark:text-slate-400">Progress to Benchmark</span>
-                          {isAboveBenchmark && <TrendingUp className="w-4 h-4 text-green-600" />}
-                          {isBelowBenchmark && <TrendingDown className="w-4 h-4 text-red-600" />}
+                          {isOnTrack && <TrendingUp className="w-4 h-4 text-green-600" />}
+                          {isNeedsAttention && <TrendingDown className="w-4 h-4 text-yellow-600" />}
+                          {isBehind && <TrendingDown className="w-4 h-4 text-red-600" />}
                         </div>
                         <span className="font-semibold text-slate-900 dark:text-white">
                           {progressTowardBenchmark.toFixed(2)}%
@@ -3612,7 +3647,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
                         <div 
                           className={`h-2.5 rounded-full transition-all ${
-                            isAboveBenchmark ? 'bg-green-500' : 'bg-red-500'
+                            isOnTrack ? 'bg-green-500' : isNeedsAttention ? 'bg-yellow-500' : 'bg-red-500'
                           }`}
                           style={{ width: `${Math.min(progressTowardBenchmark, 100)}%` }}
                         ></div>
@@ -3622,31 +3657,33 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     {/* Benchmark Status and Comparison */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className={`text-xs px-2 py-1 rounded-md inline-flex items-center gap-1 ${
-                        isAboveBenchmark
+                        isOnTrack
                           ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
+                          : isNeedsAttention
+                          ? 'bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-400'
                           : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
                       }`}>
-                        {isAboveBenchmark && <CheckCircle2 className="w-3 h-3" />}
-                        {isBelowBenchmark && <AlertCircle className="w-3 h-3" />}
+                        {isOnTrack && <CheckCircle2 className="w-3 h-3" />}
+                        {!isOnTrack && <AlertCircle className="w-3 h-3" />}
                         <span>
-                          {isAboveBenchmark ? 'Meeting Target' : 'Below Target'}
+                          {isOnTrack ? 'On Track' : isNeedsAttention ? 'Needs Attention' : 'Behind'}
                         </span>
                       </div>
                       
                       <Badge 
-                        variant={isAboveBenchmark ? "default" : "secondary"}
-                        className={isAboveBenchmark ? "bg-green-600 text-white" : "bg-red-600 text-white"}
+                        variant={isOnTrack ? "default" : "secondary"}
+                        className={isOnTrack ? "bg-green-600 text-white" : isNeedsAttention ? "bg-yellow-600 text-white" : "bg-red-600 text-white"}
                         data-testid={`badge-status-${benchmark.id}`}
                       >
-                        {isAboveBenchmark ? (
+                        {isOnTrack ? (
                           <>
                             <TrendingUp className="w-3 h-3 mr-1" />
-                            {Math.abs(percentDiff).toFixed(2)}% Above Benchmark
+                            {Math.abs(percentDiff).toFixed(2)}% Better than benchmark
                           </>
                         ) : (
                           <>
                             <TrendingDown className="w-3 h-3 mr-1" />
-                            {Math.abs(percentDiff).toFixed(2)}% Below Benchmark
+                            {Math.abs(percentDiff).toFixed(2)}% Worse than benchmark
                           </>
                         )}
                       </Badge>

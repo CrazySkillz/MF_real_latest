@@ -2429,21 +2429,22 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     enabled: !!campaign.id,
   });
 
-  // Fetch aggregated metrics from all connected platforms
-  const { data: customIntegration } = useQuery<any>({
-    queryKey: [`/api/custom-integration/${campaign.id}`],
+  // Use the same normalized campaign totals as the Campaign KPIs tab so numbers never disagree.
+  const { data: outcomeTotals } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/outcome-totals`, "30days"],
     enabled: !!campaign.id,
-  });
-
-  const { data: linkedinMetrics } = useQuery<any>({
-    queryKey: [`/api/linkedin/metrics/${campaign.id}`],
-    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/outcome-totals?dateRange=30days`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
   });
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportMode, setExportMode] = useState<'download' | 'schedule'>('download');
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
+  const [selectedBenchmarkTemplate, setSelectedBenchmarkTemplate] = useState<any>(null);
   const [scheduleForm, setScheduleForm] = useState({
     frequency: 'monthly',
     recipients: '',
@@ -2458,6 +2459,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     unit: '',
     benchmarkValue: '',
     currentValue: '',
+    benchmarkType: 'industry' as 'industry' | 'custom',
     industry: '',
     description: '',
     alertsEnabled: false,
@@ -2465,6 +2467,194 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     alertCondition: 'below' as 'below' | 'above' | 'equals',
     emailRecipients: ''
   });
+
+  const parseNumSafe = (val: any): number => {
+    if (val === null || val === undefined || val === '') return 0;
+    const n = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : Number(val);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const isLowerBetterBenchmarkMetric = (metricKey: string) => {
+    const m = String(metricKey || '').toLowerCase();
+    return m === 'cpa';
+  };
+
+  const getUnifiedConversions = (): number => {
+    const ot = outcomeTotals || {};
+    const web = ot?.webAnalytics || ot?.ga4 || {};
+    const platforms = ot?.platforms || {};
+    const webConnected = Boolean(web?.connected);
+    const webConv = parseNumSafe(web?.conversions);
+    if (webConnected) return webConv;
+    return (
+      parseNumSafe(platforms?.linkedin?.conversions) +
+      parseNumSafe(platforms?.meta?.conversions) +
+      parseNumSafe(platforms?.customIntegration?.conversions)
+    );
+  };
+
+  const getAdClicksImpressions = () => {
+    const ot = outcomeTotals || {};
+    const platforms = ot?.platforms || {};
+    const clicks =
+      parseNumSafe(platforms?.linkedin?.clicks) +
+      parseNumSafe(platforms?.meta?.clicks) +
+      parseNumSafe(platforms?.customIntegration?.clicks);
+    const impressions =
+      parseNumSafe(platforms?.linkedin?.impressions) +
+      parseNumSafe(platforms?.meta?.impressions) +
+      parseNumSafe(platforms?.customIntegration?.impressions);
+    return { clicks, impressions };
+  };
+
+  const getAdConversions = () => {
+    const ot = outcomeTotals || {};
+    const platforms = ot?.platforms || {};
+    return (
+      parseNumSafe(platforms?.linkedin?.conversions) +
+      parseNumSafe(platforms?.meta?.conversions) +
+      parseNumSafe(platforms?.customIntegration?.conversions)
+    );
+  };
+
+  type CampaignBenchmarkTemplate = {
+    name: string;
+    metric: string;
+    unit: string;
+    description: string;
+    category: string;
+    industryMetric: string;
+    requires?: Array<'spend' | 'revenue' | 'conversions' | 'sessions' | 'clicks' | 'impressions' | 'users'>;
+    lowerIsBetter?: boolean;
+  };
+
+  const CAMPAIGN_BENCHMARK_TEMPLATES: CampaignBenchmarkTemplate[] = useMemo(
+    () => [
+      { name: 'Revenue', metric: 'revenue', unit: '$', description: 'Total revenue for the selected period', category: 'Revenue', industryMetric: 'revenue', requires: ['revenue'] },
+      { name: 'ROAS', metric: 'roas', unit: '%', description: 'Revenue ÷ Spend × 100', category: 'Performance', industryMetric: 'roas', requires: ['revenue', 'spend'] },
+      { name: 'ROI', metric: 'roi', unit: '%', description: '(Revenue − Spend) ÷ Spend × 100', category: 'Performance', industryMetric: 'roi', requires: ['revenue', 'spend'] },
+      { name: 'Spend', metric: 'spend', unit: '$', description: 'Total marketing spend for the selected period', category: 'Cost', industryMetric: 'spend', requires: ['spend'] },
+      { name: 'Conversions', metric: 'conversions', unit: 'count', description: 'Total conversions for the selected period', category: 'Performance', industryMetric: 'conversions', requires: ['conversions'] },
+      { name: 'CPA', metric: 'cpa', unit: '$', description: 'Spend ÷ Conversions', category: 'Cost Efficiency', industryMetric: 'cpa', requires: ['spend', 'conversions'], lowerIsBetter: true },
+      { name: 'Users', metric: 'users', unit: 'count', description: 'Total users for the selected period', category: 'Audience', industryMetric: 'users', requires: ['users'] },
+      { name: 'CTR', metric: 'ctr', unit: '%', description: 'Clicks ÷ Impressions × 100', category: 'Performance', industryMetric: 'ctr', requires: ['clicks', 'impressions'] },
+      { name: 'Conversion Rate (website)', metric: 'conversion-rate-website', unit: '%', description: 'Conversions ÷ Sessions × 100', category: 'Performance', industryMetric: 'conversionRate', requires: ['conversions', 'sessions'] },
+      { name: 'Conversion Rate (click-based)', metric: 'conversion-rate-click', unit: '%', description: 'Conversions ÷ Clicks × 100', category: 'Performance', industryMetric: 'cvr', requires: ['conversions', 'clicks'] },
+    ],
+    []
+  );
+
+  const isTemplateMetric = (metric: string) =>
+    CAMPAIGN_BENCHMARK_TEMPLATES.some((t) => t.metric === String(metric || ''));
+
+  const getLiveBenchmarkCurrentValue = (metric: string): { value: number; unit: string } => {
+    const ot = outcomeTotals || {};
+    const web = ot?.webAnalytics || ot?.ga4 || {};
+    const spend = ot?.spend || {};
+    const rev = ot?.revenue || {};
+    const unifiedSpend = parseNumSafe(spend?.unifiedSpend);
+    const totalRevenue = parseNumSafe(rev?.totalRevenue ?? web?.revenue);
+    const webConversions = parseNumSafe(web?.conversions);
+    const sessions = parseNumSafe(web?.sessions);
+    const users = parseNumSafe(web?.users);
+    const totalConversions = getUnifiedConversions();
+    const { clicks, impressions } = getAdClicksImpressions();
+    const adConversions = getAdConversions();
+
+    switch (String(metric || '')) {
+      case 'revenue':
+        return { value: totalRevenue, unit: '$' };
+      case 'spend':
+        return { value: unifiedSpend, unit: '$' };
+      case 'conversions':
+        return { value: totalConversions, unit: 'count' };
+      case 'users':
+        return { value: users, unit: 'count' };
+      case 'ctr': {
+        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+        return { value: ctr, unit: '%' };
+      }
+      case 'conversion-rate-website': {
+        const rate = sessions > 0 ? (webConversions / sessions) * 100 : 0;
+        return { value: rate, unit: '%' };
+      }
+      case 'conversion-rate-click': {
+        const rate = clicks > 0 ? (adConversions / clicks) * 100 : 0;
+        return { value: rate, unit: '%' };
+      }
+      case 'roas': {
+        const roasPct = unifiedSpend > 0 ? (totalRevenue / unifiedSpend) * 100 : 0;
+        return { value: roasPct, unit: '%' };
+      }
+      case 'roi': {
+        const roi = unifiedSpend > 0 ? ((totalRevenue - unifiedSpend) / unifiedSpend) * 100 : 0;
+        return { value: roi, unit: '%' };
+      }
+      case 'cpa': {
+        const cpa = totalConversions > 0 ? unifiedSpend / totalConversions : 0;
+        return { value: cpa, unit: '$' };
+      }
+      default:
+        return { value: 0, unit: '' };
+    }
+  };
+
+  const getInputAvailability = (template: CampaignBenchmarkTemplate): { available: boolean; reason?: string } => {
+    const ot = outcomeTotals || {};
+    const web = ot?.webAnalytics || ot?.ga4 || {};
+    const spend = ot?.spend || {};
+    const rev = ot?.revenue || {};
+    const unifiedSpend = parseNumSafe(spend?.unifiedSpend);
+    const totalRevenue = parseNumSafe(rev?.totalRevenue ?? web?.revenue);
+    const webConnected = Boolean(web?.connected);
+    const webSessions = parseNumSafe(web?.sessions);
+    const webUsers = parseNumSafe(web?.users);
+    const { clicks, impressions } = getAdClicksImpressions();
+    const totalConversions = getUnifiedConversions();
+    const adConversions = getAdConversions();
+
+    const needs = template.requires || [];
+    const has = (k: string) => {
+      switch (k) {
+        case 'spend':
+          return unifiedSpend > 0;
+        case 'revenue':
+          return totalRevenue > 0;
+        case 'conversions':
+          return totalConversions > 0;
+        case 'sessions':
+          return webConnected && webSessions > 0;
+        case 'users':
+          return webConnected && webUsers > 0;
+        case 'clicks':
+          return clicks > 0;
+        case 'impressions':
+          return impressions > 0;
+        default:
+          return false;
+      }
+    };
+
+    // Special-case: click-based CR uses ad conversions, not web conversions
+    if (template.metric === 'conversion-rate-click') {
+      const ok = clicks > 0 && adConversions > 0;
+      return ok ? { available: true } : { available: false, reason: 'Clicks + conversions required' };
+    }
+
+    // If required inputs are missing, disable with a concise reason.
+    for (const k of needs) {
+      if (!has(k)) {
+        if (k === 'spend') return { available: false, reason: 'Spend required' };
+        if (k === 'revenue') return { available: false, reason: 'Revenue required' };
+        if (k === 'conversions') return { available: false, reason: 'Conversions required' };
+        if (k === 'sessions') return { available: false, reason: 'Web analytics sessions required' };
+        if (k === 'users') return { available: false, reason: 'Web analytics users required' };
+        if (k === 'clicks' || k === 'impressions') return { available: false, reason: 'Ad impressions + clicks required' };
+        return { available: false, reason: 'Required inputs missing' };
+      }
+    }
+    return { available: true };
+  };
 
   // Fetch industry list
   const { data: industryData } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
@@ -2643,6 +2833,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       unit: '',
       benchmarkValue: '',
       currentValue: '',
+      benchmarkType: 'industry',
       industry: '',
       description: '',
       alertsEnabled: false,
@@ -2650,6 +2841,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       alertCondition: 'below',
       emailRecipients: ''
     });
+    setSelectedBenchmarkTemplate(null);
   };
 
   const handleBenchmarkSubmit = () => {
@@ -2662,13 +2854,20 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       return;
     }
 
+    const cleanNumber = (raw: any): number => {
+      if (raw === null || raw === undefined) return 0;
+      const s = String(raw).replace(/,/g, '').trim();
+      const n = parseFloat(s);
+      return Number.isFinite(n) ? n : 0;
+    };
+
     const benchmarkData = {
       campaignId: campaign.id,
       platformType: null, // Campaign-level benchmark
       ...benchmarkForm,
-      benchmarkValue: parseFloat(benchmarkForm.benchmarkValue),
-      currentValue: benchmarkForm.currentValue ? parseFloat(benchmarkForm.currentValue) : 0,
-      alertThreshold: benchmarkForm.alertsEnabled ? parseFloat(benchmarkForm.alertThreshold) : null,
+      benchmarkValue: cleanNumber(benchmarkForm.benchmarkValue),
+      currentValue: benchmarkForm.currentValue ? cleanNumber(benchmarkForm.currentValue) : 0,
+      alertThreshold: benchmarkForm.alertsEnabled ? cleanNumber(benchmarkForm.alertThreshold) : null,
       emailRecipients: benchmarkForm.alertsEnabled && benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map(e => e.trim()) : null,
     };
 
@@ -2681,13 +2880,17 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
   const handleEditBenchmark = (benchmark: any) => {
     setEditingBenchmark(benchmark);
+    const metric = String(benchmark.metric || '');
+    const matchedTemplate = CAMPAIGN_BENCHMARK_TEMPLATES.find((t) => t.metric === metric) || null;
+    setSelectedBenchmarkTemplate(matchedTemplate);
     setBenchmarkForm({
-      metric: benchmark.metric || '',
+      metric,
       name: benchmark.name || '',
       category: benchmark.category || 'performance',
       unit: benchmark.unit || '',
       benchmarkValue: String(benchmark.benchmarkValue || ''),
       currentValue: String(benchmark.currentValue || ''),
+      benchmarkType: (benchmark.benchmarkType === 'custom' ? 'custom' : 'industry'),
       industry: benchmark.industry || '',
       description: benchmark.description || '',
       alertsEnabled: benchmark.alertsEnabled || false,
@@ -2739,42 +2942,51 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
   };
 
-  // Calculate benchmark status based on current vs benchmark value
-  const getBenchmarkStatus = (currentValue: number, benchmarkValue: number): 'above' | 'below' | 'meeting' => {
+  // Calculate benchmark status based on current vs benchmark value.
+  // "above" means "better than benchmark" (direction-aware), not literally numerically above.
+  const getBenchmarkStatus = (
+    metricKey: string,
+    currentValue: number,
+    benchmarkValue: number
+  ): 'above' | 'below' | 'meeting' => {
+    const lowerBetter = isLowerBetterBenchmarkMetric(metricKey);
     const diff = Math.abs(currentValue - benchmarkValue);
-    const tolerance = benchmarkValue * 0.05; // 5% tolerance
-    
+    const tolerance = benchmarkValue * 0.05; // 5% tolerance band
+    if (benchmarkValue === 0) return 'meeting';
     if (diff <= tolerance) return 'meeting';
+    if (lowerBetter) return currentValue < benchmarkValue ? 'above' : 'below';
     return currentValue > benchmarkValue ? 'above' : 'below';
   };
 
-  const calculateImprovement = (currentValue: string | number, benchmarkValue: string | number): number => {
-    // Parse values as floats (decimal fields come from DB as strings)
+  const calculateImprovement = (metricKey: string, currentValue: string | number, benchmarkValue: string | number): number => {
     const current = typeof currentValue === 'string' ? parseFloat(currentValue.replace(/,/g, '')) : currentValue;
     const benchmark = typeof benchmarkValue === 'string' ? parseFloat(benchmarkValue.replace(/,/g, '')) : benchmarkValue;
-    
-    if (isNaN(current) || isNaN(benchmark) || benchmark === 0) return 0;
-    return ((current - benchmark) / benchmark) * 100;
+    if (!Number.isFinite(current) || !Number.isFinite(benchmark) || benchmark === 0) return 0;
+    const lowerBetter = isLowerBetterBenchmarkMetric(metricKey);
+    // Positive means "better than benchmark"
+    return lowerBetter ? ((benchmark - current) / benchmark) * 100 : ((current - benchmark) / benchmark) * 100;
   };
 
   // Calculate summary stats
-  const aboveTargetCount = benchmarks.filter(b => {
-    const current = parseFloat((b.currentValue as string)?.replace(/,/g, '') || '0');
-    const benchmark = parseFloat((b.benchmarkValue as string)?.replace(/,/g, '') || '0');
-    const status = getBenchmarkStatus(current, benchmark);
+  const aboveTargetCount = benchmarks.filter((b) => {
+    const current = parseFloat(String((b.currentValue as any) ?? '0').replace(/,/g, '') || '0');
+    const benchmark = parseFloat(String((b.benchmarkValue as any) ?? '0').replace(/,/g, '') || '0');
+    const status = getBenchmarkStatus(String(b.metric || ''), current, benchmark);
     return status === 'above';
   }).length;
 
-  const belowTargetCount = benchmarks.filter(b => {
-    const current = parseFloat((b.currentValue as string)?.replace(/,/g, '') || '0');
-    const benchmark = parseFloat((b.benchmarkValue as string)?.replace(/,/g, '') || '0');
-    const status = getBenchmarkStatus(current, benchmark);
+  const belowTargetCount = benchmarks.filter((b) => {
+    const current = parseFloat(String((b.currentValue as any) ?? '0').replace(/,/g, '') || '0');
+    const benchmark = parseFloat(String((b.benchmarkValue as any) ?? '0').replace(/,/g, '') || '0');
+    const status = getBenchmarkStatus(String(b.metric || ''), current, benchmark);
     return status === 'below';
   }).length;
 
-  const avgImprovement = benchmarks.length > 0
-    ? benchmarks.reduce((sum, b) => sum + calculateImprovement(b.currentValue || '0', b.benchmarkValue || '0'), 0) / benchmarks.length
-    : 0;
+  const avgImprovement =
+    benchmarks.length > 0
+      ? benchmarks.reduce((sum, b) => sum + calculateImprovement(String(b.metric || ''), b.currentValue || '0', b.benchmarkValue || '0'), 0) /
+        benchmarks.length
+      : 0;
 
   if (isLoading) {
     return (
@@ -2987,19 +3199,29 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               {/* Progress Tracker - Benchmark Comparison */}
               {benchmark.currentValue && benchmark.benchmarkValue && (() => {
                 // Calculate accurate progress and comparison
-                const current = parseFloat(benchmark.currentValue);
-                const benchmarkVal = parseFloat(benchmark.benchmarkValue);
+                const current = parseFloat(String(benchmark.currentValue).replace(/,/g, ''));
+                const benchmarkVal = parseFloat(String(benchmark.benchmarkValue).replace(/,/g, ''));
+                const metricKey = String(benchmark.metric || '');
+                const lowerBetter = isLowerBetterBenchmarkMetric(metricKey);
                 
-                // Progress: percentage of benchmark achieved (show actual value, not capped)
-                const progressTowardBenchmark = (current / benchmarkVal) * 100;
+                // Progress: % of benchmark achieved (direction-aware). For lower-is-better metrics,
+                // being below benchmark is good, so progress is benchmark/current.
+                const progressTowardBenchmark =
+                  benchmarkVal > 0
+                    ? lowerBetter
+                      ? (current > 0 ? (benchmarkVal / current) * 100 : 100)
+                      : (current / benchmarkVal) * 100
+                    : 0;
                 
                 // Performance comparison
                 const diff = current - benchmarkVal;
-                const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100) : 0;
+                const percentDiff = benchmarkVal > 0
+                  ? (lowerBetter ? ((benchmarkVal - current) / benchmarkVal) * 100 : ((current - benchmarkVal) / benchmarkVal) * 100)
+                  : 0;
                 
-                // Status determination: Above benchmark = green, Below = red
-                const isAboveBenchmark = current >= benchmarkVal; // 100% or more
-                const isBelowBenchmark = current < benchmarkVal; // Below 100%
+                // Status determination: "Above benchmark" means "better than benchmark"
+                const isAboveBenchmark = lowerBetter ? current <= benchmarkVal : current >= benchmarkVal;
+                const isBelowBenchmark = !isAboveBenchmark;
                 
                 return (
                   <div className="mt-4 space-y-3">
@@ -3044,10 +3266,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                         className={isAboveBenchmark ? "bg-green-600 text-white" : "bg-red-600 text-white"}
                         data-testid={`badge-status-${benchmark.id}`}
                       >
-                        {current >= benchmarkVal ? (
+                        {isAboveBenchmark ? (
                           <>
                             <TrendingUp className="w-3 h-3 mr-1" />
-                            {percentDiff.toFixed(2)}% Above Benchmark
+                            {Math.abs(percentDiff).toFixed(2)}% Above Benchmark
                           </>
                         ) : (
                           <>
@@ -3088,7 +3310,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
         </div>
       )}
 
-      {/* Create/Edit Benchmark Dialog */}
+      {/* Create/Edit Benchmark Dialog (template-first, aligned to Campaign KPI tiles) */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => {
         setShowCreateDialog(open);
         if (!open) {
@@ -3101,200 +3323,107 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
             <DialogTitle>{editingBenchmark ? 'Edit Benchmark' : 'Create New Benchmark'}</DialogTitle>
             <DialogDescription>
               {editingBenchmark 
-                ? 'Update the benchmark details below. Select a metric to auto-populate the current value.'
-                : 'Define a new benchmark for your campaign. You can select metrics from connected platforms or enter custom values.'}
+                ? 'Update this benchmark. You can switch templates to benchmark a different metric.'
+                : 'Choose a benchmark template, then set the benchmark target (industry or custom).'}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="benchmark-name">Benchmark Name *</Label>
-              <Input
-                id="benchmark-name"
-                placeholder="e.g., Email Open Rate Benchmark"
-                value={benchmarkForm.name}
-                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
-                data-testid="input-benchmark-name"
-              />
+            {/* Select Benchmark Template */}
+            <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+              <div>
+                <div className="font-medium text-slate-900 dark:text-white">Select Benchmark Template</div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  Pick a metric to benchmark. Current Value will be auto-filled from your campaign’s connected data.
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {CAMPAIGN_BENCHMARK_TEMPLATES.map((template) => {
+                  const availability = getInputAvailability(template);
+                  const disabled = !availability.available;
+                  const selected = selectedBenchmarkTemplate?.metric === template.metric;
+                  return (
+                    <div
+                      key={template.metric}
+                      className={`p-3 border-2 rounded-lg transition-all ${
+                        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                      } ${
+                        selected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
+                      }`}
+                      onClick={async () => {
+                        if (disabled) return;
+                        setSelectedBenchmarkTemplate(template);
+                        const live = getLiveBenchmarkCurrentValue(template.metric);
+
+                        // Keep name/unit/metric in sync with the selected template.
+                        setBenchmarkForm((prev) => ({
+                          ...prev,
+                          metric: template.metric,
+                          category: template.category,
+                          name: template.name,
+                          unit: template.unit,
+                          currentValue: formatNumber(live.value),
+                          // If industry type + industry already chosen, clear stale benchmarkValue and refetch below.
+                          benchmarkValue: prev.benchmarkType === 'industry' && prev.industry ? '' : prev.benchmarkValue,
+                        }));
+
+                        // If Industry is selected and an industry is already chosen, refetch benchmark value for the new metric.
+                        const nextIndustry = benchmarkForm.industry;
+                        const nextType = benchmarkForm.benchmarkType;
+                        if (nextType === 'industry' && nextIndustry) {
+                          try {
+                            const resp = await fetch(`/api/industry-benchmarks/${encodeURIComponent(nextIndustry)}/${encodeURIComponent(template.industryMetric)}`);
+                            if (resp.ok) {
+                              const data = await resp.json().catch(() => null);
+                              if (data && typeof data.value !== 'undefined') {
+                                setBenchmarkForm((prev) => ({
+                                  ...prev,
+                                  benchmarkValue: String(data.value),
+                                  unit: prev.unit || data.unit || prev.unit,
+                                }));
+                              }
+                            }
+                          } catch {
+                            // best-effort
+                          }
+                        }
+                      }}
+                      data-testid={`tile-benchmark-${template.metric}`}
+                    >
+                      <div className="font-medium text-sm text-slate-900 dark:text-white">{template.name}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                        {disabled ? (availability.reason || 'Not available') : template.description}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
+            {/* Benchmark Name + Unit */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="benchmark-metric">Aggregated Metric</Label>
-                <Select
-                  value={benchmarkForm.metric || ''}
-                  onValueChange={(value) => {
-                    // Auto-populate current value with aggregated data across ALL platforms
-                    let currentValue = '';
-                    let unit = '';
-                    
-                    // Aggregate data from LinkedIn and Custom Integration
-                    const liMetrics = linkedinMetrics || {};
-                    const ciMetrics = customIntegration?.metrics || {};
-                    
-                    // Helper to safely parse numbers
-                    const parseNum = (val: any): number => {
-                      const num = typeof val === 'string' ? parseFloat(val) : val;
-                      return isNaN(num) ? 0 : num;
-                    };
-                    
-                    switch(value) {
-                      // Core Aggregated Metrics (sum across ALL platforms)
-                      case 'total-impressions':
-                        const liImpressions = parseNum(liMetrics.impressions);
-                        const ciPageviews = parseNum(ciMetrics.pageviews);
-                        currentValue = formatNumber(liImpressions + ciPageviews);
-                        break;
-                      case 'total-clicks':
-                        const liClicks = parseNum(liMetrics.clicks);
-                        currentValue = formatNumber(liClicks);
-                        break;
-                      case 'total-conversions':
-                        const liConversions = parseNum(liMetrics.conversions);
-                        currentValue = formatNumber(liConversions);
-                        break;
-                      case 'total-leads':
-                        const liLeads = parseNum(liMetrics.leads);
-                        currentValue = formatNumber(liLeads);
-                        break;
-                      case 'total-spend':
-                        const liSpend = parseNum(liMetrics.spend);
-                        currentValue = formatNumber(liSpend);
-                        unit = '$';
-                        break;
-                      case 'total-engagements':
-                        const liEngagements = parseNum(liMetrics.engagements);
-                        const ciSessions = parseNum(ciMetrics.sessions);
-                        currentValue = formatNumber(liEngagements + ciSessions);
-                        break;
-                      
-                      // Calculated Blended Metrics (using aggregated totals)
-                      case 'overall-ctr':
-                        const totalClicks = parseNum(liMetrics.clicks);
-                        const totalImpressions = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
-                        currentValue = formatNumber(totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0);
-                        unit = '%';
-                        break;
-                      case 'blended-cpc':
-                        const totalSpend = parseNum(liMetrics.spend);
-                        const clicks = parseNum(liMetrics.clicks);
-                        currentValue = formatNumber(clicks > 0 ? totalSpend / clicks : 0);
-                        unit = '$';
-                        break;
-                      case 'blended-cpm':
-                        const spendForCpm = parseNum(liMetrics.spend);
-                        const impressionsForCpm = parseNum(liMetrics.impressions) + parseNum(ciMetrics.pageviews);
-                        currentValue = formatNumber(impressionsForCpm > 0 ? (spendForCpm / impressionsForCpm) * 1000 : 0);
-                        unit = '$';
-                        break;
-                      case 'campaign-cvr':
-                        const conversions = parseNum(liMetrics.conversions);
-                        const clicksForCvr = parseNum(liMetrics.clicks);
-                        currentValue = formatNumber(clicksForCvr > 0 ? (conversions / clicksForCvr) * 100 : 0);
-                        unit = '%';
-                        break;
-                      case 'campaign-cpa':
-                        const spendForCpa = parseNum(liMetrics.spend);
-                        const conversionsForCpa = parseNum(liMetrics.conversions);
-                        currentValue = formatNumber(conversionsForCpa > 0 ? spendForCpa / conversionsForCpa : 0);
-                        unit = '$';
-                        break;
-                      case 'campaign-cpl':
-                        const spendForCpl = parseNum(liMetrics.spend);
-                        const leadsForCpl = parseNum(liMetrics.leads);
-                        currentValue = formatNumber(leadsForCpl > 0 ? spendForCpl / leadsForCpl : 0);
-                        unit = '$';
-                        break;
-                      
-                      // Audience & Engagement (from Custom Integration)
-                      case 'total-users':
-                        currentValue = formatNumber(parseNum(ciMetrics.users));
-                        break;
-                      case 'total-sessions':
-                        currentValue = formatNumber(parseNum(ciMetrics.sessions));
-                        break;
-                    }
-                    
-                    setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue, unit: unit || benchmarkForm.unit });
-                  }}
-                >
-                  <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
-                    <SelectValue placeholder="Select metric or leave empty for custom" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[400px]">
-                    {/* Aggregated Campaign Metrics - Always visible */}
-                    <SelectGroup>
-                      <SelectLabel>ðŸ“Š Core Campaign Metrics</SelectLabel>
-                      <SelectItem value="total-impressions">Total Impressions</SelectItem>
-                      <SelectItem value="total-clicks">Total Clicks</SelectItem>
-                      <SelectItem value="total-conversions">Total Conversions</SelectItem>
-                      <SelectItem value="total-leads">Total Leads</SelectItem>
-                      <SelectItem value="total-spend">Total Spend</SelectItem>
-                      <SelectItem value="total-engagements">Total Engagements</SelectItem>
-                    </SelectGroup>
-                    <SelectSeparator />
-                    <SelectGroup>
-                      <SelectLabel>ðŸ“ˆ Blended Performance Metrics</SelectLabel>
-                      <SelectItem value="overall-ctr">Overall CTR</SelectItem>
-                      <SelectItem value="blended-cpc">Blended CPC</SelectItem>
-                      <SelectItem value="blended-cpm">Blended CPM</SelectItem>
-                      <SelectItem value="campaign-cvr">Campaign CVR</SelectItem>
-                      <SelectItem value="campaign-cpa">Campaign CPA</SelectItem>
-                      <SelectItem value="campaign-cpl">Campaign CPL</SelectItem>
-                    </SelectGroup>
-                    <SelectSeparator />
-                    <SelectGroup>
-                      <SelectLabel>ðŸ‘¥ Audience Metrics</SelectLabel>
-                      <SelectItem value="total-users">Total Users</SelectItem>
-                      <SelectItem value="total-sessions">Total Sessions</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="benchmark-name">Benchmark Name *</Label>
+                <Input
+                  id="benchmark-name"
+                  placeholder="e.g., ROAS"
+                  value={benchmarkForm.name}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
+                  data-testid="input-benchmark-name"
+                />
               </div>
-              
               <div className="space-y-2">
-                <Label htmlFor="benchmark-industry">Industry (Optional)</Label>
-                <Select
-                  value={benchmarkForm.industry || "__none__"}
-                  onValueChange={async (value) => {
-                    const nextIndustry = value === "__none__" ? "" : value;
-                    // Update industry
-                    setBenchmarkForm({ ...benchmarkForm, industry: nextIndustry });
-                    
-                    // If industry selected and metric selected, auto-fill benchmark value
-                    if (nextIndustry && nextIndustry !== 'other' && benchmarkForm.metric) {
-                      try {
-                        const response = await fetch(`/api/industry-benchmarks/${nextIndustry}/${benchmarkForm.metric}`);
-                        if (response.ok) {
-                          const data = await response.json();
-                          setBenchmarkForm(prev => ({
-                            ...prev,
-                            benchmarkValue: String(data.value),
-                            unit: data.unit
-                          }));
-                        }
-                      } catch (error) {
-                        console.error('Failed to fetch benchmark value:', error);
-                      }
-                    }
-                  }}
-                >
-                  <SelectTrigger id="benchmark-industry">
-                    <SelectValue placeholder="Select industry for auto-fill or leave blank" />
+                <Label htmlFor="unit">Unit *</Label>
+                <Select value={benchmarkForm.unit} onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, unit: value })}>
+                  <SelectTrigger id="unit">
+                    <SelectValue placeholder="Select unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">None (Enter custom value)</SelectItem>
-                    {industryData?.industries.map((industry) => (
-                      <SelectItem key={industry.value} value={industry.value}>
-                        {industry.label}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="other">Other (Custom value)</SelectItem>
+                    <SelectItem value="%">%</SelectItem>
+                    <SelectItem value="$">$</SelectItem>
+                    <SelectItem value="count">Count</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  ðŸ’¡ Select an industry to auto-fill benchmark value, or leave blank to enter custom value
-                </p>
               </div>
             </div>
 
@@ -3310,7 +3439,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            {/* Current Value + Benchmark Value */}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="current-value">Current Value</Label>
                 <Input
@@ -3318,28 +3448,19 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   placeholder="0"
                   value={benchmarkForm.currentValue}
                   onChange={(e) => {
-                    // Only allow numbers and decimals, then format with commas
                     let value = e.target.value.replace(/[^\d.]/g, '');
-                    
-                    // Prevent multiple decimal points
                     const parts = value.split('.');
-                    if (parts.length > 2) {
-                      value = parts[0] + '.' + parts.slice(1).join('');
-                    }
-                    
-                    // Format with commas
+                    if (parts.length > 2) value = parts[0] + '.' + parts.slice(1).join('');
                     if (value) {
                       const [intPart, decPart] = value.split('.');
                       const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
                       value = decPart !== undefined ? `${formattedInt}.${decPart}` : formattedInt;
                     }
-                    
                     setBenchmarkForm({ ...benchmarkForm, currentValue: value });
                   }}
                   data-testid="input-benchmark-current"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="benchmark-value">Benchmark Value *</Label>
                 <Input
@@ -3347,45 +3468,94 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   placeholder="0"
                   value={benchmarkForm.benchmarkValue}
                   onChange={(e) => {
-                    // Only allow numbers and decimals - no letters
                     let value = e.target.value.replace(/[^\d.]/g, '');
-                    
-                    // Prevent multiple decimal points
                     const parts = value.split('.');
-                    if (parts.length > 2) {
-                      value = parts[0] + '.' + parts.slice(1).join('');
-                    }
-                    
-                    // Format with commas
+                    if (parts.length > 2) value = parts[0] + '.' + parts.slice(1).join('');
                     if (value) {
                       const [intPart, decPart] = value.split('.');
                       const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
                       value = decPart !== undefined ? `${formattedInt}.${decPart}` : formattedInt;
                     }
-                    
                     setBenchmarkForm({ ...benchmarkForm, benchmarkValue: value });
                   }}
                   data-testid="input-benchmark-value"
                 />
               </div>
+            </div>
 
+            {/* Benchmark Type + Industry */}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="unit">Unit</Label>
+                <Label htmlFor="benchmark-type">Benchmark Type *</Label>
                 <Select
-                  value={benchmarkForm.unit}
-                  onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, unit: value })}
+                  value={benchmarkForm.benchmarkType}
+                  onValueChange={(value: any) => {
+                    const nextType = value === 'custom' ? 'custom' : 'industry';
+                    setBenchmarkForm((prev) => ({
+                      ...prev,
+                      benchmarkType: nextType,
+                      industry: nextType === 'industry' ? prev.industry : '',
+                    }));
+                  }}
                 >
-                  <SelectTrigger id="unit">
-                    <SelectValue placeholder="Select unit" />
+                  <SelectTrigger id="benchmark-type">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="%">%</SelectItem>
-                    <SelectItem value="$">$</SelectItem>
-                    <SelectItem value="count">Count</SelectItem>
-                    <SelectItem value="ratio">Ratio</SelectItem>
+                    <SelectItem value="industry">Industry</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {benchmarkForm.benchmarkType === 'industry' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="benchmark-industry">Industry</Label>
+                  <Select
+                    value={benchmarkForm.industry || "__none__"}
+                    onValueChange={async (value) => {
+                      const nextIndustry = value === "__none__" ? "" : value;
+                      setBenchmarkForm((prev) => ({ ...prev, industry: nextIndustry }));
+
+                      const tpl = selectedBenchmarkTemplate || CAMPAIGN_BENCHMARK_TEMPLATES.find((t) => t.metric === String(benchmarkForm.metric || ''));
+                      if (!nextIndustry || !tpl) return;
+                      try {
+                        const resp = await fetch(
+                          `/api/industry-benchmarks/${encodeURIComponent(nextIndustry)}/${encodeURIComponent(tpl.industryMetric)}`
+                        );
+                        if (!resp.ok) return;
+                        const data = await resp.json().catch(() => null);
+                        if (data && typeof data.value !== 'undefined') {
+                          setBenchmarkForm((prev) => ({
+                            ...prev,
+                            benchmarkValue: String(data.value),
+                            unit: prev.unit || data.unit || prev.unit,
+                          }));
+                        }
+                      } catch {
+                        // best-effort
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="benchmark-industry">
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Select industry</SelectItem>
+                      {industryData?.industries.map((industry) => (
+                        <SelectItem key={industry.value} value={industry.value}>
+                          {industry.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Selecting an industry will auto-fill the Benchmark Value for the chosen metric.
+                  </p>
+                </div>
+              ) : (
+                <div />
+              )}
             </div>
 
             {/* Email Alert Settings */}

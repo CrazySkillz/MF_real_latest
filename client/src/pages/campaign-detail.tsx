@@ -1289,7 +1289,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       ) : (
         <>
           {/* KPI Summary Panel */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -1308,7 +1308,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Achieved</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-kpis-above-target">
                       {kpis.filter(k => {
                         const current = getKpiCurrentNumber(k);
@@ -1317,7 +1317,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         if (target <= 0) return false;
                         const ratio = lowerBetter ? (current > 0 ? target / current : 0) : (current / target);
                         const pct = ratio * 100;
-                        return pct >= 100;
+                        return pct >= 90;
                       }).length}
                     </p>
                   </div>
@@ -1331,7 +1331,29 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
-                    <p className="text-2xl font-bold text-red-600" data-testid="text-kpis-below-target">
+                    <p className="text-2xl font-bold text-amber-600" data-testid="text-kpis-below-target">
+                      {kpis.filter(k => {
+                        const current = getKpiCurrentNumber(k);
+                        const target = parseNumSafe(k?.targetValue) || 0;
+                        const lowerBetter = isLowerBetterMetric(String(k?.metric || ''));
+                        if (target <= 0) return false;
+                        const ratio = lowerBetter ? (current > 0 ? target / current : 0) : (current / target);
+                        const pct = ratio * 100;
+                        return pct >= 70 && pct < 90;
+                      }).length}
+                    </p>
+                  </div>
+                  <AlertCircle className="w-8 h-8 text-amber-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Behind</p>
+                    <p className="text-2xl font-bold text-red-600" data-testid="text-kpis-behind">
                       {kpis.filter(k => {
                         const current = getKpiCurrentNumber(k);
                         const target = parseNumSafe(k?.targetValue) || 0;
@@ -1343,7 +1365,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       }).length}
                     </p>
                   </div>
-                  <AlertCircle className="w-8 h-8 text-red-500" />
+                  <TrendingDown className="w-8 h-8 text-red-500" />
                 </div>
               </CardContent>
             </Card>

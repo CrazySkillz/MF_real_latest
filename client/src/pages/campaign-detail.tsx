@@ -3507,19 +3507,35 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    onClick={() => {
-                      if (confirm(`Are you sure you want to delete the benchmark "${benchmark.name}"?`)) {
-                        deleteBenchmarkMutation.mutate(benchmark.id);
-                      }
-                    }}
-                    data-testid={`button-delete-${benchmark.id}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        data-testid={`button-delete-${benchmark.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Benchmark</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete <span className="font-medium">"{benchmark.name}"</span>. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => deleteBenchmarkMutation.mutate(benchmark.id)}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
 

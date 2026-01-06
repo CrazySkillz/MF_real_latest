@@ -9782,6 +9782,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ALTER TABLE kpis
             ADD COLUMN IF NOT EXISTS calculation_config JSONB;
           `);
+          await db.execute(sql`
+            ALTER TABLE kpis
+            ALTER COLUMN target_value TYPE DECIMAL(18, 2),
+            ALTER COLUMN current_value TYPE DECIMAL(18, 2),
+            ALTER COLUMN last_computed_value TYPE DECIMAL(18, 2),
+            ALTER COLUMN alert_threshold TYPE DECIMAL(18, 2);
+          `);
         } catch (e) {
           // Best-effort: do not block request on migration attempt; actual insert may still fail and surface below.
           console.error("[KPI Create] Failed to ensure calculation_config column:", e);
@@ -9827,6 +9834,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await db.execute(sql`
             ALTER TABLE kpis
             ADD COLUMN IF NOT EXISTS calculation_config JSONB;
+          `);
+          await db.execute(sql`
+            ALTER TABLE kpis
+            ALTER COLUMN target_value TYPE DECIMAL(18, 2),
+            ALTER COLUMN current_value TYPE DECIMAL(18, 2),
+            ALTER COLUMN last_computed_value TYPE DECIMAL(18, 2),
+            ALTER COLUMN alert_threshold TYPE DECIMAL(18, 2);
           `);
         } catch (e) {
           console.error("[KPI Update] Failed to ensure calculation_config column:", e);

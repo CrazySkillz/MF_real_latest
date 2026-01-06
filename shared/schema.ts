@@ -362,9 +362,10 @@ export const kpis = pgTable("kpis", {
   // Calculation config (for blended and user-selected source inputs; especially campaign-level KPIs)
   calculationConfig: jsonb("calculation_config"),
   // Values
-  targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
-  currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"), // Computed at read-time for bound KPIs, manual for sourceType=manual
-  lastComputedValue: decimal("last_computed_value", { precision: 10, scale: 2 }), // Snapshot for reports/exports
+  // Use wider numeric fields to support enterprise-scale values (e.g., large revenue) without overflow.
+  targetValue: decimal("target_value", { precision: 18, scale: 2 }).notNull(),
+  currentValue: decimal("current_value", { precision: 18, scale: 2 }).default("0"), // Computed at read-time for bound KPIs, manual for sourceType=manual
+  lastComputedValue: decimal("last_computed_value", { precision: 18, scale: 2 }), // Snapshot for reports/exports
   unit: text("unit").notNull(), // '%', '$', 'ratio', etc.
   description: text("description"),
   priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'critical'
@@ -374,7 +375,7 @@ export const kpis = pgTable("kpis", {
   rollingAverage: text("rolling_average").notNull().default("7day"), // '1day', '7day', '30day', 'none'
   targetDate: timestamp("target_date"), // Optional target completion date
   // Alert and notification settings
-  alertThreshold: decimal("alert_threshold", { precision: 10, scale: 2 }), // Percentage below target to trigger alert (e.g., 80 = alert when 80% below target)
+  alertThreshold: decimal("alert_threshold", { precision: 18, scale: 2 }), // Percentage below target to trigger alert (e.g., 80 = alert when 80% below target)
   alertCondition: text("alert_condition").default("below"), // 'below', 'above', 'equals'
   alertsEnabled: boolean("alerts_enabled").notNull().default(true),
   emailNotifications: boolean("email_notifications").notNull().default(false),

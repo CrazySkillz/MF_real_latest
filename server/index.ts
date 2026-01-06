@@ -121,6 +121,15 @@ process.on('uncaughtException', (error: Error) => {
             ALTER TABLE kpis
             ADD COLUMN IF NOT EXISTS calculation_config JSONB;
           `);
+
+          // Migration: Widen KPI numeric columns to avoid DECIMAL overflow for enterprise-scale values.
+          await db.execute(sql`
+            ALTER TABLE kpis
+            ALTER COLUMN target_value TYPE DECIMAL(18, 2),
+            ALTER COLUMN current_value TYPE DECIMAL(18, 2),
+            ALTER COLUMN last_computed_value TYPE DECIMAL(18, 2),
+            ALTER COLUMN alert_threshold TYPE DECIMAL(18, 2);
+          `);
           
           // Migration 2: Add notifications metadata column
           await db.execute(sql`

@@ -699,10 +699,17 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
   const formatValueWithUnit = (value: number, unit: string): string => {
     const u = String(unit || '').trim();
-    if (u === '$') return `$${formatNumber(value)}`;
-    if (u === '%') return `${formatNumber(value)}%`;
-    if (u === 'x') return `${formatNumber(value)}x`;
-    return formatNumber(value);
+    const fixed2 = (n: number) =>
+      n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const integer = (n: number) =>
+      n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+    if (u === '$') return `$${fixed2(value)}`;
+    if (u === '%') return `${fixed2(value)}%`;
+    if (u === 'x') return `${fixed2(value)}x`;
+
+    // Default: counts / whole-number metrics
+    return integer(value);
   };
 
   const isConfigCompleteForMetric = (metric: string, rawConfig: any): boolean => {
@@ -849,7 +856,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
   const isLowerBetterMetric = (metricKey: string) => {
     const m = String(metricKey || '').toLowerCase();
-    return m === 'cpa';
+    // Lower-is-better metrics: hitting a smaller value than target is good.
+    return m === 'cpa' || m === 'cpl';
   };
 
   const getKpiCurrentNumber = (kpi: any): number => {
@@ -1374,6 +1382,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               const sourcesSelectedRaw = formatSourcesSelected(kpi?.calculationConfig);
               const shouldShowSources = isTileMetric(String(kpi?.metric || '')) || Boolean(kpi?.calculationConfig);
               const sourcesSelected = sourcesSelectedRaw || (shouldShowSources ? '—' : '');
+              const targetDisplay = formatValueWithUnit(target, String(kpi?.unit || ''));
               
               return (
           <Card key={kpi.id}>
@@ -1459,7 +1468,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Target</div>
                   <div className="text-xl font-bold text-slate-900 dark:text-white">
-                    {kpi.targetValue}
+                    {targetDisplay}
                   </div>
                 </div>
               </div>
@@ -1481,12 +1490,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 </div>
               </div>
 
-              {/* Trend and Metadata */}
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center space-x-4 text-xs text-slate-500">
-                  <span>{kpi.timeframe}</span>
-                </div>
-              </div>
+              {/* (Removed timeframe label under progress bar to reduce noise) */}
             </CardContent>
           </Card>
               );

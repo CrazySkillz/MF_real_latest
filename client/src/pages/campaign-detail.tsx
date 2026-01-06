@@ -259,8 +259,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportMode, setExportMode] = useState<'download' | 'schedule'>('download');
-  const [showAdvancedKpiTemplates, setShowAdvancedKpiTemplates] = useState(false);
   const [editingKPI, setEditingKPI] = useState<any>(null);
+  const [kpiCalculationConfig, setKpiCalculationConfig] = useState<any>(null);
   const [scheduleForm, setScheduleForm] = useState({
     frequency: 'monthly',
     recipients: '',
@@ -289,6 +289,383 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const n = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : Number(val);
     return Number.isFinite(n) ? n : 0;
   };
+
+  type CalcInputKey =
+    | 'revenue'
+    | 'spend'
+    | 'conversions'
+    | 'sessions'
+    | 'users'
+    | 'clicks'
+    | 'impressions'
+    | 'leads';
+
+  type CalcConfig = {
+    metric: string;
+    definition?: 'website' | 'click';
+    inputs: Partial<Record<CalcInputKey, string[]>>;
+  };
+
+  const normalizeCalcConfig = (raw: any): CalcConfig | null => {
+    if (!raw) return null;
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    }
+    return raw as CalcConfig;
+  };
+
+  const getConnectedPlatformFlags = () => {
+    const ot = outcomeTotals || {};
+    const platforms = ot?.platforms || {};
+    return {
+      ga4: Boolean(ot?.ga4?.connected),
+      customIntegration: Boolean(platforms?.customIntegration?.connected),
+      linkedin: Boolean(platforms?.linkedin?.connected),
+      meta: Boolean(platforms?.meta?.connected),
+      shopify: Boolean((ot?.revenueSources || []).some((s: any) => s?.type === 'shopify' && s?.connected)),
+      hubspot: Boolean((ot?.revenueSources || []).some((s: any) => s?.type === 'hubspot' && s?.connected)),
+      salesforce: Boolean((ot?.revenueSources || []).some((s: any) => s?.type === 'salesforce' && s?.connected)),
+    };
+  };
+
+  const getRevenueSourceValue = (sourceId: string): number => {
+    const ot = outcomeTotals || {};
+    const platforms = ot?.platforms || {};
+    const revenueSources = ot?.revenueSources || [];
+    if (sourceId === 'ga4') return parseNumSafe(ot?.ga4?.revenue);
+    if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.revenue);
+    if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.attributedRevenue);
+    if (sourceId === 'shopify' || sourceId === 'hubspot' || sourceId === 'salesforce') {
+      const match = (revenueSources || []).find((s: any) => String(s?.type) === sourceId);
+      return parseNumSafe(match?.lastTotalRevenue);
+    }
+    return 0;
+  };
+
+  const getMetricSourceValue = (inputKey: CalcInputKey, sourceId: string): number => {
+    const ot = outcomeTotals || {};
+    const platforms = ot?.platforms || {};
+
+    // Spend sources
+    if (inputKey === 'spend') {
+      if (sourceId === 'imported_spend') return parseNumSafe(ot?.spend?.persistedSpend);
+      if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.spend);
+      if (sourceId === 'meta') return parseNumSafe(platforms?.meta?.spend);
+      if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.spend);
+      return 0;
+    }
+
+    // Revenue sources
+    if (inputKey === 'revenue') return getRevenueSourceValue(sourceId);
+
+    // Website analytics-style metrics (GA4 or Custom Integration)
+    if (sourceId === 'ga4') {
+      if (inputKey === 'conversions') return parseNumSafe(ot?.ga4?.conversions);
+      if (inputKey === 'sessions') return parseNumSafe(ot?.ga4?.sessions);
+      if (inputKey === 'users') return parseNumSafe(ot?.ga4?.users);
+    }
+    if (sourceId === 'custom_integration') {
+      if (inputKey === 'conversions') return parseNumSafe(platforms?.customIntegration?.conversions);
+      if (inputKey === 'sessions') return parseNumSafe(platforms?.customIntegration?.sessions);
+      if (inputKey === 'users') return parseNumSafe(platforms?.customIntegration?.users);
+    }
+
+    // Ad platform-style metrics
+    if (sourceId === 'linkedin') {
+      if (inputKey === 'conversions') return parseNumSafe(platforms?.linkedin?.conversions);
+      if (inputKey === 'clicks') return parseNumSafe(platforms?.linkedin?.clicks);
+      if (inputKey === 'impressions') return parseNumSafe(platforms?.linkedin?.impressions);
+      if (inputKey === 'leads') return parseNumSafe(platforms?.linkedin?.leads);
+    }
+    if (sourceId === 'meta') {
+      if (inputKey === 'conversions') return parseNumSafe(platforms?.meta?.conversions);
+      if (inputKey === 'clicks') return parseNumSafe(platforms?.meta?.clicks);
+      if (inputKey === 'impressions') return parseNumSafe(platforms?.meta?.impressions);
+      // leads not available in current meta shape
+    }
+
+    return 0;
+  };
+
+  const sumSelected = (inputKey: CalcInputKey, sourceIds: string[] = []) => {
+    return (sourceIds || []).reduce((sum, id) => sum + getMetricSourceValue(inputKey, id), 0);
+  };
+
+  const computeCurrentFromConfig = (rawConfig: any): { value: number | null; unit: string } => {
+    const cfg = normalizeCalcConfig(rawConfig);
+    if (!cfg || !cfg.metric) return { value: null, unit: '' };
+
+    const metric = String(cfg.metric);
+
+    if (metric === 'revenue') {
+      const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
+      return { value: revenue, unit: '$' };
+    }
+    if (metric === 'spend') {
+      const spend = sumSelected('spend', cfg.inputs?.spend || []);
+      return { value: spend, unit: '$' };
+    }
+    if (metric === 'conversions') {
+      const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
+      return { value: conv, unit: '' };
+    }
+    if (metric === 'users') {
+      const users = sumSelected('users', cfg.inputs?.users || []);
+      return { value: users, unit: '' };
+    }
+    if (metric === 'sessions') {
+      const sessions = sumSelected('sessions', cfg.inputs?.sessions || []);
+      return { value: sessions, unit: '' };
+    }
+    if (metric === 'leads') {
+      const leads = sumSelected('leads', cfg.inputs?.leads || []);
+      return { value: leads, unit: '' };
+    }
+    if (metric === 'ctr') {
+      const clicks = sumSelected('clicks', cfg.inputs?.clicks || []);
+      const impressions = sumSelected('impressions', cfg.inputs?.impressions || []);
+      const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+      return { value: ctr, unit: '%' };
+    }
+    if (metric === 'conversion-rate') {
+      const def = cfg.definition;
+      if (def === 'website') {
+        const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
+        const sessions = sumSelected('sessions', cfg.inputs?.sessions || []);
+        const rate = sessions > 0 ? (conv / sessions) * 100 : 0;
+        return { value: rate, unit: '%' };
+      }
+      if (def === 'click') {
+        const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
+        const clicks = sumSelected('clicks', cfg.inputs?.clicks || []);
+        const rate = clicks > 0 ? (conv / clicks) * 100 : 0;
+        return { value: rate, unit: '%' };
+      }
+      return { value: null, unit: '%' };
+    }
+
+    // Derived efficiency metrics (blended)
+    if (metric === 'roas') {
+      const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
+      const spend = sumSelected('spend', cfg.inputs?.spend || []);
+      const roas = spend > 0 ? revenue / spend : 0;
+      return { value: roas, unit: 'x' };
+    }
+    if (metric === 'roi') {
+      const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
+      const spend = sumSelected('spend', cfg.inputs?.spend || []);
+      const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+      return { value: roi, unit: '%' };
+    }
+    if (metric === 'cpa') {
+      const spend = sumSelected('spend', cfg.inputs?.spend || []);
+      const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
+      const cpa = conv > 0 ? spend / conv : 0;
+      return { value: cpa, unit: '$' };
+    }
+    if (metric === 'cpl') {
+      const spend = sumSelected('spend', cfg.inputs?.spend || []);
+      const leads = sumSelected('leads', cfg.inputs?.leads || []);
+      const cpl = leads > 0 ? spend / leads : 0;
+      return { value: cpl, unit: '$' };
+    }
+
+    return { value: null, unit: '' };
+  };
+
+  const getInputOptions = (inputKey: CalcInputKey) => {
+    const connected = getConnectedPlatformFlags();
+    const platforms = (outcomeTotals || {})?.platforms || {};
+    const revenueSources = (outcomeTotals || {})?.revenueSources || [];
+
+    const base: Array<{ id: string; label: string; enabled: boolean; reason?: string; value?: number }> = [];
+
+    if (inputKey === 'revenue') {
+      // GA4 (website analytics)
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getRevenueSourceValue('ga4') });
+      // Custom integration revenue
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: getRevenueSourceValue('custom_integration') });
+      // Revenue connectors
+      if (connected.shopify) {
+        base.push({ id: 'shopify', label: 'Shopify', enabled: true, value: getRevenueSourceValue('shopify') });
+      }
+      if (connected.hubspot) {
+        base.push({ id: 'hubspot', label: 'HubSpot', enabled: true, value: getRevenueSourceValue('hubspot') });
+      }
+      if (connected.salesforce) {
+        base.push({ id: 'salesforce', label: 'Salesforce', enabled: true, value: getRevenueSourceValue('salesforce') });
+      }
+
+      // Show connected ad platforms (disabled for revenue unless present)
+      if (connected.linkedin) {
+        const has = platforms?.linkedin?.attributedRevenue !== undefined && platforms?.linkedin?.attributedRevenue !== null;
+        base.push({
+          id: 'linkedin',
+          label: 'LinkedIn',
+          enabled: Boolean(has && parseNumSafe(platforms?.linkedin?.attributedRevenue) > 0),
+          reason: 'Revenue not connected for this platform',
+          value: getRevenueSourceValue('linkedin'),
+        });
+      }
+      if (connected.meta) {
+        base.push({ id: 'meta', label: 'Meta', enabled: false, reason: 'Revenue not connected for this platform' });
+      }
+
+      return base;
+    }
+
+    if (inputKey === 'spend') {
+      const imported = parseNumSafe((outcomeTotals || {})?.spend?.persistedSpend) > 0;
+      base.push({ id: 'imported_spend', label: 'Imported Spend', enabled: imported, reason: imported ? undefined : 'No imported spend connected', value: parseNumSafe((outcomeTotals || {})?.spend?.persistedSpend) });
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.spend) });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.spend) });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.spend) });
+      return base;
+    }
+
+    if (inputKey === 'conversions') {
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe((outcomeTotals || {})?.ga4?.conversions) });
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.conversions) });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.conversions) });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.conversions) });
+      return base;
+    }
+
+    if (inputKey === 'sessions') {
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe((outcomeTotals || {})?.ga4?.sessions) });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.sessions) });
+      // Show ad platforms as connected but disabled for sessions
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: false, reason: 'Sessions not available for this platform' });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: false, reason: 'Sessions not available for this platform' });
+      return base;
+    }
+
+    if (inputKey === 'users') {
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe((outcomeTotals || {})?.ga4?.users) });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.users) });
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: false, reason: 'Users not available for this platform' });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: false, reason: 'Users not available for this platform' });
+      return base;
+    }
+
+    if (inputKey === 'clicks') {
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.clicks) });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.clicks) });
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: false, reason: 'Clicks not available for this source' });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: false, reason: 'Clicks not available for this source' });
+      return base;
+    }
+
+    if (inputKey === 'impressions') {
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.impressions) });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.impressions) });
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: false, reason: 'Impressions not available for this source' });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: false, reason: 'Impressions not available for this source' });
+      return base;
+    }
+
+    if (inputKey === 'leads') {
+      if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.leads) });
+      if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: false, reason: 'Leads not available for this platform' });
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: false, reason: 'Leads not available for this source' });
+      if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: false, reason: 'Leads not available for this source' });
+      return base;
+    }
+
+    return base;
+  };
+
+  const getRequiredInputsForMetric = (metric: string): CalcInputKey[] => {
+    const m = String(metric || '');
+    if (m === 'revenue') return ['revenue'];
+    if (m === 'spend') return ['spend'];
+    if (m === 'conversions') return ['conversions'];
+    if (m === 'users') return ['users'];
+    if (m === 'sessions') return ['sessions'];
+    if (m === 'leads') return ['leads'];
+    if (m === 'ctr') return ['clicks', 'impressions'];
+    if (m === 'conversion-rate') return ['conversions']; // definition picks denominator inputs
+    if (m === 'roi' || m === 'roas') return ['revenue', 'spend'];
+    if (m === 'cpa') return ['spend', 'conversions'];
+    if (m === 'cpl') return ['spend', 'leads'];
+    return [];
+  };
+
+  const getMetricDisplayUnit = (metric: string): string => {
+    const m = String(metric || '');
+    if (m === 'revenue' || m === 'spend' || m === 'cpa' || m === 'cpl') return '$';
+    if (m === 'roi' || m === 'ctr' || m === 'conversion-rate') return '%';
+    if (m === 'roas') return 'x';
+    return '';
+  };
+
+  const isTileMetric = (metric: string): boolean => {
+    return [
+      'revenue',
+      'roas',
+      'roi',
+      'spend',
+      'conversions',
+      'conversion-rate',
+      'cpa',
+      'leads',
+      'cpl',
+      'users',
+      'sessions',
+      'ctr',
+    ].includes(String(metric || ''));
+  };
+
+  const getTileDisabledReason = (metric: string): string | null => {
+    const m = String(metric || '');
+    const required = getRequiredInputsForMetric(m);
+    if (!required.length) return null;
+
+    // Conversion rate requires conversions + (sessions OR clicks) depending on definition selected later.
+    if (m === 'conversion-rate') {
+      const hasConv = getInputOptions('conversions').some(o => o.enabled);
+      const hasSessions = getInputOptions('sessions').some(o => o.enabled);
+      const hasClicks = getInputOptions('clicks').some(o => o.enabled);
+      return hasConv && (hasSessions || hasClicks) ? null : 'Required inputs not connected';
+    }
+
+    for (const input of required) {
+      const hasAny = getInputOptions(input).some(o => o.enabled);
+      if (!hasAny) return 'Required inputs not connected';
+    }
+    return null;
+  };
+
+  const isConfigCompleteForMetric = (metric: string, rawConfig: any): boolean => {
+    if (!isTileMetric(metric)) return true;
+    const cfg = normalizeCalcConfig(rawConfig);
+    if (!cfg) return false;
+    const m = String(metric || '');
+    if (m === 'conversion-rate') {
+      if (!cfg.definition) return false;
+      const convOk = (cfg.inputs?.conversions || []).length > 0;
+      const denomOk = cfg.definition === 'website' ? (cfg.inputs?.sessions || []).length > 0 : (cfg.inputs?.clicks || []).length > 0;
+      return convOk && denomOk;
+    }
+    const requiredInputs = getRequiredInputsForMetric(m);
+    return requiredInputs.every((k) => (cfg.inputs?.[k] || []).length > 0);
+  };
+
+  // Keep Current Value in sync with selected sources (no defaults; computed preview becomes the stored currentValue snapshot).
+  useEffect(() => {
+    if (!isTileMetric(kpiForm.metric)) return;
+    const computed = computeCurrentFromConfig(kpiCalculationConfig);
+    const unit = getMetricDisplayUnit(kpiForm.metric);
+    setKpiForm((prev) => ({
+      ...prev,
+      unit,
+      currentValue: computed.value === null ? '' : formatNumber(computed.value),
+    }));
+  }, [kpiCalculationConfig, kpiForm.metric]);
 
   const getUnifiedConversions = (): number => {
     const ot = outcomeTotals || {};
@@ -411,6 +788,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   };
 
   const getKpiCurrentNumber = (kpi: any): number => {
+    const cfg = normalizeCalcConfig(kpi?.calculationConfig);
+    if (cfg) {
+      const computed = computeCurrentFromConfig(cfg);
+      if (typeof computed.value === 'number' && Number.isFinite(computed.value)) return computed.value;
+    }
     const m = String(kpi?.metric || '');
     const live = getLiveCampaignMetricNumber(m);
     if (typeof live === 'number' && Number.isFinite(live)) return live;
@@ -425,6 +807,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
       setShowCreateDialog(false);
+      setKpiCalculationConfig(null);
       setKpiForm({
         name: '',
         description: '',
@@ -484,6 +867,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
       setShowEditDialog(false);
       setEditingKPI(null);
+      setKpiCalculationConfig(null);
       setKpiForm({
         name: '',
         description: '',
@@ -523,11 +907,62 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       return;
     }
 
+    if (isTileMetric(kpiForm.metric)) {
+      const cfg = normalizeCalcConfig(kpiCalculationConfig);
+      if (!cfg) {
+        toast({
+          title: "Select Sources",
+          description: "Choose which connected sources to use for the Current Value before creating this KPI.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const metric = String(cfg.metric || '');
+      if (metric === 'conversion-rate') {
+        if (!cfg.definition) {
+          toast({
+            title: "Select Conversion Rate Type",
+            description: "Choose Website (Conversions ÷ Sessions) or Click (Conversions ÷ Clicks).",
+            variant: "destructive",
+          });
+          return;
+        }
+        const convOk = (cfg.inputs?.conversions || []).length > 0;
+        const denomOk = cfg.definition === 'website' ? (cfg.inputs?.sessions || []).length > 0 : (cfg.inputs?.clicks || []).length > 0;
+        if (!convOk || !denomOk) {
+          toast({
+            title: "Select Sources",
+            description: "Select the required sources to compute Conversion Rate.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        const requiredInputs = getRequiredInputsForMetric(metric);
+        const ok = requiredInputs.every((k) => (cfg.inputs?.[k] || []).length > 0);
+        if (!ok) {
+          toast({
+            title: "Select Sources",
+            description: "Select the required sources to compute the Current Value for this KPI.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    }
+
+    const computed = isTileMetric(kpiForm.metric) ? computeCurrentFromConfig(kpiCalculationConfig) : { value: null, unit: '' };
+    const currentValueNumber = isTileMetric(kpiForm.metric)
+      ? (typeof computed.value === 'number' && Number.isFinite(computed.value) ? computed.value : 0)
+      : parseFormattedNumber(kpiForm.currentValue);
+
     createKpiMutation.mutate({
       campaignId: campaign.id,
       platformType: null, // Campaign-level KPI
       ...kpiForm,
-      currentValue: parseFormattedNumber(kpiForm.currentValue),
+      calculationConfig: isTileMetric(kpiForm.metric) ? normalizeCalcConfig(kpiCalculationConfig) : null,
+      currentValue: currentValueNumber,
       targetValue: parseFormattedNumber(kpiForm.targetValue),
       alertThreshold: kpiForm.alertEnabled ? parseFormattedNumber(kpiForm.alertThreshold) : null,
       alertEmails: kpiForm.alertEnabled && kpiForm.alertEmails ? kpiForm.alertEmails.split(',').map(e => e.trim()) : null,
@@ -536,12 +971,17 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
   const handleEditKPI = (kpi: any) => {
     setEditingKPI(kpi);
+    const cfg = normalizeCalcConfig(kpi?.calculationConfig);
+    setKpiCalculationConfig(cfg);
+    const computed = cfg ? computeCurrentFromConfig(cfg) : { value: null, unit: '' };
     const live = kpi?.metric ? getLiveCampaignMetric(String(kpi.metric)) : { value: '', unit: '', category: '' };
     setKpiForm({
       name: kpi.name,
       description: kpi.description || '',
       metric: kpi.metric || '',
-      currentValue: live.value ? formatInputNumber(live.value) : (kpi.currentValue ? formatInputNumber(kpi.currentValue.toString()) : ''),
+      currentValue: cfg
+        ? (computed.value === null ? '' : formatInputNumber(String(computed.value)))
+        : (live.value ? formatInputNumber(live.value) : (kpi.currentValue ? formatInputNumber(kpi.currentValue.toString()) : '')),
       targetValue: kpi.targetValue ? formatInputNumber(kpi.targetValue.toString()) : '',
       unit: live.unit || kpi.unit || '',
       category: live.category || kpi.category || '',
@@ -579,7 +1019,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       campaignId: campaign.id,
       platformType: null,
       ...kpiForm,
-      currentValue: parseFormattedNumber(kpiForm.currentValue),
+      calculationConfig: isTileMetric(kpiForm.metric) ? normalizeCalcConfig(kpiCalculationConfig) : null,
+      currentValue: isTileMetric(kpiForm.metric)
+        ? (typeof computeCurrentFromConfig(kpiCalculationConfig).value === 'number' ? computeCurrentFromConfig(kpiCalculationConfig).value : 0)
+        : parseFormattedNumber(kpiForm.currentValue),
       targetValue: parseFormattedNumber(kpiForm.targetValue),
       alertThreshold: kpiForm.alertEnabled ? parseFormattedNumber(kpiForm.alertThreshold) : null,
       emailRecipients: kpiForm.alertEnabled && kpiForm.alertEmails ? kpiForm.alertEmails : null,
@@ -988,7 +1431,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         setShowCreateDialog(open);
         if (!open) {
           // Reset form when closing the dialog
-          setShowAdvancedKpiTemplates(false);
+          setKpiCalculationConfig(null);
           setKpiForm({
             name: '',
             description: '',
@@ -1010,7 +1453,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           <DialogHeader>
             <DialogTitle>Create Campaign KPI</DialogTitle>
             <DialogDescription>
-              Choose a KPI template to auto-fill the metric and current value, then set a target.
+              Pick a KPI, choose which connected sources to use for the Current Value, then set a target.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1019,55 +1462,28 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <div>
                 <h4 className="font-medium text-slate-900 dark:text-white">Choose a KPI</h4>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Start with the core executive KPIs. Use Advanced metrics only if you need website/app traffic numbers.
+                  No defaults: you control which connected sources are used to calculate Current Value.
                 </p>
-              </div>
-
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-slate-600 dark:text-slate-400">
-                  {Boolean(outcomeTotals?.webAnalytics?.connected || outcomeTotals?.ga4?.connected)
-                    ? "Website/app metrics available."
-                    : "Website/app metrics not connected (optional)."}
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAdvancedKpiTemplates((v) => !v)}
-                  data-testid="button-toggle-advanced-kpi-templates"
-                >
-                  {showAdvancedKpiTemplates ? "Hide advanced metrics" : "Advanced metrics"}
-                </Button>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  // Core (always shown)
-                  { name: "Revenue", metric: "total-revenue", unit: "$", category: "Revenue", description: "Total revenue (website + connected offsite sources)" },
-                  { name: "Conversions", metric: "total-conversions", unit: "", category: "Performance", description: "Total conversions across connected sources" },
-                  { name: "Spend", metric: "total-spend", unit: "$", category: "Cost Efficiency", description: "Total marketing spend (imports or platform spend)" },
-                  { name: "ROAS", metric: "roas", unit: "x", category: "Performance", description: "Connected revenue ÷ spend" },
-                  { name: "ROI", metric: "roi", unit: "%", category: "Performance", description: "(Connected revenue − spend) ÷ spend × 100" },
-                  { name: "CPA", metric: "cpa", unit: "$", category: "Cost Efficiency", description: "Spend ÷ conversions" },
-                  // Advanced (optional)
-                  ...(showAdvancedKpiTemplates
-                    ? [
-                        { name: "Website Revenue", metric: "ga4-revenue", unit: "$", category: "Revenue", description: "Revenue tracked in your website analytics" },
-                        { name: "Website Conversions", metric: "ga4-conversions", unit: "", category: "Performance", description: "Conversions tracked in your website analytics" },
-                        { name: "Website Conversion Rate", metric: "ga4-conversion-rate", unit: "%", category: "Performance", description: "Website conversions ÷ sessions × 100" },
-                        { name: "Website Users", metric: "ga4-users", unit: "", category: "Engagement", description: "Unique users (website analytics)" },
-                        { name: "Website Sessions", metric: "ga4-sessions", unit: "", category: "Engagement", description: "Sessions (website analytics)" },
-                        { name: "Offsite Revenue", metric: "offsite-revenue", unit: "$", category: "Revenue", description: "Revenue from CRM/Shopify/etc. marked offsite" },
-                      ]
-                    : []),
+                  { name: "ROAS", metric: "roas", category: "Performance", description: "Revenue ÷ Spend" },
+                  { name: "ROI", metric: "roi", category: "Performance", description: "(Revenue − Spend) ÷ Spend × 100" },
+                  { name: "CPA", metric: "cpa", category: "Cost Efficiency", description: "Spend ÷ Conversions" },
+                  { name: "Revenue", metric: "revenue", category: "Revenue", description: "Total revenue (selected sources)" },
+                  { name: "Conversions", metric: "conversions", category: "Performance", description: "Total conversions (selected sources)" },
+                  { name: "Conversion Rate", metric: "conversion-rate", category: "Performance", description: "Choose Website or Click-based rate" },
+                  { name: "Users", metric: "users", category: "Engagement", description: "Total users (selected sources)" },
+                  { name: "Sessions", metric: "sessions", category: "Engagement", description: "Total sessions (selected sources)" },
+                  { name: "Spend", metric: "spend", category: "Cost Efficiency", description: "Total spend (selected sources)" },
+                  { name: "Leads", metric: "leads", category: "Performance", description: "Total leads (selected sources)" },
+                  { name: "CPL", metric: "cpl", category: "Cost Efficiency", description: "Spend ÷ Leads" },
+                  { name: "CTR", metric: "ctr", category: "Performance", description: "Clicks ÷ Impressions × 100" },
                 ].map((template) => {
-                  const webAnalyticsConnected = Boolean(outcomeTotals?.webAnalytics?.connected || outcomeTotals?.ga4?.connected);
-                  const unifiedSpend = parseNumSafe(outcomeTotals?.spend?.unifiedSpend);
-                  // Back-compat: stored metric keys still use "ga4-" prefix, but the source is platform-agnostic "Web Analytics".
-                  const requiresWebAnalytics = template.metric.startsWith("ga4-");
-                  const requiresSpend = template.metric === "roas" || template.metric === "roi" || template.metric === "cpa";
-                  const disabled = (requiresWebAnalytics && !webAnalyticsConnected) || (requiresSpend && !(unifiedSpend > 0));
-                  const isSelected = kpiForm.metric === template.metric;
+                  const reason = getTileDisabledReason(template.metric);
+                  const disabled = Boolean(reason);
+                  const isSelected = String(kpiForm.metric || '') === String(template.metric);
 
                   return (
                     <div
@@ -1081,36 +1497,196 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       }`}
                       onClick={() => {
                         if (disabled) return;
-                        const live = getLiveCampaignMetric(template.metric);
+                        setKpiCalculationConfig({
+                          metric: template.metric,
+                          inputs: {},
+                        });
                         setKpiForm((prev) => ({
                           ...prev,
                           name: prev.name || template.name,
                           metric: template.metric,
-                          currentValue: live.value,
-                          unit: live.unit || template.unit,
-                          category: live.category || template.category,
+                          currentValue: '',
+                          unit: getMetricDisplayUnit(template.metric),
+                          category: template.category,
                         }));
                       }}
                       data-testid={`campaign-kpi-template-${template.metric}`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-medium text-sm text-slate-900 dark:text-white">{template.name}</div>
-                        {template.metric.startsWith("ga4-") && (
-                          <Badge variant="secondary" className="text-[10px] px-2 py-0.5">Website analytics</Badge>
-                        )}
                       </div>
                       <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                        {disabled
-                          ? !webAnalyticsConnected && requiresWebAnalytics
-                            ? "Connect website analytics (optional)"
-                            : "Spend required"
-                          : template.description}
+                        {disabled ? reason : template.description}
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
+
+            {/* Source selection (no defaults) */}
+            {isTileMetric(kpiForm.metric) && (
+              <div className="space-y-3 p-4 border rounded-lg">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-medium text-slate-900 dark:text-white">Sources used for Current Value</div>
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                      Select the sources you want included. Current Value will update once required inputs are selected.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Conversion Rate type selection */}
+                {String(kpiForm.metric) === 'conversion-rate' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Conversion Rate Type *</Label>
+                      <Select
+                        value={String((normalizeCalcConfig(kpiCalculationConfig) as any)?.definition || '')}
+                        onValueChange={(value) => {
+                          setKpiCalculationConfig((prev: any) => ({
+                            ...(normalizeCalcConfig(prev) || { metric: 'conversion-rate', inputs: {} }),
+                            definition: value as any,
+                            // Reset denominator selections when switching types
+                            inputs: {
+                              ...(normalizeCalcConfig(prev) || { inputs: {} }).inputs,
+                              sessions: [],
+                              clicks: [],
+                            },
+                          }));
+                        }}
+                      >
+                        <SelectTrigger data-testid="select-campaign-kpi-conversion-rate-type">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="website">Website (Conversions ÷ Sessions)</SelectItem>
+                          <SelectItem value="click">Click (Conversions ÷ Clicks)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Current Value (preview)</Label>
+                      <Input
+                        value={(() => {
+                          const computed = computeCurrentFromConfig(kpiCalculationConfig);
+                          if (computed.value === null) return '';
+                          return formatNumber(computed.value);
+                        })()}
+                        readOnly
+                        placeholder="—"
+                        data-testid="input-campaign-kpi-current-preview"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Required inputs */}
+                {(() => {
+                  const cfg = normalizeCalcConfig(kpiCalculationConfig);
+                  const metric = String(kpiForm.metric || '');
+                  const required = getRequiredInputsForMetric(metric);
+                  const def = metric === 'conversion-rate' ? (cfg as any)?.definition : null;
+                  const requiredWithDenom =
+                    metric === 'conversion-rate'
+                      ? (def === 'website' ? ['conversions', 'sessions'] : def === 'click' ? ['conversions', 'clicks'] : ['conversions'])
+                      : required;
+
+                  const computed = computeCurrentFromConfig(kpiCalculationConfig);
+                  const preview = computed.value === null ? '—' : formatNumber(computed.value);
+
+                  const toggle = (inputKey: CalcInputKey, sourceId: string) => {
+                    setKpiCalculationConfig((prev: any) => {
+                      const next = normalizeCalcConfig(prev) || { metric: metric, inputs: {} };
+                      const current = Array.isArray(next.inputs?.[inputKey]) ? (next.inputs as any)[inputKey] : [];
+                      const exists = current.includes(sourceId);
+                      const updated = exists ? current.filter((x: string) => x !== sourceId) : [...current, sourceId];
+                      return {
+                        ...next,
+                        metric,
+                        inputs: {
+                          ...(next.inputs || {}),
+                          [inputKey]: updated,
+                        },
+                      };
+                    });
+                  };
+
+                  return (
+                    <div className="space-y-4">
+                      {/* Preview for non-conversion-rate metrics */}
+                      {metric !== 'conversion-rate' && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <div className="text-xs text-slate-600 dark:text-slate-400">Current Value (preview)</div>
+                            <div className="text-lg font-semibold text-slate-900 dark:text-white">{preview}</div>
+                          </div>
+                          <div className="text-xs text-slate-500 self-end">
+                            Required inputs must be selected before you can create this KPI.
+                          </div>
+                        </div>
+                      )}
+
+                      {requiredWithDenom.map((inputKey: any) => {
+                        const key = inputKey as CalcInputKey;
+                        const options = getInputOptions(key);
+                        return (
+                          <div key={key} className="space-y-2">
+                            <div className="text-sm font-medium text-slate-900 dark:text-white">
+                              {key === 'revenue'
+                                ? 'Revenue sources'
+                                : key === 'spend'
+                                ? 'Spend sources'
+                                : key === 'conversions'
+                                ? 'Conversion sources'
+                                : key === 'sessions'
+                                ? 'Session sources'
+                                : key === 'users'
+                                ? 'User sources'
+                                : key === 'clicks'
+                                ? 'Click sources'
+                                : key === 'impressions'
+                                ? 'Impression sources'
+                                : 'Lead sources'}{' '}
+                              <span className="text-red-500">*</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {options.map((opt) => {
+                                const cfg2 = normalizeCalcConfig(kpiCalculationConfig) as any;
+                                const selected = (cfg2?.inputs?.[key] || []).includes(opt.id);
+                                const isDisabled = !opt.enabled;
+                                return (
+                                  <label
+                                    key={opt.id}
+                                    className={`flex items-start gap-2 p-2 border rounded-md ${
+                                      isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-blue-300'
+                                    }`}
+                                  >
+                                    <Checkbox
+                                      checked={selected}
+                                      onCheckedChange={() => {
+                                        if (isDisabled) return;
+                                        toggle(key, opt.id);
+                                      }}
+                                    />
+                                    <div className="flex-1">
+                                      <div className="text-sm font-medium text-slate-900 dark:text-white">{opt.label}</div>
+                                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                                        {isDisabled ? opt.reason || 'Not available' : (opt.value !== undefined ? `Value: ${formatNumber(opt.value)}` : 'Available')}
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -1128,8 +1704,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <Select
                   value={kpiForm.metric || ''}
                   onValueChange={(value) => {
-                    const live = getLiveCampaignMetric(value);
-                    setKpiForm({ ...kpiForm, metric: value, currentValue: live.value, unit: live.unit, category: live.category });
+                    setKpiCalculationConfig(isTileMetric(value) ? { metric: value, inputs: {} } : null);
+                    const unit = isTileMetric(value) ? getMetricDisplayUnit(value) : '';
+                    setKpiForm({ ...kpiForm, metric: value, currentValue: '', unit });
                   }}
                 >
                   <SelectTrigger id="kpi-metric" data-testid="select-campaign-kpi-metric">
@@ -1138,28 +1715,22 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <SelectContent className="max-h-[400px]">
                     {/* Aggregated Campaign Metrics - Always visible */}
                     <SelectGroup>
-                      <SelectLabel>📊 Outcome KPIs (recommended)</SelectLabel>
-                      <SelectItem value="total-revenue">Revenue (Connected)</SelectItem>
-                      <SelectItem value="total-conversions">Conversions (Connected)</SelectItem>
-                      <SelectItem value="total-spend">Total Spend (Unified)</SelectItem>
-                      <SelectItem value="roas">ROAS (revenue ÷ spend)</SelectItem>
-                      <SelectItem value="roi">ROI ((revenue − spend) ÷ spend)</SelectItem>
-                      <SelectItem value="cpa">CPA (spend ÷ conversions)</SelectItem>
+                      <SelectLabel>📊 Campaign KPIs</SelectLabel>
+                      <SelectItem value="roas">ROAS</SelectItem>
+                      <SelectItem value="roi">ROI</SelectItem>
+                      <SelectItem value="cpa">CPA</SelectItem>
+                      <SelectItem value="revenue">Revenue</SelectItem>
+                      <SelectItem value="conversions">Conversions</SelectItem>
+                      <SelectItem value="conversion-rate">Conversion Rate</SelectItem>
+                      <SelectItem value="users">Users</SelectItem>
+                      <SelectItem value="sessions">Sessions</SelectItem>
+                      <SelectItem value="spend">Spend</SelectItem>
+                      <SelectItem value="leads">Leads</SelectItem>
+                      <SelectItem value="cpl">CPL</SelectItem>
+                      <SelectItem value="ctr">CTR</SelectItem>
                     </SelectGroup>
                     <SelectSeparator />
                     
-                    <SelectGroup>
-                      <SelectLabel>🔎 Advanced (optional)</SelectLabel>
-                      <SelectItem value="offsite-revenue">Revenue (Offsite / CRM / Shopify)</SelectItem>
-                      <SelectItem value="ga4-revenue">Revenue (Website / Analytics)</SelectItem>
-                      <SelectItem value="ga4-conversions">Conversions (Website / Analytics)</SelectItem>
-                      <SelectItem value="ga4-conversion-rate">Conversion Rate (Website / Analytics)</SelectItem>
-                      <SelectItem value="ga4-users">Users (Website / Analytics)</SelectItem>
-                      <SelectItem value="ga4-sessions">Sessions (Website / Analytics)</SelectItem>
-                    </SelectGroup>
-                    <SelectSeparator />
-                    
-                    {/* Manual Entry */}
                     <SelectGroup>
                       <SelectLabel>✏️ Manual Entry</SelectLabel>
                       <SelectItem value="custom">Custom Value</SelectItem>
@@ -1189,7 +1760,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   type="text"
                   placeholder="0"
                   value={kpiForm.currentValue}
-                  onChange={(e) => setKpiForm({ ...kpiForm, currentValue: formatInputNumber(e.target.value) })}
+                  onChange={(e) => {
+                    // For tile KPIs, Current Value is computed from selected sources (no manual overrides here)
+                    if (isTileMetric(kpiForm.metric)) return;
+                    setKpiForm({ ...kpiForm, currentValue: formatInputNumber(e.target.value) });
+                  }}
+                  readOnly={isTileMetric(kpiForm.metric)}
                   data-testid="input-campaign-kpi-current"
                 />
               </div>
@@ -1315,7 +1891,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             </Button>
             <Button 
               onClick={handleCreateKPI} 
-              disabled={createKpiMutation.isPending}
+              disabled={
+                createKpiMutation.isPending ||
+                !kpiForm.name ||
+                !kpiForm.targetValue ||
+                !isConfigCompleteForMetric(String(kpiForm.metric || ''), kpiCalculationConfig)
+              }
               data-testid="button-campaign-kpi-create"
             >
               {createKpiMutation.isPending ? 'Creating...' : 'Create KPI'}
@@ -1329,6 +1910,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         setShowEditDialog(open);
         if (!open) {
           setEditingKPI(null);
+          setKpiCalculationConfig(null);
           setKpiForm({
             name: '',
             description: '',
@@ -1370,8 +1952,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <Select
                 value={kpiForm.metric}
                 onValueChange={(value) => {
-                  const live = getLiveCampaignMetric(value);
-                  setKpiForm({ ...kpiForm, metric: value, currentValue: live.value, unit: live.unit, category: live.category });
+                  setKpiCalculationConfig(isTileMetric(value) ? { metric: value, inputs: {} } : null);
+                  const unit = isTileMetric(value) ? getMetricDisplayUnit(value) : '';
+                  setKpiForm({ ...kpiForm, metric: value, currentValue: '', unit });
                 }}
               >
                 <SelectTrigger id="edit-kpi-metric" data-testid="select-edit-campaign-kpi-metric">
@@ -1379,33 +1962,157 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 </SelectTrigger>
                 <SelectContent className="max-h-[400px]">
                   <SelectGroup>
-                    <SelectLabel>📊 Outcome KPIs (recommended)</SelectLabel>
-                    <SelectItem value="total-revenue">Revenue (Connected)</SelectItem>
-                    <SelectItem value="total-conversions">Conversions (Connected)</SelectItem>
-                    <SelectItem value="total-spend">Total Spend (Unified)</SelectItem>
-                    <SelectItem value="roas">ROAS (revenue ÷ spend)</SelectItem>
-                    <SelectItem value="roi">ROI ((revenue − spend) ÷ spend)</SelectItem>
-                    <SelectItem value="cpa">CPA (spend ÷ conversions)</SelectItem>
+                    <SelectLabel>📊 Campaign KPIs</SelectLabel>
+                    <SelectItem value="roas">ROAS</SelectItem>
+                    <SelectItem value="roi">ROI</SelectItem>
+                    <SelectItem value="cpa">CPA</SelectItem>
+                    <SelectItem value="revenue">Revenue</SelectItem>
+                    <SelectItem value="conversions">Conversions</SelectItem>
+                    <SelectItem value="conversion-rate">Conversion Rate</SelectItem>
+                    <SelectItem value="users">Users</SelectItem>
+                    <SelectItem value="sessions">Sessions</SelectItem>
+                    <SelectItem value="spend">Spend</SelectItem>
+                    <SelectItem value="leads">Leads</SelectItem>
+                    <SelectItem value="cpl">CPL</SelectItem>
+                    <SelectItem value="ctr">CTR</SelectItem>
                   </SelectGroup>
                   <SelectSeparator />
                   
                   <SelectGroup>
-                    <SelectLabel>💰 Revenue breakdown</SelectLabel>
-                    <SelectItem value="offsite-revenue">Revenue (Offsite / CRM / Shopify)</SelectItem>
-                    <SelectItem value="ga4-revenue">Revenue (Onsite / GA4)</SelectItem>
-                  </SelectGroup>
-                  <SelectSeparator />
-                  
-                  <SelectGroup>
-                    <SelectLabel>👥 Onsite traffic (GA4)</SelectLabel>
-                    <SelectItem value="ga4-conversions">Onsite Conversions (GA4)</SelectItem>
-                    <SelectItem value="ga4-conversion-rate">Onsite Conversion Rate (GA4)</SelectItem>
-                    <SelectItem value="ga4-users">Users (GA4)</SelectItem>
-                    <SelectItem value="ga4-sessions">Sessions (GA4)</SelectItem>
+                    <SelectLabel>✏️ Manual Entry</SelectLabel>
+                    <SelectItem value="custom">Custom Value</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Source selection (no defaults) */}
+            {isTileMetric(kpiForm.metric) && (
+              <div className="space-y-3 p-4 border rounded-lg">
+                <div>
+                  <div className="font-medium text-slate-900 dark:text-white">Sources used for Current Value</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400">
+                    Update the sources included in this KPI. Current Value will update when required inputs are selected.
+                  </div>
+                </div>
+
+                {String(kpiForm.metric) === 'conversion-rate' && (
+                  <div className="space-y-2">
+                    <Label>Conversion Rate Type *</Label>
+                    <Select
+                      value={String((normalizeCalcConfig(kpiCalculationConfig) as any)?.definition || '')}
+                      onValueChange={(value) => {
+                        setKpiCalculationConfig((prev: any) => ({
+                          ...(normalizeCalcConfig(prev) || { metric: 'conversion-rate', inputs: {} }),
+                          definition: value as any,
+                          inputs: {
+                            ...(normalizeCalcConfig(prev) || { inputs: {} }).inputs,
+                            sessions: [],
+                            clicks: [],
+                          },
+                        }));
+                      }}
+                    >
+                      <SelectTrigger data-testid="select-edit-campaign-kpi-conversion-rate-type">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="website">Website (Conversions ÷ Sessions)</SelectItem>
+                        <SelectItem value="click">Click (Conversions ÷ Clicks)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {(() => {
+                  const cfg = normalizeCalcConfig(kpiCalculationConfig);
+                  const metric = String(kpiForm.metric || '');
+                  const required = getRequiredInputsForMetric(metric);
+                  const def = metric === 'conversion-rate' ? (cfg as any)?.definition : null;
+                  const requiredWithDenom =
+                    metric === 'conversion-rate'
+                      ? (def === 'website' ? ['conversions', 'sessions'] : def === 'click' ? ['conversions', 'clicks'] : ['conversions'])
+                      : required;
+
+                  const toggle = (inputKey: CalcInputKey, sourceId: string) => {
+                    setKpiCalculationConfig((prev: any) => {
+                      const next = normalizeCalcConfig(prev) || { metric: metric, inputs: {} };
+                      const current = Array.isArray(next.inputs?.[inputKey]) ? (next.inputs as any)[inputKey] : [];
+                      const exists = current.includes(sourceId);
+                      const updated = exists ? current.filter((x: string) => x !== sourceId) : [...current, sourceId];
+                      return {
+                        ...next,
+                        metric,
+                        inputs: {
+                          ...(next.inputs || {}),
+                          [inputKey]: updated,
+                        },
+                      };
+                    });
+                  };
+
+                  return (
+                    <div className="space-y-4">
+                      {requiredWithDenom.map((inputKey: any) => {
+                        const key = inputKey as CalcInputKey;
+                        const options = getInputOptions(key);
+                        return (
+                          <div key={key} className="space-y-2">
+                            <div className="text-sm font-medium text-slate-900 dark:text-white">
+                              {key === 'revenue'
+                                ? 'Revenue sources'
+                                : key === 'spend'
+                                ? 'Spend sources'
+                                : key === 'conversions'
+                                ? 'Conversion sources'
+                                : key === 'sessions'
+                                ? 'Session sources'
+                                : key === 'users'
+                                ? 'User sources'
+                                : key === 'clicks'
+                                ? 'Click sources'
+                                : key === 'impressions'
+                                ? 'Impression sources'
+                                : 'Lead sources'}{' '}
+                              <span className="text-red-500">*</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {options.map((opt) => {
+                                const cfg2 = normalizeCalcConfig(kpiCalculationConfig) as any;
+                                const selected = (cfg2?.inputs?.[key] || []).includes(opt.id);
+                                const isDisabled = !opt.enabled;
+                                return (
+                                  <label
+                                    key={opt.id}
+                                    className={`flex items-start gap-2 p-2 border rounded-md ${
+                                      isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-blue-300'
+                                    }`}
+                                  >
+                                    <Checkbox
+                                      checked={selected}
+                                      onCheckedChange={() => {
+                                        if (isDisabled) return;
+                                        toggle(key, opt.id);
+                                      }}
+                                    />
+                                    <div className="flex-1">
+                                      <div className="text-sm font-medium text-slate-900 dark:text-white">{opt.label}</div>
+                                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                                        {isDisabled ? opt.reason || 'Not available' : (opt.value !== undefined ? `Value: ${formatNumber(opt.value)}` : 'Available')}
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="edit-kpi-description">Description</Label>
@@ -1427,7 +2134,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   type="text"
                   placeholder="0"
                   value={kpiForm.currentValue}
-                  onChange={(e) => setKpiForm({ ...kpiForm, currentValue: formatInputNumber(e.target.value) })}
+                  onChange={(e) => {
+                    if (isTileMetric(kpiForm.metric)) return;
+                    setKpiForm({ ...kpiForm, currentValue: formatInputNumber(e.target.value) });
+                  }}
+                  readOnly={isTileMetric(kpiForm.metric)}
                   data-testid="input-edit-campaign-kpi-current"
                 />
               </div>
@@ -1553,7 +2264,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             </Button>
             <Button 
               onClick={handleUpdateKPI} 
-              disabled={updateKpiMutation.isPending}
+              disabled={
+                updateKpiMutation.isPending ||
+                !kpiForm.name ||
+                !kpiForm.targetValue ||
+                !isConfigCompleteForMetric(String(kpiForm.metric || ''), kpiCalculationConfig)
+              }
               data-testid="button-edit-campaign-kpi-save"
             >
               {updateKpiMutation.isPending ? 'Saving...' : 'Save Changes'}
@@ -3234,6 +3950,7 @@ function CampaignInsightsChat({ campaign }: { campaign: Campaign }) {
 export default function CampaignDetail() {
   const [, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id;
+  const { toast: toastHook } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -5072,14 +5789,14 @@ export default function CampaignDetail() {
                               queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
 
 
-                              toast({
+                              toastHook({
                                 title: "Google Sheet Connected",
                                 description: "The Google Sheet has been connected successfully.",
                               });
                             }}
                             onError={(error) => {
                               console.error("Google Sheets connection error:", error);
-                              toast({
+                              toastHook({
                                 title: "Connection Failed",
                                 description: error || "Failed to connect Google Sheet",
                                 variant: "destructive"

@@ -359,6 +359,8 @@ export const kpis = pgTable("kpis", {
   sourceType: text("source_type").default("manual"), // 'aggregated', 'platform', 'manual'
   metricKey: text("metric_key"), // API metric key: 'clicks', 'ctr', 'spend', 'users', etc.
   aggregationMethod: text("aggregation_method"), // 'sum', 'avg', 'weighted_avg' for aggregated KPIs
+  // Calculation config (for blended and user-selected source inputs; especially campaign-level KPIs)
+  calculationConfig: jsonb("calculation_config"),
   // Values
   targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
   currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"), // Computed at read-time for bound KPIs, manual for sourceType=manual
@@ -884,6 +886,7 @@ export const insertKPISchema = createInsertSchema(kpis).pick({
   category: true,
   name: true,
   metric: true,
+  calculationConfig: true,
   targetValue: true,
   currentValue: true,
   unit: true,

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -1061,18 +1061,19 @@ export default function GA4Metrics() {
 
     const pct = Math.max(0, Math.min(ratio * 100, 100));
     const status =
-      ratio >= 0.8 ? "on_track" :
-      ratio >= 0.6 ? "needs_attention" :
+      ratio >= 0.9 ? "on_track" :
+      ratio >= 0.7 ? "needs_attention" :
       "behind";
     const color =
-      ratio >= 0.8 ? "bg-green-500" :
-      ratio >= 0.6 ? "bg-yellow-500" :
+      ratio >= 0.9 ? "bg-green-500" :
+      ratio >= 0.7 ? "bg-yellow-500" :
       "bg-red-500";
 
     return {
       ratio,
       pct,
-      labelPct: (ratio * 100).toFixed(1),
+      // Display as a completion percent (0-100), not raw ratio% (which can be 1000%+ and mislead execs).
+      labelPct: pct.toFixed(1),
       status,
       color,
     };
@@ -1118,6 +1119,37 @@ export default function GA4Metrics() {
   const formatPercentage = (value: number) => {
     return `${value.toFixed(1)}%`;
   };
+
+  const kpiTracker = useMemo(() => {
+    const items = Array.isArray(platformKPIs) ? platformKPIs : [];
+    let scored = 0;
+    let onTrack = 0;
+    let needsAttention = 0;
+    let behind = 0;
+    let sumPct = 0;
+
+    for (const kpi of items) {
+      const target = parseFloat(String((kpi as any)?.targetValue || "0"));
+      if (!Number.isFinite(target) || target <= 0) continue; // can't score without a target
+      const p = computeKpiProgress(kpi);
+      scored += 1;
+      sumPct += Number(p?.pct || 0);
+      if (p.status === "on_track") onTrack += 1;
+      else if (p.status === "needs_attention") needsAttention += 1;
+      else if (p.status === "behind") behind += 1;
+    }
+
+    const avgPct = scored > 0 ? sumPct / scored : 0;
+    return {
+      total: items.length,
+      scored,
+      onTrack,
+      needsAttention,
+      behind,
+      avgPct,
+    };
+    // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
+  }, [platformKPIs, breakdownTotals, ga4Metrics, financialSpend]);
 
   const getDateRangeLabel = (range: string) => {
     switch (String(range || "").toLowerCase()) {
@@ -2253,6 +2285,71 @@ export default function GA4Metrics() {
                         </div>
                       ) : (
                         <div className="space-y-4">
+                          {/* KPI performance tracker (exec snapshot) */}
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                            <Card>
+                              <CardContent className="p-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total KPIs</p>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpiTracker.total}</p>
+                                  </div>
+                                  <Target className="w-7 h-7 text-slate-500" />
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardContent className="p-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">On Track</p>
+                                    <p className="text-2xl font-bold text-emerald-600">{kpiTracker.onTrack}</p>
+                                  </div>
+                                  <BadgeCheck className="w-7 h-7 text-emerald-600" />
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardContent className="p-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs Attention</p>
+                                    <p className="text-2xl font-bold text-amber-600">{kpiTracker.needsAttention}</p>
+                                  </div>
+                                  <AlertTriangle className="w-7 h-7 text-amber-600" />
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardContent className="p-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Behind</p>
+                                    <p className="text-2xl font-bold text-red-600">{kpiTracker.behind}</p>
+                                  </div>
+                                  <TrendingDown className="w-7 h-7 text-red-600" />
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardContent className="p-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                      {kpiTracker.avgPct.toFixed(1)}%
+                                    </p>
+                                  </div>
+                                  <TrendingUp className="w-7 h-7 text-violet-600" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+
                           {platformKPIs.map((kpi: any) => (
                             <div key={kpi.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
                               <div className="flex items-start justify-between">
@@ -3081,7 +3178,6 @@ export default function GA4Metrics() {
                           <SelectItem value={String((campaign as any)?.currency || "USD")}>
                             Currency ({String((campaign as any)?.currency || "USD")})
                           </SelectItem>
-                          <SelectItem value="$">Dollar ($) (legacy)</SelectItem>
                           <SelectItem value="count">Count</SelectItem>
                         </SelectContent>
                       </Select>

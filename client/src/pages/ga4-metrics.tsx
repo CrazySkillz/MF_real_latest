@@ -175,6 +175,9 @@ export default function GA4Metrics() {
     setShowKPIDialog(true);
   };
 
+  // GA4 rates can come back as a ratio (0..1) or a percent (0..100). Normalize to percent.
+  const normalizeRateToPercent = (v: number) => (v <= 1 ? v * 100 : v);
+
   // KPI templates should be executive-grade and consistent with the GA4 Overview's spend/revenue logic.
   // We compute "current" values live elsewhere; this helper is used only when creating a KPI from a template
   // (to store an initial snapshot value) and uses GA4 Breakdown + Spend totals (not legacy Sheets spend).
@@ -183,6 +186,7 @@ export default function GA4Metrics() {
     conversions: number;
     sessions: number;
     users: number;
+    engagementRate?: number;
     spend: number;
   }) => {
     try {
@@ -190,6 +194,7 @@ export default function GA4Metrics() {
       const conversions = Number(sources.conversions || 0);
       const sessions = Number(sources.sessions || 0);
       const users = Number(sources.users || 0);
+      const engagementRate = Number(sources.engagementRate || 0);
       const spend = Number(sources.spend || 0);
 
       switch (templateName) {
@@ -199,6 +204,8 @@ export default function GA4Metrics() {
           return String(Math.round(conversions));
         case "Conversion Rate":
           return sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : "0.00";
+        case "Engagement Rate":
+          return normalizeRateToPercent(engagementRate).toFixed(2);
         case "Total Users":
           return String(Math.round(users));
         case "Total Sessions":
@@ -750,7 +757,7 @@ export default function GA4Metrics() {
         return sessions > 0 ? (conversions / sessions) * 100 : 0;
       case "engagementRate": {
         const er = Number((ga4Metrics as any)?.engagementRate || 0);
-        return Number.isFinite(er) && er > 0 ? er : 0;
+        return Number.isFinite(er) && er > 0 ? normalizeRateToPercent(er) : 0;
       }
       default:
         return 0;
@@ -968,6 +975,10 @@ export default function GA4Metrics() {
       const c = Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0);
       return s > 0 ? ((c / s) * 100).toFixed(2) : "0.00";
     }
+    if (name === "Engagement Rate") {
+      const er = Number((ga4Metrics as any)?.engagementRate || 0);
+      return normalizeRateToPercent(er).toFixed(2);
+    }
     if (name === "Total Users") return String(Math.round(Number(breakdownTotals.users || ga4Metrics?.users || 0)));
     if (name === "Total Sessions") return String(Math.round(Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0)));
     // Present ROAS as a percentage (Revenue ÷ Spend × 100) for consistency with modal units.
@@ -1021,7 +1032,7 @@ export default function GA4Metrics() {
     (Array.isArray(ga4Connection?.connections) ? ga4Connection.connections.length : 0) ||
     1;
 
-  const rateToPercent = (v: number) => (v <= 1 ? v * 100 : v);
+  const rateToPercent = (v: number) => normalizeRateToPercent(v);
 
   // Geographic data query
   const { data: geographicData, isLoading: geoLoading } = useQuery({
@@ -2386,6 +2397,7 @@ export default function GA4Metrics() {
                                   { name: "Revenue", metric: "revenue", unit: "$", description: "Total revenue in GA4 for the selected period" },
                                   { name: "Total Conversions", metric: "conversions", unit: "count", description: "Total GA4 conversions for the selected period" },
                                   { name: "Conversion Rate", metric: "conversionRate", unit: "%", description: "Conversions ÷ Sessions × 100" },
+                                  { name: "Engagement Rate", metric: "engagementRate", unit: "%", description: "Engaged Sessions ÷ Sessions × 100" },
                                   { name: "Total Users", metric: "users", unit: "count", description: "Total users for the selected period" },
                                   { name: "Total Sessions", metric: "sessions", unit: "count", description: "Total sessions for the selected period" },
                                 ].map((template) => {
@@ -2865,6 +2877,12 @@ export default function GA4Metrics() {
                       description: "Total GA4 conversions for the selected period",
                     },
                     {
+                      name: "Engagement Rate",
+                      formula: "Engaged Sessions ÷ Sessions × 100",
+                      unit: "%",
+                      description: "Percent of sessions that were engaged (GA4 engagement rate)",
+                    },
+                    {
                       name: "Conversion Rate",
                       formula: "Conversions ÷ Sessions × 100",
                       unit: "%",
@@ -2912,6 +2930,7 @@ export default function GA4Metrics() {
                           conversions: Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
                           sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
                           users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
+                          engagementRate: Number((ga4Metrics as any)?.engagementRate || 0),
                           spend: Number(financialSpend || 0),
                         });
                         kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit));

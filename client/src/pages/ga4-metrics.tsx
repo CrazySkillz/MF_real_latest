@@ -178,6 +178,34 @@ export default function GA4Metrics() {
   // GA4 rates can come back as a ratio (0..1) or a percent (0..100). Normalize to percent.
   const normalizeRateToPercent = (v: number) => (v <= 1 ? v * 100 : v);
 
+  const SELECT_UNIT = "__select_unit__";
+
+  const getDefaultKpiDescription = (name: string): string | undefined => {
+    const n = String(name || "").trim();
+    switch (n) {
+      case "ROAS":
+        return "Revenue generated per dollar of spend (as a %)";
+      case "ROI":
+        return "Return relative to spend (revenue-based ROI)";
+      case "CPA":
+        return "Average cost per conversion";
+      case "Revenue":
+        return "Total revenue in GA4 for the selected period";
+      case "Total Conversions":
+        return "Total GA4 conversions for the selected period";
+      case "Engagement Rate":
+        return "Percent of sessions that were engaged (GA4 engagement rate)";
+      case "Conversion Rate":
+        return "Overall conversion rate for the selected period";
+      case "Total Users":
+        return "Total users for the selected period";
+      case "Total Sessions":
+        return "Total sessions for the selected period";
+      default:
+        return undefined;
+    }
+  };
+
   // KPI templates should be executive-grade and consistent with the GA4 Overview's spend/revenue logic.
   // We compute "current" values live elsewhere; this helper is used only when creating a KPI from a template
   // (to store an initial snapshot value) and uses GA4 Breakdown + Spend totals (not legacy Sheets spend).
@@ -234,14 +262,17 @@ export default function GA4Metrics() {
       let calculatedValue = "0.00";
       if (selectedKPITemplate) {
         try {
-          const [breakdownResp, spendResp, linkedInResp] = await Promise.all([
+          const wantsEngagementRate = String(selectedKPITemplate?.name || "") === "Engagement Rate";
+          const [breakdownResp, spendResp, linkedInResp, ga4MetricsResp] = await Promise.all([
             fetch(`/api/campaigns/${campaignId}/ga4-breakdown?dateRange=${dateRange}`).catch(() => null),
             fetch(`/api/campaigns/${campaignId}/spend-totals?dateRange=${encodeURIComponent(dateRange)}`).catch(() => null),
             fetch(`/api/linkedin/metrics/${campaignId}`).catch(() => null),
+            wantsEngagementRate ? fetch(`/api/campaigns/${campaignId}/ga4-metrics?dateRange=${encodeURIComponent(dateRange)}`).catch(() => null) : Promise.resolve(null),
           ]);
           const breakdown = breakdownResp?.ok ? await breakdownResp.json().catch(() => null) : null;
           const spendTotals = spendResp?.ok ? await spendResp.json().catch(() => null) : null;
           const linkedInAgg = linkedInResp?.ok ? await linkedInResp.json().catch(() => null) : null;
+          const ga4MetricsJson = ga4MetricsResp?.ok ? await ga4MetricsResp.json().catch(() => null) : null;
 
           const revenue = Number(breakdown?.totals?.revenue || 0);
           const conversions = Number(breakdown?.totals?.conversions || 0);
@@ -250,12 +281,14 @@ export default function GA4Metrics() {
           const persistedSpend = Number(spendTotals?.totalSpend || 0);
           const linkedInSpend = Number(linkedInAgg?.spend || 0);
           const spend = persistedSpend > 0 ? persistedSpend : linkedInSpend;
+          const engagementRate = Number(ga4MetricsJson?.metrics?.engagementRate ?? 0);
 
           calculatedValue = calculateKPIValueFromSources(selectedKPITemplate.name, {
             revenue,
             conversions,
             sessions,
             users,
+            engagementRate,
             spend,
           });
         } catch (error) {
@@ -381,6 +414,24 @@ export default function GA4Metrics() {
       currentValue: stripNumberFormatting(data.currentValue),
       targetValue: stripNumberFormatting(data.targetValue),
     };
+
+    // For custom KPIs, require an explicit unit selection.
+    if (!cleaned.unit || String(cleaned.unit) === SELECT_UNIT) {
+      toast({
+        title: "Select a unit",
+        description: "Please choose a unit before saving this KPI.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // If Description is blank, use the template default (exec-friendly).
+    const desc = String(cleaned.description || "").trim();
+    if (!desc) {
+      const defaultDesc = getDefaultKpiDescription(cleaned.name);
+      if (defaultDesc) cleaned.description = defaultDesc;
+    }
+
     if (editingKPI?.id) {
       updateKPIMutation.mutate({ kpiId: String(editingKPI.id), data: cleaned });
       return;
@@ -2839,7 +2890,28 @@ export default function GA4Metrics() {
             <form onSubmit={kpiForm.handleSubmit(onSubmitKPI)} className="space-y-6">
               {/* KPI Template Selection */}
               <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                <h4 className="font-medium text-slate-900 dark:text-white">Select KPI Template</h4>
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="font-medium text-slate-900 dark:text-white">Select KPI Template</h4>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedKPITemplate(null);
+                      kpiForm.reset({
+                        ...kpiForm.getValues(),
+                        name: "",
+                        description: "",
+                        unit: SELECT_UNIT as any,
+                        currentValue: "",
+                        targetValue: "",
+                        priority: "medium",
+                      });
+                    }}
+                  >
+                    Reset
+                  </Button>
+                </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
                   Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.
                 </p>
@@ -2895,12 +2967,20 @@ export default function GA4Metrics() {
                       description: "Total users for the selected period",
                     },
                     {
+                      name: "Create Custom KPI",
+                      _isCustom: true,
+                      formula: "",
+                      unit: SELECT_UNIT,
+                      description: "Build your own KPI (choose name, unit, and values)",
+                    },
+                    {
                       name: "Total Sessions",
                       formula: "GA4 sessions total",
                       unit: "count",
                       description: "Total sessions for the selected period",
                     }
                   ].map((template) => {
+                    const isCustom = (template as any)?._isCustom === true;
                     const requiresSpend = template.name === "ROAS" || template.name === "ROI" || template.name === "CPA";
                     const spendAvailable = Number(financialSpend || 0) > 0;
                     const disabled = requiresSpend && !spendAvailable;
@@ -2910,12 +2990,25 @@ export default function GA4Metrics() {
                       className={`p-3 border-2 rounded-lg transition-all ${
                         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                       } ${
-                        selectedKPITemplate?.name === template.name
+                        !isCustom && selectedKPITemplate?.name === template.name
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                           : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
                       }`}
                       onClick={() => {
                         if (disabled) return;
+                        if (isCustom) {
+                          setSelectedKPITemplate(null);
+                          kpiForm.reset({
+                            ...kpiForm.getValues(),
+                            name: "",
+                            description: "",
+                            unit: SELECT_UNIT as any,
+                            currentValue: "",
+                            targetValue: "",
+                            priority: "medium",
+                          });
+                          return;
+                        }
                         const campaignCurrencyCode = String((campaign as any)?.currency || "USD");
                         const resolvedUnit = template.unit === "$" ? campaignCurrencyCode : template.unit;
                         setSelectedKPITemplate(template);
@@ -2939,7 +3032,12 @@ export default function GA4Metrics() {
                       <div className="font-medium text-sm text-slate-900 dark:text-white">
                         {template.name}
                       </div>
-                      {disabled && (
+                      {isCustom && (
+                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                          Choose name + unit, then set values
+                        </div>
+                      )}
+                      {!isCustom && disabled && (
                         <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                           Spend required (add spend to unlock)
                         </div>
@@ -2947,20 +3045,6 @@ export default function GA4Metrics() {
                     </div>
                     );
                   })}
-                </div>
-                
-                <div className="text-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedKPITemplate(null);
-                      kpiForm.reset();
-                    }}
-                  >
-                    Create Custom KPI
-                  </Button>
                 </div>
               </div>
 
@@ -2988,16 +3072,16 @@ export default function GA4Metrics() {
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Percentage (%)" />
+                            <SelectValue placeholder="Select unit" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value={SELECT_UNIT}>Select unit</SelectItem>
                           <SelectItem value="%">Percentage (%)</SelectItem>
                           <SelectItem value={String((campaign as any)?.currency || "USD")}>
                             Currency ({String((campaign as any)?.currency || "USD")})
                           </SelectItem>
                           <SelectItem value="$">Dollar ($) (legacy)</SelectItem>
-                          <SelectItem value="ratio">Ratio (X:1)</SelectItem>
                           <SelectItem value="count">Count</SelectItem>
                         </SelectContent>
                       </Select>

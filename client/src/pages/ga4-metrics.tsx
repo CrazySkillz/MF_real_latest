@@ -651,6 +651,27 @@ export default function GA4Metrics() {
     }
   };
 
+  const getKpiMetricType = (kpiName: string): "Financial" | "Conversion" | "Engagement" | "Traffic" | "Custom" => {
+    const n = String(kpiName || "").toLowerCase();
+    if (n === "revenue" || n === "roas" || n === "roi" || n === "cpa") return "Financial";
+    if (n.includes("conversion")) return "Conversion";
+    if (n.includes("engagement")) return "Engagement";
+    if (n.includes("user") || n.includes("session")) return "Traffic";
+    return "Custom";
+  };
+
+  const getKpiIcon = (kpiName: string) => {
+    const n = String(kpiName || "").toLowerCase();
+    if (n === "revenue") return { Icon: DollarSign, color: "text-emerald-600" };
+    if (n === "roas" || n === "roi") return { Icon: TrendingUp, color: "text-violet-600" };
+    if (n === "cpa") return { Icon: Target, color: "text-blue-600" };
+    if (n.includes("conversion")) return { Icon: Target, color: "text-indigo-600" };
+    if (n.includes("engagement")) return { Icon: MousePointer, color: "text-orange-600" };
+    if (n.includes("session")) return { Icon: Clock, color: "text-slate-600" };
+    if (n.includes("user")) return { Icon: Users, color: "text-slate-600" };
+    return { Icon: BarChart3, color: "text-slate-600" };
+  };
+
   // Helper function for benchmark values
   const formatBenchmarkValue = (value: string | undefined, unit: string) => {
     if (!value) return "N/A";
@@ -2350,120 +2371,119 @@ export default function GA4Metrics() {
                             </Card>
                           </div>
 
-                          {platformKPIs.map((kpi: any) => (
-                            <div key={kpi.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-center space-x-3 flex-1">
-                                  <div
-                                    className={`w-2 h-2 rounded-full ${getPriorityColor(kpi.priority)}`}
-                                  ></div>
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold text-slate-900 dark:text-white">{kpi.name}</h4>
-                                    {kpi.description && (
-                                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{kpi.description}</p>
-                                    )}
-                                    <div className="flex items-center space-x-4 mt-2">
-                                      <div>
-                                        <span className="text-xs text-slate-500 dark:text-slate-400">Current: </span>
-                                        <span className="font-medium text-slate-900 dark:text-white">
-                                          {formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="text-xs text-slate-500 dark:text-slate-400">Target: </span>
-                                        <span className="font-medium text-slate-900 dark:text-white">
-                                          {formatValue(kpi.targetValue, kpi.unit)}
-                                        </span>
-                                      </div>
-                                      <div className="ml-auto">
-                                        <Badge className={`${getStatusColor(kpi.status)} text-xs`}>
-                                          {kpi.status.replace('_', ' ')}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                    {/* Removed time-based tracking labels for a cleaner exec view */}
-                                    
-                                    {/* KPI Progress and Alignment Status */}
-                                    <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                      {(() => {
-                                        const p = computeKpiProgress(kpi);
-                                        return (
-                                          <div className="space-y-2">
-                                            <div className="flex items-center justify-between">
-                                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Progress to Target</span>
-                                              <span className="text-sm text-slate-500 dark:text-slate-400">
-                                                {p.labelPct}%
-                                              </span>
-                                            </div>
-                                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                              <div
-                                                className={`h-2 rounded-full transition-all duration-300 ${p.color}`}
-                                                style={{ width: `${p.pct}%` }}
-                                              />
-                                            </div>
-                                            <div className="flex items-center justify-between text-xs">
-                                              <span className={`font-medium ${
-                                                p.status === "on_track"
-                                                  ? "text-green-600 dark:text-green-400"
-                                                  : p.status === "needs_attention"
-                                                  ? "text-yellow-600 dark:text-yellow-400"
-                                                  : "text-red-600 dark:text-red-400"
-                                              }`}>
-                                                {p.status === "on_track"
-                                                  ? "✓ On Track"
-                                                  : p.status === "needs_attention"
-                                                  ? "⚠ Needs Attention"
-                                                  : "⚠ Behind Target"}
-                                              </span>
-                                            </div>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            {platformKPIs.map((kpi: any) => {
+                              const p = computeKpiProgress(kpi);
+                              const metricType = getKpiMetricType(kpi?.name);
+                              const { Icon, color } = getKpiIcon(kpi?.name);
+                              const statusLabel =
+                                p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
+                              const statusColor =
+                                p.status === "on_track"
+                                  ? "text-emerald-700 dark:text-emerald-300"
+                                  : p.status === "needs_attention"
+                                  ? "text-amber-700 dark:text-amber-300"
+                                  : "text-red-700 dark:text-red-300";
+
+                              return (
+                                <Card key={kpi.id} className="border-slate-200 dark:border-slate-700">
+                                  <CardContent className="p-5">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="flex items-start gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                          <Icon className={`w-5 h-5 ${color}`} />
+                                        </div>
+                                        <div>
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+                                              {kpi.name}
+                                            </h4>
+                                            <Badge className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                                              {metricType}
+                                            </Badge>
                                           </div>
-                                        );
-                                      })()}
+                                          {kpi.description ? (
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                              {kpi.description}
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => {
+                                            setEditingKPI(kpi);
+                                            setSelectedKPITemplate(null);
+                                            kpiForm.reset({
+                                              ...kpiForm.getValues(),
+                                              name: String(kpi?.name || ""),
+                                              description: String(kpi?.description || ""),
+                                              unit: String(kpi?.unit || "%"),
+                                              currentValue: formatNumberByUnit(String(getLiveKpiValue(kpi) || "0"), String(kpi?.unit || "%")),
+                                              targetValue: formatNumberByUnit(String(kpi?.targetValue || ""), String(kpi?.unit || "%")),
+                                              priority: (kpi?.priority || "medium") as any,
+                                              alertsEnabled: Boolean(kpi?.alertsEnabled ?? true),
+                                              alertThreshold: typeof kpi?.alertThreshold === "number" ? kpi.alertThreshold : Number(kpi?.alertThreshold || 80),
+                                              emailNotifications: Boolean(kpi?.emailNotifications ?? false),
+                                              slackNotifications: Boolean(kpi?.slackNotifications ?? false),
+                                              alertFrequency: (kpi?.alertFrequency || "daily") as any,
+                                            });
+                                            setShowKPIDialog(true);
+                                          }}
+                                          title="Edit KPI"
+                                          aria-label="Edit KPI"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => onDeleteKPI(kpi.id)}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                          disabled={deleteKPIMutation.isPending}
+                                          title="Delete KPI"
+                                          aria-label="Delete KPI"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </div>
                                     </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      setEditingKPI(kpi);
-                                      setSelectedKPITemplate(null);
-                                      // Prefill modal fields
-                                      kpiForm.reset({
-                                        ...kpiForm.getValues(),
-                                        name: String(kpi?.name || ""),
-                                        description: String(kpi?.description || ""),
-                                        unit: String(kpi?.unit || "%"),
-                                        currentValue: formatNumberByUnit(String(getLiveKpiValue(kpi) || "0"), String(kpi?.unit || "%")),
-                                        targetValue: formatNumberByUnit(String(kpi?.targetValue || ""), String(kpi?.unit || "%")),
-                                        priority: (kpi?.priority || "medium") as any,
-                                        alertsEnabled: Boolean(kpi?.alertsEnabled ?? true),
-                                        alertThreshold: typeof kpi?.alertThreshold === "number" ? kpi.alertThreshold : Number(kpi?.alertThreshold || 80),
-                                        emailNotifications: Boolean(kpi?.emailNotifications ?? false),
-                                        slackNotifications: Boolean(kpi?.slackNotifications ?? false),
-                                        alertFrequency: (kpi?.alertFrequency || "daily") as any,
-                                      });
-                                      setShowKPIDialog(true);
-                                    }}
-                                    title="Edit KPI"
-                                    aria-label="Edit KPI"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => onDeleteKPI(kpi.id)}
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                    disabled={deleteKPIMutation.isPending}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+
+                                    <div className="grid grid-cols-2 gap-4 mt-4">
+                                      <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                                        <div className="text-xs text-slate-500 dark:text-slate-400">Current</div>
+                                        <div className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+                                          {formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
+                                        </div>
+                                      </div>
+                                      <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                                        <div className="text-xs text-slate-500 dark:text-slate-400">Target</div>
+                                        <div className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+                                          {formatValue(kpi.targetValue, kpi.unit)}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-4">
+                                      <div className="flex items-center justify-between text-sm">
+                                        <span className="text-slate-700 dark:text-slate-300">Progress</span>
+                                        <span className="text-slate-700 dark:text-slate-300">{p.labelPct}%</span>
+                                      </div>
+                                      <div className="mt-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                        <div className={`h-2.5 rounded-full ${p.color}`} style={{ width: `${p.pct}%` }} />
+                                      </div>
+                                      <div className={`mt-3 text-sm font-medium ${statusColor}`}>
+                                        {statusLabel}
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </CardContent>

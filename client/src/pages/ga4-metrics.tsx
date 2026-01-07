@@ -157,6 +157,8 @@ export default function GA4Metrics() {
 
   const stripNumberFormatting = (s: string) => String(s || "").replace(/,/g, "").trim();
 
+  const isIsoCurrencyCode = (unit: string) => /^[A-Z]{3}$/.test(String(unit || "").trim());
+
   const formatNumberByUnit = (raw: string, unit: string) => {
     const cleaned = stripNumberFormatting(raw);
     if (!cleaned) return "";
@@ -538,11 +540,25 @@ export default function GA4Metrics() {
     switch (unit) {
       case "%":
         return `${numValue.toFixed(2)}%`;
-      case "$":
-        return `$${numValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      case "$": {
+        // Legacy stored KPIs may use "$" as the unit; render using the campaign's configured currency.
+        const currency = String((campaign as any)?.currency || "USD");
+        try {
+          return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numValue);
+        } catch {
+          return `$${numValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+      }
       case "ratio":
         return `${numValue.toFixed(2)}x`;
       default:
+        if (isIsoCurrencyCode(unit)) {
+          try {
+            return new Intl.NumberFormat(undefined, { style: "currency", currency: unit, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numValue);
+          } catch {
+            return numValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+        }
         return numValue.toLocaleString();
     }
   };
@@ -586,8 +602,15 @@ export default function GA4Metrics() {
     switch (unit) {
       case "%":
         return `${numValue.toFixed(1)}%`;
-      case "$":
-        return `$${numValue.toLocaleString()}`;
+      case "$": {
+        // Legacy stored Benchmarks may use "$" as the unit; render using the campaign's configured currency.
+        const currency = String((campaign as any)?.currency || "USD");
+        try {
+          return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numValue);
+        } catch {
+          return `$${numValue.toLocaleString()}`;
+        }
+      }
       case "ratio":
         return `${numValue.toFixed(2)}:1`;
       case "seconds":
@@ -595,6 +618,13 @@ export default function GA4Metrics() {
       case "count":
         return numValue.toLocaleString();
       default:
+        if (isIsoCurrencyCode(unit)) {
+          try {
+            return new Intl.NumberFormat(undefined, { style: "currency", currency: unit, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numValue);
+          } catch {
+            return numValue.toLocaleString();
+          }
+        }
         return numValue.toLocaleString();
     }
   };
@@ -1062,6 +1092,11 @@ export default function GA4Metrics() {
     "";
   const provenanceCampaignFilter = (campaign as any)?.ga4CampaignFilter || (ga4Diagnostics as any)?.campaignFilter || "";
   const diagnosticsWarnings: string[] = Array.isArray((ga4Diagnostics as any)?.warnings) ? (ga4Diagnostics as any).warnings : [];
+  // Hide warnings that are noisy/confusing in the MVP UI; keep diagnostics raw JSON available in "Data details".
+  const visibleDiagnosticsWarnings = diagnosticsWarnings.filter((w) => {
+    const s = String(w || "");
+    return !s.startsWith("Total Conversions match Total Users.");
+  });
   const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   if (campaignLoading) {
@@ -1216,11 +1251,7 @@ export default function GA4Metrics() {
                 </>
               ) : null}
             </div>
-            {diagnosticsWarnings.length > 0 && (
-              <div className="mt-2 text-xs text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-900 rounded-md p-2">
-                <span className="font-medium">Data warnings:</span> {diagnosticsWarnings[0]}
-              </div>
-            )}
+            {/* Intentionally no inline "Data warnings" banner in the MVP UI (keeps the page clean for execs). */}
           </div>
 
           {/* Connected Properties Management */}
@@ -1362,11 +1393,11 @@ export default function GA4Metrics() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {Array.isArray(ga4Diagnostics?.warnings) && ga4Diagnostics.warnings.length > 0 && (
+                  {visibleDiagnosticsWarnings.length > 0 && (
                     <div className="p-3 rounded-md border border-yellow-200 dark:border-yellow-900 bg-yellow-50 dark:bg-yellow-950 text-sm text-yellow-800 dark:text-yellow-300">
                       <div className="font-medium mb-1">Warnings</div>
                       <ul className="list-disc pl-5 space-y-1">
-                        {ga4Diagnostics.warnings.map((w: string, idx: number) => (
+                        {visibleDiagnosticsWarnings.map((w: string, idx: number) => (
                           <li key={idx}>{w}</li>
                         ))}
                       </ul>
@@ -2867,9 +2898,11 @@ export default function GA4Metrics() {
                       }`}
                       onClick={() => {
                         if (disabled) return;
+                        const campaignCurrencyCode = String((campaign as any)?.currency || "USD");
+                        const resolvedUnit = template.unit === "$" ? campaignCurrencyCode : template.unit;
                         setSelectedKPITemplate(template);
                         kpiForm.setValue("name", template.name);
-                        kpiForm.setValue("unit", template.unit);
+                        kpiForm.setValue("unit", resolvedUnit);
                         kpiForm.setValue("description", template.description);
                         // Target is intentionally left blank for new KPIs (user must set it explicitly).
                         kpiForm.setValue("targetValue", "");
@@ -2881,7 +2914,7 @@ export default function GA4Metrics() {
                           users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
                           spend: Number(financialSpend || 0),
                         });
-                        kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, template.unit));
+                        kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit));
                       }}
                     >
                       <div className="font-medium text-sm text-slate-900 dark:text-white">
@@ -2941,7 +2974,10 @@ export default function GA4Metrics() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="%">Percentage (%)</SelectItem>
-                          <SelectItem value="$">Dollar ($)</SelectItem>
+                          <SelectItem value={String((campaign as any)?.currency || "USD")}>
+                            Currency ({String((campaign as any)?.currency || "USD")})
+                          </SelectItem>
+                          <SelectItem value="$">Dollar ($) (legacy)</SelectItem>
                           <SelectItem value="ratio">Ratio (X:1)</SelectItem>
                           <SelectItem value="count">Count</SelectItem>
                         </SelectContent>

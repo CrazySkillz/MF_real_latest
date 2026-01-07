@@ -33,6 +33,7 @@ interface Campaign {
   name: string;
   platform?: string;
   status: string;
+  ga4CampaignFilter?: string;
 }
 
 interface GA4Metrics {
@@ -776,40 +777,27 @@ export default function GA4Metrics() {
         };
       }
 
-      // Legacy/demo shape (older route): flat metrics at top-level
-      if (typeof data?.sessions !== "undefined" || typeof data?.pageviews !== "undefined") {
-        return {
-          sessions: data.sessions || 0,
-          pageviews: data.pageviews || 0,
-          users: data.users || 0,
-          bounceRate: data.bounceRate || 0,
-          conversions: data.conversions || 0,
-          revenue: data.revenue || 0,
-          avgSessionDuration: data.avgSessionDuration || data.averageSessionDuration || 0,
-          averageSessionDuration: data.avgSessionDuration || data.averageSessionDuration || 0,
-          topPages: data.topPages || [],
-          usersByDevice: data.usersByDevice || { desktop: 0, mobile: 0, tablet: 0 },
-          acquisitionData: data.acquisitionData || { organic: 0, direct: 0, social: 0, referral: 0 },
-          realTimeUsers: data.realTimeUsers || 0,
-          impressions: data.sessions || 0,
-          newUsers: data.newUsers || data.users || 0,
-          engagedSessions: data.engagedSessions || data.sessions || 0,
-          engagementRate: data.engagementRate || (data.bounceRate ? (100 - data.bounceRate) : 0),
-          eventCount: data.eventCount || 0,
-          eventsPerSession: data.eventsPerSession || 0,
-          propertyId: data.propertyId,
-          lastUpdated: data.lastUpdated,
-          _isFallbackData: !!data._isFallbackData,
-          _message: data._message,
-        };
-      }
-
       // Auth/token errors should not silently display fake data.
       if (!response.ok && data?.requiresReauthorization) {
         throw new Error(data?.message || "Google Analytics needs to be reconnected.");
       }
 
       throw new Error(data?.error || "Failed to fetch GA4 metrics");
+    },
+  });
+
+  // Diagnostics (provenance + report shape checks)
+  const { data: ga4Diagnostics } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange],
+    enabled: !!campaignId && !!ga4Connection?.connected,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-diagnostics?dateRange=${encodeURIComponent(dateRange)}`);
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) return null;
+      return json;
     },
   });
 
@@ -1054,6 +1042,28 @@ export default function GA4Metrics() {
 
   const selectedPeriodLabel = getDateRangeLabel(dateRange);
 
+  const provenanceLastUpdated =
+    (ga4Breakdown as any)?.lastUpdated ||
+    (ga4Metrics as any)?.lastUpdated ||
+    (ga4Diagnostics as any)?.lastUpdated ||
+    null;
+  const provenanceProperty =
+    (ga4Diagnostics as any)?.connection?.displayName ||
+    (ga4Diagnostics as any)?.connection?.propertyName ||
+    (ga4Metrics as any)?.propertyId ||
+    (ga4Connection as any)?.connections?.find((c: any) => c?.isPrimary)?.displayName ||
+    (ga4Connection as any)?.connections?.[0]?.displayName ||
+    "GA4";
+  const provenancePropertyId =
+    (ga4Diagnostics as any)?.connection?.propertyId ||
+    (ga4Metrics as any)?.propertyId ||
+    (ga4Connection as any)?.connections?.find((c: any) => c?.isPrimary)?.propertyId ||
+    (ga4Connection as any)?.connections?.[0]?.propertyId ||
+    "";
+  const provenanceCampaignFilter = (campaign as any)?.ga4CampaignFilter || (ga4Diagnostics as any)?.campaignFilter || "";
+  const diagnosticsWarnings: string[] = Array.isArray((ga4Diagnostics as any)?.warnings) ? (ga4Diagnostics as any).warnings : [];
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+
   if (campaignLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -1182,8 +1192,35 @@ export default function GA4Metrics() {
                     <SelectItem value="90days">Last 90 days</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button variant="outline" size="sm" onClick={() => setShowDiagnostics(true)}>
+                  Data details
+                </Button>
               </div>
             </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="font-medium text-slate-600 dark:text-slate-300">Data:</span> {provenanceProperty}
+              {provenancePropertyId ? ` (Property ID: ${provenancePropertyId})` : ""}
+              {" • "}
+              <span className="font-medium text-slate-600 dark:text-slate-300">Range:</span> {selectedPeriodLabel}
+              {provenanceCampaignFilter ? (
+                <>
+                  {" • "}
+                  <span className="font-medium text-slate-600 dark:text-slate-300">Campaign filter:</span> {provenanceCampaignFilter}
+                </>
+              ) : null}
+              {provenanceLastUpdated ? (
+                <>
+                  {" • "}
+                  <span className="font-medium text-slate-600 dark:text-slate-300">Last updated:</span>{" "}
+                  {new Date(provenanceLastUpdated).toLocaleString()}
+                </>
+              ) : null}
+            </div>
+            {diagnosticsWarnings.length > 0 && (
+              <div className="mt-2 text-xs text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-900 rounded-md p-2">
+                <span className="font-medium">Data warnings:</span> {diagnosticsWarnings[0]}
+              </div>
+            )}
           </div>
 
           {/* Connected Properties Management */}
@@ -1309,6 +1346,43 @@ export default function GA4Metrics() {
               </CardContent>
             </Card>
           )}
+
+          <Dialog open={showDiagnostics} onOpenChange={setShowDiagnostics}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>GA4 data details</DialogTitle>
+                <DialogDescription>
+                  Provenance and report-shape diagnostics for enterprise verification.
+                </DialogDescription>
+              </DialogHeader>
+
+              {!ga4Diagnostics ? (
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  Diagnostics not available yet. Try again in a moment.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {Array.isArray(ga4Diagnostics?.warnings) && ga4Diagnostics.warnings.length > 0 && (
+                    <div className="p-3 rounded-md border border-yellow-200 dark:border-yellow-900 bg-yellow-50 dark:bg-yellow-950 text-sm text-yellow-800 dark:text-yellow-300">
+                      <div className="font-medium mb-1">Warnings</div>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {ga4Diagnostics.warnings.map((w: string, idx: number) => (
+                          <li key={idx}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="text-sm">
+                    <div className="font-medium text-slate-900 dark:text-white mb-1">Raw diagnostics</div>
+                    <pre className="text-xs bg-slate-900 text-slate-100 rounded-md p-3 overflow-x-auto">
+{JSON.stringify(ga4Diagnostics, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
 
           {ga4Loading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">

@@ -1049,6 +1049,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GA4 diagnostics (enterprise-grade: show provenance + report shape + warnings)
+  app.get("/api/campaigns/:id/ga4-diagnostics", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const dateRange = String(req.query.dateRange || '30days');
+      const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
+
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
+
+      // Convert date range to GA4 format
+      let ga4DateRange = '30daysAgo';
+      switch (dateRange) {
+        case '7days':
+          ga4DateRange = '7daysAgo';
+          break;
+        case '30days':
+          ga4DateRange = '30daysAgo';
+          break;
+        case '90days':
+          ga4DateRange = '90daysAgo';
+          break;
+        default:
+          ga4DateRange = '30daysAgo';
+      }
+
+      // Resolve connection(s)
+      const connections = propertyId
+        ? ((await storage.getGA4Connection(campaignId, propertyId)) ? [await storage.getGA4Connection(campaignId, propertyId)] : [])
+        : await storage.getGA4Connections(campaignId);
+
+      if (!connections || connections.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'NO_GA4_CONNECTION',
+          message: 'No GA4 connection found for this campaign.',
+        });
+      }
+
+      const primaryConnection = (connections as any[]).find((c: any) => c?.isPrimary) || (connections as any[])[0];
+      const selectedConnection = propertyId ? (connections as any[])[0] : primaryConnection;
+
+      // Fetch breakdown to validate report shape and totals
+      const breakdown = await ga4Service.getAcquisitionBreakdown(
+        campaignId,
+        storage,
+        ga4DateRange,
+        selectedConnection?.propertyId,
+        2000,
+        campaignFilter
+      );
+
+      const totals = breakdown?.totals || { sessions: 0, sessionsRaw: 0, users: 0, conversions: 0, revenue: 0 };
+      const warnings: string[] = [];
+      if ((totals.sessions || 0) === 0 && (totals.users || 0) > 0) {
+        warnings.push('GA4 returned 0 sessions for this report shape while users > 0. Verify campaign filter and GA4 property configuration.');
+      }
+      if ((totals.users || 0) > 0 && (totals.conversions || 0) === (totals.users || 0)) {
+        warnings.push('Conversions equals Users for this period. This can be valid, but often indicates a conversion event firing on most visits/users. Verify GA4 conversion configuration.');
+      }
+
+      res.json({
+        success: true,
+        campaignId,
+        dateRange,
+        ga4DateRange,
+        campaignFilter: campaignFilter || null,
+        connection: {
+          propertyId: selectedConnection?.propertyId,
+          propertyName: selectedConnection?.propertyName,
+          displayName: selectedConnection?.displayName,
+          isPrimary: Boolean(selectedConnection?.isPrimary),
+          totalConnections: (connections as any[]).length,
+        },
+        breakdown: {
+          totals,
+          meta: breakdown?.meta || null,
+        },
+        warnings,
+        lastUpdated: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error('[GA4 Diagnostics] Error:', error);
+      if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {
+        return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
+      }
+      if (error instanceof Error && (error.message === 'AUTO_REFRESH_NEEDED' || (error as any).isAutoRefreshNeeded)) {
+        return res.status(401).json({ success: false, error: 'AUTO_REFRESH_NEEDED', requiresReauthorization: true });
+      }
+      if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
+        return res.status(401).json({ success: false, error: 'TOKEN_EXPIRED', requiresReauthorization: true });
+      }
+      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch GA4 diagnostics' });
+    }
+  });
+
   // Real Google Analytics OAuth flow (production-ready)
   app.post("/api/auth/google/integrated-connect", async (req, res) => {
     try {

@@ -55,6 +55,7 @@ interface GA4Metrics {
 
 const kpiFormSchema = z.object({
   name: z.string().min(1, "KPI name is required"),
+  metric: z.string().optional(),
   description: z.string().optional(),
   unit: z.string().min(1, "Unit is required"),
   currentValue: z.string().min(1, "Current value is required"),
@@ -138,6 +139,7 @@ export default function GA4Metrics() {
     resolver: zodResolver(kpiFormSchema),
     defaultValues: {
       name: "",
+      metric: "",
       description: "",
       unit: "%",
       currentValue: "",
@@ -171,7 +173,7 @@ export default function GA4Metrics() {
   const openCreateKPI = () => {
     setEditingKPI(null);
     setSelectedKPITemplate(null);
-    kpiForm.reset({ ...kpiForm.getValues(), name: "", description: "", unit: "%", currentValue: "", targetValue: "", priority: "medium" });
+    kpiForm.reset({ ...kpiForm.getValues(), name: "", metric: "", description: "", unit: "%", currentValue: "", targetValue: "", priority: "medium" });
     setShowKPIDialog(true);
   };
 
@@ -651,15 +653,6 @@ export default function GA4Metrics() {
     }
   };
 
-  const getKpiMetricType = (kpiName: string): "Financial" | "Conversion" | "Engagement" | "Traffic" | "Custom" => {
-    const n = String(kpiName || "").toLowerCase();
-    if (n === "revenue" || n === "roas" || n === "roi" || n === "cpa") return "Financial";
-    if (n.includes("conversion")) return "Conversion";
-    if (n.includes("engagement")) return "Engagement";
-    if (n.includes("user") || n.includes("session")) return "Traffic";
-    return "Custom";
-  };
-
   const getKpiIcon = (kpiName: string) => {
     const n = String(kpiName || "").toLowerCase();
     if (n === "revenue") return { Icon: DollarSign, color: "text-emerald-600" };
@@ -1036,7 +1029,7 @@ export default function GA4Metrics() {
   const financialCPA = financialConversions > 0 ? financialSpend / financialConversions : 0;
 
   const getLiveKpiValue = (kpi: any): string => {
-    const name = String(kpi?.name || "").trim();
+    const name = String(kpi?.metric || kpi?.name || "").trim();
     // Use the same sources as the GA4 Overview:
     // - Revenue/Conversions/Sessions/Users from GA4 breakdown totals
     // - Spend from spend-totals with LinkedIn fallback
@@ -1069,7 +1062,7 @@ export default function GA4Metrics() {
 
     // Direction: most exec KPIs here are "higher is better".
     // CPA is "lower is better" (cost per conversion).
-    const name = String(kpi?.name || "").toLowerCase();
+    const name = String(kpi?.metric || kpi?.name || "").toLowerCase();
     const lowerIsBetter = name === "cpa";
 
     let ratio = 0;
@@ -1760,7 +1753,7 @@ export default function GA4Metrics() {
 
                     {/* Spend import / edit modal (rendered always so it can be opened even when spend exists) */}
                     <AddSpendWizardModal
-                      campaignId={campaignId}
+                      campaignId={campaignId as string}
                       open={showSpendDialog}
                       onOpenChange={setShowSpendDialog}
                       currency={(campaign as any)?.currency || "USD"}
@@ -2374,8 +2367,8 @@ export default function GA4Metrics() {
                           <div className="grid gap-4 md:grid-cols-2">
                             {platformKPIs.map((kpi: any) => {
                               const p = computeKpiProgress(kpi);
-                              const metricType = getKpiMetricType(kpi?.name);
-                              const { Icon, color } = getKpiIcon(kpi?.name);
+                              const metricKey = String(kpi?.metric || kpi?.name || "");
+                              const { Icon, color } = getKpiIcon(metricKey);
                               const statusLabel =
                                 p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
                               const statusColor =
@@ -2398,9 +2391,9 @@ export default function GA4Metrics() {
                                             <h4 className="text-base font-semibold text-slate-900 dark:text-white">
                                               {kpi.name}
                                             </h4>
-                                            <Badge className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-                                              {metricType}
-                                            </Badge>
+                            <Badge className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                              {String(kpi?.metric || kpi?.name || "Custom")}
+                            </Badge>
                                           </div>
                                           {kpi.description ? (
                                             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -2420,6 +2413,7 @@ export default function GA4Metrics() {
                                             kpiForm.reset({
                                               ...kpiForm.getValues(),
                                               name: String(kpi?.name || ""),
+                                              metric: String(kpi?.metric || kpi?.name || ""),
                                               description: String(kpi?.description || ""),
                                               unit: String(kpi?.unit || "%"),
                                               currentValue: formatNumberByUnit(String(getLiveKpiValue(kpi) || "0"), String(kpi?.unit || "%")),
@@ -3018,6 +3012,7 @@ export default function GA4Metrics() {
                       kpiForm.reset({
                         ...kpiForm.getValues(),
                         name: "",
+                        metric: "",
                         description: "",
                         unit: SELECT_UNIT as any,
                         currentValue: "",
@@ -3118,6 +3113,7 @@ export default function GA4Metrics() {
                           kpiForm.reset({
                             ...kpiForm.getValues(),
                             name: "",
+                            metric: "",
                             description: "",
                             unit: SELECT_UNIT as any,
                             currentValue: "",
@@ -3130,6 +3126,7 @@ export default function GA4Metrics() {
                         const resolvedUnit = template.unit === "$" ? campaignCurrencyCode : template.unit;
                         setSelectedKPITemplate(template);
                         kpiForm.setValue("name", template.name);
+                        kpiForm.setValue("metric", template.name);
                         kpiForm.setValue("unit", resolvedUnit);
                         kpiForm.setValue("description", template.description);
                         // Target is intentionally left blank for new KPIs (user must set it explicitly).

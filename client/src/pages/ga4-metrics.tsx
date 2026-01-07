@@ -594,6 +594,42 @@ export default function GA4Metrics() {
     }
   };
 
+  const resetBenchmarkDraft = () => {
+    if (editingBenchmark) {
+      const metric = (editingBenchmark as any).metric || "";
+      setSelectedBenchmarkTemplate(metric ? { metric } : null);
+      setNewBenchmark({
+        name: editingBenchmark.name || "",
+        category: editingBenchmark.category || "",
+        benchmarkType: editingBenchmark.benchmarkType || "industry",
+        unit: editingBenchmark.unit || "",
+        benchmarkValue: String((editingBenchmark as any).benchmarkValue ?? ""),
+        currentValue: String((editingBenchmark as any).currentValue ?? ""),
+        metric: metric,
+        industry: (editingBenchmark as any).industry || "",
+        geoLocation: (editingBenchmark as any).geoLocation || "",
+        description: (editingBenchmark as any).description || "",
+        source: (editingBenchmark as any).source || "",
+      });
+      return;
+    }
+
+    setSelectedBenchmarkTemplate(null);
+    setNewBenchmark({
+      name: "",
+      category: "",
+      benchmarkType: "industry",
+      unit: "",
+      benchmarkValue: "",
+      currentValue: "",
+      metric: "",
+      industry: "",
+      geoLocation: "",
+      description: "",
+      source: "",
+    });
+  };
+
   // Helper functions for KPI display
   const formatValue = (value: string, unit: string) => {
     const numValue = parseFloat(value);
@@ -2544,11 +2580,16 @@ export default function GA4Metrics() {
                           <form onSubmit={handleCreateBenchmark} className="space-y-6">
                             {/* Select Benchmark Template (mirrors KPI modal template grid) */}
                             <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                              <div>
-                                <h4 className="font-medium text-slate-900 dark:text-white">Select Benchmark Template</h4>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">
-                                  Choose a metric to benchmark, then fill in the benchmark details below.
-                                </p>
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <h4 className="font-medium text-slate-900 dark:text-white">Select Benchmark Template</h4>
+                                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                                    Choose a metric to benchmark, then fill in the benchmark details below.
+                                  </p>
+                                </div>
+                                <Button type="button" variant="outline" size="sm" onClick={resetBenchmarkDraft}>
+                                  Reset
+                                </Button>
                               </div>
 
                               <div className="grid grid-cols-2 gap-3">
@@ -2639,43 +2680,32 @@ export default function GA4Metrics() {
 
                             {/* Benchmark Name + Unit */}
                             <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                  Benchmark Name *
-                                </label>
-                                <input
-                                  type="text"
+                              <div className="space-y-2">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Benchmark Name *</div>
+                                <Input
                                   value={newBenchmark.name}
                                   onChange={(e) => setNewBenchmark({ ...newBenchmark, name: e.target.value })}
-                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                                   placeholder="e.g., Target sessions for this campaign"
                                   required
                                 />
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                  Unit *
-                                </label>
-                                <input
-                                  type="text"
+                              <div className="space-y-2">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Unit *</div>
+                                <Input
                                   value={newBenchmark.unit}
                                   onChange={(e) => setNewBenchmark({ ...newBenchmark, unit: e.target.value })}
-                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  placeholder="count, %, $"
+                                  placeholder="count, %, USD"
                                   required
                                 />
                               </div>
                             </div>
 
                             {/* Description */}
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                Description
-                              </label>
-                              <textarea
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</div>
+                              <Textarea
                                 value={newBenchmark.description}
                                 onChange={(e) => setNewBenchmark({ ...newBenchmark, description: e.target.value })}
-                                className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                                 rows={3}
                                 placeholder="What is this benchmark and why does it matter?"
                               />
@@ -2683,29 +2713,23 @@ export default function GA4Metrics() {
 
                             {/* Current Value + Benchmark Value */}
                             <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                  Current Value
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.01"
+                              <div className="space-y-2">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Current Value</div>
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
                                   value={newBenchmark.currentValue}
                                   onChange={(e) => setNewBenchmark({ ...newBenchmark, currentValue: e.target.value })}
-                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                                   placeholder="Auto-filled from GA4 for the selected metric (edit if needed)"
                                 />
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                  Benchmark Value *
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.01"
+                              <div className="space-y-2">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Benchmark Value *</div>
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
                                   value={newBenchmark.benchmarkValue}
                                   onChange={(e) => setNewBenchmark({ ...newBenchmark, benchmarkValue: e.target.value })}
-                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                                   placeholder="Enter your benchmark target (or select an industry)"
                                   required
                                 />
@@ -2714,30 +2738,28 @@ export default function GA4Metrics() {
 
                             {/* Benchmark Type */}
                             <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                  Benchmark Type *
-                                </label>
-                                <select
+                              <div className="space-y-2">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Benchmark Type *</div>
+                                <Select
                                   value={newBenchmark.benchmarkType || "industry"}
-                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, benchmarkType: e.target.value })}
-                                  className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                  required
+                                  onValueChange={(v) => setNewBenchmark({ ...newBenchmark, benchmarkType: v })}
                                 >
-                                  <option value="industry">Industry</option>
-                                  <option value="goal">Custom</option>
-                                </select>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="industry">Industry</SelectItem>
+                                    <SelectItem value="goal">Custom</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
 
                               {newBenchmark.benchmarkType === "industry" && (
-                                <div>
-                                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                    Industry
-                                  </label>
-                                  <select
+                                <div className="space-y-2">
+                                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Industry</div>
+                                  <Select
                                     value={newBenchmark.industry}
-                                    onChange={async (e) => {
-                                      const industry = e.target.value;
+                                    onValueChange={async (industry) => {
                                       setNewBenchmark({ ...newBenchmark, industry });
                                       if (!industry || !newBenchmark.metric) return;
                                       try {
@@ -2757,16 +2779,19 @@ export default function GA4Metrics() {
                                         // ignore - industry benchmarks are best-effort
                                       }
                                     }}
-                                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                                   >
-                                    <option value="">Select industry</option>
-                                    {(industries || []).map((i) => (
-                                      <option key={i.value} value={i.value}>
-                                        {i.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select industry" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {(industries || []).map((i) => (
+                                        <SelectItem key={i.value} value={i.value}>
+                                          {i.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <div className="text-xs text-slate-500 dark:text-slate-400">
                                     Selecting an industry will auto-fill the Benchmark Value for the chosen metric.
                                   </div>
                                 </div>

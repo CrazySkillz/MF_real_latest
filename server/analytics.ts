@@ -423,7 +423,6 @@ export class GoogleAnalytics4Service {
     let totalUsers = 0;
     let totalConversions = 0;
     let totalRevenue = 0;
-    let derivedSessionsCount = 0;
 
     const fmtDate = (yyyymmdd: string) => {
       const s = String(yyyymmdd || '');
@@ -458,12 +457,9 @@ export class GoogleAnalytics4Service {
         revenue: Number.parseFloat(mets[3]?.value || '0') || 0,
       };
 
-      // If sessions are not being recorded for this property (common in test/import setups),
-      // derive a "session-like" count from users so the UI is not empty.
-      const sessionsDisplay = d.sessionsRaw > 0 ? d.sessionsRaw : d.users;
-      if (d.sessionsRaw === 0 && d.users > 0) derivedSessionsCount += 1;
-
-      d.sessions = sessionsDisplay;
+      // IMPORTANT: sessions must reflect GA4 sessions exactly.
+      // Do NOT derive sessions from users; that produces misleading KPIs (e.g., Users == Sessions).
+      d.sessions = d.sessionsRaw;
 
       totalSessionsRaw += d.sessionsRaw;
       totalUsers += d.users;
@@ -472,7 +468,6 @@ export class GoogleAnalytics4Service {
       rows.push(d);
     }
 
-    const sessionsDerivedFromUsers = totalSessionsRaw === 0 && totalUsers > 0 && derivedSessionsCount > 0;
     const totalSessions = rows.reduce((sum: number, r: any) => sum + (Number(r.sessions) || 0), 0);
 
     return {
@@ -489,7 +484,7 @@ export class GoogleAnalytics4Service {
         revenueMetric: chosenRevenueMetric,
         dimensions: chosenDims.map((d: any) => d.name),
         rowCount: rows.length,
-        sessionsDerivedFromUsers,
+        sessionsDerivedFromUsers: false,
       },
     };
   }
@@ -1219,8 +1214,10 @@ export class GoogleAnalytics4Service {
       // so adding it into historical users/pageviews will produce misleading results.
       const finalUsers = totalUsers;
       const finalPageviews = totalPageviews;
-      const finalSessions = totalSessions > 0 ? totalSessions : (totalUsers > 0 ? totalUsers : 0);
-      const sessionsDerivedFromUsers = totalSessions === 0 && totalUsers > 0;
+      // IMPORTANT: sessions must reflect GA4 sessions exactly.
+      // Do NOT derive sessions from users; that produces misleading KPIs (e.g., Users == Sessions).
+      const finalSessions = totalSessions;
+      const sessionsDerivedFromUsers = false;
       
       console.log('GA4 metrics (historical + realtime separated) for', dateRange, ':', {
         historicalUsers: totalUsers,

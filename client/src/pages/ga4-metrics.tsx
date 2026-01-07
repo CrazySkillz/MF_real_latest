@@ -557,15 +557,20 @@ export default function GA4Metrics() {
       toast({ title: "Please select a benchmark template", variant: "destructive" });
       return;
     }
-    if (!newBenchmark.name || !newBenchmark.category || !newBenchmark.benchmarkValue || !newBenchmark.unit) {
+    const cleanedBenchmark = {
+      ...newBenchmark,
+      currentValue: stripNumberFormatting(String(newBenchmark.currentValue || "")),
+      benchmarkValue: stripNumberFormatting(String(newBenchmark.benchmarkValue || "")),
+    };
+    if (!cleanedBenchmark.name || !cleanedBenchmark.category || !cleanedBenchmark.benchmarkValue || !cleanedBenchmark.unit) {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
       return;
     }
     if (editingBenchmark?.id) {
-      updateBenchmarkMutation.mutate({ benchmarkId: String(editingBenchmark.id), data: newBenchmark });
+      updateBenchmarkMutation.mutate({ benchmarkId: String(editingBenchmark.id), data: cleanedBenchmark });
       return;
     }
-    createBenchmarkMutation.mutate(newBenchmark);
+    createBenchmarkMutation.mutate(cleanedBenchmark);
   };
 
   const handleEditBenchmark = (benchmark: Benchmark) => {
@@ -2564,12 +2569,12 @@ export default function GA4Metrics() {
                             Create Benchmark
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[75vh] overflow-y-auto p-4 !fixed !top-1/2 !left-1/2 !transform !-translate-x-1/2 !-translate-y-1/2 !z-[9999]">
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 p-6 !fixed !top-1/2 !left-1/2 !transform !-translate-x-1/2 !-translate-y-1/2 !z-[9999]">
                           <DialogClose className="absolute right-4 top-4 rounded-full p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors z-[60]">
                             <X className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                             <span className="sr-only">Close</span>
                           </DialogClose>
-                          <DialogHeader className="pb-3">
+                          <DialogHeader className="pb-4 pr-8">
                             <DialogTitle className="pr-8 text-lg">{editingBenchmark ? "Edit Benchmark" : "Create New Benchmark"}</DialogTitle>
                             <DialogDescription className="text-sm">
                               {editingBenchmark
@@ -2632,7 +2637,7 @@ export default function GA4Metrics() {
                                           // so switching tiles (e.g. ROAS -> ROI) updates both fields predictably.
                                           name: editingBenchmark ? prev.name || template.name : template.name,
                                           unit: editingBenchmark ? prev.unit || template.unit : template.unit,
-                                          currentValue: String(liveCurrent),
+                                          currentValue: formatNumberByUnit(String(liveCurrent), String(prev.unit || template.unit || "%")),
                                           // If we're benchmarking against Industry, avoid leaving a stale benchmarkValue
                                           // from the previously selected metric; we'll refetch below.
                                           benchmarkValue: isIndustryType && industry ? "" : prev.benchmarkValue,
@@ -2649,7 +2654,7 @@ export default function GA4Metrics() {
                                               if (data && typeof data.value !== "undefined") {
                                                 setNewBenchmark((prev) => ({
                                                   ...prev,
-                                                  benchmarkValue: String(data.value),
+                                                  benchmarkValue: formatNumberByUnit(String(data.value), String(prev.unit || data.unit || "%")),
                                                   unit: prev.unit || data.unit || prev.unit,
                                                 }));
                                               }
@@ -2720,6 +2725,12 @@ export default function GA4Metrics() {
                                   inputMode="decimal"
                                   value={newBenchmark.currentValue}
                                   onChange={(e) => setNewBenchmark({ ...newBenchmark, currentValue: e.target.value })}
+                                  onBlur={(e) =>
+                                    setNewBenchmark((prev) => ({
+                                      ...prev,
+                                      currentValue: formatNumberByUnit(e.target.value, String(prev.unit || "%")),
+                                    }))
+                                  }
                                   placeholder="Auto-filled from GA4 for the selected metric (edit if needed)"
                                 />
                               </div>
@@ -2730,6 +2741,12 @@ export default function GA4Metrics() {
                                   inputMode="decimal"
                                   value={newBenchmark.benchmarkValue}
                                   onChange={(e) => setNewBenchmark({ ...newBenchmark, benchmarkValue: e.target.value })}
+                                  onBlur={(e) =>
+                                    setNewBenchmark((prev) => ({
+                                      ...prev,
+                                      benchmarkValue: formatNumberByUnit(e.target.value, String(prev.unit || "%")),
+                                    }))
+                                  }
                                   placeholder="Enter your benchmark target (or select an industry)"
                                   required
                                 />

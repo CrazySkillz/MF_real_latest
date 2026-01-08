@@ -566,6 +566,9 @@ export default function GA4Metrics() {
       // Backward-compatible storage: use 'goal' for custom benchmarks in the DB.
       benchmarkType: String(newBenchmark.benchmarkType || "custom") === "custom" ? "goal" : (newBenchmark.benchmarkType || "industry"),
     };
+    if (!String(cleanedBenchmark.description || "").trim()) {
+      cleanedBenchmark.description = getDefaultBenchmarkDescription(String(newBenchmark.metric || ""));
+    }
     if (!cleanedBenchmark.name || !cleanedBenchmark.category || !cleanedBenchmark.benchmarkValue || !cleanedBenchmark.unit) {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
       return;
@@ -637,6 +640,57 @@ export default function GA4Metrics() {
       default:
         return String(fallbackName || m || "Benchmark");
     }
+  };
+
+  const getDefaultBenchmarkDescription = (metricKey: string): string => {
+    switch (String(metricKey || "")) {
+      case "roas":
+        return "Revenue generated per dollar of spend (as a %)";
+      case "roi":
+        return "Return relative to spend (revenue-based ROI)";
+      case "cpa":
+        return "Average cost per conversion";
+      case "revenue":
+        return "Total revenue in GA4 for the selected period";
+      case "conversions":
+        return "Total GA4 conversions for the selected period";
+      case "conversionRate":
+        return "Overall conversion rate for the selected period";
+      case "engagementRate":
+        return "Percent of sessions that were engaged (GA4 engagement rate)";
+      case "users":
+        return "Total users for the selected period";
+      case "sessions":
+        return "Total sessions for the selected period";
+      default:
+        return "Benchmark target for this metric.";
+    }
+  };
+
+  // UX: format numbers while typing without forcing trailing decimals.
+  const formatNumberWhileTyping = (raw: string, unit: string) => {
+    const cleaned = stripNumberFormatting(String(raw || ""));
+    if (cleaned === "") return "";
+    if (cleaned === "-" || cleaned === "." || cleaned === "-.") return cleaned;
+
+    const isCount = String(unit) === "count";
+    const neg = cleaned.startsWith("-") ? "-" : "";
+    const unsigned = cleaned.replace(/^-/, "");
+
+    if (isCount) {
+      const digitsOnly = unsigned.replace(/[^\d]/g, "");
+      if (!digitsOnly) return neg ? "-" : "";
+      const n = Number(digitsOnly);
+      if (!Number.isFinite(n)) return raw;
+      return `${neg}${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    }
+
+    const parts = unsigned.split(".");
+    const intPart = parts[0].replace(/[^\d]/g, "");
+    const fracPart = (parts[1] ?? "").replace(/[^\d]/g, "");
+    const intFormatted = intPart ? Number(intPart).toLocaleString(undefined, { maximumFractionDigits: 0 }) : "0";
+    if (unsigned.includes(".")) return `${neg}${intFormatted}.${fracPart}`;
+    return `${neg}${intFormatted}`;
   };
 
   const resetBenchmarkDraft = () => {
@@ -2697,6 +2751,7 @@ export default function GA4Metrics() {
                                         const isIndustryType = (newBenchmark.benchmarkType || "industry") === "industry";
                                         const liveCurrent = getLiveBenchmarkCurrentValue(template.metric);
                                         const derivedCategory = deriveBenchmarkCategoryFromMetric(template.metric);
+                                        const defaultDesc = getDefaultBenchmarkDescription(template.metric);
                                         setNewBenchmark((prev) => ({
                                           ...prev,
                                           metric: template.metric,
@@ -2705,6 +2760,7 @@ export default function GA4Metrics() {
                                           // so switching tiles (e.g. ROAS -> ROI) updates both fields predictably.
                                           name: template.name,
                                           unit: template.unit,
+                                          description: prev.description ? prev.description : defaultDesc,
                                           // Format using the selected metric's unit (important when switching from % -> count).
                                           currentValue: formatNumberByUnit(String(liveCurrent), String(template.unit || "%")),
                                           // If we're benchmarking against Industry, avoid leaving a stale benchmarkValue
@@ -2742,11 +2798,7 @@ export default function GA4Metrics() {
                                         <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                                           Spend required (add spend to unlock)
                                         </div>
-                                      ) : (
-                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                                          {template.description}
-                                        </div>
-                                      )}
+                                      ) : null}
                                     </div>
                                   );
                                 })}
@@ -2810,7 +2862,18 @@ export default function GA4Metrics() {
                                   type="text"
                                   inputMode="decimal"
                                   value={newBenchmark.benchmarkValue}
-                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, benchmarkValue: e.target.value })}
+                                  onChange={(e) => {
+                                    const nextRaw = e.target.value;
+                                    // UX: when using Custom Value, format as the user types (commas, no forced .00).
+                                    if (String(newBenchmark.benchmarkType || "custom") === "custom") {
+                                      setNewBenchmark({
+                                        ...newBenchmark,
+                                        benchmarkValue: formatNumberWhileTyping(nextRaw, String(newBenchmark.unit || "%")),
+                                      });
+                                      return;
+                                    }
+                                    setNewBenchmark({ ...newBenchmark, benchmarkValue: nextRaw });
+                                  }}
                                   onBlur={(e) =>
                                     setNewBenchmark((prev) => ({
                                       ...prev,
@@ -2933,6 +2996,11 @@ export default function GA4Metrics() {
                                 <div className="flex items-start justify-between mb-4">
                                   <div className="flex-1">
                                     <h4 className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</h4>
+                                    {benchmark.description ? (
+                                      <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                        {benchmark.description}
+                                      </div>
+                                    ) : null}
                                     <div className="flex items-center space-x-2 mt-1">
                                       <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
                                         {getBenchmarkMetricLabel((benchmark as any)?.metric, benchmark.name)}

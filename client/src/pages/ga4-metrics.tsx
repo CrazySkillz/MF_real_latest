@@ -577,14 +577,18 @@ export default function GA4Metrics() {
     setEditingBenchmark(benchmark);
     setShowCreateBenchmark(true);
     const metric = (benchmark as any).metric || "";
+    const normalizedType =
+      String((benchmark as any)?.benchmarkType || "").toLowerCase() === "goal"
+        ? "custom"
+        : (benchmark as any)?.benchmarkType || "industry";
     setSelectedBenchmarkTemplate(metric ? { metric } : null);
     setNewBenchmark({
       name: benchmark.name || "",
       category: benchmark.category || "",
-      benchmarkType: benchmark.benchmarkType || "industry",
+      benchmarkType: normalizedType,
       unit: benchmark.unit || "",
-      benchmarkValue: String(benchmark.benchmarkValue ?? ""),
-      currentValue: String(benchmark.currentValue ?? ""),
+      benchmarkValue: formatNumberByUnit(String(benchmark.benchmarkValue ?? ""), String(benchmark.unit || "%")),
+      currentValue: formatNumberByUnit(String(benchmark.currentValue ?? ""), String(benchmark.unit || "%")),
       metric: metric,
       industry: benchmark.industry || "",
       geoLocation: benchmark.geoLocation || "",
@@ -602,14 +606,18 @@ export default function GA4Metrics() {
   const resetBenchmarkDraft = () => {
     if (editingBenchmark) {
       const metric = (editingBenchmark as any).metric || "";
+      const normalizedType =
+        String((editingBenchmark as any)?.benchmarkType || "").toLowerCase() === "goal"
+          ? "custom"
+          : (editingBenchmark as any)?.benchmarkType || "industry";
       setSelectedBenchmarkTemplate(metric ? { metric } : null);
       setNewBenchmark({
         name: editingBenchmark.name || "",
         category: editingBenchmark.category || "",
-        benchmarkType: editingBenchmark.benchmarkType || "industry",
+        benchmarkType: normalizedType,
         unit: editingBenchmark.unit || "",
-        benchmarkValue: String((editingBenchmark as any).benchmarkValue ?? ""),
-        currentValue: String((editingBenchmark as any).currentValue ?? ""),
+        benchmarkValue: formatNumberByUnit(String((editingBenchmark as any).benchmarkValue ?? ""), String((editingBenchmark as any).unit || "%")),
+        currentValue: formatNumberByUnit(String((editingBenchmark as any).currentValue ?? ""), String((editingBenchmark as any).unit || "%")),
         metric: metric,
         industry: (editingBenchmark as any).industry || "",
         geoLocation: (editingBenchmark as any).geoLocation || "",
@@ -811,7 +819,8 @@ export default function GA4Metrics() {
   // Fetch industries list (used for Benchmarks -> Industry type)
   const { data: industryData } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
     queryKey: ["/api/industry-benchmarks"],
-    staleTime: Infinity,
+    // Keep fresh so newly-added industries appear without requiring a hard refresh.
+    staleTime: 0,
     queryFn: async () => {
       const resp = await fetch("/api/industry-benchmarks");
       if (!resp.ok) return { industries: [] };
@@ -2635,8 +2644,8 @@ export default function GA4Metrics() {
                                           category: derivedCategory,
                                           // When selecting a template, keep name/unit in sync with the selected metric
                                           // so switching tiles (e.g. ROAS -> ROI) updates both fields predictably.
-                                          name: editingBenchmark ? prev.name || template.name : template.name,
-                                          unit: editingBenchmark ? prev.unit || template.unit : template.unit,
+                                          name: template.name,
+                                          unit: template.unit,
                                           // Format using the selected metric's unit (important when switching from % -> count).
                                           currentValue: formatNumberByUnit(String(liveCurrent), String(template.unit || "%")),
                                           // If we're benchmarking against Industry, avoid leaving a stale benchmarkValue
@@ -2657,7 +2666,7 @@ export default function GA4Metrics() {
                                                 setNewBenchmark((prev) => ({
                                                   ...prev,
                                                   benchmarkValue: formatted,
-                                                  unit: prev.unit || data.unit || prev.unit,
+                                                  unit: prev.unit || data.unit || "",
                                                 }));
                                               }
                                             })

@@ -1390,7 +1390,12 @@ export default function GA4Metrics() {
   };
 
   const computeBenchmarkProgress = (benchmark: any) => {
-    const currentRaw = stripNumberFormatting(String((benchmark as any)?.currentValue ?? "0"));
+    const metric = String((benchmark as any)?.metric || "");
+    const currentRaw = stripNumberFormatting(
+      metric && metric !== "__custom__"
+        ? String(getLiveBenchmarkCurrentValue(metric))
+        : String((benchmark as any)?.currentValue ?? "0")
+    );
     const benchRaw = stripNumberFormatting(String((benchmark as any)?.benchmarkValue ?? "0"));
     const current = parseFloat(currentRaw || "0");
     const bench = parseFloat(benchRaw || "0");
@@ -1431,6 +1436,14 @@ export default function GA4Metrics() {
       color,
       deltaPct,
     };
+  };
+
+  const getBenchmarkDisplayCurrentValue = (benchmark: any): string => {
+    const metric = String((benchmark as any)?.metric || "");
+    if (metric && metric !== "__custom__") {
+      return String(getLiveBenchmarkCurrentValue(metric));
+    }
+    return String((benchmark as any)?.currentValue ?? "0");
   };
 
   const buildGA4ReportPayload = () => {
@@ -1601,8 +1614,9 @@ export default function GA4Metrics() {
       for (const b of items) {
         const p = computeBenchmarkProgress(b);
         const statusLabel = p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
+        const currentLive = getBenchmarkDisplayCurrentValue(b);
         write(
-          `${String((b as any)?.name || "")} • Current ${formatBenchmarkValue((b as any)?.currentValue || "0", (b as any)?.unit)} • Benchmark ${formatBenchmarkValue(
+          `${String((b as any)?.name || "")} • Current ${formatBenchmarkValue(currentLive, (b as any)?.unit)} • Benchmark ${formatBenchmarkValue(
             (b as any)?.benchmarkValue || "0",
             (b as any)?.unit
           )} • Progress ${p.pct.toFixed(1)}% • ${statusLabel}`,
@@ -3512,7 +3526,7 @@ export default function GA4Metrics() {
                                   <div className="flex justify-between items-center">
                                     <span className="text-sm text-slate-600 dark:text-slate-400">Current</span>
                                     <span className="font-medium text-slate-900 dark:text-white">
-                                      {formatBenchmarkValue(benchmark.currentValue || "0", benchmark.unit)}
+                                      {formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}
                                     </span>
                                   </div>
 

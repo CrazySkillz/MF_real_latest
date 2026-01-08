@@ -109,6 +109,8 @@ export default function GA4Metrics() {
   const [deleteKPIId, setDeleteKPIId] = useState<string | null>(null);
   const [showSpendDialog, setShowSpendDialog] = useState(false);
   const [showDeleteSpendDialog, setShowDeleteSpendDialog] = useState(false);
+  const [deleteBenchmarkId, setDeleteBenchmarkId] = useState<string | null>(null);
+  const [showDeleteBenchmarkDialog, setShowDeleteBenchmarkDialog] = useState(false);
   // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
   
   // Benchmark-related state
@@ -600,8 +602,40 @@ export default function GA4Metrics() {
   };
 
   const handleDeleteBenchmark = (benchmarkId: string) => {
-    if (confirm("Are you sure you want to delete this benchmark?")) {
-      deleteBenchmarkMutation.mutate(benchmarkId);
+    setDeleteBenchmarkId(benchmarkId);
+    setShowDeleteBenchmarkDialog(true);
+  };
+
+  const confirmDeleteBenchmark = () => {
+    if (!deleteBenchmarkId) return;
+    deleteBenchmarkMutation.mutate(deleteBenchmarkId);
+    setDeleteBenchmarkId(null);
+    setShowDeleteBenchmarkDialog(false);
+  };
+
+  const getBenchmarkMetricLabel = (metricKey: string | undefined, fallbackName?: string) => {
+    const m = String(metricKey || "").trim();
+    switch (m) {
+      case "roas":
+        return "ROAS";
+      case "roi":
+        return "ROI";
+      case "cpa":
+        return "CPA";
+      case "revenue":
+        return "Revenue";
+      case "conversions":
+        return "Total Conversions";
+      case "conversionRate":
+        return "Conversion Rate";
+      case "engagementRate":
+        return "Engagement Rate";
+      case "users":
+        return "Total Users";
+      case "sessions":
+        return "Total Sessions";
+      default:
+        return String(fallbackName || m || "Benchmark");
     }
   };
 
@@ -2539,6 +2573,27 @@ export default function GA4Metrics() {
 
                 <TabsContent value="benchmarks">
                   <div className="space-y-6">
+                    <AlertDialog open={showDeleteBenchmarkDialog} onOpenChange={setShowDeleteBenchmarkDialog}>
+                      <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-slate-900 dark:text-white">Delete benchmark?</AlertDialogTitle>
+                          <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                            This will permanently remove the benchmark from this GA4 Benchmarks list.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setDeleteBenchmarkId(null)}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={confirmDeleteBenchmark}
+                            disabled={deleteBenchmarkMutation.isPending}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
                     {/* Header with Create Button */}
                     <div className="flex items-center justify-between">
                       <div>
@@ -2880,14 +2935,7 @@ export default function GA4Metrics() {
                                     <h4 className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</h4>
                                     <div className="flex items-center space-x-2 mt-1">
                                       <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                                        {benchmark.category}
-                                      </span>
-                                      <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded">
-                                        {String(benchmark.benchmarkType).toLowerCase() === "industry"
-                                          ? "Industry suggestion"
-                                          : String(benchmark.benchmarkType).toLowerCase() === "goal" || String(benchmark.benchmarkType).toLowerCase() === "custom"
-                                          ? "Custom Value"
-                                          : benchmark.benchmarkType}
+                                        {getBenchmarkMetricLabel((benchmark as any)?.metric, benchmark.name)}
                                       </span>
                                     </div>
                                   </div>

@@ -775,6 +775,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Cache-Control", "no-store");
       const { industry, metric } = req.params;
       const { getBenchmarkValue } = await import('./data/industry-benchmarks.js');
+      const datasetMode = String(req.query.dataset || process.env.INDUSTRY_BENCHMARKS_DATASET || "default").toLowerCase();
+      if (datasetMode === "mock") {
+        const { getMockBenchmarkValue } = await import("./data/industry-benchmarks.mock.js");
+        const mock = getMockBenchmarkValue(industry, metric);
+        if (!mock) {
+          return res.status(404).json({ message: "Benchmark not found for this industry/metric combination" });
+        }
+        return res.json({
+          ...mock,
+          source: "mock",
+          disclaimer: "Demo-only mock dataset. Not licensed/audited.",
+          asOf: "2026-01-01",
+        });
+      }
       
       const benchmarkData = getBenchmarkValue(industry, metric);
       

@@ -2888,12 +2888,21 @@ export default function GA4Metrics() {
                                         // If an industry is already selected, switching metrics should refetch the
                                         // industry benchmark for the new metric and populate Benchmark Value.
                                         if (isIndustryType && industry) {
+                                          const dataset = String(import.meta.env.VITE_INDUSTRY_BENCHMARKS_DATASET || "");
                                           fetch(
-                                            `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(template.metric)}`
+                                            `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(template.metric)}${
+                                              dataset === "mock" ? "?dataset=mock" : ""
+                                            }`
                                           )
                                             .then((resp) => (resp.ok ? resp.json().catch(() => null) : null))
                                             .then((data) => {
                                               if (data && typeof data.value !== "undefined") {
+                                                if (String((data as any)?.source || "") === "mock") {
+                                                  toast({
+                                                    title: "Using demo benchmark value",
+                                                    description: "This is a mock dataset for MVP/demo only (not audited).",
+                                                  });
+                                                }
                                                 const formatted = formatNumberByUnit(String(data.value), String(data.unit || resolvedUnit || "%"));
                                                 setNewBenchmark((prev) => ({
                                                   ...prev,
@@ -3062,8 +3071,11 @@ export default function GA4Metrics() {
                                       setNewBenchmark({ ...newBenchmark, industry });
                                       if (!industry || !newBenchmark.metric) return;
                                       try {
+                                        const dataset = String(import.meta.env.VITE_INDUSTRY_BENCHMARKS_DATASET || "");
                                         const resp = await fetch(
-                                          `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(newBenchmark.metric)}`
+                                          `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(newBenchmark.metric)}${
+                                            dataset === "mock" ? "?dataset=mock" : ""
+                                          }`
                                         );
                                         if (!resp.ok) {
                                           toast({
@@ -3076,6 +3088,12 @@ export default function GA4Metrics() {
                                         }
                                         const data = await resp.json().catch(() => null);
                                         if (data && typeof data.value !== "undefined") {
+                                          if (String((data as any)?.source || "") === "mock") {
+                                            toast({
+                                              title: "Using demo benchmark value",
+                                              description: "This is a mock dataset for MVP/demo only (not audited).",
+                                            });
+                                          }
                                           setNewBenchmark((prev) => ({
                                             ...prev,
                                             benchmarkValue: formatNumberByUnit(String(data.value), String(prev.unit || data.unit || "%")),

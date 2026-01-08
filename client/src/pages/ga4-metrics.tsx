@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, Download, FileText } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -120,6 +120,22 @@ export default function GA4Metrics() {
   const [showCreateBenchmark, setShowCreateBenchmark] = useState(false);
   const [selectedBenchmarkTemplate, setSelectedBenchmarkTemplate] = useState<any>(null);
   const [editingBenchmark, setEditingBenchmark] = useState<Benchmark | null>(null);
+  const [showGA4ReportModal, setShowGA4ReportModal] = useState(false);
+  const [editingGA4ReportId, setEditingGA4ReportId] = useState<string | null>(null);
+  const [deleteGA4ReportId, setDeleteGA4ReportId] = useState<string | null>(null);
+  const [ga4ReportForm, setGa4ReportForm] = useState<{
+    name: string;
+    description: string;
+    reportType: string;
+    configuration: any;
+  }>({
+    name: "",
+    description: "",
+    reportType: "overview",
+    configuration: {
+      sections: { overview: true, acquisition: false, trends: false, kpis: false, benchmarks: false },
+    },
+  });
   const [newBenchmark, setNewBenchmark] = useState({
     name: "",
     category: "",
@@ -444,6 +460,80 @@ export default function GA4Metrics() {
         description: error.message || "An unexpected error occurred",
         variant: "destructive" 
       });
+    },
+  });
+
+  // GA4 Reports (stored as platform reports)
+  const { data: ga4Reports, isLoading: ga4ReportsLoading } = useQuery<any[]>({
+    queryKey: ["/api/platforms/google_analytics/reports", campaignId],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/platforms/google_analytics/reports?campaignId=${encodeURIComponent(String(campaignId))}`);
+      if (!resp.ok) return [];
+      const json = await resp.json().catch(() => []);
+      return Array.isArray(json) ? json : [];
+    },
+  });
+
+  const createGA4ReportMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const resp = await fetch(`/api/platforms/google_analytics/reports`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok) throw new Error(json?.message || json?.error || "Failed to create report");
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId] });
+      setShowGA4ReportModal(false);
+      setEditingGA4ReportId(null);
+      toast({ title: "Report saved" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to save report", description: err?.message, variant: "destructive" });
+    },
+  });
+
+  const updateGA4ReportMutation = useMutation({
+    mutationFn: async ({ reportId, payload }: { reportId: string; payload: any }) => {
+      const resp = await fetch(`/api/platforms/google_analytics/reports/${encodeURIComponent(reportId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok) throw new Error(json?.message || json?.error || "Failed to update report");
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId] });
+      setShowGA4ReportModal(false);
+      setEditingGA4ReportId(null);
+      toast({ title: "Report updated" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to update report", description: err?.message, variant: "destructive" });
+    },
+  });
+
+  const deleteGA4ReportMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const resp = await fetch(`/api/platforms/google_analytics/reports/${encodeURIComponent(reportId)}`, { method: "DELETE" });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok) throw new Error(json?.message || json?.error || "Failed to delete report");
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId] });
+      toast({ title: "Report deleted" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to delete report", description: err?.message, variant: "destructive" });
     },
   });
 
@@ -1342,6 +1432,188 @@ export default function GA4Metrics() {
     };
   };
 
+  const buildGA4ReportPayload = () => {
+    const name = String(ga4ReportForm.name || "").trim();
+    const reportType = String(ga4ReportForm.reportType || "overview");
+    const description = String(ga4ReportForm.description || "").trim();
+    const cfg = ga4ReportForm.configuration || {};
+    return {
+      campaignId,
+      name,
+      description: description || null,
+      reportType,
+      configuration: JSON.stringify({
+        ...cfg,
+        meta: {
+          dateRange,
+          createdFrom: "ga4-metrics",
+        },
+      }),
+      status: "active",
+    };
+  };
+
+  const downloadGA4Report = async (opts: { reportType: string; configuration?: any; reportName?: string }) => {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF();
+
+    const marginX = 14;
+    let y = 14;
+    const lineHeight = 6;
+    const pageBottom = 285;
+
+    const ensureSpace = (extra: number) => {
+      if (y + extra > pageBottom) {
+        doc.addPage();
+        y = 14;
+      }
+    };
+
+    const write = (text: string, size = 11, bold = false) => {
+      ensureSpace(lineHeight);
+      doc.setFontSize(size);
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      const lines = doc.splitTextToSize(String(text || ""), 180);
+      for (const l of lines) {
+        ensureSpace(lineHeight);
+        doc.text(l, marginX, y);
+        y += lineHeight;
+      }
+    };
+
+    const currency = String((campaign as any)?.currency || "USD");
+    const fmtCurrency = (n: number) =>
+      `${currency} ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const fmtPct = (n: number) => `${Number(n || 0).toFixed(2)}%`;
+    const fmtCount = (n: number) => `${Math.round(Number(n || 0)).toLocaleString()}`;
+
+    const reportName = String(opts.reportName || ga4ReportForm.name || "GA4 Report").trim() || "GA4 Report";
+    const reportType = String(opts.reportType || "overview");
+    const cfg = opts.configuration || ga4ReportForm.configuration || {};
+
+    // Header
+    write(reportName, 16, true);
+    write(`Campaign: ${String((campaign as any)?.name || "")}`);
+    write(`Date Range: ${String((selectedPeriodLabel as any) || dateRange)}`);
+    const ga4m = ga4Metrics as any;
+    if (ga4m?.propertyId) write(`Property: ${String(ga4m?.displayName || ga4m?.propertyName || "")} (${ga4m?.propertyId})`);
+    if ((campaign as any)?.ga4CampaignFilter) write(`Campaign Filter: ${String((campaign as any).ga4CampaignFilter)}`);
+    write(`Generated: ${new Date().toLocaleString()}`);
+    write(" ");
+
+    const sections =
+      reportType === "custom"
+        ? (cfg?.sections || { overview: true })
+        : {
+            overview: reportType === "overview",
+            acquisition: reportType === "acquisition",
+            trends: reportType === "trends",
+            kpis: reportType === "kpis",
+            benchmarks: reportType === "benchmarks",
+          };
+
+    // Overview section
+    if (sections.overview) {
+      write("Overview", 13, true);
+      const revenue = Number(breakdownTotals?.revenue || 0);
+      const conversions = Number(breakdownTotals?.conversions || 0);
+      const sessions = Number(breakdownTotals?.sessions || 0);
+      const users = Number(breakdownTotals?.users || 0);
+      const engagementRate = normalizeRateToPercent(Number(ga4m?.metrics?.engagementRate ?? 0));
+      const persistedSpend = Number(spendTotals?.totalSpend || 0);
+      const spend = persistedSpend > 0 ? persistedSpend : Number((linkedInAggregated as any)?.spend || 0);
+
+      const roas = spend > 0 ? (revenue / spend) * 100 : 0;
+      const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+      const cpa = conversions > 0 ? spend / conversions : 0;
+      const convRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
+
+      write(`Revenue: ${fmtCurrency(revenue)}`);
+      write(`Spend (for ROAS/ROI/CPA): ${fmtCurrency(spend)}`);
+      write(`ROAS: ${fmtPct(roas)}`);
+      write(`ROI: ${fmtPct(roi)}`);
+      write(`CPA: ${fmtCurrency(cpa)}`);
+      write(`Conversions: ${fmtCount(conversions)}`);
+      write(`Conversion Rate: ${fmtPct(convRate)}`);
+      write(`Users: ${fmtCount(users)}`);
+      write(`Sessions: ${fmtCount(sessions)}`);
+      write(`Engagement Rate: ${fmtPct(engagementRate)}`);
+      write(" ");
+    }
+
+    // Acquisition breakdown
+    if (sections.acquisition) {
+      write("Acquisition Breakdown (top rows)", 13, true);
+      const rows = Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
+      const top = rows.slice(0, 25);
+      for (const r of top) {
+        const sessionsRow = Number((r as any)?.sessionsRaw ?? (r as any)?.sessions ?? 0);
+        write(
+          `${String((r as any)?.channel || "")} • ${String((r as any)?.source || "")}/${String((r as any)?.medium || "")} • Sessions ${fmtCount(
+            sessionsRow
+          )} • Users ${fmtCount((r as any)?.users)} • Conv ${fmtCount((r as any)?.conversions)} • Rev ${fmtCurrency((r as any)?.revenue || 0)}`,
+          10
+        );
+      }
+      if (rows.length > top.length) write(`… ${rows.length - top.length} more rows`, 10);
+      write(" ");
+    }
+
+    // Trends (time series)
+    if (sections.trends) {
+      write("Trends (time series)", 13, true);
+      const pts = Array.isArray(ga4TimeSeries) ? ga4TimeSeries : [];
+      const last = pts.slice(Math.max(0, pts.length - 25));
+      for (const p of last) {
+        write(
+          `${String((p as any)?.date || "")} • Sessions ${fmtCount((p as any)?.sessions || 0)} • Users ${fmtCount(
+            (p as any)?.users || 0
+          )} • Conv ${fmtCount((p as any)?.conversions || 0)} • Rev ${fmtCurrency((p as any)?.revenue || 0)}`,
+          10
+        );
+      }
+      write(" ");
+    }
+
+    // KPIs snapshot
+    if (sections.kpis) {
+      write("KPIs Snapshot", 13, true);
+      const items = Array.isArray(platformKPIs) ? platformKPIs : [];
+      for (const k of items) {
+        const p = computeKpiProgress(k);
+        const statusLabel = p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
+        write(
+          `${String(k?.name || "")} • Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String(k?.unit || "%"))} • Target ${formatNumberByUnit(
+            String(k?.targetValue || ""),
+            String(k?.unit || "%")
+          )} • Progress ${p.pct.toFixed(1)}% • ${statusLabel}`,
+          10
+        );
+      }
+      write(" ");
+    }
+
+    // Benchmarks snapshot
+    if (sections.benchmarks) {
+      write("Benchmarks Snapshot", 13, true);
+      const items = Array.isArray(benchmarks) ? benchmarks : [];
+      for (const b of items) {
+        const p = computeBenchmarkProgress(b);
+        const statusLabel = p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
+        write(
+          `${String((b as any)?.name || "")} • Current ${formatBenchmarkValue((b as any)?.currentValue || "0", (b as any)?.unit)} • Benchmark ${formatBenchmarkValue(
+            (b as any)?.benchmarkValue || "0",
+            (b as any)?.unit
+          )} • Progress ${p.pct.toFixed(1)}% • ${statusLabel}`,
+          10
+        );
+      }
+      write(" ");
+    }
+
+    doc.save(`${reportName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
+  };
+
   const connectedPropertyCount =
     Number(ga4Connection?.totalConnections || 0) ||
     (Array.isArray(ga4Connection?.connections) ? ga4Connection.connections.length : 0) ||
@@ -1809,6 +2081,7 @@ export default function GA4Metrics() {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
+                  <TabsTrigger value="reports">Reports</TabsTrigger>
                   <TabsTrigger value="property-comparison">Property Comparison</TabsTrigger>
                 </TabsList>
 
@@ -3364,6 +3637,133 @@ export default function GA4Metrics() {
                   </div>
                 </TabsContent>
 
+                <TabsContent value="reports">
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Reports</h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Create and download exec-ready GA4 reports (PDF) from this campaign’s live data.
+                        </p>
+                      </div>
+                      <Button
+                        className="gap-2"
+                        onClick={() => {
+                          setEditingGA4ReportId(null);
+                          setGa4ReportForm({
+                            name: "",
+                            description: "",
+                            reportType: "overview",
+                            configuration: {
+                              sections: { overview: true, acquisition: false, trends: false, kpis: false, benchmarks: false },
+                            },
+                          });
+                          setShowGA4ReportModal(true);
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create Report
+                      </Button>
+                    </div>
+
+                    {ga4ReportsLoading ? (
+                      <div className="animate-pulse space-y-4">
+                        <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded" />
+                        <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded" />
+                      </div>
+                    ) : Array.isArray(ga4Reports) && ga4Reports.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-4">
+                        {ga4Reports.map((r: any) => (
+                          <Card key={r.id} className="border-slate-200 dark:border-slate-700">
+                            <CardContent className="p-6">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <FileText className="w-4 h-4 text-slate-500" />
+                                    <h3 className="font-semibold text-slate-900 dark:text-white truncate">{r.name}</h3>
+                                    <Badge variant="outline">{String(r.reportType || "overview")}</Badge>
+                                  </div>
+                                  {r.description ? (
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">{r.description}</p>
+                                  ) : null}
+                                  {r.createdAt ? (
+                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                      Created {new Date(r.createdAt).toLocaleDateString()}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2"
+                                    onClick={() => {
+                                      let cfg: any = {};
+                                      try {
+                                        cfg = r.configuration ? JSON.parse(String(r.configuration)) : {};
+                                      } catch {
+                                        cfg = {};
+                                      }
+                                      downloadGA4Report({
+                                        reportType: String(r.reportType || "overview"),
+                                        configuration: cfg,
+                                        reportName: String(r.name || "GA4 Report"),
+                                      });
+                                    }}
+                                  >
+                                    <Download className="w-4 h-4" />
+                                    Download
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setEditingGA4ReportId(String(r.id));
+                                      let cfg: any = {};
+                                      try {
+                                        cfg = r.configuration ? JSON.parse(String(r.configuration)) : {};
+                                      } catch {
+                                        cfg = {};
+                                      }
+                                      setGa4ReportForm({
+                                        name: String(r.name || ""),
+                                        description: String(r.description || ""),
+                                        reportType: String(r.reportType || "overview"),
+                                        configuration: cfg?.sections ? cfg : { sections: { overview: true } },
+                                      });
+                                      setShowGA4ReportModal(true);
+                                    }}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-red-600 dark:text-red-400"
+                                    onClick={() => setDeleteGA4ReportId(String(r.id))}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <Card className="border-slate-200 dark:border-slate-700">
+                        <CardContent className="p-10 text-center">
+                          <FileText className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                          <div className="text-slate-900 dark:text-white font-medium">No reports created yet</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Create your first GA4 report to download a PDF snapshot.
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </TabsContent>
+
                 <TabsContent value="property-comparison">
                   <div className="space-y-6">
                     {/* Property Comparison Header */}
@@ -3897,6 +4297,165 @@ export default function GA4Metrics() {
               className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
             >
               {deleteKPIMutation.isPending ? "Deleting..." : "Delete KPI"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* GA4 Reports Modal */}
+      <Dialog
+        open={showGA4ReportModal}
+        onOpenChange={(open) => {
+          setShowGA4ReportModal(open);
+          if (!open) setEditingGA4ReportId(null);
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingGA4ReportId ? "Edit Report" : "Create Report"}</DialogTitle>
+            <DialogDescription>
+              Build an exec-ready PDF report using the same GA4 data shown on this page (no hidden calculations).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Report Name *</div>
+                <Input
+                  value={ga4ReportForm.name}
+                  onChange={(e) => setGa4ReportForm((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g., Monthly GA4 Overview"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Report Type *</div>
+                <Select
+                  value={ga4ReportForm.reportType}
+                  onValueChange={(v) => {
+                    const next = String(v || "overview");
+                    setGa4ReportForm((p) => ({
+                      ...p,
+                      reportType: next,
+                      configuration:
+                        next === "custom"
+                          ? p.configuration || { sections: { overview: true } }
+                          : { sections: { overview: next === "overview", acquisition: next === "acquisition", trends: next === "trends", kpis: next === "kpis", benchmarks: next === "benchmarks" } },
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select report type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="overview">Overview</SelectItem>
+                    <SelectItem value="acquisition">Acquisition Breakdown</SelectItem>
+                    <SelectItem value="trends">Trends (Time series)</SelectItem>
+                    <SelectItem value="kpis">KPIs Snapshot</SelectItem>
+                    <SelectItem value="benchmarks">Benchmarks Snapshot</SelectItem>
+                    <SelectItem value="custom">Custom (choose sections)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</div>
+              <Textarea
+                value={ga4ReportForm.description}
+                onChange={(e) => setGa4ReportForm((p) => ({ ...p, description: e.target.value }))}
+                rows={3}
+                placeholder="Optional description for your report library"
+              />
+            </div>
+
+            {ga4ReportForm.reportType === "custom" ? (
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Sections</div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {[
+                    { key: "overview", label: "Overview" },
+                    { key: "acquisition", label: "Acquisition Breakdown" },
+                    { key: "trends", label: "Trends" },
+                    { key: "kpis", label: "KPIs Snapshot" },
+                    { key: "benchmarks", label: "Benchmarks Snapshot" },
+                  ].map((s) => {
+                    const checked = !!ga4ReportForm.configuration?.sections?.[s.key];
+                    return (
+                      <label key={s.key} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = { ...(ga4ReportForm.configuration?.sections || {}) };
+                            next[s.key] = e.target.checked;
+                            setGa4ReportForm((p) => ({ ...p, configuration: { ...(p.configuration || {}), sections: next } }));
+                          }}
+                        />
+                        {s.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowGA4ReportModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => downloadGA4Report({ reportType: ga4ReportForm.reportType, configuration: ga4ReportForm.configuration, reportName: ga4ReportForm.name || "GA4 Report" })}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF
+              </Button>
+              <Button
+                disabled={createGA4ReportMutation.isPending || updateGA4ReportMutation.isPending}
+                onClick={() => {
+                  const payload = buildGA4ReportPayload();
+                  if (!String(payload.name || "").trim()) {
+                    toast({ title: "Report name is required", variant: "destructive" });
+                    return;
+                  }
+                  if (editingGA4ReportId) {
+                    updateGA4ReportMutation.mutate({ reportId: editingGA4ReportId, payload });
+                    return;
+                  }
+                  createGA4ReportMutation.mutate(payload);
+                }}
+              >
+                {editingGA4ReportId
+                  ? (updateGA4ReportMutation.isPending ? "Updating..." : "Update Report")
+                  : (createGA4ReportMutation.isPending ? "Saving..." : "Save Report")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Report Confirmation */}
+      <AlertDialog open={deleteGA4ReportId !== null} onOpenChange={() => setDeleteGA4ReportId(null)}>
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-900 dark:text-white">Delete Report</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+              Are you sure you want to delete this report? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteGA4ReportId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!deleteGA4ReportId) return;
+                deleteGA4ReportMutation.mutate(deleteGA4ReportId);
+                setDeleteGA4ReportId(null);
+              }}
+              disabled={deleteGA4ReportMutation.isPending}
+              className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

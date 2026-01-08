@@ -175,6 +175,40 @@ export default function GA4Metrics() {
     return n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   };
 
+  // UX-friendly formatting that updates while typing (keeps decimals as typed; adds commas).
+  // Final normalization (e.g., forcing 2 decimals) still happens onBlur via formatNumberByUnit.
+  const formatNumberAsYouType = (raw: string, unit: string) => {
+    const input = String(raw || "");
+    const noCommas = stripNumberFormatting(input);
+    if (!noCommas) return "";
+
+    const neg = noCommas.startsWith("-");
+    const body = neg ? noCommas.slice(1) : noCommas;
+
+    if (unit === "count") {
+      const digitsOnly = body.replace(/\D+/g, "");
+      if (!digitsOnly) return neg ? "-" : "";
+      const grouped = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      return `${neg ? "-" : ""}${grouped}`;
+    }
+
+    const sanitized = body.replace(/[^0-9.]/g, "");
+    if (!sanitized) return neg ? "-" : "";
+    const dotIdx = sanitized.indexOf(".");
+    const hasDot = dotIdx >= 0;
+    let intPart = hasDot ? sanitized.slice(0, dotIdx) : sanitized;
+    let fracPart = hasDot ? sanitized.slice(dotIdx + 1).replace(/\./g, "") : "";
+
+    // If user types "." first, show "0."
+    if (hasDot && !intPart) intPart = "0";
+    // Avoid empty integer part (but keep empty when user is typing "-")
+    if (!intPart && !hasDot) return neg ? "-" : "";
+
+    const intGrouped = intPart.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",") || (hasDot ? "0" : "");
+
+    return `${neg ? "-" : ""}${intGrouped}${hasDot ? "." : ""}${fracPart}`;
+  };
+
   const openCreateKPI = () => {
     setEditingKPI(null);
     setSelectedKPITemplate(null);
@@ -3652,7 +3686,9 @@ export default function GA4Metrics() {
                           type="text"
                           placeholder="Current value"
                           value={field.value || ""}
-                          onChange={(e) => field.onChange(e.target.value)}
+                          onChange={(e) =>
+                            field.onChange(formatNumberAsYouType(e.target.value, String(kpiForm.getValues().unit || "%")))
+                          }
                           onBlur={(e) => field.onChange(formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
                         />
                       </FormControl>
@@ -3828,8 +3864,10 @@ export default function GA4Metrics() {
                 <Button variant="outline" onClick={() => setShowKPIDialog(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createKPIMutation.isPending}>
-                  {createKPIMutation.isPending ? "Creating..." : "Create KPI"}
+                <Button type="submit" disabled={createKPIMutation.isPending || updateKPIMutation.isPending}>
+                  {editingKPI
+                    ? (updateKPIMutation.isPending ? "Updating..." : "Update KPI")
+                    : (createKPIMutation.isPending ? "Creating..." : "Create KPI")}
                 </Button>
               </div>
             </form>

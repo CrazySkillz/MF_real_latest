@@ -1745,12 +1745,11 @@ export default function GA4Metrics() {
     "";
   const provenanceCampaignFilter = (campaign as any)?.ga4CampaignFilter || (ga4Diagnostics as any)?.campaignFilter || "";
   const diagnosticsWarnings: string[] = Array.isArray((ga4Diagnostics as any)?.warnings) ? (ga4Diagnostics as any).warnings : [];
-  // Hide warnings that are noisy/confusing in the MVP UI; keep diagnostics raw JSON available in "Data details".
+  // Hide warnings that are noisy/confusing in the MVP UI.
   const visibleDiagnosticsWarnings = diagnosticsWarnings.filter((w) => {
     const s = String(w || "");
     return !s.startsWith("Total Conversions match Total Users.");
   });
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   if (campaignLoading) {
     return (
@@ -1880,9 +1879,6 @@ export default function GA4Metrics() {
                     <SelectItem value="90days">Last 90 days</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" size="sm" onClick={() => setShowDiagnostics(true)}>
-                  Data details
-                </Button>
               </div>
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -2031,42 +2027,7 @@ export default function GA4Metrics() {
             </Card>
           )}
 
-          <Dialog open={showDiagnostics} onOpenChange={setShowDiagnostics}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>GA4 data details</DialogTitle>
-                <DialogDescription>
-                  Provenance and report-shape diagnostics for enterprise verification.
-                </DialogDescription>
-              </DialogHeader>
-
-              {!ga4Diagnostics ? (
-                <div className="text-sm text-slate-600 dark:text-slate-400">
-                  Diagnostics not available yet. Try again in a moment.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {visibleDiagnosticsWarnings.length > 0 && (
-                    <div className="p-3 rounded-md border border-yellow-200 dark:border-yellow-900 bg-yellow-50 dark:bg-yellow-950 text-sm text-yellow-800 dark:text-yellow-300">
-                      <div className="font-medium mb-1">Warnings</div>
-                      <ul className="list-disc pl-5 space-y-1">
-                        {visibleDiagnosticsWarnings.map((w: string, idx: number) => (
-                          <li key={idx}>{w}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <div className="text-sm">
-                    <div className="font-medium text-slate-900 dark:text-white mb-1">Raw diagnostics</div>
-                    <pre className="text-xs bg-slate-900 text-slate-100 rounded-md p-3 overflow-x-auto">
-{JSON.stringify(ga4Diagnostics, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
+          {/* Diagnostics dialog removed from main GA4 page UI */}
 
           {ga4Loading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -2078,7 +2039,7 @@ export default function GA4Metrics() {
             <>
               {/* Charts and Detailed Analytics */}
               <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList>
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>

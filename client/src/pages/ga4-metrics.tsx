@@ -1670,15 +1670,19 @@ export default function GA4Metrics() {
 
   // Geographic data query
   const { data: geographicData, isLoading: geoLoading } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-geographic", dateRange],
-    enabled: !!campaignId && !!ga4Connection?.connected,
+    queryKey: ["/api/campaigns", campaignId, "ga4-geographic", dateRange, selectedGA4PropertyId],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 60 * 1000, // 10 minutes
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-geographic?dateRange=${dateRange}`);
+      const response = await fetch(
+        `/api/campaigns/${campaignId}/ga4-geographic?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
+          String(selectedGA4PropertyId)
+        )}`
+      );
       const data = await response.json();
       
       // Professional platforms show geographic data even during connectivity issues
@@ -2384,7 +2388,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Unique across properties</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Unique users (selected property)</p>
                               </div>
                               <Users className="w-8 h-8 text-blue-600" />
                             </div>

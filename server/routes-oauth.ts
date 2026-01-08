@@ -3019,7 +3019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/campaigns/:id/ga4-geographic', async (req, res) => {
     try {
       const { id } = req.params;
-      const { dateRange = '7days', propertyId } = req.query;
+      const { dateRange = '7days', propertyId, mock } = req.query;
       const campaign = await storage.getCampaign(id);
       const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
 
@@ -3171,6 +3171,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       };
 
+      const forceMock = String(mock || '').toLowerCase() === '1' || String(mock || '').toLowerCase() === 'true';
+
       // Get all connections or a specific one
       let connections;
       if (propertyId) {
@@ -3208,6 +3210,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalProperties: connections.length,
         dateRange
       });
+
+      // Forced mock mode for UI testing: always return simulated geo (deterministic per property/dateRange).
+      if (forceMock) {
+        let totalUsers = 2500;
+        let totalSessions = 4000;
+        let totalPageviews = 6000;
+        try {
+          const m = await ga4Service.getMetricsWithAutoRefresh(id, storage, toGa4StartDate(String(dateRange)), primaryConnection.propertyId, campaignFilter);
+          totalUsers = Math.max(0, Math.floor(Number((m as any)?.impressions || 0)));
+          totalSessions = Math.max(0, Math.floor(Number((m as any)?.sessions || 0)));
+          totalPageviews = Math.max(0, Math.floor(Number((m as any)?.pageviews || 0)));
+          if (totalUsers < 50) totalUsers = 2500;
+          if (totalSessions < 50) totalSessions = 4000;
+          if (totalPageviews < 50) totalPageviews = 6000;
+        } catch {}
+
+        const simulated = simulateGeo({
+          totalUsers,
+          totalSessions,
+          totalPageviews,
+          seedKey: `${id}:${primaryConnection.propertyId}:${String(dateRange)}:forced`,
+        });
+
+        return res.json({
+          success: true,
+          ...simulated,
+          isSimulated: true,
+          simulationReason: 'Forced mock mode (?mock=1) for UI testing.',
+          propertyId: primaryConnection.propertyId,
+          propertyName: primaryConnection.propertyName,
+          displayName: primaryConnection.displayName,
+          totalProperties: connections.length,
+          sourceProperty: {
+            id: primaryConnection.id,
+            propertyId: primaryConnection.propertyId,
+            displayName: primaryConnection.displayName || primaryConnection.propertyName
+          },
+          lastUpdated: new Date().toISOString()
+        });
+      }
 
       // Try to get geographic data with automatic token refresh on failure
       let geographicData;

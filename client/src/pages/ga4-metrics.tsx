@@ -118,7 +118,7 @@ export default function GA4Metrics() {
   const [newBenchmark, setNewBenchmark] = useState({
     name: "",
     category: "",
-    benchmarkType: "industry",
+    benchmarkType: "custom",
     unit: "",
     benchmarkValue: "",
     currentValue: "",
@@ -476,7 +476,7 @@ export default function GA4Metrics() {
       setNewBenchmark({
         name: "",
         category: "",
-        benchmarkType: "industry",
+        benchmarkType: "custom",
         unit: "",
         benchmarkValue: "",
         currentValue: "",
@@ -516,7 +516,7 @@ export default function GA4Metrics() {
       setNewBenchmark({
         name: "",
         category: "",
-        benchmarkType: "industry",
+        benchmarkType: "custom",
         unit: "",
         benchmarkValue: "",
         currentValue: "",
@@ -561,6 +561,8 @@ export default function GA4Metrics() {
       ...newBenchmark,
       currentValue: stripNumberFormatting(String(newBenchmark.currentValue || "")),
       benchmarkValue: stripNumberFormatting(String(newBenchmark.benchmarkValue || "")),
+      // Backward-compatible storage: use 'goal' for custom benchmarks in the DB.
+      benchmarkType: String(newBenchmark.benchmarkType || "custom") === "custom" ? "goal" : (newBenchmark.benchmarkType || "industry"),
     };
     if (!cleanedBenchmark.name || !cleanedBenchmark.category || !cleanedBenchmark.benchmarkValue || !cleanedBenchmark.unit) {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
@@ -631,7 +633,7 @@ export default function GA4Metrics() {
     setNewBenchmark({
       name: "",
       category: "",
-      benchmarkType: "industry",
+      benchmarkType: "custom",
       unit: "",
       benchmarkValue: "",
       currentValue: "",
@@ -2555,7 +2557,7 @@ export default function GA4Metrics() {
                             setNewBenchmark({
                               name: "",
                               category: "",
-                              benchmarkType: "industry",
+                              benchmarkType: "custom",
                               unit: "",
                               benchmarkValue: "",
                               currentValue: "",
@@ -2771,21 +2773,22 @@ export default function GA4Metrics() {
                               <div className="space-y-2">
                                 <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Benchmark Type *</div>
                                 <Select
-                                  value={newBenchmark.benchmarkType || "industry"}
+                                  value={newBenchmark.benchmarkType || "custom"}
                                   onValueChange={(v) => {
                                     if (v === "custom") {
                                       // Custom Value: leave Benchmark Value empty so user can enter it manually.
                                       setNewBenchmark({ ...newBenchmark, benchmarkType: v, industry: "", benchmarkValue: "" });
                                       return;
                                     }
-                                    setNewBenchmark({ ...newBenchmark, benchmarkType: v });
+                                    // Industry suggestion: clear benchmark value until industry is selected.
+                                    setNewBenchmark({ ...newBenchmark, benchmarkType: v, benchmarkValue: "", industry: "" });
                                   }}
                                 >
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select type" />
                                   </SelectTrigger>
                                   <SelectContent className="z-[10000]">
-                                    <SelectItem value="industry">Industry</SelectItem>
+                                    <SelectItem value="industry">Industry suggestion (optional)</SelectItem>
                                     <SelectItem value="custom">Custom Value</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -2834,7 +2837,7 @@ export default function GA4Metrics() {
                                     </SelectContent>
                                   </Select>
                                   <div className="text-xs text-slate-500 dark:text-slate-400">
-                                    Selecting an industry will auto-fill the Benchmark Value for the chosen metric.
+                                    Selecting an industry will auto-fill a suggested Benchmark Value for the chosen metric.
                                   </div>
                                 </div>
                               )}
@@ -2880,7 +2883,11 @@ export default function GA4Metrics() {
                                         {benchmark.category}
                                       </span>
                                       <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded">
-                                        {benchmark.benchmarkType}
+                                        {String(benchmark.benchmarkType).toLowerCase() === "industry"
+                                          ? "Industry suggestion"
+                                          : String(benchmark.benchmarkType).toLowerCase() === "goal" || String(benchmark.benchmarkType).toLowerCase() === "custom"
+                                          ? "Custom Value"
+                                          : benchmark.benchmarkType}
                                       </span>
                                     </div>
                                   </div>

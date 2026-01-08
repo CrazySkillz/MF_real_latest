@@ -54,6 +54,7 @@ interface GA4Metrics {
 }
 
 const SELECT_UNIT = "__select_unit__";
+const BENCHMARK_DESC_MAX = 200;
 
 const kpiFormSchema = z.object({
   name: z.string().min(1, "KPI name is required"),
@@ -566,13 +567,34 @@ export default function GA4Metrics() {
       // Backward-compatible storage: use 'goal' for custom benchmarks in the DB.
       benchmarkType: String(newBenchmark.benchmarkType || "custom") === "custom" ? "goal" : (newBenchmark.benchmarkType || "industry"),
     };
+    // Benchmarks table requires a category; for fully custom benchmarks (no metric selected),
+    // default to a generic category.
+    if (!String(cleanedBenchmark.category || "").trim()) {
+      cleanedBenchmark.category = newBenchmark.metric ? deriveBenchmarkCategoryFromMetric(String(newBenchmark.metric)) : "performance";
+    }
     if (!String(cleanedBenchmark.description || "").trim()) {
       cleanedBenchmark.description = getDefaultBenchmarkDescription(String(newBenchmark.metric || ""));
+    }
+    if (String(cleanedBenchmark.description || "").length > BENCHMARK_DESC_MAX) {
+      toast({
+        title: "Description is too long",
+        description: `Please keep the description under ${BENCHMARK_DESC_MAX} characters.`,
+        variant: "destructive",
+      });
+      return;
     }
     if (!cleanedBenchmark.unit || String(cleanedBenchmark.unit) === SELECT_UNIT) {
       toast({
         title: "Select a unit",
         description: "Please choose a unit before saving this benchmark.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (String(newBenchmark.benchmarkType || "custom") === "custom" && !String(cleanedBenchmark.currentValue || "").trim()) {
+      toast({
+        title: "Current Value is required",
+        description: "Please enter a Current Value for a custom benchmark.",
         variant: "destructive",
       });
       return;
@@ -2876,7 +2898,10 @@ export default function GA4Metrics() {
                                                 setNewBenchmark((prev) => ({
                                                   ...prev,
                                                   benchmarkValue: formatted,
-                                                  unit: prev.unit || (data.unit === "$" ? String((campaign as any)?.currency || "USD") : data.unit) || "",
+                                                  unit:
+                                                    (prev.unit && String(prev.unit) !== SELECT_UNIT ? prev.unit : "") ||
+                                                    (data.unit === "$" ? String((campaign as any)?.currency || "USD") : data.unit) ||
+                                                    "",
                                                 }));
                                               }
                                             })
@@ -2937,10 +2962,14 @@ export default function GA4Metrics() {
                               <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</div>
                               <Textarea
                                 value={newBenchmark.description}
-                                onChange={(e) => setNewBenchmark({ ...newBenchmark, description: e.target.value })}
+                                maxLength={BENCHMARK_DESC_MAX}
+                                onChange={(e) => setNewBenchmark({ ...newBenchmark, description: e.target.value.slice(0, BENCHMARK_DESC_MAX) })}
                                 rows={3}
                                 placeholder="What is this benchmark and why does it matter?"
                               />
+                              <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                                {(newBenchmark.description || "").length}/{BENCHMARK_DESC_MAX}
+                              </div>
                             </div>
 
                             {/* Current Value + Benchmark Value */}

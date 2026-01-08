@@ -759,7 +759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const industryList = industries.map(key => ({
         value: key,
         label: getIndustryDisplayName(key)
-      }));
+      })).sort((a, b) => String(a.label).localeCompare(String(b.label)));
       
       res.json({ industries: industryList });
     } catch (error) {

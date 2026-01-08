@@ -2637,7 +2637,8 @@ export default function GA4Metrics() {
                                           // so switching tiles (e.g. ROAS -> ROI) updates both fields predictably.
                                           name: editingBenchmark ? prev.name || template.name : template.name,
                                           unit: editingBenchmark ? prev.unit || template.unit : template.unit,
-                                          currentValue: formatNumberByUnit(String(liveCurrent), String(prev.unit || template.unit || "%")),
+                                          // Format using the selected metric's unit (important when switching from % -> count).
+                                          currentValue: formatNumberByUnit(String(liveCurrent), String(template.unit || "%")),
                                           // If we're benchmarking against Industry, avoid leaving a stale benchmarkValue
                                           // from the previously selected metric; we'll refetch below.
                                           benchmarkValue: isIndustryType && industry ? "" : prev.benchmarkValue,
@@ -2652,9 +2653,10 @@ export default function GA4Metrics() {
                                             .then((resp) => (resp.ok ? resp.json().catch(() => null) : null))
                                             .then((data) => {
                                               if (data && typeof data.value !== "undefined") {
+                                                const formatted = formatNumberByUnit(String(data.value), String(data.unit || template.unit || "%"));
                                                 setNewBenchmark((prev) => ({
                                                   ...prev,
-                                                  benchmarkValue: formatNumberByUnit(String(data.value), String(prev.unit || data.unit || "%")),
+                                                  benchmarkValue: formatted,
                                                   unit: prev.unit || data.unit || prev.unit,
                                                 }));
                                               }
@@ -2759,14 +2761,21 @@ export default function GA4Metrics() {
                                 <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Benchmark Type *</div>
                                 <Select
                                   value={newBenchmark.benchmarkType || "industry"}
-                                  onValueChange={(v) => setNewBenchmark({ ...newBenchmark, benchmarkType: v })}
+                                  onValueChange={(v) => {
+                                    if (v === "custom") {
+                                      // Custom Value: leave Benchmark Value empty so user can enter it manually.
+                                      setNewBenchmark({ ...newBenchmark, benchmarkType: v, industry: "", benchmarkValue: "" });
+                                      return;
+                                    }
+                                    setNewBenchmark({ ...newBenchmark, benchmarkType: v });
+                                  }}
                                 >
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select type" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="industry">Industry</SelectItem>
-                                    <SelectItem value="goal">Custom</SelectItem>
+                                    <SelectItem value="custom">Custom Value</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -2788,7 +2797,7 @@ export default function GA4Metrics() {
                                         if (data && typeof data.value !== "undefined") {
                                           setNewBenchmark((prev) => ({
                                             ...prev,
-                                            benchmarkValue: String(data.value),
+                                            benchmarkValue: formatNumberByUnit(String(data.value), String(prev.unit || data.unit || "%")),
                                             unit: prev.unit || data.unit || prev.unit,
                                           }));
                                         }
@@ -2800,7 +2809,7 @@ export default function GA4Metrics() {
                                     <SelectTrigger>
                                       <SelectValue placeholder="Select industry" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-64">
                                       {(industries || []).map((i) => (
                                         <SelectItem key={i.value} value={i.value}>
                                           {i.label}

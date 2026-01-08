@@ -154,6 +154,8 @@ export default function GA4Metrics() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [selectedGA4PropertyId, setSelectedGA4PropertyId] = useState<string>("");
+
   // Spend is now persisted server-side (via the Add Spend wizard), so we no longer store
   // manual overrides or spend mode in localStorage.
 
@@ -1040,6 +1042,20 @@ export default function GA4Metrics() {
     },
   });
 
+  const availableGA4Properties: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean }> =
+    (Array.isArray((ga4Connection as any)?.connections) ? (ga4Connection as any).connections : []) ||
+    (Array.isArray((allGA4Connections as any)?.connections) ? (allGA4Connections as any).connections : []);
+
+  // Always scope GA4 metrics to a single selected property (default: primary).
+  useEffect(() => {
+    const props = Array.isArray(availableGA4Properties) ? availableGA4Properties : [];
+    if (props.length === 0) return;
+    const exists = selectedGA4PropertyId && props.some((p) => String(p?.propertyId) === String(selectedGA4PropertyId));
+    if (exists) return;
+    const primary = props.find((p) => p?.isPrimary) || props[0];
+    if (primary?.propertyId) setSelectedGA4PropertyId(String(primary.propertyId));
+  }, [availableGA4Properties, selectedGA4PropertyId]);
+
   // Fetch platform KPIs
   const { data: platformKPIs = [], isLoading: kpisLoading } = useQuery({
     queryKey: [`/api/platforms/google_analytics/kpis`, campaignId],
@@ -1126,8 +1142,8 @@ export default function GA4Metrics() {
   };
 
   const { data: ga4Metrics, isLoading: ga4Loading, error: ga4Error } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-metrics", dateRange],
-    enabled: !!campaignId && !!ga4Connection?.connected,
+    queryKey: ["/api/campaigns", campaignId, "ga4-metrics", dateRange, selectedGA4PropertyId],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     // Auto-refresh: users shouldn't need to refresh the page to get new GA4 data.
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -1135,7 +1151,11 @@ export default function GA4Metrics() {
     refetchInterval: 5 * 60 * 1000, // 5 minutes
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics?dateRange=${dateRange}`);
+      const response = await fetch(
+        `/api/campaigns/${campaignId}/ga4-metrics?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
+          String(selectedGA4PropertyId)
+        )}`
+      );
       const data = await response.json().catch(() => ({} as any));
 
       // Current backend shape (routes-oauth.ts): { success, metrics, propertyId, ... }
@@ -1186,13 +1206,17 @@ export default function GA4Metrics() {
 
   // Diagnostics (provenance + report shape checks)
   const { data: ga4Diagnostics } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange],
-    enabled: !!campaignId && !!ga4Connection?.connected,
+    queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-diagnostics?dateRange=${encodeURIComponent(dateRange)}`);
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/ga4-diagnostics?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
+          String(selectedGA4PropertyId)
+        )}`
+      );
       const json = await resp.json().catch(() => ({} as any));
       if (!resp.ok || json?.success === false) return null;
       return json;
@@ -1200,15 +1224,19 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4TimeSeries, isLoading: timeSeriesLoading } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-timeseries", dateRange],
-    enabled: !!campaignId && !!ga4Connection?.connected,
+    queryKey: ["/api/campaigns", campaignId, "ga4-timeseries", dateRange, selectedGA4PropertyId],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 60 * 1000, // 10 minutes
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-timeseries?dateRange=${dateRange}`);
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/ga4-timeseries?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
+          String(selectedGA4PropertyId)
+        )}`
+      );
       const json = await resp.json().catch(() => ({} as any));
       if (!resp.ok || json?.success === false) {
         throw new Error(json?.error || "Failed to fetch GA4 time series data");
@@ -1218,15 +1246,19 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4Breakdown, isLoading: breakdownLoading } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange],
-    enabled: !!campaignId && !!ga4Connection?.connected,
+    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 60 * 1000, // 10 minutes
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-breakdown?dateRange=${dateRange}`);
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/ga4-breakdown?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
+          String(selectedGA4PropertyId)
+        )}`
+      );
       const json = await resp.json().catch(() => ({} as any));
       if (!resp.ok || json?.success === false) {
         throw new Error(json?.message || json?.error || "Failed to fetch GA4 breakdown");
@@ -1882,7 +1914,22 @@ export default function GA4Metrics() {
                 </div>
               </div>
               
-              <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3">
+                    {Array.isArray(availableGA4Properties) && availableGA4Properties.length > 1 ? (
+                      <Select value={selectedGA4PropertyId} onValueChange={setSelectedGA4PropertyId}>
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Select GA4 property" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {availableGA4Properties.map((p) => (
+                            <SelectItem key={String(p.propertyId)} value={String(p.propertyId)}>
+                              {String(p.displayName || p.propertyName || p.propertyId)}
+                              {p.isPrimary ? " (Primary)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : null}
                 <Select value={dateRange} onValueChange={setDateRange}>
                   <SelectTrigger className="w-40">
                     <SelectValue />
@@ -2071,12 +2118,10 @@ export default function GA4Metrics() {
                         </div>
                         <div>
                           <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                            {connectedPropertyCount > 1 ? 'Multi-Property Campaign Analytics' : 'GA4 Property Analytics'}
+                            {'GA4 Property Analytics'}
                           </h3>
                           <p className="text-sm text-blue-700 dark:text-blue-300">
-                            {connectedPropertyCount > 1
-                              ? `Showing aggregated data from ${connectedPropertyCount} connected GA4 properties for ${campaign?.name}`
-                              : `Showing metrics for the connected GA4 property for ${campaign?.name}`}
+                            {`Showing metrics for the selected GA4 property for ${campaign?.name}`}
                           </p>
                         </div>
                       </div>
@@ -2115,7 +2160,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
                               </div>
                               <Target className="w-8 h-8 text-emerald-500" />
                             </div>
@@ -2354,7 +2399,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
                               </div>
                               <Users className="w-8 h-8 text-blue-500" />
                             </div>
@@ -2369,7 +2414,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(ga4Metrics?.newUsers || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
                               </div>
                               <Users className="w-8 h-8 text-emerald-600" />
                             </div>
@@ -2481,7 +2526,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(ga4Metrics?.engagedSessions || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
                               </div>
                               <Target className="w-8 h-8 text-violet-600" />
                             </div>
@@ -2511,7 +2556,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(ga4Metrics?.eventCount || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
                               </div>
                               <MousePointer className="w-8 h-8 text-cyan-600" />
                             </div>
@@ -2535,7 +2580,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(ga4Metrics?.pageviews || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all properties</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
                               </div>
                               <Globe className="w-8 h-8 text-green-500" />
                             </div>

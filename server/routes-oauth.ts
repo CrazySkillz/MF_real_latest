@@ -2846,18 +2846,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const dateRange = req.query.dateRange as string || '30days';
+      const propertyId = req.query.propertyId as string; // Optional - get specific property
       const campaign = await storage.getCampaign(campaignId);
       const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
-      const connection = await storage.getGA4Connection(campaignId);
       
-      if (!connection || connection.method !== 'access_token') {
-        return res.status(404).json({ 
-          success: false, 
-          error: "No GA4 connection found for this campaign. Please connect your Google Analytics first." 
+      // Get all connections or a specific one
+      let connections: any[] = [];
+      if (propertyId) {
+        const conn = await storage.getGA4Connection(campaignId, propertyId);
+        connections = conn ? [conn] : [];
+      } else {
+        connections = await storage.getGA4Connections(campaignId);
+      }
+      
+      if (!connections || connections.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "No GA4 connection found for this campaign. Please connect your Google Analytics first."
         });
       }
 
-      if (connection.method === 'access_token') {
+      const primaryConnection = connections.find((c: any) => c?.isPrimary) || connections[0];
+      const selectedConnection = propertyId ? connections[0] : primaryConnection;
+
+      if (!selectedConnection || selectedConnection.method !== 'access_token') {
+        return res.status(404).json({
+          success: false,
+          error: "No GA4 access-token connection found for this campaign."
+        });
+      }
+
         // Convert date range to GA4 format
         let ga4DateRange = '30daysAgo';
         switch (dateRange) {
@@ -2874,15 +2892,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ga4DateRange = '30daysAgo';
         }
         
-        const timeSeriesData = await ga4Service.getTimeSeriesData(campaignId, storage, ga4DateRange, connection.propertyId, campaignFilter);
+        const timeSeriesData = await ga4Service.getTimeSeriesData(campaignId, storage, ga4DateRange, selectedConnection.propertyId, campaignFilter);
         
         res.json({
           success: true,
           data: timeSeriesData,
-          propertyId: connection.propertyId,
+          propertyId: selectedConnection.propertyId,
+          propertyName: selectedConnection.propertyName,
+          displayName: selectedConnection.displayName,
           lastUpdated: new Date().toISOString()
         });
-      }
     } catch (error: any) {
       console.error('Error fetching GA4 time series data:', error);
       res.status(500).json({ 

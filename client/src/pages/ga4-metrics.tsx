@@ -822,9 +822,10 @@ export default function GA4Metrics() {
     // Keep fresh so newly-added industries appear without requiring a hard refresh.
     staleTime: 0,
     queryFn: async () => {
-      const resp = await fetch("/api/industry-benchmarks");
+      // Cache-proof for hosted deployments (CDNs/proxies can aggressively cache GET responses).
+      const resp = await fetch(`/api/industry-benchmarks?ts=${Date.now()}`, { cache: "no-store" as any });
       if (!resp.ok) return { industries: [] };
-      return resp.json();
+      return resp.json().catch(() => ({ industries: [] }));
     },
   });
 
@@ -2819,6 +2820,11 @@ export default function GA4Metrics() {
                                       <SelectValue placeholder="Select industry" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-64">
+                                      {(industries || []).length === 0 ? (
+                                        <SelectItem value="__none__" disabled>
+                                          No industries loaded (refresh page or try again)
+                                        </SelectItem>
+                                      ) : null}
                                       {(industries || []).map((i) => (
                                         <SelectItem key={i.value} value={i.value}>
                                           {i.label}

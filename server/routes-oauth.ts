@@ -752,6 +752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Industry benchmarks routes
   app.get("/api/industry-benchmarks", async (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const { getIndustries, getIndustryDisplayName, getBenchmarkValue } = await import('./data/industry-benchmarks.js');
       const industries = getIndustries();
       
@@ -771,6 +772,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get benchmark value for specific industry and metric
   app.get("/api/industry-benchmarks/:industry/:metric", async (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const { industry, metric } = req.params;
       const { getBenchmarkValue } = await import('./data/industry-benchmarks.js');
       

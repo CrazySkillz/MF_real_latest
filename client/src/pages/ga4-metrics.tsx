@@ -1242,6 +1242,50 @@ export default function GA4Metrics() {
     };
   };
 
+  const computeBenchmarkProgress = (benchmark: any) => {
+    const currentRaw = stripNumberFormatting(String((benchmark as any)?.currentValue ?? "0"));
+    const benchRaw = stripNumberFormatting(String((benchmark as any)?.benchmarkValue ?? "0"));
+    const current = parseFloat(currentRaw || "0");
+    const bench = parseFloat(benchRaw || "0");
+    const safeCurrent = Number.isFinite(current) ? current : 0;
+    const safeBench = Number.isFinite(bench) ? bench : 0;
+
+    const metricKey = String((benchmark as any)?.metric || (benchmark as any)?.name || "").toLowerCase();
+    const lowerIsBetter = metricKey === "cpa" || metricKey.includes("cpa");
+
+    let ratio = 0;
+    if (lowerIsBetter) {
+      ratio = safeCurrent > 0 ? (safeBench / safeCurrent) : 0;
+    } else {
+      ratio = safeBench > 0 ? (safeCurrent / safeBench) : 0;
+    }
+
+    const pct = Math.max(0, Math.min(ratio * 100, 100));
+    const status =
+      ratio >= 0.9 ? "on_track" :
+      ratio >= 0.7 ? "needs_attention" :
+      "behind";
+    const color =
+      ratio >= 0.9 ? "bg-green-500" :
+      ratio >= 0.7 ? "bg-yellow-500" :
+      "bg-red-500";
+
+    // Positive means "better than benchmark" (direction-aware).
+    const deltaPct =
+      safeBench > 0
+        ? (lowerIsBetter ? ((safeBench - safeCurrent) / safeBench) * 100 : ((safeCurrent - safeBench) / safeBench) * 100)
+        : 0;
+
+    return {
+      ratio,
+      pct,
+      labelPct: pct.toFixed(1),
+      status,
+      color,
+      deltaPct,
+    };
+  };
+
   const connectedPropertyCount =
     Number(ga4Connection?.totalConnections || 0) ||
     (Array.isArray(ga4Connection?.connections) ? ga4Connection.connections.length : 0) ||
@@ -1313,6 +1357,29 @@ export default function GA4Metrics() {
     };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
   }, [platformKPIs, breakdownTotals, ga4Metrics, financialSpend]);
+
+  const benchmarkTracker = useMemo(() => {
+    const items = Array.isArray(benchmarks) ? benchmarks : [];
+    let scored = 0;
+    let onTrack = 0;
+    let needsAttention = 0;
+    let behind = 0;
+    let sumPct = 0;
+
+    for (const b of items) {
+      const bench = parseFloat(stripNumberFormatting(String((b as any)?.benchmarkValue || "0")));
+      if (!Number.isFinite(bench) || bench <= 0) continue;
+      const p = computeBenchmarkProgress(b);
+      scored += 1;
+      sumPct += Number(p?.pct || 0);
+      if (p.status === "on_track") onTrack += 1;
+      else if (p.status === "needs_attention") needsAttention += 1;
+      else if (p.status === "behind") behind += 1;
+    }
+
+    const avgPct = scored > 0 ? sumPct / scored : 0;
+    return { total: items.length, scored, onTrack, needsAttention, behind, avgPct };
+  }, [benchmarks]);
 
   const getDateRangeLabel = (range: string) => {
     switch (String(range || "").toLowerCase()) {
@@ -2918,7 +2985,7 @@ export default function GA4Metrics() {
                                       benchmarkValue: formatNumberByUnit(e.target.value, String(prev.unit || "%")),
                                     }))
                                   }
-                                  placeholder="Enter your benchmark target (or select an industry)"
+                                  placeholder="Enter your benchmark value"
                                   required
                                 />
                               </div>
@@ -3027,7 +3094,73 @@ export default function GA4Metrics() {
                           ))}
                         </div>
                       ) : benchmarks && benchmarks.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="space-y-4">
+                          {/* Benchmarks performance tracker (exec snapshot) */}
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                            <Card>
+                              <CardContent className="p-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Benchmarks</p>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.total}</p>
+                                  </div>
+                                  <Target className="w-7 h-7 text-slate-500" />
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardContent className="p-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">On Track</p>
+                                    <p className="text-2xl font-bold text-emerald-600">{benchmarkTracker.onTrack}</p>
+                                  </div>
+                                  <BadgeCheck className="w-7 h-7 text-emerald-600" />
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardContent className="p-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs Attention</p>
+                                    <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
+                                  </div>
+                                  <AlertTriangle className="w-7 h-7 text-amber-600" />
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardContent className="p-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Behind</p>
+                                    <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
+                                  </div>
+                                  <TrendingDown className="w-7 h-7 text-red-600" />
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardContent className="p-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                      {benchmarkTracker.avgPct.toFixed(1)}%
+                                    </p>
+                                  </div>
+                                  <TrendingUp className="w-7 h-7 text-violet-600" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {benchmarks.map((benchmark) => (
                             <Card key={benchmark.id} className="hover:shadow-lg transition-shadow">
                               <CardContent className="p-6">
@@ -3082,26 +3215,49 @@ export default function GA4Metrics() {
                                     </span>
                                   </div>
 
-                                  {benchmark.variance !== undefined && benchmark.variance !== null && (
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-sm text-slate-600 dark:text-slate-400">Performance</span>
-                                      <div className="flex items-center space-x-2">
-                                        <span className={`font-medium ${
-                                          parseFloat(benchmark.variance.toString()) >= 0 
-                                            ? 'text-green-600 dark:text-green-400' 
-                                            : 'text-red-600 dark:text-red-400'
-                                        }`}>
-                                          {parseFloat(benchmark.variance.toString()) >= 0 ? '+' : ''}
-                                          {parseFloat(benchmark.variance.toString()).toFixed(1)}%
-                                        </span>
-                                        {parseFloat(benchmark.variance.toString()) >= 0 ? (
-                                          <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                        ) : (
-                                          <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
+                                  {(() => {
+                                    const bench = parseFloat(stripNumberFormatting(String((benchmark as any)?.benchmarkValue || "0")));
+                                    if (!Number.isFinite(bench) || bench <= 0) return null;
+                                    const p = computeBenchmarkProgress(benchmark);
+                                    const statusLabel =
+                                      p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
+                                    const statusColor =
+                                      p.status === "on_track"
+                                        ? "text-green-600 dark:text-green-400"
+                                        : p.status === "needs_attention"
+                                        ? "text-yellow-600 dark:text-yellow-400"
+                                        : "text-red-600 dark:text-red-400";
+
+                                    const delta = Number.isFinite(p.deltaPct) ? p.deltaPct : 0;
+                                    const deltaLabel = `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`;
+
+                                    return (
+                                      <>
+                                        <div className="space-y-2 pt-1">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Progress to Benchmark</span>
+                                            <span className="text-sm text-slate-500 dark:text-slate-400">{p.labelPct}%</span>
+                                          </div>
+                                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                            <div className={`h-2 rounded-full ${p.color}`} style={{ width: `${p.pct}%` }} />
+                                          </div>
+                                        </div>
+
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-sm text-slate-600 dark:text-slate-400">Performance</span>
+                                          <div className="flex items-center space-x-2">
+                                            <span className={`font-medium ${statusColor}`}>{deltaLabel}</span>
+                                            {delta >= 0 ? (
+                                              <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                            ) : (
+                                              <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                            )}
+                                            <span className={`text-xs font-medium ${statusColor}`}>{statusLabel}</span>
+                                          </div>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
 
                                   {benchmark.industry && (
                                     <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -3118,6 +3274,7 @@ export default function GA4Metrics() {
                               </CardContent>
                             </Card>
                           ))}
+                          </div>
                         </div>
                       ) : (
                         <Card>

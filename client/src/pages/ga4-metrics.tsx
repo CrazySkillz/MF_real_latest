@@ -2897,12 +2897,6 @@ export default function GA4Metrics() {
                                             .then((resp) => (resp.ok ? resp.json().catch(() => null) : null))
                                             .then((data) => {
                                               if (data && typeof data.value !== "undefined") {
-                                                if (String((data as any)?.source || "") === "mock") {
-                                                  toast({
-                                                    title: "Using demo benchmark value",
-                                                    description: "This is a mock dataset for MVP/demo only (not audited).",
-                                                  });
-                                                }
                                                 const formatted = formatNumberByUnit(String(data.value), String(data.unit || resolvedUnit || "%"));
                                                 setNewBenchmark((prev) => ({
                                                   ...prev,
@@ -3088,12 +3082,6 @@ export default function GA4Metrics() {
                                         }
                                         const data = await resp.json().catch(() => null);
                                         if (data && typeof data.value !== "undefined") {
-                                          if (String((data as any)?.source || "") === "mock") {
-                                            toast({
-                                              title: "Using demo benchmark value",
-                                              description: "This is a mock dataset for MVP/demo only (not audited).",
-                                            });
-                                          }
                                           setNewBenchmark((prev) => ({
                                             ...prev,
                                             benchmarkValue: formatNumberByUnit(String(data.value), String(prev.unit || data.unit || "%")),

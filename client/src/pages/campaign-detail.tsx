@@ -3799,12 +3799,6 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                             }
                             const data = await resp.json().catch(() => null);
                             if (data && typeof data.value !== 'undefined') {
-                              if (String((data as any)?.source || '') === 'mock') {
-                                toast({
-                                  title: 'Using demo benchmark value',
-                                  description: 'This is a mock dataset for MVP/demo only (not audited).',
-                                });
-                              }
                               setBenchmarkForm((prev) => ({
                                 ...prev,
                                 benchmarkValue: String(data.value),

@@ -2579,7 +2579,8 @@ export default function GA4Metrics() {
                             Create Benchmark
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 p-6 !fixed !top-1/2 !left-1/2 !transform !-translate-x-1/2 !-translate-y-1/2 !z-[9999]">
+                        {/* Avoid forcing extreme z-index here; it can cause Radix Select menus to render behind the modal. */}
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 p-6">
                           <DialogClose className="absolute right-4 top-4 rounded-full p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors z-[60]">
                             <X className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                             <span className="sr-only">Close</span>
@@ -2783,7 +2784,7 @@ export default function GA4Metrics() {
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select type" />
                                   </SelectTrigger>
-                                  <SelectContent>
+                                  <SelectContent className="z-[10000]">
                                     <SelectItem value="industry">Industry</SelectItem>
                                     <SelectItem value="custom">Custom Value</SelectItem>
                                   </SelectContent>
@@ -2819,7 +2820,7 @@ export default function GA4Metrics() {
                                     <SelectTrigger>
                                       <SelectValue placeholder="Select industry" />
                                     </SelectTrigger>
-                                    <SelectContent className="max-h-64">
+                                    <SelectContent className="max-h-64 z-[10000]">
                                       {(industries || []).length === 0 ? (
                                         <SelectItem value="__none__" disabled>
                                           No industries loaded (refresh page or try again)

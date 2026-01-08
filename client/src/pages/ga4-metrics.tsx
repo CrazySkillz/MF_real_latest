@@ -2903,6 +2903,13 @@ export default function GA4Metrics() {
                                                     (data.unit === "$" ? String((campaign as any)?.currency || "USD") : data.unit) ||
                                                     "",
                                                 }));
+                                              } else {
+                                                toast({
+                                                  title: "No industry benchmark available",
+                                                  description:
+                                                    "This metric doesn’t have an auditable industry benchmark yet. Please enter a Custom Value.",
+                                                  variant: "destructive",
+                                                });
                                               }
                                             })
                                             .catch(() => {
@@ -3058,7 +3065,15 @@ export default function GA4Metrics() {
                                         const resp = await fetch(
                                           `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(newBenchmark.metric)}`
                                         );
-                                        if (!resp.ok) return;
+                                        if (!resp.ok) {
+                                          toast({
+                                            title: "No industry benchmark available",
+                                            description: "This metric doesn’t have an auditable industry benchmark yet. Please enter a Custom Value.",
+                                            variant: "destructive",
+                                          });
+                                          setNewBenchmark((prev) => ({ ...prev, benchmarkValue: "" }));
+                                          return;
+                                        }
                                         const data = await resp.json().catch(() => null);
                                         if (data && typeof data.value !== "undefined") {
                                           setNewBenchmark((prev) => ({

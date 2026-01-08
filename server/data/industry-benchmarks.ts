@@ -2299,55 +2299,26 @@ export function getBenchmarkValue(industry: string, metric: string): { value: nu
   const industryBenchmarks = INDUSTRY_BENCHMARKS[industry];
   if (!industryBenchmarks) return null;
   
-  const metricBenchmark = industryBenchmarks[metric];
-  if (!metricBenchmark) {
-    // GA4-style metric fallbacks (derived from LinkedIn-style industry presets).
-    // This allows the same Industry Benchmarks dataset to power GA4 Benchmarks UI without
-    // duplicating a separate GA4 industry table.
-    const impressions = industryBenchmarks.impressions?.target ?? 0;
-    const clicks = industryBenchmarks.clicks?.target ?? 0;
-    const conversions = industryBenchmarks.conversions?.target ?? 0;
-    const spend = industryBenchmarks.spend?.target ?? 0;
-    const ctrPct = industryBenchmarks.ctr?.target ?? (impressions > 0 ? (clicks / impressions) * 100 : 0);
+  // Fail-closed for metrics we cannot source/audit reliably today.
+  // These metrics are commonly used in GA4/campaign benchmark workflows, and showing arbitrary
+  // values would be misleading for executive decision-making.
+  const metricKey = String(metric || "").trim();
+  const blockedMetrics = new Set([
+    "roi",
+    "roas",
+    // GA4-style metrics (previously returned via heuristics) - removed to avoid non-auditable values.
+    "users",
+    "sessions",
+    "pageviews",
+    "revenue",
+    "conversionRate",
+    "engagementRate",
+  ]);
+  if (blockedMetrics.has(metricKey)) return null;
 
-    switch (metric) {
-      case "users": {
-        // Heuristic: users ~= sessions * 1.0 and sessions ~= clicks * 1.2 for paid/trackable traffic
-        const sessions = Math.max(0, Math.round(clicks * 1.2));
-        const users = sessions;
-        return { value: users, unit: "count" };
-      }
-      case "sessions": {
-        const sessions = Math.max(0, Math.round(clicks * 1.2));
-        return { value: sessions, unit: "count" };
-      }
-      case "pageviews": {
-        const sessions = Math.max(0, Math.round(clicks * 1.2));
-        const pageviews = Math.max(0, Math.round(sessions * 1.6));
-        return { value: pageviews, unit: "count" };
-      }
-      case "revenue": {
-        // Heuristic: revenue ~= conversions * AOV, fallback to spend * ROAS if possible
-        const aov = 150;
-        const revenueFromConversions = conversions * aov;
-        const assumedRoas = 4.0;
-        const revenueFromSpend = spend > 0 ? spend * assumedRoas : 0;
-        const revenue = Math.max(revenueFromConversions, revenueFromSpend);
-        return { value: revenue, unit: "$" };
-      }
-      case "conversionRate": {
-        // conversions / sessions
-        const sessions = Math.max(1, Math.round(clicks * 1.2));
-        const ratePct = (conversions / sessions) * 100;
-        return { value: Number.isFinite(ratePct) ? ratePct : 0, unit: "%" };
-      }
-      case "engagementRate": {
-        // For demo: reuse CTR as a proxy for engagement rate.
-        return { value: Number.isFinite(ctrPct) ? ctrPct : 0, unit: "%" };
-      }
-      default:
-        return null;
-    }
+  const metricBenchmark = industryBenchmarks[metricKey];
+  if (!metricBenchmark) {
+    return null;
   }
   
   return {

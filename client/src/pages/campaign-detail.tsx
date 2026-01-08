@@ -3783,15 +3783,22 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                         if (nextType === 'industry' && nextIndustry) {
                           try {
                             const resp = await fetch(`/api/industry-benchmarks/${encodeURIComponent(nextIndustry)}/${encodeURIComponent(template.industryMetric)}`);
-                            if (resp.ok) {
-                              const data = await resp.json().catch(() => null);
-                              if (data && typeof data.value !== 'undefined') {
-                                setBenchmarkForm((prev) => ({
-                                  ...prev,
-                                  benchmarkValue: String(data.value),
-                                  unit: prev.unit || data.unit || prev.unit,
-                                }));
-                              }
+                            if (!resp.ok) {
+                              toast({
+                                title: 'No industry benchmark available',
+                                description: 'This metric doesn’t have an auditable industry benchmark yet. Please enter a Custom Value.',
+                                variant: 'destructive',
+                              });
+                              setBenchmarkForm((prev) => ({ ...prev, benchmarkValue: '' }));
+                              return;
+                            }
+                            const data = await resp.json().catch(() => null);
+                            if (data && typeof data.value !== 'undefined') {
+                              setBenchmarkForm((prev) => ({
+                                ...prev,
+                                benchmarkValue: String(data.value),
+                                unit: prev.unit || data.unit || prev.unit,
+                              }));
                             }
                           } catch {
                             // best-effort

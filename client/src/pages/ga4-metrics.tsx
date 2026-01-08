@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, Download, FileText } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, Download, FileText, Settings } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -121,6 +121,7 @@ export default function GA4Metrics() {
   const [selectedBenchmarkTemplate, setSelectedBenchmarkTemplate] = useState<any>(null);
   const [editingBenchmark, setEditingBenchmark] = useState<Benchmark | null>(null);
   const [showGA4ReportModal, setShowGA4ReportModal] = useState(false);
+  const [ga4ReportModalStep, setGa4ReportModalStep] = useState<"standard" | "custom">("standard");
   const [editingGA4ReportId, setEditingGA4ReportId] = useState<string | null>(null);
   const [deleteGA4ReportId, setDeleteGA4ReportId] = useState<string | null>(null);
   const [ga4ReportForm, setGa4ReportForm] = useState<{
@@ -3650,6 +3651,7 @@ export default function GA4Metrics() {
                         className="gap-2"
                         onClick={() => {
                           setEditingGA4ReportId(null);
+                          setGa4ReportModalStep("standard");
                           setGa4ReportForm({
                             name: "",
                             description: "",
@@ -3719,6 +3721,7 @@ export default function GA4Metrics() {
                                     size="icon"
                                     onClick={() => {
                                       setEditingGA4ReportId(String(r.id));
+                                      setGa4ReportModalStep(String(r.reportType || "overview") === "custom" ? "custom" : "standard");
                                       let cfg: any = {};
                                       try {
                                         cfg = r.configuration ? JSON.parse(String(r.configuration)) : {};
@@ -4310,126 +4313,252 @@ export default function GA4Metrics() {
           if (!open) setEditingGA4ReportId(null);
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingGA4ReportId ? "Edit Report" : "Create Report"}</DialogTitle>
-            <DialogDescription>
-              Build an exec-ready PDF report using the same GA4 data shown on this page (no hidden calculations).
-            </DialogDescription>
+            <DialogTitle className="text-xl font-bold">Report Type</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Report Name *</div>
-                <Input
-                  value={ga4ReportForm.name}
-                  onChange={(e) => setGa4ReportForm((p) => ({ ...p, name: e.target.value }))}
-                  placeholder="e.g., Monthly GA4 Overview"
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Report Type *</div>
-                <Select
-                  value={ga4ReportForm.reportType}
-                  onValueChange={(v) => {
-                    const next = String(v || "overview");
-                    setGa4ReportForm((p) => ({
-                      ...p,
-                      reportType: next,
-                      configuration:
-                        next === "custom"
-                          ? p.configuration || { sections: { overview: true } }
-                          : { sections: { overview: next === "overview", acquisition: next === "acquisition", trends: next === "trends", kpis: next === "kpis", benchmarks: next === "benchmarks" } },
-                    }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select report type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="overview">Overview</SelectItem>
-                    <SelectItem value="acquisition">Acquisition Breakdown</SelectItem>
-                    <SelectItem value="trends">Trends (Time series)</SelectItem>
-                    <SelectItem value="kpis">KPIs Snapshot</SelectItem>
-                    <SelectItem value="benchmarks">Benchmarks Snapshot</SelectItem>
-                    <SelectItem value="custom">Custom (choose sections)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</div>
-              <Textarea
-                value={ga4ReportForm.description}
-                onChange={(e) => setGa4ReportForm((p) => ({ ...p, description: e.target.value }))}
-                rows={3}
-                placeholder="Optional description for your report library"
-              />
-            </div>
-
-            {ga4ReportForm.reportType === "custom" ? (
-              <div className="space-y-2">
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Sections</div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {[
-                    { key: "overview", label: "Overview" },
-                    { key: "acquisition", label: "Acquisition Breakdown" },
-                    { key: "trends", label: "Trends" },
-                    { key: "kpis", label: "KPIs Snapshot" },
-                    { key: "benchmarks", label: "Benchmarks Snapshot" },
-                  ].map((s) => {
-                    const checked = !!ga4ReportForm.configuration?.sections?.[s.key];
-                    return (
-                      <label key={s.key} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            const next = { ...(ga4ReportForm.configuration?.sections || {}) };
-                            next[s.key] = e.target.checked;
-                            setGa4ReportForm((p) => ({ ...p, configuration: { ...(p.configuration || {}), sections: next } }));
-                          }}
-                        />
-                        {s.label}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => setShowGA4ReportModal(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => downloadGA4Report({ reportType: ga4ReportForm.reportType, configuration: ga4ReportForm.configuration, reportName: ga4ReportForm.name || "GA4 Report" })}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF
-              </Button>
-              <Button
-                disabled={createGA4ReportMutation.isPending || updateGA4ReportMutation.isPending}
+          <div className="py-4">
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div
+                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${
+                  ga4ReportModalStep === "standard"
+                    ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
+                    : "border-slate-200 dark:border-slate-700"
+                }`}
                 onClick={() => {
-                  const payload = buildGA4ReportPayload();
-                  if (!String(payload.name || "").trim()) {
-                    toast({ title: "Report name is required", variant: "destructive" });
-                    return;
-                  }
-                  if (editingGA4ReportId) {
-                    updateGA4ReportMutation.mutate({ reportId: editingGA4ReportId, payload });
-                    return;
-                  }
-                  createGA4ReportMutation.mutate(payload);
+                  setGa4ReportModalStep("standard");
+                  setGa4ReportForm((p) => ({
+                    ...p,
+                    reportType: p.reportType === "custom" ? "overview" : p.reportType,
+                    configuration: { sections: { overview: true, acquisition: false, trends: false, kpis: false, benchmarks: false } },
+                  }));
                 }}
               >
-                {editingGA4ReportId
-                  ? (updateGA4ReportMutation.isPending ? "Updating..." : "Update Report")
-                  : (createGA4ReportMutation.isPending ? "Saving..." : "Save Report")}
-              </Button>
+                <div className="flex items-start gap-3">
+                  <FileText className="w-6 h-6 text-blue-600 mt-1" />
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Standard Templates</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Pre-built professional report templates</p>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${
+                  ga4ReportModalStep === "custom"
+                    ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
+                    : "border-slate-200 dark:border-slate-700"
+                }`}
+                onClick={() => {
+                  setGa4ReportModalStep("custom");
+                  setGa4ReportForm((p) => ({
+                    ...p,
+                    reportType: "custom",
+                    configuration: p.configuration?.sections
+                      ? p.configuration
+                      : { sections: { overview: true, acquisition: true, trends: true, kpis: true, benchmarks: true } },
+                  }));
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <Settings className="w-6 h-6 text-blue-600 mt-1" />
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Custom Report</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Build your own customized report</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {ga4ReportModalStep === "standard" ? (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Choose Template</h3>
+                  <div className="space-y-4">
+                    {[
+                      {
+                        key: "overview",
+                        title: "Overview",
+                        desc: "Comprehensive overview of campaign performance metrics",
+                        Icon: BarChart3,
+                        chips: ["Overview", "Metrics", "Insights"],
+                      },
+                      {
+                        key: "kpis",
+                        title: "KPIs",
+                        desc: "Key performance indicators and progress tracking",
+                        Icon: Target,
+                        chips: ["Metrics", "Targets", "Progress"],
+                      },
+                      {
+                        key: "benchmarks",
+                        title: "Benchmarks",
+                        desc: "Performance benchmarks and comparisons",
+                        Icon: TrendingUp,
+                        chips: ["Current", "Benchmark", "Progress"],
+                      },
+                      {
+                        key: "acquisition",
+                        title: "Acquisition Breakdown",
+                        desc: "Top channels/sources/mediums driving sessions, conversions, and revenue",
+                        Icon: Users,
+                        chips: ["Channel", "Source/Medium", "Revenue"],
+                      },
+                      {
+                        key: "trends",
+                        title: "Trends",
+                        desc: "Time series trends for sessions, users, conversions, and revenue",
+                        Icon: TrendingUp,
+                        chips: ["Time", "Trend", "Totals"],
+                      },
+                    ].map((t) => {
+                      const selected = ga4ReportForm.reportType === t.key;
+                      return (
+                        <div
+                          key={t.key}
+                          className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
+                            selected ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-slate-200 dark:border-slate-700"
+                          }`}
+                          onClick={() => {
+                            const nextType = String(t.key);
+                            setGa4ReportForm((p) => ({
+                              ...p,
+                              reportType: nextType,
+                              configuration: {
+                                sections: {
+                                  overview: nextType === "overview",
+                                  acquisition: nextType === "acquisition",
+                                  trends: nextType === "trends",
+                                  kpis: nextType === "kpis",
+                                  benchmarks: nextType === "benchmarks",
+                                },
+                              },
+                              name: p.name ? p.name : `GA4 ${t.title} Report`,
+                            }));
+                          }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <t.Icon className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-slate-900 dark:text-white">{t.title}</h4>
+                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{t.desc}</p>
+                              <div className="flex gap-2 mt-3 flex-wrap">
+                                {t.chips.map((c) => (
+                                  <span key={c} className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Custom Report</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Choose which GA4 sections to include in your PDF.
+                  </p>
+                </div>
+
+                <div className="border rounded-lg p-4 border-slate-200 dark:border-slate-700">
+                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Sections</div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {[
+                      { key: "overview", label: "Overview" },
+                      { key: "acquisition", label: "Acquisition Breakdown" },
+                      { key: "trends", label: "Trends" },
+                      { key: "kpis", label: "KPIs Snapshot" },
+                      { key: "benchmarks", label: "Benchmarks Snapshot" },
+                    ].map((s) => {
+                      const checked = !!ga4ReportForm.configuration?.sections?.[s.key];
+                      return (
+                        <label key={s.key} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = { ...(ga4ReportForm.configuration?.sections || {}) };
+                              next[s.key] = e.target.checked;
+                              setGa4ReportForm((p) => ({ ...p, configuration: { ...(p.configuration || {}), sections: next } }));
+                            }}
+                          />
+                          {s.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-8 border-t border-slate-200 dark:border-slate-800 pt-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Report Name *</div>
+                  <Input
+                    value={ga4ReportForm.name}
+                    onChange={(e) => setGa4ReportForm((p) => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g., Monthly GA4 Overview"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</div>
+                  <Input
+                    value={ga4ReportForm.description}
+                    onChange={(e) => setGa4ReportForm((p) => ({ ...p, description: e.target.value }))}
+                    placeholder="Optional description for your report library"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6">
+                <Button variant="outline" onClick={() => setShowGA4ReportModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    downloadGA4Report({
+                      reportType: ga4ReportForm.reportType,
+                      configuration: ga4ReportForm.configuration,
+                      reportName: ga4ReportForm.name || "GA4 Report",
+                    })
+                  }
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
+                <Button
+                  disabled={createGA4ReportMutation.isPending || updateGA4ReportMutation.isPending}
+                  onClick={() => {
+                    const payload = buildGA4ReportPayload();
+                    if (!String(payload.name || "").trim()) {
+                      toast({ title: "Report name is required", variant: "destructive" });
+                      return;
+                    }
+                    if (editingGA4ReportId) {
+                      updateGA4ReportMutation.mutate({ reportId: editingGA4ReportId, payload });
+                      return;
+                    }
+                    createGA4ReportMutation.mutate(payload);
+                  }}
+                >
+                  {editingGA4ReportId
+                    ? updateGA4ReportMutation.isPending
+                      ? "Updating..."
+                      : "Update Report"
+                    : createGA4ReportMutation.isPending
+                    ? "Saving..."
+                    : "Save Report"}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>

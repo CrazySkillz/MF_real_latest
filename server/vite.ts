@@ -81,7 +81,20 @@ export function serveStatic(app: Express) {
     app.use(express.static(distPath, { 
       maxAge: "1y",
       etag: true,
-      lastModified: true
+      lastModified: true,
+      // Important for deployments (e.g. Render): do NOT long-cache index.html.
+      // If index.html is cached for 1y, users can get stuck on an old asset manifest and never see new UI changes.
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith(path.sep + "index.html")) {
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("Expires", "0");
+        } else {
+          // For hashed assets we can safely cache aggressively.
+          // express.static will already apply maxAge; mark immutable for better CDN/browser behavior.
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      }
     }));
   }
 
@@ -95,6 +108,10 @@ export function serveStatic(app: Express) {
     const indexPath = path.resolve(distPath, "index.html");
     
     if (fs.existsSync(indexPath)) {
+      // Never cache index.html so new deployments pick up new hashed asset filenames immediately.
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       res.sendFile(indexPath);
     } else {
       res.status(500).send(`

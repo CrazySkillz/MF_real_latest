@@ -2888,7 +2888,7 @@ export default function GA4Metrics() {
                                         // If an industry is already selected, switching metrics should refetch the
                                         // industry benchmark for the new metric and populate Benchmark Value.
                                         if (isIndustryType && industry) {
-                                          const dataset = String(import.meta.env.VITE_INDUSTRY_BENCHMARKS_DATASET || "");
+                                          const dataset = String(import.meta.env.VITE_INDUSTRY_BENCHMARKS_DATASET || "mock");
                                           fetch(
                                             `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(template.metric)}${
                                               dataset === "mock" ? "?dataset=mock" : ""
@@ -3065,7 +3065,7 @@ export default function GA4Metrics() {
                                       setNewBenchmark({ ...newBenchmark, industry });
                                       if (!industry || !newBenchmark.metric) return;
                                       try {
-                                        const dataset = String(import.meta.env.VITE_INDUSTRY_BENCHMARKS_DATASET || "");
+                                        const dataset = String(import.meta.env.VITE_INDUSTRY_BENCHMARKS_DATASET || "mock");
                                         const resp = await fetch(
                                           `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(newBenchmark.metric)}${
                                             dataset === "mock" ? "?dataset=mock" : ""

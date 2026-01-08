@@ -3782,7 +3782,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                         const nextType = benchmarkForm.benchmarkType;
                         if (nextType === 'industry' && nextIndustry) {
                           try {
-                            const dataset = String(import.meta.env.VITE_INDUSTRY_BENCHMARKS_DATASET || '');
+                            const dataset = String(import.meta.env.VITE_INDUSTRY_BENCHMARKS_DATASET || 'mock');
                             const resp = await fetch(
                               `/api/industry-benchmarks/${encodeURIComponent(nextIndustry)}/${encodeURIComponent(template.industryMetric)}${
                                 dataset === 'mock' ? '?dataset=mock' : ''

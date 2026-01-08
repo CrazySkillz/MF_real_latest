@@ -2888,11 +2888,8 @@ export default function GA4Metrics() {
                                         // If an industry is already selected, switching metrics should refetch the
                                         // industry benchmark for the new metric and populate Benchmark Value.
                                         if (isIndustryType && industry) {
-                                          const dataset = String(import.meta.env.VITE_INDUSTRY_BENCHMARKS_DATASET || "mock");
                                           fetch(
-                                            `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(template.metric)}${
-                                              dataset === "mock" ? "?dataset=mock" : ""
-                                            }`
+                                            `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(template.metric)}`
                                           )
                                             .then((resp) => (resp.ok ? resp.json().catch(() => null) : null))
                                             .then((data) => {
@@ -2906,13 +2903,6 @@ export default function GA4Metrics() {
                                                     (data.unit === "$" ? String((campaign as any)?.currency || "USD") : data.unit) ||
                                                     "",
                                                 }));
-                                              } else {
-                                                toast({
-                                                  title: "No industry benchmark available",
-                                                  description:
-                                                    "This metric doesn’t have an auditable industry benchmark yet. Please enter a Custom Value.",
-                                                  variant: "destructive",
-                                                });
                                               }
                                             })
                                             .catch(() => {
@@ -3065,18 +3055,10 @@ export default function GA4Metrics() {
                                       setNewBenchmark({ ...newBenchmark, industry });
                                       if (!industry || !newBenchmark.metric) return;
                                       try {
-                                        const dataset = String(import.meta.env.VITE_INDUSTRY_BENCHMARKS_DATASET || "mock");
                                         const resp = await fetch(
-                                          `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(newBenchmark.metric)}${
-                                            dataset === "mock" ? "?dataset=mock" : ""
-                                          }`
+                                          `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(newBenchmark.metric)}`
                                         );
                                         if (!resp.ok) {
-                                          toast({
-                                            title: "No industry benchmark available",
-                                            description: "This metric doesn’t have an auditable industry benchmark yet. Please enter a Custom Value.",
-                                            variant: "destructive",
-                                          });
                                           setNewBenchmark((prev) => ({ ...prev, benchmarkValue: "" }));
                                           return;
                                         }

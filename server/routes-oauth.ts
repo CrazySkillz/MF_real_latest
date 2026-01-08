@@ -775,7 +775,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Cache-Control", "no-store");
       const { industry, metric } = req.params;
       const { getBenchmarkValue } = await import('./data/industry-benchmarks.js');
-      const datasetMode = String(req.query.dataset || process.env.INDUSTRY_BENCHMARKS_DATASET || "default").toLowerCase();
+      // MVP default: serve mock dataset unless explicitly overridden.
+      const datasetMode = String(req.query.dataset || process.env.INDUSTRY_BENCHMARKS_DATASET || "mock").toLowerCase();
       if (datasetMode === "mock") {
         const { getMockBenchmarkValue } = await import("./data/industry-benchmarks.mock.js");
         const mock = getMockBenchmarkValue(industry, metric);

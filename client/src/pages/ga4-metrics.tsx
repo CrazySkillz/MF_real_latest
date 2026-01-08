@@ -53,6 +53,8 @@ interface GA4Metrics {
   screenPageViewsPerSession?: number;
 }
 
+const SELECT_UNIT = "__select_unit__";
+
 const kpiFormSchema = z.object({
   name: z.string().min(1, "KPI name is required"),
   metric: z.string().optional(),
@@ -121,7 +123,7 @@ export default function GA4Metrics() {
     name: "",
     category: "",
     benchmarkType: "custom",
-    unit: "",
+    unit: SELECT_UNIT as any,
     benchmarkValue: "",
     currentValue: "",
     metric: "",
@@ -181,8 +183,6 @@ export default function GA4Metrics() {
 
   // GA4 rates can come back as a ratio (0..1) or a percent (0..100). Normalize to percent.
   const normalizeRateToPercent = (v: number) => (v <= 1 ? v * 100 : v);
-
-  const SELECT_UNIT = "__select_unit__";
 
   const getDefaultKpiDescription = (name: string): string | undefined => {
     const n = String(name || "").trim();
@@ -479,7 +479,7 @@ export default function GA4Metrics() {
         name: "",
         category: "",
         benchmarkType: "custom",
-        unit: "",
+        unit: SELECT_UNIT as any,
         benchmarkValue: "",
         currentValue: "",
         metric: "",
@@ -519,7 +519,7 @@ export default function GA4Metrics() {
         name: "",
         category: "",
         benchmarkType: "custom",
-        unit: "",
+        unit: SELECT_UNIT as any,
         benchmarkValue: "",
         currentValue: "",
         metric: "",
@@ -555,8 +555,8 @@ export default function GA4Metrics() {
   // Benchmark handlers
   const handleCreateBenchmark = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBenchmark.metric) {
-      toast({ title: "Please select a benchmark template", variant: "destructive" });
+    if (String(newBenchmark.benchmarkType || "custom") === "industry" && !newBenchmark.metric) {
+      toast({ title: "Please select a benchmark metric", variant: "destructive" });
       return;
     }
     const cleanedBenchmark = {
@@ -568,6 +568,14 @@ export default function GA4Metrics() {
     };
     if (!String(cleanedBenchmark.description || "").trim()) {
       cleanedBenchmark.description = getDefaultBenchmarkDescription(String(newBenchmark.metric || ""));
+    }
+    if (!cleanedBenchmark.unit || String(cleanedBenchmark.unit) === SELECT_UNIT) {
+      toast({
+        title: "Select a unit",
+        description: "Please choose a unit before saving this benchmark.",
+        variant: "destructive",
+      });
+      return;
     }
     if (!cleanedBenchmark.name || !cleanedBenchmark.category || !cleanedBenchmark.benchmarkValue || !cleanedBenchmark.unit) {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
@@ -722,7 +730,7 @@ export default function GA4Metrics() {
       name: "",
       category: "",
       benchmarkType: "custom",
-      unit: "",
+      unit: SELECT_UNIT as any,
       benchmarkValue: "",
       currentValue: "",
       metric: "",
@@ -2667,7 +2675,7 @@ export default function GA4Metrics() {
                               name: "",
                               category: "",
                               benchmarkType: "custom",
-                              unit: "",
+                              unit: SELECT_UNIT as any,
                               benchmarkValue: "",
                               currentValue: "",
                               metric: "",
@@ -2730,7 +2738,9 @@ export default function GA4Metrics() {
                                   { name: "Engagement Rate", metric: "engagementRate", unit: "%", description: "Engaged Sessions ÷ Sessions × 100" },
                                   { name: "Total Users", metric: "users", unit: "count", description: "Total users for the selected period" },
                                   { name: "Total Sessions", metric: "sessions", unit: "count", description: "Total sessions for the selected period" },
+                                  { name: "Create Custom Benchmark", metric: "__custom__", unit: SELECT_UNIT as any, _isCustom: true },
                                 ].map((template) => {
+                                  const isCustom = (template as any)?._isCustom === true;
                                   const requiresSpend = template.metric === "roas" || template.metric === "roi" || template.metric === "cpa";
                                   const spendAvailable = Number(financialSpend || 0) > 0;
                                   const disabled = requiresSpend && !spendAvailable;
@@ -2740,18 +2750,36 @@ export default function GA4Metrics() {
                                       className={`p-3 border-2 rounded-lg transition-all ${
                                         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                                       } ${
-                                        selectedBenchmarkTemplate?.metric === template.metric
+                                        !isCustom && selectedBenchmarkTemplate?.metric === template.metric
                                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                                           : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
                                       }`}
                                       onClick={() => {
                                         if (disabled) return;
+                                        if (isCustom) {
+                                          setSelectedBenchmarkTemplate(null);
+                                          setNewBenchmark((prev) => ({
+                                            ...prev,
+                                            benchmarkType: "custom",
+                                            metric: "",
+                                            category: "",
+                                            name: "",
+                                            unit: SELECT_UNIT as any,
+                                            currentValue: "",
+                                            benchmarkValue: "",
+                                            industry: "",
+                                            description: prev.description || "Benchmark target for this metric.",
+                                          }));
+                                          return;
+                                        }
                                         setSelectedBenchmarkTemplate(template);
                                         const industry = newBenchmark.industry;
                                         const isIndustryType = (newBenchmark.benchmarkType || "industry") === "industry";
                                         const liveCurrent = getLiveBenchmarkCurrentValue(template.metric);
                                         const derivedCategory = deriveBenchmarkCategoryFromMetric(template.metric);
                                         const defaultDesc = getDefaultBenchmarkDescription(template.metric);
+                                        const campaignCurrencyCode = String((campaign as any)?.currency || "USD");
+                                        const resolvedUnit = template.unit === "$" ? campaignCurrencyCode : template.unit;
                                         setNewBenchmark((prev) => ({
                                           ...prev,
                                           metric: template.metric,
@@ -2759,10 +2787,10 @@ export default function GA4Metrics() {
                                           // When selecting a template, keep name/unit in sync with the selected metric
                                           // so switching tiles (e.g. ROAS -> ROI) updates both fields predictably.
                                           name: template.name,
-                                          unit: template.unit,
+                                          unit: resolvedUnit,
                                           description: prev.description ? prev.description : defaultDesc,
                                           // Format using the selected metric's unit (important when switching from % -> count).
-                                          currentValue: formatNumberByUnit(String(liveCurrent), String(template.unit || "%")),
+                                          currentValue: formatNumberByUnit(String(liveCurrent), String(resolvedUnit || "%")),
                                           // If we're benchmarking against Industry, avoid leaving a stale benchmarkValue
                                           // from the previously selected metric; we'll refetch below.
                                           benchmarkValue: isIndustryType && industry ? "" : prev.benchmarkValue,
@@ -2777,11 +2805,11 @@ export default function GA4Metrics() {
                                             .then((resp) => (resp.ok ? resp.json().catch(() => null) : null))
                                             .then((data) => {
                                               if (data && typeof data.value !== "undefined") {
-                                                const formatted = formatNumberByUnit(String(data.value), String(data.unit || template.unit || "%"));
+                                                const formatted = formatNumberByUnit(String(data.value), String(data.unit || resolvedUnit || "%"));
                                                 setNewBenchmark((prev) => ({
                                                   ...prev,
                                                   benchmarkValue: formatted,
-                                                  unit: prev.unit || data.unit || "",
+                                                  unit: prev.unit || (data.unit === "$" ? String((campaign as any)?.currency || "USD") : data.unit) || "",
                                                 }));
                                               }
                                             })
@@ -2818,12 +2846,22 @@ export default function GA4Metrics() {
                               </div>
                               <div className="space-y-2">
                                 <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Unit *</div>
-                                <Input
-                                  value={newBenchmark.unit}
-                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, unit: e.target.value })}
-                                  placeholder="count, %, USD"
-                                  required
-                                />
+                                <Select
+                                  value={String(newBenchmark.unit || SELECT_UNIT)}
+                                  onValueChange={(v) => setNewBenchmark({ ...newBenchmark, unit: v })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select unit" />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-[10000]">
+                                    <SelectItem value={SELECT_UNIT}>Select unit</SelectItem>
+                                    <SelectItem value="%">Percentage (%)</SelectItem>
+                                    <SelectItem value="count">Count</SelectItem>
+                                    <SelectItem value={String((campaign as any)?.currency || "USD")}>
+                                      Currency ({String((campaign as any)?.currency || "USD")})
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </div>
 

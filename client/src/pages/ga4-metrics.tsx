@@ -155,6 +155,7 @@ export default function GA4Metrics() {
   const queryClient = useQueryClient();
 
   const [selectedGA4PropertyId, setSelectedGA4PropertyId] = useState<string>("");
+  const [useMockGeo, setUseMockGeo] = useState(false);
 
   // Spend is now persisted server-side (via the Add Spend wizard), so we no longer store
   // manual overrides or spend mode in localStorage.
@@ -1673,7 +1674,7 @@ export default function GA4Metrics() {
 
   // Geographic data query
   const { data: geographicData, isLoading: geoLoading } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-geographic", dateRange, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-geographic", dateRange, selectedGA4PropertyId, useMockGeo],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -1681,10 +1682,11 @@ export default function GA4Metrics() {
     refetchInterval: 10 * 60 * 1000, // 10 minutes
     refetchIntervalInBackground: true,
     queryFn: async () => {
+      const mockParam = useMockGeo ? `&mock=1` : "";
       const response = await fetch(
         `/api/campaigns/${campaignId}/ga4-geographic?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
-        )}`
+        )}${mockParam}`
       );
       const data = await response.json();
       
@@ -2683,6 +2685,13 @@ export default function GA4Metrics() {
                                 <h4 className="font-medium text-slate-900 dark:text-white">Active users by Country</h4>
                               </div>
                               <div className="flex items-center space-x-2">
+                                <button
+                                  type="button"
+                                  className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                  onClick={() => setUseMockGeo((v) => !v)}
+                                >
+                                  {useMockGeo ? "Mock geo: ON" : "Mock geo: OFF"}
+                                </button>
                                 <span className="text-xs text-slate-500 dark:text-slate-400">
                                   {geographicData?.topCountries?.length || 20} countries
                                 </span>

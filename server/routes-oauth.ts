@@ -251,6 +251,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
   };
 
+  const normalizePropertyIdForMock = (pid: string) => {
+    const raw = String(pid || "").trim();
+    if (!raw) return raw;
+    const m = raw.match(/properties\/(\d+)/i);
+    if (m && m[1]) return m[1];
+    return raw.replace(/^\/+/, "");
+  };
+
+  const isYesopMockProperty = (pid: string) => {
+    const v = String(pid || "").trim().toLowerCase();
+    const normalized = normalizePropertyIdForMock(v).toLowerCase();
+    // Support both "yesop" (friendly id used in docs/scripts) and the numeric GA4 property id used by the API.
+    return v === "yesop" || normalized === "yesop" || normalized === "498536418";
+  };
+
   // ============================================================================
   // Spend ingestion (generic, campaign-scoped)
   // ============================================================================
@@ -1140,9 +1155,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyId = req.query.propertyId as string; // Optional - get specific property
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
-      const shouldSimulate = forceMock || requestedPropertyId.toLowerCase() === 'yesop';
+      const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
       if (shouldSimulate) {
+        res.setHeader('Cache-Control', 'no-store');
         const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
@@ -3048,9 +3064,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyId = req.query.propertyId as string; // Optional - get specific property
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
-      const shouldSimulate = forceMock || requestedPropertyId.toLowerCase() === 'yesop';
+      const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
       if (shouldSimulate) {
+        res.setHeader('Cache-Control', 'no-store');
         const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
@@ -3177,9 +3194,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
-      const shouldSimulate = forceMock || requestedPropertyId.toLowerCase() === 'yesop';
+      const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
       if (shouldSimulate) {
+        res.setHeader('Cache-Control', 'no-store');
         const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
         const pid = requestedPropertyId || 'yesop';
         return res.json({

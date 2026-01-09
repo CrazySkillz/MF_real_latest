@@ -2654,12 +2654,12 @@ export default function GA4Metrics() {
                               <div className="text-xs text-slate-500 dark:text-slate-400">
                                 Note: <span className="font-medium">Users</span> is non-additive across rows in GA4 (unique users can appear on multiple landing pages).
                               </div>
-                              <div className="overflow-auto border rounded-md">
-                                <table className="min-w-[980px] w-full text-sm">
+                              <div className="overflow-hidden border rounded-md">
+                                <table className="w-full text-sm table-fixed">
                                   <thead className="bg-slate-50 dark:bg-slate-800 border-b">
                                     <tr>
-                                      <th className="text-left p-3">Landing page</th>
-                                      <th className="text-left p-3">Source/Medium</th>
+                                      <th className="text-left p-3 w-[34%]">Landing page</th>
+                                      <th className="text-left p-3 w-[16%]">Source/Medium</th>
                                       <th className="text-right p-3">Sessions</th>
                                       <th className="text-right p-3">Users</th>
                                       <th className="text-right p-3">Conversions</th>
@@ -2675,10 +2675,14 @@ export default function GA4Metrics() {
                                       return (
                                         <tr key={`${r?.landingPage || idx}:${idx}`} className="border-b">
                                           <td className="p-3">
-                                            <div className="font-medium text-slate-900 dark:text-white">{String(r?.landingPage || "(not set)")}</div>
+                                            <div className="font-medium text-slate-900 dark:text-white truncate" title={String(r?.landingPage || "(not set)")}>
+                                              {String(r?.landingPage || "(not set)")}
+                                            </div>
                                           </td>
                                           <td className="p-3 text-slate-600 dark:text-slate-400">
-                                            {String(r?.source || "(not set)")}/{String(r?.medium || "(not set)")}
+                                            <span className="truncate" title={`${String(r?.source || "(not set)")}/${String(r?.medium || "(not set)")}`}>
+                                              {String(r?.source || "(not set)")}/{String(r?.medium || "(not set)")}
+                                            </span>
                                           </td>
                                           <td className="p-3 text-right">{formatNumber(Number(r?.sessions || 0))}</td>
                                           <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
@@ -2712,11 +2716,11 @@ export default function GA4Metrics() {
                       <Card className="border-slate-200 dark:border-slate-700">
                         <CardContent className="p-6">
                           {Array.isArray(ga4ConversionEvents?.rows) && ga4ConversionEvents.rows.length > 0 ? (
-                            <div className="overflow-auto border rounded-md">
-                              <table className="min-w-[860px] w-full text-sm">
+                            <div className="overflow-hidden border rounded-md">
+                              <table className="w-full text-sm table-fixed">
                                 <thead className="bg-slate-50 dark:bg-slate-800 border-b">
                                   <tr>
-                                    <th className="text-left p-3">Event</th>
+                                    <th className="text-left p-3 w-[36%]">Event</th>
                                     <th className="text-right p-3">Conversions</th>
                                     <th className="text-right p-3">Event count</th>
                                     <th className="text-right p-3">Users</th>
@@ -2727,7 +2731,9 @@ export default function GA4Metrics() {
                                   {ga4ConversionEvents.rows.slice(0, 25).map((r: any, idx: number) => (
                                     <tr key={`${r?.eventName || idx}:${idx}`} className="border-b">
                                       <td className="p-3">
-                                        <div className="font-medium text-slate-900 dark:text-white">{String(r?.eventName || "(not set)")}</div>
+                                        <div className="font-medium text-slate-900 dark:text-white truncate" title={String(r?.eventName || "(not set)")}>
+                                          {String(r?.eventName || "(not set)")}
+                                        </div>
                                       </td>
                                       <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
                                       <td className="p-3 text-right">{formatNumber(Number(r?.eventCount || 0))}</td>
@@ -2810,11 +2816,11 @@ export default function GA4Metrics() {
                               .sort((x, y) => (y.cur.sessions || 0) - (x.cur.sessions || 0));
 
                             return (
-                              <div className="overflow-auto border rounded-md">
-                                <table className="min-w-[980px] w-full text-sm">
+                              <div className="overflow-hidden border rounded-md">
+                                <table className="w-full text-sm table-fixed">
                                   <thead className="bg-slate-50 dark:bg-slate-800 border-b">
                                     <tr>
-                                      <th className="text-left p-3">Channel</th>
+                                      <th className="text-left p-3 w-[26%]">Channel</th>
                                       <th className="text-right p-3">Sessions (7d)</th>
                                       <th className="text-right p-3">Sessions (prior 7d)</th>
                                       <th className="text-right p-3">Δ Sessions</th>
@@ -2832,7 +2838,9 @@ export default function GA4Metrics() {
                                       return (
                                         <tr key={r.ch} className="border-b">
                                           <td className="p-3">
-                                            <div className="font-medium text-slate-900 dark:text-white">{r.ch}</div>
+                                            <div className="font-medium text-slate-900 dark:text-white truncate" title={r.ch}>
+                                              {r.ch}
+                                            </div>
                                           </td>
                                           <td className="p-3 text-right">{formatNumber(Number(r.cur.sessions || 0))}</td>
                                           <td className="p-3 text-right">{formatNumber(Number(r.prev.sessions || 0))}</td>
@@ -2985,7 +2993,7 @@ export default function GA4Metrics() {
                           ) : Array.isArray(ga4Breakdown?.rows) && ga4Breakdown.rows.length > 0 ? (
                             <div className="rounded-md border overflow-hidden">
                               <div className="max-h-[420px] overflow-auto">
-                                <table className="min-w-[1040px] w-full text-sm">
+                              <table className="w-full text-sm table-fixed">
                                   <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
                                     <tr>
                                       <th className="text-left font-medium px-3 py-2">Date</th>

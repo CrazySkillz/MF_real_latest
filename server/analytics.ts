@@ -96,6 +96,245 @@ export class GoogleAnalytics4Service {
     };
   }
 
+  async getLandingPagesReport(
+    campaignId: string,
+    storage: any,
+    dateRange = '30daysAgo',
+    propertyId?: string,
+    limit: number = 50,
+    campaignFilter?: CampaignFilter
+  ): Promise<{
+    propertyId: string;
+    revenueMetric: 'totalRevenue' | 'purchaseRevenue';
+    rows: Array<{ landingPage: string; source: string; medium: string; sessions: number; users: number; conversions: number; revenue: number }>;
+    totals: { sessions: number; users: number; conversions: number; revenue: number };
+    meta: { usersAreNonAdditive: boolean };
+  }> {
+    const connection = await storage.getGA4Connection(campaignId, propertyId);
+    if (!connection) throw new Error('NO_GA4_CONNECTION');
+    if (!connection.accessToken) {
+      const tokenExpiredError = new Error('TOKEN_EXPIRED');
+      (tokenExpiredError as any).isTokenExpired = true;
+      throw tokenExpiredError;
+    }
+
+    const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
+    const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
+    const dims = [{ name: 'landingPagePlusQueryString' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
+
+    const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+          dimensions: dims,
+          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
+          metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
+          orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+          limit: Math.min(Math.max(limit, 1), 10000),
+        }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(txt);
+      }
+      const json = await resp.json().catch(() => ({} as any));
+      return json;
+    };
+
+    const parseRows = (json: any, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+      const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
+      const out: Array<{ landingPage: string; source: string; medium: string; sessions: number; users: number; conversions: number; revenue: number }> = [];
+      let totalSessions = 0;
+      let totalUsers = 0;
+      let totalConversions = 0;
+      let totalRevenue = 0;
+
+      for (const r of rows) {
+        const landingPage = String(r?.dimensionValues?.[0]?.value || '').trim() || '(not set)';
+        const source = String(r?.dimensionValues?.[1]?.value || '').trim() || '(not set)';
+        const medium = String(r?.dimensionValues?.[2]?.value || '').trim() || '(not set)';
+        const sessions = parseInt(String(r?.metricValues?.[0]?.value || '0'), 10) || 0;
+        const users = parseInt(String(r?.metricValues?.[1]?.value || '0'), 10) || 0;
+        const conversions = parseInt(String(r?.metricValues?.[2]?.value || '0'), 10) || 0;
+        const revenue = Number.parseFloat(String(r?.metricValues?.[3]?.value || '0')) || 0;
+        totalSessions += sessions;
+        totalUsers += users;
+        totalConversions += conversions;
+        totalRevenue += revenue;
+        out.push({ landingPage, source, medium, sessions, users, conversions, revenue: Number(revenue.toFixed(2)) });
+      }
+
+      return {
+        revenueMetric,
+        rows: out,
+        totals: {
+          sessions: totalSessions,
+          users: totalUsers,
+          conversions: totalConversions,
+          revenue: Number(totalRevenue.toFixed(2)),
+        },
+      };
+    };
+
+    const isAuthErrorText = (txt: string) => {
+      const t = String(txt || '').toLowerCase();
+      return t.includes('"code": 401') || t.includes('unauthenticated') || t.includes('invalid authentication credentials') || t.includes('invalid_grant');
+    };
+
+    const tryFetch = async (accessToken: string) => {
+      try {
+        const json = await run(accessToken, 'totalRevenue');
+        return parseRows(json, 'totalRevenue');
+      } catch (e: any) {
+        const msg = String(e?.message || e || '');
+        // Some properties don't allow totalRevenue; try purchaseRevenue.
+        if (msg.toLowerCase().includes('totalrevenue') || msg.toLowerCase().includes('metric') || msg.toLowerCase().includes('invalid')) {
+          const json2 = await run(accessToken, 'purchaseRevenue');
+          return parseRows(json2, 'purchaseRevenue');
+        }
+        throw e;
+      }
+    };
+
+    try {
+      const res = await tryFetch(String(connection.accessToken));
+      return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true } };
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      if (isAuthErrorText(msg) && connection.refreshToken) {
+        const refresh = await this.refreshAccessToken(
+          String(connection.refreshToken),
+          connection.clientId || undefined,
+          connection.clientSecret || undefined
+        );
+        await storage.updateGA4ConnectionTokens(connection.id, {
+          accessToken: refresh.access_token,
+          refreshToken: String(connection.refreshToken),
+          expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
+        });
+        const res = await tryFetch(refresh.access_token);
+        return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true } };
+      }
+      throw e;
+    }
+  }
+
+  async getConversionEventsReport(
+    campaignId: string,
+    storage: any,
+    dateRange = '30daysAgo',
+    propertyId?: string,
+    limit: number = 50,
+    campaignFilter?: CampaignFilter
+  ): Promise<{
+    propertyId: string;
+    revenueMetric: 'totalRevenue' | 'purchaseRevenue';
+    rows: Array<{ eventName: string; conversions: number; eventCount: number; users: number; revenue: number }>;
+    totals: { conversions: number; eventCount: number; users: number; revenue: number };
+  }> {
+    const connection = await storage.getGA4Connection(campaignId, propertyId);
+    if (!connection) throw new Error('NO_GA4_CONNECTION');
+    if (!connection.accessToken) {
+      const tokenExpiredError = new Error('TOKEN_EXPIRED');
+      (tokenExpiredError as any).isTokenExpired = true;
+      throw tokenExpiredError;
+    }
+
+    const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
+    const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
+
+    const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+          dimensions: [{ name: 'eventName' }],
+          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
+          metrics: [{ name: 'conversions' }, { name: 'eventCount' }, { name: 'totalUsers' }, { name: revenueMetric }],
+          orderBys: [{ metric: { metricName: 'conversions' }, desc: true }],
+          limit: Math.min(Math.max(limit, 1), 10000),
+        }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(txt);
+      }
+      const json = await resp.json().catch(() => ({} as any));
+      return json;
+    };
+
+    const parseRows = (json: any, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+      const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
+      const out: Array<{ eventName: string; conversions: number; eventCount: number; users: number; revenue: number }> = [];
+      let totalConversions = 0;
+      let totalEventCount = 0;
+      let totalUsers = 0;
+      let totalRevenue = 0;
+
+      for (const r of rows) {
+        const eventName = String(r?.dimensionValues?.[0]?.value || '').trim() || '(not set)';
+        const conversions = parseInt(String(r?.metricValues?.[0]?.value || '0'), 10) || 0;
+        const eventCount = parseInt(String(r?.metricValues?.[1]?.value || '0'), 10) || 0;
+        const users = parseInt(String(r?.metricValues?.[2]?.value || '0'), 10) || 0;
+        const revenue = Number.parseFloat(String(r?.metricValues?.[3]?.value || '0')) || 0;
+        totalConversions += conversions;
+        totalEventCount += eventCount;
+        totalUsers += users;
+        totalRevenue += revenue;
+        out.push({ eventName, conversions, eventCount, users, revenue: Number(revenue.toFixed(2)) });
+      }
+      return {
+        revenueMetric,
+        rows: out,
+        totals: { conversions: totalConversions, eventCount: totalEventCount, users: totalUsers, revenue: Number(totalRevenue.toFixed(2)) },
+      };
+    };
+
+    const isAuthErrorText = (txt: string) => {
+      const t = String(txt || '').toLowerCase();
+      return t.includes('"code": 401') || t.includes('unauthenticated') || t.includes('invalid authentication credentials') || t.includes('invalid_grant');
+    };
+
+    const tryFetch = async (accessToken: string) => {
+      try {
+        const json = await run(accessToken, 'totalRevenue');
+        return parseRows(json, 'totalRevenue');
+      } catch (e: any) {
+        const msg = String(e?.message || e || '');
+        if (msg.toLowerCase().includes('totalrevenue') || msg.toLowerCase().includes('metric') || msg.toLowerCase().includes('invalid')) {
+          const json2 = await run(accessToken, 'purchaseRevenue');
+          return parseRows(json2, 'purchaseRevenue');
+        }
+        throw e;
+      }
+    };
+
+    try {
+      const res = await tryFetch(String(connection.accessToken));
+      return { propertyId: normalizedPropertyId, ...res };
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      if (isAuthErrorText(msg) && connection.refreshToken) {
+        const refresh = await this.refreshAccessToken(
+          String(connection.refreshToken),
+          connection.clientId || undefined,
+          connection.clientSecret || undefined
+        );
+        await storage.updateGA4ConnectionTokens(connection.id, {
+          accessToken: refresh.access_token,
+          refreshToken: String(connection.refreshToken),
+          expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
+        });
+        const res = await tryFetch(refresh.access_token);
+        return { propertyId: normalizedPropertyId, ...res };
+      }
+      throw e;
+    }
+  }
+
   async getMetricsWithToken(
     propertyId: string,
     accessToken: string,

@@ -1331,6 +1331,44 @@ export default function GA4Metrics() {
     },
   });
 
+  const { data: ga4LandingPages } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", dateRange, selectedGA4PropertyId],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/ga4-landing-pages?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
+          String(selectedGA4PropertyId)
+        )}&limit=50`
+      );
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) return null;
+      return json;
+    },
+  });
+
+  const { data: ga4ConversionEvents } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", dateRange, selectedGA4PropertyId],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/ga4-conversion-events?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
+          String(selectedGA4PropertyId)
+        )}&limit=50`
+      );
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) return null;
+      return json;
+    },
+  });
+
   const breakdownTotals = {
     sessions: Number(ga4Breakdown?.totals?.sessions || 0),
     conversions: Number(ga4Breakdown?.totals?.conversions || 0),
@@ -2601,6 +2639,223 @@ export default function GA4Metrics() {
                           </div>
                         )}
                       </div>
+                    </div>
+
+                    {/* Landing pages (Phase 1) */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Landing Pages</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Where users start, and which pages drive outcomes</p>
+                      </div>
+                      <Card className="border-slate-200 dark:border-slate-700">
+                        <CardContent className="p-6">
+                          {Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0 ? (
+                            <div className="space-y-2">
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                Note: <span className="font-medium">Users</span> is non-additive across rows in GA4 (unique users can appear on multiple landing pages).
+                              </div>
+                              <div className="overflow-auto border rounded-md">
+                                <table className="min-w-[980px] w-full text-sm">
+                                  <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                    <tr>
+                                      <th className="text-left p-3">Landing page</th>
+                                      <th className="text-left p-3">Source/Medium</th>
+                                      <th className="text-right p-3">Sessions</th>
+                                      <th className="text-right p-3">Users</th>
+                                      <th className="text-right p-3">Conversions</th>
+                                      <th className="text-right p-3">Conv. rate</th>
+                                      <th className="text-right p-3">Revenue</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {ga4LandingPages.rows.slice(0, 20).map((r: any, idx: number) => {
+                                      const sessions = Number(r?.sessions || 0);
+                                      const conversions = Number(r?.conversions || 0);
+                                      const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
+                                      return (
+                                        <tr key={`${r?.landingPage || idx}:${idx}`} className="border-b">
+                                          <td className="p-3">
+                                            <div className="font-medium text-slate-900 dark:text-white">{String(r?.landingPage || "(not set)")}</div>
+                                          </td>
+                                          <td className="p-3 text-slate-600 dark:text-slate-400">
+                                            {String(r?.source || "(not set)")}/{String(r?.medium || "(not set)")}
+                                          </td>
+                                          <td className="p-3 text-right">{formatNumber(Number(r?.sessions || 0))}</td>
+                                          <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
+                                          <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
+                                          <td className="p-3 text-right">{formatPercentage(cr)}</td>
+                                          <td className="p-3 text-right">
+                                            ${Number(r?.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              No landing page data available yet for this property/campaign selection.
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Conversion events (Phase 1) */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Conversion Events</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Which conversion events are driving results</p>
+                      </div>
+                      <Card className="border-slate-200 dark:border-slate-700">
+                        <CardContent className="p-6">
+                          {Array.isArray(ga4ConversionEvents?.rows) && ga4ConversionEvents.rows.length > 0 ? (
+                            <div className="overflow-auto border rounded-md">
+                              <table className="min-w-[860px] w-full text-sm">
+                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                  <tr>
+                                    <th className="text-left p-3">Event</th>
+                                    <th className="text-right p-3">Conversions</th>
+                                    <th className="text-right p-3">Event count</th>
+                                    <th className="text-right p-3">Users</th>
+                                    <th className="text-right p-3">Revenue</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {ga4ConversionEvents.rows.slice(0, 25).map((r: any, idx: number) => (
+                                    <tr key={`${r?.eventName || idx}:${idx}`} className="border-b">
+                                      <td className="p-3">
+                                        <div className="font-medium text-slate-900 dark:text-white">{String(r?.eventName || "(not set)")}</div>
+                                      </td>
+                                      <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
+                                      <td className="p-3 text-right">{formatNumber(Number(r?.eventCount || 0))}</td>
+                                      <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
+                                      <td className="p-3 text-right">
+                                        ${Number(r?.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              No conversion event breakdown available yet for this property/campaign selection.
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Channel mix shift (WoW) */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Channel Mix Shift (WoW)</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">What changed in the last 7 days vs the prior 7 days</p>
+                      </div>
+                      <Card className="border-slate-200 dark:border-slate-700">
+                        <CardContent className="p-6">
+                          {(() => {
+                            const rows = Array.isArray((ga4Breakdown as any)?.rows) ? ((ga4Breakdown as any).rows as any[]) : [];
+                            const dailyDates = Array.from(
+                              new Set(
+                                rows
+                                  .map((r: any) => String(r?.date || "").trim())
+                                  .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+                              )
+                            ).sort();
+
+                            if (dailyDates.length < 14) {
+                              return (
+                                <div className="text-sm text-slate-600 dark:text-slate-400">
+                                  Need at least 14 days of daily data in the selected range to compute week-over-week deltas. Available days: {dailyDates.length}.
+                                </div>
+                              );
+                            }
+
+                            const last7 = new Set(dailyDates.slice(-7));
+                            const prev7 = new Set(dailyDates.slice(-14, -7));
+
+                            const group = (set: Set<string>) => {
+                              const map = new Map<string, { sessions: number; conversions: number; revenue: number }>();
+                              for (const r of rows) {
+                                const d = String(r?.date || "").trim();
+                                if (!set.has(d)) continue;
+                                const channel = String(r?.channel || "Unassigned").trim() || "Unassigned";
+                                const cur = map.get(channel) || { sessions: 0, conversions: 0, revenue: 0 };
+                                cur.sessions += Number(r?.sessions || 0);
+                                cur.conversions += Number(r?.conversions || 0);
+                                cur.revenue += Number(r?.revenue || 0);
+                                map.set(channel, cur);
+                              }
+                              return map;
+                            };
+
+                            const a = group(last7);
+                            const b = group(prev7);
+                            const allChannels = Array.from(new Set([...Array.from(a.keys()), ...Array.from(b.keys())]));
+
+                            const data = allChannels
+                              .map((ch) => {
+                                const cur = a.get(ch) || { sessions: 0, conversions: 0, revenue: 0 };
+                                const prev = b.get(ch) || { sessions: 0, conversions: 0, revenue: 0 };
+                                const curCR = cur.sessions > 0 ? (cur.conversions / cur.sessions) * 100 : 0;
+                                const prevCR = prev.sessions > 0 ? (prev.conversions / prev.sessions) * 100 : 0;
+                                const sessionsDeltaPct = prev.sessions > 0 ? ((cur.sessions - prev.sessions) / prev.sessions) * 100 : (cur.sessions > 0 ? 100 : 0);
+                                const crDeltaPct = prevCR > 0 ? ((curCR - prevCR) / prevCR) * 100 : 0;
+                                return { ch, cur, prev, sessionsDeltaPct, curCR, prevCR, crDeltaPct };
+                              })
+                              .sort((x, y) => (y.cur.sessions || 0) - (x.cur.sessions || 0));
+
+                            return (
+                              <div className="overflow-auto border rounded-md">
+                                <table className="min-w-[980px] w-full text-sm">
+                                  <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                    <tr>
+                                      <th className="text-left p-3">Channel</th>
+                                      <th className="text-right p-3">Sessions (7d)</th>
+                                      <th className="text-right p-3">Sessions (prior 7d)</th>
+                                      <th className="text-right p-3">Δ Sessions</th>
+                                      <th className="text-right p-3">CR (7d)</th>
+                                      <th className="text-right p-3">CR (prior)</th>
+                                      <th className="text-right p-3">Δ CR</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {data.slice(0, 12).map((r) => {
+                                      const deltaColor =
+                                        r.sessionsDeltaPct >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300";
+                                      const crDeltaColor =
+                                        r.crDeltaPct >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300";
+                                      return (
+                                        <tr key={r.ch} className="border-b">
+                                          <td className="p-3">
+                                            <div className="font-medium text-slate-900 dark:text-white">{r.ch}</div>
+                                          </td>
+                                          <td className="p-3 text-right">{formatNumber(Number(r.cur.sessions || 0))}</td>
+                                          <td className="p-3 text-right">{formatNumber(Number(r.prev.sessions || 0))}</td>
+                                          <td className={`p-3 text-right font-medium ${deltaColor}`}>
+                                            {r.sessionsDeltaPct >= 0 ? "+" : ""}
+                                            {r.sessionsDeltaPct.toFixed(1)}%
+                                          </td>
+                                          <td className="p-3 text-right">{formatPercentage(r.curCR)}</td>
+                                          <td className="p-3 text-right">{formatPercentage(r.prevCR)}</td>
+                                          <td className={`p-3 text-right font-medium ${crDeltaColor}`}>
+                                            {r.crDeltaPct >= 0 ? "+" : ""}
+                                            {r.crDeltaPct.toFixed(1)}%
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            );
+                          })()}
+                        </CardContent>
+                      </Card>
                     </div>
 
                     {/* Spend import / edit modal (rendered always so it can be opened even when spend exists) */}

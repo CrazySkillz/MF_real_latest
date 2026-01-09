@@ -3224,6 +3224,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GA4 Landing Pages (Phase 1: GA4-only, high value)
+  app.get("/api/campaigns/:id/ga4-landing-pages", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const dateRange = String(req.query.dateRange || '30days');
+      const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
+      const requestedPropertyId = propertyId ? String(propertyId) : '';
+      const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
+
+      let ga4DateRange = '30daysAgo';
+      switch (dateRange) {
+        case '7days':
+          ga4DateRange = '7daysAgo';
+          break;
+        case '30days':
+          ga4DateRange = '30daysAgo';
+          break;
+        case '90days':
+          ga4DateRange = '90daysAgo';
+          break;
+        default:
+          ga4DateRange = '30daysAgo';
+      }
+
+      if (shouldSimulate) {
+        res.setHeader('Cache-Control', 'no-store');
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
+
+        const pages = [
+          '/',
+          '/pricing',
+          '/product',
+          '/blog/seo',
+          '/blog/benchmarking',
+          '/signup',
+          '/checkout',
+        ];
+
+        // Deterministic weights per page
+        const seed = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:landing:${dateRange}`);
+        const rand = mulberry32(seed);
+        const weights = pages.map(() => 0.8 + rand() * 1.8);
+        const wSum = weights.reduce((a, b) => a + b, 0) || 1;
+
+        const totalSessions = Number(sim.totals.sessions || 0);
+        const totalUsers = Number(sim.totals.users || 0);
+        const totalConversions = Number(sim.totals.conversions || 0);
+        const totalRevenue = Number(sim.totals.revenue || 0);
+
+        let sRemain = totalSessions;
+        let cRemain = totalConversions;
+        let rRemain = totalRevenue;
+
+        const rows = pages.map((p, idx) => {
+          const share = weights[idx] / wSum;
+          const isLast = idx === pages.length - 1;
+          const sessions = isLast ? sRemain : Math.max(0, Math.floor(totalSessions * share));
+          const conversions = isLast ? cRemain : Math.max(0, Math.floor(totalConversions * share));
+          const revenue = isLast ? Number(rRemain.toFixed(2)) : Number((totalRevenue * share).toFixed(2));
+          sRemain -= sessions;
+          cRemain -= conversions;
+          rRemain -= revenue;
+          // Users are non-additive across landing pages in GA4; provide a plausible per-row value.
+          const users = Math.min(totalUsers, Math.max(0, Math.floor(sessions * (0.65 + rand() * 0.25))));
+          return {
+            landingPage: p,
+            source: idx % 2 === 0 ? 'google' : 'linkedin',
+            medium: idx % 2 === 0 ? 'cpc' : 'paid_social',
+            sessions,
+            users,
+            conversions,
+            revenue: Number(revenue.toFixed(2)),
+          };
+        });
+
+        return res.json({
+          success: true,
+          propertyId: requestedPropertyId || 'yesop',
+          dateRange,
+          rows: rows.slice(0, limit),
+          totals: { sessions: totalSessions, users: totalUsers, conversions: totalConversions, revenue: Number(totalRevenue.toFixed(2)) },
+          revenueMetric: 'totalRevenue',
+          meta: { usersAreNonAdditive: true, isSimulated: true },
+          lastUpdated: new Date().toISOString(),
+        });
+      }
+
+      const result = await ga4Service.getLandingPagesReport(campaignId, storage, ga4DateRange, propertyId, limit, campaignFilter);
+      res.json({ success: true, dateRange, ...result, lastUpdated: new Date().toISOString() });
+    } catch (error: any) {
+      console.error('[GA4 Landing Pages] Error:', error);
+      if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {
+        return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
+      }
+      if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
+        return res.status(401).json({ success: false, error: 'TOKEN_EXPIRED' });
+      }
+      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch GA4 landing pages' });
+    }
+  });
+
+  // GA4 Conversion Events (Phase 1: GA4-only, high value)
+  app.get("/api/campaigns/:id/ga4-conversion-events", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const dateRange = String(req.query.dateRange || '30days');
+      const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
+      const requestedPropertyId = propertyId ? String(propertyId) : '';
+      const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
+
+      let ga4DateRange = '30daysAgo';
+      switch (dateRange) {
+        case '7days':
+          ga4DateRange = '7daysAgo';
+          break;
+        case '30days':
+          ga4DateRange = '30daysAgo';
+          break;
+        case '90days':
+          ga4DateRange = '90daysAgo';
+          break;
+        default:
+          ga4DateRange = '30daysAgo';
+      }
+
+      if (shouldSimulate) {
+        res.setHeader('Cache-Control', 'no-store');
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
+
+        const events = [
+          { name: 'purchase', weight: 1.0 },
+          { name: 'generate_lead', weight: 0.7 },
+          { name: 'sign_up', weight: 0.6 },
+          { name: 'begin_checkout', weight: 0.8 },
+          { name: 'add_to_cart', weight: 0.9 },
+        ];
+
+        const seed = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:events:${dateRange}`);
+        const rand = mulberry32(seed);
+        const wSum = events.reduce((a, e) => a + e.weight, 0) || 1;
+
+        const totalConversions = Number(sim.totals.conversions || 0);
+        const totalUsers = Number(sim.totals.users || 0);
+        const totalRevenue = Number(sim.totals.revenue || 0);
+
+        let cRemain = totalConversions;
+        let rRemain = totalRevenue;
+        let eventCountSum = 0;
+
+        const rows = events.map((e, idx) => {
+          const share = e.weight / wSum;
+          const isLast = idx === events.length - 1;
+          const conversions = isLast ? cRemain : Math.max(0, Math.floor(totalConversions * share));
+          // For non-purchase events, revenue is typically 0; allocate most revenue to purchase.
+          const revenue =
+            e.name === 'purchase'
+              ? (isLast ? Number(rRemain.toFixed(2)) : Number((totalRevenue * 0.92).toFixed(2)))
+              : Number((totalRevenue * 0.08 * share).toFixed(2));
+          cRemain -= conversions;
+          rRemain -= revenue;
+          const eventCount = Math.max(conversions, Math.floor(conversions * (1.2 + rand() * 2.5)));
+          eventCountSum += eventCount;
+          const users = Math.min(totalUsers, Math.max(0, Math.floor(conversions * (1.0 + rand() * 3.0))));
+          return { eventName: e.name, conversions, eventCount, users, revenue: Number(revenue.toFixed(2)) };
+        });
+
+        return res.json({
+          success: true,
+          propertyId: requestedPropertyId || 'yesop',
+          dateRange,
+          rows: rows.slice(0, limit),
+          totals: { conversions: totalConversions, eventCount: eventCountSum, users: totalUsers, revenue: Number(totalRevenue.toFixed(2)) },
+          revenueMetric: 'totalRevenue',
+          meta: { isSimulated: true },
+          lastUpdated: new Date().toISOString(),
+        });
+      }
+
+      const result = await ga4Service.getConversionEventsReport(campaignId, storage, ga4DateRange, propertyId, limit, campaignFilter);
+      res.json({ success: true, dateRange, ...result, lastUpdated: new Date().toISOString() });
+    } catch (error: any) {
+      console.error('[GA4 Conversion Events] Error:', error);
+      if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {
+        return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
+      }
+      if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
+        return res.status(401).json({ success: false, error: 'TOKEN_EXPIRED' });
+      }
+      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch GA4 conversion events' });
+    }
+  });
+
   // GA4 acquisition-style breakdown table (Date / Channel / Source / Medium / Campaign / Device / Country)
   app.get("/api/campaigns/:id/ga4-breakdown", async (req, res) => {
     try {

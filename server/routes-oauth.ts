@@ -104,16 +104,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return 30;
   };
 
-  const formatISODate = (d: Date) => {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
+  const formatISODateUTC = (d: Date) => {
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(d.getUTCDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
   };
 
   const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string }) => {
     const days = dateRangeToDays(opts.dateRange);
-    const seedKey = `${opts.campaignId}:${opts.propertyId}:${String(opts.dateRange || "")}`;
+    // IMPORTANT: normalize the propertyId so "yesop" and its numeric form don't produce different datasets.
+    const pid = normalizePropertyIdForMock(opts.propertyId);
+    const seedKey = `${opts.campaignId}:${pid}:${String(opts.dateRange || "")}`;
     const rand = mulberry32(hashToSeed(seedKey));
 
     // Per-day baselines (scaled by window)
@@ -126,12 +128,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const engagementRate = 0.38 + rand() * 0.42; // 0.38 - 0.80 (GA4 is 0-1)
     const bounceRate = Math.max(0, Math.min(1, 1 - engagementRate + (rand() * 0.08 - 0.04)));
 
-    // Build daily series with light seasonality + deterministic noise
-    const today = new Date();
-    // Use UTC-ish stable dates by anchoring at midnight local and stepping days.
-    const start = new Date(today);
-    start.setDate(start.getDate() - (days - 1));
-    start.setHours(0, 0, 0, 0);
+    // Build daily series with light seasonality + deterministic noise.
+    // Use a fixed anchor date so mock data is STATIC for each date range (doesn't change day-to-day).
+    const anchor = new Date(Date.UTC(2026, 0, 7, 0, 0, 0)); // 2026-01-07 (UTC)
+    const start = new Date(anchor);
+    start.setUTCDate(start.getUTCDate() - (days - 1));
 
     const series: Array<{ date: string; users: number; sessions: number; pageviews: number; conversions: number; revenue: number }> = [];
     let usersSum = 0;
@@ -148,11 +149,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     for (let i = 0; i < days; i++) {
       const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      const date = formatISODate(d);
+      d.setUTCDate(start.getUTCDate() + i);
+      const date = formatISODateUTC(d);
 
       // Weekly-ish seasonality
-      const weekday = d.getDay(); // 0-6
+      const weekday = d.getUTCDay(); // 0-6
       const seasonal = 0.92 + 0.12 * Math.sin(((weekday + 1) / 7) * Math.PI * 2) + (rand() * 0.1 - 0.05);
       const u = i === days - 1 ? (targetUsers - usersSum) : Math.max(0, Math.round((targetUsers / days) * seasonal));
       const s = i === days - 1 ? (targetSessions - sessionsSum) : Math.max(0, Math.round(u * baseSessionsPerUser * (0.95 + rand() * 0.1)));

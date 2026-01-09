@@ -112,64 +112,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string }) => {
-    const days = dateRangeToDays(opts.dateRange);
     // IMPORTANT: normalize the propertyId so "yesop" and its numeric form don't produce different datasets.
     const pid = normalizePropertyIdForMock(opts.propertyId);
-    const seedKey = `${opts.campaignId}:${pid}:${String(opts.dateRange || "")}`;
-    const rand = mulberry32(hashToSeed(seedKey));
+    const baseSeedKey = `${opts.campaignId}:${pid}`;
+    const days = dateRangeToDays(opts.dateRange);
 
-    // Per-day baselines (scaled by window)
-    const baseUsersPerDay = 80 + rand() * 220; // 80 - 300
-    const baseSessionsPerUser = 1.15 + rand() * 0.9; // 1.15 - 2.05
-    const basePagesPerSession = 1.2 + rand() * 2.2; // 1.2 - 3.4
-    const baseConvRate = 0.012 + rand() * 0.035; // 1.2% - 4.7%
-    const baseAOV = 45 + rand() * 210; // 45 - 255
-
-    const engagementRate = 0.38 + rand() * 0.42; // 0.38 - 0.80 (GA4 is 0-1)
-    const bounceRate = Math.max(0, Math.min(1, 1 - engagementRate + (rand() * 0.08 - 0.04)));
-
-    // Build daily series with light seasonality + deterministic noise.
-    // Use a fixed anchor date so mock data is STATIC for each date range (doesn't change day-to-day).
+    // Use a fixed anchor date so mock data is STATIC (doesn't drift day-to-day).
     const anchor = new Date(Date.UTC(2026, 0, 7, 0, 0, 0)); // 2026-01-07 (UTC)
-    const start = new Date(anchor);
-    start.setUTCDate(start.getUTCDate() - (days - 1));
 
-    const series: Array<{ date: string; users: number; sessions: number; pageviews: number; conversions: number; revenue: number }> = [];
+    // Generate a 90-day base series, then slice the last N days.
+    // This guarantees monotonic totals: 7d <= 30d <= 90d.
+    const maxDays = 90;
+    const baseStart = new Date(anchor);
+    baseStart.setUTCDate(baseStart.getUTCDate() - (maxDays - 1));
+
+    const baseRand = mulberry32(hashToSeed(`${baseSeedKey}:base`));
+    const baseUsersPerDay = 80 + baseRand() * 220; // 80 - 300
+    const baseSessionsPerUser = 1.15 + baseRand() * 0.9; // 1.15 - 2.05
+    const basePagesPerSession = 1.2 + baseRand() * 2.2; // 1.2 - 3.4
+    const baseConvRate = 0.012 + baseRand() * 0.035; // 1.2% - 4.7%
+    const baseAOV = 45 + baseRand() * 210; // 45 - 255
+
+    const engagementRate = 0.38 + baseRand() * 0.42; // 0.38 - 0.80 (GA4 is 0-1)
+    const bounceRate = Math.max(0, Math.min(1, 1 - engagementRate + (baseRand() * 0.08 - 0.04)));
+
+    const series90: Array<{ date: string; users: number; sessions: number; pageviews: number; conversions: number; revenue: number }> = [];
+    for (let i = 0; i < maxDays; i++) {
+      const d = new Date(baseStart);
+      d.setUTCDate(baseStart.getUTCDate() + i);
+      const date = formatISODateUTC(d);
+      const weekday = d.getUTCDay();
+
+      // Per-day deterministic noise based on date (so slices reuse the same day values)
+      const r = mulberry32(hashToSeed(`${baseSeedKey}:day:${date}`));
+      const seasonal = 0.92 + 0.12 * Math.sin(((weekday + 1) / 7) * Math.PI * 2) + (r() * 0.1 - 0.05);
+
+      const users = Math.max(0, Math.round(baseUsersPerDay * seasonal));
+      const sessions = Math.max(0, Math.round(users * baseSessionsPerUser * (0.95 + r() * 0.1)));
+      const pageviews = Math.max(0, Math.round(sessions * basePagesPerSession * (0.92 + r() * 0.16)));
+      const conversions = Math.max(0, Math.round(sessions * baseConvRate * (0.9 + r() * 0.2)));
+      const revenue = Number((conversions * baseAOV * (0.85 + r() * 0.3)).toFixed(2));
+
+      series90.push({ date, users, sessions, pageviews, conversions, revenue });
+    }
+
+    const series = series90.slice(maxDays - days);
+
     let usersSum = 0;
     let sessionsSum = 0;
     let pageviewsSum = 0;
     let conversionsSum = 0;
     let revenueSum = 0;
-
-    const targetUsers = Math.max(50, Math.round(baseUsersPerDay * days * (0.92 + rand() * 0.22)));
-    const targetSessions = Math.max(targetUsers, Math.round(targetUsers * baseSessionsPerUser));
-    const targetPageviews = Math.max(targetSessions, Math.round(targetSessions * basePagesPerSession));
-    const targetConversions = Math.max(0, Math.round(targetSessions * baseConvRate));
-    const targetRevenue = Math.max(0, Number((targetConversions * baseAOV * (0.9 + rand() * 0.25)).toFixed(2)));
-
-    for (let i = 0; i < days; i++) {
-      const d = new Date(start);
-      d.setUTCDate(start.getUTCDate() + i);
-      const date = formatISODateUTC(d);
-
-      // Weekly-ish seasonality
-      const weekday = d.getUTCDay(); // 0-6
-      const seasonal = 0.92 + 0.12 * Math.sin(((weekday + 1) / 7) * Math.PI * 2) + (rand() * 0.1 - 0.05);
-      const u = i === days - 1 ? (targetUsers - usersSum) : Math.max(0, Math.round((targetUsers / days) * seasonal));
-      const s = i === days - 1 ? (targetSessions - sessionsSum) : Math.max(0, Math.round(u * baseSessionsPerUser * (0.95 + rand() * 0.1)));
-      const pv = i === days - 1 ? (targetPageviews - pageviewsSum) : Math.max(0, Math.round(s * basePagesPerSession * (0.92 + rand() * 0.16)));
-      const c = i === days - 1 ? (targetConversions - conversionsSum) : Math.max(0, Math.round(s * baseConvRate * (0.9 + rand() * 0.2)));
-      const r = i === days - 1 ? Number((targetRevenue - revenueSum).toFixed(2)) : Number((c * baseAOV * (0.85 + rand() * 0.3)).toFixed(2));
-
-      series.push({ date, users: u, sessions: s, pageviews: pv, conversions: c, revenue: r });
-      usersSum += u;
-      sessionsSum += s;
-      pageviewsSum += pv;
-      conversionsSum += c;
-      revenueSum += r;
+    for (const row of series) {
+      usersSum += row.users;
+      sessionsSum += row.sessions;
+      pageviewsSum += row.pageviews;
+      conversionsSum += row.conversions;
+      revenueSum += row.revenue;
     }
 
-    // Build a plausible acquisition breakdown table: 5 channels/day, with stable dimension labels.
+    // Build acquisition breakdown from the sliced series (last N days).
     const channels = [
       { channel: "Direct", source: "(direct)", medium: "(none)", campaign: "(direct)" },
       { channel: "Organic Search", source: "google", medium: "organic", campaign: "seo" },
@@ -182,9 +184,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const breakdownRows: any[] = [];
     for (const dayRow of series) {
-      // weights per channel (slight deterministic variation)
-      const w = channels.map(() => 0.6 + rand() * 1.4);
+      // deterministic per-day weights
+      const wr = mulberry32(hashToSeed(`${baseSeedKey}:breakdown:${dayRow.date}`));
+      const w = channels.map(() => 0.6 + wr() * 1.4);
       const wSum = w.reduce((a, b) => a + b, 0) || 1;
+
       let usersRemain = dayRow.users;
       let sessionsRemain = dayRow.sessions;
       let convRemain = dayRow.conversions;
@@ -206,8 +210,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         breakdownRows.push({
           date: dayRow.date,
           ...channels[i],
-          device: devices[Math.floor(rand() * devices.length)],
-          country: countries[Math.floor(rand() * countries.length)],
+          device: devices[Math.floor(wr() * devices.length)],
+          country: countries[Math.floor(wr() * countries.length)],
           sessionsRaw: s,
           sessions: s,
           users: u,
@@ -217,8 +221,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
 
-    const eventCount = Math.max(0, Math.round(targetPageviews * (2.2 + rand() * 4.5)));
-    const eventsPerSession = targetSessions > 0 ? Number((eventCount / targetSessions).toFixed(2)) : 0;
+    const eventCount = Math.max(0, Math.round(pageviewsSum * (2.2 + baseRand() * 4.5)));
+    const eventsPerSession = sessionsSum > 0 ? Number((eventCount / sessionsSum).toFixed(2)) : 0;
 
     return {
       totals: {
@@ -237,17 +241,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessions: sessionsSum,
         pageviews: pageviewsSum,
         bounceRate,
-        averageSessionDuration: Math.max(10, Math.round(45 + rand() * 180)),
+        averageSessionDuration: Math.max(10, Math.round(45 + baseRand() * 180)),
         conversions: conversionsSum,
         revenue: Number(revenueSum.toFixed(2)),
         activeUsers: usersSum,
-        newUsers: Math.max(0, Math.round(usersSum * (0.35 + rand() * 0.4))),
-        userEngagementDuration: Math.max(0, Math.round(usersSum * (25 + rand() * 90))),
+        newUsers: Math.max(0, Math.round(usersSum * (0.35 + baseRand() * 0.4))),
+        userEngagementDuration: Math.max(0, Math.round(usersSum * (25 + baseRand() * 90))),
         engagedSessions: Math.max(0, Math.round(sessionsSum * engagementRate)),
         engagementRate,
         eventCount,
         eventsPerSession,
-        screenPageViewsPerSession: targetSessions > 0 ? Number((pageviewsSum / targetSessions).toFixed(2)) : 0,
+        screenPageViewsPerSession: sessionsSum > 0 ? Number((pageviewsSum / sessionsSum).toFixed(2)) : 0,
       },
     };
   };

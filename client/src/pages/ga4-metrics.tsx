@@ -1960,10 +1960,10 @@ export default function GA4Metrics() {
                   <div className="flex items-center space-x-3">
                     {Array.isArray(availableGA4Properties) && availableGA4Properties.length >= 1 ? (
                       <Select value={selectedGA4PropertyId} onValueChange={setSelectedGA4PropertyId}>
-                        <SelectTrigger className="w-64">
+                        <SelectTrigger className="w-64 relative z-[50]" onPointerDown={(e) => e.stopPropagation()}>
                           <SelectValue placeholder="Select GA4 property" />
                         </SelectTrigger>
-                        <SelectContent className="max-h-64">
+                        <SelectContent className="max-h-64 z-[10000]" onPointerDown={(e) => e.stopPropagation()}>
                           {availableGA4Properties.map((p) => (
                             <SelectItem key={String(p.propertyId)} value={String(p.propertyId)}>
                               {String(p.displayName || p.propertyName || p.propertyId)}
@@ -1974,10 +1974,10 @@ export default function GA4Metrics() {
                       </Select>
                     ) : null}
                 <Select value={dateRange} onValueChange={setDateRange}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-40 relative z-[50]" onPointerDown={(e) => e.stopPropagation()}>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[10000]" onPointerDown={(e) => e.stopPropagation()}>
                     <SelectItem value="7days">Last 7 days</SelectItem>
                     <SelectItem value="30days">Last 30 days</SelectItem>
                     <SelectItem value="90days">Last 90 days</SelectItem>

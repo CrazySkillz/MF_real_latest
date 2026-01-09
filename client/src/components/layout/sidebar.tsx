@@ -30,7 +30,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-background border-r border-border flex flex-col min-h-screen">
+    <aside className="w-64 shrink-0 bg-background border-r border-border flex flex-col min-h-screen">
       <div className="p-6">
         <nav className="space-y-2">
           {navItems.map((item) => {

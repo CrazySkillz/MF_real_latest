@@ -3172,6 +3172,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const forceMock = String(mock || '').toLowerCase() === '1' || String(mock || '').toLowerCase() === 'true';
+      const requestedPropertyId = propertyId ? String(propertyId) : '';
+
+      // If the user explicitly requests mock geo, allow testing even without a GA4 connection.
+      // This is for MVP/demo validation of the UI and endpoint wiring (not GA4 accuracy).
+      if (forceMock) {
+        const simulated = simulateGeo({
+          totalUsers: 2500,
+          totalSessions: 4000,
+          totalPageviews: 6000,
+          seedKey: `${id}:${requestedPropertyId || 'no-property'}:${String(dateRange)}:forced-no-connection`,
+        });
+
+        return res.json({
+          success: true,
+          ...simulated,
+          isSimulated: true,
+          simulationReason: 'Forced mock mode (?mock=1) for UI testing (no GA4 connection required).',
+          propertyId: requestedPropertyId || 'mock',
+          propertyName: requestedPropertyId ? 'Requested property (mock)' : 'Mock property',
+          displayName: requestedPropertyId ? `Mock ${requestedPropertyId}` : 'Mock GA4 Property',
+          totalProperties: 0,
+          sourceProperty: requestedPropertyId
+            ? { id: 'mock', propertyId: requestedPropertyId, displayName: `Mock ${requestedPropertyId}` }
+            : { id: 'mock', propertyId: 'mock', displayName: 'Mock GA4 Property' },
+          lastUpdated: new Date().toISOString()
+        });
+      }
 
       // Get all connections or a specific one
       let connections;
@@ -3211,45 +3238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateRange
       });
 
-      // Forced mock mode for UI testing: always return simulated geo (deterministic per property/dateRange).
-      if (forceMock) {
-        let totalUsers = 2500;
-        let totalSessions = 4000;
-        let totalPageviews = 6000;
-        try {
-          const m = await ga4Service.getMetricsWithAutoRefresh(id, storage, toGa4StartDate(String(dateRange)), primaryConnection.propertyId, campaignFilter);
-          totalUsers = Math.max(0, Math.floor(Number((m as any)?.impressions || 0)));
-          totalSessions = Math.max(0, Math.floor(Number((m as any)?.sessions || 0)));
-          totalPageviews = Math.max(0, Math.floor(Number((m as any)?.pageviews || 0)));
-          if (totalUsers < 50) totalUsers = 2500;
-          if (totalSessions < 50) totalSessions = 4000;
-          if (totalPageviews < 50) totalPageviews = 6000;
-        } catch {}
-
-        const simulated = simulateGeo({
-          totalUsers,
-          totalSessions,
-          totalPageviews,
-          seedKey: `${id}:${primaryConnection.propertyId}:${String(dateRange)}:forced`,
-        });
-
-        return res.json({
-          success: true,
-          ...simulated,
-          isSimulated: true,
-          simulationReason: 'Forced mock mode (?mock=1) for UI testing.',
-          propertyId: primaryConnection.propertyId,
-          propertyName: primaryConnection.propertyName,
-          displayName: primaryConnection.displayName,
-          totalProperties: connections.length,
-          sourceProperty: {
-            id: primaryConnection.id,
-            propertyId: primaryConnection.propertyId,
-            displayName: primaryConnection.displayName || primaryConnection.propertyName
-          },
-          lastUpdated: new Date().toISOString()
-        });
-      }
+      // (mock=1 handled above; from here onward we have a GA4 connection)
 
       // Try to get geographic data with automatic token refresh on failure
       let geographicData;

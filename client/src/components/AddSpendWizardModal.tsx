@@ -560,7 +560,7 @@ export function AddSpendWizardModal(props: {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, currency: props.currency || "USD" }),
+        body: JSON.stringify({ amount, currency: props.currency || "USD", dateRange: props.dateRange || "30days" }),
       });
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save manual spend");

@@ -408,6 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const amount = parseNum((req.body as any)?.amount);
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
+      const dateRange = String((req.body as any)?.dateRange || (req.query as any)?.dateRange || "30days");
       if (!(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
@@ -422,21 +423,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         displayName: "Manual spend",
         currency: cur,
         // Persist the last manual amount so the edit modal (pencil) can prefill the input.
-        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur }),
+        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, dateRange }),
         isActive: true,
       } as any);
 
-      const now = new Date();
-      const date = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
-      await storage.createSpendRecords([{
-        campaignId,
-        spendSourceId: source.id,
-        date,
-        spend: amount.toFixed(2) as any,
-        currency: cur,
-      } as any]);
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const days = enumerateDates(startDate, endDate);
+      if (days.length === 0) {
+        return res.status(400).json({ success: false, error: "Invalid date range" });
+      }
 
-      res.json({ success: true, sourceId: source.id, date, amount, currency: cur });
+      // Distribute spend evenly across the selected range (no date column provided).
+      // Ensure cents add up exactly by putting the remainder on the final day.
+      const totalCents = Math.round(Number(amount.toFixed(2)) * 100);
+      const baseCents = Math.floor(totalCents / days.length);
+      const remainder = totalCents - baseCents * days.length;
+
+      const records = days.map((date, idx) => {
+        const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
+        return {
+          campaignId,
+          spendSourceId: source.id,
+          date,
+          spend: (cents / 100).toFixed(2) as any,
+          currency: cur,
+        } as any;
+      });
+
+      await storage.createSpendRecords(records);
+
+      res.json({ success: true, sourceId: source.id, startDate, endDate, days: days.length, amount: Number(amount.toFixed(2)), currency: cur });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process manual spend" });
     }

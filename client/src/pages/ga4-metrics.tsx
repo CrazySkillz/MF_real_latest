@@ -1830,6 +1830,202 @@ export default function GA4Metrics() {
     return { total: items.length, scored, onTrack, needsAttention, behind, avgPct };
   }, [benchmarks]);
 
+  type InsightItem = {
+    id: string;
+    severity: "high" | "medium" | "low";
+    title: string;
+    description: string;
+    recommendation?: string;
+  };
+
+  const insights = useMemo<InsightItem[]>(() => {
+    const out: InsightItem[] = [];
+
+    // 1) Actionable insights from KPI performance
+    for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
+      const p = computeKpiProgress(k);
+      const status = String(p?.status || "");
+      if (status !== "behind" && status !== "needs_attention") continue;
+
+      const sev: InsightItem["severity"] = status === "behind" ? "high" : "medium";
+      const metric = String((k as any)?.metric || (k as any)?.name || "KPI");
+      const effectiveTarget = (getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? "";
+
+      out.push({
+        id: `kpi:${String((k as any)?.id || metric)}`,
+        severity: sev,
+        title: `${metric} is ${status === "behind" ? "Behind" : "Needs Attention"}`,
+        description: `Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String((k as any)?.unit || "%"))} vs target ${formatNumberByUnit(
+          String(effectiveTarget),
+          String((k as any)?.unit || "%")
+        )} (${String(p?.labelPct || "0")}% progress).`,
+        recommendation:
+          metric.toLowerCase().includes("conversion")
+            ? "Check landing page changes, funnel breaks, and traffic mix shifts (source/medium)."
+            : metric.toLowerCase().includes("revenue")
+              ? "Check top channels/campaigns for traffic or conversion drops; validate revenue tracking configuration."
+              : metric.toLowerCase() === "cpa"
+                ? "Audit conversion volume and spend allocation; verify conversion events are firing correctly."
+                : "Review the primary drivers for this KPI and adjust budgets/creative/landing pages accordingly.",
+      });
+    }
+
+    // 2) Actionable insights from Benchmark performance
+    for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
+      const p = computeBenchmarkProgress(b);
+      const status = String(p?.status || "");
+      if (status !== "behind" && status !== "needs_attention") continue;
+
+      const sev: InsightItem["severity"] = status === "behind" ? "high" : "medium";
+      const metric = String((b as any)?.metric || (b as any)?.name || "Benchmark");
+      out.push({
+        id: `bench:${String((b as any)?.id || metric)}`,
+        severity: sev,
+        title: `${String((b as any)?.name || metric)} is ${status === "behind" ? "Behind benchmark" : "Below benchmark"}`,
+        description: `Current ${formatBenchmarkValue(getBenchmarkDisplayCurrentValue(b), String((b as any)?.unit || "%"))} vs benchmark ${formatBenchmarkValue(
+          String((b as any)?.benchmarkValue || "0"),
+          String((b as any)?.unit || "%")
+        )} (${String(p?.labelPct || "0")}% to benchmark).`,
+        recommendation:
+          metric.toLowerCase().includes("conversion")
+            ? "Focus on landing page UX and traffic quality; validate conversion tagging."
+            : metric.toLowerCase().includes("engagement")
+              ? "Review content relevance and landing page engagement; check mobile performance."
+              : "Identify which channels/campaigns are underperforming and iterate targeting/creative/landing page.",
+      });
+    }
+
+    // 3) Anomaly detection (WoW) using GA4 breakdown rows (requires >= 14 days of ISO-dated rows)
+    const rows = Array.isArray((ga4Breakdown as any)?.rows) ? ((ga4Breakdown as any).rows as any[]) : [];
+    const daily = new Map<string, { sessions: number; conversions: number; revenue: number }>();
+    for (const r of rows) {
+      const d = String(r?.date || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+      const sessions = Number(r?.sessions || 0);
+      const conversions = Number(r?.conversions || 0);
+      const revenue = Number(r?.revenue || 0);
+      const cur = daily.get(d) || { sessions: 0, conversions: 0, revenue: 0 };
+      cur.sessions += Number.isFinite(sessions) ? sessions : 0;
+      cur.conversions += Number.isFinite(conversions) ? conversions : 0;
+      cur.revenue += Number.isFinite(revenue) ? revenue : 0;
+      daily.set(d, cur);
+    }
+
+    const dates = Array.from(daily.keys()).sort();
+    if (dates.length >= 14) {
+      const last7 = new Set(dates.slice(-7));
+      const prev7 = new Set(dates.slice(-14, -7));
+
+      const sum = (set: Set<string>) => {
+        let sessions = 0;
+        let conversions = 0;
+        let revenue = 0;
+        Array.from(set).forEach((d) => {
+          const v = daily.get(d);
+          if (!v) return;
+          sessions += v.sessions;
+          conversions += v.conversions;
+          revenue += v.revenue;
+        });
+        return { sessions, conversions, revenue };
+      };
+      const a = sum(last7);
+      const b = sum(prev7);
+      const crA = a.sessions > 0 ? (a.conversions / a.sessions) * 100 : 0;
+      const crB = b.sessions > 0 ? (b.conversions / b.sessions) * 100 : 0;
+      const crDeltaPct = crB > 0 ? ((crA - crB) / crB) * 100 : 0;
+
+      if (crB > 0 && crDeltaPct <= -15) {
+        out.push({
+          id: "anomaly:cr:wow",
+          severity: "high",
+          title: `Conversion rate dropped ${Math.abs(crDeltaPct).toFixed(1)}% week-over-week`,
+          description: `Last 7d ${crA.toFixed(2)}% vs prior 7d ${crB.toFixed(2)}% (GA4 sessions/conversions).`,
+          recommendation:
+            "Check landing page changes, conversion event configuration, and traffic mix by source/medium. If paid traffic is involved, validate targeting/creative changes.",
+        });
+      }
+
+      // Engagement depth proxy: pageviews per session (from GA4 time series if available)
+      const ts = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]) : [];
+      const pvByDate = new Map<string, number>();
+      const sByDate = new Map<string, number>();
+      for (const p of ts) {
+        const d = String((p as any)?.date || "").trim();
+        if (!d) continue;
+        pvByDate.set(d, Number((p as any)?.pageviews || 0));
+        sByDate.set(d, Number((p as any)?.sessions || 0));
+      }
+      const avgPvPerSession = (set: Set<string>) => {
+        let pv = 0;
+        let s = 0;
+        Array.from(set).forEach((d) => {
+          pv += Number(pvByDate.get(d) || 0);
+          s += Number(sByDate.get(d) || 0);
+        });
+        return s > 0 ? pv / s : 0;
+      };
+      const pvpsA = avgPvPerSession(last7);
+      const pvpsB = avgPvPerSession(prev7);
+      const pvpsDelta = pvpsB > 0 ? ((pvpsA - pvpsB) / pvpsB) * 100 : 0;
+      if (pvpsB > 0 && pvpsDelta <= -20) {
+        out.push({
+          id: "anomaly:pvps:wow",
+          severity: "medium",
+          title: `Engagement depth decreased ${Math.abs(pvpsDelta).toFixed(1)}% week-over-week`,
+          description: `Pageviews/session last 7d ${pvpsA.toFixed(2)} vs prior 7d ${pvpsB.toFixed(2)}.`,
+          recommendation: "Review landing page relevance, page speed, and mobile UX; check if traffic sources shifted toward lower-intent audiences.",
+        });
+      }
+
+      // Source-specific regression example (LinkedIn-tagged traffic) using breakdown rows
+      const group = (set: Set<string>, predicate: (r: any) => boolean) => {
+        let sessions = 0;
+        let conversions = 0;
+        for (const r of rows) {
+          const d = String(r?.date || "").trim();
+          if (!set.has(d)) continue;
+          if (!predicate(r)) continue;
+          sessions += Number(r?.sessions || 0);
+          conversions += Number(r?.conversions || 0);
+        }
+        const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
+        return { sessions, conversions, cr };
+      };
+      const linkedinPred = (r: any) => {
+        const src = String(r?.source || "").toLowerCase();
+        const med = String(r?.medium || "").toLowerCase();
+        const ch = String(r?.channel || "").toLowerCase();
+        return src.includes("linkedin") || med.includes("linkedin") || ch.includes("linkedin");
+      };
+      const lA = group(last7, linkedinPred);
+      const lB = group(prev7, linkedinPred);
+      const lDelta = lB.cr > 0 ? ((lA.cr - lB.cr) / lB.cr) * 100 : 0;
+      if (lB.sessions >= 50 && lA.sessions >= 50 && lDelta <= -15) {
+        out.push({
+          id: "anomaly:linkedin:cr:wow",
+          severity: "high",
+          title: `Conversion rate from LinkedIn-tagged traffic dropped ${Math.abs(lDelta).toFixed(1)}% week-over-week`,
+          description: `Last 7d ${lA.cr.toFixed(2)}% vs prior 7d ${lB.cr.toFixed(2)}% (LinkedIn-tagged source/medium).`,
+          recommendation:
+            "Check if LinkedIn targeting/creative changed, verify UTMs are consistent, and review landing page alignment for LinkedIn audiences.",
+        });
+      }
+    } else if (dates.length > 0) {
+      out.push({
+        id: "anomaly:not-enough-history",
+        severity: "low",
+        title: "Anomaly detection needs more history",
+        description: `Need at least 14 days of daily data in the selected range to compute week-over-week deltas. Available days: ${dates.length}.`,
+      });
+    }
+
+    // Stable ordering: high -> medium -> low
+    const order = { high: 0, medium: 1, low: 2 } as const;
+    out.sort((a, b) => order[a.severity] - order[b.severity]);
+    return out;
+  }, [platformKPIs, benchmarks, ga4Breakdown, ga4TimeSeries, breakdownTotals, ga4Metrics, financialSpend]);
+
   const getDateRangeLabel = (range: string) => {
     switch (String(range || "").toLowerCase()) {
       case "7days":
@@ -2195,7 +2391,7 @@ export default function GA4Metrics() {
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
-                  <TabsTrigger value="property-comparison">Property Comparison</TabsTrigger>
+                  <TabsTrigger value="insights">Insights</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview">
@@ -3875,61 +4071,96 @@ export default function GA4Metrics() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="property-comparison">
+                <TabsContent value="insights">
                   <div className="space-y-6">
-                    {/* Property Comparison Header */}
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Multi-Property Performance</h3>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Insights</h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                        Compare performance across all connected Google Analytics properties for {campaign?.name}
+                        Actionable insights from KPI + Benchmark performance, plus anomaly detection from daily deltas.
                       </p>
                     </div>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        {connectedPropertyCount <= 1 ? (
-                          <div className="space-y-4">
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
-                              This campaign has a single GA4 property connected. Showing the current property’s metrics.
-                            </p>
-                            <div className="overflow-auto border rounded-md">
-                              <table className="w-full text-sm">
-                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
-                                  <tr>
-                                    <th className="text-left p-3">Property</th>
-                                    <th className="text-right p-3">Sessions</th>
-                                    <th className="text-right p-3">Pageviews</th>
-                                    <th className="text-right p-3">Conversions</th>
-                                    <th className="text-right p-3">Revenue</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  <tr className="border-b">
-                                    <td className="p-3">
-                                      <div className="font-medium text-slate-900 dark:text-white">
-                                        {(ga4Connection?.connections?.[0]?.displayName || ga4Connection?.connections?.[0]?.propertyName) ?? 'Primary property'}
-                                      </div>
-                                      <div className="text-xs text-slate-500">Property ID: {ga4Connection?.connections?.[0]?.propertyId}</div>
-                                    </td>
-                                    <td className="p-3 text-right">{formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}</td>
-                                    <td className="p-3 text-right">{formatNumber(ga4Metrics?.pageviews || 0)}</td>
-                                    <td className="p-3 text-right">{formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0)}</td>
-                                    <td className="p-3 text-right">
-                                      ${breakdownTotals.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </table>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <Card>
+                        <CardContent className="p-5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total insights</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">{insights.length}</p>
                             </div>
+                            <BarChart3 className="w-7 h-7 text-slate-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">High priority</p>
+                              <p className="text-2xl font-bold text-red-600">
+                                {insights.filter((i) => i.severity === "high").length}
+                              </p>
+                            </div>
+                            <AlertTriangle className="w-7 h-7 text-red-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs attention</p>
+                              <p className="text-2xl font-bold text-amber-600">
+                                {insights.filter((i) => i.severity === "medium").length}
+                              </p>
+                            </div>
+                            <TrendingDown className="w-7 h-7 text-amber-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card className="border-slate-200 dark:border-slate-700">
+                      <CardHeader>
+                        <CardTitle>What changed, what to do next</CardTitle>
+                        <CardDescription>
+                          We compare the last 7 days vs the previous 7 days (when enough daily history exists) and cross-check KPI/Benchmark performance.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {insights.length === 0 ? (
+                          <div className="text-sm text-slate-600 dark:text-slate-400">
+                            No issues detected for the selected range. Create KPIs/Benchmarks to unlock more insights.
                           </div>
                         ) : (
-                          <div className="space-y-2">
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
-                              Connected properties are listed above. Per-property metrics comparison is not shown here to avoid displaying placeholder data.
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-500">
-                              Tip: set a property as Primary, then use the date range selector to view its totals.
-                            </p>
+                          <div className="space-y-3">
+                            {insights.slice(0, 12).map((i) => {
+                              const badgeClass =
+                                i.severity === "high"
+                                  ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
+                                  : i.severity === "medium"
+                                    ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
+                                    : "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
+                              const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : "Low";
+                              return (
+                                <div key={i.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <div className="font-semibold text-slate-900 dark:text-white">{i.title}</div>
+                                        <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
+                                      </div>
+                                      <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{i.description}</div>
+                                      {i.recommendation ? (
+                                        <div className="text-sm text-slate-700 dark:text-slate-300 mt-2">
+                                          <span className="font-medium">Next step:</span> {i.recommendation}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </CardContent>

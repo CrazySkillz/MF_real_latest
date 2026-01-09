@@ -360,6 +360,9 @@ export default function GA4Metrics() {
         body: JSON.stringify({
           ...data,
           campaignId, // Scope KPI to this MetricMind campaign
+          // Persist the window the target was defined for so progress/status remains correct when dateRange changes.
+          timeframe: (String(dateRange || "").toLowerCase().includes("7") ? "weekly" : String(dateRange || "").toLowerCase().includes("90") ? "quarterly" : "monthly"),
+          trackingPeriod: (String(dateRange || "").toLowerCase().includes("7") ? 7 : String(dateRange || "").toLowerCase().includes("90") ? 90 : 30),
           // Prefer the user-visible current value (prefilled live when selecting a template).
           // Fallback to the computed value if for any reason the field is empty.
           currentValue: stripNumberFormatting((data as any)?.currentValue) || calculatedValue,
@@ -398,6 +401,9 @@ export default function GA4Metrics() {
         body: JSON.stringify({
           ...payload.data,
           campaignId,
+          // Preserve the original target window unless it was never set (legacy KPIs).
+          timeframe: (editingKPI as any)?.timeframe || (String(dateRange || "").toLowerCase().includes("7") ? "weekly" : String(dateRange || "").toLowerCase().includes("90") ? "quarterly" : "monthly"),
+          trackingPeriod: (editingKPI as any)?.trackingPeriod || (String(dateRange || "").toLowerCase().includes("7") ? 7 : String(dateRange || "").toLowerCase().includes("90") ? 90 : 30),
           currentValue: stripNumberFormatting((payload.data as any)?.currentValue),
           targetValue: stripNumberFormatting((payload.data as any)?.targetValue),
         }),
@@ -1359,6 +1365,35 @@ export default function GA4Metrics() {
   const financialROI = financialSpend > 0 ? ((financialRevenue - financialSpend) / financialSpend) * 100 : 0;
   const financialCPA = financialConversions > 0 ? financialSpend / financialConversions : 0;
 
+  const dateRangeToDays = (dr: string): number => {
+    const v = String(dr || "").toLowerCase();
+    if (v.includes("7")) return 7;
+    if (v.includes("30")) return 30;
+    if (v.includes("90")) return 90;
+    return 30;
+  };
+
+  // Cumulative metrics should have targets that scale with the selected date range window.
+  // Non-cumulative ratios/percentages (ROAS/ROI/CPA/Conversion Rate/Engagement Rate) should NOT scale.
+  const kpiIsCumulative = (kpi: any) => {
+    const n = String(kpi?.metric || kpi?.name || "").trim().toLowerCase();
+    return n === "revenue" || n === "total users" || n === "total sessions" || n === "total conversions";
+  };
+
+  const getKpiEffectiveTarget = (kpi: any) => {
+    const rawTarget = parseFloat(String(kpi?.targetValue || "0"));
+    const safeTarget = Number.isFinite(rawTarget) ? rawTarget : 0;
+    const baseDaysRaw = Number((kpi as any)?.trackingPeriod || 0);
+    const baseDays = Number.isFinite(baseDaysRaw) && baseDaysRaw > 0 ? baseDaysRaw : 0;
+    const viewDays = dateRangeToDays(dateRange);
+
+    if (!kpiIsCumulative(kpi)) return { effectiveTarget: safeTarget, baseDays, viewDays, scaled: false };
+    if (!(safeTarget > 0) || !(baseDays > 0) || baseDays === viewDays) {
+      return { effectiveTarget: safeTarget, baseDays, viewDays, scaled: false };
+    }
+    return { effectiveTarget: safeTarget * (viewDays / baseDays), baseDays, viewDays, scaled: true };
+  };
+
   const getLiveKpiValue = (kpi: any): string => {
     const name = String(kpi?.metric || kpi?.name || "").trim();
     // Use the same sources as the GA4 Overview:
@@ -1387,9 +1422,9 @@ export default function GA4Metrics() {
 
   const computeKpiProgress = (kpi: any) => {
     const current = parseFloat(String(getLiveKpiValue(kpi) || "0"));
-    const target = parseFloat(String(kpi?.targetValue || "0"));
     const safeCurrent = Number.isFinite(current) ? current : 0;
-    const safeTarget = Number.isFinite(target) ? target : 0;
+    const { effectiveTarget } = getKpiEffectiveTarget(kpi);
+    const safeTarget = Number.isFinite(effectiveTarget) ? effectiveTarget : 0;
 
     // Direction: most exec KPIs here are "higher is better".
     // CPA is "lower is better" (cost per conversion).
@@ -1630,10 +1665,11 @@ export default function GA4Metrics() {
       const items = Array.isArray(platformKPIs) ? platformKPIs : [];
       for (const k of items) {
         const p = computeKpiProgress(k);
+        const t = getKpiEffectiveTarget(k);
         const statusLabel = p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
         write(
           `${String(k?.name || "")} • Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String(k?.unit || "%"))} • Target ${formatNumberByUnit(
-            String(k?.targetValue || ""),
+            String(t.effectiveTarget || ""),
             String(k?.unit || "%")
           )} • Progress ${p.pct.toFixed(1)}% • ${statusLabel}`,
           10
@@ -2684,7 +2720,7 @@ export default function GA4Metrics() {
                               </div>
                               <div className="flex items-center space-x-2">
                                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                                  {geographicData?.topCountries?.length || 20} countries shown
+                                  {geographicData?.topCountries?.length || 20} countries
                                 </span>
                               </div>
                             </div>
@@ -2940,6 +2976,7 @@ export default function GA4Metrics() {
                           <div className="grid gap-4 md:grid-cols-2">
                             {platformKPIs.map((kpi: any) => {
                               const p = computeKpiProgress(kpi);
+                              const t = getKpiEffectiveTarget(kpi);
                               const metricKey = String(kpi?.metric || kpi?.name || "");
                               const { Icon, color } = getKpiIcon(metricKey);
                               const statusLabel =
@@ -3029,8 +3066,13 @@ export default function GA4Metrics() {
                                       <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
                                         <div className="text-xs text-slate-500 dark:text-slate-400">Target</div>
                                         <div className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
-                                          {formatValue(kpi.targetValue, kpi.unit)}
+                                          {formatValue(String(t.effectiveTarget), kpi.unit)}
                                         </div>
+                                        {t.scaled ? (
+                                          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                            Target set for {t.baseDays}d, scaled to {t.viewDays}d
+                                          </div>
+                                        ) : null}
                                       </div>
                                     </div>
 

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, Download, FileText, Settings } from "lucide-react";
@@ -27,6 +27,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent } from "@shared/metric-math";
 
 interface Campaign {
   id: string;
@@ -105,6 +106,7 @@ export default function GA4Metrics() {
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
   const [dateRange, setDateRange] = useState("7days");
+  const [activeTab, setActiveTab] = useState<string>("overview");
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const [showKPIDialog, setShowKPIDialog] = useState(false);
   const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
@@ -1154,6 +1156,7 @@ export default function GA4Metrics() {
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics", dateRange, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     // Auto-refresh: users shouldn't need to refresh the page to get new GA4 data.
+    placeholderData: keepPreviousData,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -1235,6 +1238,7 @@ export default function GA4Metrics() {
   const { data: ga4TimeSeries, isLoading: timeSeriesLoading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-timeseries", dateRange, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    placeholderData: keepPreviousData,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -1257,6 +1261,7 @@ export default function GA4Metrics() {
   const { data: ga4Breakdown, isLoading: breakdownLoading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    placeholderData: keepPreviousData,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -1362,8 +1367,8 @@ export default function GA4Metrics() {
   const financialConversions = Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0);
   const financialSpend = Number((totalSpendForFinancials > 0 ? totalSpendForFinancials : (usingAutoLinkedInSpend ? linkedInSpendForFinancials : 0)) || 0);
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
-  const financialROI = financialSpend > 0 ? ((financialRevenue - financialSpend) / financialSpend) * 100 : 0;
-  const financialCPA = financialConversions > 0 ? financialSpend / financialConversions : 0;
+  const financialROI = computeRoiPercent(financialRevenue, financialSpend);
+  const financialCPA = computeCpa(financialSpend, financialConversions);
 
   const dateRangeToDays = (dr: string): number => {
     const v = String(dr || "").toLowerCase();
@@ -1404,7 +1409,7 @@ export default function GA4Metrics() {
     if (name === "Conversion Rate") {
       const s = Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0);
       const c = Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0);
-      return s > 0 ? ((c / s) * 100).toFixed(2) : "0.00";
+      return computeConversionRatePercent(c, s).toFixed(2);
     }
     if (name === "Engagement Rate") {
       const er = Number((ga4Metrics as any)?.engagementRate || 0);
@@ -1413,9 +1418,9 @@ export default function GA4Metrics() {
     if (name === "Total Users") return String(Math.round(Number(breakdownTotals.users || ga4Metrics?.users || 0)));
     if (name === "Total Sessions") return String(Math.round(Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0)));
     // Present ROAS as a percentage (Revenue ÷ Spend × 100) for consistency with modal units.
-    if (name === "ROAS") return financialSpend > 0 ? (Number(financialROAS || 0) * 100).toFixed(2) : "0.00";
-    if (name === "ROI") return financialSpend > 0 ? Number(financialROI || 0).toFixed(2) : "0.00";
-    if (name === "CPA") return financialConversions > 0 ? Number(financialCPA || 0).toFixed(2) : "0.00";
+    if (name === "ROAS") return computeRoasPercent(financialRevenue, financialSpend).toFixed(2);
+    if (name === "ROI") return Number(financialROI || 0).toFixed(2);
+    if (name === "CPA") return Number(financialCPA || 0).toFixed(2);
     // Fallback to stored value for any legacy/custom KPI.
     return String(kpi?.currentValue ?? "0.00");
   };
@@ -1430,33 +1435,9 @@ export default function GA4Metrics() {
     // CPA is "lower is better" (cost per conversion).
     const name = String(kpi?.metric || kpi?.name || "").toLowerCase();
     const lowerIsBetter = name === "cpa";
-
-    let ratio = 0;
-    if (lowerIsBetter) {
-      // progress = target / current (<= target is good). Clamp later.
-      ratio = safeCurrent > 0 ? (safeTarget / safeCurrent) : 0;
-    } else {
-      ratio = safeTarget > 0 ? (safeCurrent / safeTarget) : 0;
-    }
-
-    const pct = Math.max(0, Math.min(ratio * 100, 100));
-    const status =
-      ratio >= 0.9 ? "on_track" :
-      ratio >= 0.7 ? "needs_attention" :
-      "behind";
-    const color =
-      ratio >= 0.9 ? "bg-green-500" :
-      ratio >= 0.7 ? "bg-yellow-500" :
-      "bg-red-500";
-
-    return {
-      ratio,
-      pct,
-      // Display as a completion percent (0-100), not raw ratio% (which can be 1000%+ and mislead execs).
-      labelPct: pct.toFixed(1),
-      status,
-      color,
-    };
+    const p = computeProgress({ current: safeCurrent, target: safeTarget, lowerIsBetter });
+    const color = p.ratio >= 0.9 ? "bg-green-500" : p.ratio >= 0.7 ? "bg-yellow-500" : "bg-red-500";
+    return { ...p, color };
   };
 
   const computeBenchmarkProgress = (benchmark: any) => {
@@ -2133,16 +2114,16 @@ export default function GA4Metrics() {
 
           {/* Diagnostics dialog removed from main GA4 page UI */}
 
-          {ga4Loading ? (
+          {ga4Loading && !ga4Metrics ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
               ))}
             </div>
-          ) : ga4Metrics || !ga4Loading ? (
+          ) : (
             <>
               {/* Charts and Detailed Analytics */}
-              <Tabs defaultValue="overview" className="space-y-6">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                 <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
@@ -3900,12 +3881,6 @@ export default function GA4Metrics() {
 
               </Tabs>
             </>
-          ) : (
-            <div className="text-center py-8">
-              <div className="text-slate-500 dark:text-slate-400 mb-4">
-                No GA4 connection found for this campaign
-              </div>
-            </div>
           )}
         </main>
       </div>

@@ -1042,9 +1042,12 @@ export default function GA4Metrics() {
     },
   });
 
+  const ga4PropsFromCheck: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean }> =
+    Array.isArray((ga4Connection as any)?.connections) ? (ga4Connection as any).connections : [];
+  const ga4PropsFromAll: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean }> =
+    Array.isArray((allGA4Connections as any)?.connections) ? (allGA4Connections as any).connections : [];
   const availableGA4Properties: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean }> =
-    (Array.isArray((ga4Connection as any)?.connections) ? (ga4Connection as any).connections : []) ||
-    (Array.isArray((allGA4Connections as any)?.connections) ? (allGA4Connections as any).connections : []);
+    ga4PropsFromCheck.length > 0 ? ga4PropsFromCheck : ga4PropsFromAll;
 
   // Always scope GA4 metrics to a single selected property (default: primary).
   useEffect(() => {
@@ -1919,7 +1922,7 @@ export default function GA4Metrics() {
               </div>
               
                   <div className="flex items-center space-x-3">
-                    {Array.isArray(availableGA4Properties) && availableGA4Properties.length > 1 ? (
+                    {Array.isArray(availableGA4Properties) && availableGA4Properties.length >= 1 ? (
                       <Select value={selectedGA4PropertyId} onValueChange={setSelectedGA4PropertyId}>
                         <SelectTrigger className="w-64">
                           <SelectValue placeholder="Select GA4 property" />

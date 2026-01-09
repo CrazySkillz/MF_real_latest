@@ -256,6 +256,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
   };
 
+  const parseGA4CampaignFilter = (raw: any): string | string[] | undefined => {
+    if (raw === null || raw === undefined) return undefined;
+    const s = String(raw || "").trim();
+    if (!s) return undefined;
+    // Backward compatible:
+    // - Legacy: single string (e.g., "yesy_campaign")
+    // - New: JSON array string (e.g., ["brand_search","retargeting"])
+    if (s.startsWith("[") && s.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) {
+          const vals = parsed.map((v) => String(v || "").trim()).filter((v) => !!v);
+          return vals.length > 0 ? vals : undefined;
+        }
+      } catch {
+        // fall through to treat as single string
+      }
+    }
+    return s;
+  };
+
   const normalizePropertyIdForMock = (pid: string) => {
     const raw = String(pid || "").trim();
     if (!raw) return raw;
@@ -1199,7 +1220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const campaign = await storage.getCampaign(campaignId);
-      const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       
       // Get all connections or a specific one
       let connections;
@@ -1310,7 +1331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
 
       const campaign = await storage.getCampaign(campaignId);
-      const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
       // Convert date range to GA4 format
       let ga4DateRange = '30daysAgo';
@@ -3103,7 +3124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       const campaign = await storage.getCampaign(campaignId);
-      const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       
       // Get all connections or a specific one
       let connections: any[] = [];
@@ -3212,7 +3233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
       const debug = String(req.query.debug || '').toLowerCase() === '1' || String(req.query.debug || '').toLowerCase() === 'true';
       const campaign = await storage.getCampaign(campaignId);
-      const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
@@ -3302,7 +3323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { dateRange = '7days', propertyId, mock } = req.query;
       const campaign = await storage.getCampaign(id);
-      const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
       const toGa4StartDate = (dr: string) => {
         const v = String(dr || '').toLowerCase();
@@ -4056,7 +4077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       try {
         const ga4DateRange = toGa4DateRange(dateRange);
-        const campaignFilter = (campaign as any)?.ga4CampaignFilter ? String((campaign as any).ga4CampaignFilter) : undefined;
+        const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
         const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, undefined, 2000, campaignFilter);
         ga4Totals = {
           connected: true,

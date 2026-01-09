@@ -16,7 +16,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Label, Tooltip, Legend } from "recharts";
+import { Label } from "@/components/ui/label";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
 import InteractiveWorldMap from "@/components/InteractiveWorldMap";
 import SimpleGeographicMap from "@/components/SimpleGeographicMap";
 import WorldMapSVG from "@/components/WorldMapSVG";
@@ -108,6 +109,9 @@ export default function GA4Metrics() {
   const [dateRange, setDateRange] = useState("7days");
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
+  const [showGa4CampaignPicker, setShowGa4CampaignPicker] = useState(false);
+  const [ga4CampaignSearch, setGa4CampaignSearch] = useState("");
+  const [selectedGa4Campaigns, setSelectedGa4Campaigns] = useState<string[]>([]);
   const [showKPIDialog, setShowKPIDialog] = useState(false);
   const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
   const [editingKPI, setEditingKPI] = useState<any>(null);
@@ -157,6 +161,21 @@ export default function GA4Metrics() {
   const queryClient = useQueryClient();
 
   const [selectedGA4PropertyId, setSelectedGA4PropertyId] = useState<string>("");
+
+  const parseStoredGa4CampaignFilter = (raw: any): string[] => {
+    if (raw === null || raw === undefined) return [];
+    const s = String(raw || "").trim();
+    if (!s) return [];
+    if (s.startsWith("[") && s.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed.map((v) => String(v || "").trim()).filter(Boolean);
+      } catch {
+        // ignore
+      }
+    }
+    return [s];
+  };
 
   // Spend is now persisted server-side (via the Add Spend wizard), so we no longer store
   // manual overrides or spend mode in localStorage.
@@ -1008,6 +1027,37 @@ export default function GA4Metrics() {
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
+  });
+
+  const selectedGa4CampaignFilterList = useMemo(() => {
+    return parseStoredGa4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+  }, [campaign]);
+
+  const ga4CampaignFilterLabel = useMemo(() => {
+    const items = selectedGa4CampaignFilterList;
+    if (!items || items.length === 0) return "All campaigns";
+    if (items.length === 1) return items[0];
+    if (items.length <= 3) return items.join(" + ");
+    return `${items.slice(0, 2).join(" + ")} + ${items.length - 2} more`;
+  }, [selectedGa4CampaignFilterList]);
+
+  const { data: ga4CampaignValuesResp } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-campaign-values", selectedGA4PropertyId],
+    enabled: !!campaignId && !!selectedGA4PropertyId,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/ga4-campaign-values?dateRange=30days&limit=200&propertyId=${encodeURIComponent(
+          String(selectedGA4PropertyId)
+        )}`
+      );
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) return null;
+      return json;
+    },
   });
 
   // Helper: safely parse numbers from API payloads
@@ -1954,6 +2004,19 @@ export default function GA4Metrics() {
                         </SelectContent>
                       </Select>
                     ) : null}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedGa4Campaigns(selectedGa4CampaignFilterList);
+                        setGa4CampaignSearch("");
+                        setShowGa4CampaignPicker(true);
+                      }}
+                      disabled={!selectedGA4PropertyId}
+                      title={!selectedGA4PropertyId ? "Select a GA4 property first" : "Select GA4 campaigns to import"}
+                    >
+                      Campaigns
+                    </Button>
                 <Select value={dateRange} onValueChange={setDateRange}>
                   <SelectTrigger className="w-40 relative z-[50]" onPointerDown={(e) => e.stopPropagation()}>
                     <SelectValue />
@@ -1971,10 +2034,13 @@ export default function GA4Metrics() {
               {provenancePropertyId ? ` (Property ID: ${provenancePropertyId})` : ""}
               {" • "}
               <span className="font-medium text-slate-600 dark:text-slate-300">Range:</span> {selectedPeriodLabel}
-              {provenanceCampaignFilter ? (
+              {(
+                (Array.isArray(selectedGa4CampaignFilterList) && selectedGa4CampaignFilterList.length > 0) ||
+                provenanceCampaignFilter
+              ) ? (
                 <>
                   {" • "}
-                  <span className="font-medium text-slate-600 dark:text-slate-300">Campaign filter:</span> {provenanceCampaignFilter}
+                  <span className="font-medium text-slate-600 dark:text-slate-300">Campaign:</span> {ga4CampaignFilterLabel}
                 </>
               ) : null}
               {provenanceLastUpdated ? (
@@ -2625,12 +2691,8 @@ export default function GA4Metrics() {
                           <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={timeSeriesData}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={8}>
-                                <Label value="Date" position="insideBottom" offset={-5} style={{ fill: "#64748b", fontSize: 12 }} />
-                              </XAxis>
-                              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => formatNumber(Number(v) || 0)}>
-                                <Label value="Sessions" angle={-90} position="insideLeft" style={{ fill: "#64748b", fontSize: 12, textAnchor: "middle" }} />
-                              </YAxis>
+                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={8} />
+                              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => formatNumber(Number(v) || 0)} />
                               <Tooltip
                                 formatter={(value: any, name: any) => [formatNumber(Number(value) || 0), String(name || "Sessions")]}
                                 labelFormatter={(label) => `Date: ${label}`}
@@ -2658,12 +2720,8 @@ export default function GA4Metrics() {
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={timeSeriesData}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={8}>
-                                <Label value="Date" position="insideBottom" offset={-5} style={{ fill: "#64748b", fontSize: 12 }} />
-                              </XAxis>
-                              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => formatNumber(Number(v) || 0)}>
-                                <Label value="Count" angle={-90} position="insideLeft" style={{ fill: "#64748b", fontSize: 12, textAnchor: "middle" }} />
-                              </YAxis>
+                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={8} />
+                              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => formatNumber(Number(v) || 0)} />
                               <Tooltip
                                 formatter={(value: any, name: any) => [formatNumber(Number(value) || 0), String(name || "")]}
                                 labelFormatter={(label) => `Date: ${label}`}
@@ -4601,6 +4659,128 @@ export default function GA4Metrics() {
                     : createGA4ReportMutation.isPending
                     ? "Saving..."
                     : "Save Report"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* GA4 Campaign Picker (multi-select) */}
+      <Dialog
+        open={showGa4CampaignPicker}
+        onOpenChange={(open) => {
+          setShowGa4CampaignPicker(open);
+          if (!open) setGa4CampaignSearch("");
+        }}
+      >
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle>Select GA4 campaigns to import</DialogTitle>
+            <DialogDescription>
+              Choose one or more GA4 campaign values to scope this MetricMind campaign. If you select none, we’ll track all campaigns in the selected property.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="ga4-campaign-search">Search</Label>
+              <Input
+                id="ga4-campaign-search"
+                value={ga4CampaignSearch}
+                onChange={(e) => setGa4CampaignSearch(e.target.value)}
+                placeholder="Search campaign names…"
+              />
+            </div>
+
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 max-h-[45vh] overflow-y-auto">
+              {Array.isArray(ga4CampaignValuesResp?.campaigns) && ga4CampaignValuesResp.campaigns.length > 0 ? (
+                <div className="space-y-2">
+                  {ga4CampaignValuesResp.campaigns
+                    .filter((c: any) => {
+                      const name = String(c?.name || "");
+                      const q = String(ga4CampaignSearch || "").trim().toLowerCase();
+                      if (!q) return true;
+                      return name.toLowerCase().includes(q);
+                    })
+                    .map((c: any) => {
+                      const name = String(c?.name || "").trim();
+                      if (!name) return null;
+                      const checked = selectedGa4Campaigns.includes(name);
+                      return (
+                        <label key={name} className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                setSelectedGa4Campaigns((prev) => {
+                                  if (prev.includes(name)) return prev.filter((x) => x !== name);
+                                  return [...prev, name];
+                                });
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{name}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">Users: {Number(c?.users || 0).toLocaleString()}</div>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                </div>
+              ) : (
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  No campaigns found. This can happen if GA4 reporting is delayed or the selected range has no campaign-tagged traffic.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setSelectedGa4Campaigns([])}
+                type="button"
+              >
+                Track all campaigns
+              </Button>
+
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowGa4CampaignPicker(false)} type="button">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const payload =
+                        selectedGa4Campaigns.length > 0 ? JSON.stringify(selectedGa4Campaigns) : null;
+                      const resp = await fetch(`/api/campaigns/${campaignId}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ga4CampaignFilter: payload }),
+                      });
+                      const json = await resp.json().catch(() => null);
+                      if (!resp.ok) throw new Error(json?.message || "Failed to save GA4 campaign selection");
+
+                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics"], exact: false });
+                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"], exact: false });
+                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-timeseries"], exact: false });
+                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-metrics"], exact: false });
+
+                      setShowGa4CampaignPicker(false);
+                    } catch (e: any) {
+                      toast({
+                        title: "Failed to save campaigns",
+                        description: e?.message || "Please try again.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  type="button"
+                  disabled={!campaignId}
+                >
+                  Save
                 </Button>
               </div>
             </div>

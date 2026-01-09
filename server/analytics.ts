@@ -4,6 +4,8 @@ interface GA4Credentials {
   accessToken?: string;
 }
 
+type CampaignFilter = string | string[] | undefined;
+
 interface GA4Metrics {
   impressions: number;
   clicks: number;
@@ -50,11 +52,55 @@ export class GoogleAnalytics4Service {
     return raw.replace(/^\/+/, "");
   }
 
+  private normalizeCampaignFilter(filter: CampaignFilter): string[] {
+    if (!filter) return [];
+    if (Array.isArray(filter)) {
+      return filter.map((v) => String(v || "").trim()).filter((v) => !!v);
+    }
+    const v = String(filter || "").trim();
+    return v ? [v] : [];
+  }
+
+  private buildCampaignDimensionFilter(filter: CampaignFilter, fieldName: string = 'sessionCampaignName') {
+    const values = this.normalizeCampaignFilter(filter);
+    if (values.length === 0) return null;
+    if (values.length === 1) {
+      return {
+        dimensionFilter: {
+          filter: {
+            fieldName,
+            stringFilter: {
+              matchType: 'EXACT',
+              value: String(values[0]),
+              caseSensitive: false,
+            }
+          }
+        }
+      };
+    }
+    return {
+      dimensionFilter: {
+        orGroup: {
+          expressions: values.map((v) => ({
+            filter: {
+              fieldName,
+              stringFilter: {
+                matchType: 'EXACT',
+                value: String(v),
+                caseSensitive: false,
+              }
+            }
+          }))
+        }
+      }
+    };
+  }
+
   async getMetricsWithToken(
     propertyId: string,
     accessToken: string,
     dateRange = 'today',
-    campaignFilter?: string
+    campaignFilter?: CampaignFilter
   ): Promise<GA4Metrics> {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const credentials = { propertyId: normalizedPropertyId, measurementId: '', accessToken };
@@ -73,7 +119,7 @@ export class GoogleAnalytics4Service {
     dateRange = '30daysAgo',
     propertyId?: string,
     limit: number = 2000,
-    campaignFilter?: string
+    campaignFilter?: CampaignFilter
   ): Promise<{
     rows: Array<Record<string, any>>;
     totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number };
@@ -140,18 +186,7 @@ export class GoogleAnalytics4Service {
         body: JSON.stringify({
           dateRanges: [{ startDate: dateRange, endDate: 'today' }],
           dimensions,
-          ...(campaignFilter ? {
-            dimensionFilter: {
-              filter: {
-                fieldName: preferredCampaignDim || 'campaignName',
-                stringFilter: {
-                  matchType: 'EXACT',
-                  value: String(campaignFilter),
-                  caseSensitive: false,
-                }
-              }
-            }
-          } : {}),
+          ...((this.buildCampaignDimensionFilter(campaignFilter, preferredCampaignDim || 'sessionCampaignName')) || {}),
           metrics: [
             { name: 'sessions' },
             // Use totalUsers as a compatible "base" metric for acquisition dimensions.
@@ -192,18 +227,7 @@ export class GoogleAnalytics4Service {
                 body: JSON.stringify({
                   dateRanges: [{ startDate: dateRange, endDate: 'today' }],
                   dimensions,
-                  ...(campaignFilter ? {
-                    dimensionFilter: {
-                      filter: {
-                        fieldName: preferredCampaignDim || 'campaignName',
-                        stringFilter: {
-                          matchType: 'EXACT',
-                          value: String(campaignFilter),
-                          caseSensitive: false,
-                        }
-                      }
-                    }
-                  } : {}),
+                  ...((this.buildCampaignDimensionFilter(campaignFilter, preferredCampaignDim || 'sessionCampaignName')) || {}),
                   metrics: [
                     { name: 'sessions' },
                     { name: 'totalUsers' },
@@ -601,9 +625,10 @@ export class GoogleAnalytics4Service {
   }
 
   // Get geographic breakdown of users
-  async getGeographicMetrics(propertyId: string, accessToken: string, dateRange = 'today', campaignFilter?: string): Promise<any> {
+  async getGeographicMetrics(propertyId: string, accessToken: string, dateRange = 'today', campaignFilter?: CampaignFilter): Promise<any> {
     try {
       const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+      const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
@@ -617,18 +642,7 @@ export class GoogleAnalytics4Service {
               endDate: 'today'
             }
           ],
-          ...(campaignFilter ? {
-            dimensionFilter: {
-              filter: {
-                fieldName: 'campaignName',
-                stringFilter: {
-                  matchType: 'EXACT',
-                  value: String(campaignFilter),
-                  caseSensitive: false,
-                }
-              }
-            }
-          } : {}),
+          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
           dimensions: [
             { name: 'country' },
             { name: 'region' },
@@ -782,7 +796,7 @@ export class GoogleAnalytics4Service {
     storage: any,
     dateRange = '30daysAgo',
     propertyId?: string,
-    campaignFilter?: string
+    campaignFilter?: CampaignFilter
   ): Promise<any[]> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection || connection.method !== 'access_token') {
@@ -847,11 +861,12 @@ export class GoogleAnalytics4Service {
     propertyId: string,
     accessToken: string,
     dateRange = '30daysAgo',
-    campaignFilter?: string
+    campaignFilter?: CampaignFilter
   ): Promise<any[]> {
     try {
       // Get daily data for the specified date range
       const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+      const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
@@ -868,18 +883,7 @@ export class GoogleAnalytics4Service {
           dimensions: [
             { name: 'date' }
           ],
-          ...(campaignFilter ? {
-            dimensionFilter: {
-              filter: {
-                fieldName: 'campaignName',
-                stringFilter: {
-                  matchType: 'EXACT',
-                  value: String(campaignFilter),
-                  caseSensitive: false,
-                }
-              }
-            }
-          } : {}),
+          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
           metrics: [
             { name: 'sessions' },
             { name: 'screenPageViews' },
@@ -960,7 +964,7 @@ export class GoogleAnalytics4Service {
     storage: any,
     dateRange = 'today',
     propertyId?: string,
-    campaignFilter?: string
+    campaignFilter?: CampaignFilter
   ): Promise<GA4Metrics> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection || connection.method !== 'access_token') {
@@ -1045,13 +1049,13 @@ export class GoogleAnalytics4Service {
     }
   }
 
-  async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = 'today', campaignFilter?: string): Promise<GA4Metrics> {
+  async getMetrics(credentials: GA4Credentials, accessToken: string, dateRange = 'today', campaignFilter?: CampaignFilter): Promise<GA4Metrics> {
     try {
       const normalizedPropertyId = this.normalizeGA4PropertyId(credentials.propertyId);
       // Realtime can be misleading for campaign-scoped analytics. If we're filtering to a specific campaign,
       // skip realtime so "active users" doesn't reflect site-wide traffic.
       let realtimeData: any = null;
-      if (!campaignFilter) {
+      if (this.normalizeCampaignFilter(campaignFilter).length === 0) {
         const realtimeResponse = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runRealtimeReport`, {
         method: 'POST',
         headers: {
@@ -1080,6 +1084,7 @@ export class GoogleAnalytics4Service {
       }
 
       // Then get historical data for context
+      const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
@@ -1093,18 +1098,7 @@ export class GoogleAnalytics4Service {
               endDate: 'today', // Include today for most current data
             },
           ],
-          ...(campaignFilter ? {
-            dimensionFilter: {
-              filter: {
-                fieldName: 'campaignName',
-                stringFilter: {
-                  matchType: 'EXACT',
-                  value: String(campaignFilter),
-                  caseSensitive: false,
-                }
-              }
-            }
-          } : {}),
+          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
           metrics: [
             { name: 'sessions' },
             { name: 'screenPageViews' },

@@ -1967,23 +1967,43 @@ export default function GA4Metrics() {
       });
     }
 
-    // 3) Anomaly detection (WoW) using GA4 breakdown rows (requires >= 14 days of ISO-dated rows)
-    const rows = Array.isArray((ga4Breakdown as any)?.rows) ? ((ga4Breakdown as any).rows as any[]) : [];
-    const daily = new Map<string, { sessions: number; conversions: number; revenue: number }>();
-    for (const r of rows) {
+    // 3) Anomaly detection (WoW). Prefer GA4 time series for daily data; fallback to breakdown if needed.
+    const ts = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]) : [];
+    const breakdownRows = Array.isArray((ga4Breakdown as any)?.rows) ? ((ga4Breakdown as any).rows as any[]) : [];
+
+    const dailyFromTimeSeries = new Map<string, { sessions: number; conversions: number; revenue: number; pageviews: number }>();
+    for (const p of ts) {
+      const d = String((p as any)?.date || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+      const sessions = Number((p as any)?.sessions || 0);
+      const conversions = Number((p as any)?.conversions || 0);
+      const revenue = Number((p as any)?.revenue || 0);
+      const pageviews = Number((p as any)?.pageviews || 0);
+      const cur = dailyFromTimeSeries.get(d) || { sessions: 0, conversions: 0, revenue: 0, pageviews: 0 };
+      cur.sessions += Number.isFinite(sessions) ? sessions : 0;
+      cur.conversions += Number.isFinite(conversions) ? conversions : 0;
+      cur.revenue += Number.isFinite(revenue) ? revenue : 0;
+      cur.pageviews += Number.isFinite(pageviews) ? pageviews : 0;
+      dailyFromTimeSeries.set(d, cur);
+    }
+
+    const dailyFromBreakdown = new Map<string, { sessions: number; conversions: number; revenue: number }>();
+    for (const r of breakdownRows) {
       const d = String(r?.date || "").trim();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
       const sessions = Number(r?.sessions || 0);
       const conversions = Number(r?.conversions || 0);
       const revenue = Number(r?.revenue || 0);
-      const cur = daily.get(d) || { sessions: 0, conversions: 0, revenue: 0 };
+      const cur = dailyFromBreakdown.get(d) || { sessions: 0, conversions: 0, revenue: 0 };
       cur.sessions += Number.isFinite(sessions) ? sessions : 0;
       cur.conversions += Number.isFinite(conversions) ? conversions : 0;
       cur.revenue += Number.isFinite(revenue) ? revenue : 0;
-      daily.set(d, cur);
+      dailyFromBreakdown.set(d, cur);
     }
 
+    const daily = dailyFromTimeSeries.size > 0 ? dailyFromTimeSeries : dailyFromBreakdown;
     const dates = Array.from(daily.keys()).sort();
+
     if (dates.length >= 14) {
       const last7 = new Set(dates.slice(-7));
       const prev7 = new Set(dates.slice(-14, -7));
@@ -1992,17 +2012,21 @@ export default function GA4Metrics() {
         let sessions = 0;
         let conversions = 0;
         let revenue = 0;
+        let pageviews = 0;
         Array.from(set).forEach((d) => {
-          const v = daily.get(d);
+          const v: any = daily.get(d);
           if (!v) return;
-          sessions += v.sessions;
-          conversions += v.conversions;
-          revenue += v.revenue;
+          sessions += Number(v.sessions || 0);
+          conversions += Number(v.conversions || 0);
+          revenue += Number(v.revenue || 0);
+          pageviews += Number(v.pageviews || 0);
         });
-        return { sessions, conversions, revenue };
+        return { sessions, conversions, revenue, pageviews };
       };
+
       const a = sum(last7);
       const b = sum(prev7);
+
       const crA = a.sessions > 0 ? (a.conversions / a.sessions) * 100 : 0;
       const crB = b.sessions > 0 ? (b.conversions / b.sessions) * 100 : 0;
       const crDeltaPct = crB > 0 ? ((crA - crB) / crB) * 100 : 0;
@@ -2018,27 +2042,9 @@ export default function GA4Metrics() {
         });
       }
 
-      // Engagement depth proxy: pageviews per session (from GA4 time series if available)
-      const ts = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]) : [];
-      const pvByDate = new Map<string, number>();
-      const sByDate = new Map<string, number>();
-      for (const p of ts) {
-        const d = String((p as any)?.date || "").trim();
-        if (!d) continue;
-        pvByDate.set(d, Number((p as any)?.pageviews || 0));
-        sByDate.set(d, Number((p as any)?.sessions || 0));
-      }
-      const avgPvPerSession = (set: Set<string>) => {
-        let pv = 0;
-        let s = 0;
-        Array.from(set).forEach((d) => {
-          pv += Number(pvByDate.get(d) || 0);
-          s += Number(sByDate.get(d) || 0);
-        });
-        return s > 0 ? pv / s : 0;
-      };
-      const pvpsA = avgPvPerSession(last7);
-      const pvpsB = avgPvPerSession(prev7);
+      // Engagement depth proxy: pageviews per session (prefer time series; if absent, skip)
+      const pvpsA = a.sessions > 0 ? a.pageviews / a.sessions : 0;
+      const pvpsB = b.sessions > 0 ? b.pageviews / b.sessions : 0;
       const pvpsDelta = pvpsB > 0 ? ((pvpsA - pvpsB) / pvpsB) * 100 : 0;
       if (pvpsB > 0 && pvpsDelta <= -20) {
         out.push({
@@ -2050,45 +2056,53 @@ export default function GA4Metrics() {
         });
       }
 
-      // Source-specific regression example (LinkedIn-tagged traffic) using breakdown rows
-      const group = (set: Set<string>, predicate: (r: any) => boolean) => {
-        let sessions = 0;
-        let conversions = 0;
-        for (const r of rows) {
-          const d = String(r?.date || "").trim();
-          if (!set.has(d)) continue;
-          if (!predicate(r)) continue;
-          sessions += Number(r?.sessions || 0);
-          conversions += Number(r?.conversions || 0);
+      // Source-specific regression (LinkedIn-tagged) requires breakdown rows with dates. Skip if not available.
+      const breakdownDates = Array.from(dailyFromBreakdown.keys()).sort();
+      if (breakdownDates.length >= 14) {
+        const last7b = new Set(breakdownDates.slice(-7));
+        const prev7b = new Set(breakdownDates.slice(-14, -7));
+        const group = (set: Set<string>, predicate: (r: any) => boolean) => {
+          let sessions = 0;
+          let conversions = 0;
+          for (const r of breakdownRows) {
+            const d = String(r?.date || "").trim();
+            if (!set.has(d)) continue;
+            if (!predicate(r)) continue;
+            sessions += Number(r?.sessions || 0);
+            conversions += Number(r?.conversions || 0);
+          }
+          const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
+          return { sessions, conversions, cr };
+        };
+        const linkedinPred = (r: any) => {
+          const src = String(r?.source || "").toLowerCase();
+          const med = String(r?.medium || "").toLowerCase();
+          const ch = String(r?.channel || "").toLowerCase();
+          return src.includes("linkedin") || med.includes("linkedin") || ch.includes("linkedin");
+        };
+        const lA = group(last7b, linkedinPred);
+        const lB = group(prev7b, linkedinPred);
+        const lDelta = lB.cr > 0 ? ((lA.cr - lB.cr) / lB.cr) * 100 : 0;
+        if (lB.sessions >= 50 && lA.sessions >= 50 && lDelta <= -15) {
+          out.push({
+            id: "anomaly:linkedin:cr:wow",
+            severity: "high",
+            title: `Conversion rate from LinkedIn-tagged traffic dropped ${Math.abs(lDelta).toFixed(1)}% week-over-week`,
+            description: `Last 7d ${lA.cr.toFixed(2)}% vs prior 7d ${lB.cr.toFixed(2)}% (LinkedIn-tagged source/medium).`,
+            recommendation:
+              "Check if LinkedIn targeting/creative changed, verify UTMs are consistent, and review landing page alignment for LinkedIn audiences.",
+          });
         }
-        const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
-        return { sessions, conversions, cr };
-      };
-      const linkedinPred = (r: any) => {
-        const src = String(r?.source || "").toLowerCase();
-        const med = String(r?.medium || "").toLowerCase();
-        const ch = String(r?.channel || "").toLowerCase();
-        return src.includes("linkedin") || med.includes("linkedin") || ch.includes("linkedin");
-      };
-      const lA = group(last7, linkedinPred);
-      const lB = group(prev7, linkedinPred);
-      const lDelta = lB.cr > 0 ? ((lA.cr - lB.cr) / lB.cr) * 100 : 0;
-      if (lB.sessions >= 50 && lA.sessions >= 50 && lDelta <= -15) {
-        out.push({
-          id: "anomaly:linkedin:cr:wow",
-          severity: "high",
-          title: `Conversion rate from LinkedIn-tagged traffic dropped ${Math.abs(lDelta).toFixed(1)}% week-over-week`,
-          description: `Last 7d ${lA.cr.toFixed(2)}% vs prior 7d ${lB.cr.toFixed(2)}% (LinkedIn-tagged source/medium).`,
-          recommendation:
-            "Check if LinkedIn targeting/creative changed, verify UTMs are consistent, and review landing page alignment for LinkedIn audiences.",
-        });
       }
-    } else if (dates.length > 0) {
+    } else {
       out.push({
         id: "anomaly:not-enough-history",
         severity: "low",
         title: "Anomaly detection needs more history",
-        description: `Need at least 14 days of daily data in the selected range to compute week-over-week deltas. Available days: ${dates.length}.`,
+        description:
+          dates.length === 0
+            ? "No daily GA4 history was available to compute week-over-week deltas for this selection."
+            : `Need at least 14 days of daily data in the selected range to compute week-over-week deltas. Available days: ${dates.length}.`,
       });
     }
 

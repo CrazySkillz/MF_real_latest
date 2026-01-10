@@ -52,7 +52,9 @@
 @layer base {
   html {
     /* Prevent subtle layout shifts when switching between tabs with different content heights (Windows scrollbar width). */
-    scrollbar-gutter: stable;
+    scrollbar-gutter: stable both-edges;
+    /* Fallback: always reserve vertical scrollbar space on the root scroller. */
+    overflow-y: scroll;
   }
 
   * {

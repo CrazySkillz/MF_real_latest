@@ -1,19 +1,20 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { Upload, FileSpreadsheet } from "lucide-react";
+import { Building2, FileSpreadsheet, ShoppingCart, Upload, ArrowLeft } from "lucide-react";
+import { HubSpotRevenueWizard } from "@/components/HubSpotRevenueWizard";
+import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
+import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
 
-type DateRange = "7days" | "30days" | "90days";
+type Step = "select" | "manual" | "csv" | "sheets" | "hubspot" | "salesforce" | "shopify";
 
-type CsvPreview = {
-  fileName: string;
+type Preview = {
+  fileName?: string;
   headers: string[];
   sampleRows: Array<Record<string, string>>;
   rowCount: number;
@@ -23,446 +24,540 @@ export function AddRevenueWizardModal(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   campaignId: string;
-  campaignCurrency: string;
-  dateRange: DateRange;
-  googleSheetsConnections?: Array<{ id: string; spreadsheetName?: string | null; sheetName?: string | null }>;
+  currency: string;
+  dateRange: string;
+  onSuccess?: () => void;
 }) {
+  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess } = props;
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const fileRef = useRef<HTMLInputElement | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"manual" | "csv" | "sheets">("manual");
+  const [step, setStep] = useState<Step>("select");
 
   // Manual
   const [manualAmount, setManualAmount] = useState<string>("");
+  const [savingManual, setSavingManual] = useState(false);
 
   // CSV
-  const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null);
-  const [csvRevenueColumn, setCsvRevenueColumn] = useState<string>("");
-  const [csvDateColumn, setCsvDateColumn] = useState<string>("");
-  const [csvDisplayName, setCsvDisplayName] = useState<string>("");
-  const [csvIsLoading, setCsvIsLoading] = useState<boolean>(false);
-  const csvHeaders = csvPreview?.headers || [];
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvPreview, setCsvPreview] = useState<Preview | null>(null);
+  const [csvRevenueCol, setCsvRevenueCol] = useState<string>("");
+  const [csvDateCol, setCsvDateCol] = useState<string>("");
+  const [csvProcessing, setCsvProcessing] = useState(false);
 
   // Sheets
-  const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
-  const [sheetPreview, setSheetPreview] = useState<CsvPreview | null>(null);
-  const [sheetRevenueColumn, setSheetRevenueColumn] = useState<string>("");
-  const [sheetDateColumn, setSheetDateColumn] = useState<string>("");
-  const [sheetDisplayName, setSheetDisplayName] = useState<string>("");
-  const [sheetIsLoading, setSheetIsLoading] = useState<boolean>(false);
-  const sheetHeaders = sheetPreview?.headers || [];
+  const [sheetsConnections, setSheetsConnections] = useState<any[]>([]);
+  const [sheetsConnectionId, setSheetsConnectionId] = useState<string>("");
+  const [sheetsPreview, setSheetsPreview] = useState<Preview | null>(null);
+  const [sheetsRevenueCol, setSheetsRevenueCol] = useState<string>("");
+  const [sheetsDateCol, setSheetsDateCol] = useState<string>("");
+  const [sheetsProcessing, setSheetsProcessing] = useState(false);
 
-  const closeAndReset = () => {
-    setActiveTab("manual");
+  const resetAll = () => {
+    setStep("select");
     setManualAmount("");
-
+    setSavingManual(false);
+    setCsvFile(null);
     setCsvPreview(null);
-    setCsvRevenueColumn("");
-    setCsvDateColumn("");
-    setCsvDisplayName("");
-    setCsvIsLoading(false);
-
-    setSelectedConnectionId("");
-    setSheetPreview(null);
-    setSheetRevenueColumn("");
-    setSheetDateColumn("");
-    setSheetDisplayName("");
-    setSheetIsLoading(false);
-
-    props.onOpenChange(false);
+    setCsvRevenueCol("");
+    setCsvDateCol("");
+    setCsvProcessing(false);
+    setSheetsConnectionId("");
+    setSheetsPreview(null);
+    setSheetsRevenueCol("");
+    setSheetsDateCol("");
+    setSheetsProcessing(false);
   };
 
-  const currency = props.campaignCurrency || "USD";
+  useEffect(() => {
+    if (!open) resetAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  const hasSheetsConnections = (props.googleSheetsConnections || []).length > 0;
-  const sheetsLabelById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const c of props.googleSheetsConnections || []) {
-      const label = `${c.spreadsheetName || "Google Sheet"}${c.sheetName ? ` (${c.sheetName})` : ""}`;
-      map.set(String(c.id), label);
-    }
-    return map;
-  }, [props.googleSheetsConnections]);
+  // Load sheets connections only when needed
+  useEffect(() => {
+    let mounted = true;
+    if (!open) return;
+    if (step !== "sheets") return;
+    (async () => {
+      try {
+        const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
+        const json = await resp.json().catch(() => ({}));
+        const conns = Array.isArray(json?.connections) ? json.connections : [];
+        if (!mounted) return;
+        setSheetsConnections(conns);
+        if (!sheetsConnectionId && conns.length > 0) setSheetsConnectionId(String(conns[0]?.id || ""));
+      } catch {
+        if (!mounted) return;
+        setSheetsConnections([]);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [open, step, campaignId, sheetsConnectionId]);
 
-  const refreshRevenue = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", props.campaignId, "revenue-totals"], exact: false }),
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", props.campaignId, "revenue-sources"], exact: false }),
-    ]);
+  const csvHeaders = useMemo(() => csvPreview?.headers || [], [csvPreview]);
+  const sheetsHeaders = useMemo(() => sheetsPreview?.headers || [], [sheetsPreview]);
+
+  const handleBack = () => {
+    if (step === "select") return;
+    setStep("select");
   };
 
-  const onSaveManual = async () => {
-    const amt = Number(String(manualAmount || "").replace(/,/g, "").trim());
-    if (!Number.isFinite(amt) || amt <= 0) {
-      toast({ title: "Enter revenue amount", description: "Amount must be greater than 0.", variant: "destructive" });
+  const handleManualSave = async () => {
+    const clean = String(manualAmount || "").replace(/,/g, "").trim();
+    const amt = Number(clean);
+    if (!Number.isFinite(amt) || !(amt > 0)) {
+      toast({ title: "Enter a valid amount", description: "Revenue must be > 0.", variant: "destructive" });
       return;
     }
-    const resp = await fetch(`/api/campaigns/${props.campaignId}/revenue/process/manual`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: amt, currency, dateRange: props.dateRange }),
-    });
-    const json = await resp.json().catch(() => ({} as any));
-    if (!resp.ok || json?.success === false) {
-      toast({ title: "Failed to save revenue", description: json?.error || "Please try again.", variant: "destructive" });
-      return;
-    }
-    toast({ title: "Revenue added", description: "Manual revenue was saved for the selected date range." });
-    await refreshRevenue();
-    closeAndReset();
-  };
-
-  const onPickCsv = () => fileRef.current?.click();
-
-  const onPreviewCsv = async (file: File) => {
+    setSavingManual(true);
     try {
-      setCsvIsLoading(true);
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/process/manual`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amt, currency, dateRange }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save revenue");
+      toast({ title: "Revenue saved", description: "Revenue will now be used when GA4 revenue is missing." });
+      onSuccess?.();
+      onOpenChange(false);
+    } catch (e: any) {
+      toast({ title: "Failed to save", description: e?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setSavingManual(false);
+    }
+  };
+
+  const handleCsvPreview = async (file: File) => {
+    setCsvProcessing(true);
+    try {
       const fd = new FormData();
       fd.append("file", file);
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/revenue/csv/preview`, { method: "POST", body: fd });
-      const json = await resp.json().catch(() => ({} as any));
-      if (!resp.ok || json?.success === false) throw new Error(json?.error || "Failed to preview CSV");
-      setCsvPreview({
-        fileName: String(json.fileName || file.name),
-        headers: Array.isArray(json.headers) ? json.headers : [],
-        sampleRows: Array.isArray(json.sampleRows) ? json.sampleRows : [],
-        rowCount: Number(json.rowCount || 0),
-      });
-      setCsvDisplayName(String(json.fileName || file.name));
-      setCsvRevenueColumn("");
-      setCsvDateColumn("");
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/preview`, { method: "POST", body: fd });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to preview CSV");
+      setCsvPreview({ fileName: json.fileName, headers: json.headers || [], sampleRows: json.sampleRows || [], rowCount: json.rowCount || 0 });
+      // best-effort default pick
+      const headers: string[] = Array.isArray(json.headers) ? json.headers : [];
+      const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
+      setCsvRevenueCol(guess);
+      setCsvDateCol(headers.find((h) => /date/i.test(h)) || "");
     } catch (e: any) {
       toast({ title: "CSV preview failed", description: e?.message || "Please try again.", variant: "destructive" });
+      setCsvPreview(null);
     } finally {
-      setCsvIsLoading(false);
+      setCsvProcessing(false);
     }
   };
 
-  const onProcessCsv = async () => {
-    const input = fileRef.current;
-    const file = input?.files?.[0];
-    if (!file || !csvPreview) {
-      toast({ title: "Upload a CSV", description: "Please choose a CSV file first.", variant: "destructive" });
+  const handleCsvProcess = async () => {
+    if (!csvFile) return;
+    if (!csvRevenueCol) {
+      toast({ title: "Select a revenue column", variant: "destructive" });
       return;
     }
-    if (!csvRevenueColumn) {
-      toast({ title: "Select Revenue column", description: "Choose which column contains revenue values.", variant: "destructive" });
-      return;
-    }
-
+    setCsvProcessing(true);
     try {
-      setCsvIsLoading(true);
+      const mapping = {
+        revenueColumn: csvRevenueCol,
+        dateColumn: csvDateCol || null,
+        currency,
+        dateRange,
+        displayName: csvFile.name,
+      };
       const fd = new FormData();
-      fd.append("file", file);
-      fd.append(
-        "mapping",
-        JSON.stringify({
-          revenueColumn: csvRevenueColumn,
-          dateColumn: csvDateColumn || null,
-          displayName: csvDisplayName || csvPreview.fileName,
-          currency,
-          dateRange: props.dateRange,
-        })
-      );
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/revenue/csv/process`, { method: "POST", body: fd });
-      const json = await resp.json().catch(() => ({} as any));
-      if (!resp.ok || json?.success === false) throw new Error(json?.error || "Failed to process CSV");
-      toast({ title: "Revenue imported", description: `Imported ${currency} ${Number(json.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` });
-      await refreshRevenue();
-      closeAndReset();
+      fd.append("file", csvFile);
+      fd.append("mapping", JSON.stringify(mapping));
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/process`, { method: "POST", body: fd });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process CSV");
+      toast({ title: "Revenue imported", description: `Imported ${Number(json.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.` });
+      onSuccess?.();
+      onOpenChange(false);
     } catch (e: any) {
       toast({ title: "CSV import failed", description: e?.message || "Please try again.", variant: "destructive" });
     } finally {
-      setCsvIsLoading(false);
+      setCsvProcessing(false);
     }
   };
 
-  const onPreviewSheet = async () => {
-    if (!selectedConnectionId) {
-      toast({ title: "Select a Google Sheet", description: "Choose which connected sheet to use.", variant: "destructive" });
-      return;
-    }
+  const handleSheetsPreview = async () => {
+    if (!sheetsConnectionId) return;
+    setSheetsProcessing(true);
     try {
-      setSheetIsLoading(true);
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/revenue/sheets/preview`, {
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connectionId: selectedConnectionId }),
+        body: JSON.stringify({ connectionId: sheetsConnectionId }),
       });
-      const json = await resp.json().catch(() => ({} as any));
-      if (!resp.ok || json?.success === false) throw new Error(json?.error || "Failed to preview sheet");
-      setSheetPreview({
-        fileName: sheetsLabelById.get(selectedConnectionId) || "Google Sheet",
-        headers: Array.isArray(json.headers) ? json.headers : [],
-        sampleRows: Array.isArray(json.sampleRows) ? json.sampleRows : [],
-        rowCount: Number(json.rowCount || 0),
-      });
-      setSheetDisplayName(sheetsLabelById.get(selectedConnectionId) || "Google Sheet");
-      setSheetRevenueColumn("");
-      setSheetDateColumn("");
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to preview sheet");
+      setSheetsPreview({ headers: json.headers || [], sampleRows: json.sampleRows || [], rowCount: json.rowCount || 0 });
+      const headers: string[] = Array.isArray(json.headers) ? json.headers : [];
+      const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
+      setSheetsRevenueCol(guess);
+      setSheetsDateCol(headers.find((h) => /date/i.test(h)) || "");
     } catch (e: any) {
-      toast({ title: "Sheet preview failed", description: e?.message || "Please try again.", variant: "destructive" });
+      toast({ title: "Preview failed", description: e?.message || "Please try again.", variant: "destructive" });
+      setSheetsPreview(null);
     } finally {
-      setSheetIsLoading(false);
+      setSheetsProcessing(false);
     }
   };
 
-  const onProcessSheet = async () => {
-    if (!selectedConnectionId || !sheetPreview) {
-      toast({ title: "Preview your sheet first", description: "Select a sheet and click Preview.", variant: "destructive" });
+  const handleSheetsProcess = async () => {
+    if (!sheetsConnectionId) return;
+    if (!sheetsRevenueCol) {
+      toast({ title: "Select a revenue column", variant: "destructive" });
       return;
     }
-    if (!sheetRevenueColumn) {
-      toast({ title: "Select Revenue column", description: "Choose which column contains revenue values.", variant: "destructive" });
-      return;
-    }
+    setSheetsProcessing(true);
     try {
-      setSheetIsLoading(true);
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/revenue/sheets/process`, {
+      const mapping = {
+        revenueColumn: sheetsRevenueCol,
+        dateColumn: sheetsDateCol || null,
+        currency,
+        dateRange,
+        displayName: "Google Sheets revenue",
+      };
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/process`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          connectionId: selectedConnectionId,
-          mapping: {
-            revenueColumn: sheetRevenueColumn,
-            dateColumn: sheetDateColumn || null,
-            displayName: sheetDisplayName || sheetPreview.fileName,
-            currency,
-            dateRange: props.dateRange,
-          },
-        }),
+        body: JSON.stringify({ connectionId: sheetsConnectionId, mapping }),
       });
-      const json = await resp.json().catch(() => ({} as any));
-      if (!resp.ok || json?.success === false) throw new Error(json?.error || "Failed to process sheet");
-      toast({ title: "Revenue imported", description: `Imported ${currency} ${Number(json.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` });
-      await refreshRevenue();
-      closeAndReset();
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process sheet");
+      toast({ title: "Revenue imported", description: `Imported ${Number(json.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.` });
+      onSuccess?.();
+      onOpenChange(false);
     } catch (e: any) {
-      toast({ title: "Sheet import failed", description: e?.message || "Please try again.", variant: "destructive" });
+      toast({ title: "Import failed", description: e?.message || "Please try again.", variant: "destructive" });
     } finally {
-      setSheetIsLoading(false);
+      setSheetsProcessing(false);
     }
   };
+
+  const title = step === "select" ? "Add revenue source" :
+    step === "manual" ? "Manual revenue" :
+    step === "csv" ? "Upload CSV" :
+    step === "sheets" ? "Google Sheets" :
+    step === "hubspot" ? "HubSpot revenue" :
+    step === "salesforce" ? "Salesforce revenue" :
+    step === "shopify" ? "Shopify revenue" :
+    "Add revenue source";
+
+  const description = step === "select"
+    ? "Choose where your revenue data comes from. This is used when GA4 revenue is missing."
+    : `Currency: ${currency} • Date range: ${dateRange}`;
 
   return (
-    <Dialog open={props.open} onOpenChange={(o) => (o ? props.onOpenChange(true) : closeAndReset())}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-        <DialogHeader>
-          <DialogTitle>Add Revenue Source</DialogTitle>
-          <DialogDescription>
-            Use this when GA4 revenue is missing. Revenue will be summed for the selected date range ({props.dateRange}).
-          </DialogDescription>
-        </DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[980px] max-w-[95vw] h-[80vh] max-h-[80vh] overflow-hidden p-0">
+        <div className="flex h-full flex-col">
+          <DialogHeader className="px-6 py-4 border-b">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <DialogTitle className="truncate">{title}</DialogTitle>
+                <DialogDescription className="mt-1">{description}</DialogDescription>
+              </div>
+              {step !== "select" && (
+                <Button variant="ghost" onClick={handleBack}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="manual">Manual</TabsTrigger>
-            <TabsTrigger value="csv">Upload CSV</TabsTrigger>
-            <TabsTrigger value="sheets">Google Sheets</TabsTrigger>
-          </TabsList>
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            {step === "select" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Manual</CardTitle>
+                    <CardDescription>Enter a total revenue amount for the selected date range.</CardDescription>
+                  </CardHeader>
+                </Card>
 
-          <TabsContent value="manual">
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid gap-2">
-                  <Label>Revenue total ({currency})</Label>
-                  <Input
-                    value={manualAmount}
-                    onChange={(e) => setManualAmount(e.target.value)}
-                    placeholder="Enter total revenue for the selected date range"
-                  />
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
-                    Note: manual revenue is allocated evenly across the selected date range so totals match the window.
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => closeAndReset()}>
-                    Cancel
-                  </Button>
-                  <Button onClick={onSaveManual}>Save revenue</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Upload className="w-4 h-4" />
+                      Upload CSV
+                    </CardTitle>
+                    <CardDescription>Import revenue from a CSV (date column optional).</CardDescription>
+                  </CardHeader>
+                </Card>
 
-          <TabsContent value="csv">
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".csv,text/csv"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) onPreviewCsv(f);
-                  }}
-                />
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm text-slate-600 dark:text-slate-400">
-                    Upload a CSV with at least a revenue column (and ideally a date column).
-                  </div>
-                  <Button variant="outline" onClick={onPickCsv} disabled={csvIsLoading}>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Choose CSV
-                  </Button>
-                </div>
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Google Sheets
+                    </CardTitle>
+                    <CardDescription>Import revenue from a connected Google Sheet tab.</CardDescription>
+                  </CardHeader>
+                </Card>
 
-                {csvPreview ? (
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label>Display name</Label>
-                      <Input value={csvDisplayName} onChange={(e) => setCsvDisplayName(e.target.value)} />
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("hubspot")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      HubSpot (CRM)
+                    </CardTitle>
+                    <CardDescription>Attribute deal revenue to this campaign.</CardDescription>
+                  </CardHeader>
+                </Card>
+
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("salesforce")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      Salesforce (CRM)
+                    </CardTitle>
+                    <CardDescription>Attribute opportunity revenue to this campaign.</CardDescription>
+                  </CardHeader>
+                </Card>
+
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("shopify")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4" />
+                      Shopify (Ecommerce)
+                    </CardTitle>
+                    <CardDescription>Attribute order revenue to this campaign.</CardDescription>
+                  </CardHeader>
+                </Card>
+              </div>
+            )}
+
+            {step === "manual" && (
+              <div className="max-w-xl space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Enter revenue</CardTitle>
+                    <CardDescription>Total revenue for the selected date range (we distribute it across days).</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-1">
+                      <Label>Amount ({currency})</Label>
+                      <Input
+                        value={manualAmount}
+                        onChange={(e) => setManualAmount(e.target.value)}
+                        placeholder="0.00"
+                        inputMode="decimal"
+                      />
                     </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleManualSave} disabled={savingManual}>
+                        {savingManual ? "Saving…" : "Save revenue"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="grid gap-2">
-                        <Label>Revenue column</Label>
-                        <Select value={csvRevenueColumn} onValueChange={setCsvRevenueColumn}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select column" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {csvHeaders.map((h) => (
-                              <SelectItem key={h} value={h}>
-                                {h}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+            {step === "csv" && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Upload CSV</CardTitle>
+                    <CardDescription>Choose a revenue column; date is optional.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Input
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] || null;
+                        setCsvFile(f);
+                        setCsvPreview(null);
+                        setCsvRevenueCol("");
+                        setCsvDateCol("");
+                        if (f) void handleCsvPreview(f);
+                      }}
+                    />
 
-                      <div className="grid gap-2">
-                        <Label>Date column (optional)</Label>
-                        <Select value={csvDateColumn} onValueChange={setCsvDateColumn}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select column (optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">No date column</SelectItem>
-                            {csvHeaders.map((h) => (
-                              <SelectItem key={h} value={h}>
-                                {h}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          If you omit a date column, we allocate revenue evenly across the selected date range.
+                    {csvPreview && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label>Revenue column</Label>
+                          <Select value={csvRevenueCol} onValueChange={setCsvRevenueCol}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select revenue column" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10000]">
+                              {csvHeaders.map((h) => (
+                                <SelectItem key={h} value={h}>{h}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Date column (optional)</Label>
+                          <Select value={csvDateCol} onValueChange={setCsvDateCol}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10000]">
+                              <SelectItem value="">None</SelectItem>
+                              {csvHeaders.map((h) => (
+                                <SelectItem key={h} value={h}>{h}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setCsvPreview(null)} disabled={csvIsLoading}>
-                        Remove file
+                      <Button variant="outline" onClick={() => setStep("select")}>
+                        Cancel
                       </Button>
-                      <Button onClick={onProcessCsv} disabled={csvIsLoading}>
-                        Import revenue
+                      <Button onClick={handleCsvProcess} disabled={!csvFile || csvProcessing}>
+                        {csvProcessing ? "Processing…" : "Import revenue"}
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-slate-600 dark:text-slate-400">No CSV selected.</div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-          <TabsContent value="sheets">
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                {!hasSheetsConnections ? (
-                  <div className="text-sm text-slate-600 dark:text-slate-400">
-                    No Google Sheets connections found for this campaign. Connect Google Sheets first.
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid gap-2">
-                      <Label>Connected sheet</Label>
-                      <Select value={selectedConnectionId} onValueChange={setSelectedConnectionId}>
+            {step === "sheets" && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Google Sheets</CardTitle>
+                    <CardDescription>Pick a connected sheet and map the revenue column.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-1">
+                      <Label>Sheet connection</Label>
+                      <Select value={sheetsConnectionId} onValueChange={(v) => {
+                        setSheetsConnectionId(v);
+                        setSheetsPreview(null);
+                        setSheetsRevenueCol("");
+                        setSheetsDateCol("");
+                      }}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a connected sheet" />
+                          <SelectValue placeholder="Select a sheet" />
                         </SelectTrigger>
-                        <SelectContent>
-                          {(props.googleSheetsConnections || []).map((c) => (
+                        <SelectContent className="z-[10000]">
+                          {sheetsConnections.map((c: any) => (
                             <SelectItem key={String(c.id)} value={String(c.id)}>
-                              {sheetsLabelById.get(String(c.id)) || String(c.id)}
+                              {String(c.spreadsheetName || c.spreadsheetId || "Google Sheet")}
+                              {c.sheetName ? ` — ${c.sheetName}` : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {sheetsConnections.length === 0 && (
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                          No Google Sheets connections found for this campaign.
+                        </p>
+                      )}
                     </div>
 
-                    <div className="flex justify-end">
-                      <Button variant="outline" onClick={onPreviewSheet} disabled={sheetIsLoading || !selectedConnectionId}>
-                        <FileSpreadsheet className="w-4 h-4 mr-2" />
-                        Preview
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" onClick={() => void handleSheetsPreview()} disabled={!sheetsConnectionId || sheetsProcessing}>
+                        {sheetsProcessing ? "Loading…" : "Preview"}
                       </Button>
                     </div>
 
-                    {sheetPreview ? (
-                      <div className="space-y-4">
-                        <div className="grid gap-2">
-                          <Label>Display name</Label>
-                          <Input value={sheetDisplayName} onChange={(e) => setSheetDisplayName(e.target.value)} />
+                    {sheetsPreview && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label>Revenue column</Label>
+                          <Select value={sheetsRevenueCol} onValueChange={setSheetsRevenueCol}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select revenue column" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10000]">
+                              {sheetsHeaders.map((h) => (
+                                <SelectItem key={h} value={h}>{h}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div className="grid gap-2">
-                            <Label>Revenue column</Label>
-                            <Select value={sheetRevenueColumn} onValueChange={setSheetRevenueColumn}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select column" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {sheetHeaders.map((h) => (
-                                  <SelectItem key={h} value={h}>
-                                    {h}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="grid gap-2">
-                            <Label>Date column (optional)</Label>
-                            <Select value={sheetDateColumn} onValueChange={setSheetDateColumn}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select column (optional)" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="">No date column</SelectItem>
-                                {sheetHeaders.map((h) => (
-                                  <SelectItem key={h} value={h}>
-                                    {h}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              If you omit a date column, we allocate revenue evenly across the selected date range.
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" onClick={() => setSheetPreview(null)} disabled={sheetIsLoading}>
-                            Clear preview
-                          </Button>
-                          <Button onClick={onProcessSheet} disabled={sheetIsLoading}>
-                            Import revenue
-                          </Button>
+                        <div className="space-y-1">
+                          <Label>Date column (optional)</Label>
+                          <Select value={sheetsDateCol} onValueChange={setSheetsDateCol}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10000]">
+                              <SelectItem value="">None</SelectItem>
+                              {sheetsHeaders.map((h) => (
+                                <SelectItem key={h} value={h}>{h}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                    ) : null}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                    )}
+
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSheetsProcess} disabled={!sheetsPreview || sheetsProcessing}>
+                        {sheetsProcessing ? "Processing…" : "Import revenue"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {step === "hubspot" && (
+              <div className="max-w-4xl">
+                <HubSpotRevenueWizard
+                  campaignId={campaignId}
+                  onBack={() => setStep("select")}
+                  onClose={() => setStep("select")}
+                  onSuccess={() => {
+                    onSuccess?.();
+                    onOpenChange(false);
+                  }}
+                />
+              </div>
+            )}
+
+            {step === "salesforce" && (
+              <div className="max-w-4xl">
+                <SalesforceRevenueWizard
+                  campaignId={campaignId}
+                  onBack={() => setStep("select")}
+                  onClose={() => setStep("select")}
+                  onSuccess={() => {
+                    onSuccess?.();
+                    onOpenChange(false);
+                  }}
+                />
+              </div>
+            )}
+
+            {step === "shopify" && (
+              <div className="max-w-4xl">
+                <ShopifyRevenueWizard
+                  campaignId={campaignId}
+                  onBack={() => setStep("select")}
+                  onClose={() => setStep("select")}
+                  onSuccess={() => {
+                    onSuccess?.();
+                    onOpenChange(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

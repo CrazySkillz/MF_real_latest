@@ -176,7 +176,7 @@ process.on('uncaughtException', (error: Error) => {
             );
           `);
 
-          // Revenue tables for GA4 Overview (when GA4 revenue is missing) and for revenue-derived metrics.
+          // Revenue tables for GA4 revenue fallback (manual/CSV/Sheets + CRM/Ecommerce connectors)
           await db.execute(sql`
             CREATE TABLE IF NOT EXISTS revenue_sources (
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -197,7 +197,7 @@ process.on('uncaughtException', (error: Error) => {
               campaign_id TEXT NOT NULL,
               revenue_source_id TEXT NOT NULL,
               date TEXT NOT NULL,
-              revenue DECIMAL(18, 2) NOT NULL,
+              revenue DECIMAL(12, 2) NOT NULL,
               currency TEXT,
               external_id TEXT,
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

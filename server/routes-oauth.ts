@@ -111,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string; endOffsetDays?: number; noRevenue?: boolean }) => {
+  const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string }) => {
     // IMPORTANT: normalize the propertyId so "yesop" and its numeric form don't produce different datasets.
     const pid = normalizePropertyIdForMock(opts.propertyId);
     const baseSeedKey = `${opts.campaignId}:${pid}`;
@@ -131,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const baseSessionsPerUser = 1.15 + baseRand() * 0.9; // 1.15 - 2.05
     const basePagesPerSession = 1.2 + baseRand() * 2.2; // 1.2 - 3.4
     const baseConvRate = 0.012 + baseRand() * 0.035; // 1.2% - 4.7%
-    const baseAOV = opts.noRevenue ? 0 : (45 + baseRand() * 210); // 45 - 255
+    const baseAOV = 45 + baseRand() * 210; // 45 - 255
 
     const engagementRate = 0.38 + baseRand() * 0.42; // 0.38 - 0.80 (GA4 is 0-1)
     const bounceRate = Math.max(0, Math.min(1, 1 - engagementRate + (baseRand() * 0.08 - 0.04)));
@@ -151,15 +151,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessions = Math.max(0, Math.round(users * baseSessionsPerUser * (0.95 + r() * 0.1)));
       const pageviews = Math.max(0, Math.round(sessions * basePagesPerSession * (0.92 + r() * 0.16)));
       const conversions = Math.max(0, Math.round(sessions * baseConvRate * (0.9 + r() * 0.2)));
-      const revenue = opts.noRevenue ? 0 : Number((conversions * baseAOV * (0.85 + r() * 0.3)).toFixed(2));
+      const revenue = Number((conversions * baseAOV * (0.85 + r() * 0.3)).toFixed(2));
 
       series90.push({ date, users, sessions, pageviews, conversions, revenue });
     }
 
-    const endOffset = Math.max(0, Math.floor(Number(opts.endOffsetDays || 0)));
-    const endIndex = Math.max(0, Math.min(maxDays, maxDays - endOffset));
-    const startIndex = Math.max(0, endIndex - days);
-    const series = series90.slice(startIndex, endIndex);
+    const series = series90.slice(maxDays - days);
 
     let usersSum = 0;
     let sessionsSum = 0;
@@ -278,29 +275,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     return s;
-  };
-
-  const isMockNoRevenueCampaign = (campaign: any, req?: any): boolean => {
-    const q = String((req?.query as any)?.mockNoRevenue || '').toLowerCase();
-    if (q === '1' || q === 'true') return true;
-    const filterRaw = String((campaign as any)?.ga4CampaignFilter || '').toLowerCase();
-    if (
-      filterRaw.includes('no revenue') ||
-      filterRaw.includes('no_revenue') ||
-      filterRaw.includes('no-revenue')
-    ) return true;
-    const name = String(campaign?.name || '').toLowerCase();
-    const label = String(campaign?.label || '').toLowerCase();
-    return name.includes('no revenue') || name.includes('no_revenue') || name.includes('no-revenue') ||
-      label.includes('no revenue') || label.includes('no_revenue') || label.includes('no-revenue');
-  };
-
-  const isYesopMockCampaign = (campaign: any, req?: any): boolean => {
-    const q = String((req?.query as any)?.mockGa4 || '').toLowerCase();
-    if (q === '1' || q === 'true') return true;
-    const name = String(campaign?.name || '').toLowerCase();
-    const label = String(campaign?.label || '').toLowerCase();
-    return name.includes('yesop') || label.includes('yesop') || name.includes('mock ga4') || label.includes('mock ga4');
   };
 
   const normalizePropertyIdForMock = (pid: string) => {
@@ -436,9 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ---------------------------------------------------------------------------
-  // Revenue ingestion (for GA4 Overview when GA4 revenue is unavailable)
-  // ---------------------------------------------------------------------------
+  // Revenue sources (manual/CSV/Sheets + connectors that materialize revenue rows)
   app.get("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -449,7 +421,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Remove all active revenue sources for a campaign.
   app.delete("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -476,7 +447,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Like spend: ensure we don't silently double-count across multiple imports.
   const deactivateRevenueSourcesForCampaign = async (campaignId: string) => {
     try {
       const existing = await storage.getRevenueSources(campaignId);
@@ -498,7 +468,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
-
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
 
@@ -509,8 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sourceType: "manual",
         displayName: "Manual revenue",
         currency: cur,
-        // NOTE: manual totals are evenly allocated across the selected range so totals match the chosen window.
-        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, dateRange, allocatedEvenly: true }),
+        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, dateRange }),
         isActive: true,
       } as any);
 
@@ -536,6 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       await storage.createRevenueRecords(records);
+
       res.json({ success: true, sourceId: source.id, startDate, endDate, days: days.length, amount: Number(amount.toFixed(2)), currency: cur });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process manual revenue" });
@@ -652,6 +621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
 
       await storage.createRevenueRecords(records as any);
+
       const totalRevenue = records.reduce((sum, r: any) => sum + parseFloat(String(r.revenue)), 0);
       res.json({
         success: true,
@@ -765,9 +735,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const grouped = new Map<string, number>();
       let kept = 0;
-      const hasDateColumn = !!mapping?.dateColumn;
       const revenueCol = String(mapping.revenueColumn);
-      const dateCol = hasDateColumn ? String(mapping.dateColumn) : null;
+      const dateCol = mapping?.dateColumn ? String(mapping.dateColumn) : null;
       const dateRange = String(mapping?.dateRange || "30days");
       const { startDate, endDate } = getDateRangeBounds(dateRange);
       const periodDays = enumerateDatesInclusive(startDate, endDate);
@@ -816,9 +785,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const source = await storage.createRevenueSource({
         campaignId,
         sourceType: "google_sheets",
-        displayName: mapping.displayName || `${conn.spreadsheetName || "Google Sheet"}${conn.sheetName ? ` (${conn.sheetName})` : ""}`,
+        displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),
         currency,
-        mappingConfig: JSON.stringify({ ...mapping, connectionId, spreadsheetId: conn.spreadsheetId, sheetName: conn.sheetName || null }),
+        mappingConfig: JSON.stringify({ ...mapping, connectionId, spreadsheetId: conn.spreadsheetId, sheetName: conn.sheetName }),
         isActive: true,
       } as any);
 
@@ -835,8 +804,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
 
       await storage.createRevenueRecords(records as any);
-      const totalRevenue = records.reduce((sum, r: any) => sum + parseFloat(String(r.revenue)), 0);
 
+      const totalRevenue = records.reduce((sum, r: any) => sum + parseFloat(String(r.revenue)), 0);
       res.json({
         success: true,
         sourceId: source.id,
@@ -847,7 +816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalRevenue: Number(totalRevenue.toFixed(2)),
       });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to process sheet revenue" });
+      res.status(500).json({ success: false, error: e?.message || "Failed to process Sheets revenue" });
     }
   });
 
@@ -1641,10 +1610,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
       if (shouldSimulate) {
-        const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
-        const noRevenue = isMockNoRevenueCampaign(campaign, req);
         res.setHeader('Cache-Control', 'no-store');
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
           success: true,
@@ -1658,7 +1625,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ],
           isSimulated: true,
           simulationReason: 'Simulated GA4 metrics for demo/testing (propertyId yesop or ?mock=1).',
-          ...(noRevenue ? { mockNoRevenue: true, simulationNote: 'Mock GA4 revenue disabled for this campaign.' } : {}),
           lastUpdated: new Date().toISOString()
         });
       }
@@ -3461,20 +3427,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dataSource: connection ? 'Real Google Analytics API' : 'Demo Mode'
         });
       } else {
-        // Dev-only: allow selecting the yesop mock property during the "temp-campaign-setup" flow
-        // so users can test GA4 UI + campaign selection without OAuth.
-        const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
-        if (allowMockYesop && campaignId === 'temp-campaign-setup') {
-          return res.json({
-            connected: true,
-            email: undefined,
-            propertyId: 'yesop',
-            properties: [{ id: 'yesop', name: 'yesop (Mock GA4)' }],
-            isRealOAuth: false,
-            dataSource: 'Mock GA4 (yesop)',
-            isSimulated: true,
-          });
-        }
         res.json({ connected: false });
       }
     } catch (error) {
@@ -3491,38 +3443,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!propertyId) {
         return res.status(400).json({ message: "Property ID is required" });
-      }
-
-      // Dev-only: allow "connecting" the yesop mock property without OAuth.
-      const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
-      if (allowMockYesop && isYesopMockProperty(String(propertyId))) {
-        const pid = String(propertyId);
-        const propertyName = 'Mock GA4 Property';
-        const existingConnections = await storage.getGA4Connections(campaignId);
-        if (existingConnections.length > 0) {
-          const existingConnection = existingConnections[0];
-          await storage.updateGA4Connection(existingConnection.id, {
-            propertyId: pid,
-            propertyName,
-            method: 'mock',
-            isPrimary: true,
-            isActive: true,
-          });
-          await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
-        } else {
-          const newConnection = await storage.createGA4Connection({
-            campaignId,
-            propertyId: pid,
-            accessToken: '',
-            refreshToken: '',
-            method: 'mock',
-            propertyName,
-            isPrimary: true,
-            isActive: true,
-          });
-          await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
-        }
-        return res.json({ success: true, message: "Mock property set successfully" });
       }
 
       // Update in-memory connection
@@ -3599,10 +3519,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
       if (shouldSimulate) {
-        const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
-        const noRevenue = isMockNoRevenueCampaign(campaign, req);
         res.setHeader('Cache-Control', 'no-store');
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
           success: true,
@@ -3612,7 +3530,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           displayName: `Mock ${pid}`,
           isSimulated: true,
           simulationReason: 'Simulated GA4 time series for demo/testing (propertyId yesop or ?mock=1).',
-          ...(noRevenue ? { mockNoRevenue: true, simulationNote: 'Mock GA4 revenue disabled for this campaign.' } : {}),
           lastUpdated: new Date().toISOString(),
         });
       }
@@ -3688,36 +3605,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 200);
 
-      // If the selected property is the yesop mock property, return a deterministic mock list.
-      // This supports the "Create Campaign" GA4 flow where we want the user to pick a GA4 campaignName
-      // (including a no-revenue option) without needing OAuth.
-      const conns = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
-      const primary = (Array.isArray(conns) ? conns : []).find((c: any) => c?.isPrimary) || (Array.isArray(conns) ? conns[0] : undefined);
-      const pid = String(propertyId || primary?.propertyId || '');
-      if (isYesopMockProperty(pid)) {
-        // Match the naming style the UI already shows (seo, brand_search, weekly_promo, etc.)
-        // Add a "no_revenue" option to test revenue import.
-        const mockCampaigns = [
-          { name: 'seo', users: 62 },
-          { name: '(direct)', users: 60 },
-          { name: 'nonbrand_search', users: 52 },
-          { name: 'brand_search', users: 40 },
-          { name: 'weekly_promo', users: 35 },
-          { name: 'prospecting', users: 30 },
-          { name: 'retargeting', users: 20 },
-          { name: 'direct', users: 18 },
-          { name: 'no_revenue', users: 28 }, // selecting this will make mock GA4 revenue = 0
-        ].slice(0, limit);
-
-        return res.json({
-          success: true,
-          dateRange,
-          propertyId: pid || 'yesop',
-          campaigns: mockCampaigns,
-          meta: { isSimulated: true, source: 'yesop-mock' },
-        });
-      }
-
       let ga4DateRange = '30daysAgo';
       switch (dateRange) {
         case '7days':
@@ -3752,7 +3639,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || '30days');
-      const compare = String((req.query as any)?.compare || '').toLowerCase();
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
       const campaign = await storage.getCampaign(campaignId);
@@ -3776,79 +3662,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ga4DateRange = '30daysAgo';
       }
 
-      if (compare === 'wow') {
-        if (shouldSimulate) {
-          const noRevenue = isMockNoRevenueCampaign(campaign, req);
-          res.setHeader('Cache-Control', 'no-store');
-          const last = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: '7days', endOffsetDays: 0, noRevenue });
-          const prev = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: '7days', endOffsetDays: 7, noRevenue });
-
-          const pages = ['/', '/pricing', '/product', '/blog/seo', '/blog/benchmarking', '/signup', '/checkout'];
-          const seedLast = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:landing:last7`);
-          const seedPrev = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:landing:prev7`);
-          const randLast = mulberry32(seedLast);
-          const randPrev = mulberry32(seedPrev);
-          const wLast = pages.map(() => 0.8 + randLast() * 1.8);
-          const wPrev = pages.map(() => 0.8 + randPrev() * 1.8);
-          const sumLast = wLast.reduce((a, b) => a + b, 0) || 1;
-          const sumPrev = wPrev.reduce((a, b) => a + b, 0) || 1;
-
-          const totals = {
-            last7: {
-              sessions: Number(last.totals.sessions || 0),
-              users: Number(last.totals.users || 0),
-              conversions: Number(last.totals.conversions || 0),
-              revenue: Number(last.totals.revenue || 0),
-            },
-            prev7: {
-              sessions: Number(prev.totals.sessions || 0),
-              users: Number(prev.totals.users || 0),
-              conversions: Number(prev.totals.conversions || 0),
-              revenue: Number(prev.totals.revenue || 0),
-            },
-          };
-
-          const rows = pages.map((p, idx) => {
-            const shareL = wLast[idx] / sumLast;
-            const shareP = wPrev[idx] / sumPrev;
-            const last7Sessions = Math.max(0, Math.floor(totals.last7.sessions * shareL));
-            const prev7Sessions = Math.max(0, Math.floor(totals.prev7.sessions * shareP));
-            const last7Conversions = Math.max(0, Math.floor(totals.last7.conversions * shareL));
-            const prev7Conversions = Math.max(0, Math.floor(totals.prev7.conversions * shareP));
-            const last7Revenue = Number((totals.last7.revenue * shareL).toFixed(2));
-            const prev7Revenue = Number((totals.prev7.revenue * shareP).toFixed(2));
-            const last7Users = Math.min(totals.last7.users, Math.max(0, Math.floor(last7Sessions * (0.65 + randLast() * 0.25))));
-            const prev7Users = Math.min(totals.prev7.users, Math.max(0, Math.floor(prev7Sessions * (0.65 + randPrev() * 0.25))));
-            return {
-              landingPage: p,
-              source: idx % 2 === 0 ? 'google' : 'linkedin',
-              medium: idx % 2 === 0 ? 'cpc' : 'paid_social',
-              last7: { sessions: last7Sessions, users: last7Users, conversions: last7Conversions, revenue: last7Revenue },
-              prev7: { sessions: prev7Sessions, users: prev7Users, conversions: prev7Conversions, revenue: prev7Revenue },
-            };
-          });
-
-          return res.json({
-            success: true,
-            compare: 'wow',
-            propertyId: requestedPropertyId || 'yesop',
-            rows: rows.slice(0, limit),
-            totals,
-            revenueMetric: 'totalRevenue',
-            meta: { usersAreNonAdditive: true, isSimulated: true },
-            ...(noRevenue ? { mockNoRevenue: true, simulationNote: 'Mock GA4 revenue disabled for this campaign.' } : {}),
-            lastUpdated: new Date().toISOString(),
-          });
-        }
-
-        const result = await ga4Service.getLandingPagesWoWReport(campaignId, storage, propertyId, limit, campaignFilter);
-        return res.json({ success: true, compare: 'wow', ...result, lastUpdated: new Date().toISOString() });
-      }
-
       if (shouldSimulate) {
-        const noRevenue = isMockNoRevenueCampaign(campaign, req);
         res.setHeader('Cache-Control', 'no-store');
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
 
         const pages = [
           '/',
@@ -3905,7 +3721,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totals: { sessions: totalSessions, users: totalUsers, conversions: totalConversions, revenue: Number(totalRevenue.toFixed(2)) },
           revenueMetric: 'totalRevenue',
           meta: { usersAreNonAdditive: true, isSimulated: true },
-          ...(noRevenue ? { mockNoRevenue: true, simulationNote: 'Mock GA4 revenue disabled for this campaign.' } : {}),
           lastUpdated: new Date().toISOString(),
         });
       }
@@ -3929,7 +3744,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || '30days');
-      const compare = String((req.query as any)?.compare || '').toLowerCase();
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
       const campaign = await storage.getCampaign(campaignId);
@@ -3953,82 +3767,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ga4DateRange = '30daysAgo';
       }
 
-      if (compare === 'wow') {
-        if (shouldSimulate) {
-          const noRevenue = isMockNoRevenueCampaign(campaign, req);
-          res.setHeader('Cache-Control', 'no-store');
-          const last = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: '7days', endOffsetDays: 0, noRevenue });
-          const prev = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: '7days', endOffsetDays: 7, noRevenue });
-
-          const events = [
-            { name: 'purchase', weight: 1.0 },
-            { name: 'generate_lead', weight: 0.7 },
-            { name: 'sign_up', weight: 0.6 },
-            { name: 'begin_checkout', weight: 0.8 },
-            { name: 'add_to_cart', weight: 0.9 },
-          ];
-          const seedLast = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:events:last7`);
-          const seedPrev = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:events:prev7`);
-          const randLast = mulberry32(seedLast);
-          const randPrev = mulberry32(seedPrev);
-          const wSum = events.reduce((a, e) => a + e.weight, 0) || 1;
-
-          const totals = {
-            last7: {
-              conversions: Number(last.totals.conversions || 0),
-              users: Number(last.totals.users || 0),
-              revenue: Number(last.totals.revenue || 0),
-            },
-            prev7: {
-              conversions: Number(prev.totals.conversions || 0),
-              users: Number(prev.totals.users || 0),
-              revenue: Number(prev.totals.revenue || 0),
-            },
-          };
-
-          const rows = events.map((e, idx) => {
-            const share = e.weight / wSum;
-            const last7Conversions = Math.max(0, Math.floor(totals.last7.conversions * share));
-            const prev7Conversions = Math.max(0, Math.floor(totals.prev7.conversions * share));
-            const last7EventCount = Math.max(last7Conversions, Math.floor(last7Conversions * (1.2 + randLast() * 2.5)));
-            const prev7EventCount = Math.max(prev7Conversions, Math.floor(prev7Conversions * (1.2 + randPrev() * 2.5)));
-            const last7Users = Math.min(totals.last7.users, Math.max(0, Math.floor(last7Conversions * (1.0 + randLast() * 3.0))));
-            const prev7Users = Math.min(totals.prev7.users, Math.max(0, Math.floor(prev7Conversions * (1.0 + randPrev() * 3.0))));
-            const last7Revenue =
-              e.name === 'purchase' ? Number((totals.last7.revenue * 0.92).toFixed(2)) : Number((totals.last7.revenue * 0.08 * share).toFixed(2));
-            const prev7Revenue =
-              e.name === 'purchase' ? Number((totals.prev7.revenue * 0.92).toFixed(2)) : Number((totals.prev7.revenue * 0.08 * share).toFixed(2));
-            return {
-              eventName: e.name,
-              last7: { conversions: last7Conversions, eventCount: last7EventCount, users: last7Users, revenue: last7Revenue },
-              prev7: { conversions: prev7Conversions, eventCount: prev7EventCount, users: prev7Users, revenue: prev7Revenue },
-            };
-          });
-
-          return res.json({
-            success: true,
-            compare: 'wow',
-            propertyId: requestedPropertyId || 'yesop',
-            rows: rows.slice(0, limit),
-            totals: {
-              last7: { conversions: totals.last7.conversions, eventCount: rows.reduce((s, r) => s + Number(r.last7.eventCount || 0), 0), users: totals.last7.users, revenue: Number(totals.last7.revenue.toFixed(2)) },
-              prev7: { conversions: totals.prev7.conversions, eventCount: rows.reduce((s, r) => s + Number(r.prev7.eventCount || 0), 0), users: totals.prev7.users, revenue: Number(totals.prev7.revenue.toFixed(2)) },
-            },
-            revenueMetric: 'totalRevenue',
-            meta: { isSimulated: true },
-            ...(noRevenue ? { mockNoRevenue: true, simulationNote: 'Mock GA4 revenue disabled for this campaign.' } : {}),
-            lastUpdated: new Date().toISOString(),
-          });
-        }
-
-        const result = await ga4Service.getConversionEventsWoWReport(campaignId, storage, propertyId, limit, campaignFilter);
-        return res.json({ success: true, compare: 'wow', ...result, lastUpdated: new Date().toISOString() });
-      }
-
       if (shouldSimulate) {
-        const noRevenue = isMockNoRevenueCampaign(campaign, req);
         res.setHeader('Cache-Control', 'no-store');
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
 
         const events = [
           { name: 'purchase', weight: 1.0 },
@@ -4075,7 +3816,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totals: { conversions: totalConversions, eventCount: eventCountSum, users: totalUsers, revenue: Number(totalRevenue.toFixed(2)) },
           revenueMetric: 'totalRevenue',
           meta: { isSimulated: true },
-          ...(noRevenue ? { mockNoRevenue: true, simulationNote: 'Mock GA4 revenue disabled for this campaign.' } : {}),
           lastUpdated: new Date().toISOString(),
         });
       }
@@ -4109,9 +3849,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
       if (shouldSimulate) {
-        const noRevenue = isMockNoRevenueCampaign(campaign, req);
         res.setHeader('Cache-Control', 'no-store');
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
           success: true,
@@ -4128,7 +3867,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(debug ? { meta: { isSimulated: true, seedKey: `${campaignId}:${pid}:${dateRange}`, days: dateRangeToDays(dateRange) } } : {}),
           isSimulated: true,
           simulationReason: 'Simulated GA4 breakdown for demo/testing (propertyId yesop or ?mock=1).',
-          ...(noRevenue ? { mockNoRevenue: true, simulationNote: 'Mock GA4 revenue disabled for this campaign.' } : {}),
           lastUpdated: new Date().toISOString(),
         });
       }
@@ -4746,36 +4484,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           primaryConnectedAt: primaryConnection.connectedAt,
           hasValidToken: ga4Connections.some(conn => !!conn.accessToken),
           method: primaryConnection.method
-        });
-      }
-
-      // If no GA4 connections exist but the user is intentionally using the yesop mock property,
-      // treat it as "connected" so they can test the GA4 UI (and revenue import) without OAuth.
-      const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
-      const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
-      if (allowMockYesop && campaign && isYesopMockCampaign(campaign, req)) {
-        const mockPropertyId = 'yesop';
-        return res.json({
-          connected: true,
-          primaryPropertyId: mockPropertyId,
-          totalConnections: 1,
-          connections: [
-            {
-              id: 'mock-yesop',
-              propertyId: mockPropertyId,
-              propertyName: 'Mock GA4 Property',
-              displayName: 'yesop (Mock GA4)',
-              websiteUrl: null,
-              isPrimary: true,
-              isActive: true,
-              connectedAt: new Date().toISOString(),
-            },
-          ],
-          primaryPropertyName: 'Mock GA4 Property',
-          primaryDisplayName: 'yesop (Mock GA4)',
-          primaryConnectedAt: new Date().toISOString(),
-          hasValidToken: false,
-          method: 'mock',
         });
       }
 
@@ -7406,6 +7114,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateSalesforceConnection(sfConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }
 
+      // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it when GA4 revenue is missing.
+      try {
+        await deactivateRevenueSourcesForCampaign(campaignId);
+        const camp = await storage.getCampaign(campaignId);
+        const cur = (camp as any)?.currency || "USD";
+
+        const source = await storage.createRevenueSource({
+          campaignId,
+          sourceType: "salesforce",
+          displayName: `Salesforce (Opportunities)`,
+          currency: cur,
+          mappingConfig: JSON.stringify({
+            provider: "salesforce",
+            campaignField: attribField,
+            selectedValues: selected,
+            revenueField: revenue,
+            days: rangeDays,
+            revenueClassification,
+            lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+          }),
+          isActive: true,
+        } as any);
+
+        await storage.deleteRevenueRecordsBySource(source.id);
+
+        const endDate = new Date().toISOString().slice(0, 10);
+        const startObj = new Date();
+        startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
+        const startDate = startObj.toISOString().slice(0, 10);
+        const days = enumerateDatesInclusive(startDate, endDate);
+
+        const totalCents = Math.round(Number(totalRevenue.toFixed(2)) * 100);
+        const baseCents = Math.floor(totalCents / Math.max(1, days.length));
+        const remainder = totalCents - baseCents * Math.max(1, days.length);
+
+        const records = days.map((d, idx) => {
+          const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
+          return {
+            campaignId,
+            revenueSourceId: source.id,
+            date: d,
+            revenue: (cents / 100).toFixed(2) as any,
+            currency: cur,
+          } as any;
+        });
+        await storage.createRevenueRecords(records);
+      } catch (e) {
+        console.warn("[Salesforce Save Mappings] Failed to materialize revenue records:", e);
+      }
+
       res.json({
         success: true,
         conversionValueCalculated: true,
@@ -7732,6 +7490,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
         };
         await storage.updateHubspotConnection(hubspotConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
+      }
+
+      // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it when GA4 revenue is missing.
+      try {
+        await deactivateRevenueSourcesForCampaign(campaignId);
+        const camp = await storage.getCampaign(campaignId);
+        const cur = (camp as any)?.currency || "USD";
+
+        const source = await storage.createRevenueSource({
+          campaignId,
+          sourceType: "hubspot",
+          displayName: `HubSpot (Deals)`,
+          currency: cur,
+          mappingConfig: JSON.stringify({
+            provider: "hubspot",
+            campaignProperty: campaignProp,
+            selectedValues: selected,
+            revenueProperty: revenueProp,
+            days: rangeDays,
+            stageIds: effectiveStageIds,
+            revenueClassification,
+            lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+          }),
+          isActive: true,
+        } as any);
+
+        await storage.deleteRevenueRecordsBySource(source.id);
+
+        const endDate = new Date().toISOString().slice(0, 10);
+        const startObj = new Date();
+        startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
+        const startDate = startObj.toISOString().slice(0, 10);
+        const days = enumerateDatesInclusive(startDate, endDate);
+
+        const totalCents = Math.round(Number(totalRevenue.toFixed(2)) * 100);
+        const baseCents = Math.floor(totalCents / Math.max(1, days.length));
+        const remainder = totalCents - baseCents * Math.max(1, days.length);
+
+        const records = days.map((d, idx) => {
+          const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
+          return {
+            campaignId,
+            revenueSourceId: source.id,
+            date: d,
+            revenue: (cents / 100).toFixed(2) as any,
+            currency: cur,
+          } as any;
+        });
+        await storage.createRevenueRecords(records);
+      } catch (e) {
+        console.warn("[HubSpot Save Mappings] Failed to materialize revenue records:", e);
       }
 
       res.json({
@@ -14102,7 +13911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         propertyId: existingConnection.propertyId,
         accessToken: existingConnection.accessToken,
         refreshToken: existingConnection.refreshToken,
-        method: existingConnection.method || 'access_token',
+        method: 'access_token',
         propertyName: existingConnection.propertyName,
         serviceAccountKey: existingConnection.serviceAccountKey,
         isPrimary: true,
@@ -14149,38 +13958,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: false, 
           error: "Property ID is required" 
         });
-      }
-
-      // Dev-only: allow "connecting" the yesop mock property without OAuth.
-      const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
-      if (allowMockYesop && isYesopMockProperty(String(propertyId))) {
-        const pid = String(propertyId);
-        const propertyName = 'Mock GA4 Property';
-        const existingConnections = await storage.getGA4Connections(campaignId);
-        if (existingConnections.length > 0) {
-          const existingConnection = existingConnections[0];
-          await storage.updateGA4Connection(existingConnection.id, {
-            propertyId: pid,
-            propertyName,
-            method: 'mock',
-            isPrimary: true,
-            isActive: true,
-          });
-          await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
-        } else {
-          const newConnection = await storage.createGA4Connection({
-            campaignId,
-            propertyId: pid,
-            accessToken: '',
-            refreshToken: '',
-            method: 'mock',
-            propertyName,
-            isPrimary: true,
-            isActive: true,
-          });
-          await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
-        }
-        return res.json({ success: true, message: "Mock property set successfully" });
       }
 
       // Get connection from real GA4 client
@@ -14286,29 +14063,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else {
         console.log(`[GA4 Check] No connections found for ${campaignId}, returning connected=false`);
-        const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
-        if (allowMockYesop) {
-          const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
-          if (campaign && isYesopMockCampaign(campaign, req)) {
-            return res.json({
-              connected: true,
-              totalConnections: 1,
-              connections: [
-                {
-                  id: 'mock-yesop',
-                  propertyId: 'yesop',
-                  propertyName: 'Mock GA4 Property',
-                  isPrimary: true,
-                  isActive: true,
-                },
-              ],
-            });
-          }
-        }
-        res.json({
-          connected: false,
-          totalConnections: 0,
-          connections: [],
+        res.json({ 
+          connected: false, 
+          totalConnections: 0, 
+          connections: [] 
         });
       }
     } catch (error) {
@@ -14336,17 +14094,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: connection.email
         });
       } else {
-        // Dev-only: allow selecting the yesop mock property during the "temp-campaign-setup" flow
-        // so users can test GA4 UI + campaign selection without OAuth.
-        const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
-        if (allowMockYesop && campaignId === 'temp-campaign-setup') {
-          return res.json({
-            connected: true,
-            properties: [{ id: 'yesop', name: 'yesop (Mock GA4)' }],
-            email: undefined,
-            isSimulated: true,
-          });
-        }
         console.log(`[GA4 Status] No connection found for ${campaignId}`);
         res.json({ connected: false, properties: [] });
       }
@@ -16398,6 +16145,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
         };
         await storage.updateShopifyConnection(shopifyConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
+      }
+
+      // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it when GA4 revenue is missing.
+      try {
+        await deactivateRevenueSourcesForCampaign(campaignId);
+        const camp = await storage.getCampaign(campaignId);
+        const cur = (camp as any)?.currency || "USD";
+
+        const source = await storage.createRevenueSource({
+          campaignId,
+          sourceType: "shopify",
+          displayName: `Shopify (${conn.shopDomain})`,
+          currency: cur,
+          mappingConfig: JSON.stringify({
+            provider: "shopify",
+            campaignField: field,
+            selectedValues: selected,
+            revenueMetric: metric,
+            days: rangeDays,
+            revenueClassification,
+            lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+          }),
+          isActive: true,
+        } as any);
+
+        await storage.deleteRevenueRecordsBySource(source.id);
+
+        const endDate = new Date().toISOString().slice(0, 10);
+        const startObj = new Date();
+        startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
+        const startDate = startObj.toISOString().slice(0, 10);
+        const days = enumerateDatesInclusive(startDate, endDate);
+
+        const totalCents = Math.round(Number(totalRevenue.toFixed(2)) * 100);
+        const baseCents = Math.floor(totalCents / Math.max(1, days.length));
+        const remainder = totalCents - baseCents * Math.max(1, days.length);
+
+        const records = days.map((d, idx) => {
+          const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
+          return {
+            campaignId,
+            revenueSourceId: source.id,
+            date: d,
+            revenue: (cents / 100).toFixed(2) as any,
+            currency: cur,
+          } as any;
+        });
+        await storage.createRevenueRecords(records);
+      } catch (e) {
+        console.warn("[Shopify Save Mappings] Failed to materialize revenue records:", e);
       }
 
       res.json({

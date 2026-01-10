@@ -45,7 +45,7 @@ export interface IStorage {
   createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]>;
   getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }>;
 
-  // Revenue (generic, for GA4 Overview when GA4 revenue is unavailable)
+  // Revenue (generic)
   getRevenueSources(campaignId: string): Promise<RevenueSource[]>;
   getRevenueSource(campaignId: string, sourceId: string): Promise<RevenueSource | undefined>;
   createRevenueSource(source: InsertRevenueSource): Promise<RevenueSource>;
@@ -1040,13 +1040,13 @@ export class MemStorage implements IStorage {
   // Revenue methods
   async getRevenueSources(campaignId: string): Promise<RevenueSource[]> {
     return Array.from(this.revenueSources.values())
-      .filter((s) => s.campaignId === campaignId && (s as any).isActive !== false);
+      .filter((s) => (s as any).campaignId === campaignId && (s as any).isActive !== false);
   }
 
   async getRevenueSource(campaignId: string, sourceId: string): Promise<RevenueSource | undefined> {
     const s = this.revenueSources.get(sourceId);
     if (!s) return undefined;
-    if (s.campaignId !== campaignId) return undefined;
+    if ((s as any).campaignId !== campaignId) return undefined;
     if ((s as any).isActive === false) return undefined;
     return s;
   }
@@ -1056,8 +1056,8 @@ export class MemStorage implements IStorage {
     const now = new Date();
     const revenueSource: RevenueSource = {
       id,
-      campaignId: source.campaignId,
-      sourceType: source.sourceType,
+      campaignId: (source as any).campaignId,
+      sourceType: (source as any).sourceType,
       displayName: (source as any).displayName ?? null,
       currency: (source as any).currency ?? null,
       mappingConfig: (source as any).mappingConfig ?? null,
@@ -1086,7 +1086,7 @@ export class MemStorage implements IStorage {
 
   async deleteRevenueRecordsBySource(sourceId: string): Promise<boolean> {
     for (const [id, rec] of this.revenueRecords.entries()) {
-      if ((rec as any).revenueSourceId === sourceId) this.revenueRecords.delete(id);
+      if (String((rec as any).revenueSourceId) === sourceId) this.revenueRecords.delete(id);
     }
     return true;
   }
@@ -1098,9 +1098,9 @@ export class MemStorage implements IStorage {
       const now = new Date();
       const rec: RevenueRecord = {
         id,
-        campaignId: r.campaignId,
-        revenueSourceId: r.revenueSourceId,
-        date: r.date,
+        campaignId: (r as any).campaignId,
+        revenueSourceId: (r as any).revenueSourceId,
+        date: (r as any).date,
         revenue: (r as any).revenue as any,
         currency: (r as any).currency ?? null,
         externalId: (r as any).externalId ?? null,
@@ -1120,7 +1120,7 @@ export class MemStorage implements IStorage {
     let currency: string | undefined = undefined;
 
     for (const rec of this.revenueRecords.values()) {
-      if (rec.campaignId !== campaignId) continue;
+      if (String((rec as any).campaignId) !== campaignId) continue;
       const srcId = String((rec as any).revenueSourceId);
       const src = this.revenueSources.get(srcId);
       if (!src || (src as any).isActive === false) continue;
@@ -2587,6 +2587,92 @@ export class DatabaseStorage implements IStorage {
       if (!currency && cur) currency = String(cur);
     }
     return { totalSpend: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
+  }
+
+  // Revenue methods
+  async getRevenueSources(campaignId: string): Promise<RevenueSource[]> {
+    return db.select().from(revenueSources)
+      .where(and(eq(revenueSources.campaignId, campaignId), eq(revenueSources.isActive, true)))
+      .orderBy(desc(revenueSources.connectedAt));
+  }
+
+  async getRevenueSource(campaignId: string, sourceId: string): Promise<RevenueSource | undefined> {
+    const [s] = await db.select().from(revenueSources)
+      .where(and(sql`${revenueSources.id}::text = ${sourceId}`, eq(revenueSources.campaignId, campaignId), eq(revenueSources.isActive, true)));
+    return s || undefined;
+  }
+
+  async createRevenueSource(source: InsertRevenueSource): Promise<RevenueSource> {
+    const [s] = await db
+      .insert(revenueSources)
+      .values({
+        ...source,
+        isActive: source.isActive !== undefined ? source.isActive : true,
+      } as any)
+      .returning();
+    return s;
+  }
+
+  async updateRevenueSource(sourceId: string, source: Partial<InsertRevenueSource>): Promise<RevenueSource | undefined> {
+    const [s] = await db
+      .update(revenueSources)
+      .set(source as any)
+      .where(sql`${revenueSources.id}::text = ${sourceId}`)
+      .returning();
+    return s || undefined;
+  }
+
+  async deleteRevenueSource(sourceId: string): Promise<boolean> {
+    const result = await db
+      .update(revenueSources)
+      .set({ isActive: false } as any)
+      .where(sql`${revenueSources.id}::text = ${sourceId}`);
+    return (result.rowCount || 0) > 0;
+  }
+
+  async deleteRevenueRecordsBySource(sourceId: string): Promise<boolean> {
+    const result = await db
+      .delete(revenueRecords)
+      .where(eq(revenueRecords.revenueSourceId, sourceId));
+    return (result.rowCount || 0) >= 0;
+  }
+
+  async createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]> {
+    if (!records.length) return [];
+    return db
+      .insert(revenueRecords)
+      .values(records as any)
+      .returning();
+  }
+
+  async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {
+    const rows = await db
+      .select({
+        revenue: revenueRecords.revenue,
+        currency: revenueRecords.currency,
+        revenueSourceId: revenueRecords.revenueSourceId,
+      })
+      .from(revenueRecords)
+      .innerJoin(revenueSources, sql`${revenueSources.id}::text = ${revenueRecords.revenueSourceId}`)
+      .where(and(
+        eq(revenueRecords.campaignId, campaignId),
+        eq(revenueSources.isActive, true),
+        sql`${revenueRecords.date} >= ${startDate}`,
+        sql`${revenueRecords.date} <= ${endDate}`
+      ));
+
+    let total = 0;
+    const sourceIds = new Set<string>();
+    let currency: string | undefined = undefined;
+    for (const r of rows as any[]) {
+      const v = parseFloat(String((r as any).revenueRecords?.revenue ?? (r as any).revenue ?? "0"));
+      if (!Number.isNaN(v)) total += v;
+      const sid = String((r as any).revenueRecords?.revenueSourceId ?? (r as any).revenueSourceId);
+      if (sid) sourceIds.add(sid);
+      const cur = (r as any).revenueRecords?.currency ?? (r as any).currency;
+      if (!currency && cur) currency = String(cur);
+    }
+    return { totalRevenue: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
   // Google Sheets Connection methods

@@ -97,11 +97,11 @@ export const spendRecords = pgTable("spend_records", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-// Revenue sources (manual, csv, google_sheets, shopify, crm, etc.)
+// Revenue sources (manual, csv, google_sheets, shopify, hubspot, salesforce, etc.)
 export const revenueSources = pgTable("revenue_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
-  sourceType: text("source_type").notNull(), // 'manual' | 'csv' | 'google_sheets' | 'shopify' | 'crm' | 'custom'
+  sourceType: text("source_type").notNull(), // 'manual' | 'csv' | 'google_sheets' | 'shopify' | 'hubspot' | 'salesforce' | 'custom'
   displayName: text("display_name"),
   currency: text("currency"),
   mappingConfig: text("mapping_config"), // JSON string (mappings + filters + provenance)
@@ -116,9 +116,9 @@ export const revenueRecords = pgTable("revenue_records", {
   campaignId: text("campaign_id").notNull(),
   revenueSourceId: text("revenue_source_id").notNull(),
   date: text("date").notNull(), // YYYY-MM-DD
-  revenue: decimal("revenue", { precision: 18, scale: 2 }).notNull(),
+  revenue: decimal("revenue", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency"),
-  externalId: text("external_id"), // optional stable ID for dedupe (orderId/dealId/rowHash)
+  externalId: text("external_id"), // e.g., Shopify order ID, HubSpot deal ID
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

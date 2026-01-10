@@ -264,14 +264,15 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
-  const handleSheetsPreview = async () => {
-    if (!sheetsConnectionId) return;
+  const handleSheetsPreview = async (connectionIdOverride?: string) => {
+    const cid = String(connectionIdOverride || sheetsConnectionId || "").trim();
+    if (!cid) return;
     setSheetsProcessing(true);
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connectionId: sheetsConnectionId }),
+        body: JSON.stringify({ connectionId: cid }),
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to preview sheet");
@@ -612,9 +613,16 @@ export function AddRevenueWizardModal(props: {
                           onSuccess={async (info) => {
                             setShowSheetsConnect(false);
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
-                            if (preferredId) setSheetsConnectionId(preferredId);
-                            await refreshSheetsConnections();
-                            toast({ title: "Google Sheets connected", description: "Now preview and map your revenue columns." });
+                            if (preferredId) {
+                              setSheetsConnectionId(preferredId);
+                              // Match Add Spend flow: go straight into preview -> mapping after selecting sheet/tab(s)
+                              await refreshSheetsConnections();
+                              await handleSheetsPreview(preferredId);
+                              toast({ title: "Google Sheets connected", description: "Now map your columns and import revenue." });
+                            } else {
+                              await refreshSheetsConnections();
+                              toast({ title: "Google Sheets connected", description: "Now select a tab and preview it to map columns." });
+                            }
                           }}
                           onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
                         />
@@ -631,9 +639,15 @@ export function AddRevenueWizardModal(props: {
                           onSuccess={async (info) => {
                             setShowSheetsConnect(false);
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
-                            if (preferredId) setSheetsConnectionId(preferredId);
-                            await refreshSheetsConnections();
-                            toast({ title: "Google Sheets connected", description: "Now preview and map your revenue columns." });
+                            if (preferredId) {
+                              setSheetsConnectionId(preferredId);
+                              await refreshSheetsConnections();
+                              await handleSheetsPreview(preferredId);
+                              toast({ title: "Google Sheets connected", description: "Now map your columns and import revenue." });
+                            } else {
+                              await refreshSheetsConnections();
+                              toast({ title: "Google Sheets connected", description: "Now select a tab and preview it to map columns." });
+                            }
                           }}
                           onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
                         />

@@ -175,6 +175,34 @@ process.on('uncaughtException', (error: Error) => {
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
           `);
+
+          // Revenue tables for GA4 Overview (when GA4 revenue is missing) and for revenue-derived metrics.
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS revenue_sources (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              source_type TEXT NOT NULL,
+              display_name TEXT,
+              currency TEXT,
+              mapping_config TEXT,
+              is_active BOOLEAN NOT NULL DEFAULT true,
+              connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS revenue_records (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              revenue_source_id TEXT NOT NULL,
+              date TEXT NOT NULL,
+              revenue DECIMAL(18, 2) NOT NULL,
+              currency TEXT,
+              external_id TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
           
           // Migration 3: Create KPI periods table
           await db.execute(sql`

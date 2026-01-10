@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, spendSources, spendRecords, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, spendSources, spendRecords, revenueSources, revenueRecords, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
@@ -44,6 +44,16 @@ export interface IStorage {
   deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
   createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]>;
   getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }>;
+
+  // Revenue (generic, for GA4 Overview when GA4 revenue is unavailable)
+  getRevenueSources(campaignId: string): Promise<RevenueSource[]>;
+  getRevenueSource(campaignId: string, sourceId: string): Promise<RevenueSource | undefined>;
+  createRevenueSource(source: InsertRevenueSource): Promise<RevenueSource>;
+  updateRevenueSource(sourceId: string, source: Partial<InsertRevenueSource>): Promise<RevenueSource | undefined>;
+  deleteRevenueSource(sourceId: string): Promise<boolean>;
+  deleteRevenueRecordsBySource(sourceId: string): Promise<boolean>;
+  createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
+  getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
   
   // Google Sheets Connections
   getGoogleSheetsConnections(campaignId: string): Promise<GoogleSheetsConnection[]>;
@@ -301,6 +311,8 @@ export class MemStorage implements IStorage {
   private ga4Connections: Map<string, GA4Connection>;
   private spendSources: Map<string, SpendSource>;
   private spendRecords: Map<string, SpendRecord>;
+  private revenueSources: Map<string, RevenueSource>;
+  private revenueRecords: Map<string, RevenueRecord>;
   private googleSheetsConnections: Map<string, GoogleSheetsConnection>; // Key: connection.id
   private hubspotConnections: Map<string, HubspotConnection>; // Key: connection.id
   private salesforceConnections: Map<string, SalesforceConnection>; // Key: connection.id
@@ -339,6 +351,8 @@ export class MemStorage implements IStorage {
     this.ga4Connections = new Map();
     this.spendSources = new Map();
     this.spendRecords = new Map();
+    this.revenueSources = new Map();
+    this.revenueRecords = new Map();
     this.googleSheetsConnections = new Map();
     this.hubspotConnections = new Map();
     this.salesforceConnections = new Map();
@@ -1021,6 +1035,104 @@ export class MemStorage implements IStorage {
     }
 
     return { totalSpend: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
+  }
+
+  // Revenue methods
+  async getRevenueSources(campaignId: string): Promise<RevenueSource[]> {
+    return Array.from(this.revenueSources.values())
+      .filter((s) => s.campaignId === campaignId && (s as any).isActive !== false);
+  }
+
+  async getRevenueSource(campaignId: string, sourceId: string): Promise<RevenueSource | undefined> {
+    const s = this.revenueSources.get(sourceId);
+    if (!s) return undefined;
+    if (s.campaignId !== campaignId) return undefined;
+    if ((s as any).isActive === false) return undefined;
+    return s;
+  }
+
+  async createRevenueSource(source: InsertRevenueSource): Promise<RevenueSource> {
+    const id = randomUUID();
+    const now = new Date();
+    const revenueSource: RevenueSource = {
+      id,
+      campaignId: source.campaignId,
+      sourceType: source.sourceType,
+      displayName: (source as any).displayName ?? null,
+      currency: (source as any).currency ?? null,
+      mappingConfig: (source as any).mappingConfig ?? null,
+      isActive: (source as any).isActive ?? true,
+      connectedAt: (now as any),
+      createdAt: (now as any),
+    } as any;
+    this.revenueSources.set(id, revenueSource);
+    return revenueSource;
+  }
+
+  async updateRevenueSource(sourceId: string, source: Partial<InsertRevenueSource>): Promise<RevenueSource | undefined> {
+    const existing = this.revenueSources.get(sourceId);
+    if (!existing) return undefined;
+    const updated: RevenueSource = { ...(existing as any), ...(source as any) } as any;
+    this.revenueSources.set(sourceId, updated);
+    return updated;
+  }
+
+  async deleteRevenueSource(sourceId: string): Promise<boolean> {
+    const existing = this.revenueSources.get(sourceId);
+    if (!existing) return false;
+    this.revenueSources.set(sourceId, { ...(existing as any), isActive: false } as any);
+    return true;
+  }
+
+  async deleteRevenueRecordsBySource(sourceId: string): Promise<boolean> {
+    for (const [id, rec] of this.revenueRecords.entries()) {
+      if ((rec as any).revenueSourceId === sourceId) this.revenueRecords.delete(id);
+    }
+    return true;
+  }
+
+  async createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]> {
+    const created: RevenueRecord[] = [];
+    for (const r of records) {
+      const id = randomUUID();
+      const now = new Date();
+      const rec: RevenueRecord = {
+        id,
+        campaignId: r.campaignId,
+        revenueSourceId: r.revenueSourceId,
+        date: r.date,
+        revenue: (r as any).revenue as any,
+        currency: (r as any).currency ?? null,
+        externalId: (r as any).externalId ?? null,
+        createdAt: (now as any),
+      } as any;
+      this.revenueRecords.set(id, rec);
+      created.push(rec);
+    }
+    return created;
+  }
+
+  async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {
+    const start = new Date(startDate + "T00:00:00Z").getTime();
+    const end = new Date(endDate + "T23:59:59Z").getTime();
+    let total = 0;
+    const sourceIds = new Set<string>();
+    let currency: string | undefined = undefined;
+
+    for (const rec of this.revenueRecords.values()) {
+      if (rec.campaignId !== campaignId) continue;
+      const srcId = String((rec as any).revenueSourceId);
+      const src = this.revenueSources.get(srcId);
+      if (!src || (src as any).isActive === false) continue;
+      const t = new Date(String((rec as any).date) + "T00:00:00Z").getTime();
+      if (Number.isNaN(t) || t < start || t > end) continue;
+      const v = parseFloat(String((rec as any).revenue ?? "0"));
+      if (!Number.isNaN(v)) total += v;
+      sourceIds.add(srcId);
+      if (!currency && (rec as any).currency) currency = String((rec as any).currency);
+    }
+
+    return { totalRevenue: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
   // Google Sheets Connection methods

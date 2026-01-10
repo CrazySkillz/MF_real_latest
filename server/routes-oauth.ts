@@ -413,6 +413,421 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ---------------------------------------------------------------------------
+  // Revenue ingestion (for GA4 Overview when GA4 revenue is unavailable)
+  // ---------------------------------------------------------------------------
+  app.get("/api/campaigns/:id/revenue-sources", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const sources = await storage.getRevenueSources(campaignId);
+      res.json({ success: true, sources });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue sources" });
+    }
+  });
+
+  // Remove all active revenue sources for a campaign.
+  app.delete("/api/campaigns/:id/revenue-sources", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const existing = await storage.getRevenueSources(campaignId);
+      for (const s of existing || []) {
+        if (!s) continue;
+        await storage.deleteRevenueSource(String((s as any).id));
+      }
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to remove revenue sources" });
+    }
+  });
+
+  app.get("/api/campaigns/:id/revenue-totals", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const dateRange = String(req.query.dateRange || "30days");
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate);
+      res.json({ success: true, dateRange, startDate, endDate, ...totals });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue totals" });
+    }
+  });
+
+  // Like spend: ensure we don't silently double-count across multiple imports.
+  const deactivateRevenueSourcesForCampaign = async (campaignId: string) => {
+    try {
+      const existing = await storage.getRevenueSources(campaignId);
+      for (const s of existing || []) {
+        if (!s) continue;
+        await storage.deleteRevenueSource(String((s as any).id));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  app.post("/api/campaigns/:id/revenue/process/manual", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const amount = parseNum((req.body as any)?.amount);
+      const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
+      const dateRange = String((req.body as any)?.dateRange || (req.query as any)?.dateRange || "30days");
+      if (!(amount > 0)) {
+        return res.status(400).json({ success: false, error: "Amount must be > 0" });
+      }
+
+      const campaign = await storage.getCampaign(campaignId);
+      const cur = currency || (campaign as any)?.currency || "USD";
+
+      await deactivateRevenueSourcesForCampaign(campaignId);
+
+      const source = await storage.createRevenueSource({
+        campaignId,
+        sourceType: "manual",
+        displayName: "Manual revenue",
+        currency: cur,
+        // NOTE: manual totals are evenly allocated across the selected range so totals match the chosen window.
+        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, dateRange, allocatedEvenly: true }),
+        isActive: true,
+      } as any);
+
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const days = enumerateDates(startDate, endDate);
+      if (days.length === 0) {
+        return res.status(400).json({ success: false, error: "Invalid date range" });
+      }
+
+      const totalCents = Math.round(Number(amount.toFixed(2)) * 100);
+      const baseCents = Math.floor(totalCents / days.length);
+      const remainder = totalCents - baseCents * days.length;
+
+      const records = days.map((date, idx) => {
+        const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
+        return {
+          campaignId,
+          revenueSourceId: source.id,
+          date,
+          revenue: (cents / 100).toFixed(2) as any,
+          currency: cur,
+        } as any;
+      });
+
+      await storage.createRevenueRecords(records);
+      res.json({ success: true, sourceId: source.id, startDate, endDate, days: days.length, amount: Number(amount.toFixed(2)), currency: cur });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to process manual revenue" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/revenue/csv/preview", uploadCsv.single("file"), async (req, res) => {
+    try {
+      if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
+      const file = (req as any).file as any;
+      const csvText = Buffer.from(file.buffer).toString("utf-8");
+      const parsed = parseCsvText(csvText, 5000);
+      res.json({
+        success: true,
+        fileName: file.originalname,
+        headers: parsed.headers,
+        sampleRows: parsed.rows.slice(0, 25),
+        rowCount: parsed.rows.length,
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to preview CSV" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/revenue/csv/process", uploadCsv.single("file"), async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
+      const file = (req as any).file as any;
+      const mapping = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
+      if (!mapping?.revenueColumn) {
+        return res.status(400).json({ success: false, error: "revenueColumn is required" });
+      }
+
+      const csvText = Buffer.from(file.buffer).toString("utf-8");
+      const parsed = parseCsvText(csvText);
+
+      const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
+      const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
+      const campaignValues: string[] | null = Array.isArray(mapping.campaignValues)
+        ? (mapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v))
+        : null;
+      const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
+
+      const grouped = new Map<string, number>();
+      let kept = 0;
+      const hasDateColumn = !!mapping?.dateColumn;
+      const revenueCol = String(mapping.revenueColumn);
+      const dateCol = hasDateColumn ? String(mapping.dateColumn) : null;
+      const dateRange = String(mapping?.dateRange || "30days");
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const periodDays = enumerateDatesInclusive(startDate, endDate);
+      let totalWithoutDate = 0;
+
+      for (const row of parsed.rows) {
+        if (campaignCol && (campaignValueSet || campaignValue)) {
+          const v = String((row as any)[campaignCol] ?? "").trim();
+          if (campaignValueSet) {
+            if (!campaignValueSet.has(v)) continue;
+          } else if (campaignValue && v !== campaignValue) {
+            continue;
+          }
+        }
+        const revenue = parseNum((row as any)[revenueCol]);
+        if (!(revenue > 0)) continue;
+        kept++;
+        if (dateCol) {
+          const d = normalizeDate((row as any)[dateCol]);
+          if (!d) continue;
+          grouped.set(d, (grouped.get(d) || 0) + revenue);
+        } else {
+          totalWithoutDate += revenue;
+        }
+      }
+
+      if (!dateCol) {
+        const days = periodDays.length || 1;
+        const totalCents = Math.round(totalWithoutDate * 100);
+        const base = Math.floor(totalCents / days);
+        const remainder = totalCents - base * days;
+        const targetDays = periodDays.length ? periodDays : [endDate];
+        for (let i = 0; i < targetDays.length; i++) {
+          const cents = base + (i === targetDays.length - 1 ? remainder : 0);
+          const v = cents / 100;
+          if (v <= 0) continue;
+          grouped.set(targetDays[i], (grouped.get(targetDays[i]) || 0) + v);
+        }
+      }
+
+      const campaign = await storage.getCampaign(campaignId);
+      const currency = mapping.currency || (campaign as any)?.currency || "USD";
+
+      await deactivateRevenueSourcesForCampaign(campaignId);
+
+      const source = await storage.createRevenueSource({
+        campaignId,
+        sourceType: "csv",
+        displayName: mapping.displayName || file.originalname,
+        currency,
+        mappingConfig: JSON.stringify(mapping),
+        isActive: true,
+      } as any);
+
+      await storage.deleteRevenueRecordsBySource(source.id);
+
+      const records = Array.from(grouped.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, total]) => ({
+          campaignId,
+          revenueSourceId: source.id,
+          date,
+          revenue: total.toFixed(2) as any,
+          currency,
+        }));
+
+      await storage.createRevenueRecords(records as any);
+      const totalRevenue = records.reduce((sum, r: any) => sum + parseFloat(String(r.revenue)), 0);
+      res.json({
+        success: true,
+        sourceId: source.id,
+        currency,
+        rowCount: parsed.rows.length,
+        keptRows: kept,
+        days: records.length,
+        totalRevenue: Number(totalRevenue.toFixed(2)),
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/revenue/sheets/preview", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const connectionId = String((req.body as any)?.connectionId || "").trim();
+      if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
+
+      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
+      if (!conn.accessToken) return res.status(400).json({ success: false, error: "Google Sheets access token missing; reconnect Google Sheets." });
+
+      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
+      const resp = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+        { headers: { "Authorization": `Bearer ${conn.accessToken}` } }
+      );
+      if (!resp.ok) {
+        const txt = await resp.text();
+        return res.status(400).json({ success: false, error: `Failed to fetch sheet: ${txt}` });
+      }
+
+      const json = await resp.json().catch(() => ({} as any));
+      const values: any[][] = Array.isArray(json?.values) ? json.values : [];
+      const headerRow = values[0] || [];
+      const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
+
+      const rows: Array<Record<string, string>> = [];
+      for (let i = 1; i < values.length; i++) {
+        const r = values[i] || [];
+        if (r.every((v) => String(v || "").trim() === "")) continue;
+        const obj: Record<string, string> = {};
+        for (let c = 0; c < headers.length; c++) obj[headers[c]] = String(r[c] ?? "").trim();
+        rows.push(obj);
+      }
+
+      res.json({
+        success: true,
+        connectionId,
+        spreadsheetId: conn.spreadsheetId,
+        spreadsheetName: conn.spreadsheetName,
+        sheetName: conn.sheetName,
+        headers,
+        sampleRows: rows.slice(0, 25),
+        rowCount: rows.length,
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to preview sheet" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/revenue/sheets/process", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const connectionId = String((req.body as any)?.connectionId || "").trim();
+      const mapping = (req.body as any)?.mapping || null;
+      if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
+      if (!mapping?.revenueColumn) {
+        return res.status(400).json({ success: false, error: "revenueColumn is required" });
+      }
+
+      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
+      if (!conn.accessToken) return res.status(400).json({ success: false, error: "Google Sheets access token missing; reconnect Google Sheets." });
+
+      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
+      const resp = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+        { headers: { "Authorization": `Bearer ${conn.accessToken}` } }
+      );
+      if (!resp.ok) {
+        const txt = await resp.text();
+        return res.status(400).json({ success: false, error: `Failed to fetch sheet: ${txt}` });
+      }
+
+      const json = await resp.json().catch(() => ({} as any));
+      const values: any[][] = Array.isArray(json?.values) ? json.values : [];
+      const headerRow = values[0] || [];
+      const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
+
+      const rows: Array<Record<string, string>> = [];
+      for (let i = 1; i < values.length; i++) {
+        const r = values[i] || [];
+        if (r.every((v) => String(v || "").trim() === "")) continue;
+        const obj: Record<string, string> = {};
+        for (let c = 0; c < headers.length; c++) obj[headers[c]] = String(r[c] ?? "").trim();
+        rows.push(obj);
+      }
+
+      const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
+      const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
+      const campaignValues: string[] | null = Array.isArray(mapping.campaignValues)
+        ? (mapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v))
+        : null;
+      const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
+
+      const grouped = new Map<string, number>();
+      let kept = 0;
+      const hasDateColumn = !!mapping?.dateColumn;
+      const revenueCol = String(mapping.revenueColumn);
+      const dateCol = hasDateColumn ? String(mapping.dateColumn) : null;
+      const dateRange = String(mapping?.dateRange || "30days");
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const periodDays = enumerateDatesInclusive(startDate, endDate);
+      let totalWithoutDate = 0;
+
+      for (const row of rows) {
+        if (campaignCol && (campaignValueSet || campaignValue)) {
+          const v = String((row as any)[campaignCol] ?? "").trim();
+          if (campaignValueSet) {
+            if (!campaignValueSet.has(v)) continue;
+          } else if (campaignValue && v !== campaignValue) {
+            continue;
+          }
+        }
+        const revenue = parseNum((row as any)[revenueCol]);
+        if (!(revenue > 0)) continue;
+        kept++;
+        if (dateCol) {
+          const d = normalizeDate((row as any)[dateCol]);
+          if (!d) continue;
+          grouped.set(d, (grouped.get(d) || 0) + revenue);
+        } else {
+          totalWithoutDate += revenue;
+        }
+      }
+
+      if (!dateCol) {
+        const days = periodDays.length || 1;
+        const totalCents = Math.round(totalWithoutDate * 100);
+        const base = Math.floor(totalCents / days);
+        const remainder = totalCents - base * days;
+        const targetDays = periodDays.length ? periodDays : [endDate];
+        for (let i = 0; i < targetDays.length; i++) {
+          const cents = base + (i === targetDays.length - 1 ? remainder : 0);
+          const v = cents / 100;
+          if (v <= 0) continue;
+          grouped.set(targetDays[i], (grouped.get(targetDays[i]) || 0) + v);
+        }
+      }
+
+      const campaign = await storage.getCampaign(campaignId);
+      const currency = mapping.currency || (campaign as any)?.currency || "USD";
+
+      await deactivateRevenueSourcesForCampaign(campaignId);
+
+      const source = await storage.createRevenueSource({
+        campaignId,
+        sourceType: "google_sheets",
+        displayName: mapping.displayName || `${conn.spreadsheetName || "Google Sheet"}${conn.sheetName ? ` (${conn.sheetName})` : ""}`,
+        currency,
+        mappingConfig: JSON.stringify({ ...mapping, connectionId, spreadsheetId: conn.spreadsheetId, sheetName: conn.sheetName || null }),
+        isActive: true,
+      } as any);
+
+      await storage.deleteRevenueRecordsBySource(source.id);
+
+      const records = Array.from(grouped.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, total]) => ({
+          campaignId,
+          revenueSourceId: source.id,
+          date,
+          revenue: total.toFixed(2) as any,
+          currency,
+        }));
+
+      await storage.createRevenueRecords(records as any);
+      const totalRevenue = records.reduce((sum, r: any) => sum + parseFloat(String(r.revenue)), 0);
+
+      res.json({
+        success: true,
+        sourceId: source.id,
+        currency,
+        rowCount: rows.length,
+        keptRows: kept,
+        days: records.length,
+        totalRevenue: Number(totalRevenue.toFixed(2)),
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to process sheet revenue" });
+    }
+  });
+
   // Keep spend totals predictable: whenever a user "processes spend" for a campaign,
   // we deactivate prior spend sources so totals don't silently double-count across imports.
   const deactivateSpendSourcesForCampaign = async (campaignId: string) => {

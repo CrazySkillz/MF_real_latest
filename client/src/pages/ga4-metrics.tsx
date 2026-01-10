@@ -24,6 +24,7 @@ import WorldMapSVG from "@/components/WorldMapSVG";
 import { SiGoogle } from "react-icons/si";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { AddSpendWizardModal } from "@/components/AddSpendWizardModal";
+import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -118,6 +119,7 @@ export default function GA4Metrics() {
   const [deleteKPIId, setDeleteKPIId] = useState<string | null>(null);
   const [showSpendDialog, setShowSpendDialog] = useState(false);
   const [showDeleteSpendDialog, setShowDeleteSpendDialog] = useState(false);
+  const [showRevenueDialog, setShowRevenueDialog] = useState(false);
   const [deleteBenchmarkId, setDeleteBenchmarkId] = useState<string | null>(null);
   const [showDeleteBenchmarkDialog, setShowDeleteBenchmarkDialog] = useState(false);
   // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
@@ -1153,6 +1155,40 @@ export default function GA4Metrics() {
 
   const industries = industryData?.industries || [];
 
+  const { data: googleSheetsConnections } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
+      if (!resp.ok) return { connections: [] };
+      return resp.json().catch(() => ({ connections: [] }));
+    },
+  });
+
+  const connectedSheetsForRevenue: Array<{ id: string; spreadsheetName?: string | null; sheetName?: string | null }> =
+    Array.isArray((googleSheetsConnections as any)?.connections) ? (googleSheetsConnections as any).connections : [];
+
+  const { data: revenueTotals } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "revenue-totals", dateRange],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-totals?dateRange=${encodeURIComponent(String(dateRange))}`);
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) return null;
+      return json;
+    },
+  });
+
+  const importedRevenue = Number((revenueTotals as any)?.totalRevenue || 0);
+
   const deriveBenchmarkCategoryFromMetric = (metric: string): string => {
     const m = String(metric || "").toLowerCase();
     if (m === "revenue") return "revenue";
@@ -1485,7 +1521,10 @@ export default function GA4Metrics() {
   const totalSpendForFinancials = Number(spendTotals?.totalSpend || 0);
   const usingAutoLinkedInSpend = !(totalSpendForFinancials > 0) && linkedInSpendForFinancials > 0;
 
-  const financialRevenue = Number(breakdownTotals.revenue || ga4Metrics?.revenue || 0);
+  const ga4RevenueForFinancials = Number(breakdownTotals.revenue || ga4Metrics?.revenue || 0);
+  // If GA4 revenue is missing/0, allow imported revenue sources (Sheets/CSV/manual) to power GA4 Overview financials.
+  // Fail-closed: we only use imported totals that were explicitly ingested and stored server-side.
+  const financialRevenue = ga4RevenueForFinancials > 0 ? ga4RevenueForFinancials : importedRevenue;
   const financialConversions = Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0);
   const financialSpend = Number((totalSpendForFinancials > 0 ? totalSpendForFinancials : (usingAutoLinkedInSpend ? linkedInSpendForFinancials : 0)) || 0);
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
@@ -1526,7 +1565,7 @@ export default function GA4Metrics() {
     // Use the same sources as the GA4 Overview:
     // - Revenue/Conversions/Sessions/Users from GA4 breakdown totals
     // - Spend from spend-totals with LinkedIn fallback
-    if (name === "Revenue") return Number(breakdownTotals.revenue || 0).toFixed(2);
+    if (name === "Revenue") return Number(financialRevenue || 0).toFixed(2);
     if (name === "Total Conversions") return String(Math.round(Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0)));
     if (name === "Conversion Rate") {
       const s = Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0);
@@ -2634,9 +2673,18 @@ export default function GA4Metrics() {
                               <div>
                                 <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue</p>
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  ${breakdownTotals.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  ${Number(financialRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">From GA4 revenue metric</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  {ga4RevenueForFinancials > 0 ? "From GA4 revenue metric" : (importedRevenue > 0 ? "Imported revenue source" : "No GA4 revenue detected")}
+                                </p>
+                                {ga4RevenueForFinancials <= 0 ? (
+                                  <div className="mt-2">
+                                    <Button variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
+                                      Add revenue source
+                                    </Button>
+                                  </div>
+                                ) : null}
                               </div>
                               <DollarSign className="w-8 h-8 text-green-600" />
                             </div>
@@ -3047,6 +3095,15 @@ export default function GA4Metrics() {
                         queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
                         queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
                       }}
+                    />
+
+                    <AddRevenueWizardModal
+                      campaignId={campaignId as string}
+                      open={showRevenueDialog}
+                      onOpenChange={setShowRevenueDialog}
+                      campaignCurrency={(campaign as any)?.currency || "USD"}
+                      dateRange={dateRange as any}
+                      googleSheetsConnections={connectedSheetsForRevenue}
                     />
 
                     <AlertDialog open={showDeleteSpendDialog} onOpenChange={setShowDeleteSpendDialog}>
@@ -4798,7 +4855,7 @@ export default function GA4Metrics() {
                         kpiForm.setValue("targetValue", "");
                         // Prefill current value from the same live sources as the GA4 Overview (no extra fetch).
                         const liveCurrent = calculateKPIValueFromSources(template.name, {
-                          revenue: Number(breakdownTotals.revenue || 0),
+                          revenue: Number(financialRevenue || 0),
                           conversions: Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
                           sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
                           users: Number(breakdownTotals.users || ga4Metrics?.users || 0),

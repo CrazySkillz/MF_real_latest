@@ -97,6 +97,31 @@ export const spendRecords = pgTable("spend_records", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Revenue sources (manual, csv, google_sheets, shopify, crm, etc.)
+export const revenueSources = pgTable("revenue_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  sourceType: text("source_type").notNull(), // 'manual' | 'csv' | 'google_sheets' | 'shopify' | 'crm' | 'custom'
+  displayName: text("display_name"),
+  currency: text("currency"),
+  mappingConfig: text("mapping_config"), // JSON string (mappings + filters + provenance)
+  isActive: boolean("is_active").notNull().default(true),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Normalized revenue rows (typically daily)
+export const revenueRecords = pgTable("revenue_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  revenueSourceId: text("revenue_source_id").notNull(),
+  date: text("date").notNull(), // YYYY-MM-DD
+  revenue: decimal("revenue", { precision: 18, scale: 2 }).notNull(),
+  currency: text("currency"),
+  externalId: text("external_id"), // optional stable ID for dedupe (orderId/dealId/rowHash)
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -811,6 +836,24 @@ export const insertSpendRecordSchema = createInsertSchema(spendRecords).pick({
   currency: true,
 });
 
+export const insertRevenueSourceSchema = createInsertSchema(revenueSources).pick({
+  campaignId: true,
+  sourceType: true,
+  displayName: true,
+  currency: true,
+  mappingConfig: true,
+  isActive: true,
+});
+
+export const insertRevenueRecordSchema = createInsertSchema(revenueRecords).pick({
+  campaignId: true,
+  revenueSourceId: true,
+  date: true,
+  revenue: true,
+  currency: true,
+  externalId: true,
+});
+
 export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheetsConnections).pick({
   campaignId: true,
   spreadsheetId: true,
@@ -1242,6 +1285,10 @@ export type SpendSource = typeof spendSources.$inferSelect;
 export type InsertSpendSource = z.infer<typeof insertSpendSourceSchema>;
 export type SpendRecord = typeof spendRecords.$inferSelect;
 export type InsertSpendRecord = z.infer<typeof insertSpendRecordSchema>;
+export type RevenueSource = typeof revenueSources.$inferSelect;
+export type InsertRevenueSource = z.infer<typeof insertRevenueSourceSchema>;
+export type RevenueRecord = typeof revenueRecords.$inferSelect;
+export type InsertRevenueRecord = z.infer<typeof insertRevenueRecordSchema>;
 export type GoogleSheetsConnection = typeof googleSheetsConnections.$inferSelect;
 export type InsertGoogleSheetsConnection = z.infer<typeof insertGoogleSheetsConnectionSchema>;
 export type HubspotConnection = typeof hubspotConnections.$inferSelect;

@@ -1494,21 +1494,25 @@ export class GoogleAnalytics4Service {
             const conversions = parseInt(row.metricValues[2]?.value || '0');
             const users = parseInt(row.metricValues[3]?.value || '0');
             
-            // Format date for display (convert YYYYMMDD to readable format)
-            let formattedDate = date;
-            if (date.length === 8) {
-              const year = date.substring(0, 4);
-              const month = date.substring(4, 6);
-              const day = date.substring(6, 8);
-              formattedDate = `${month}/${day}`;
+            // IMPORTANT: return ISO date for downstream correctness (Insights WoW needs YYYY-MM-DD).
+            // Keep a lightweight label available for charts.
+            let dateISO = String(date || '').trim();
+            let dateLabel = dateISO;
+            if (/^\d{8}$/.test(dateISO)) {
+              const year = dateISO.substring(0, 4);
+              const month = dateISO.substring(4, 6);
+              const day = dateISO.substring(6, 8);
+              dateISO = `${year}-${month}-${day}`;
+              dateLabel = `${month}/${day}`;
             }
             
             timeSeriesData.push({
-              date: formattedDate,
+              date: dateISO,
+              dateLabel,
               sessions,
               pageviews,
               conversions,
-              users
+              users,
             });
           }
         }

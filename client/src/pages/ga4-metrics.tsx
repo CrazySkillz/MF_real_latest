@@ -2224,6 +2224,13 @@ export default function GA4Metrics() {
 
   const selectedPeriodLabel = getDateRangeLabel(dateRange);
 
+  const formatChartDateLabel = (val: any) => {
+    const s = String(val || "").trim();
+    // Prefer server-provided label when present (ga4-timeseries now returns dateLabel).
+    const byIso = /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.slice(5) : s;
+    return byIso;
+  };
+
   const provenanceLastUpdated =
     (ga4Breakdown as any)?.lastUpdated ||
     (ga4Metrics as any)?.lastUpdated ||
@@ -2590,7 +2597,7 @@ export default function GA4Metrics() {
                             {'GA4 Property Analytics'}
                           </h3>
                           <p className="text-sm text-blue-700 dark:text-blue-300">
-                            {`Showing metrics for the selected GA4 property for ${campaign?.name}`}
+                            {`Showing metrics for ${provenanceProperty} for ${campaign?.name}`}
                           </p>
                         </div>
                       </div>
@@ -2629,7 +2636,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{provenanceProperty}</p>
                               </div>
                               <Target className="w-8 h-8 text-emerald-500" />
                             </div>
@@ -3093,7 +3100,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{provenanceProperty}</p>
                               </div>
                               <Users className="w-8 h-8 text-blue-500" />
                             </div>
@@ -3108,7 +3115,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(ga4Metrics?.newUsers || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{provenanceProperty}</p>
                               </div>
                               <Users className="w-8 h-8 text-emerald-600" />
                             </div>
@@ -3220,7 +3227,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(ga4Metrics?.engagedSessions || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{provenanceProperty}</p>
                               </div>
                               <Target className="w-8 h-8 text-violet-600" />
                             </div>
@@ -3250,7 +3257,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(ga4Metrics?.eventCount || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{provenanceProperty}</p>
                               </div>
                               <MousePointer className="w-8 h-8 text-cyan-600" />
                             </div>
@@ -3274,7 +3281,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatNumber(ga4Metrics?.pageviews || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{provenanceProperty}</p>
                               </div>
                               <Globe className="w-8 h-8 text-green-500" />
                             </div>
@@ -3295,7 +3302,19 @@ export default function GA4Metrics() {
                           <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={timeSeriesData}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={8} />
+                              <XAxis
+                                dataKey="date"
+                                stroke="#64748b"
+                                fontSize={12}
+                                tickMargin={8}
+                                tickFormatter={(v) => {
+                                  // If payload contains dateLabel, prefer it.
+                                  const found = Array.isArray(timeSeriesData)
+                                    ? (timeSeriesData as any[]).find((p) => String((p as any)?.date) === String(v))
+                                    : null;
+                                  return String(found?.dateLabel || formatChartDateLabel(v));
+                                }}
+                              />
                               <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => formatNumber(Number(v) || 0)} />
                               <Tooltip
                                 formatter={(value: any, name: any) => [formatNumber(Number(value) || 0), String(name || "Sessions")]}
@@ -3324,7 +3343,18 @@ export default function GA4Metrics() {
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={timeSeriesData}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={8} />
+                              <XAxis
+                                dataKey="date"
+                                stroke="#64748b"
+                                fontSize={12}
+                                tickMargin={8}
+                                tickFormatter={(v) => {
+                                  const found = Array.isArray(timeSeriesData)
+                                    ? (timeSeriesData as any[]).find((p) => String((p as any)?.date) === String(v))
+                                    : null;
+                                  return String(found?.dateLabel || formatChartDateLabel(v));
+                                }}
+                              />
                               <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => formatNumber(Number(v) || 0)} />
                               <Tooltip
                                 formatter={(value: any, name: any) => [formatNumber(Number(value) || 0), String(name || "")]}

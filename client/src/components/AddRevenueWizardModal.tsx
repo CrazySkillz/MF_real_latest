@@ -5,11 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, FileSpreadsheet, ShoppingCart, Upload, ArrowLeft } from "lucide-react";
 import { HubSpotRevenueWizard } from "@/components/HubSpotRevenueWizard";
 import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
 import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
+import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 
 type Step = "select" | "manual" | "csv" | "sheets" | "hubspot" | "salesforce" | "shopify";
 
@@ -42,14 +44,22 @@ export function AddRevenueWizardModal(props: {
   const [csvPreview, setCsvPreview] = useState<Preview | null>(null);
   const [csvRevenueCol, setCsvRevenueCol] = useState<string>("");
   const [csvDateCol, setCsvDateCol] = useState<string>("");
+  const [csvCampaignCol, setCsvCampaignCol] = useState<string>("");
+  const [csvCampaignQuery, setCsvCampaignQuery] = useState<string>("");
+  const [csvCampaignValues, setCsvCampaignValues] = useState<string[]>([]);
   const [csvProcessing, setCsvProcessing] = useState(false);
 
   // Sheets
   const [sheetsConnections, setSheetsConnections] = useState<any[]>([]);
   const [sheetsConnectionId, setSheetsConnectionId] = useState<string>("");
+  const [showSheetsConnect, setShowSheetsConnect] = useState(false);
+  const [sheetsRemoving, setSheetsRemoving] = useState(false);
   const [sheetsPreview, setSheetsPreview] = useState<Preview | null>(null);
   const [sheetsRevenueCol, setSheetsRevenueCol] = useState<string>("");
   const [sheetsDateCol, setSheetsDateCol] = useState<string>("");
+  const [sheetsCampaignCol, setSheetsCampaignCol] = useState<string>("");
+  const [sheetsCampaignQuery, setSheetsCampaignQuery] = useState<string>("");
+  const [sheetsCampaignValues, setSheetsCampaignValues] = useState<string[]>([]);
   const [sheetsProcessing, setSheetsProcessing] = useState(false);
 
   const resetAll = () => {
@@ -60,11 +70,19 @@ export function AddRevenueWizardModal(props: {
     setCsvPreview(null);
     setCsvRevenueCol("");
     setCsvDateCol("");
+    setCsvCampaignCol("");
+    setCsvCampaignQuery("");
+    setCsvCampaignValues([]);
     setCsvProcessing(false);
     setSheetsConnectionId("");
+    setShowSheetsConnect(false);
+    setSheetsRemoving(false);
     setSheetsPreview(null);
     setSheetsRevenueCol("");
     setSheetsDateCol("");
+    setSheetsCampaignCol("");
+    setSheetsCampaignQuery("");
+    setSheetsCampaignValues([]);
     setSheetsProcessing(false);
   };
 
@@ -96,8 +114,64 @@ export function AddRevenueWizardModal(props: {
     };
   }, [open, step, campaignId, sheetsConnectionId]);
 
+  const refreshSheetsConnections = async () => {
+    try {
+      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
+      const json = await resp.json().catch(() => ({}));
+      const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
+      const filtered = conns.filter((c: any) => c && c.isActive !== false);
+      setSheetsConnections(filtered);
+      return filtered;
+    } catch {
+      setSheetsConnections([]);
+      return null;
+    }
+  };
+
+  const removeSelectedSheetConnection = async () => {
+    if (!sheetsConnectionId) return;
+    setSheetsRemoving(true);
+    try {
+      const resp = await fetch(
+        `/api/google-sheets/${encodeURIComponent(campaignId)}/connection?connectionId=${encodeURIComponent(sheetsConnectionId)}`,
+        { method: "DELETE" }
+      );
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || json?.success === false) {
+        throw new Error(json?.error || "Failed to remove Google Sheets connection");
+      }
+      const filtered = await refreshSheetsConnections();
+      setSheetsConnectionId("");
+      setSheetsPreview(null);
+      setSheetsRevenueCol("");
+      setSheetsDateCol("");
+      setSheetsCampaignCol("");
+      setSheetsCampaignQuery("");
+      setSheetsCampaignValues([]);
+      if (!filtered || filtered.length === 0) setShowSheetsConnect(false);
+      toast({ title: "Google Sheet removed", description: "You can now connect a different sheet/tab." });
+    } catch (e: any) {
+      toast({ title: "Remove failed", description: e?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setSheetsRemoving(false);
+    }
+  };
+
   const csvHeaders = useMemo(() => csvPreview?.headers || [], [csvPreview]);
   const sheetsHeaders = useMemo(() => sheetsPreview?.headers || [], [sheetsPreview]);
+
+  const uniqueValuesFromPreview = (preview: Preview | null, col: string) => {
+    if (!preview || !col) return [];
+    const vals = new Map<string, number>();
+    for (const r of preview.sampleRows || []) {
+      const v = String((r as any)?.[col] ?? "").trim();
+      if (!v) continue;
+      vals.set(v, (vals.get(v) || 0) + 1);
+    }
+    return Array.from(vals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([value]) => value);
+  };
 
   const handleBack = () => {
     if (step === "select") return;
@@ -144,6 +218,9 @@ export function AddRevenueWizardModal(props: {
       const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
       setCsvRevenueCol(guess);
       setCsvDateCol(headers.find((h) => /date/i.test(h)) || "");
+      setCsvCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
+      setCsvCampaignValues([]);
+      setCsvCampaignQuery("");
     } catch (e: any) {
       toast({ title: "CSV preview failed", description: e?.message || "Please try again.", variant: "destructive" });
       setCsvPreview(null);
@@ -160,9 +237,13 @@ export function AddRevenueWizardModal(props: {
     }
     setCsvProcessing(true);
     try {
+      const hasCampaignScope = !!csvCampaignCol && csvCampaignValues.length > 0;
       const mapping = {
         revenueColumn: csvRevenueCol,
         dateColumn: csvDateCol || null,
+        campaignColumn: hasCampaignScope ? csvCampaignCol : null,
+        campaignValue: hasCampaignScope && csvCampaignValues.length === 1 ? csvCampaignValues[0] : null,
+        campaignValues: hasCampaignScope ? csvCampaignValues : null,
         currency,
         dateRange,
         displayName: csvFile.name,
@@ -199,6 +280,9 @@ export function AddRevenueWizardModal(props: {
       const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
       setSheetsRevenueCol(guess);
       setSheetsDateCol(headers.find((h) => /date/i.test(h)) || "");
+      setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
+      setSheetsCampaignValues([]);
+      setSheetsCampaignQuery("");
     } catch (e: any) {
       toast({ title: "Preview failed", description: e?.message || "Please try again.", variant: "destructive" });
       setSheetsPreview(null);
@@ -215,9 +299,13 @@ export function AddRevenueWizardModal(props: {
     }
     setSheetsProcessing(true);
     try {
+      const hasCampaignScope = !!sheetsCampaignCol && sheetsCampaignValues.length > 0;
       const mapping = {
         revenueColumn: sheetsRevenueCol,
         dateColumn: sheetsDateCol || null,
+        campaignColumn: hasCampaignScope ? sheetsCampaignCol : null,
+        campaignValue: hasCampaignScope && sheetsCampaignValues.length === 1 ? sheetsCampaignValues[0] : null,
+        campaignValues: hasCampaignScope ? sheetsCampaignValues : null,
         currency,
         dateRange,
         displayName: "Google Sheets revenue",
@@ -385,34 +473,109 @@ export function AddRevenueWizardModal(props: {
                     />
 
                     {csvPreview && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label>Revenue column</Label>
-                          <Select value={csvRevenueCol} onValueChange={setCsvRevenueCol}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select revenue column" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[10000]">
-                              {csvHeaders.map((h) => (
-                                <SelectItem key={h} value={h}>{h}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label>Campaign column (optional)</Label>
+                            <Select
+                              value={csvCampaignCol}
+                              onValueChange={(v) => {
+                                setCsvCampaignCol(v);
+                                setCsvCampaignValues([]);
+                                setCsvCampaignQuery("");
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="None" />
+                              </SelectTrigger>
+                              <SelectContent className="z-[10000]">
+                                <SelectItem value="">None</SelectItem>
+                                {csvHeaders.map((h) => (
+                                  <SelectItem key={h} value={h}>
+                                    {h}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                              If your CSV contains multiple campaigns, select the campaign column and choose the value(s) to include.
+                            </p>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label>Revenue column</Label>
+                            <Select value={csvRevenueCol} onValueChange={setCsvRevenueCol}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select revenue column" />
+                              </SelectTrigger>
+                              <SelectContent className="z-[10000]">
+                                {csvHeaders.map((h) => (
+                                  <SelectItem key={h} value={h}>
+                                    {h}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label>Date column (optional)</Label>
+                            <Select value={csvDateCol} onValueChange={setCsvDateCol}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="None" />
+                              </SelectTrigger>
+                              <SelectContent className="z-[10000]">
+                                <SelectItem value="">None</SelectItem>
+                                {csvHeaders.map((h) => (
+                                  <SelectItem key={h} value={h}>
+                                    {h}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <Label>Date column (optional)</Label>
-                          <Select value={csvDateCol} onValueChange={setCsvDateCol}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="None" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[10000]">
-                              <SelectItem value="">None</SelectItem>
-                              {csvHeaders.map((h) => (
-                                <SelectItem key={h} value={h}>{h}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+
+                        {csvCampaignCol && (
+                          <div className="rounded-md border p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-sm font-medium">Campaign value(s)</div>
+                              <div className="text-xs text-slate-600 dark:text-slate-400">
+                                Selected: <span className="font-medium">{csvCampaignValues.length}</span>
+                              </div>
+                            </div>
+                            <Input value={csvCampaignQuery} onChange={(e) => setCsvCampaignQuery(e.target.value)} placeholder="Search values…" />
+                            <div className="max-h-[220px] overflow-y-auto space-y-2">
+                              {uniqueValuesFromPreview(csvPreview, csvCampaignCol)
+                                .filter((v) => v.toLowerCase().includes(csvCampaignQuery.toLowerCase()))
+                                .slice(0, 300)
+                                .map((v) => {
+                                  const checked = csvCampaignValues.includes(v);
+                                  return (
+                                    <label key={v} className="flex items-center gap-2 text-sm">
+                                      <Checkbox
+                                        checked={checked}
+                                        onCheckedChange={(next) => {
+                                          const isOn = !!next;
+                                          setCsvCampaignValues((prev) => {
+                                            if (isOn) return prev.includes(v) ? prev : [...prev, v];
+                                            return prev.filter((x) => x !== v);
+                                          });
+                                        }}
+                                      />
+                                      <span className="truncate">{v}</span>
+                                    </label>
+                                  );
+                                })}
+                              {uniqueValuesFromPreview(csvPreview, csvCampaignCol).length === 0 && (
+                                <div className="text-sm text-slate-500 dark:text-slate-400">No campaign values found in sample rows.</div>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              Leave empty to import revenue for all rows (no campaign filtering).
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -437,32 +600,89 @@ export function AddRevenueWizardModal(props: {
                     <CardDescription>Pick a connected sheet and map the revenue column.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="space-y-1">
-                      <Label>Sheet connection</Label>
-                      <Select value={sheetsConnectionId} onValueChange={(v) => {
-                        setSheetsConnectionId(v);
-                        setSheetsPreview(null);
-                        setSheetsRevenueCol("");
-                        setSheetsDateCol("");
-                      }}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a sheet" />
-                        </SelectTrigger>
-                        <SelectContent className="z-[10000]">
-                          {sheetsConnections.map((c: any) => (
-                            <SelectItem key={String(c.id)} value={String(c.id)}>
-                              {String(c.spreadsheetName || c.spreadsheetId || "Google Sheet")}
-                              {c.sheetName ? ` — ${c.sheetName}` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {sheetsConnections.length === 0 && (
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                          No Google Sheets connections found for this campaign.
+                    {sheetsConnections.length === 0 ? (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">Connect Google Sheets</div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          Connect a Google Sheet and select the tab that contains your revenue data.
                         </p>
-                      )}
-                    </div>
+                        <SimpleGoogleSheetsAuth
+                          campaignId={campaignId}
+                          selectionMode="append"
+                          onSuccess={async (info) => {
+                            setShowSheetsConnect(false);
+                            const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
+                            if (preferredId) setSheetsConnectionId(preferredId);
+                            await refreshSheetsConnections();
+                            toast({ title: "Google Sheets connected", description: "Now preview and map your revenue columns." });
+                          }}
+                          onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
+                        />
+                      </div>
+                    ) : showSheetsConnect ? (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">Change sheet/tab</div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          Connect a different spreadsheet or tab (you can select multiple tabs).
+                        </p>
+                        <SimpleGoogleSheetsAuth
+                          campaignId={campaignId}
+                          selectionMode="append"
+                          onSuccess={async (info) => {
+                            setShowSheetsConnect(false);
+                            const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
+                            if (preferredId) setSheetsConnectionId(preferredId);
+                            await refreshSheetsConnections();
+                            toast({ title: "Google Sheets connected", description: "Now preview and map your revenue columns." });
+                          }}
+                          onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <Label>Choose Google Sheet tab</Label>
+                          <div className="flex items-center gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
+                              Change sheet/tab
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={removeSelectedSheetConnection}
+                              disabled={!sheetsConnectionId || sheetsRemoving}
+                            >
+                              {sheetsRemoving ? "Removing…" : "Remove"}
+                            </Button>
+                          </div>
+                        </div>
+                        <Select
+                          value={sheetsConnectionId}
+                          onValueChange={(v) => {
+                            setSheetsConnectionId(v);
+                            setSheetsPreview(null);
+                            setSheetsRevenueCol("");
+                            setSheetsDateCol("");
+                            setSheetsCampaignCol("");
+                            setSheetsCampaignQuery("");
+                            setSheetsCampaignValues([]);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a sheet tab" />
+                          </SelectTrigger>
+                          <SelectContent className="z-[10000]">
+                            {sheetsConnections.map((c: any) => (
+                              <SelectItem key={String(c.id)} value={String(c.id)}>
+                                {String(c.spreadsheetName || c.spreadsheetId || "Google Sheet")}
+                                {c.sheetName ? ` — ${c.sheetName}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-2">
                       <Button variant="outline" onClick={() => void handleSheetsPreview()} disabled={!sheetsConnectionId || sheetsProcessing}>
@@ -471,34 +691,109 @@ export function AddRevenueWizardModal(props: {
                     </div>
 
                     {sheetsPreview && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label>Revenue column</Label>
-                          <Select value={sheetsRevenueCol} onValueChange={setSheetsRevenueCol}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select revenue column" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[10000]">
-                              {sheetsHeaders.map((h) => (
-                                <SelectItem key={h} value={h}>{h}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label>Campaign column (optional)</Label>
+                            <Select
+                              value={sheetsCampaignCol}
+                              onValueChange={(v) => {
+                                setSheetsCampaignCol(v);
+                                setSheetsCampaignValues([]);
+                                setSheetsCampaignQuery("");
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="None" />
+                              </SelectTrigger>
+                              <SelectContent className="z-[10000]">
+                                <SelectItem value="">None</SelectItem>
+                                {sheetsHeaders.map((h) => (
+                                  <SelectItem key={h} value={h}>
+                                    {h}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                              If your sheet contains multiple campaigns, filter it to the campaign value(s) you want.
+                            </p>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label>Revenue column</Label>
+                            <Select value={sheetsRevenueCol} onValueChange={setSheetsRevenueCol}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select revenue column" />
+                              </SelectTrigger>
+                              <SelectContent className="z-[10000]">
+                                {sheetsHeaders.map((h) => (
+                                  <SelectItem key={h} value={h}>
+                                    {h}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label>Date column (optional)</Label>
+                            <Select value={sheetsDateCol} onValueChange={setSheetsDateCol}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="None" />
+                              </SelectTrigger>
+                              <SelectContent className="z-[10000]">
+                                <SelectItem value="">None</SelectItem>
+                                {sheetsHeaders.map((h) => (
+                                  <SelectItem key={h} value={h}>
+                                    {h}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <Label>Date column (optional)</Label>
-                          <Select value={sheetsDateCol} onValueChange={setSheetsDateCol}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="None" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[10000]">
-                              <SelectItem value="">None</SelectItem>
-                              {sheetsHeaders.map((h) => (
-                                <SelectItem key={h} value={h}>{h}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+
+                        {sheetsCampaignCol && (
+                          <div className="rounded-md border p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-sm font-medium">Campaign value(s)</div>
+                              <div className="text-xs text-slate-600 dark:text-slate-400">
+                                Selected: <span className="font-medium">{sheetsCampaignValues.length}</span>
+                              </div>
+                            </div>
+                            <Input value={sheetsCampaignQuery} onChange={(e) => setSheetsCampaignQuery(e.target.value)} placeholder="Search values…" />
+                            <div className="max-h-[220px] overflow-y-auto space-y-2">
+                              {uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol)
+                                .filter((v) => v.toLowerCase().includes(sheetsCampaignQuery.toLowerCase()))
+                                .slice(0, 300)
+                                .map((v) => {
+                                  const checked = sheetsCampaignValues.includes(v);
+                                  return (
+                                    <label key={v} className="flex items-center gap-2 text-sm">
+                                      <Checkbox
+                                        checked={checked}
+                                        onCheckedChange={(next) => {
+                                          const isOn = !!next;
+                                          setSheetsCampaignValues((prev) => {
+                                            if (isOn) return prev.includes(v) ? prev : [...prev, v];
+                                            return prev.filter((x) => x !== v);
+                                          });
+                                        }}
+                                      />
+                                      <span className="truncate">{v}</span>
+                                    </label>
+                                  );
+                                })}
+                              {uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol).length === 0 && (
+                                <div className="text-sm text-slate-500 dark:text-slate-400">No campaign values found in sample rows.</div>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              Leave empty to import revenue for all rows (no campaign filtering).
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 

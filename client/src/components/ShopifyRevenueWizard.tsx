@@ -25,10 +25,77 @@ export function ShopifyRevenueWizard(props: {
   const [campaignField, setCampaignField] = useState<string>("utm_campaign");
   const [revenueMetric, setRevenueMetric] = useState<string>("total_price");
   const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("onsite_in_ga4");
+
+  // OAuth / connection
+  const [shopName, setShopName] = useState<string | null>(null);
+  const [shopDomain, setShopDomain] = useState<string>("");
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connected, setConnected] = useState(false);
+
   const [valuesLoading, setValuesLoading] = useState(false);
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  const fetchStatus = async () => {
+    const resp = await fetch(`/api/shopify/${campaignId}/status`);
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(json?.error || "Failed to check Shopify connection");
+    const isConnected = !!json?.connected;
+    setConnected(isConnected);
+    setShopName(isConnected ? (json?.shopName || null) : null);
+    setShopDomain((prev) => prev || (isConnected ? String(json?.shopDomain || "") : ""));
+    return isConnected;
+  };
+
+  const openOAuthWindow = async () => {
+    const domain = String(shopDomain || "").trim();
+    if (!domain) {
+      toast({ title: "Enter your shop domain", description: "Example: your-store.myshopify.com", variant: "destructive" });
+      return;
+    }
+    setIsConnecting(true);
+    try {
+      const resp = await fetch("/api/auth/shopify/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, shopDomain: domain }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.message || "Failed to start Shopify OAuth");
+      const authUrl = json?.authUrl;
+      if (!authUrl) throw new Error("No auth URL returned");
+
+      const w = window.open(authUrl, "shopify_oauth", "width=520,height=680");
+      if (!w) throw new Error("Popup blocked. Please allow popups and try again.");
+
+      const onMessage = async (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        const data: any = event.data;
+        if (!data || typeof data !== "object") return;
+
+        if (data.type === "shopify_auth_success") {
+          window.removeEventListener("message", onMessage);
+          await fetchStatus();
+          toast({ title: "Shopify Connected", description: "Now map how Shopify orders should be attributed to this campaign." });
+          setStep("campaign-field");
+        } else if (data.type === "shopify_auth_error") {
+          window.removeEventListener("message", onMessage);
+          toast({
+            title: "Shopify Connection Failed",
+            description: data.error || "Please try again.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      window.addEventListener("message", onMessage);
+    } catch (err: any) {
+      toast({ title: "Shopify Connection Failed", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   const steps = useMemo(
     () => [
@@ -65,6 +132,13 @@ export function ShopifyRevenueWizard(props: {
   };
 
   useEffect(() => {
+    void (async () => {
+      try {
+        await fetchStatus();
+      } catch {
+        // ignore
+      }
+    })();
     if (step !== "crosswalk") return;
     if (uniqueValues.length > 0) return;
     void fetchUniqueValues();
@@ -223,6 +297,38 @@ export function ShopifyRevenueWizard(props: {
         <CardContent className="space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-2">
+              {!connected && (
+                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2">
+                  <div className="text-sm font-medium">Connect Shopify</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    Connect your Shopify store via OAuth to import order revenue and map it to this campaign.
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label>Shop domain</Label>
+                      <Input
+                        value={shopDomain}
+                        onChange={(e) => setShopDomain(e.target.value)}
+                        placeholder="your-store.myshopify.com"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button type="button" variant="outline" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                        {isConnecting ? "Connecting…" : "Connect Shopify"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {connected && shopName && (
+                <div className="text-xs text-slate-600 dark:text-slate-400">
+                  Connected store: <span className="font-medium">{shopName}</span>
+                </div>
+              )}
+
               <Label>Attribution key</Label>
               <Select value={campaignField} onValueChange={(v) => setCampaignField(v)}>
                 <SelectTrigger>

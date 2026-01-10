@@ -283,6 +283,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const isMockNoRevenueCampaign = (campaign: any, req?: any): boolean => {
     const q = String((req?.query as any)?.mockNoRevenue || '').toLowerCase();
     if (q === '1' || q === 'true') return true;
+    const filterRaw = String((campaign as any)?.ga4CampaignFilter || '').toLowerCase();
+    if (
+      filterRaw.includes('no revenue') ||
+      filterRaw.includes('no_revenue') ||
+      filterRaw.includes('no-revenue')
+    ) return true;
     const name = String(campaign?.name || '').toLowerCase();
     const label = String(campaign?.label || '').toLowerCase();
     return name.includes('no revenue') || name.includes('no_revenue') || name.includes('no-revenue') ||
@@ -3455,6 +3461,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dataSource: connection ? 'Real Google Analytics API' : 'Demo Mode'
         });
       } else {
+        // Dev-only: allow selecting the yesop mock property during the "temp-campaign-setup" flow
+        // so users can test GA4 UI + campaign selection without OAuth.
+        const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
+        if (allowMockYesop && campaignId === 'temp-campaign-setup') {
+          return res.json({
+            connected: true,
+            email: undefined,
+            propertyId: 'yesop',
+            properties: [{ id: 'yesop', name: 'yesop (Mock GA4)' }],
+            isRealOAuth: false,
+            dataSource: 'Mock GA4 (yesop)',
+            isSimulated: true,
+          });
+        }
         res.json({ connected: false });
       }
     } catch (error) {
@@ -3471,6 +3491,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!propertyId) {
         return res.status(400).json({ message: "Property ID is required" });
+      }
+
+      // Dev-only: allow "connecting" the yesop mock property without OAuth.
+      const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
+      if (allowMockYesop && isYesopMockProperty(String(propertyId))) {
+        const pid = String(propertyId);
+        const propertyName = 'Mock GA4 Property';
+        const existingConnections = await storage.getGA4Connections(campaignId);
+        if (existingConnections.length > 0) {
+          const existingConnection = existingConnections[0];
+          await storage.updateGA4Connection(existingConnection.id, {
+            propertyId: pid,
+            propertyName,
+            method: 'mock',
+            isPrimary: true,
+            isActive: true,
+          });
+          await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
+        } else {
+          const newConnection = await storage.createGA4Connection({
+            campaignId,
+            propertyId: pid,
+            accessToken: '',
+            refreshToken: '',
+            method: 'mock',
+            propertyName,
+            isPrimary: true,
+            isActive: true,
+          });
+          await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
+        }
+        return res.json({ success: true, message: "Mock property set successfully" });
       }
 
       // Update in-memory connection
@@ -3635,6 +3687,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateRange = String(req.query.dateRange || '30days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 200);
+
+      // Dev-only: if the selected property is the yesop mock property, return a deterministic mock list.
+      // This supports the "Create Campaign" GA4 flow where we want the user to pick a GA4 campaignName
+      // (including a no-revenue option) without needing OAuth.
+      const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
+      if (allowMockYesop) {
+        const conns = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
+        const primary = (Array.isArray(conns) ? conns : []).find((c: any) => c?.isPrimary) || (Array.isArray(conns) ? conns[0] : undefined);
+        const pid = String(propertyId || primary?.propertyId || '');
+        if (isYesopMockProperty(pid)) {
+          const mockCampaigns = [
+            { name: 'yesop_brand_search', users: 4120 },
+            { name: 'yesop_prospecting', users: 3880 },
+            { name: 'yesop_weekly_promo', users: 2450 },
+            { name: 'yesop_no_revenue', users: 3100 }, // selecting this will make mock GA4 revenue = 0
+            { name: 'yesop_seo', users: 1980 },
+          ].slice(0, limit);
+
+          return res.json({
+            success: true,
+            dateRange,
+            propertyId: pid || 'yesop',
+            campaigns: mockCampaigns,
+            meta: { isSimulated: true, source: 'yesop-mock' },
+          });
+        }
+      }
 
       let ga4DateRange = '30daysAgo';
       switch (dateRange) {
@@ -4670,7 +4749,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If no GA4 connections exist but the user is intentionally using the yesop mock property,
       // treat it as "connected" so they can test the GA4 UI (and revenue import) without OAuth.
       const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
-      if (campaign && isYesopMockCampaign(campaign, req)) {
+      const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
+      if (allowMockYesop && campaign && isYesopMockCampaign(campaign, req)) {
         const mockPropertyId = 'yesop';
         return res.json({
           connected: true,
@@ -14019,7 +14099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         propertyId: existingConnection.propertyId,
         accessToken: existingConnection.accessToken,
         refreshToken: existingConnection.refreshToken,
-        method: 'access_token',
+        method: existingConnection.method || 'access_token',
         propertyName: existingConnection.propertyName,
         serviceAccountKey: existingConnection.serviceAccountKey,
         isPrimary: true,
@@ -14066,6 +14146,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: false, 
           error: "Property ID is required" 
         });
+      }
+
+      // Dev-only: allow "connecting" the yesop mock property without OAuth.
+      const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
+      if (allowMockYesop && isYesopMockProperty(String(propertyId))) {
+        const pid = String(propertyId);
+        const propertyName = 'Mock GA4 Property';
+        const existingConnections = await storage.getGA4Connections(campaignId);
+        if (existingConnections.length > 0) {
+          const existingConnection = existingConnections[0];
+          await storage.updateGA4Connection(existingConnection.id, {
+            propertyId: pid,
+            propertyName,
+            method: 'mock',
+            isPrimary: true,
+            isActive: true,
+          });
+          await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
+        } else {
+          const newConnection = await storage.createGA4Connection({
+            campaignId,
+            propertyId: pid,
+            accessToken: '',
+            refreshToken: '',
+            method: 'mock',
+            propertyName,
+            isPrimary: true,
+            isActive: true,
+          });
+          await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
+        }
+        return res.json({ success: true, message: "Mock property set successfully" });
       }
 
       // Get connection from real GA4 client
@@ -14171,10 +14283,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else {
         console.log(`[GA4 Check] No connections found for ${campaignId}, returning connected=false`);
-        res.json({ 
-          connected: false, 
-          totalConnections: 0, 
-          connections: [] 
+        const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
+        if (allowMockYesop) {
+          const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
+          if (campaign && isYesopMockCampaign(campaign, req)) {
+            return res.json({
+              connected: true,
+              totalConnections: 1,
+              connections: [
+                {
+                  id: 'mock-yesop',
+                  propertyId: 'yesop',
+                  propertyName: 'Mock GA4 Property',
+                  isPrimary: true,
+                  isActive: true,
+                },
+              ],
+            });
+          }
+        }
+        res.json({
+          connected: false,
+          totalConnections: 0,
+          connections: [],
         });
       }
     } catch (error) {
@@ -14202,6 +14333,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: connection.email
         });
       } else {
+        // Dev-only: allow selecting the yesop mock property during the "temp-campaign-setup" flow
+        // so users can test GA4 UI + campaign selection without OAuth.
+        const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
+        if (allowMockYesop && campaignId === 'temp-campaign-setup') {
+          return res.json({
+            connected: true,
+            properties: [{ id: 'yesop', name: 'yesop (Mock GA4)' }],
+            email: undefined,
+            isSimulated: true,
+          });
+        }
         console.log(`[GA4 Status] No connection found for ${campaignId}`);
         res.json({ connected: false, properties: [] });
       }

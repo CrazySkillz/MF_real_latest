@@ -2004,6 +2004,8 @@ export default function GA4Metrics() {
     const daily = dailyFromTimeSeries.size > 0 ? dailyFromTimeSeries : dailyFromBreakdown;
     const dates = Array.from(daily.keys()).sort();
 
+    const anomalyCountBefore = out.filter((i) => String((i as any)?.id || "").startsWith("anomaly:")).length;
+
     if (dates.length >= 14) {
       const last7 = new Set(dates.slice(-7));
       const prev7 = new Set(dates.slice(-14, -7));
@@ -2094,11 +2096,24 @@ export default function GA4Metrics() {
           });
         }
       }
+
+      // If we had enough history but didn't trigger any anomaly rules, add a lightweight "no anomalies" item
+      // so execs can trust that anomaly detection is running (not missing/buggy).
+      const anomalyCountAfter = out.filter((i) => String((i as any)?.id || "").startsWith("anomaly:")).length;
+      if (anomalyCountAfter === anomalyCountBefore) {
+        out.push({
+          id: "anomaly:none",
+          severity: "low",
+          title: "Anomaly Detection: No significant anomalies detected",
+          description:
+            "We checked week-over-week deltas (last 7d vs prior 7d). No rule-based anomalies were triggered (e.g., conversion rate drop ≥ 15%, engagement depth drop ≥ 20%).",
+        });
+      }
     } else {
       out.push({
         id: "anomaly:not-enough-history",
         severity: "low",
-        title: "Anomaly detection needs more history",
+        title: "Anomaly Detection: needs more history",
         description:
           dates.length === 0
             ? "No daily GA4 history was available to compute week-over-week deltas for this selection."
@@ -4571,8 +4586,13 @@ export default function GA4Metrics() {
                             No issues detected for the selected range. Create KPIs/Benchmarks to unlock more insights.
                           </div>
                         ) : (
-                          <div className="space-y-3">
-                            {insights.slice(0, 12).map((i) => {
+                          (() => {
+                            const isAnomaly = (id: string) =>
+                              id.startsWith("anomaly:") || id.startsWith("lp:wow:") || id.startsWith("events:");
+                            const anomalyInsights = insights.filter((i) => isAnomaly(String(i.id || ""))).slice(0, 8);
+                            const perfInsights = insights.filter((i) => !isAnomaly(String(i.id || ""))).slice(0, 12);
+
+                            const renderItem = (i: any) => {
                               const badgeClass =
                                 i.severity === "high"
                                   ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
@@ -4598,8 +4618,28 @@ export default function GA4Metrics() {
                                   </div>
                                 </div>
                               );
-                            })}
-                          </div>
+                            };
+
+                            return (
+                              <div className="space-y-6">
+                                <div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Anomaly Detection</div>
+                                  {anomalyInsights.length === 0 ? (
+                                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                                      No anomaly signals available for this selection yet.
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-3">{anomalyInsights.map(renderItem)}</div>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white mb-2">KPI & Benchmark Performance</div>
+                                  <div className="space-y-3">{perfInsights.map(renderItem)}</div>
+                                </div>
+                              </div>
+                            );
+                          })()
                         )}
                       </CardContent>
                     </Card>

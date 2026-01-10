@@ -342,8 +342,8 @@ export function AddRevenueWizardModal(props: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[980px] max-w-[95vw] max-h-[90vh] overflow-hidden p-0">
-        <div className="flex h-full flex-col">
+      <DialogContent className="w-[980px] max-w-[95vw] max-h-[90vh] overflow-y-auto p-0">
+        <div className="flex flex-col">
           <DialogHeader className="px-6 py-4 border-b">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -359,7 +359,7 @@ export function AddRevenueWizardModal(props: {
             </div>
           </DialogHeader>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+          <div className="px-6 py-5">
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>

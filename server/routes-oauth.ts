@@ -111,14 +111,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string }) => {
+  const isNoRevenueFilter = (raw: any): boolean => {
+    const s = String(raw || "").toLowerCase();
+    return s.includes("no_revenue") || s.includes("no-revenue") || s.includes("no revenue");
+  };
+
+  const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string; noRevenue?: boolean; endOffsetDays?: number }) => {
     // IMPORTANT: normalize the propertyId so "yesop" and its numeric form don't produce different datasets.
     const pid = normalizePropertyIdForMock(opts.propertyId);
-    const baseSeedKey = `${opts.campaignId}:${pid}`;
     const days = dateRangeToDays(opts.dateRange);
+    const noRevenue = !!opts.noRevenue;
 
     // Use a fixed anchor date so mock data is STATIC (doesn't drift day-to-day).
     const anchor = new Date(Date.UTC(2026, 0, 7, 0, 0, 0)); // 2026-01-07 (UTC)
+    const endOffsetDays = Math.max(0, Math.floor(Number(opts.endOffsetDays || 0)));
+
+    // ============================================================================
+    // YESOP STATIC MOCK DATASET (no simulator / no randomness)
+    // - Same outputs for every request (per dateRange), independent of campaignId.
+    // - Values do NOT drift over time.
+    // ============================================================================
+    if (isYesopMockProperty(pid)) {
+      const configByRange: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; engagementRate: number; bounceRate: number; avgSessionDuration: number }> = {
+        "7days": { users: 2450, sessions: 3278, pageviews: 9820, conversions: 131, revenue: 9828.8, engagementRate: 0.62, bounceRate: 0.38, avgSessionDuration: 124 },
+        "30days": { users: 10800, sessions: 14075, pageviews: 42110, conversions: 553, revenue: 54680.78, engagementRate: 0.59, bounceRate: 0.41, avgSessionDuration: 118 },
+        "90days": { users: 31800, sessions: 41000, pageviews: 123400, conversions: 1620, revenue: 150220.15, engagementRate: 0.57, bounceRate: 0.43, avgSessionDuration: 113 },
+      };
+      const cfg = configByRange[String(opts.dateRange || "30days")] || configByRange["30days"];
+
+      const weights = [1.05, 1.0, 0.96, 1.02, 1.08, 0.93, 0.91]; // fixed weekly pattern
+
+      const buildDates = (end: Date, n: number) => {
+        const out: string[] = [];
+        const start = new Date(end);
+        start.setUTCDate(start.getUTCDate() - (n - 1));
+        for (let i = 0; i < n; i++) {
+          const d = new Date(start);
+          d.setUTCDate(start.getUTCDate() + i);
+          out.push(formatISODateUTC(d));
+        }
+        return out;
+      };
+
+      const distributeInt = (total: number, n: number) => {
+        const w = Array.from({ length: n }, (_, i) => weights[i % weights.length]);
+        const sum = w.reduce((a, b) => a + b, 0) || 1;
+        const raw = w.map((x) => (total * x) / sum);
+        const base = raw.map((x) => Math.floor(x));
+        let remain = total - base.reduce((a, b) => a + b, 0);
+        for (let i = 0; i < base.length && remain > 0; i++) {
+          base[i] += 1;
+          remain -= 1;
+        }
+        return base;
+      };
+
+      const distributeCents = (totalAmount: number, n: number) => {
+        const totalCents = Math.round(Number(totalAmount.toFixed(2)) * 100);
+        const w = Array.from({ length: n }, (_, i) => weights[i % weights.length]);
+        const sum = w.reduce((a, b) => a + b, 0) || 1;
+        const raw = w.map((x) => (totalCents * x) / sum);
+        const base = raw.map((x) => Math.floor(x));
+        let remain = totalCents - base.reduce((a, b) => a + b, 0);
+        for (let i = 0; i < base.length && remain > 0; i++) {
+          base[i] += 1;
+          remain -= 1;
+        }
+        return base.map((c) => Number((c / 100).toFixed(2)));
+      };
+
+      const end = new Date(anchor);
+      end.setUTCDate(end.getUTCDate() - endOffsetDays);
+      const dates = buildDates(end, days);
+
+      const usersDaily = distributeInt(cfg.users, days);
+      const sessionsDaily = distributeInt(cfg.sessions, days);
+      const pageviewsDaily = distributeInt(cfg.pageviews, days);
+      const conversionsDaily = distributeInt(cfg.conversions, days);
+      const revenueDaily = noRevenue ? Array.from({ length: days }, () => 0) : distributeCents(cfg.revenue, days);
+
+      const timeSeries = dates.map((date, i) => ({
+        date,
+        users: usersDaily[i] || 0,
+        sessions: sessionsDaily[i] || 0,
+        pageviews: pageviewsDaily[i] || 0,
+        conversions: conversionsDaily[i] || 0,
+        revenue: Number((revenueDaily[i] || 0).toFixed(2)),
+      }));
+
+      const totals = {
+        users: cfg.users,
+        sessions: cfg.sessions,
+        sessionsRaw: cfg.sessions,
+        conversions: cfg.conversions,
+        revenue: Number((noRevenue ? 0 : cfg.revenue).toFixed(2)),
+        pageviews: cfg.pageviews,
+      };
+
+      // A small, stable breakdown table (we rely on totals for the cards; rows are for the table UI)
+      const breakdownDate = dates[dates.length - 1] || formatISODateUTC(end);
+      const channels = [
+        { channel: "Organic Search", source: "google", medium: "organic", campaign: "seo", share: 0.22 },
+        { channel: "Paid Search", source: "google", medium: "cpc", campaign: "brand_search", share: 0.18 },
+        { channel: "Paid Search", source: "google", medium: "cpc", campaign: "nonbrand_search", share: 0.14 },
+        { channel: "Paid Social", source: "facebook", medium: "paid_social", campaign: "prospecting", share: 0.16 },
+        { channel: "Email", source: "newsletter", medium: "email", campaign: "weekly_promo", share: 0.10 },
+        { channel: "Direct", source: "(direct)", medium: "(none)", campaign: "(direct)", share: 0.12 },
+        { channel: "Unassigned", source: "direct", medium: "(none)", campaign: "direct", share: 0.08 },
+      ];
+
+      let sRemain = totals.sessions;
+      let uRemain = totals.users;
+      let cRemain = totals.conversions;
+      let rRemain = totals.revenue;
+
+      const breakdownRows = channels.map((ch, idx) => {
+        const isLast = idx === channels.length - 1;
+        const s = isLast ? sRemain : Math.max(0, Math.round(totals.sessions * ch.share));
+        const u = isLast ? uRemain : Math.max(0, Math.round(totals.users * ch.share));
+        const c = isLast ? cRemain : Math.max(0, Math.round(totals.conversions * ch.share));
+        const r = isLast ? Number(rRemain.toFixed(2)) : Number((totals.revenue * ch.share).toFixed(2));
+        sRemain -= s; uRemain -= u; cRemain -= c; rRemain -= r;
+        return {
+          date: breakdownDate,
+          ...ch,
+          device: idx % 2 === 0 ? "desktop" : "mobile",
+          country: idx % 3 === 0 ? "United States" : idx % 3 === 1 ? "United Kingdom" : "Canada",
+          sessionsRaw: s,
+          sessions: s,
+          users: u,
+          conversions: c,
+          revenue: r,
+        };
+      });
+
+      const eventCount = Math.max(0, Math.round(totals.pageviews * 3.4));
+      const eventsPerSession = totals.sessions > 0 ? Number((eventCount / totals.sessions).toFixed(2)) : 0;
+
+      return {
+        totals,
+        timeSeries,
+        breakdownRows,
+        metrics: {
+          impressions: totals.users, // legacy compatibility field used by some clients for "users"
+          clicks: totals.sessions, // legacy compatibility field used by some clients for "sessions"
+          sessions: totals.sessions,
+          pageviews: totals.pageviews,
+          bounceRate: cfg.bounceRate,
+          averageSessionDuration: cfg.avgSessionDuration,
+          conversions: totals.conversions,
+          revenue: totals.revenue,
+          activeUsers: totals.users,
+          newUsers: Math.max(0, Math.round(totals.users * 0.42)),
+          userEngagementDuration: Math.max(0, Math.round(totals.users * 62)),
+          engagedSessions: Math.max(0, Math.round(totals.sessions * cfg.engagementRate)),
+          engagementRate: cfg.engagementRate,
+          eventCount,
+          eventsPerSession,
+          screenPageViewsPerSession: totals.sessions > 0 ? Number((totals.pageviews / totals.sessions).toFixed(2)) : 0,
+        },
+      };
+    }
+
+    // ============================================================================
+    // Legacy simulator for non-yesop mock requests (?mock=1 on real properties).
+    // ============================================================================
+    const baseSeedKey = `${opts.campaignId}:${pid}`;
 
     // Generate a 90-day base series, then slice the last N days.
     // This guarantees monotonic totals: 7d <= 30d <= 90d.
@@ -151,12 +309,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessions = Math.max(0, Math.round(users * baseSessionsPerUser * (0.95 + r() * 0.1)));
       const pageviews = Math.max(0, Math.round(sessions * basePagesPerSession * (0.92 + r() * 0.16)));
       const conversions = Math.max(0, Math.round(sessions * baseConvRate * (0.9 + r() * 0.2)));
-      const revenue = Number((conversions * baseAOV * (0.85 + r() * 0.3)).toFixed(2));
+      const revenue = noRevenue ? 0 : Number((conversions * baseAOV * (0.85 + r() * 0.3)).toFixed(2));
 
       series90.push({ date, users, sessions, pageviews, conversions, revenue });
     }
 
-    const series = series90.slice(maxDays - days);
+    const series = series90.slice(Math.max(0, maxDays - days - endOffsetDays), Math.max(0, maxDays - endOffsetDays));
 
     let usersSum = 0;
     let sessionsSum = 0;
@@ -1611,7 +1769,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
+        const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
+        const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
           success: true,
@@ -3520,7 +3680,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
+        const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
+        const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
           success: true,
@@ -3664,7 +3826,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
+        const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
 
         const pages = [
           '/',
@@ -3676,10 +3839,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           '/checkout',
         ];
 
-        // Deterministic weights per page
-        const seed = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:landing:${dateRange}`);
-        const rand = mulberry32(seed);
-        const weights = pages.map(() => 0.8 + rand() * 1.8);
+        // Static weights per page (no randomness; stable across refreshes)
+        const weights = [1.25, 1.1, 1.0, 0.95, 0.9, 0.85, 0.8].slice(0, pages.length);
         const wSum = weights.reduce((a, b) => a + b, 0) || 1;
 
         const totalSessions = Number(sim.totals.sessions || 0);
@@ -3701,7 +3862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cRemain -= conversions;
           rRemain -= revenue;
           // Users are non-additive across landing pages in GA4; provide a plausible per-row value.
-          const users = Math.min(totalUsers, Math.max(0, Math.floor(sessions * (0.65 + rand() * 0.25))));
+          const users = Math.min(totalUsers, Math.max(0, Math.floor(sessions * 0.78)));
           return {
             landingPage: p,
             source: idx % 2 === 0 ? 'google' : 'linkedin',
@@ -3769,7 +3930,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
+        const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
 
         const events = [
           { name: 'purchase', weight: 1.0 },
@@ -3779,8 +3941,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           { name: 'add_to_cart', weight: 0.9 },
         ];
 
-        const seed = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:events:${dateRange}`);
-        const rand = mulberry32(seed);
         const wSum = events.reduce((a, e) => a + e.weight, 0) || 1;
 
         const totalConversions = Number(sim.totals.conversions || 0);
@@ -3802,9 +3962,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : Number((totalRevenue * 0.08 * share).toFixed(2));
           cRemain -= conversions;
           rRemain -= revenue;
-          const eventCount = Math.max(conversions, Math.floor(conversions * (1.2 + rand() * 2.5)));
+          const eventCount = Math.max(conversions, Math.floor(conversions * (2.1 + idx * 0.35)));
           eventCountSum += eventCount;
-          const users = Math.min(totalUsers, Math.max(0, Math.floor(conversions * (1.0 + rand() * 3.0))));
+          const users = Math.min(totalUsers, Math.max(0, Math.floor(conversions * (2.2 + idx * 0.25))));
           return { eventName: e.name, conversions, eventCount, users, revenue: Number(revenue.toFixed(2)) };
         });
 
@@ -3850,7 +4010,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange });
+        const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
           success: true,

@@ -1041,7 +1041,7 @@ export default function Campaigns() {
   });
 
   const createCampaignMutation = useMutation({
-    mutationFn: async (data: CampaignFormData & { platform?: string; status?: string; type?: string; impressions?: number; clicks?: number; spend?: string }) => {
+    mutationFn: async (data: CampaignFormData & { platform?: string; status?: string; type?: string; impressions?: number; clicks?: number; spend?: string; ga4CampaignFilter?: string }) => {
       console.log('🚀 [Frontend] Creating campaign with data:', data);
       const payload = {
         name: data.name,
@@ -1050,6 +1050,7 @@ export default function Campaigns() {
         budget: data.budget ? parseFloat(data.budget) : null,
         currency: data.currency || "USD",
         conversionValue: data.conversionValue ? parseFloat(data.conversionValue as any) : null,
+        ga4CampaignFilter: (data as any).ga4CampaignFilter || null,
         industry: data.industry || null, // ✅ INCLUDE INDUSTRY FOR BENCHMARK GENERATION
         type: data.type || "campaign",
         platform: data.platform || "manual",
@@ -1200,6 +1201,18 @@ export default function Campaigns() {
           onError: reject
         });
       });
+
+      // Safety net: ensure the GA4 campaignName filter is persisted even if future refactors
+      // change the create payload shape.
+      try {
+        if (ga4CampaignFilterForNewCampaign) {
+          await apiRequest("PATCH", `/api/campaigns/${(newCampaign as any).id}`, {
+            ga4CampaignFilter: ga4CampaignFilterForNewCampaign,
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to persist GA4 campaign filter after create:', e);
+      }
       
       // Debug: Log selected platforms for troubleshooting
       console.log('🔧 Debug - Selected platforms for transfer:', selectedPlatforms);

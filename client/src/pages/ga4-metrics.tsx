@@ -1369,6 +1369,40 @@ export default function GA4Metrics() {
     },
   });
 
+  const { data: ga4LandingPagesWoW } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "wow", selectedGA4PropertyId],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && activeTab === "insights",
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/ga4-landing-pages?compare=wow&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&limit=200`
+      );
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) return null;
+      return json;
+    },
+  });
+
+  const { data: ga4ConversionEventsWoW } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "wow", selectedGA4PropertyId],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && activeTab === "insights",
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/ga4-conversion-events?compare=wow&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&limit=200`
+      );
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) return null;
+      return json;
+    },
+  });
+
   const breakdownTotals = {
     sessions: Number(ga4Breakdown?.totals?.sessions || 0),
     conversions: Number(ga4Breakdown?.totals?.conversions || 0),
@@ -2058,11 +2092,108 @@ export default function GA4Metrics() {
       });
     }
 
+    // 4) Landing page regressions (WoW) using GA4 landing page compare endpoint (last 7 days vs prior 7 days)
+    const lpRows: any[] = Array.isArray((ga4LandingPagesWoW as any)?.rows) ? ((ga4LandingPagesWoW as any).rows as any[]) : [];
+    if (lpRows.length > 0) {
+      for (const r of lpRows) {
+        const lp = String(r?.landingPage || "").trim();
+        const src = String(r?.source || "").trim();
+        const med = String(r?.medium || "").trim();
+        const last = (r as any)?.last7 || {};
+        const prev = (r as any)?.prev7 || {};
+        const sA = Number(last?.sessions || 0);
+        const sB = Number(prev?.sessions || 0);
+        const cA = Number(last?.conversions || 0);
+        const cB = Number(prev?.conversions || 0);
+        if (sA < 50 || sB < 50) continue; // avoid noisy low-volume pages
+        const crA = sA > 0 ? (cA / sA) * 100 : 0;
+        const crB = sB > 0 ? (cB / sB) * 100 : 0;
+        if (crB <= 0) continue;
+        const deltaPct = ((crA - crB) / crB) * 100;
+        if (deltaPct > -15) continue; // only meaningful drops
+
+        const sev: InsightItem["severity"] = sA >= 200 || deltaPct <= -25 ? "high" : "medium";
+        const label = lp || "(not set)";
+        out.push({
+          id: `lp:wow:${label}:${src}:${med}`,
+          severity: sev,
+          title: `Landing page regression: ${label}`,
+          description: `Conversion rate dropped ${Math.abs(deltaPct).toFixed(1)}% WoW (${crA.toFixed(2)}% last 7d vs ${crB.toFixed(
+            2
+          )}% prior). Sessions ${formatNumber(sA)} vs ${formatNumber(sB)} from ${src || "(not set)"}/${med || "(not set)"}.`,
+          recommendation: "Review recent landing page changes, page speed/mobile UX, and message match for this traffic source. Validate conversion event tagging.",
+        });
+      }
+    }
+
+    // 5) Conversion event anomalies (WoW) using GA4 conversion events compare endpoint
+    const evRows: any[] = Array.isArray((ga4ConversionEventsWoW as any)?.rows)
+      ? ((ga4ConversionEventsWoW as any).rows as any[])
+      : [];
+    const evTotalsLast = Number((ga4ConversionEventsWoW as any)?.totals?.last7?.conversions || 0);
+    const evTotalsPrev = Number((ga4ConversionEventsWoW as any)?.totals?.prev7?.conversions || 0);
+    if (evRows.length > 0 && (evTotalsLast > 0 || evTotalsPrev > 0)) {
+      const norm = (s: string) => String(s || "").trim().toLowerCase();
+      const purchaseRow = evRows.find((r) => norm(r?.eventName) === "purchase");
+      const purchaseLast = Number(purchaseRow?.last7?.conversions || 0);
+      const purchasePrev = Number(purchaseRow?.prev7?.conversions || 0);
+      const purchaseDelta = purchasePrev > 0 ? ((purchaseLast - purchasePrev) / purchasePrev) * 100 : 0;
+      const totalDelta = evTotalsPrev > 0 ? ((evTotalsLast - evTotalsPrev) / evTotalsPrev) * 100 : 0;
+
+      // If purchase drops materially but total conversions are flat/up, it usually means conversion definition is being driven by other events.
+      if (purchasePrev > 0 && purchaseDelta <= -15 && totalDelta >= -5) {
+        out.push({
+          id: "events:wow:purchase-down-mix",
+          severity: "high",
+          title: "Purchase conversions dropped, but total conversions stayed stable",
+          description: `Purchase conversions dropped ${Math.abs(purchaseDelta).toFixed(1)}% WoW (${formatNumber(purchaseLast)} vs ${formatNumber(
+            purchasePrev
+          )}), while total conversions changed ${totalDelta >= 0 ? "+" : ""}${totalDelta.toFixed(1)}% (${formatNumber(evTotalsLast)} vs ${formatNumber(
+            evTotalsPrev
+          )}).`,
+          recommendation: "Verify which events are marked as conversions in GA4. If leads/signups are included, consider splitting KPIs by event type (purchase vs lead).",
+        });
+      }
+
+      // Dominant non-purchase conversion event
+      const top = [...evRows]
+        .map((r) => ({
+          name: String(r?.eventName || "(not set)"),
+          last: Number(r?.last7?.conversions || 0),
+          prev: Number(r?.prev7?.conversions || 0),
+        }))
+        .sort((a, b) => b.last - a.last)[0];
+      if (top?.name && evTotalsLast >= 20) {
+        const share = evTotalsLast > 0 ? (top.last / evTotalsLast) * 100 : 0;
+        if (norm(top.name) !== "purchase" && share >= 60) {
+          out.push({
+            id: `events:dominant:${top.name}`,
+            severity: "medium",
+            title: `Conversions are mostly driven by “${top.name}”`,
+            description: `“${top.name}” accounts for ${share.toFixed(1)}% of conversions in the last 7 days (${formatNumber(top.last)} of ${formatNumber(
+              evTotalsLast
+            )}).`,
+            recommendation: "Confirm this matches the business definition of success. If purchases are the goal, ensure purchase events are tracked and marked as conversions correctly.",
+          });
+        }
+      }
+    }
+
     // Stable ordering: high -> medium -> low
     const order = { high: 0, medium: 1, low: 2 } as const;
     out.sort((a, b) => order[a.severity] - order[b.severity]);
     return out;
-  }, [platformKPIs, benchmarks, ga4Breakdown, ga4TimeSeries, breakdownTotals, ga4Metrics, financialSpend]);
+  }, [
+    platformKPIs,
+    benchmarks,
+    ga4Breakdown,
+    ga4TimeSeries,
+    breakdownTotals,
+    ga4Metrics,
+    financialSpend,
+    ga4LandingPagesWoW,
+    ga4ConversionEventsWoW,
+  ]);
 
   const getDateRangeLabel = (range: string) => {
     switch (String(range || "").toLowerCase()) {

@@ -335,6 +335,334 @@ export class GoogleAnalytics4Service {
     }
   }
 
+  async getLandingPagesWoWReport(
+    campaignId: string,
+    storage: any,
+    propertyId?: string,
+    limit: number = 50,
+    campaignFilter?: CampaignFilter
+  ): Promise<{
+    propertyId: string;
+    revenueMetric: 'totalRevenue' | 'purchaseRevenue';
+    rows: Array<{
+      landingPage: string;
+      source: string;
+      medium: string;
+      last7: { sessions: number; users: number; conversions: number; revenue: number };
+      prev7: { sessions: number; users: number; conversions: number; revenue: number };
+    }>;
+    totals: {
+      last7: { sessions: number; users: number; conversions: number; revenue: number };
+      prev7: { sessions: number; users: number; conversions: number; revenue: number };
+    };
+    meta: { usersAreNonAdditive: boolean };
+  }> {
+    const connection = await storage.getGA4Connection(campaignId, propertyId);
+    if (!connection) throw new Error('NO_GA4_CONNECTION');
+    if (!connection.accessToken) {
+      const tokenExpiredError = new Error('TOKEN_EXPIRED');
+      (tokenExpiredError as any).isTokenExpired = true;
+      throw tokenExpiredError;
+    }
+
+    const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
+    const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
+    const dims = [{ name: 'landingPagePlusQueryString' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
+
+    const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dateRanges: [
+            { name: 'last7', startDate: '7daysAgo', endDate: 'today' },
+            { name: 'prev7', startDate: '14daysAgo', endDate: '8daysAgo' },
+          ],
+          dimensions: dims,
+          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
+          metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
+          orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+          limit: Math.min(Math.max(limit, 1), 10000),
+        }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(txt);
+      }
+      return await resp.json().catch(() => ({} as any));
+    };
+
+    const parse = (json: any, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+      const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
+      const out: Array<{
+        landingPage: string;
+        source: string;
+        medium: string;
+        last7: { sessions: number; users: number; conversions: number; revenue: number };
+        prev7: { sessions: number; users: number; conversions: number; revenue: number };
+      }> = [];
+
+      let last7Sessions = 0;
+      let last7Users = 0;
+      let last7Conversions = 0;
+      let last7Revenue = 0;
+      let prev7Sessions = 0;
+      let prev7Users = 0;
+      let prev7Conversions = 0;
+      let prev7Revenue = 0;
+
+      for (const r of rows) {
+        const landingPage = String(r?.dimensionValues?.[0]?.value || '').trim() || '(not set)';
+        const source = String(r?.dimensionValues?.[1]?.value || '').trim() || '(not set)';
+        const medium = String(r?.dimensionValues?.[2]?.value || '').trim() || '(not set)';
+        const mv: any[] = Array.isArray(r?.metricValues) ? r.metricValues : [];
+        // Metric values are ordered as metrics × dateRanges (so 4 metrics × 2 ranges = 8 values).
+        const readRange = (rangeIdx: 0 | 1) => {
+          const base = rangeIdx; // 0=last7, 1=prev7
+          const sessions = parseInt(String(mv[0 * 2 + base]?.value || '0'), 10) || 0;
+          const users = parseInt(String(mv[1 * 2 + base]?.value || '0'), 10) || 0;
+          const conversions = parseInt(String(mv[2 * 2 + base]?.value || '0'), 10) || 0;
+          const revenue = Number.parseFloat(String(mv[3 * 2 + base]?.value || '0')) || 0;
+          return { sessions, users, conversions, revenue: Number(revenue.toFixed(2)) };
+        };
+
+        const last7 = readRange(0);
+        const prev7 = readRange(1);
+
+        last7Sessions += last7.sessions;
+        last7Users += last7.users;
+        last7Conversions += last7.conversions;
+        last7Revenue += last7.revenue;
+
+        prev7Sessions += prev7.sessions;
+        prev7Users += prev7.users;
+        prev7Conversions += prev7.conversions;
+        prev7Revenue += prev7.revenue;
+
+        out.push({ landingPage, source, medium, last7, prev7 });
+      }
+
+      return {
+        revenueMetric,
+        rows: out,
+        totals: {
+          last7: {
+            sessions: last7Sessions,
+            users: last7Users,
+            conversions: last7Conversions,
+            revenue: Number(last7Revenue.toFixed(2)),
+          },
+          prev7: {
+            sessions: prev7Sessions,
+            users: prev7Users,
+            conversions: prev7Conversions,
+            revenue: Number(prev7Revenue.toFixed(2)),
+          },
+        },
+        meta: { usersAreNonAdditive: true },
+      };
+    };
+
+    const isAuthErrorText = (txt: string) => {
+      const t = String(txt || '').toLowerCase();
+      return t.includes('"code": 401') || t.includes('unauthenticated') || t.includes('invalid authentication credentials') || t.includes('invalid_grant');
+    };
+
+    const tryFetch = async (accessToken: string) => {
+      try {
+        const json = await run(accessToken, 'totalRevenue');
+        return parse(json, 'totalRevenue');
+      } catch (e: any) {
+        const msg = String(e?.message || e || '');
+        if (msg.toLowerCase().includes('totalrevenue') || msg.toLowerCase().includes('metric') || msg.toLowerCase().includes('invalid')) {
+          const json2 = await run(accessToken, 'purchaseRevenue');
+          return parse(json2, 'purchaseRevenue');
+        }
+        throw e;
+      }
+    };
+
+    try {
+      const res = await tryFetch(String(connection.accessToken));
+      return { propertyId: normalizedPropertyId, ...res };
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      if (isAuthErrorText(msg) && connection.refreshToken) {
+        const refresh = await this.refreshAccessToken(
+          String(connection.refreshToken),
+          connection.clientId || undefined,
+          connection.clientSecret || undefined
+        );
+        await storage.updateGA4ConnectionTokens(connection.id, {
+          accessToken: refresh.access_token,
+          refreshToken: String(connection.refreshToken),
+          expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
+        });
+        const res = await tryFetch(refresh.access_token);
+        return { propertyId: normalizedPropertyId, ...res };
+      }
+      throw e;
+    }
+  }
+
+  async getConversionEventsWoWReport(
+    campaignId: string,
+    storage: any,
+    propertyId?: string,
+    limit: number = 50,
+    campaignFilter?: CampaignFilter
+  ): Promise<{
+    propertyId: string;
+    revenueMetric: 'totalRevenue' | 'purchaseRevenue';
+    rows: Array<{
+      eventName: string;
+      last7: { conversions: number; eventCount: number; users: number; revenue: number };
+      prev7: { conversions: number; eventCount: number; users: number; revenue: number };
+    }>;
+    totals: {
+      last7: { conversions: number; eventCount: number; users: number; revenue: number };
+      prev7: { conversions: number; eventCount: number; users: number; revenue: number };
+    };
+  }> {
+    const connection = await storage.getGA4Connection(campaignId, propertyId);
+    if (!connection) throw new Error('NO_GA4_CONNECTION');
+    if (!connection.accessToken) {
+      const tokenExpiredError = new Error('TOKEN_EXPIRED');
+      (tokenExpiredError as any).isTokenExpired = true;
+      throw tokenExpiredError;
+    }
+
+    const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
+    const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
+
+    const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dateRanges: [
+            { name: 'last7', startDate: '7daysAgo', endDate: 'today' },
+            { name: 'prev7', startDate: '14daysAgo', endDate: '8daysAgo' },
+          ],
+          dimensions: [{ name: 'eventName' }],
+          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
+          metrics: [{ name: 'conversions' }, { name: 'eventCount' }, { name: 'totalUsers' }, { name: revenueMetric }],
+          orderBys: [{ metric: { metricName: 'conversions' }, desc: true }],
+          limit: Math.min(Math.max(limit, 1), 10000),
+        }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(txt);
+      }
+      return await resp.json().catch(() => ({} as any));
+    };
+
+    const parse = (json: any, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+      const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
+      const out: Array<{
+        eventName: string;
+        last7: { conversions: number; eventCount: number; users: number; revenue: number };
+        prev7: { conversions: number; eventCount: number; users: number; revenue: number };
+      }> = [];
+
+      let last7Conversions = 0;
+      let last7EventCount = 0;
+      let last7Users = 0;
+      let last7Revenue = 0;
+      let prev7Conversions = 0;
+      let prev7EventCount = 0;
+      let prev7Users = 0;
+      let prev7Revenue = 0;
+
+      for (const r of rows) {
+        const eventName = String(r?.dimensionValues?.[0]?.value || '').trim() || '(not set)';
+        const mv: any[] = Array.isArray(r?.metricValues) ? r.metricValues : [];
+        const readRange = (rangeIdx: 0 | 1) => {
+          const base = rangeIdx;
+          const conversions = parseInt(String(mv[0 * 2 + base]?.value || '0'), 10) || 0;
+          const eventCount = parseInt(String(mv[1 * 2 + base]?.value || '0'), 10) || 0;
+          const users = parseInt(String(mv[2 * 2 + base]?.value || '0'), 10) || 0;
+          const revenue = Number.parseFloat(String(mv[3 * 2 + base]?.value || '0')) || 0;
+          return { conversions, eventCount, users, revenue: Number(revenue.toFixed(2)) };
+        };
+        const last7 = readRange(0);
+        const prev7 = readRange(1);
+
+        last7Conversions += last7.conversions;
+        last7EventCount += last7.eventCount;
+        last7Users += last7.users;
+        last7Revenue += last7.revenue;
+        prev7Conversions += prev7.conversions;
+        prev7EventCount += prev7.eventCount;
+        prev7Users += prev7.users;
+        prev7Revenue += prev7.revenue;
+
+        out.push({ eventName, last7, prev7 });
+      }
+
+      return {
+        revenueMetric,
+        rows: out,
+        totals: {
+          last7: {
+            conversions: last7Conversions,
+            eventCount: last7EventCount,
+            users: last7Users,
+            revenue: Number(last7Revenue.toFixed(2)),
+          },
+          prev7: {
+            conversions: prev7Conversions,
+            eventCount: prev7EventCount,
+            users: prev7Users,
+            revenue: Number(prev7Revenue.toFixed(2)),
+          },
+        },
+      };
+    };
+
+    const isAuthErrorText = (txt: string) => {
+      const t = String(txt || '').toLowerCase();
+      return t.includes('"code": 401') || t.includes('unauthenticated') || t.includes('invalid authentication credentials') || t.includes('invalid_grant');
+    };
+
+    const tryFetch = async (accessToken: string) => {
+      try {
+        const json = await run(accessToken, 'totalRevenue');
+        return parse(json, 'totalRevenue');
+      } catch (e: any) {
+        const msg = String(e?.message || e || '');
+        if (msg.toLowerCase().includes('totalrevenue') || msg.toLowerCase().includes('metric') || msg.toLowerCase().includes('invalid')) {
+          const json2 = await run(accessToken, 'purchaseRevenue');
+          return parse(json2, 'purchaseRevenue');
+        }
+        throw e;
+      }
+    };
+
+    try {
+      const res = await tryFetch(String(connection.accessToken));
+      return { propertyId: normalizedPropertyId, ...res };
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      if (isAuthErrorText(msg) && connection.refreshToken) {
+        const refresh = await this.refreshAccessToken(
+          String(connection.refreshToken),
+          connection.clientId || undefined,
+          connection.clientSecret || undefined
+        );
+        await storage.updateGA4ConnectionTokens(connection.id, {
+          accessToken: refresh.access_token,
+          refreshToken: String(connection.refreshToken),
+          expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
+        });
+        const res = await tryFetch(refresh.access_token);
+        return { propertyId: normalizedPropertyId, ...res };
+      }
+      throw e;
+    }
+  }
+
   async getMetricsWithToken(
     propertyId: string,
     accessToken: string,

@@ -111,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string }) => {
+  const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string; endOffsetDays?: number }) => {
     // IMPORTANT: normalize the propertyId so "yesop" and its numeric form don't produce different datasets.
     const pid = normalizePropertyIdForMock(opts.propertyId);
     const baseSeedKey = `${opts.campaignId}:${pid}`;
@@ -156,7 +156,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       series90.push({ date, users, sessions, pageviews, conversions, revenue });
     }
 
-    const series = series90.slice(maxDays - days);
+    const endOffset = Math.max(0, Math.floor(Number(opts.endOffsetDays || 0)));
+    const endIndex = Math.max(0, Math.min(maxDays, maxDays - endOffset));
+    const startIndex = Math.max(0, endIndex - days);
+    const series = series90.slice(startIndex, endIndex);
 
     let usersSum = 0;
     let sessionsSum = 0;
@@ -3229,6 +3232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || '30days');
+      const compare = String((req.query as any)?.compare || '').toLowerCase();
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
       const campaign = await storage.getCampaign(campaignId);
@@ -3250,6 +3254,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         default:
           ga4DateRange = '30daysAgo';
+      }
+
+      if (compare === 'wow') {
+        if (shouldSimulate) {
+          res.setHeader('Cache-Control', 'no-store');
+          const last = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: '7days', endOffsetDays: 0 });
+          const prev = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: '7days', endOffsetDays: 7 });
+
+          const pages = ['/', '/pricing', '/product', '/blog/seo', '/blog/benchmarking', '/signup', '/checkout'];
+          const seedLast = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:landing:last7`);
+          const seedPrev = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:landing:prev7`);
+          const randLast = mulberry32(seedLast);
+          const randPrev = mulberry32(seedPrev);
+          const wLast = pages.map(() => 0.8 + randLast() * 1.8);
+          const wPrev = pages.map(() => 0.8 + randPrev() * 1.8);
+          const sumLast = wLast.reduce((a, b) => a + b, 0) || 1;
+          const sumPrev = wPrev.reduce((a, b) => a + b, 0) || 1;
+
+          const totals = {
+            last7: {
+              sessions: Number(last.totals.sessions || 0),
+              users: Number(last.totals.users || 0),
+              conversions: Number(last.totals.conversions || 0),
+              revenue: Number(last.totals.revenue || 0),
+            },
+            prev7: {
+              sessions: Number(prev.totals.sessions || 0),
+              users: Number(prev.totals.users || 0),
+              conversions: Number(prev.totals.conversions || 0),
+              revenue: Number(prev.totals.revenue || 0),
+            },
+          };
+
+          const rows = pages.map((p, idx) => {
+            const shareL = wLast[idx] / sumLast;
+            const shareP = wPrev[idx] / sumPrev;
+            const last7Sessions = Math.max(0, Math.floor(totals.last7.sessions * shareL));
+            const prev7Sessions = Math.max(0, Math.floor(totals.prev7.sessions * shareP));
+            const last7Conversions = Math.max(0, Math.floor(totals.last7.conversions * shareL));
+            const prev7Conversions = Math.max(0, Math.floor(totals.prev7.conversions * shareP));
+            const last7Revenue = Number((totals.last7.revenue * shareL).toFixed(2));
+            const prev7Revenue = Number((totals.prev7.revenue * shareP).toFixed(2));
+            const last7Users = Math.min(totals.last7.users, Math.max(0, Math.floor(last7Sessions * (0.65 + randLast() * 0.25))));
+            const prev7Users = Math.min(totals.prev7.users, Math.max(0, Math.floor(prev7Sessions * (0.65 + randPrev() * 0.25))));
+            return {
+              landingPage: p,
+              source: idx % 2 === 0 ? 'google' : 'linkedin',
+              medium: idx % 2 === 0 ? 'cpc' : 'paid_social',
+              last7: { sessions: last7Sessions, users: last7Users, conversions: last7Conversions, revenue: last7Revenue },
+              prev7: { sessions: prev7Sessions, users: prev7Users, conversions: prev7Conversions, revenue: prev7Revenue },
+            };
+          });
+
+          return res.json({
+            success: true,
+            compare: 'wow',
+            propertyId: requestedPropertyId || 'yesop',
+            rows: rows.slice(0, limit),
+            totals,
+            revenueMetric: 'totalRevenue',
+            meta: { usersAreNonAdditive: true, isSimulated: true },
+            lastUpdated: new Date().toISOString(),
+          });
+        }
+
+        const result = await ga4Service.getLandingPagesWoWReport(campaignId, storage, propertyId, limit, campaignFilter);
+        return res.json({ success: true, compare: 'wow', ...result, lastUpdated: new Date().toISOString() });
       }
 
       if (shouldSimulate) {
@@ -3334,6 +3405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || '30days');
+      const compare = String((req.query as any)?.compare || '').toLowerCase();
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
       const campaign = await storage.getCampaign(campaignId);
@@ -3355,6 +3427,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         default:
           ga4DateRange = '30daysAgo';
+      }
+
+      if (compare === 'wow') {
+        if (shouldSimulate) {
+          res.setHeader('Cache-Control', 'no-store');
+          const last = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: '7days', endOffsetDays: 0 });
+          const prev = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: '7days', endOffsetDays: 7 });
+
+          const events = [
+            { name: 'purchase', weight: 1.0 },
+            { name: 'generate_lead', weight: 0.7 },
+            { name: 'sign_up', weight: 0.6 },
+            { name: 'begin_checkout', weight: 0.8 },
+            { name: 'add_to_cart', weight: 0.9 },
+          ];
+          const seedLast = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:events:last7`);
+          const seedPrev = hashToSeed(`${campaignId}:${normalizePropertyIdForMock(requestedPropertyId || 'yesop')}:events:prev7`);
+          const randLast = mulberry32(seedLast);
+          const randPrev = mulberry32(seedPrev);
+          const wSum = events.reduce((a, e) => a + e.weight, 0) || 1;
+
+          const totals = {
+            last7: {
+              conversions: Number(last.totals.conversions || 0),
+              users: Number(last.totals.users || 0),
+              revenue: Number(last.totals.revenue || 0),
+            },
+            prev7: {
+              conversions: Number(prev.totals.conversions || 0),
+              users: Number(prev.totals.users || 0),
+              revenue: Number(prev.totals.revenue || 0),
+            },
+          };
+
+          const rows = events.map((e, idx) => {
+            const share = e.weight / wSum;
+            const last7Conversions = Math.max(0, Math.floor(totals.last7.conversions * share));
+            const prev7Conversions = Math.max(0, Math.floor(totals.prev7.conversions * share));
+            const last7EventCount = Math.max(last7Conversions, Math.floor(last7Conversions * (1.2 + randLast() * 2.5)));
+            const prev7EventCount = Math.max(prev7Conversions, Math.floor(prev7Conversions * (1.2 + randPrev() * 2.5)));
+            const last7Users = Math.min(totals.last7.users, Math.max(0, Math.floor(last7Conversions * (1.0 + randLast() * 3.0))));
+            const prev7Users = Math.min(totals.prev7.users, Math.max(0, Math.floor(prev7Conversions * (1.0 + randPrev() * 3.0))));
+            const last7Revenue =
+              e.name === 'purchase' ? Number((totals.last7.revenue * 0.92).toFixed(2)) : Number((totals.last7.revenue * 0.08 * share).toFixed(2));
+            const prev7Revenue =
+              e.name === 'purchase' ? Number((totals.prev7.revenue * 0.92).toFixed(2)) : Number((totals.prev7.revenue * 0.08 * share).toFixed(2));
+            return {
+              eventName: e.name,
+              last7: { conversions: last7Conversions, eventCount: last7EventCount, users: last7Users, revenue: last7Revenue },
+              prev7: { conversions: prev7Conversions, eventCount: prev7EventCount, users: prev7Users, revenue: prev7Revenue },
+            };
+          });
+
+          return res.json({
+            success: true,
+            compare: 'wow',
+            propertyId: requestedPropertyId || 'yesop',
+            rows: rows.slice(0, limit),
+            totals: {
+              last7: { conversions: totals.last7.conversions, eventCount: rows.reduce((s, r) => s + Number(r.last7.eventCount || 0), 0), users: totals.last7.users, revenue: Number(totals.last7.revenue.toFixed(2)) },
+              prev7: { conversions: totals.prev7.conversions, eventCount: rows.reduce((s, r) => s + Number(r.prev7.eventCount || 0), 0), users: totals.prev7.users, revenue: Number(totals.prev7.revenue.toFixed(2)) },
+            },
+            revenueMetric: 'totalRevenue',
+            meta: { isSimulated: true },
+            lastUpdated: new Date().toISOString(),
+          });
+        }
+
+        const result = await ga4Service.getConversionEventsWoWReport(campaignId, storage, propertyId, limit, campaignFilter);
+        return res.json({ success: true, compare: 'wow', ...result, lastUpdated: new Date().toISOString() });
       }
 
       if (shouldSimulate) {

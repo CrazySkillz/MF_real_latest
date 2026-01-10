@@ -330,7 +330,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
         // Immediately prompt for GA4 campaignName filter (still within the New Campaign flow)
         try {
           setIsGA4CampaignLoading(true);
-          const valsResp = await fetch(`/api/campaigns/temp-campaign-setup/ga4-campaign-values?dateRange=30days&limit=50`);
+          const valsResp = await fetch(`/api/campaigns/temp-campaign-setup/ga4-campaign-values?dateRange=30days&limit=50&propertyId=${encodeURIComponent(selectedGA4Property)}`);
           const valsJson = await valsResp.json().catch(() => null);
           const vals = Array.isArray(valsJson?.campaigns) ? valsJson.campaigns : [];
           setGA4CampaignValues(vals);

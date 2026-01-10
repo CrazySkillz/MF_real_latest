@@ -3688,31 +3688,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 200);
 
-      // Dev-only: if the selected property is the yesop mock property, return a deterministic mock list.
+      // If the selected property is the yesop mock property, return a deterministic mock list.
       // This supports the "Create Campaign" GA4 flow where we want the user to pick a GA4 campaignName
       // (including a no-revenue option) without needing OAuth.
-      const allowMockYesop = process.env.ENABLE_YESOP_MOCK === '1' || process.env.NODE_ENV !== 'production';
-      if (allowMockYesop) {
-        const conns = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
-        const primary = (Array.isArray(conns) ? conns : []).find((c: any) => c?.isPrimary) || (Array.isArray(conns) ? conns[0] : undefined);
-        const pid = String(propertyId || primary?.propertyId || '');
-        if (isYesopMockProperty(pid)) {
-          const mockCampaigns = [
-            { name: 'yesop_brand_search', users: 4120 },
-            { name: 'yesop_prospecting', users: 3880 },
-            { name: 'yesop_weekly_promo', users: 2450 },
-            { name: 'yesop_no_revenue', users: 3100 }, // selecting this will make mock GA4 revenue = 0
-            { name: 'yesop_seo', users: 1980 },
-          ].slice(0, limit);
+      const conns = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
+      const primary = (Array.isArray(conns) ? conns : []).find((c: any) => c?.isPrimary) || (Array.isArray(conns) ? conns[0] : undefined);
+      const pid = String(propertyId || primary?.propertyId || '');
+      if (isYesopMockProperty(pid)) {
+        // Match the naming style the UI already shows (seo, brand_search, weekly_promo, etc.)
+        // Add a "no_revenue" option to test revenue import.
+        const mockCampaigns = [
+          { name: 'seo', users: 62 },
+          { name: '(direct)', users: 60 },
+          { name: 'nonbrand_search', users: 52 },
+          { name: 'brand_search', users: 40 },
+          { name: 'weekly_promo', users: 35 },
+          { name: 'prospecting', users: 30 },
+          { name: 'retargeting', users: 20 },
+          { name: 'direct', users: 18 },
+          { name: 'no_revenue', users: 28 }, // selecting this will make mock GA4 revenue = 0
+        ].slice(0, limit);
 
-          return res.json({
-            success: true,
-            dateRange,
-            propertyId: pid || 'yesop',
-            campaigns: mockCampaigns,
-            meta: { isSimulated: true, source: 'yesop-mock' },
-          });
-        }
+        return res.json({
+          success: true,
+          dateRange,
+          propertyId: pid || 'yesop',
+          campaigns: mockCampaigns,
+          meta: { isSimulated: true, source: 'yesop-mock' },
+        });
       }
 
       let ga4DateRange = '30daysAgo';

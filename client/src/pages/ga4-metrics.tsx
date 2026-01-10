@@ -2494,8 +2494,9 @@ export default function GA4Metrics() {
                                 </p>
                                 {ga4RevenueForFinancials <= 0 && (
                                   <Button
-                                    variant="link"
-                                    className="px-0 h-auto text-blue-600 dark:text-blue-400 mt-2"
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-3"
                                     onClick={() => setShowRevenueDialog(true)}
                                   >
                                     Add revenue source

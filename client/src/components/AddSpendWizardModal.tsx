@@ -64,6 +64,7 @@ export function AddSpendWizardModal(props: {
   const prefillKeyRef = useRef<string | null>(null);
   const suppressCampaignResetRef = useRef(false);
   const campaignKeyTouchedRef = useRef(false);
+  const autoDateDecisionRef = useRef<string | null>(null);
   const [autoPreviewSheetOnOpen, setAutoPreviewSheetOnOpen] = useState(false);
   const [isEditPrefillLoading, setIsEditPrefillLoading] = useState(false);
   const [csvPrefillMapping, setCsvPrefillMapping] = useState<any>(null);
@@ -72,6 +73,7 @@ export function AddSpendWizardModal(props: {
   useEffect(() => {
     if (!props.open) {
       prefillKeyRef.current = null;
+      autoDateDecisionRef.current = null;
       setStep("choose");
       setMode("upload");
       setCsvFile(null);
@@ -243,16 +245,60 @@ export function AddSpendWizardModal(props: {
     [campaignKeyColumn, inferredCampaignColumn]
   );
 
+  const dateRangeToDays = (dr?: string): number => {
+    const v = String(dr || "").toLowerCase();
+    if (v.includes("7")) return 7;
+    if (v.includes("90")) return 90;
+    return 30;
+  };
+
+  const parseDateMaybe = (raw: any): Date | null => {
+    const s = String(raw ?? "").trim();
+    if (!s) return null;
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m?.[1]) {
+      const d = new Date(m[1] + "T00:00:00Z");
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
   useEffect(() => {
     if (!csvPreview?.success) return;
-    if (!dateColumn && inferredDateColumn) setDateColumn(inferredDateColumn);
+    if (!dateColumn && inferredDateColumn) {
+      // Prevent the common “I imported spend but Overview still shows $0” confusion:
+      // if the dataset's Date values don't overlap the currently selected dateRange (7/30/90),
+      // default to no Date column so the server distributes spend across the selected period.
+      const decisionKey = `${String(csvPreview?.fileName || "")}|${String(props.dateRange || "30days")}`;
+      if (autoDateDecisionRef.current !== decisionKey) {
+        autoDateDecisionRef.current = decisionKey;
+        const days = dateRangeToDays(props.dateRange);
+        const end = new Date();
+        const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+        const anyInRange = (sampleRows || []).some((r: any) => {
+          const d = parseDateMaybe(r?.[inferredDateColumn]);
+          if (!d) return false;
+          return d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
+        });
+        if (anyInRange) {
+          setDateColumn(inferredDateColumn);
+        } else {
+          setDateColumn("");
+          toast({
+            title: "Date column ignored",
+            description: `Dates in your dataset don't fall within ${props.dateRange || "30days"}. We'll distribute spend across the selected period so it appears in Overview. You can re-select the Date column if needed.`,
+          });
+        }
+      }
+    }
     if (!spendColumn && inferredSpendColumn) setSpendColumn(inferredSpendColumn);
     // If a campaign identifier column is present (e.g. "Campaign") and the user hasn't explicitly picked/cleared it,
     // auto-select it so the UI reflects the detected identifier.
     if (!campaignKeyColumn && inferredCampaignColumn && !campaignKeyTouchedRef.current) {
       setCampaignKeyColumn(inferredCampaignColumn);
     }
-  }, [csvPreview, inferredDateColumn, inferredSpendColumn, dateColumn, spendColumn]);
+  }, [csvPreview, inferredDateColumn, inferredSpendColumn, dateColumn, spendColumn, sampleRows, props.dateRange, toast]);
 
   const uniqueCampaignKeyValues = useMemo(() => {
     if (!effectiveCampaignColumn) return [];
@@ -494,7 +540,7 @@ export function AddSpendWizardModal(props: {
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process spend");
 
       toast({
-        title: isEditing ? "Spend updated" : "Spend processed",
+        title: isEditing ? "Spend updated" : "Spend imported",
         description: `Imported ${json.days} day(s), total ${props.currency || "USD"} ${json.totalSpend}.`,
       });
       props.onProcessed?.();
@@ -537,7 +583,7 @@ export function AddSpendWizardModal(props: {
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process spend");
       toast({
-        title: isEditing ? "Spend updated" : "Spend processed",
+        title: isEditing ? "Spend updated" : "Spend imported",
         description: `Imported ${json.days} day(s), total ${props.currency || "USD"} ${json.totalSpend}.`,
       });
       props.onProcessed?.();
@@ -823,7 +869,7 @@ export function AddSpendWizardModal(props: {
               )}
               {mode === "manual" && (
                 <Button onClick={processManual} disabled={isProcessing}>
-                  {isProcessing ? "Saving..." : (isEditing ? "Update spend" : "Process spend")}
+                  {isProcessing ? "Saving..." : (isEditing ? "Update spend" : "Import spend")}
                 </Button>
               )}
             </div>
@@ -1033,7 +1079,7 @@ export function AddSpendWizardModal(props: {
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => props.onOpenChange(false)} disabled={isProcessing}>Cancel</Button>
                 <Button onClick={step === "csv_map" ? processCsv : processSheets} disabled={isProcessing}>
-                  {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Process spend")}
+                  {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}
                 </Button>
               </div>
             </div>

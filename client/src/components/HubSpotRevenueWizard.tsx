@@ -400,7 +400,7 @@ export function HubSpotRevenueWizard(props: {
 
         <CardContent className="flex-1 flex flex-col min-h-0">
           {/* Scrollable step body to keep footer always visible */}
-          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-1 space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-3 relative">
               {/* Render the final layout immediately to avoid “jumping” UI. */}

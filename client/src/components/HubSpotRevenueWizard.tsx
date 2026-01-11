@@ -34,6 +34,7 @@ export function HubSpotRevenueWizard(props: {
   const [step, setStep] = useState<Step>("campaign-field");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(true);
 
   const [portalName, setPortalName] = useState<string | null>(null);
   const [portalId, setPortalId] = useState<string | null>(null);
@@ -171,11 +172,15 @@ export function HubSpotRevenueWizard(props: {
     let mounted = true;
     (async () => {
       try {
+        setStatusLoading(true);
         const connected = await fetchStatus();
         if (!mounted) return;
         if (connected) setStep("campaign-field");
       } catch {
         // ignore
+      } finally {
+        if (!mounted) return;
+        setStatusLoading(false);
       }
     })();
     return () => {
@@ -389,14 +394,22 @@ export function HubSpotRevenueWizard(props: {
               `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
             {step === "revenue" && "Select the HubSpot field that represents revenue (usually Deal amount) and a lookback window."}
             {step === "review" && ""}
-            {step === "complete" && "Conversion value is saved. Revenue metrics should now be unlocked in Overview."}
+            {step === "complete" && "Revenue is connected. It will be used when GA4 revenue is missing."}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-3">
-              {!portalId && (
+              {statusLoading ? (
+                <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    Loading HubSpot connection…
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">Checking your HubSpot connection status.</div>
+                </div>
+              ) : !portalId && (
                 <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
                   <div className="text-sm font-medium flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-blue-600" />

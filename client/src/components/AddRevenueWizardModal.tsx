@@ -302,7 +302,38 @@ export function AddRevenueWizardModal(props: {
       const headers: string[] = Array.isArray(json.headers) ? json.headers : [];
       const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
       setCsvRevenueCol(guess);
-      setCsvDateCol(headers.find((h) => /date/i.test(h)) || "");
+      const dateGuess = headers.find((h) => /date/i.test(h)) || "";
+      // If the CSV has a date column but the dates don’t fall inside the selected range,
+      // default to "None" so we distribute across the selected range (prevents “imported but showing $0” confusion).
+      if (dateGuess) {
+        const days = String(dateRange || "").includes("90") ? 90 : String(dateRange || "").includes("30") ? 30 : 7;
+        const end = new Date();
+        const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+        const parseYmd = (v: any) => {
+          const s = String(v ?? "").trim();
+          const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (m?.[1]) return new Date(m[1] + "T00:00:00Z");
+          const d = new Date(s);
+          return Number.isNaN(d.getTime()) ? null : d;
+        };
+        const rows: any[] = Array.isArray(json.sampleRows) ? json.sampleRows : [];
+        const anyInRange = rows.some((r) => {
+          const d = parseYmd((r as any)?.[dateGuess]);
+          if (!d) return false;
+          return d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
+        });
+        if (!anyInRange) {
+          setCsvDateCol("");
+          toast({
+            title: "Date column ignored",
+            description: `Dates in your CSV don't fall within ${dateRange}. We'll distribute revenue across the selected period. You can re-select the Date column if needed.`,
+          });
+        } else {
+          setCsvDateCol(dateGuess);
+        }
+      } else {
+        setCsvDateCol("");
+      }
       setCsvCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
       setCsvCampaignValues([]);
       setCsvCampaignQuery("");

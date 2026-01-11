@@ -641,7 +641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } as any);
 
       const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const days = enumerateDates(startDate, endDate);
+      const days = enumerateDatesInclusive(startDate, endDate);
       if (days.length === 0) {
         return res.status(400).json({ success: false, error: "Invalid date range" });
       }
@@ -1017,7 +1017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } as any);
 
       const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const days = enumerateDates(startDate, endDate);
+      const days = enumerateDatesInclusive(startDate, endDate);
       if (days.length === 0) {
         return res.status(400).json({ success: false, error: "Invalid date range" });
       }

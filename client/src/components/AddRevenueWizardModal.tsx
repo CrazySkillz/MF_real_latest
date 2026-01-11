@@ -13,7 +13,7 @@ import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
 import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 
-type Step = "select" | "manual" | "csv" | "sheets" | "hubspot" | "salesforce" | "shopify";
+type Step = "select" | "manual" | "csv" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
 
 type Preview = {
@@ -62,7 +62,6 @@ export function AddRevenueWizardModal(props: {
   const [sheetsCampaignQuery, setSheetsCampaignQuery] = useState<string>("");
   const [sheetsCampaignValues, setSheetsCampaignValues] = useState<string[]>([]);
   const [sheetsProcessing, setSheetsProcessing] = useState(false);
-  const [autoPreviewedSheetsConnectionId, setAutoPreviewedSheetsConnectionId] = useState<string>("");
 
   const resetAll = () => {
     setStep("select");
@@ -86,7 +85,6 @@ export function AddRevenueWizardModal(props: {
     setSheetsCampaignQuery("");
     setSheetsCampaignValues([]);
     setSheetsProcessing(false);
-    setAutoPreviewedSheetsConnectionId("");
   };
 
   useEffect(() => {
@@ -98,7 +96,7 @@ export function AddRevenueWizardModal(props: {
   useEffect(() => {
     let mounted = true;
     if (!open) return;
-    if (step !== "sheets") return;
+    if (step !== "sheets_choose" && step !== "sheets_map") return;
     (async () => {
       try {
         const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=revenue`);
@@ -116,20 +114,6 @@ export function AddRevenueWizardModal(props: {
       mounted = false;
     };
   }, [open, step, campaignId, sheetsConnectionId]);
-
-  // When entering the Sheets step (or when a default connection is auto-selected),
-  // auto-load the preview so the flow feels continuous like Add Spend.
-  useEffect(() => {
-    if (!open) return;
-    if (step !== "sheets") return;
-    if (!sheetsConnectionId) return;
-    if (sheetsPreview) return;
-    if (sheetsProcessing) return;
-    if (autoPreviewedSheetsConnectionId === sheetsConnectionId) return;
-    setAutoPreviewedSheetsConnectionId(sheetsConnectionId);
-    void handleSheetsPreview(sheetsConnectionId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, step, sheetsConnectionId, sheetsPreview, sheetsProcessing, autoPreviewedSheetsConnectionId]);
 
   const refreshSheetsConnections = async () => {
     try {
@@ -192,6 +176,7 @@ export function AddRevenueWizardModal(props: {
 
   const handleBack = () => {
     if (step === "select") return;
+    if (step === "sheets_map") return setStep("sheets_choose");
     setStep("select");
   };
 
@@ -348,7 +333,8 @@ export function AddRevenueWizardModal(props: {
   const title = step === "select" ? "Add revenue source" :
     step === "manual" ? "Manual revenue" :
     step === "csv" ? "Upload CSV" :
-    step === "sheets" ? "Google Sheets" :
+    step === "sheets_choose" ? "Google Sheets" :
+    step === "sheets_map" ? "Google Sheets" :
     step === "hubspot" ? "HubSpot revenue" :
     step === "salesforce" ? "Salesforce revenue" :
     step === "shopify" ? "Shopify revenue" :
@@ -397,7 +383,7 @@ export function AddRevenueWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets")}>
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileSpreadsheet className="w-4 h-4" />
@@ -610,12 +596,12 @@ export function AddRevenueWizardModal(props: {
               </div>
             )}
 
-            {step === "sheets" && (
+            {step === "sheets_choose" && (
               <div className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Google Sheets</CardTitle>
-                    <CardDescription>Pick a connected sheet and map the revenue column.</CardDescription>
+                    <CardDescription>Choose the Google Sheet tab that contains your revenue data.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {sheetsConnections.length === 0 ? (
@@ -633,13 +619,11 @@ export function AddRevenueWizardModal(props: {
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
                             if (preferredId) {
                               setSheetsConnectionId(preferredId);
-                              // Match Add Spend flow: go straight into preview -> mapping after selecting sheet/tab(s)
                               await refreshSheetsConnections();
-                              await handleSheetsPreview(preferredId);
-                              toast({ title: "Google Sheets connected", description: "Now map your columns and import revenue." });
+                              toast({ title: "Google Sheets connected", description: "Click Next to preview and map your columns." });
                             } else {
                               await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Now select a tab and preview it to map columns." });
+                              toast({ title: "Google Sheets connected", description: "Now select a tab and click Next." });
                             }
                           }}
                           onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
@@ -661,11 +645,10 @@ export function AddRevenueWizardModal(props: {
                             if (preferredId) {
                               setSheetsConnectionId(preferredId);
                               await refreshSheetsConnections();
-                              await handleSheetsPreview(preferredId);
-                              toast({ title: "Google Sheets connected", description: "Now map your columns and import revenue." });
+                              toast({ title: "Google Sheets connected", description: "Click Next to preview and map your columns." });
                             } else {
                               await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Now select a tab and preview it to map columns." });
+                              toast({ title: "Google Sheets connected", description: "Now select a tab and click Next." });
                             }
                           }}
                           onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
@@ -700,9 +683,6 @@ export function AddRevenueWizardModal(props: {
                             setSheetsCampaignCol("");
                             setSheetsCampaignQuery("");
                             setSheetsCampaignValues([]);
-                            setAutoPreviewedSheetsConnectionId("");
-                            // Match Add Spend flow: selecting a tab should immediately load preview/mapping.
-                            void handleSheetsPreview(v);
                           }}
                         >
                           <SelectTrigger>
@@ -720,25 +700,54 @@ export function AddRevenueWizardModal(props: {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")}>
+                        Cancel
+                      </Button>
                       <Button
-                        variant="outline"
-                        onClick={() => void handleSheetsPreview()}
+                        onClick={async () => {
+                          if (!sheetsConnectionId) return;
+                          await handleSheetsPreview(sheetsConnectionId);
+                          setStep("sheets_map");
+                        }}
                         disabled={!sheetsConnectionId || sheetsProcessing}
                       >
-                        {sheetsProcessing ? "Loading…" : (sheetsPreview ? "Refresh preview" : "Preview")}
+                        {sheetsProcessing ? "Loading…" : "Next"}
                       </Button>
                     </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-                    {sheetsPreview && (
-                      <div className="space-y-4">
+            {step === "sheets_map" && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-base">Google Sheets</CardTitle>
+                        <CardDescription>Preview and map columns, then import revenue.</CardDescription>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setStep("sheets_choose")}>
+                        Change sheet/tab
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {!sheetsPreview ? (
+                      <div className="rounded-md border p-3 text-sm text-slate-600 dark:text-slate-400">
+                        No preview loaded yet. Go back and click Next.
+                      </div>
+                    ) : (
+                      <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <Label>Campaign column (optional)</Label>
                             <Select
-                            value={sheetsCampaignCol || SELECT_NONE}
+                              value={sheetsCampaignCol || SELECT_NONE}
                               onValueChange={(v) => {
-                              setSheetsCampaignCol(v === SELECT_NONE ? "" : v);
+                                setSheetsCampaignCol(v === SELECT_NONE ? "" : v);
                                 setSheetsCampaignValues([]);
                                 setSheetsCampaignQuery("");
                               }}
@@ -747,7 +756,7 @@ export function AddRevenueWizardModal(props: {
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                              <SelectItem value={SELECT_NONE}>None</SelectItem>
+                                <SelectItem value={SELECT_NONE}>None</SelectItem>
                                 {sheetsHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>
                                     {h}
@@ -778,12 +787,12 @@ export function AddRevenueWizardModal(props: {
 
                           <div className="space-y-1">
                             <Label>Date column (optional)</Label>
-                          <Select value={sheetsDateCol || SELECT_NONE} onValueChange={(v) => setSheetsDateCol(v === SELECT_NONE ? "" : v)}>
+                            <Select value={sheetsDateCol || SELECT_NONE} onValueChange={(v) => setSheetsDateCol(v === SELECT_NONE ? "" : v)}>
                               <SelectTrigger>
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                              <SelectItem value={SELECT_NONE}>None</SelectItem>
+                                <SelectItem value={SELECT_NONE}>None</SelectItem>
                                 {sheetsHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>
                                     {h}
@@ -835,7 +844,16 @@ export function AddRevenueWizardModal(props: {
                           </div>
                         )}
 
-                        {/* Preview table (same idea as Add Spend) */}
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Rows detected: <span className="font-medium">{sheetsPreview.rowCount.toLocaleString()}</span>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => void handleSheetsPreview()} disabled={!sheetsConnectionId || sheetsProcessing}>
+                            {sheetsProcessing ? "Refreshing…" : "Refresh preview"}
+                          </Button>
+                        </div>
+
+                        {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">
                           <div className="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/40 border-b">
                             Preview (first {Math.min(8, sheetsPreview.sampleRows.length)} row{Math.min(8, sheetsPreview.sampleRows.length) === 1 ? "" : "s"})
@@ -872,7 +890,7 @@ export function AddRevenueWizardModal(props: {
                             </table>
                           </div>
                         </div>
-                      </div>
+                      </>
                     )}
 
                     <div className="flex justify-end gap-2">

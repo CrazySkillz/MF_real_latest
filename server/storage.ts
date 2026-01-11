@@ -56,7 +56,7 @@ export interface IStorage {
   getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
   
   // Google Sheets Connections
-  getGoogleSheetsConnections(campaignId: string): Promise<GoogleSheetsConnection[]>;
+  getGoogleSheetsConnections(campaignId: string, purpose?: string): Promise<GoogleSheetsConnection[]>;
   getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined>;
   getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined>;
   createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection>;
@@ -1136,10 +1136,11 @@ export class MemStorage implements IStorage {
   }
 
   // Google Sheets Connection methods
-  async getGoogleSheetsConnections(campaignId: string): Promise<GoogleSheetsConnection[]> {
+  async getGoogleSheetsConnections(campaignId: string, purpose?: string): Promise<GoogleSheetsConnection[]> {
     const connections: GoogleSheetsConnection[] = [];
     for (const connection of this.googleSheetsConnections.values()) {
-      if (connection.campaignId === campaignId && connection.isActive) {
+      const matchesPurpose = purpose ? (String((connection as any).purpose || "") === purpose) : true;
+      if (connection.campaignId === campaignId && connection.isActive && matchesPurpose) {
         connections.push(connection);
       }
     }
@@ -1210,6 +1211,7 @@ export class MemStorage implements IStorage {
       spreadsheetId: connection.spreadsheetId,
       spreadsheetName: connection.spreadsheetName || null,
       sheetName: connection.sheetName || null,
+      purpose: (connection as any).purpose || null,
       accessToken: connection.accessToken || null,
       refreshToken: connection.refreshToken || null,
       clientId: connection.clientId || null,
@@ -2676,14 +2678,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Google Sheets Connection methods
-  async getGoogleSheetsConnections(campaignId: string): Promise<GoogleSheetsConnection[]> {
+  async getGoogleSheetsConnections(campaignId: string, purpose?: string): Promise<GoogleSheetsConnection[]> {
     try {
+      const purposeCol = (googleSheetsConnections as any).purpose;
+      const purposeFilter = purpose
+        ? (purpose === "spend"
+            ? or(eq(purposeCol, "spend"), isNull(purposeCol))
+            : eq(purposeCol, purpose))
+        : undefined;
+
       return await db.select({
         id: googleSheetsConnections.id,
         campaignId: googleSheetsConnections.campaignId,
         spreadsheetId: googleSheetsConnections.spreadsheetId,
         spreadsheetName: googleSheetsConnections.spreadsheetName,
         sheetName: googleSheetsConnections.sheetName,
+        purpose: (googleSheetsConnections as any).purpose,
         accessToken: googleSheetsConnections.accessToken,
         refreshToken: googleSheetsConnections.refreshToken,
         clientId: googleSheetsConnections.clientId,
@@ -2695,14 +2705,18 @@ export class DatabaseStorage implements IStorage {
         connectedAt: googleSheetsConnections.connectedAt,
         createdAt: googleSheetsConnections.createdAt,
       }).from(googleSheetsConnections)
-      .where(and(eq(googleSheetsConnections.campaignId, campaignId), eq(googleSheetsConnections.isActive, true)))
+      .where(and(
+        eq(googleSheetsConnections.campaignId, campaignId),
+        eq(googleSheetsConnections.isActive, true),
+        ...(purposeFilter ? [purposeFilter] : [])
+      ))
       .orderBy(googleSheetsConnections.connectedAt);
     } catch (error: any) {
-      // If sheet_name column doesn't exist yet, use raw SQL query
-      if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
-        console.log('[Storage] sheet_name column not found, using fallback query');
+      // If sheet_name/purpose column doesn't exist yet, use raw SQL query
+      if (error.message?.includes('sheet_name') || error.message?.includes('purpose') || error.message?.includes('column') || error.code === '42703') {
+        console.log('[Storage] sheet_name/purpose column not found, using fallback query');
         const result = await db.execute(sql`
-          SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, 
+          SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token,
                  client_id, client_secret, expires_at, is_primary, is_active, column_mappings, 
                  connected_at, created_at
           FROM google_sheets_connections
@@ -2710,12 +2724,13 @@ export class DatabaseStorage implements IStorage {
           ORDER BY connected_at
         `);
         // Map raw results to GoogleSheetsConnection format
-        return result.rows.map((row: any) => ({
+        const all = result.rows.map((row: any) => ({
           id: row.id,
           campaignId: row.campaign_id,
           spreadsheetId: row.spreadsheet_id,
           spreadsheetName: row.spreadsheet_name,
           sheetName: null, // Column doesn't exist yet
+          purpose: null,
           accessToken: row.access_token,
           refreshToken: row.refresh_token,
           clientId: row.client_id,
@@ -2727,6 +2742,10 @@ export class DatabaseStorage implements IStorage {
           connectedAt: row.connected_at,
           createdAt: row.created_at
         })) as GoogleSheetsConnection[];
+
+        if (!purpose) return all;
+        if (purpose === 'spend') return all; // legacy connections treated as spend
+        return []; // purpose-specific filtering isn't possible without the column
       }
       throw error;
     }
@@ -2906,8 +2925,8 @@ export class DatabaseStorage implements IStorage {
     return sheetsConnection;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL insert
-      if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
-        console.log('[Storage] sheet_name column not found, using fallback insert for createGoogleSheetsConnection');
+      if (error.message?.includes('sheet_name') || error.message?.includes('purpose') || error.message?.includes('column') || error.code === '42703') {
+        console.log('[Storage] sheet_name/purpose column not found, using fallback insert for createGoogleSheetsConnection');
         const result = await db.execute(sql`
           INSERT INTO google_sheets_connections (
             campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token,
@@ -2933,6 +2952,7 @@ export class DatabaseStorage implements IStorage {
           spreadsheetId: row.spreadsheet_id,
           spreadsheetName: row.spreadsheet_name,
           sheetName: null, // Column doesn't exist yet
+          purpose: null,
           accessToken: row.access_token,
           refreshToken: row.refresh_token,
           clientId: row.client_id,
@@ -2956,6 +2976,7 @@ export class DatabaseStorage implements IStorage {
     if (connection.spreadsheetId !== undefined) setData.spreadsheetId = connection.spreadsheetId;
     if (connection.spreadsheetName !== undefined) setData.spreadsheetName = connection.spreadsheetName;
     if ((connection as any).sheetName !== undefined) setData.sheetName = (connection as any).sheetName;
+    if ((connection as any).purpose !== undefined) setData.purpose = (connection as any).purpose;
     if (connection.accessToken !== undefined) setData.accessToken = connection.accessToken;
     if (connection.refreshToken !== undefined) setData.refreshToken = connection.refreshToken;
     if (connection.clientId !== undefined) setData.clientId = connection.clientId;
@@ -2978,6 +2999,7 @@ export class DatabaseStorage implements IStorage {
         spreadsheetId: googleSheetsConnections.spreadsheetId,
         spreadsheetName: googleSheetsConnections.spreadsheetName,
         sheetName: googleSheetsConnections.sheetName,
+        purpose: (googleSheetsConnections as any).purpose,
         accessToken: googleSheetsConnections.accessToken,
         refreshToken: googleSheetsConnections.refreshToken,
         clientId: googleSheetsConnections.clientId,

@@ -801,7 +801,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionId = String((req.body as any)?.connectionId || "").trim();
       if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
 
-      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const connections = await storage.getGoogleSheetsConnections(campaignId, "revenue");
       const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
       if (!conn.accessToken) return res.status(400).json({ success: false, error: "Google Sheets access token missing; reconnect Google Sheets." });
@@ -855,7 +855,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "revenueColumn is required" });
       }
 
-      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const connections = await storage.getGoogleSheetsConnections(campaignId, "revenue");
       const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
       if (!conn.accessToken) return res.status(400).json({ success: false, error: "Google Sheets access token missing; reconnect Google Sheets." });
@@ -2079,7 +2079,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Sheets OAuth - Start connection
   app.post("/api/auth/google-sheets/connect", oauthRateLimiter, async (req, res) => {
     try {
-      const { campaignId } = req.body;
+      const { campaignId, purpose } = req.body;
+      const sheetsPurpose = (purpose === "spend" || purpose === "revenue" || purpose === "general") ? purpose : undefined;
 
       if (!campaignId) {
         return res.status(400).json({ message: "Campaign ID is required" });
@@ -2099,6 +2100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Google Sheets OAuth] Using redirect URI: ${redirectUri}`);
       
+      const state = sheetsPurpose ? `${campaignId}:${sheetsPurpose}` : String(campaignId);
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(process.env.GOOGLE_CLIENT_ID || '')}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
@@ -2106,7 +2108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `scope=${encodeURIComponent('https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly')}&` +
         `access_type=offline&` +
         `prompt=consent&` +
-        `state=${encodeURIComponent(campaignId)}`;
+        `state=${encodeURIComponent(state)}`;
 
       res.json({
         authUrl,
@@ -2159,7 +2161,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       }
 
-      const campaignId = state as string;
+      const rawState = String(state || '');
+      const [campaignId, sheetsPurpose] = rawState.includes(':') ? rawState.split(':') : [rawState, undefined];
+      const purpose =
+        sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general'
+          ? sheetsPurpose
+          : null;
       console.log(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
 
       // Exchange code for tokens - use same base URL logic
@@ -2198,6 +2205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createGoogleSheetsConnection({
           campaignId,
           spreadsheetId: 'pending', // Will be set when user selects spreadsheet
+          purpose,
           accessToken: tokens.access_token,
           refreshToken: tokens.refresh_token,
           clientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -2919,9 +2927,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/google-sheets/:campaignId/spreadsheets", googleSheetsRateLimiter, async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const purpose = (req.query as any)?.purpose ? String((req.query as any).purpose) : undefined;
       console.log(`[Google Sheets] Fetching spreadsheets for campaign ${campaignId}`);
 
-      let connection = await storage.getGoogleSheetsConnection(campaignId);
+      const conns = await storage.getGoogleSheetsConnections(campaignId, purpose);
+      let connection: any = conns.find((c: any) => c && c.accessToken) || conns[0];
       
       if (!connection || !connection.accessToken) {
         console.error(`[Google Sheets] No connection found for campaign ${campaignId}`);
@@ -5654,7 +5664,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Store in global connections for spreadsheet selection
         (global as any).googleSheetsConnections = (global as any).googleSheetsConnections || new Map();
-        (global as any).googleSheetsConnections.set(campaignId, {
+      const key = (typeof campaignId === 'string' && (campaignId as any).includes(':')) ? campaignId : String(campaignId);
+      (global as any).googleSheetsConnections.set(key, {
           accessToken: access_token,
           refreshToken: refresh_token,
           expiresAt: Date.now() + (tokens.expires_in * 1000),
@@ -5692,14 +5703,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/google-sheets/:spreadsheetId/sheets", async (req, res) => {
     try {
       const { spreadsheetId } = req.params;
-      const { campaignId } = req.query;
+      const { campaignId, purpose } = req.query as any;
       
       if (!campaignId) {
         return res.status(400).json({ error: 'campaignId is required' });
       }
       
       // Get connection to access token
-      const connection = await storage.getGoogleSheetsConnection(campaignId as string);
+      const conns = await storage.getGoogleSheetsConnections(String(campaignId), purpose ? String(purpose) : undefined);
+      const connection = conns.find((c: any) => c && c.accessToken) || conns[0];
       if (!connection || !connection.accessToken) {
         return res.status(404).json({ error: 'No Google Sheets connection found for this campaign' });
       }
@@ -5848,10 +5860,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Select multiple spreadsheet sheets/tabs in one call
   app.post("/api/google-sheets/select-spreadsheet-multiple", async (req, res) => {
     try {
-      const { campaignId, spreadsheetId, sheetNames, selectionMode } = req.body;
+      const { campaignId, spreadsheetId, sheetNames, selectionMode, purpose } = req.body;
       const mode: 'replace' | 'append' = (selectionMode === 'append' || selectionMode === 'replace') ? selectionMode : 'replace';
+      const sheetsPurpose = (purpose === 'spend' || purpose === 'revenue' || purpose === 'general') ? purpose : undefined;
       
-      console.log('Multiple spreadsheet selection request:', { campaignId, spreadsheetId, sheetNames, selectionMode: mode });
+      console.log('Multiple spreadsheet selection request:', { campaignId, spreadsheetId, sheetNames, selectionMode: mode, purpose: sheetsPurpose });
       
       if (!Array.isArray(sheetNames) || sheetNames.length === 0) {
         return res.status(400).json({ error: 'Sheet names array is required and must not be empty' });
@@ -5878,7 +5891,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const availableSlots = Math.max(0, MAX_GOOGLE_SHEETS_CONNECTIONS - existingCount);
       // We'll always reuse/update existing connections for selected tabs.
       // The limit applies only to *new* tabs that aren't already connected.
-      const existingForSpreadsheet = existingConnectionsForLimit
+      const existingForSpreadsheet = (await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose))
+        .filter((c: any) => c && c.spreadsheetId && c.spreadsheetId !== 'pending')
         .filter((c: any) => c.spreadsheetId === spreadsheetId);
       const existingBySheet = new Map<string, any>();
       for (const c of existingForSpreadsheet) {
@@ -5901,25 +5915,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // First, try to find connection in database (more reliable than global map)
-      let dbConnection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
+      let dbConnection = (await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose))
+        .find((c: any) => c && c.spreadsheetId === 'pending') as any;
       
       if (!dbConnection) {
         // Check if there's any connection for this campaign
-        const existingConnections = await storage.getGoogleSheetsConnections(campaignId);
+        const existingConnections = await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose);
         if (existingConnections.length > 0) {
           // Use the first connection
           dbConnection = existingConnections[0];
         } else {
           // Try global map as fallback (for in-memory storage or if DB lookup failed)
           const connections = (global as any).googleSheetsConnections;
-          if (connections && connections.has(campaignId)) {
-            const connection = connections.get(campaignId);
+          const key = sheetsPurpose ? `${campaignId}:${sheetsPurpose}` : campaignId;
+          if (connections && connections.has(key)) {
+            const connection = connections.get(key);
             // Create a new DB connection from global map data
             if (connection.accessToken) {
               try {
                 dbConnection = await storage.createGoogleSheetsConnection({
                   campaignId,
                   spreadsheetId: 'pending',
+                  purpose: sheetsPurpose || null,
                   accessToken: connection.accessToken,
                   refreshToken: connection.refreshToken || null,
                   clientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -6015,7 +6032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (i === 0 && isFirstConnection && !pendingConsumed && dbConnection.id && dbConnection.spreadsheetId === 'pending') {
           // IMPORTANT: ensure this "pending" row becomes an active, real connection.
           // If `sheetName` fails to persist (older schema), downstream logic must not deactivate it.
-          await storage.updateGoogleSheetsConnection(dbConnection.id, { spreadsheetId, spreadsheetName, sheetName, isActive: true as any } as any);
+          await storage.updateGoogleSheetsConnection(dbConnection.id, { spreadsheetId, spreadsheetName, sheetName, purpose: sheetsPurpose || null, isActive: true as any } as any);
           connectionIds.push(dbConnection.id);
           pendingConsumed = true;
           existingBySheet.set(sheetKey, { ...dbConnection, id: dbConnection.id, spreadsheetId, spreadsheetName, sheetName });
@@ -6030,6 +6047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               spreadsheetId,
               spreadsheetName,
               sheetName: sheetName || null,
+              purpose: sheetsPurpose || null,
               accessToken: dbConnection.accessToken,
               refreshToken: dbConnection.refreshToken || null,
               clientId: dbConnection.clientId,
@@ -6063,7 +6081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // the just-created connections to be immediately deactivated (cards appear, then disappear).
       if (mode === 'replace') try {
         const keepIds = new Set(connectionIds.map((id) => String(id)));
-        const allActiveForSpreadsheet = (await storage.getGoogleSheetsConnections(campaignId))
+        const allActiveForSpreadsheet = (await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose))
           .filter((c: any) => c && c.isActive)
           .filter((c: any) => c.spreadsheetId === spreadsheetId)
           .filter((c: any) => c.spreadsheetId && c.spreadsheetId !== 'pending');
@@ -6120,7 +6138,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/google-sheets-connections", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const purpose = (req.query as any)?.purpose ? String((req.query as any).purpose) : undefined;
+      const connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
 
       // If sheetName isn't persisted in the DB (older schema / failed migrations), the UI falls back to "Tab 1/2/3...".
       // For better UX and troubleshooting, attempt to enrich missing sheetName values from Google Sheets metadata.

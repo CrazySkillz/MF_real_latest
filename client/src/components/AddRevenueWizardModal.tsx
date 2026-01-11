@@ -99,7 +99,7 @@ export function AddRevenueWizardModal(props: {
     if (step !== "sheets") return;
     (async () => {
       try {
-        const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
+        const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=revenue`);
         const json = await resp.json().catch(() => ({}));
         const conns = Array.isArray(json?.connections) ? json.connections : [];
         if (!mounted) return;
@@ -117,7 +117,7 @@ export function AddRevenueWizardModal(props: {
 
   const refreshSheetsConnections = async () => {
     try {
-      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
+      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=revenue`);
       const json = await resp.json().catch(() => ({}));
       const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
       const filtered = conns.filter((c: any) => c && c.isActive !== false);
@@ -611,6 +611,7 @@ export function AddRevenueWizardModal(props: {
                         <SimpleGoogleSheetsAuth
                           campaignId={campaignId}
                           selectionMode="append"
+                          purpose="revenue"
                           onSuccess={async (info) => {
                             setShowSheetsConnect(false);
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
@@ -637,6 +638,7 @@ export function AddRevenueWizardModal(props: {
                         <SimpleGoogleSheetsAuth
                           campaignId={campaignId}
                           selectionMode="append"
+                          purpose="revenue"
                           onSuccess={async (info) => {
                             setShowSheetsConnect(false);
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
@@ -809,6 +811,44 @@ export function AddRevenueWizardModal(props: {
                             </p>
                           </div>
                         )}
+
+                        {/* Preview table (same idea as Add Spend) */}
+                        <div className="rounded-md border overflow-hidden">
+                          <div className="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/40 border-b">
+                            Preview (first {Math.min(8, sheetsPreview.sampleRows.length)} row{Math.min(8, sheetsPreview.sampleRows.length) === 1 ? "" : "s"})
+                          </div>
+                          <div className="overflow-auto">
+                            <table className="w-full text-sm table-fixed">
+                              <thead className="bg-white dark:bg-slate-950">
+                                <tr>
+                                  {(sheetsPreview.headers || []).slice(0, 8).map((h) => (
+                                    <th key={h} className="text-left p-2 border-b text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
+                                      {h}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(sheetsPreview.sampleRows || []).slice(0, 8).map((row, idx) => (
+                                  <tr key={idx} className="border-b last:border-b-0">
+                                    {(sheetsPreview.headers || []).slice(0, 8).map((h) => (
+                                      <td key={h} className="p-2 text-xs text-slate-700 dark:text-slate-200 truncate">
+                                        {String((row as any)?.[h] ?? "")}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                                {(sheetsPreview.sampleRows || []).length === 0 && (
+                                  <tr>
+                                    <td className="p-3 text-sm text-slate-500 dark:text-slate-400" colSpan={8}>
+                                      No rows found in this sheet/tab.
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
                       </div>
                     )}
 

@@ -405,7 +405,7 @@ export function AddSpendWizardModal(props: {
 
   const refreshSheetsConnections = async () => {
     try {
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections`);
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections?purpose=spend`);
       const json = await resp.json().catch(() => null);
       const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
       const filtered = conns.filter((c: any) => c && c.isActive !== false);
@@ -631,6 +631,7 @@ export function AddSpendWizardModal(props: {
                       <SimpleGoogleSheetsAuth
                         campaignId={props.campaignId}
                         selectionMode="append"
+                        purpose="spend"
                         onSuccess={async (info) => {
                           setShowSheetsConnect(false);
                           const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
@@ -665,6 +666,7 @@ export function AddSpendWizardModal(props: {
                     <SimpleGoogleSheetsAuth
                       campaignId={props.campaignId}
                       selectionMode="append"
+                      purpose="spend"
                       onSuccess={async (info) => {
                         setShowSheetsConnect(false);
                         const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");

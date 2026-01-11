@@ -284,6 +284,12 @@ process.on('uncaughtException', (error: Error) => {
             ALTER TABLE google_sheets_connections
             ADD COLUMN IF NOT EXISTS sheet_name TEXT;
           `);
+
+          // Migration 6c: Purpose-scoped Google Sheets connections (Spend vs Revenue should not leak)
+          await db.execute(sql`
+            ALTER TABLE google_sheets_connections
+            ADD COLUMN IF NOT EXISTS purpose TEXT;
+          `);
           
           // Set existing connections as primary and active (backward compatibility)
           await db.execute(sql`

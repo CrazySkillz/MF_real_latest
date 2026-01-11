@@ -14,6 +14,7 @@ interface SimpleGoogleSheetsAuthProps {
   onSuccess: (connectionInfo?: { connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] }) => void;
   onError: (error: string) => void;
   selectionMode?: 'replace' | 'append';
+  purpose?: 'spend' | 'revenue' | 'general';
 }
 
 interface Spreadsheet {
@@ -29,7 +30,7 @@ interface Sheet {
   gridProperties?: any;
 }
 
-export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selectionMode = 'replace' }: SimpleGoogleSheetsAuthProps) {
+export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selectionMode = 'replace', purpose = 'general' }: SimpleGoogleSheetsAuthProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
   const [spreadsheets, setSpreadsheets] = useState<Spreadsheet[]>([]);
@@ -84,7 +85,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
 
   const fetchSpreadsheets = useCallback(async () => {
     try {
-      const response = await apiRequest("GET", `/api/google-sheets/${campaignId}/spreadsheets`);
+      const response = await apiRequest("GET", `/api/google-sheets/${campaignId}/spreadsheets?purpose=${encodeURIComponent(purpose)}`);
       const data = await response.json();
 
       if (data.spreadsheets && data.spreadsheets.length > 0) {
@@ -105,6 +106,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     try {
       const response = await apiRequest("POST", "/api/auth/google-sheets/connect", {
         campaignId,
+        purpose,
       });
 
       const data = await response.json();
@@ -136,7 +138,9 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
   const fetchAvailableSheets = useCallback(async (spreadsheetId: string) => {
     setIsLoadingSheets(true);
     try {
-      const response = await fetch(`/api/google-sheets/${spreadsheetId}/sheets?campaignId=${campaignId}`);
+      const response = await fetch(
+        `/api/google-sheets/${spreadsheetId}/sheets?campaignId=${encodeURIComponent(campaignId)}&purpose=${encodeURIComponent(purpose)}`
+      );
       const data = await response.json();
       
       if (data.success && data.sheets && data.sheets.length > 0) {
@@ -235,6 +239,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
         spreadsheetId: selectedSpreadsheet,
         sheetNames: sheetsToConnect.length > 0 ? sheetsToConnect : [null],
         selectionMode,
+        purpose,
       });
 
       const data = await response.json();

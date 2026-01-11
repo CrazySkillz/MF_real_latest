@@ -141,6 +141,9 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
   spreadsheetId: text("spreadsheet_id").notNull(),
   spreadsheetName: text("spreadsheet_name"),
   sheetName: text("sheet_name"), // Name of the specific tab/sheet within the spreadsheet
+  // Purpose allows different product surfaces (e.g. Spend vs Revenue) to maintain separate sheet/tab selections.
+  // If null, treat as "shared/legacy".
+  purpose: text("purpose"),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   clientId: text("client_id"),
@@ -859,6 +862,7 @@ export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheet
   spreadsheetId: true,
   spreadsheetName: true,
   sheetName: true,
+  purpose: true,
   accessToken: true,
   refreshToken: true,
   clientId: true,

@@ -400,41 +400,20 @@ export function HubSpotRevenueWizard(props: {
 
         <CardContent className="space-y-4">
           {step === "campaign-field" && (
-            <div className="space-y-3">
-              {statusLoading ? (
-                <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
-                  <div className="text-sm font-medium flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-blue-600" />
-                    Loading HubSpot connection…
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1">Checking your HubSpot connection status.</div>
-                </div>
-              ) : !portalId && (
-                <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
-                  <div className="text-sm font-medium flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-blue-600" />
-                    Connect HubSpot to continue
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    HubSpot must be connected before we can load Deal properties.
-                  </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                      {isConnecting ? "Connecting…" : "Connect HubSpot"}
-                    </Button>
-                    {onBack && (
-                      <Button variant="outline" onClick={onBack} disabled={isConnecting}>
-                        Back
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
+            <div className="space-y-3 relative">
+              {/* Render the final layout immediately to avoid “jumping” UI. */}
               <div className="space-y-2">
-                <Label>HubSpot deal field used to attribute deals to this campaign</Label>
-                <Select value={campaignProperty} onValueChange={(v) => setCampaignProperty(v)} disabled={!portalId}>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>HubSpot deal field used to attribute deals to this campaign</Label>
+                  <div className="w-4 h-4">{/* reserved space to avoid layout shift */}</div>
+                </div>
+                <Select
+                  value={campaignProperty}
+                  onValueChange={(v) => setCampaignProperty(v)}
+                  disabled={!portalId || statusLoading}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a HubSpot deal field…" />
+                    <SelectValue placeholder={statusLoading ? "Loading…" : "Select a HubSpot deal field…"} />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]">
                     {properties.map((p) => (
@@ -448,6 +427,31 @@ export function HubSpotRevenueWizard(props: {
                   Tip: pick the HubSpot property your team uses for “LinkedIn campaign” or “UTM campaign”.
                 </div>
               </div>
+
+              {/* If not connected, show a non-layout-shifting overlay CTA (no content jump). */}
+              {!statusLoading && !portalId && (
+                <div className="absolute inset-0 rounded-lg border bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+                  <div className="max-w-md w-full">
+                    <div className="text-sm font-medium flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      Connect HubSpot to continue
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      HubSpot must be connected before we can load Deal properties.
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                        {isConnecting ? "Connecting…" : "Connect HubSpot"}
+                      </Button>
+                      {onBack && (
+                        <Button variant="outline" onClick={onBack} disabled={isConnecting}>
+                          Back
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

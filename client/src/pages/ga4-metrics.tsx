@@ -2594,36 +2594,6 @@ export default function GA4Metrics() {
                                     Spend source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} — {selectedPeriodLabel}
                                   </p>
                                 </div>
-                                {(activeSpendSource || financialSpend > 0) && (
-                                  <div className="flex items-center gap-2">
-                                    {activeSpendSource ? (
-                                      <>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => setShowSpendDialog(true)}
-                                          aria-label="Edit spend mapping"
-                                          title="Edit spend mapping"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => setShowDeleteSpendDialog(true)}
-                                          aria-label="Remove spend"
-                                          title="Remove spend"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                      </>
-                                    ) : (
-                                      <Button variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
-                                        Override spend
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
                               </div>
                             </div>
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

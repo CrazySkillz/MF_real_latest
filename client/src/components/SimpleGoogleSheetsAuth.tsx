@@ -223,7 +223,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     try {
       const persisted = (sheetsToConnect || []).filter((s): s is string => typeof s === 'string' && s !== null);
       localStorage.setItem(
-        `mm:selectedSheetNames:${campaignId}:${selectedSpreadsheet}`,
+        `mm:selectedSheetNames:${campaignId}:${purpose}:${selectedSpreadsheet}`,
         JSON.stringify(persisted)
       );
     } catch {
@@ -254,7 +254,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
         // from being reused by later steps (e.g., mapping scope fallback).
         try {
           localStorage.setItem(
-            `mm:selectedSheetNames:${campaignId}:${selectedSpreadsheet}`,
+            `mm:selectedSheetNames:${campaignId}:${purpose}:${selectedSpreadsheet}`,
             JSON.stringify(connectedSheetNames)
           );
         } catch {

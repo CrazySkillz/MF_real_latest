@@ -62,6 +62,7 @@ export function AddRevenueWizardModal(props: {
   const [sheetsCampaignQuery, setSheetsCampaignQuery] = useState<string>("");
   const [sheetsCampaignValues, setSheetsCampaignValues] = useState<string[]>([]);
   const [sheetsProcessing, setSheetsProcessing] = useState(false);
+  const [autoPreviewedSheetsConnectionId, setAutoPreviewedSheetsConnectionId] = useState<string>("");
 
   const resetAll = () => {
     setStep("select");
@@ -85,6 +86,7 @@ export function AddRevenueWizardModal(props: {
     setSheetsCampaignQuery("");
     setSheetsCampaignValues([]);
     setSheetsProcessing(false);
+    setAutoPreviewedSheetsConnectionId("");
   };
 
   useEffect(() => {
@@ -114,6 +116,20 @@ export function AddRevenueWizardModal(props: {
       mounted = false;
     };
   }, [open, step, campaignId, sheetsConnectionId]);
+
+  // When entering the Sheets step (or when a default connection is auto-selected),
+  // auto-load the preview so the flow feels continuous like Add Spend.
+  useEffect(() => {
+    if (!open) return;
+    if (step !== "sheets") return;
+    if (!sheetsConnectionId) return;
+    if (sheetsPreview) return;
+    if (sheetsProcessing) return;
+    if (autoPreviewedSheetsConnectionId === sheetsConnectionId) return;
+    setAutoPreviewedSheetsConnectionId(sheetsConnectionId);
+    void handleSheetsPreview(sheetsConnectionId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, step, sheetsConnectionId, sheetsPreview, sheetsProcessing, autoPreviewedSheetsConnectionId]);
 
   const refreshSheetsConnections = async () => {
     try {
@@ -684,6 +700,9 @@ export function AddRevenueWizardModal(props: {
                             setSheetsCampaignCol("");
                             setSheetsCampaignQuery("");
                             setSheetsCampaignValues([]);
+                            setAutoPreviewedSheetsConnectionId("");
+                            // Match Add Spend flow: selecting a tab should immediately load preview/mapping.
+                            void handleSheetsPreview(v);
                           }}
                         >
                           <SelectTrigger>
@@ -702,8 +721,12 @@ export function AddRevenueWizardModal(props: {
                     )}
 
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" onClick={() => void handleSheetsPreview()} disabled={!sheetsConnectionId || sheetsProcessing}>
-                        {sheetsProcessing ? "Loading…" : "Preview"}
+                      <Button
+                        variant="outline"
+                        onClick={() => void handleSheetsPreview()}
+                        disabled={!sheetsConnectionId || sheetsProcessing}
+                      >
+                        {sheetsProcessing ? "Loading…" : (sheetsPreview ? "Refresh preview" : "Preview")}
                       </Button>
                     </div>
 
@@ -856,7 +879,7 @@ export function AddRevenueWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
                       </Button>
-                      <Button onClick={handleSheetsProcess} disabled={!sheetsPreview || sheetsProcessing}>
+                      <Button onClick={handleSheetsProcess} disabled={!sheetsPreview || sheetsProcessing || !sheetsRevenueCol}>
                         {sheetsProcessing ? "Processing…" : "Import revenue"}
                       </Button>
                     </div>

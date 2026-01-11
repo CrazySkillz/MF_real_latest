@@ -13,7 +13,7 @@ import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
 import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 
-type Step = "select" | "manual" | "csv" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
+type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
 
 type Preview = {
@@ -51,6 +51,7 @@ export function AddRevenueWizardModal(props: {
   const [csvCampaignQuery, setCsvCampaignQuery] = useState<string>("");
   const [csvCampaignValues, setCsvCampaignValues] = useState<string[]>([]);
   const [csvProcessing, setCsvProcessing] = useState(false);
+  const [csvPreviewing, setCsvPreviewing] = useState(false);
   const [csvPrefill, setCsvPrefill] = useState<null | {
     revenueColumn?: string;
     dateColumn?: string;
@@ -84,6 +85,7 @@ export function AddRevenueWizardModal(props: {
     setCsvCampaignQuery("");
     setCsvCampaignValues([]);
     setCsvProcessing(false);
+    setCsvPreviewing(false);
     setCsvPrefill(null);
     setSheetsConnectionId("");
     setSheetsConnectionsLoading(false);
@@ -223,6 +225,15 @@ export function AddRevenueWizardModal(props: {
   const csvHeaders = useMemo(() => csvPreview?.headers || [], [csvPreview]);
   const sheetsHeaders = useMemo(() => sheetsPreview?.headers || [], [sheetsPreview]);
 
+  const filteredCsvPreviewRows = useMemo(() => {
+    const rows = Array.isArray(csvPreview?.sampleRows) ? csvPreview!.sampleRows : [];
+    if (!csvCampaignCol) return rows;
+    if (!Array.isArray(csvCampaignValues) || csvCampaignValues.length === 0) return rows;
+    const set = new Set(csvCampaignValues.map((v) => String(v ?? "").trim()).filter(Boolean));
+    if (set.size === 0) return rows;
+    return rows.filter((r: any) => set.has(String(r?.[csvCampaignCol] ?? "").trim()));
+  }, [csvPreview, csvCampaignCol, csvCampaignValues]);
+
   const filteredSheetsPreviewRows = useMemo(() => {
     const rows = Array.isArray(sheetsPreview?.sampleRows) ? sheetsPreview!.sampleRows : [];
     if (!sheetsCampaignCol) return rows;
@@ -247,6 +258,7 @@ export function AddRevenueWizardModal(props: {
 
   const handleBack = () => {
     if (step === "select") return;
+    if (step === "csv_map") return setStep("csv");
     if (step === "sheets_map") return setStep("sheets_choose");
     setStep("select");
   };
@@ -278,7 +290,7 @@ export function AddRevenueWizardModal(props: {
   };
 
   const handleCsvPreview = async (file: File) => {
-    setCsvProcessing(true);
+    setCsvPreviewing(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -294,6 +306,7 @@ export function AddRevenueWizardModal(props: {
       setCsvCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
       setCsvCampaignValues([]);
       setCsvCampaignQuery("");
+      setStep("csv_map");
 
       // If editing, apply prefilled mapping after preview (CSV requires re-upload).
       if (csvPrefill) {
@@ -313,7 +326,7 @@ export function AddRevenueWizardModal(props: {
       toast({ title: "CSV preview failed", description: e?.message || "Please try again.", variant: "destructive" });
       setCsvPreview(null);
     } finally {
-      setCsvProcessing(false);
+      setCsvPreviewing(false);
     }
   };
 
@@ -323,15 +336,22 @@ export function AddRevenueWizardModal(props: {
       toast({ title: "Select a revenue column", variant: "destructive" });
       return;
     }
+    if (!csvCampaignCol) {
+      toast({ title: "Select a campaign column", description: "Campaign is required for revenue imports.", variant: "destructive" });
+      return;
+    }
+    if (!Array.isArray(csvCampaignValues) || csvCampaignValues.length === 0) {
+      toast({ title: "Select at least 1 campaign value", description: "Choose which campaign rows to import.", variant: "destructive" });
+      return;
+    }
     setCsvProcessing(true);
     try {
-      const hasCampaignScope = !!csvCampaignCol && csvCampaignValues.length > 0;
       const mapping = {
         revenueColumn: csvRevenueCol,
         dateColumn: csvDateCol || null,
-        campaignColumn: hasCampaignScope ? csvCampaignCol : null,
-        campaignValue: hasCampaignScope && csvCampaignValues.length === 1 ? csvCampaignValues[0] : null,
-        campaignValues: hasCampaignScope ? csvCampaignValues : null,
+        campaignColumn: csvCampaignCol,
+        campaignValue: csvCampaignValues.length === 1 ? csvCampaignValues[0] : null,
+        campaignValues: csvCampaignValues,
         currency,
         dateRange,
         displayName: csvFile.name,
@@ -440,6 +460,7 @@ export function AddRevenueWizardModal(props: {
   const title = step === "select" ? "Add revenue source" :
     step === "manual" ? (isEditing ? "Edit manual revenue" : "Manual revenue") :
     step === "csv" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
+    step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
     step === "sheets_choose" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
     step === "sheets_map" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
     step === "hubspot" ? "HubSpot revenue" :
@@ -565,47 +586,99 @@ export function AddRevenueWizardModal(props: {
             {step === "csv" && (
               <div className="space-y-4">
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Upload CSV</CardTitle>
-                    <CardDescription>Choose a revenue column; date is optional.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 pt-6">
                     {isEditing && (
                       <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 text-sm text-slate-700 dark:text-slate-300">
                         To update this revenue source, re-upload the CSV. We’ll reuse your previous column mapping when possible.
                       </div>
                     )}
-                    <Input
-                      type="file"
-                      accept=".csv,text/csv"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] || null;
-                        setCsvFile(f);
-                        setCsvPreview(null);
-                        setCsvRevenueCol("");
-                        setCsvDateCol("");
-                        if (f) void handleCsvPreview(f);
-                      }}
-                    />
 
-                    {csvPreview && (
-                      <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label>Upload file (CSV)</Label>
+                        {csvFile && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setCsvFile(null);
+                              setCsvPreview(null);
+                              setCsvRevenueCol("");
+                              setCsvDateCol("");
+                              setCsvCampaignCol("");
+                              setCsvCampaignValues([]);
+                              setCsvCampaignQuery("");
+                            }}
+                          >
+                            Remove file
+                          </Button>
+                        )}
+                      </div>
+                      <Input
+                        type="file"
+                        accept=".csv,text/csv"
+                        className="cursor-pointer file:cursor-pointer"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] || null;
+                          setCsvFile(f);
+                          setCsvPreview(null);
+                          setCsvRevenueCol("");
+                          setCsvDateCol("");
+                          setCsvCampaignCol("");
+                          setCsvCampaignValues([]);
+                          setCsvCampaignQuery("");
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")}>
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          if (!csvFile) {
+                            toast({ title: "Choose a CSV file", variant: "destructive" });
+                            return;
+                          }
+                          await handleCsvPreview(csvFile);
+                        }}
+                        disabled={!csvFile || csvPreviewing}
+                      >
+                        {csvPreviewing ? "Previewing…" : "Next"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {step === "csv_map" && (
+              <div className="space-y-4">
+                <Card>
+                  <CardContent className="space-y-4 pt-6">
+                    {!csvPreview ? (
+                      <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 text-sm text-slate-700 dark:text-slate-300">
+                        No preview loaded yet. Go back and click Next.
+                      </div>
+                    ) : (
+                      <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <Label>Campaign column (optional)</Label>
+                            <Label>Campaign column</Label>
                             <Select
-                              value={csvCampaignCol || SELECT_NONE}
+                              value={csvCampaignCol || ""}
                               onValueChange={(v) => {
-                                setCsvCampaignCol(v === SELECT_NONE ? "" : v);
+                                setCsvCampaignCol(v);
                                 setCsvCampaignValues([]);
                                 setCsvCampaignQuery("");
                               }}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="None" />
+                                <SelectValue placeholder="Select campaign column" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                <SelectItem value={SELECT_NONE}>None</SelectItem>
                                 {csvHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>
                                     {h}
@@ -613,9 +686,6 @@ export function AddRevenueWizardModal(props: {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                              If your CSV contains multiple campaigns, select the campaign column and choose the value(s) to include.
-                            </p>
                           </div>
 
                           <div className="space-y-1">
@@ -652,7 +722,7 @@ export function AddRevenueWizardModal(props: {
                           </div>
                         </div>
 
-                        {csvCampaignCol && (
+                        {csvCampaignCol ? (
                           <div className="rounded-md border p-3 space-y-2">
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-sm font-medium">Campaign value(s)</div>
@@ -688,15 +758,55 @@ export function AddRevenueWizardModal(props: {
                               )}
                             </div>
                           </div>
+                        ) : (
+                          <div className="text-sm text-slate-600 dark:text-slate-400">Select a campaign column to choose campaign values.</div>
                         )}
-                      </div>
+
+                        {/* Preview table */}
+                        <div className="rounded-md border overflow-hidden">
+                          <div className="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/40 border-b">
+                            Preview (first {Math.min(8, filteredCsvPreviewRows.length)} row{Math.min(8, filteredCsvPreviewRows.length) === 1 ? "" : "s"})
+                          </div>
+                          <div className="overflow-auto">
+                            <table className="w-full text-sm table-fixed">
+                              <thead className="bg-white dark:bg-slate-950">
+                                <tr>
+                                  {(csvPreview.headers || []).slice(0, 8).map((h) => (
+                                    <th key={h} className="text-left p-2 border-b text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
+                                      {h}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(filteredCsvPreviewRows || []).slice(0, 8).map((row, idx) => (
+                                  <tr key={idx} className="border-b last:border-b-0">
+                                    {(csvPreview.headers || []).slice(0, 8).map((h) => (
+                                      <td key={h} className="p-2 text-xs text-slate-700 dark:text-slate-200 truncate">
+                                        {String((row as any)?.[h] ?? "")}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                                {(filteredCsvPreviewRows || []).length === 0 && (
+                                  <tr>
+                                    <td className="p-3 text-sm text-slate-500 dark:text-slate-400" colSpan={8}>
+                                      No rows match the current filter.
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </>
                     )}
 
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
                       </Button>
-                      <Button onClick={handleCsvProcess} disabled={!csvFile || csvProcessing}>
+                      <Button onClick={handleCsvProcess} disabled={!csvPreview || csvProcessing}>
                         {csvProcessing ? "Processing…" : isEditing ? "Update revenue" : "Import revenue"}
                       </Button>
                     </div>

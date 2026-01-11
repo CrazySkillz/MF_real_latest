@@ -29,12 +29,14 @@ export function AddRevenueWizardModal(props: {
   campaignId: string;
   currency: string;
   dateRange: string;
+  initialSource?: any;
   onSuccess?: () => void;
 }) {
-  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess } = props;
+  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource } = props;
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>("select");
+  const isEditing = !!initialSource;
 
   // Manual
   const [manualAmount, setManualAmount] = useState<string>("");
@@ -49,6 +51,12 @@ export function AddRevenueWizardModal(props: {
   const [csvCampaignQuery, setCsvCampaignQuery] = useState<string>("");
   const [csvCampaignValues, setCsvCampaignValues] = useState<string[]>([]);
   const [csvProcessing, setCsvProcessing] = useState(false);
+  const [csvPrefill, setCsvPrefill] = useState<null | {
+    revenueColumn?: string;
+    dateColumn?: string;
+    campaignColumn?: string;
+    campaignValues?: string[];
+  }>(null);
 
   // Sheets
   const [sheetsConnections, setSheetsConnections] = useState<any[]>([]);
@@ -76,6 +84,7 @@ export function AddRevenueWizardModal(props: {
     setCsvCampaignQuery("");
     setCsvCampaignValues([]);
     setCsvProcessing(false);
+    setCsvPrefill(null);
     setSheetsConnectionId("");
     setSheetsConnectionsLoading(false);
     setShowSheetsConnect(false);
@@ -93,6 +102,53 @@ export function AddRevenueWizardModal(props: {
     if (!open) resetAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Prefill edit mode from an existing revenue source (manual + sheets supported; CSV requires re-upload).
+  useEffect(() => {
+    if (!open) return;
+    if (!initialSource) return;
+
+    let config: any = {};
+    try {
+      config = initialSource?.mappingConfig ? JSON.parse(String(initialSource.mappingConfig)) : {};
+    } catch {
+      config = {};
+    }
+
+    const type = String(initialSource?.sourceType || "").toLowerCase();
+    if (type === "manual") {
+      const amt = config?.amount;
+      setStep("manual");
+      setManualAmount(amt === 0 || amt ? String(amt) : "");
+      return;
+    }
+
+    if (type === "google_sheets") {
+      const connId = String(config?.connectionId || initialSource?.connectionId || "");
+      setStep("sheets_map");
+      if (connId) setSheetsConnectionId(connId);
+      // We'll fetch preview in the mapping step; after preview loads we re-apply mappings below.
+      setSheetsRevenueCol(String(config?.revenueColumn || ""));
+      setSheetsDateCol(String(config?.dateColumn || ""));
+      setSheetsCampaignCol(String(config?.campaignColumn || ""));
+      setSheetsCampaignValues(Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : []);
+      return;
+    }
+
+    if (type === "csv") {
+      setStep("csv");
+      setCsvPrefill({
+        revenueColumn: String(config?.revenueColumn || ""),
+        dateColumn: String(config?.dateColumn || ""),
+        campaignColumn: String(config?.campaignColumn || ""),
+        campaignValues: Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : [],
+      });
+      return;
+    }
+
+    // Fallback: open selector
+    setStep("select");
+  }, [open, initialSource]);
 
   // Load sheets connections only when needed
   useEffect(() => {
@@ -211,7 +267,7 @@ export function AddRevenueWizardModal(props: {
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save revenue");
-      toast({ title: "Revenue saved", description: "Revenue will now be used when GA4 revenue is missing." });
+      toast({ title: isEditing ? "Revenue updated" : "Revenue saved", description: "Revenue will now be used when GA4 revenue is missing." });
       onSuccess?.();
       onOpenChange(false);
     } catch (e: any) {
@@ -238,6 +294,21 @@ export function AddRevenueWizardModal(props: {
       setCsvCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
       setCsvCampaignValues([]);
       setCsvCampaignQuery("");
+
+      // If editing, apply prefilled mapping after preview (CSV requires re-upload).
+      if (csvPrefill) {
+        const pickIfExists = (v?: string) => (v && headers.includes(v) ? v : "");
+        const rc = pickIfExists(csvPrefill.revenueColumn);
+        const dc = pickIfExists(csvPrefill.dateColumn);
+        const cc = pickIfExists(csvPrefill.campaignColumn);
+        if (rc) setCsvRevenueCol(rc);
+        if (dc) setCsvDateCol(dc);
+        if (cc) setCsvCampaignCol(cc);
+        if (Array.isArray(csvPrefill.campaignValues) && csvPrefill.campaignValues.length > 0) {
+          setCsvCampaignValues(csvPrefill.campaignValues.map(String));
+        }
+        setCsvPrefill(null);
+      }
     } catch (e: any) {
       toast({ title: "CSV preview failed", description: e?.message || "Please try again.", variant: "destructive" });
       setCsvPreview(null);
@@ -281,7 +352,7 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
-  const handleSheetsPreview = async (connectionIdOverride?: string) => {
+  const handleSheetsPreview = async (connectionIdOverride?: string, opts?: { preserveExisting?: boolean }) => {
     const cid = String(connectionIdOverride || sheetsConnectionId || "").trim();
     if (!cid) return;
     setSheetsProcessing(true);
@@ -296,11 +367,19 @@ export function AddRevenueWizardModal(props: {
       setSheetsPreview({ headers: json.headers || [], sampleRows: json.sampleRows || [], rowCount: json.rowCount || 0 });
       const headers: string[] = Array.isArray(json.headers) ? json.headers : [];
       const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
-      setSheetsRevenueCol(guess);
-      setSheetsDateCol(headers.find((h) => /date/i.test(h)) || "");
-      setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
-      setSheetsCampaignValues([]);
-      setSheetsCampaignQuery("");
+      const preserve = !!opts?.preserveExisting;
+      if (!preserve) {
+        setSheetsRevenueCol(guess);
+        setSheetsDateCol(headers.find((h) => /date/i.test(h)) || "");
+        setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
+        setSheetsCampaignValues([]);
+        setSheetsCampaignQuery("");
+      } else {
+        // keep existing selections; only fill gaps
+        if (!sheetsRevenueCol) setSheetsRevenueCol(guess);
+        if (!sheetsDateCol) setSheetsDateCol(headers.find((h) => /date/i.test(h)) || "");
+        if (!sheetsCampaignCol) setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
+      }
     } catch (e: any) {
       toast({ title: "Preview failed", description: e?.message || "Please try again.", variant: "destructive" });
       setSheetsPreview(null);
@@ -308,6 +387,19 @@ export function AddRevenueWizardModal(props: {
       setSheetsProcessing(false);
     }
   };
+
+  // If opened in edit mode for Sheets, auto-load preview so the user can update mappings immediately.
+  useEffect(() => {
+    if (!open) return;
+    if (!isEditing) return;
+    const type = String(initialSource?.sourceType || "").toLowerCase();
+    if (type !== "google_sheets") return;
+    if (step !== "sheets_map") return;
+    if (!sheetsConnectionId) return;
+    if (sheetsPreview) return;
+    void handleSheetsPreview(sheetsConnectionId, { preserveExisting: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEditing, step, sheetsConnectionId, sheetsPreview, initialSource]);
 
   const handleSheetsProcess = async () => {
     if (!sheetsConnectionId) return;
@@ -346,10 +438,10 @@ export function AddRevenueWizardModal(props: {
   };
 
   const title = step === "select" ? "Add revenue source" :
-    step === "manual" ? "Manual revenue" :
-    step === "csv" ? "Upload CSV" :
-    step === "sheets_choose" ? "Google Sheets" :
-    step === "sheets_map" ? "Google Sheets" :
+    step === "manual" ? (isEditing ? "Edit manual revenue" : "Manual revenue") :
+    step === "csv" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
+    step === "sheets_choose" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
+    step === "sheets_map" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
     step === "hubspot" ? "HubSpot revenue" :
     step === "salesforce" ? "Salesforce revenue" :
     step === "shopify" ? "Shopify revenue" :
@@ -462,7 +554,7 @@ export function AddRevenueWizardModal(props: {
                         Cancel
                       </Button>
                       <Button onClick={handleManualSave} disabled={savingManual}>
-                        {savingManual ? "Saving…" : "Save revenue"}
+                        {savingManual ? "Saving…" : isEditing ? "Update revenue" : "Save revenue"}
                       </Button>
                     </div>
                   </CardContent>
@@ -478,6 +570,11 @@ export function AddRevenueWizardModal(props: {
                     <CardDescription>Choose a revenue column; date is optional.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    {isEditing && (
+                      <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 text-sm text-slate-700 dark:text-slate-300">
+                        To update this revenue source, re-upload the CSV. We’ll reuse your previous column mapping when possible.
+                      </div>
+                    )}
                     <Input
                       type="file"
                       accept=".csv,text/csv"
@@ -600,7 +697,7 @@ export function AddRevenueWizardModal(props: {
                         Cancel
                       </Button>
                       <Button onClick={handleCsvProcess} disabled={!csvFile || csvProcessing}>
-                        {csvProcessing ? "Processing…" : "Import revenue"}
+                        {csvProcessing ? "Processing…" : isEditing ? "Update revenue" : "Import revenue"}
                       </Button>
                     </div>
                   </CardContent>
@@ -900,7 +997,7 @@ export function AddRevenueWizardModal(props: {
                         Cancel
                       </Button>
                       <Button onClick={handleSheetsProcess} disabled={!sheetsPreview || sheetsProcessing || !sheetsRevenueCol}>
-                        {sheetsProcessing ? "Processing…" : "Import revenue"}
+                        {sheetsProcessing ? "Processing…" : isEditing ? "Update revenue" : "Import revenue"}
                       </Button>
                     </div>
                   </CardContent>

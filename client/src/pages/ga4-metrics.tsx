@@ -120,6 +120,7 @@ export default function GA4Metrics() {
   const [showSpendDialog, setShowSpendDialog] = useState(false);
   const [showDeleteSpendDialog, setShowDeleteSpendDialog] = useState(false);
   const [showRevenueDialog, setShowRevenueDialog] = useState(false);
+  const [showDeleteRevenueDialog, setShowDeleteRevenueDialog] = useState(false);
   const [deleteBenchmarkId, setDeleteBenchmarkId] = useState<string | null>(null);
   const [showDeleteBenchmarkDialog, setShowDeleteBenchmarkDialog] = useState(false);
   // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
@@ -1411,6 +1412,21 @@ export default function GA4Metrics() {
     },
   });
 
+  const { data: revenueSourcesResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-sources`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000,
+    refetchIntervalInBackground: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources`);
+      if (!resp.ok) return { success: false, sources: [] };
+      return resp.json().catch(() => ({ success: false, sources: [] }));
+    },
+  });
+
   // Auto-fallback: if the campaign already has LinkedIn spend via the standard LinkedIn import flow,
   // surface it in GA4 Financials without forcing the user to "Add spend".
   const { data: linkedInAggregated } = useQuery<any>({
@@ -1465,6 +1481,10 @@ export default function GA4Metrics() {
     // Backend returns only active sources; pick the most recent if multiple.
     return sources?.[0] || null;
   }, [spendSourcesResp]);
+  const activeRevenueSource = useMemo(() => {
+    const sources = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
+    return sources?.[0] || null;
+  }, [revenueSourcesResp]);
   const linkedInSpendForFinancials = Number((linkedInAggregated as any)?.spend || 0);
   const totalSpendForFinancials = Number(spendTotals?.totalSpend || 0);
   const usingAutoLinkedInSpend = !(totalSpendForFinancials > 0) && linkedInSpendForFinancials > 0;
@@ -2492,18 +2512,37 @@ export default function GA4Metrics() {
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                   {ga4RevenueForFinancials > 0 ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
                                 </p>
-                                {ga4RevenueForFinancials <= 0 && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-3"
-                                    onClick={() => setShowRevenueDialog(true)}
-                                  >
+                                {ga4RevenueForFinancials <= 0 && !activeRevenueSource && (
+                                  <Button variant="outline" size="sm" className="mt-3" onClick={() => setShowRevenueDialog(true)}>
                                     Add revenue source
                                   </Button>
                                 )}
                               </div>
-                              <DollarSign className="w-8 h-8 text-green-600 shrink-0" />
+                              <div className="flex flex-col items-end gap-2 shrink-0">
+                                {ga4RevenueForFinancials <= 0 && activeRevenueSource ? (
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Edit revenue source"
+                                      title="Edit revenue source"
+                                      onClick={() => setShowRevenueDialog(true)}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Remove revenue source"
+                                      title="Remove revenue source"
+                                      onClick={() => setShowDeleteRevenueDialog(true)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ) : null}
+                                <DollarSign className="w-8 h-8 text-green-600" />
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -2920,8 +2959,10 @@ export default function GA4Metrics() {
                       onOpenChange={setShowRevenueDialog}
                       currency={(campaign as any)?.currency || "USD"}
                       dateRange={dateRange}
+                      initialSource={activeRevenueSource || undefined}
                       onSuccess={() => {
                         queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
                         queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
                       }}
                     />
@@ -2953,6 +2994,41 @@ export default function GA4Metrics() {
                                 console.error(e);
                               } finally {
                                 setShowDeleteSpendDialog(false);
+                              }
+                            }}
+                          >
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    <AlertDialog open={showDeleteRevenueDialog} onOpenChange={setShowDeleteRevenueDialog}>
+                      <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-slate-900 dark:text-white">Remove revenue source?</AlertDialogTitle>
+                          <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                            This will remove imported revenue for this campaign until you add a revenue source again.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={async () => {
+                              try {
+                                const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources`, { method: "DELETE" });
+                                const json = await resp.json().catch(() => null);
+                                if (!resp.ok || json?.success === false) {
+                                  throw new Error(json?.error || "Failed to remove revenue source");
+                                }
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+                              } catch (e) {
+                                console.error(e);
+                              } finally {
+                                setShowDeleteRevenueDialog(false);
                               }
                             }}
                           >

@@ -1149,7 +1149,7 @@ export function AddRevenueWizardModal(props: {
             )}
 
             {step === "hubspot" && (
-              <div className="w-full">
+              <div className="w-full h-full min-h-0 flex flex-col">
                 <HubSpotRevenueWizard
                   campaignId={campaignId}
                   onBack={() => setStep("select")}
@@ -1163,7 +1163,7 @@ export function AddRevenueWizardModal(props: {
             )}
 
             {step === "salesforce" && (
-              <div className="w-full">
+              <div className="w-full h-full min-h-0 flex flex-col">
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
                   onBack={() => setStep("select")}
@@ -1177,7 +1177,7 @@ export function AddRevenueWizardModal(props: {
             )}
 
             {step === "shopify" && (
-              <div className="w-full">
+              <div className="w-full h-full min-h-0 flex flex-col">
                 <ShopifyRevenueWizard
                   campaignId={campaignId}
                   onBack={() => setStep("select")}

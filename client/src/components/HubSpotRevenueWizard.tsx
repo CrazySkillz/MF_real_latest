@@ -230,9 +230,7 @@ export function HubSpotRevenueWizard(props: {
 
       toast({
         title: "HubSpot Mappings Saved",
-        description: json?.conversionValueCalculated
-          ? `Conversion value calculated: $${json?.conversionValue || "0"} per conversion.`
-          : `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+        description: `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
       });
       setLastSaveResult(json);
       onSuccess?.(json);
@@ -574,8 +572,10 @@ export function HubSpotRevenueWizard(props: {
           {step === "complete" && (
             <div className="space-y-3">
               <div className="text-sm text-slate-700">
-                Saved conversion value:{" "}
-                <strong>${String(lastSaveResult?.conversionValue ?? "0")}</strong> per conversion.
+                Revenue connected:{" "}
+                <strong>
+                  ${Number(lastSaveResult?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </strong>
               </div>
               <div className="flex items-center gap-2">
                 <Button

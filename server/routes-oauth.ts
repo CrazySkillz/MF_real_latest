@@ -7533,7 +7533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // HubSpot save mappings (compute conversion value and unlock LinkedIn revenue metrics)
+  // HubSpot save mappings (standalone revenue import; no dependency on LinkedIn)
   app.post("/api/campaigns/:id/hubspot/save-mappings", async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -7623,38 +7623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Optional: compute conversion value only if LinkedIn conversions exist.
-      // HubSpot revenue import must work independently of LinkedIn imports.
-      let calculatedConversionValue: number | null = null;
-      let totalConversions: number | null = null;
-      let latestSession: any | null = null;
-      try {
-        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-        latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0] || null;
-        if (latestSession) {
-          const importMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
-          const canonicalKey = (k: string) => String(k || '').toLowerCase();
-          const tc = (importMetrics || []).reduce((sum: number, m: any) => {
-            const key = canonicalKey(m.metricKey);
-            if (key === 'conversions' || key === 'externalwebsiteconversions') {
-              const v = Number(m.metricValue);
-              if (Number.isFinite(v)) return sum + v;
-            }
-            return sum;
-          }, 0);
-          if (Number.isFinite(tc) && tc > 0) {
-            totalConversions = tc;
-            calculatedConversionValue = Number((totalRevenue / tc).toFixed(2));
-
-            // Persist conversion value across campaign + LinkedIn connection + import session (same pattern as Sheets)
-            await storage.updateCampaign(campaignId, { conversionValue: calculatedConversionValue } as any);
-            await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
-            await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
-          }
-        }
-      } catch {
-        // ignore
-      }
+      // NOTE: No LinkedIn coupling here. This endpoint only saves HubSpot mappings + materializes revenue.
 
       // Persist mapping config on the active HubSpot connection
       const hubspotConn: any = await storage.getHubspotConnection(campaignId);
@@ -7729,12 +7698,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        conversionValueCalculated: calculatedConversionValue !== null,
-        conversionValue: calculatedConversionValue,
         totalRevenue: Number(totalRevenue.toFixed(2)),
-        totalConversions,
         currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
-        sessionId: latestSession?.id || null,
       });
     } catch (error: any) {
       console.error('[HubSpot Save Mappings] Error:', error);

@@ -161,6 +161,15 @@ export function AddRevenueWizardModal(props: {
   const csvHeaders = useMemo(() => csvPreview?.headers || [], [csvPreview]);
   const sheetsHeaders = useMemo(() => sheetsPreview?.headers || [], [sheetsPreview]);
 
+  const filteredSheetsPreviewRows = useMemo(() => {
+    const rows = Array.isArray(sheetsPreview?.sampleRows) ? sheetsPreview!.sampleRows : [];
+    if (!sheetsCampaignCol) return rows;
+    if (!Array.isArray(sheetsCampaignValues) || sheetsCampaignValues.length === 0) return rows;
+    const set = new Set(sheetsCampaignValues.map((v) => String(v ?? "").trim()).filter(Boolean));
+    if (set.size === 0) return rows;
+    return rows.filter((r: any) => set.has(String(r?.[sheetsCampaignCol] ?? "").trim()));
+  }, [sheetsPreview, sheetsCampaignCol, sheetsCampaignValues]);
+
   const uniqueValuesFromPreview = (preview: Preview | null, col: string) => {
     if (!preview || !col) return [];
     const vals = new Map<string, number>();
@@ -575,9 +584,6 @@ export function AddRevenueWizardModal(props: {
                                 <div className="text-sm text-slate-500 dark:text-slate-400">No campaign values found in sample rows.</div>
                               )}
                             </div>
-                            <p className="text-xs text-slate-600 dark:text-slate-400">
-                              Leave empty to import revenue for all rows (no campaign filtering).
-                            </p>
                           </div>
                         )}
                       </div>
@@ -827,9 +833,6 @@ export function AddRevenueWizardModal(props: {
                                 <div className="text-sm text-slate-500 dark:text-slate-400">No campaign values found in sample rows.</div>
                               )}
                             </div>
-                            <p className="text-xs text-slate-600 dark:text-slate-400">
-                              Leave empty to import revenue for all rows (no campaign filtering).
-                            </p>
                           </div>
                         )}
 
@@ -845,7 +848,7 @@ export function AddRevenueWizardModal(props: {
                         {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">
                           <div className="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/40 border-b">
-                            Preview (first {Math.min(8, sheetsPreview.sampleRows.length)} row{Math.min(8, sheetsPreview.sampleRows.length) === 1 ? "" : "s"})
+                            Preview (first {Math.min(8, filteredSheetsPreviewRows.length)} row{Math.min(8, filteredSheetsPreviewRows.length) === 1 ? "" : "s"})
                           </div>
                           <div className="overflow-auto">
                             <table className="w-full text-sm table-fixed">
@@ -859,7 +862,7 @@ export function AddRevenueWizardModal(props: {
                                 </tr>
                               </thead>
                               <tbody>
-                                {(sheetsPreview.sampleRows || []).slice(0, 8).map((row, idx) => (
+                                {(filteredSheetsPreviewRows || []).slice(0, 8).map((row, idx) => (
                                   <tr key={idx} className="border-b last:border-b-0">
                                     {(sheetsPreview.headers || []).slice(0, 8).map((h) => (
                                       <td key={h} className="p-2 text-xs text-slate-700 dark:text-slate-200 truncate">
@@ -868,10 +871,10 @@ export function AddRevenueWizardModal(props: {
                                     ))}
                                   </tr>
                                 ))}
-                                {(sheetsPreview.sampleRows || []).length === 0 && (
+                                {(filteredSheetsPreviewRows || []).length === 0 && (
                                   <tr>
                                     <td className="p-3 text-sm text-slate-500 dark:text-slate-400" colSpan={8}>
-                                      No rows found in this sheet/tab.
+                                      No rows match the current filter.
                                     </td>
                                   </tr>
                                 )}

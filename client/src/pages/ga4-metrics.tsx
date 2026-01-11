@@ -2629,7 +2629,7 @@ export default function GA4Metrics() {
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                               <Card>
                                 <CardContent className="p-6">
-                                  <div className="flex items-center justify-between">
+                                  <div className="flex items-center justify-between gap-4">
                                     <div>
                                       <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</p>
                                       <p className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -2639,7 +2639,31 @@ export default function GA4Metrics() {
                                         From spend sources ({Array.isArray(spendTotals?.sourceIds) ? spendTotals.sourceIds.length : 0})
                                       </p>
                                     </div>
-                                    <DollarSign className="w-8 h-8 text-slate-500" />
+                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                      {totalSpendForFinancials > 0 && activeSpendSource ? (
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            aria-label="Edit spend"
+                                            title="Edit spend"
+                                            onClick={() => setShowSpendDialog(true)}
+                                          >
+                                            <Edit className="w-4 h-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            aria-label="Remove spend"
+                                            title="Remove spend"
+                                            onClick={() => setShowDeleteSpendDialog(true)}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      ) : null}
+                                      <DollarSign className="w-8 h-8 text-slate-500" />
+                                    </div>
                                   </div>
                                 </CardContent>
                               </Card>

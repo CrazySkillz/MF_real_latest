@@ -417,7 +417,13 @@ export function HubSpotRevenueWizard(props: {
                   <SelectTrigger>
                     <SelectValue placeholder={statusLoading ? "Loading…" : "Select a HubSpot deal field…"} />
                   </SelectTrigger>
-                  <SelectContent className="z-[10000]">
+                  <SelectContent
+                    className="z-[10000]"
+                    side="bottom"
+                    align="start"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                  >
                     {properties.map((p) => (
                       <SelectItem key={p.name} value={p.name}>
                         {p.label} ({p.name})
@@ -473,7 +479,7 @@ export function HubSpotRevenueWizard(props: {
                 </Button>
               </div>
 
-              <div className="border rounded p-3 flex-1 min-h-[240px] overflow-y-auto">
+              <div className="border rounded p-3 flex-1 min-h-0 overflow-y-auto">
                 {valuesLoading ? (
                   <div className="text-sm text-slate-500">Loading values…</div>
                 ) : uniqueValues.length === 0 ? (

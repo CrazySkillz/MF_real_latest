@@ -14,6 +14,7 @@ import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 
 type Step = "select" | "manual" | "csv" | "sheets" | "hubspot" | "salesforce" | "shopify";
+const SELECT_NONE = "__none__";
 
 type Preview = {
   fileName?: string;
@@ -479,9 +480,9 @@ export function AddRevenueWizardModal(props: {
                           <div className="space-y-1">
                             <Label>Campaign column (optional)</Label>
                             <Select
-                              value={csvCampaignCol}
+                              value={csvCampaignCol || SELECT_NONE}
                               onValueChange={(v) => {
-                                setCsvCampaignCol(v);
+                                setCsvCampaignCol(v === SELECT_NONE ? "" : v);
                                 setCsvCampaignValues([]);
                                 setCsvCampaignQuery("");
                               }}
@@ -490,7 +491,7 @@ export function AddRevenueWizardModal(props: {
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                <SelectItem value="">None</SelectItem>
+                                <SelectItem value={SELECT_NONE}>None</SelectItem>
                                 {csvHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>
                                     {h}
@@ -521,12 +522,12 @@ export function AddRevenueWizardModal(props: {
 
                           <div className="space-y-1">
                             <Label>Date column (optional)</Label>
-                            <Select value={csvDateCol} onValueChange={setCsvDateCol}>
+                            <Select value={csvDateCol || SELECT_NONE} onValueChange={(v) => setCsvDateCol(v === SELECT_NONE ? "" : v)}>
                               <SelectTrigger>
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                <SelectItem value="">None</SelectItem>
+                                <SelectItem value={SELECT_NONE}>None</SelectItem>
                                 {csvHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>
                                     {h}
@@ -710,9 +711,9 @@ export function AddRevenueWizardModal(props: {
                           <div className="space-y-1">
                             <Label>Campaign column (optional)</Label>
                             <Select
-                              value={sheetsCampaignCol}
+                            value={sheetsCampaignCol || SELECT_NONE}
                               onValueChange={(v) => {
-                                setSheetsCampaignCol(v);
+                              setSheetsCampaignCol(v === SELECT_NONE ? "" : v);
                                 setSheetsCampaignValues([]);
                                 setSheetsCampaignQuery("");
                               }}
@@ -721,7 +722,7 @@ export function AddRevenueWizardModal(props: {
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                <SelectItem value="">None</SelectItem>
+                              <SelectItem value={SELECT_NONE}>None</SelectItem>
                                 {sheetsHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>
                                     {h}
@@ -752,12 +753,12 @@ export function AddRevenueWizardModal(props: {
 
                           <div className="space-y-1">
                             <Label>Date column (optional)</Label>
-                            <Select value={sheetsDateCol} onValueChange={setSheetsDateCol}>
+                          <Select value={sheetsDateCol || SELECT_NONE} onValueChange={(v) => setSheetsDateCol(v === SELECT_NONE ? "" : v)}>
                               <SelectTrigger>
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                <SelectItem value="">None</SelectItem>
+                              <SelectItem value={SELECT_NONE}>None</SelectItem>
                                 {sheetsHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>
                                     {h}

@@ -723,17 +723,6 @@ export function AddRevenueWizardModal(props: {
             {step === "sheets_map" && (
               <div className="space-y-4">
                 <Card>
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-base">Google Sheets</CardTitle>
-                        <CardDescription>Preview and map columns, then import revenue.</CardDescription>
-                      </div>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setStep("sheets_choose")}>
-                        Change sheet/tab
-                      </Button>
-                    </div>
-                  </CardHeader>
                   <CardContent className="space-y-4">
                     {!sheetsPreview ? (
                       <div className="rounded-md border p-3 text-sm text-slate-600 dark:text-slate-400">

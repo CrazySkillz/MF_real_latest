@@ -507,7 +507,7 @@ export function AddRevenueWizardModal(props: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[980px] max-w-[95vw] h-[90vh] max-h-[90vh] p-0">
+      <DialogContent className="w-[980px] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col min-h-0 overflow-hidden">
         <div className="flex flex-col h-full">
           <DialogHeader className="px-6 py-4 border-b">
             <div className="flex items-start justify-between gap-4">
@@ -526,7 +526,9 @@ export function AddRevenueWizardModal(props: {
 
           <div
             className={`px-6 py-5 flex-1 min-h-0 flex flex-col ${
-              isEmbeddedWizardStep ? "overflow-y-hidden" : "overflow-y-auto"
+              // Embedded wizards manage their own internal scroll, but we still allow
+              // parent scrolling as a safety net to avoid clipped footers on smaller viewports.
+              isEmbeddedWizardStep ? "overflow-y-auto" : "overflow-y-auto"
             }`}
           >
             {step === "select" && (

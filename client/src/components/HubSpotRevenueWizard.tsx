@@ -41,7 +41,9 @@ export function HubSpotRevenueWizard(props: {
   const [properties, setProperties] = useState<HubSpotProperty[]>([]);
   const [campaignProperty, setCampaignProperty] = useState<string>("");
   const [revenueProperty, setRevenueProperty] = useState<string>("amount");
-  const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("onsite_in_ga4");
+  // Default to offsite since the user is explicitly importing revenue in this flow.
+  // Keep as an Advanced toggle to prevent double-counting when GA4 revenue is also present.
+  const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("offsite_not_in_ga4");
   const [days, setDays] = useState<number>(90);
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
@@ -228,7 +230,9 @@ export function HubSpotRevenueWizard(props: {
 
       toast({
         title: "HubSpot Mappings Saved",
-        description: `Conversion value calculated: $${json?.conversionValue || "0"} per conversion.`,
+        description: json?.conversionValueCalculated
+          ? `Conversion value calculated: $${json?.conversionValue || "0"} per conversion.`
+          : `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
       });
       setLastSaveResult(json);
       onSuccess?.(json);
@@ -511,22 +515,6 @@ export function HubSpotRevenueWizard(props: {
                 <div className="text-xs text-slate-500">Default: Deal amount.</div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Is this revenue already tracked in GA4?</Label>
-                <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[10000]">
-                    <SelectItem value="onsite_in_ga4">Yes — it’s onsite revenue (also tracked in GA4)</SelectItem>
-                    <SelectItem value="offsite_not_in_ga4">No — it’s offsite revenue (NOT tracked in GA4)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="text-xs text-slate-500">
-                  If you choose “No”, this revenue can be included in campaign-level total revenue without double counting GA4.
-                </div>
-              </div>
-
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-slate-500">
                   Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
@@ -556,6 +544,22 @@ export function HubSpotRevenueWizard(props: {
                     />
                     <div className="text-xs text-slate-500">
                       Default: last 90 days. This helps keep revenue mapping aligned to the time period you’re analyzing.
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Revenue classification</Label>
+                    <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[10000]">
+                        <SelectItem value="offsite_not_in_ga4">Offsite (NOT tracked in GA4)</SelectItem>
+                        <SelectItem value="onsite_in_ga4">Onsite (also tracked in GA4)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-slate-500">
+                      Default is Offsite. Change only if this HubSpot revenue is already included in GA4 to avoid double counting in campaign totals.
                     </div>
                   </div>
                 </div>

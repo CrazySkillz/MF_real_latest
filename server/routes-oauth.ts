@@ -7623,41 +7623,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Pull conversions from latest LinkedIn import session
-      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-      const latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
-      if (!latestSession) {
-        return res.status(400).json({ error: 'No LinkedIn import session found. Please import LinkedIn metrics first.' });
-      }
+      // Optional: compute conversion value only if LinkedIn conversions exist.
+      // HubSpot revenue import must work independently of LinkedIn imports.
+      let calculatedConversionValue: number | null = null;
+      let totalConversions: number | null = null;
+      let latestSession: any | null = null;
+      try {
+        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+        latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0] || null;
+        if (latestSession) {
+          const importMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
+          const canonicalKey = (k: string) => String(k || '').toLowerCase();
+          const tc = (importMetrics || []).reduce((sum: number, m: any) => {
+            const key = canonicalKey(m.metricKey);
+            if (key === 'conversions' || key === 'externalwebsiteconversions') {
+              const v = Number(m.metricValue);
+              if (Number.isFinite(v)) return sum + v;
+            }
+            return sum;
+          }, 0);
+          if (Number.isFinite(tc) && tc > 0) {
+            totalConversions = tc;
+            calculatedConversionValue = Number((totalRevenue / tc).toFixed(2));
 
-      const importMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
-      const canonicalKey = (k: string) => String(k || '').toLowerCase();
-      const totalConversions = (importMetrics || []).reduce((sum: number, m: any) => {
-        const key = canonicalKey(m.metricKey);
-        if (key === 'conversions' || key === 'externalwebsiteconversions') {
-          const v = Number(m.metricValue);
-          if (Number.isFinite(v)) return sum + v;
+            // Persist conversion value across campaign + LinkedIn connection + import session (same pattern as Sheets)
+            await storage.updateCampaign(campaignId, { conversionValue: calculatedConversionValue } as any);
+            await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
+            await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
+          }
         }
-        return sum;
-      }, 0);
-
-      if (!Number.isFinite(totalConversions) || totalConversions <= 0) {
-        return res.status(400).json({ error: 'LinkedIn conversions are 0. Cannot compute conversion value.' });
+      } catch {
+        // ignore
       }
-
-      const calculatedConversionValue = Number((totalRevenue / totalConversions).toFixed(2));
-
-      // Persist conversion value across campaign + LinkedIn connection + import session (same pattern as Sheets)
-      await storage.updateCampaign(campaignId, { conversionValue: calculatedConversionValue } as any);
-      await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
-      await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
 
       // Persist mapping config on the active HubSpot connection
       const hubspotConn: any = await storage.getHubspotConnection(campaignId);
       if (hubspotConn) {
         const rcRaw = String(revenueClassification || '').trim();
         const rc =
-          rcRaw === 'offsite_not_in_ga4' || rcRaw === 'onsite_in_ga4' ? rcRaw : 'onsite_in_ga4';
+          rcRaw === 'offsite_not_in_ga4' || rcRaw === 'onsite_in_ga4' ? rcRaw : 'offsite_not_in_ga4';
         const mappingConfig = {
           objectType: 'deals',
           campaignProperty: campaignProp,
@@ -7725,12 +7729,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        conversionValueCalculated: true,
+        conversionValueCalculated: calculatedConversionValue !== null,
         conversionValue: calculatedConversionValue,
         totalRevenue: Number(totalRevenue.toFixed(2)),
         totalConversions,
         currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
-        sessionId: latestSession.id,
+        sessionId: latestSession?.id || null,
       });
     } catch (error: any) {
       console.error('[HubSpot Save Mappings] Error:', error);

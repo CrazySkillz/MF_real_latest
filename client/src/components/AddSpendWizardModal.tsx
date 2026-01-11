@@ -52,6 +52,7 @@ export function AddSpendWizardModal(props: {
   const [campaignKeySearch, setCampaignKeySearch] = useState<string>("");
 
   const CAMPAIGN_COL_NONE = "__none__";
+  const DATE_COL_NONE = "__none_date__";
 
   const [manualAmount, setManualAmount] = useState<string>("");
 
@@ -176,7 +177,48 @@ export function AddSpendWizardModal(props: {
         setCampaignKeyColumn(mapCampaignCol);
       }
       if (mapCampaignVals.length) setCampaignKeyValues(mapCampaignVals);
-      if (mapDate) setDateColumn(mapDate);
+      if (mapDate) {
+        // If the saved Date column doesn't overlap the currently selected GA4 date range,
+        // default to "None" so spend is distributed across the selected range (prevents “imported but showing $0”).
+        const parseDateMaybeLocal = (raw: any): Date | null => {
+          const s = String(raw ?? "").trim();
+          if (!s) return null;
+          const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (m?.[1]) {
+            const d = new Date(m[1] + "T00:00:00Z");
+            return Number.isNaN(d.getTime()) ? null : d;
+          }
+          const d = new Date(s);
+          return Number.isNaN(d.getTime()) ? null : d;
+        };
+        const dateRangeToDaysLocal = (dr?: string): number => {
+          const v = String(dr || "").toLowerCase();
+          if (v.includes("7")) return 7;
+          if (v.includes("90")) return 90;
+          return 30;
+        };
+        const days = dateRangeToDaysLocal(props.dateRange);
+        const end = new Date();
+        const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+        const anyInRange = (savedSampleRows || []).some((r: any) => {
+          const d = parseDateMaybeLocal(r?.[mapDate]);
+          if (!d) return false;
+          return d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
+        });
+        if (anyInRange) {
+          setDateColumn(mapDate);
+        } else {
+          setDateColumn("");
+          setCsvEditNotice((prev) =>
+            [
+              prev,
+              `Heads up: your saved Date column (“${mapDate}”) appears to be outside the current ${props.dateRange || "30days"} view, so Spend totals show as $0. Leave Date as “None” to distribute spend across the selected period (recommended for testing).`,
+            ]
+              .filter(Boolean)
+              .join(" ")
+          );
+        }
+      }
       if (mapSpend) setSpendColumn(mapSpend);
       return;
     }
@@ -964,9 +1006,13 @@ export function AddSpendWizardModal(props: {
                 <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
                   <div className="space-y-2">
                     <Label>Date column</Label>
-                    <Select value={dateColumn} onValueChange={setDateColumn}>
+                      <Select
+                        value={dateColumn || DATE_COL_NONE}
+                        onValueChange={(v) => setDateColumn(v === DATE_COL_NONE ? "" : v)}
+                      >
                       <SelectTrigger><SelectValue placeholder="Select date column" /></SelectTrigger>
                       <SelectContent className="z-[10000]">
+                          <SelectItem value={DATE_COL_NONE}>None (distribute across selected period)</SelectItem>
                         {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                       </SelectContent>
                     </Select>

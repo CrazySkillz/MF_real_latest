@@ -503,6 +503,8 @@ export function AddRevenueWizardModal(props: {
     ? "Choose where your revenue data comes from. This is used when GA4 revenue is missing."
     : `Currency: ${currency} • Date range: ${dateRange}`;
 
+  const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[980px] max-w-[95vw] h-[90vh] max-h-[90vh] p-0">
@@ -522,7 +524,7 @@ export function AddRevenueWizardModal(props: {
             </div>
           </DialogHeader>
 
-          <div className="px-6 py-5 flex-1 overflow-y-auto min-h-0">
+          <div className={`px-6 py-5 flex-1 min-h-0 ${isEmbeddedWizardStep ? "overflow-y-hidden" : "overflow-y-auto"}`}>
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>

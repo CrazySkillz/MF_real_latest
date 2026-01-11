@@ -315,9 +315,9 @@ export function HubSpotRevenueWizard(props: {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0">
       {/* Step Indicator (similar to GuidedColumnMapping) */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between shrink-0 mb-6">
         {steps.map((s, index) => {
           const StepIcon = s.icon;
           const isActive = s.id === step;
@@ -353,7 +353,7 @@ export function HubSpotRevenueWizard(props: {
       </div>
 
       {/* Step Content */}
-      <Card>
+      <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             {step === "campaign-field" && (
@@ -398,7 +398,9 @@ export function HubSpotRevenueWizard(props: {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="flex-1 flex flex-col min-h-0">
+          {/* Scrollable step body to keep footer always visible */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-3 relative">
               {/* Render the final layout immediately to avoid “jumping” UI. */}
@@ -456,8 +458,8 @@ export function HubSpotRevenueWizard(props: {
           )}
 
           {step === "crosswalk" && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-3 min-h-0">
+              <div className="flex items-center justify-between gap-2 shrink-0">
                 <div className="text-sm text-slate-600">
                   Selected: <strong>{selectedValues.length}</strong>
                 </div>
@@ -471,7 +473,7 @@ export function HubSpotRevenueWizard(props: {
                 </Button>
               </div>
 
-              <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
+              <div className="border rounded p-3 flex-1 min-h-[240px] overflow-y-auto">
                 {valuesLoading ? (
                   <div className="text-sm text-slate-500">Loading values…</div>
                 ) : uniqueValues.length === 0 ? (
@@ -503,7 +505,7 @@ export function HubSpotRevenueWizard(props: {
                 )}
               </div>
 
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-500 shrink-0">
                 Default filter: Closed Won deals (best-effort across pipelines) within the last {days} days.
               </div>
             </div>
@@ -608,10 +610,11 @@ export function HubSpotRevenueWizard(props: {
               </div>
             </div>
           )}
+          </div>
 
           {/* Footer nav (hide on connect/complete) */}
           {step !== "connect" && step !== "complete" && (
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-200 dark:border-slate-800 shrink-0">
               <Button variant="outline" onClick={handleBackStep} disabled={valuesLoading || isSaving}>
                 Back
               </Button>

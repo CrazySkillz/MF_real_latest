@@ -52,6 +52,7 @@ export function AddRevenueWizardModal(props: {
 
   // Sheets
   const [sheetsConnections, setSheetsConnections] = useState<any[]>([]);
+  const [sheetsConnectionsLoading, setSheetsConnectionsLoading] = useState(false);
   const [sheetsConnectionId, setSheetsConnectionId] = useState<string>("");
   const [showSheetsConnect, setShowSheetsConnect] = useState(false);
   const [sheetsRemoving, setSheetsRemoving] = useState(false);
@@ -76,6 +77,7 @@ export function AddRevenueWizardModal(props: {
     setCsvCampaignValues([]);
     setCsvProcessing(false);
     setSheetsConnectionId("");
+    setSheetsConnectionsLoading(false);
     setShowSheetsConnect(false);
     setSheetsRemoving(false);
     setSheetsPreview(null);
@@ -98,6 +100,7 @@ export function AddRevenueWizardModal(props: {
     if (!open) return;
     if (step !== "sheets_choose" && step !== "sheets_map") return;
     (async () => {
+      setSheetsConnectionsLoading(true);
       try {
         const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=revenue`);
         const json = await resp.json().catch(() => ({}));
@@ -108,12 +111,15 @@ export function AddRevenueWizardModal(props: {
       } catch {
         if (!mounted) return;
         setSheetsConnections([]);
+      } finally {
+        if (!mounted) return;
+        setSheetsConnectionsLoading(false);
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [open, step, campaignId, sheetsConnectionId]);
+  }, [open, step, campaignId]);
 
   const refreshSheetsConnections = async () => {
     try {
@@ -610,7 +616,11 @@ export function AddRevenueWizardModal(props: {
                     <CardDescription>Choose the Google Sheet tab that contains your revenue data.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {sheetsConnections.length === 0 ? (
+                    {sheetsConnectionsLoading ? (
+                      <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
+                        <div className="text-sm text-slate-700 dark:text-slate-300">Loading your connected Google Sheets…</div>
+                      </div>
+                    ) : sheetsConnections.length === 0 ? (
                       <div className="space-y-3">
                         <div className="text-sm font-medium">Connect Google Sheets</div>
                         <p className="text-xs text-slate-600 dark:text-slate-400">

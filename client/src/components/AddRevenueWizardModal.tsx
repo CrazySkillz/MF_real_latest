@@ -505,8 +505,8 @@ export function AddRevenueWizardModal(props: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[980px] max-w-[95vw] max-h-[90vh] overflow-y-auto p-0">
-        <div className="flex flex-col">
+      <DialogContent className="w-[980px] max-w-[95vw] h-[90vh] max-h-[90vh] p-0">
+        <div className="flex flex-col h-full">
           <DialogHeader className="px-6 py-4 border-b">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -522,7 +522,7 @@ export function AddRevenueWizardModal(props: {
             </div>
           </DialogHeader>
 
-          <div className="px-6 py-5">
+          <div className="px-6 py-5 flex-1 overflow-y-auto min-h-0">
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>
@@ -585,7 +585,7 @@ export function AddRevenueWizardModal(props: {
             )}
 
             {step === "manual" && (
-              <div className="max-w-xl space-y-4">
+              <div className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Enter revenue</CardTitle>
@@ -1147,7 +1147,7 @@ export function AddRevenueWizardModal(props: {
             )}
 
             {step === "hubspot" && (
-              <div className="max-w-4xl">
+              <div className="w-full">
                 <HubSpotRevenueWizard
                   campaignId={campaignId}
                   onBack={() => setStep("select")}
@@ -1161,7 +1161,7 @@ export function AddRevenueWizardModal(props: {
             )}
 
             {step === "salesforce" && (
-              <div className="max-w-4xl">
+              <div className="w-full">
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
                   onBack={() => setStep("select")}
@@ -1175,7 +1175,7 @@ export function AddRevenueWizardModal(props: {
             )}
 
             {step === "shopify" && (
-              <div className="max-w-4xl">
+              <div className="w-full">
                 <ShopifyRevenueWizard
                   campaignId={campaignId}
                   onBack={() => setStep("select")}

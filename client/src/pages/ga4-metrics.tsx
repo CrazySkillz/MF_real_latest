@@ -3644,14 +3644,6 @@ export default function GA4Metrics() {
                             <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
                           ))}
                         </div>
-                      ) : platformKPIs.length === 0 ? (
-                        <div className="text-center text-slate-500 dark:text-slate-400 py-8">
-                          <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No KPIs yet</h3>
-                          <p className="text-slate-600 dark:text-slate-400 mb-4">
-                            Create your first KPI to track GA4 performance for this campaign.
-                          </p>
-                        </div>
                       ) : (
                         <div className="space-y-4">
                           {/* KPI performance tracker (exec snapshot) */}
@@ -3719,8 +3711,17 @@ export default function GA4Metrics() {
                             </Card>
                           </div>
 
-                          <div className="grid gap-4 md:grid-cols-2">
-                            {platformKPIs.map((kpi: any) => {
+                          {platformKPIs.length === 0 ? (
+                            <div className="text-center text-slate-500 dark:text-slate-400 py-8">
+                              <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No KPIs yet</h3>
+                              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                                Create your first KPI to track GA4 performance for this campaign.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="grid gap-4 md:grid-cols-2">
+                              {platformKPIs.map((kpi: any) => {
                               const p = computeKpiProgress(kpi);
                               const t = getKpiEffectiveTarget(kpi);
                               const metricKey = String(kpi?.metric || kpi?.name || "");
@@ -3832,8 +3833,9 @@ export default function GA4Metrics() {
                                   </CardContent>
                                 </Card>
                               );
-                            })}
-                          </div>
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
                     </CardContent>
@@ -4116,15 +4118,11 @@ export default function GA4Metrics() {
                                   value={newBenchmark.benchmarkValue}
                                   onChange={(e) => {
                                     const nextRaw = e.target.value;
-                                    // UX: when using Custom Value, format as the user types (commas, no forced .00).
-                                    if (String(newBenchmark.benchmarkType || "custom") === "custom") {
-                                      setNewBenchmark({
-                                        ...newBenchmark,
-                                        benchmarkValue: formatNumberWhileTyping(nextRaw, String(newBenchmark.unit || "%")),
-                                      });
-                                      return;
-                                    }
-                                    setNewBenchmark({ ...newBenchmark, benchmarkValue: nextRaw });
+                                    // UX: always enforce numeric-only input and format as the user types (commas, no forced .00).
+                                    setNewBenchmark({
+                                      ...newBenchmark,
+                                      benchmarkValue: formatNumberWhileTyping(nextRaw, String(newBenchmark.unit || "%")),
+                                    });
                                   }}
                                   onBlur={(e) =>
                                     setNewBenchmark((prev) => ({
@@ -4243,7 +4241,7 @@ export default function GA4Metrics() {
                             </Card>
                           ))}
                         </div>
-                      ) : benchmarks && benchmarks.length > 0 ? (
+                      ) : (
                         <div className="space-y-4">
                           {/* Benchmarks performance tracker (exec snapshot) */}
                           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -4310,10 +4308,11 @@ export default function GA4Metrics() {
                             </Card>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {benchmarks.map((benchmark) => (
-                            <Card key={benchmark.id} className="hover:shadow-lg transition-shadow">
-                              <CardContent className="p-6">
+                          {benchmarks && benchmarks.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {benchmarks.map((benchmark) => (
+                              <Card key={benchmark.id} className="hover:shadow-lg transition-shadow">
+                                <CardContent className="p-6">
                                 <div className="flex items-start justify-between mb-4">
                                   <div className="flex-1">
                                     <h4 className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</h4>
@@ -4421,28 +4420,29 @@ export default function GA4Metrics() {
                                     </div>
                                   )}
                                 </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                            </div>
+                          ) : (
+                            <Card>
+                              <CardContent className="p-8 text-center">
+                                <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Benchmarks Yet</h3>
+                                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                                  Create your first benchmark to start tracking performance against industry standards
+                                </p>
+                                <Button 
+                                  onClick={() => setShowCreateBenchmark(true)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Create First Benchmark
+                                </Button>
                               </CardContent>
                             </Card>
-                          ))}
-                          </div>
+                          )}
                         </div>
-                      ) : (
-                        <Card>
-                          <CardContent className="p-8 text-center">
-                            <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Benchmarks Yet</h3>
-                            <p className="text-slate-600 dark:text-slate-400 mb-4">
-                              Create your first benchmark to start tracking performance against industry standards
-                            </p>
-                            <Button 
-                              onClick={() => setShowCreateBenchmark(true)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Create First Benchmark
-                            </Button>
-                          </CardContent>
-                        </Card>
                       )}
                     </div>
                   </div>
@@ -5086,9 +5086,12 @@ export default function GA4Metrics() {
                       <FormControl>
                         <Input
                           type="text"
+                          inputMode="decimal"
                           placeholder="Target goal"
                           value={field.value || ""}
-                          onChange={(e) => field.onChange(e.target.value)}
+                          onChange={(e) =>
+                            field.onChange(formatNumberAsYouType(e.target.value, String(kpiForm.getValues().unit || "%")))
+                          }
                           onBlur={(e) => field.onChange(formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
                         />
                       </FormControl>

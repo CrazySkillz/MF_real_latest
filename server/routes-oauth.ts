@@ -123,8 +123,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const days = dateRangeToDays(opts.dateRange);
     const noRevenue = !!opts.noRevenue;
 
-    // Use a fixed anchor date so mock data is STATIC (doesn't drift day-to-day).
-    const anchor = new Date(Date.UTC(2026, 0, 7, 0, 0, 0)); // 2026-01-07 (UTC)
+    // YESOP mock should mimic production date coverage (recent days), while staying deterministic in shape.
+    // Default anchor = yesterday (UTC). Can be pinned via env to keep dates static in tests.
+    const resolveYesopAnchor = () => {
+      const env = String(process.env.YESOP_ANCHOR_DATE_UTC || "").trim(); // YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(env)) {
+        return new Date(`${env}T00:00:00.000Z`);
+      }
+      const now = new Date();
+      const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const y = new Date(todayUtc);
+      y.setUTCDate(y.getUTCDate() - 1);
+      return y;
+    };
+
+    const anchor = resolveYesopAnchor();
     const endOffsetDays = Math.max(0, Math.floor(Number(opts.endOffsetDays || 0)));
 
     // ============================================================================

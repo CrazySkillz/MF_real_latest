@@ -70,6 +70,8 @@ export async function refreshAllGA4DailyMetrics(): Promise<void> {
           pageviews: Number(r?.pageviews || 0) || 0,
           conversions: Number(r?.conversions || 0) || 0,
           revenue: String(Number(r?.revenue || 0).toFixed(2)),
+          engagementRate: (r as any)?.engagementRate ?? null,
+          revenueMetric: (r as any)?.revenueMetric ?? null,
           isSimulated: false,
         }))
         .filter((x: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || "")));

@@ -9,6 +9,7 @@ import {
   createTrendAlert,
   shouldTriggerAlert
 } from "./kpi-notifications";
+import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 
 /**
  * KPI Scheduler - Daily Jobs
@@ -406,6 +407,12 @@ export async function runDailyKPIJobs(): Promise<void> {
   console.log('[KPI Scheduler] Running simplified KPI jobs (Option C: Performance alerts only)...');
 
   try {
+    // Ensure GA4 KPIs/Benchmarks have daily progress/history so Insights can show trends/streaks.
+    // Best-effort: never fail the whole scheduler if GA4 refresh has issues.
+    await runGA4DailyKPIAndBenchmarkJobs().catch((e) => {
+      console.warn("[KPI Scheduler] GA4 daily KPI/Benchmark job failed:", (e as any)?.message || e);
+    });
+
     // Only check for performance alerts (below/above target)
     await checkPerformanceAlerts();
 

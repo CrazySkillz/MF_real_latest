@@ -5,6 +5,7 @@ import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, inse
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
+import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import multer from "multer";
 import { parseCsvText } from "./utils/csv";
 import { parsePDFMetrics } from "./services/pdf-parser";
@@ -1880,6 +1881,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pageviews: Number(r?.pageviews || 0) || 0,
             conversions: Number(r?.conversions || 0) || 0,
             revenue: String(Number(r?.revenue || 0).toFixed(2)),
+            engagementRate: (r as any)?.engagementRate ?? null,
+            revenueMetric: (r as any)?.revenueMetric ?? null,
             isSimulated: false,
           }))
           .filter((x: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || "")));
@@ -1929,6 +1932,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       res.status(500).json({ success: false, error: error?.message || "Failed to fetch GA4 daily metrics" });
+    }
+  });
+
+  // Manual trigger: compute daily KPI progress + benchmark history for GA4 Insights (useful for testing).
+  app.post("/api/campaigns/:id/ga4/run-insights-jobs", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.id || "");
+      const date = req.body?.date ? String(req.body.date).trim() : undefined; // optional YYYY-MM-DD
+      const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date });
+      res.json({ success: true, ...result });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to run GA4 Insights jobs" });
     }
   });
 

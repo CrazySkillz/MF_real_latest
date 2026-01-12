@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, Download, FileText, Settings } from "lucide-react";
@@ -1144,6 +1144,57 @@ export default function GA4Metrics() {
 
   const industries = industryData?.industries || [];
 
+  // Stored-series analytics (used to make Insights richer: streaks/trends/volatility)
+  const kpiAnalyticsQueries = useQueries({
+    queries: (Array.isArray(platformKPIs) ? platformKPIs : []).map((k: any) => ({
+      queryKey: ["/api/kpis", String(k?.id || ""), "analytics", "30d"],
+      enabled: activeTab === "insights" && !!k?.id,
+      staleTime: 0,
+      queryFn: async () => {
+        const id = String(k?.id || "");
+        const resp = await fetch(`/api/kpis/${encodeURIComponent(id)}/analytics?timeframe=30d`);
+        if (!resp.ok) return null;
+        return resp.json().catch(() => null);
+      },
+    })),
+  });
+
+  const benchmarkAnalyticsQueries = useQueries({
+    queries: (Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => ({
+      queryKey: ["/api/benchmarks", String(b?.id || ""), "analytics"],
+      enabled: activeTab === "insights" && !!b?.id,
+      staleTime: 0,
+      queryFn: async () => {
+        const id = String(b?.id || "");
+        const resp = await fetch(`/api/benchmarks/${encodeURIComponent(id)}/analytics`);
+        if (!resp.ok) return null;
+        return resp.json().catch(() => null);
+      },
+    })),
+  });
+
+  const kpiAnalyticsById = useMemo(() => {
+    const map = new Map<string, any>();
+    (kpiAnalyticsQueries || []).forEach((q: any, idx: number) => {
+      const k = (Array.isArray(platformKPIs) ? platformKPIs : [])[idx];
+      const id = String((k as any)?.id || "");
+      if (!id) return;
+      if (q?.data) map.set(id, q.data);
+    });
+    return map;
+  }, [kpiAnalyticsQueries, platformKPIs]);
+
+  const benchmarkAnalyticsById = useMemo(() => {
+    const map = new Map<string, any>();
+    (benchmarkAnalyticsQueries || []).forEach((q: any, idx: number) => {
+      const b = (Array.isArray(benchmarks) ? benchmarks : [])[idx];
+      const id = String((b as any)?.id || "");
+      if (!id) return;
+      if (q?.data) map.set(id, q.data);
+    });
+    return map;
+  }, [benchmarkAnalyticsQueries, benchmarks]);
+
   const deriveBenchmarkCategoryFromMetric = (metric: string): string => {
     const m = String(metric || "").toLowerCase();
     if (m === "revenue") return "revenue";
@@ -1875,6 +1926,33 @@ export default function GA4Metrics() {
       const sev: InsightItem["severity"] = status === "behind" ? "high" : "medium";
       const metric = String((k as any)?.metric || (k as any)?.name || "KPI");
       const effectiveTarget = (getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? "";
+      const analytics = kpiAnalyticsById.get(String((k as any)?.id || "")) || null;
+
+      // Streak: how many consecutive recorded days are in the same "not on track" state.
+      const streak = (() => {
+        const prog = Array.isArray(analytics?.progress) ? analytics.progress : [];
+        if (prog.length === 0) return 0;
+        const lowerIsBetter = String(metric || "").toLowerCase() === "cpa";
+        const target = parseFloat(String((k as any)?.targetValue || "0"));
+        const statusFor = (val: number) => computeProgress({ current: val, target: target, lowerIsBetter }).status;
+        const first = statusFor(parseFloat(String(prog[0]?.value || "0")));
+        if (first === "on_track") return 0;
+        let n = 0;
+        for (const pt of prog) {
+          const st = statusFor(parseFloat(String(pt?.value || "0")));
+          if (st !== first) break;
+          n += 1;
+        }
+        return n;
+      })();
+
+      const trendNote =
+        analytics?.trendAnalysis
+          ? ` Trend ${String(analytics.trendAnalysis.direction || "neutral")} (${Number(analytics.trendAnalysis.percentage || 0).toFixed(1)}% over ${String(
+              analytics.trendAnalysis.period || "30d"
+            )}).`
+          : "";
+      const streakNote = streak > 1 ? ` Streak: ${streak} days.` : "";
 
       out.push({
         id: `kpi:${String((k as any)?.id || metric)}`,
@@ -1883,7 +1961,7 @@ export default function GA4Metrics() {
         description: `Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String((k as any)?.unit || "%"))} vs target ${formatNumberByUnit(
           String(effectiveTarget),
           String((k as any)?.unit || "%")
-        )} (${String(p?.labelPct || "0")}% progress).`,
+        )} (${String(p?.labelPct || "0")}% progress).${streakNote}${trendNote}`,
         recommendation:
           metric.toLowerCase().includes("conversion")
             ? "Check landing page changes, funnel breaks, and traffic mix shifts (source/medium)."
@@ -1903,6 +1981,10 @@ export default function GA4Metrics() {
 
       const sev: InsightItem["severity"] = status === "behind" ? "high" : "medium";
       const metric = String((b as any)?.metric || (b as any)?.name || "Benchmark");
+      const ban = benchmarkAnalyticsById.get(String((b as any)?.id || "")) || null;
+      const trendNote = ban?.performanceTrend ? ` Trend ${String(ban.performanceTrend)}.` : "";
+      const avgVar = Number(ban?.averageVariance || 0);
+      const volNote = Number.isFinite(avgVar) && avgVar !== 0 ? ` Avg variance ${avgVar.toFixed(1)}%.` : "";
       out.push({
         id: `bench:${String((b as any)?.id || metric)}`,
         severity: sev,
@@ -1910,7 +1992,7 @@ export default function GA4Metrics() {
         description: `Current ${formatBenchmarkValue(getBenchmarkDisplayCurrentValue(b), String((b as any)?.unit || "%"))} vs benchmark ${formatBenchmarkValue(
           String((b as any)?.benchmarkValue || "0"),
           String((b as any)?.unit || "%")
-        )} (${String(p?.labelPct || "0")}% to benchmark).`,
+        )} (${String(p?.labelPct || "0")}% to benchmark).${trendNote}${volNote}`,
         recommendation:
           metric.toLowerCase().includes("conversion")
             ? "Focus on landing page UX and traffic quality; validate conversion tagging."
@@ -1997,7 +2079,7 @@ export default function GA4Metrics() {
     const order = { high: 0, medium: 1, low: 2 } as const;
     out.sort((a, b) => order[a.severity] - order[b.severity]);
     return out;
-  }, [platformKPIs, benchmarks, ga4TimeSeries, breakdownTotals, ga4Metrics, financialSpend]);
+  }, [platformKPIs, benchmarks, ga4TimeSeries, breakdownTotals, ga4Metrics, financialSpend, kpiAnalyticsById, benchmarkAnalyticsById]);
 
   const insightsRollups = useMemo(() => {
     const rows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]) : [];

@@ -1431,50 +1431,70 @@ export class GoogleAnalytics4Service {
     campaignFilter?: CampaignFilter
   ): Promise<any[]> {
     try {
-      // Get daily data for the specified date range
       const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
       const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
-      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          dateRanges: [
-            {
-              startDate: dateRange,
-              endDate: 'today',
-            },
-          ],
-          dimensions: [
-            { name: 'date' }
-          ],
-          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
-          metrics: [
-            { name: 'sessions' },
-            { name: 'screenPageViews' },
-            { name: 'conversions' },
-            { name: 'totalUsers' },
-            { name: 'newUsers' },
-            { name: 'engagedSessions' }
-          ],
-          orderBys: [
-            {
-              dimension: {
-                dimensionName: 'date'
+
+      // Some properties don't allow totalRevenue; fall back to purchaseRevenue.
+      const run = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+        const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            dateRanges: [
+              {
+                startDate: dateRange,
+                endDate: 'today',
+              },
+            ],
+            dimensions: [{ name: 'date' }],
+            ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
+            metrics: [
+              { name: 'sessions' },
+              { name: 'screenPageViews' },
+              { name: 'conversions' },
+              { name: 'totalUsers' },
+              { name: revenueMetric },
+              // Available on most properties; if missing it will error (caught and surfaced).
+              { name: 'engagementRate' },
+            ],
+            orderBys: [
+              {
+                dimension: {
+                  dimensionName: 'date'
+                }
               }
-            }
-          ]
-        }),
-      });
+            ]
+          }),
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`GA4 Time Series API Error: ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`GA4 Time Series API Error: ${errorText}`);
+        }
+
+        const data = await response.json();
+        return { data, revenueMetric };
+      };
+
+      let data: any;
+      let revenueMetric: 'totalRevenue' | 'purchaseRevenue' = 'totalRevenue';
+      try {
+        const res = await run('totalRevenue');
+        data = res.data;
+        revenueMetric = res.revenueMetric;
+      } catch (e: any) {
+        const msg = String(e?.message || e || '').toLowerCase();
+        if (msg.includes('totalrevenue') || msg.includes('metric') || msg.includes('invalid')) {
+          const res2 = await run('purchaseRevenue');
+          data = res2.data;
+          revenueMetric = res2.revenueMetric;
+        } else {
+          throw e;
+        }
       }
-
-      const data = await response.json();
       
       console.log('GA4 Time Series API Response for property', normalizedPropertyId, ':', {
         totalRows: data.rows?.length || 0,
@@ -1493,6 +1513,8 @@ export class GoogleAnalytics4Service {
             const pageviews = parseInt(row.metricValues[1]?.value || '0');
             const conversions = parseInt(row.metricValues[2]?.value || '0');
             const users = parseInt(row.metricValues[3]?.value || '0');
+            const revenue = Number.parseFloat(String(row.metricValues[4]?.value || '0')) || 0;
+            const engagementRate = Number.parseFloat(String(row.metricValues[5]?.value || '0')) || 0;
             
             // IMPORTANT: return ISO date for downstream correctness (Insights WoW needs YYYY-MM-DD).
             // Keep a lightweight label available for charts.
@@ -1513,6 +1535,9 @@ export class GoogleAnalytics4Service {
               pageviews,
               conversions,
               users,
+              revenue: Number(revenue.toFixed(2)),
+              revenueMetric,
+              engagementRate,
             });
           }
         }

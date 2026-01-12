@@ -3889,7 +3889,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getKPIProgress(kpiId: string): Promise<KPIProgress[]> {
-    return db.select().from(kpiProgress).where(eq(kpiProgress.kpiId, kpiId));
+    return db.select().from(kpiProgress).where(eq(kpiProgress.kpiId, kpiId)).orderBy(desc(kpiProgress.recordedAt));
   }
 
   async getLatestKPIPeriod(kpiId: string): Promise<any> {

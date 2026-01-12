@@ -26,7 +26,7 @@ const parseGA4CampaignFilter = (raw: any): CampaignFilter => {
 
 export async function refreshAllGA4DailyMetrics(): Promise<void> {
   const lookbackDays = Math.min(
-    Math.max(parseInt(process.env.GA4_DAILY_LOOKBACK_DAYS || "45", 10) || 45, 7),
+    Math.max(parseInt(process.env.GA4_DAILY_LOOKBACK_DAYS || "90", 10) || 90, 7),
     365
   );
 

@@ -109,7 +109,9 @@ export default function GA4Metrics() {
   const campaignId = params?.id;
   // GA4 UI now operates on strict daily values (persisted server-side).
   // We keep an internal lookback window for charts/supporting reports, but there is no user-selectable date range.
-  const GA4_DAILY_LOOKBACK_DAYS = 30;
+  // Need at least 60 days to compute "last 30 vs prior 30" and 14 days for WoW anomaly detection.
+  // Use 90 to be safe (and to keep mock simulation consistent with existing mock logic).
+  const GA4_DAILY_LOOKBACK_DAYS = 90;
   const dateRange = "30days";
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
@@ -1918,20 +1920,18 @@ export default function GA4Metrics() {
       });
     }
 
-    // 3) Anomaly detection (WoW) using GA4 breakdown rows (requires >= 14 days of ISO-dated rows)
-    const rows = Array.isArray((ga4Breakdown as any)?.rows) ? ((ga4Breakdown as any).rows as any[]) : [];
-    const daily = new Map<string, { sessions: number; conversions: number; revenue: number }>();
-    for (const r of rows) {
-      const d = String(r?.date || "").trim();
+    // 3) Anomaly detection (WoW) using GA4 daily facts (requires >= 14 days)
+    const dailyRows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]) : [];
+    const daily = new Map<string, { sessions: number; conversions: number; revenue: number; pageviews: number }>();
+    for (const r of dailyRows) {
+      const d = String((r as any)?.date || "").trim();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
-      const sessions = Number(r?.sessions || 0);
-      const conversions = Number(r?.conversions || 0);
-      const revenue = Number(r?.revenue || 0);
-      const cur = daily.get(d) || { sessions: 0, conversions: 0, revenue: 0 };
-      cur.sessions += Number.isFinite(sessions) ? sessions : 0;
-      cur.conversions += Number.isFinite(conversions) ? conversions : 0;
-      cur.revenue += Number.isFinite(revenue) ? revenue : 0;
-      daily.set(d, cur);
+      daily.set(d, {
+        sessions: Number((r as any)?.sessions || 0) || 0,
+        conversions: Number((r as any)?.conversions || 0) || 0,
+        revenue: Number((r as any)?.revenue || 0) || 0,
+        pageviews: Number((r as any)?.pageviews || 0) || 0,
+      });
     }
 
     const dates = Array.from(daily.keys()).sort();
@@ -1943,14 +1943,16 @@ export default function GA4Metrics() {
         let sessions = 0;
         let conversions = 0;
         let revenue = 0;
+        let pageviews = 0;
         Array.from(set).forEach((d) => {
           const v = daily.get(d);
           if (!v) return;
           sessions += v.sessions;
           conversions += v.conversions;
           revenue += v.revenue;
+          pageviews += v.pageviews;
         });
-        return { sessions, conversions, revenue };
+        return { sessions, conversions, revenue, pageviews };
       };
       const a = sum(last7);
       const b = sum(prev7);
@@ -1969,27 +1971,9 @@ export default function GA4Metrics() {
         });
       }
 
-      // Engagement depth proxy: pageviews per session (from GA4 time series if available)
-      const ts = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]) : [];
-      const pvByDate = new Map<string, number>();
-      const sByDate = new Map<string, number>();
-      for (const p of ts) {
-        const d = String((p as any)?.date || "").trim();
-        if (!d) continue;
-        pvByDate.set(d, Number((p as any)?.pageviews || 0));
-        sByDate.set(d, Number((p as any)?.sessions || 0));
-      }
-      const avgPvPerSession = (set: Set<string>) => {
-        let pv = 0;
-        let s = 0;
-        Array.from(set).forEach((d) => {
-          pv += Number(pvByDate.get(d) || 0);
-          s += Number(sByDate.get(d) || 0);
-        });
-        return s > 0 ? pv / s : 0;
-      };
-      const pvpsA = avgPvPerSession(last7);
-      const pvpsB = avgPvPerSession(prev7);
+      // Engagement depth proxy: pageviews per session (from GA4 daily facts)
+      const pvpsA = a.sessions > 0 ? a.pageviews / a.sessions : 0;
+      const pvpsB = b.sessions > 0 ? b.pageviews / b.sessions : 0;
       const pvpsDelta = pvpsB > 0 ? ((pvpsA - pvpsB) / pvpsB) * 100 : 0;
       if (pvpsB > 0 && pvpsDelta <= -20) {
         out.push({
@@ -2000,46 +1984,12 @@ export default function GA4Metrics() {
           recommendation: "Review landing page relevance, page speed, and mobile UX; check if traffic sources shifted toward lower-intent audiences.",
         });
       }
-
-      // Source-specific regression example (LinkedIn-tagged traffic) using breakdown rows
-      const group = (set: Set<string>, predicate: (r: any) => boolean) => {
-        let sessions = 0;
-        let conversions = 0;
-        for (const r of rows) {
-          const d = String(r?.date || "").trim();
-          if (!set.has(d)) continue;
-          if (!predicate(r)) continue;
-          sessions += Number(r?.sessions || 0);
-          conversions += Number(r?.conversions || 0);
-        }
-        const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
-        return { sessions, conversions, cr };
-      };
-      const linkedinPred = (r: any) => {
-        const src = String(r?.source || "").toLowerCase();
-        const med = String(r?.medium || "").toLowerCase();
-        const ch = String(r?.channel || "").toLowerCase();
-        return src.includes("linkedin") || med.includes("linkedin") || ch.includes("linkedin");
-      };
-      const lA = group(last7, linkedinPred);
-      const lB = group(prev7, linkedinPred);
-      const lDelta = lB.cr > 0 ? ((lA.cr - lB.cr) / lB.cr) * 100 : 0;
-      if (lB.sessions >= 50 && lA.sessions >= 50 && lDelta <= -15) {
-        out.push({
-          id: "anomaly:linkedin:cr:wow",
-          severity: "high",
-          title: `Conversion rate from LinkedIn-tagged traffic dropped ${Math.abs(lDelta).toFixed(1)}% week-over-week`,
-          description: `Last 7d ${lA.cr.toFixed(2)}% vs prior 7d ${lB.cr.toFixed(2)}% (LinkedIn-tagged source/medium).`,
-          recommendation:
-            "Check if LinkedIn targeting/creative changed, verify UTMs are consistent, and review landing page alignment for LinkedIn audiences.",
-        });
-      }
     } else if (dates.length > 0) {
       out.push({
         id: "anomaly:not-enough-history",
         severity: "low",
         title: "Anomaly detection needs more history",
-        description: `Need at least 14 days of daily data in the selected range to compute week-over-week deltas. Available days: ${dates.length}.`,
+        description: `Need at least 14 days of daily data to compute week-over-week deltas. Available days: ${dates.length}.`,
       });
     }
 
@@ -2047,7 +1997,70 @@ export default function GA4Metrics() {
     const order = { high: 0, medium: 1, low: 2 } as const;
     out.sort((a, b) => order[a.severity] - order[b.severity]);
     return out;
-  }, [platformKPIs, benchmarks, ga4Breakdown, ga4TimeSeries, breakdownTotals, ga4Metrics, financialSpend]);
+  }, [platformKPIs, benchmarks, ga4TimeSeries, breakdownTotals, ga4Metrics, financialSpend]);
+
+  const insightsRollups = useMemo(() => {
+    const rows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]) : [];
+    const byDate = rows
+      .map((r: any) => ({
+        date: String(r?.date || "").trim(),
+        sessions: Number(r?.sessions || 0) || 0,
+        conversions: Number(r?.conversions || 0) || 0,
+        revenue: Number(r?.revenue || 0) || 0,
+        pageviews: Number(r?.pageviews || 0) || 0,
+      }))
+      .filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(r.date))
+      .sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+
+    const dates = byDate.map((r: any) => r.date);
+    const rollup = (n: number, offsetFromEnd: number = 0) => {
+      const endIdxExclusive = Math.max(0, dates.length - offsetFromEnd);
+      const startIdx = Math.max(0, endIdxExclusive - n);
+      const slice = byDate.slice(startIdx, endIdxExclusive);
+      const sums = slice.reduce(
+        (acc: any, r: any) => {
+          acc.sessions += r.sessions;
+          acc.conversions += r.conversions;
+          acc.revenue += r.revenue;
+          acc.pageviews += r.pageviews;
+          return acc;
+        },
+        { sessions: 0, conversions: 0, revenue: 0, pageviews: 0 }
+      );
+      const cr = sums.sessions > 0 ? (sums.conversions / sums.sessions) * 100 : 0;
+      const pvps = sums.sessions > 0 ? sums.pageviews / sums.sessions : 0;
+      const startDate = slice[0]?.date || null;
+      const endDate = slice[slice.length - 1]?.date || null;
+      return { ...sums, cr, pvps, startDate, endDate, days: slice.length };
+    };
+
+    const last7 = rollup(7, 0);
+    const prior7 = rollup(7, 7);
+    const last30 = rollup(30, 0);
+    const prior30 = rollup(30, 30);
+
+    const deltaPct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
+
+    return {
+      availableDays: dates.length,
+      last7,
+      prior7,
+      last30,
+      prior30,
+      deltas: {
+        sessions7: deltaPct(last7.sessions, prior7.sessions),
+        conversions7: deltaPct(last7.conversions, prior7.conversions),
+        revenue7: deltaPct(last7.revenue, prior7.revenue),
+        cr7: prior7.cr > 0 ? ((last7.cr - prior7.cr) / prior7.cr) * 100 : 0,
+        pvps7: prior7.pvps > 0 ? ((last7.pvps - prior7.pvps) / prior7.pvps) * 100 : 0,
+        sessions30: deltaPct(last30.sessions, prior30.sessions),
+        conversions30: deltaPct(last30.conversions, prior30.conversions),
+        revenue30: deltaPct(last30.revenue, prior30.revenue),
+        cr30: prior30.cr > 0 ? ((last30.cr - prior30.cr) / prior30.cr) * 100 : 0,
+        pvps30: prior30.pvps > 0 ? ((last30.pvps - prior30.pvps) / prior30.pvps) * 100 : 0,
+      },
+    };
+  }, [ga4TimeSeries]);
 
   const selectedPeriodLabel = ga4ReportDate ? `Daily (UTC: ${ga4ReportDate})` : "Daily";
 
@@ -4382,6 +4395,86 @@ export default function GA4Metrics() {
                         Actionable insights from KPI + Benchmark performance, plus anomaly detection from daily deltas.
                       </p>
                     </div>
+
+                    <Card className="border-slate-200 dark:border-slate-700">
+                      <CardHeader>
+                        <CardTitle>Performance rollups (derived from daily rows)</CardTitle>
+                        <CardDescription>
+                          7-day and 30-day summaries are computed from stored daily metrics (no separate window tables).
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {Number(insightsRollups?.availableDays || 0) < 7 ? (
+                          <div className="text-sm text-slate-600 dark:text-slate-400">
+                            Need at least 7 days of GA4 daily history to show rollups. Available days: {Number(insightsRollups?.availableDays || 0)}.
+                          </div>
+                        ) : (
+                          <div className="overflow-hidden border rounded-md">
+                            <table className="w-full text-sm table-fixed">
+                              <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                <tr>
+                                  <th className="text-left p-3 w-[22%]">Window</th>
+                                  <th className="text-right p-3">Sessions</th>
+                                  <th className="text-right p-3">Conversions</th>
+                                  <th className="text-right p-3">CR</th>
+                                  <th className="text-right p-3">Revenue</th>
+                                  <th className="text-right p-3">PV/Session</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {[
+                                  { key: "7d", cur: insightsRollups.last7, prev: insightsRollups.prior7, d: insightsRollups.deltas, label: "Last 7d vs prior 7d" },
+                                  { key: "30d", cur: insightsRollups.last30, prev: insightsRollups.prior30, d: insightsRollups.deltas, label: "Last 30d vs prior 30d" },
+                                ].map((row) => {
+                                  const ok = row.key === "7d" ? Number(insightsRollups?.availableDays || 0) >= 14 : Number(insightsRollups?.availableDays || 0) >= 60;
+                                  if (!ok) return null;
+                                  const sessionsDelta = row.key === "7d" ? row.d.sessions7 : row.d.sessions30;
+                                  const convDelta = row.key === "7d" ? row.d.conversions7 : row.d.conversions30;
+                                  const revDelta = row.key === "7d" ? row.d.revenue7 : row.d.revenue30;
+                                  const crDelta = row.key === "7d" ? row.d.cr7 : row.d.cr30;
+                                  const pvpsDelta = row.key === "7d" ? row.d.pvps7 : row.d.pvps30;
+                                  const deltaColor = (n: number) =>
+                                    n >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300";
+                                  const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+                                  return (
+                                    <tr key={row.key} className="border-b">
+                                      <td className="p-3">
+                                        <div className="font-medium text-slate-900 dark:text-white">{row.label}</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                          {row.cur.startDate} → {row.cur.endDate}
+                                        </div>
+                                      </td>
+                                      <td className="p-3 text-right">
+                                        <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.sessions || 0)}</div>
+                                        <div className={`text-xs ${deltaColor(sessionsDelta)}`}>{fmtDelta(sessionsDelta)}</div>
+                                      </td>
+                                      <td className="p-3 text-right">
+                                        <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.conversions || 0)}</div>
+                                        <div className={`text-xs ${deltaColor(convDelta)}`}>{fmtDelta(convDelta)}</div>
+                                      </td>
+                                      <td className="p-3 text-right">
+                                        <div className="font-medium text-slate-900 dark:text-white">{row.cur.cr.toFixed(2)}%</div>
+                                        <div className={`text-xs ${deltaColor(crDelta)}`}>{fmtDelta(crDelta)}</div>
+                                      </td>
+                                      <td className="p-3 text-right">
+                                        <div className="font-medium text-slate-900 dark:text-white">
+                                          ${Number(row.cur.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </div>
+                                        <div className={`text-xs ${deltaColor(revDelta)}`}>{fmtDelta(revDelta)}</div>
+                                      </td>
+                                      <td className="p-3 text-right">
+                                        <div className="font-medium text-slate-900 dark:text-white">{row.cur.pvps.toFixed(2)}</div>
+                                        <div className={`text-xs ${deltaColor(pvpsDelta)}`}>{fmtDelta(pvpsDelta)}</div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
 
                     <div className="grid gap-4 md:grid-cols-3">
                       <Card>

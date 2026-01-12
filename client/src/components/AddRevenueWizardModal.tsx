@@ -61,7 +61,6 @@ export function AddRevenueWizardModal(props: {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvPreview, setCsvPreview] = useState<Preview | null>(null);
   const [csvRevenueCol, setCsvRevenueCol] = useState<string>("");
-  const [csvDateCol, setCsvDateCol] = useState<string>("");
   const [csvCampaignCol, setCsvCampaignCol] = useState<string>("");
   const [csvCampaignQuery, setCsvCampaignQuery] = useState<string>("");
   const [csvCampaignValues, setCsvCampaignValues] = useState<string[]>([]);
@@ -69,7 +68,6 @@ export function AddRevenueWizardModal(props: {
   const [csvPreviewing, setCsvPreviewing] = useState(false);
   const [csvPrefill, setCsvPrefill] = useState<null | {
     revenueColumn?: string;
-    dateColumn?: string;
     campaignColumn?: string;
     campaignValues?: string[];
   }>(null);
@@ -82,7 +80,6 @@ export function AddRevenueWizardModal(props: {
   const [sheetsRemoving, setSheetsRemoving] = useState(false);
   const [sheetsPreview, setSheetsPreview] = useState<Preview | null>(null);
   const [sheetsRevenueCol, setSheetsRevenueCol] = useState<string>("");
-  const [sheetsDateCol, setSheetsDateCol] = useState<string>("");
   const [sheetsCampaignCol, setSheetsCampaignCol] = useState<string>("");
   const [sheetsCampaignQuery, setSheetsCampaignQuery] = useState<string>("");
   const [sheetsCampaignValues, setSheetsCampaignValues] = useState<string[]>([]);
@@ -95,7 +92,6 @@ export function AddRevenueWizardModal(props: {
     setCsvFile(null);
     setCsvPreview(null);
     setCsvRevenueCol("");
-    setCsvDateCol("");
     setCsvCampaignCol("");
     setCsvCampaignQuery("");
     setCsvCampaignValues([]);
@@ -108,7 +104,6 @@ export function AddRevenueWizardModal(props: {
     setSheetsRemoving(false);
     setSheetsPreview(null);
     setSheetsRevenueCol("");
-    setSheetsDateCol("");
     setSheetsCampaignCol("");
     setSheetsCampaignQuery("");
     setSheetsCampaignValues([]);
@@ -146,7 +141,6 @@ export function AddRevenueWizardModal(props: {
       if (connId) setSheetsConnectionId(connId);
       // We'll fetch preview in the mapping step; after preview loads we re-apply mappings below.
       setSheetsRevenueCol(String(config?.revenueColumn || ""));
-      setSheetsDateCol(String(config?.dateColumn || ""));
       setSheetsCampaignCol(String(config?.campaignColumn || ""));
       setSheetsCampaignValues(Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : []);
       return;
@@ -156,7 +150,6 @@ export function AddRevenueWizardModal(props: {
       setStep("csv");
       setCsvPrefill({
         revenueColumn: String(config?.revenueColumn || ""),
-        dateColumn: String(config?.dateColumn || ""),
         campaignColumn: String(config?.campaignColumn || ""),
         campaignValues: Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : [],
       });
@@ -224,7 +217,6 @@ export function AddRevenueWizardModal(props: {
       setSheetsConnectionId("");
       setSheetsPreview(null);
       setSheetsRevenueCol("");
-      setSheetsDateCol("");
       setSheetsCampaignCol("");
       setSheetsCampaignQuery("");
       setSheetsCampaignValues([]);
@@ -317,38 +309,6 @@ export function AddRevenueWizardModal(props: {
       const headers: string[] = Array.isArray(json.headers) ? json.headers : [];
       const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
       setCsvRevenueCol(guess);
-      const dateGuess = headers.find((h) => /date/i.test(h)) || "";
-      // If the CSV has a date column but the dates don’t fall inside the selected range,
-      // default to "None" so we distribute across the selected range (prevents “imported but showing $0” confusion).
-      if (dateGuess) {
-        const days = String(dateRange || "").includes("90") ? 90 : String(dateRange || "").includes("30") ? 30 : 7;
-        const end = new Date();
-        const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
-        const parseYmd = (v: any) => {
-          const s = String(v ?? "").trim();
-          const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-          if (m?.[1]) return new Date(m[1] + "T00:00:00Z");
-          const d = new Date(s);
-          return Number.isNaN(d.getTime()) ? null : d;
-        };
-        const rows: any[] = Array.isArray(json.sampleRows) ? json.sampleRows : [];
-        const anyInRange = rows.some((r) => {
-          const d = parseYmd((r as any)?.[dateGuess]);
-          if (!d) return false;
-          return d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
-        });
-        if (!anyInRange) {
-          setCsvDateCol("");
-          toast({
-            title: "Date column ignored",
-            description: `Dates in your CSV don't fall within ${dateRange}. We'll distribute revenue across the selected period. You can re-select the Date column if needed.`,
-          });
-        } else {
-          setCsvDateCol(dateGuess);
-        }
-      } else {
-        setCsvDateCol("");
-      }
       setCsvCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
       setCsvCampaignValues([]);
       setCsvCampaignQuery("");
@@ -358,10 +318,8 @@ export function AddRevenueWizardModal(props: {
       if (csvPrefill) {
         const pickIfExists = (v?: string) => (v && headers.includes(v) ? v : "");
         const rc = pickIfExists(csvPrefill.revenueColumn);
-        const dc = pickIfExists(csvPrefill.dateColumn);
         const cc = pickIfExists(csvPrefill.campaignColumn);
         if (rc) setCsvRevenueCol(rc);
-        if (dc) setCsvDateCol(dc);
         if (cc) setCsvCampaignCol(cc);
         if (Array.isArray(csvPrefill.campaignValues) && csvPrefill.campaignValues.length > 0) {
           setCsvCampaignValues(csvPrefill.campaignValues.map(String));
@@ -394,13 +352,12 @@ export function AddRevenueWizardModal(props: {
     try {
       const mapping = {
         revenueColumn: csvRevenueCol,
-        dateColumn: csvDateCol || null,
         campaignColumn: csvCampaignCol,
         campaignValue: csvCampaignValues.length === 1 ? csvCampaignValues[0] : null,
         campaignValues: csvCampaignValues,
         currency,
-        dateRange,
         displayName: csvFile.name,
+        mode: "revenue_to_date",
       };
       const fd = new FormData();
       fd.append("file", csvFile);
@@ -436,14 +393,12 @@ export function AddRevenueWizardModal(props: {
       const preserve = !!opts?.preserveExisting;
       if (!preserve) {
         setSheetsRevenueCol(guess);
-        setSheetsDateCol(headers.find((h) => /date/i.test(h)) || "");
         setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
         setSheetsCampaignValues([]);
         setSheetsCampaignQuery("");
       } else {
         // keep existing selections; only fill gaps
         if (!sheetsRevenueCol) setSheetsRevenueCol(guess);
-        if (!sheetsDateCol) setSheetsDateCol(headers.find((h) => /date/i.test(h)) || "");
         if (!sheetsCampaignCol) setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
       }
     } catch (e: any) {
@@ -478,13 +433,12 @@ export function AddRevenueWizardModal(props: {
       const hasCampaignScope = !!sheetsCampaignCol && sheetsCampaignValues.length > 0;
       const mapping = {
         revenueColumn: sheetsRevenueCol,
-        dateColumn: sheetsDateCol || null,
         campaignColumn: hasCampaignScope ? sheetsCampaignCol : null,
         campaignValue: hasCampaignScope && sheetsCampaignValues.length === 1 ? sheetsCampaignValues[0] : null,
         campaignValues: hasCampaignScope ? sheetsCampaignValues : null,
         currency,
-        dateRange,
         displayName: "Google Sheets revenue",
+        mode: "revenue_to_date",
       };
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/process`, {
         method: "POST",
@@ -516,7 +470,7 @@ export function AddRevenueWizardModal(props: {
 
   const description = step === "select"
     ? "Choose where your revenue data comes from. This is used when GA4 revenue is missing."
-    : `Currency: ${currency} • Date range: ${dateRange}`;
+    : `Currency: ${currency} • Revenue is treated as “to date” (campaign lifetime)`;
 
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";
 
@@ -551,7 +505,7 @@ export function AddRevenueWizardModal(props: {
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>
                   <CardHeader>
                     <CardTitle className="text-lg">Manual</CardTitle>
-                    <CardDescription>Enter a total revenue amount for the selected date range.</CardDescription>
+                    <CardDescription>Enter revenue to date (campaign lifetime).</CardDescription>
                   </CardHeader>
                 </Card>
 
@@ -612,7 +566,7 @@ export function AddRevenueWizardModal(props: {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Enter revenue</CardTitle>
-                    <CardDescription>Total revenue for the selected date range (we distribute it across days).</CardDescription>
+                    <CardDescription>Revenue to date for this campaign (lifetime). You can update it any time.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="space-y-1">
@@ -759,22 +713,7 @@ export function AddRevenueWizardModal(props: {
                             </Select>
                           </div>
 
-                          <div className="space-y-1">
-                            <Label>Date column (optional)</Label>
-                            <Select value={csvDateCol || SELECT_NONE} onValueChange={(v) => setCsvDateCol(v === SELECT_NONE ? "" : v)}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="None" />
-                              </SelectTrigger>
-                              <SelectContent className="z-[10000]">
-                                <SelectItem value={SELECT_NONE}>None</SelectItem>
-                                {csvHeaders.map((h) => (
-                                  <SelectItem key={h} value={h}>
-                                    {h}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          {/* Date column removed: revenue imports are treated as revenue-to-date (lifetime). */}
                         </div>
 
                         {csvCampaignCol ? (
@@ -1052,22 +991,7 @@ export function AddRevenueWizardModal(props: {
                             </Select>
                           </div>
 
-                          <div className="space-y-1">
-                            <Label>Date column (optional)</Label>
-                            <Select value={sheetsDateCol || SELECT_NONE} onValueChange={(v) => setSheetsDateCol(v === SELECT_NONE ? "" : v)}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="None" />
-                              </SelectTrigger>
-                              <SelectContent className="z-[10000]">
-                                <SelectItem value={SELECT_NONE}>None</SelectItem>
-                                {sheetsHeaders.map((h) => (
-                                  <SelectItem key={h} value={h}>
-                                    {h}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          {/* Date column removed: revenue imports are treated as revenue-to-date (lifetime). */}
                         </div>
 
                         {sheetsCampaignCol && (

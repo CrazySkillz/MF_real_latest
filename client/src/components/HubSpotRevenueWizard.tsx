@@ -46,7 +46,9 @@ export function HubSpotRevenueWizard(props: {
   // Default to offsite since the user is explicitly importing revenue in this flow.
   // Keep as an Advanced toggle to prevent double-counting when GA4 revenue is also present.
   const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("offsite_not_in_ga4");
-  const [days, setDays] = useState<number>(90);
+  // Revenue is treated as revenue-to-date (campaign lifetime). Use a large lookback to avoid
+  // forcing users to reason about windowing/date ranges in this flow.
+  const [days] = useState<number>(3650);
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
@@ -488,7 +490,7 @@ export function HubSpotRevenueWizard(props: {
                 {valuesLoading ? (
                   <div className="text-sm text-slate-500">Loading values…</div>
                 ) : uniqueValues.length === 0 ? (
-                  <div className="text-sm text-slate-500">No values found. Try increasing the lookback window.</div>
+                  <div className="text-sm text-slate-500">No values found.</div>
                 ) : (
                   <div className="space-y-2">
                     {uniqueValues.map((v) => {
@@ -517,7 +519,7 @@ export function HubSpotRevenueWizard(props: {
               </div>
 
               <div className="text-xs text-slate-500 shrink-0">
-                Default filter: Closed Won deals (best-effort across pipelines) within the last {days} days.
+                Default filter: Closed Won deals (best-effort across pipelines). Revenue is imported to date (lifetime-style).
               </div>
             </div>
           )}
@@ -547,34 +549,13 @@ export function HubSpotRevenueWizard(props: {
                 <div className="text-xs text-slate-500">
                   Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAdvanced((v) => !v)}
-                >
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowAdvanced((v) => !v)}>
                   {showAdvanced ? "Hide advanced" : "Advanced"}
                 </Button>
               </div>
 
               {showAdvanced && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-3">
-                  <div className="space-y-2">
-                    <Label>Lookback window (days)</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={3650}
-                      value={days}
-                      onChange={(e) =>
-                        setDays(Math.min(Math.max(parseInt(e.target.value || "90", 10) || 90, 1), 3650))
-                      }
-                    />
-                    <div className="text-xs text-slate-500">
-                      Default: last 90 days. This helps keep revenue mapping aligned to the time period you’re analyzing.
-                    </div>
-                  </div>
-
                   <div className="space-y-2">
                     <Label>Revenue classification</Label>
                     <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>

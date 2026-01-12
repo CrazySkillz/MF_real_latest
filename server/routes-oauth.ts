@@ -824,7 +824,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const amount = parseNum((req.body as any)?.amount);
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
-      const dateRange = String((req.body as any)?.dateRange || (req.query as any)?.dateRange || "30days");
       if (!(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
@@ -836,36 +835,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const source = await storage.createRevenueSource({
         campaignId,
         sourceType: "manual",
-        displayName: "Manual revenue",
+        displayName: "Manual revenue (to date)",
         currency: cur,
-        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, dateRange }),
+        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "revenue_to_date" }),
         isActive: true,
       } as any);
 
-      const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const days = enumerateDatesInclusive(startDate, endDate);
-      if (days.length === 0) {
-        return res.status(400).json({ success: false, error: "Invalid date range" });
-      }
-
-      const totalCents = Math.round(Number(amount.toFixed(2)) * 100);
-      const baseCents = Math.floor(totalCents / days.length);
-      const remainder = totalCents - baseCents * days.length;
-
-      const records = days.map((date, idx) => {
-        const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
-        return {
+      // Store as a single revenue-to-date snapshot on "yesterday (UTC)"
+      const endDate = yesterdayUTC();
+      await storage.deleteRevenueRecordsBySource(source.id);
+      await storage.createRevenueRecords([
+        {
           campaignId,
           revenueSourceId: source.id,
-          date,
-          revenue: (cents / 100).toFixed(2) as any,
+          date: endDate,
+          revenue: Number(amount.toFixed(2)).toFixed(2) as any,
           currency: cur,
-        } as any;
-      });
+        } as any,
+      ]);
 
-      await storage.createRevenueRecords(records);
-
-      res.json({ success: true, sourceId: source.id, startDate, endDate, days: days.length, amount: Number(amount.toFixed(2)), currency: cur });
+      res.json({ success: true, sourceId: source.id, date: endDate, revenueToDate: Number(amount.toFixed(2)), currency: cur });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process manual revenue" });
     }
@@ -909,15 +898,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : null;
       const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
 
-      const grouped = new Map<string, number>();
       let kept = 0;
-      const hasDateColumn = !!mapping?.dateColumn;
       const revenueCol = String(mapping.revenueColumn);
-      const dateCol = hasDateColumn ? String(mapping.dateColumn) : null;
-      const dateRange = String(mapping?.dateRange || "30days");
-      const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const periodDays = enumerateDatesInclusive(startDate, endDate);
-      let totalWithoutDate = 0;
+      let totalRevenueToDate = 0;
 
       for (const row of parsed.rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -931,66 +914,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const revenue = parseNum((row as any)[revenueCol]);
         if (!(revenue > 0)) continue;
         kept++;
-        if (dateCol) {
-          const d = normalizeDate((row as any)[dateCol]);
-          if (!d) continue;
-          grouped.set(d, (grouped.get(d) || 0) + revenue);
-        } else {
-          totalWithoutDate += revenue;
-        }
+        totalRevenueToDate += revenue;
       }
 
-      if (!dateCol) {
-        const days = periodDays.length || 1;
-        const totalCents = Math.round(totalWithoutDate * 100);
-        const base = Math.floor(totalCents / days);
-        const remainder = totalCents - base * days;
-        const targetDays = periodDays.length ? periodDays : [endDate];
-        for (let i = 0; i < targetDays.length; i++) {
-          const cents = base + (i === targetDays.length - 1 ? remainder : 0);
-          const v = cents / 100;
-          if (v <= 0) continue;
-          grouped.set(targetDays[i], (grouped.get(targetDays[i]) || 0) + v);
-        }
-      }
+      const endDate = yesterdayUTC();
 
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
       await deactivateRevenueSourcesForCampaign(campaignId);
 
+      const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: "revenue_to_date" };
       const source = await storage.createRevenueSource({
         campaignId,
         sourceType: "csv",
         displayName: mapping.displayName || file.originalname,
         currency,
-        mappingConfig: JSON.stringify(mapping),
+        mappingConfig: JSON.stringify(normalizedMapping),
         isActive: true,
       } as any);
 
       await storage.deleteRevenueRecordsBySource(source.id);
 
-      const records = Array.from(grouped.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([date, total]) => ({
-          campaignId,
-          revenueSourceId: source.id,
-          date,
-          revenue: total.toFixed(2) as any,
-          currency,
-        }));
-
-      await storage.createRevenueRecords(records as any);
-
-      const totalRevenue = records.reduce((sum, r: any) => sum + parseFloat(String(r.revenue)), 0);
+      const totalRevenue = Number(totalRevenueToDate.toFixed(2));
+      if (totalRevenue > 0) {
+        await storage.createRevenueRecords([
+          {
+            campaignId,
+            revenueSourceId: source.id,
+            date: endDate,
+            revenue: totalRevenue.toFixed(2) as any,
+            currency,
+          } as any,
+        ]);
+      }
       res.json({
         success: true,
         sourceId: source.id,
         currency,
         rowCount: parsed.rows.length,
         keptRows: kept,
-        days: records.length,
-        totalRevenue: Number(totalRevenue.toFixed(2)),
+        date: endDate,
+        totalRevenue,
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
@@ -1093,14 +1058,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : null;
       const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
 
-      const grouped = new Map<string, number>();
       let kept = 0;
       const revenueCol = String(mapping.revenueColumn);
-      const dateCol = mapping?.dateColumn ? String(mapping.dateColumn) : null;
-      const dateRange = String(mapping?.dateRange || "30days");
-      const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const periodDays = enumerateDatesInclusive(startDate, endDate);
-      let totalWithoutDate = 0;
+      let totalRevenueToDate = 0;
 
       for (const row of rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -1114,66 +1074,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const revenue = parseNum((row as any)[revenueCol]);
         if (!(revenue > 0)) continue;
         kept++;
-        if (dateCol) {
-          const d = normalizeDate((row as any)[dateCol]);
-          if (!d) continue;
-          grouped.set(d, (grouped.get(d) || 0) + revenue);
-        } else {
-          totalWithoutDate += revenue;
-        }
+        totalRevenueToDate += revenue;
       }
 
-      if (!dateCol) {
-        const days = periodDays.length || 1;
-        const totalCents = Math.round(totalWithoutDate * 100);
-        const base = Math.floor(totalCents / days);
-        const remainder = totalCents - base * days;
-        const targetDays = periodDays.length ? periodDays : [endDate];
-        for (let i = 0; i < targetDays.length; i++) {
-          const cents = base + (i === targetDays.length - 1 ? remainder : 0);
-          const v = cents / 100;
-          if (v <= 0) continue;
-          grouped.set(targetDays[i], (grouped.get(targetDays[i]) || 0) + v);
-        }
-      }
+      const endDate = yesterdayUTC();
 
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
       await deactivateRevenueSourcesForCampaign(campaignId);
 
+      const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: "revenue_to_date" };
       const source = await storage.createRevenueSource({
         campaignId,
         sourceType: "google_sheets",
         displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),
         currency,
-        mappingConfig: JSON.stringify({ ...mapping, connectionId, spreadsheetId: conn.spreadsheetId, sheetName: conn.sheetName }),
+        mappingConfig: JSON.stringify({ ...normalizedMapping, connectionId, spreadsheetId: conn.spreadsheetId, sheetName: conn.sheetName }),
         isActive: true,
       } as any);
 
       await storage.deleteRevenueRecordsBySource(source.id);
 
-      const records = Array.from(grouped.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([date, total]) => ({
-          campaignId,
-          revenueSourceId: source.id,
-          date,
-          revenue: total.toFixed(2) as any,
-          currency,
-        }));
-
-      await storage.createRevenueRecords(records as any);
-
-      const totalRevenue = records.reduce((sum, r: any) => sum + parseFloat(String(r.revenue)), 0);
+      const totalRevenue = Number(totalRevenueToDate.toFixed(2));
+      if (totalRevenue > 0) {
+        await storage.createRevenueRecords([
+          {
+            campaignId,
+            revenueSourceId: source.id,
+            date: endDate,
+            revenue: totalRevenue.toFixed(2) as any,
+            currency,
+          } as any,
+        ]);
+      }
       res.json({
         success: true,
         sourceId: source.id,
         currency,
         rowCount: rows.length,
         keptRows: kept,
-        days: records.length,
-        totalRevenue: Number(totalRevenue.toFixed(2)),
+        date: endDate,
+        totalRevenue,
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process Sheets revenue" });

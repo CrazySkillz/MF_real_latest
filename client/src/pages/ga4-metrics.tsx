@@ -1939,6 +1939,77 @@ export default function GA4Metrics() {
   const insights = useMemo<InsightItem[]>(() => {
     const out: InsightItem[] = [];
 
+    // 0) Executive financial integrity checks (to-date / lifetime)
+    // These should update immediately when a user imports Spend/Revenue, even if no KPIs/Benchmarks exist yet.
+    const toDateRangeLabel =
+      (ga4ToDateResp as any)?.startDate
+        ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}`
+        : "to date";
+
+    if (Number(financialSpend || 0) > 0 && Number(financialRevenue || 0) <= 0) {
+      out.push({
+        id: "financial:spend_no_revenue",
+        severity: "high",
+        title: "Spend recorded, but revenue is $0 to date",
+        description: `Spend-to-date is $${Number(financialSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, but revenue-to-date is $0 (${toDateRangeLabel}).`,
+        recommendation: ga4RevenueForFinancials > 0
+          ? "Verify GA4 revenue tracking and conversion configuration for this campaign filter."
+          : "Connect a GA4 revenue metric if available, or import revenue from HubSpot/Salesforce/Shopify/Sheets/CSV for accurate ROI/ROAS.",
+      });
+    }
+
+    if (Number(financialSpend || 0) <= 0 && Number(financialRevenue || 0) > 0) {
+      out.push({
+        id: "financial:revenue_no_spend",
+        severity: "medium",
+        title: "Revenue exists, but spend is $0 to date",
+        description: `Revenue-to-date is $${Number(financialRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${toDateRangeLabel}), but spend-to-date is $0.`,
+        recommendation: "Import spend-to-date for this campaign so ROI/ROAS/CPA reflect actual performance.",
+      });
+    }
+
+    if (Number(financialSpend || 0) > 0 && Number(financialRevenue || 0) > 0) {
+      const roi = Number(financialROI || 0);
+      const roas = Number(financialROAS || 0);
+      if (Number.isFinite(roi) && roi < 0) {
+        out.push({
+          id: "financial:negative_roi",
+          severity: roi <= -20 ? "high" : "medium",
+          title: "ROI is negative to date",
+          description: `ROI is ${formatPercentage(roi)} (${toDateRangeLabel}).`,
+          recommendation: "Confirm revenue attribution for this campaign filter, then review conversion rate, AOV, and spend allocation. If this is a new campaign, allow more time/volume before judging.",
+        });
+      }
+      if (Number.isFinite(roas) && roas > 0 && roas < 1) {
+        out.push({
+          id: "financial:roas_below_1",
+          severity: "medium",
+          title: "ROAS is below 1.0x to date",
+          description: `ROAS is ${roas.toFixed(2)}x (${toDateRangeLabel}).`,
+          recommendation: "Audit the conversion funnel (landing page → conversion event) and traffic mix; verify the revenue source and campaign filter are correct.",
+        });
+      }
+    }
+
+    if (Number(ga4RevenueForFinancials || 0) <= 0 && Number(importedRevenueForFinancials || 0) > 0) {
+      out.push({
+        id: "financial:using_imported_revenue",
+        severity: "low",
+        title: "Using imported revenue for financials",
+        description: `GA4 revenue is 0, so financials use imported revenue-to-date (${toDateRangeLabel}) to avoid showing misleading $0 revenue.`,
+        recommendation: "If GA4 has a valid revenue metric for this property, connect it to reduce manual upkeep; otherwise keep your CRM/ecommerce import current.",
+      });
+    }
+
+    if (Number(ga4RevenueForFinancials || 0) > 0 && Number(importedRevenueForFinancials || 0) > 0) {
+      out.push({
+        id: "financial:ga4_revenue_present_import_ignored",
+        severity: "low",
+        title: "GA4 revenue is present (imported revenue is ignored for platform financials)",
+        description: "To avoid double counting, when GA4 revenue is available we use GA4 revenue for platform financials and ignore imported revenue in these calculations.",
+      });
+    }
+
     // 1) Actionable insights from KPI performance
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
       const p = computeKpiProgress(k);
@@ -2101,7 +2172,23 @@ export default function GA4Metrics() {
     const order = { high: 0, medium: 1, low: 2 } as const;
     out.sort((a, b) => order[a.severity] - order[b.severity]);
     return out;
-  }, [platformKPIs, benchmarks, ga4TimeSeries, breakdownTotals, ga4Metrics, financialSpend, kpiAnalyticsById, benchmarkAnalyticsById]);
+  }, [
+    platformKPIs,
+    benchmarks,
+    ga4TimeSeries,
+    breakdownTotals,
+    ga4Metrics,
+    financialSpend,
+    financialRevenue,
+    financialROI,
+    financialROAS,
+    ga4RevenueForFinancials,
+    importedRevenueForFinancials,
+    String((ga4ToDateResp as any)?.startDate || ""),
+    String((ga4ToDateResp as any)?.endDate || ""),
+    kpiAnalyticsById,
+    benchmarkAnalyticsById,
+  ]);
 
   const insightsRollups = useMemo(() => {
     const rows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]) : [];
@@ -4493,9 +4580,63 @@ export default function GA4Metrics() {
                     <div>
                       <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Insights</h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                        Actionable insights from KPI + Benchmark performance, plus anomaly detection from daily deltas.
+                        Actionable insights from financial integrity checks, KPI + Benchmark performance, plus anomaly detection from daily deltas.
                       </p>
                     </div>
+
+                    <Card className="border-slate-200 dark:border-slate-700">
+                      <CardHeader>
+                        <CardTitle>Executive financials (to date)</CardTitle>
+                        <CardDescription>
+                          Uses spend-to-date and GA4 revenue-to-date (or imported revenue-to-date when GA4 revenue is missing).
+                          {(ga4ToDateResp as any)?.startDate ? ` Range: ${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}.` : ""}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid gap-4 md:grid-cols-4">
+                          <Card>
+                            <CardContent className="p-5">
+                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend (to date)</div>
+                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                ${Number(financialSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
+                              </div>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-5">
+                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue (to date)</div>
+                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                ${Number(financialRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                {ga4RevenueForFinancials > 0 ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
+                              </div>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-5">
+                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS (to date)</div>
+                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {Number(financialROAS || 0).toFixed(2)}x
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</div>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-5">
+                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI (to date)</div>
+                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {formatPercentage(Number(financialROI || 0))}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">(\(Revenue - Spend\)) ÷ Spend</div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </CardContent>
+                    </Card>
 
                     <Card className="border-slate-200 dark:border-slate-700">
                       <CardHeader>

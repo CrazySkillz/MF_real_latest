@@ -3951,6 +3951,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateRange = String(req.query.dateRange || '30days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 200);
+      const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
+      const requestedPropertyId = propertyId ? String(propertyId) : '';
+      const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
       let ga4DateRange = '30daysAgo';
       switch (dateRange) {
@@ -3965,6 +3968,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         default:
           ga4DateRange = '30daysAgo';
+      }
+
+      // Mock mode: return deterministic campaign values so the picker mimics "real GA4 has many campaigns".
+      if (shouldSimulate) {
+        res.setHeader('Cache-Control', 'no-store');
+        const pid = requestedPropertyId || 'yesop';
+        const seed = hashToSeed(`mock:ga4-campaign-values:${campaignId}:${normalizePropertyIdForMock(pid)}`);
+        const rand = mulberry32(seed);
+        const base = [
+          // Agency-realistic naming examples (UTM campaign values)
+          'yesop_prospecting_q1',
+          'yesop_retargeting',
+          'yesop_brand_search',
+          'yesop_partner_webinar',
+          // Special test case: selecting this will trigger the existing no-revenue simulator branch
+          // because isNoRevenueFilter() checks for "no_revenue" substring in the stored ga4CampaignFilter.
+          'yesop_no_revenue',
+        ];
+        const campaigns = base
+          .slice(0, Math.min(base.length, limit))
+          .map((name) => ({
+            name,
+            users: Math.max(10, Math.floor(250 + rand() * 12000)),
+          }))
+          .sort((a, b) => (b.users || 0) - (a.users || 0));
+
+        return res.json({
+          success: true,
+          dateRange,
+          propertyId: pid,
+          campaigns,
+          isSimulated: true,
+          simulationReason: 'Simulated GA4 campaign values for demo/testing (propertyId yesop or ?mock=1).',
+          lastUpdated: new Date().toISOString(),
+        });
       }
 
       const result = await ga4Service.getCampaignValues(campaignId, storage, ga4DateRange, propertyId, limit);

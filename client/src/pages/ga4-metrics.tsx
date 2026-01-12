@@ -2727,7 +2727,7 @@ export default function GA4Metrics() {
                                 </div>
                               </div>
                             </div>
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                               <Card>
                                 <CardContent className="p-6">
                                   <div className="flex items-center justify-between gap-4">
@@ -2773,6 +2773,23 @@ export default function GA4Metrics() {
                                 <CardContent className="p-6">
                                   <div className="flex items-center justify-between">
                                     <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions (to date)</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {formatNumber(financialConversions || 0)}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        From GA4 to-date totals
+                                      </p>
+                                    </div>
+                                    <Target className="w-8 h-8 text-emerald-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between">
+                                    <div>
                                       <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
                                       <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                         {financialROAS.toFixed(2)}x
@@ -2805,9 +2822,11 @@ export default function GA4Metrics() {
                                     <div>
                                       <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
                                       <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        ${financialCPA.toFixed(2)}
+                                        {Number(financialConversions || 0) > 0 ? `$${financialCPA.toFixed(2)}` : "—"}
                                       </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Spend ÷ Conversions</p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions-to-date > 0)" : ""}
+                                      </p>
                                     </div>
                                     <Target className="w-8 h-8 text-blue-600" />
                                   </div>
@@ -4960,7 +4979,8 @@ export default function GA4Metrics() {
                         kpiForm.setValue("targetValue", "");
                         // Prefill current value from the same live sources as the GA4 Overview (no extra fetch).
                         const useLifetimeRevenue = template.name === "Revenue" || template.name === "ROAS" || template.name === "ROI";
-                        const useLifetimeConversions = template.name === "CPA" || template.name === "Total Conversions";
+                        // Only CPA needs conversions-to-date (because Spend is to-date). "Total Conversions" KPI matches the Overview conversions card (daily).
+                        const useLifetimeConversions = template.name === "CPA";
                         const liveCurrent = calculateKPIValueFromSources(template.name, {
                           revenue: useLifetimeRevenue ? Number(financialRevenue || 0) : Number(breakdownTotals.revenue || 0),
                           conversions: useLifetimeConversions

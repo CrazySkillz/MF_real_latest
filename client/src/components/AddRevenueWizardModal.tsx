@@ -41,6 +41,21 @@ export function AddRevenueWizardModal(props: {
   // Manual
   const [manualAmount, setManualAmount] = useState<string>("");
   const [savingManual, setSavingManual] = useState(false);
+  const formatCurrencyWhileTyping = (raw: string) => {
+    const s = String(raw ?? "");
+    // allow digits + one decimal point
+    const cleaned = s.replace(/[^\d.]/g, "");
+    const [intRaw, decRaw = ""] = cleaned.split(".");
+    const intDigits = (intRaw || "").replace(/^0+(?=\d)/, "") || (intRaw ? "0" : "");
+    const intWithCommas = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const dec = decRaw.slice(0, 2); // currency: 2 decimals max
+    return cleaned.includes(".") ? `${intWithCommas}.${dec}` : intWithCommas;
+  };
+  const formatCurrencyOnBlur = (raw: string) => {
+    const n = parseFloat(String(raw ?? "").replace(/,/g, "").trim());
+    if (!Number.isFinite(n)) return "";
+    return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
 
   // CSV
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -604,7 +619,8 @@ export function AddRevenueWizardModal(props: {
                       <Label>Amount ({currency})</Label>
                       <Input
                         value={manualAmount}
-                        onChange={(e) => setManualAmount(e.target.value)}
+                        onChange={(e) => setManualAmount(formatCurrencyWhileTyping(e.target.value))}
+                        onBlur={(e) => setManualAmount(formatCurrencyOnBlur(e.target.value))}
                         placeholder="0.00"
                         inputMode="decimal"
                       />

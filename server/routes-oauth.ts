@@ -762,7 +762,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await storage.getRevenueSources(campaignId);
       for (const s of existing || []) {
         if (!s) continue;
-        await storage.deleteRevenueSource(String((s as any).id));
+        const sid = String((s as any).id);
+        await storage.deleteRevenueSource(sid);
+        // Defensive cleanup: remove rows for this source so totals can't be polluted by stale records.
+        // (Revenue totals only consider active sources, but deleting rows makes behavior deterministic.)
+        await storage.deleteRevenueRecordsBySource(sid);
       }
       res.json({ success: true });
     } catch (e: any) {
@@ -782,21 +786,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Revenue-to-date (campaign lifetime) from imported revenue sources (CSV/Sheets/CRM/etc).
-  // This is used as the fallback revenue-to-date when GA4 revenue is not present/available.
-  app.get("/api/campaigns/:id/revenue-to-date", async (req, res) => {
-    try {
-      res.setHeader("Cache-Control", "no-store");
-      const campaignId = req.params.id;
-      // Best-effort "all time" window for imported revenue. (Revenue records are normalized daily.)
-      const startDate = "2000-01-01";
-      const endDate = new Date().toISOString().slice(0, 10);
-      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate);
-      res.json({ success: true, startDate, endDate, ...totals });
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue-to-date" });
-    }
-  });
+  // NOTE: /api/campaigns/:id/revenue-to-date is defined above (campaign start -> yesterday).
+  // Keep exactly one handler to avoid inconsistent revenue totals.
 
   // Daily revenue total (strict daily values; used as fallback when GA4 revenue is 0)
   app.get("/api/campaigns/:id/revenue-daily", async (req, res) => {
@@ -819,7 +810,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await storage.getRevenueSources(campaignId);
       for (const s of existing || []) {
         if (!s) continue;
-        await storage.deleteRevenueSource(String((s as any).id));
+        const sid = String((s as any).id);
+        await storage.deleteRevenueSource(sid);
+        await storage.deleteRevenueRecordsBySource(sid);
       }
     } catch {
       // ignore

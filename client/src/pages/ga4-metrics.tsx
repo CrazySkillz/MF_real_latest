@@ -1213,7 +1213,9 @@ export default function GA4Metrics() {
     const sessions = Number(breakdownTotals?.sessions || 0) || Number((ga4Metrics as any)?.sessions || 0);
     const pageviews = Number((ga4Metrics as any)?.pageviews || 0);
     const conversions = Number(breakdownTotals?.conversions || 0) || Number((ga4Metrics as any)?.conversions || 0);
-    const revenue = Number(breakdownTotals?.revenue || 0);
+    // Benchmarks should prefill from the same values shown in the Overview.
+    // Revenue is a to-date (lifetime) metric in this GA4 surface.
+    const revenue = Number(financialRevenue || 0);
 
     switch (m) {
       case "roas":
@@ -4875,9 +4877,9 @@ export default function GA4Metrics() {
                     },
                     {
                       name: "Revenue",
-                      formula: "GA4 revenue total",
+                      formula: "Revenue to date",
                       unit: "$",
-                      description: "Total revenue in GA4 for the selected period",
+                      description: "Total revenue for this campaign (to date)",
                     },
                     {
                       name: "Total Conversions",
@@ -4957,9 +4959,13 @@ export default function GA4Metrics() {
                         // Target is intentionally left blank for new KPIs (user must set it explicitly).
                         kpiForm.setValue("targetValue", "");
                         // Prefill current value from the same live sources as the GA4 Overview (no extra fetch).
+                        const useLifetimeRevenue = template.name === "Revenue" || template.name === "ROAS" || template.name === "ROI";
+                        const useLifetimeConversions = template.name === "CPA" || template.name === "Total Conversions";
                         const liveCurrent = calculateKPIValueFromSources(template.name, {
-                          revenue: Number(breakdownTotals.revenue || 0),
-                          conversions: Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
+                          revenue: useLifetimeRevenue ? Number(financialRevenue || 0) : Number(breakdownTotals.revenue || 0),
+                          conversions: useLifetimeConversions
+                            ? Number(financialConversions || 0)
+                            : Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
                           sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
                           users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
                           engagementRate: Number((ga4Metrics as any)?.engagementRate || 0),

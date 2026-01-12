@@ -35,6 +35,7 @@ export function HubSpotRevenueWizard(props: {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
 
   const [portalName, setPortalName] = useState<string | null>(null);
   const [portalId, setPortalId] = useState<string | null>(null);
@@ -82,8 +83,12 @@ export function HubSpotRevenueWizard(props: {
     if (json?.connected) {
       setPortalName(json?.portalName || null);
       setPortalId(json?.portalId || null);
+      setIsConnected(true);
       return true;
     }
+    setPortalName(null);
+    setPortalId(null);
+    setIsConnected(false);
     return false;
   };
 
@@ -191,7 +196,7 @@ export function HubSpotRevenueWizard(props: {
   // When entering configure step, load properties once
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
-    if (!portalId) return; // don't fetch fields until connected
+    if (!isConnected) return; // don't fetch fields until connected
     if (properties.length > 0) return;
     (async () => {
       try {
@@ -253,7 +258,7 @@ export function HubSpotRevenueWizard(props: {
 
   const handleNext = async () => {
     if (step === "campaign-field") {
-      if (!portalId) {
+      if (!isConnected) {
         toast({
           title: "Connect HubSpot",
           description: "Please connect HubSpot before selecting deal fields.",
@@ -389,7 +394,11 @@ export function HubSpotRevenueWizard(props: {
           </CardTitle>
           <CardDescription>
             {step === "campaign-field" &&
-              `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : "HubSpot is connected. "}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`}
+              (statusLoading
+                ? "Checking HubSpot connection…"
+                : isConnected
+                ? `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : ""}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`
+                : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
             {step === "revenue" && "Select the HubSpot field that represents revenue (usually Deal amount) and a lookback window."}
@@ -402,61 +411,57 @@ export function HubSpotRevenueWizard(props: {
           {/* Scrollable step body to keep footer always visible */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-1 space-y-4">
           {step === "campaign-field" && (
-            <div className="space-y-3 relative">
-              {/* Render the final layout immediately to avoid “jumping” UI. */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label>HubSpot deal field used to attribute deals to this campaign</Label>
-                  <div className="w-4 h-4">{/* reserved space to avoid layout shift */}</div>
-                </div>
-                <Select
-                  value={campaignProperty}
-                  onValueChange={(v) => setCampaignProperty(v)}
-                  disabled={!portalId || statusLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={statusLoading ? "Loading…" : "Select a HubSpot deal field…"} />
-                  </SelectTrigger>
-                  <SelectContent
-                    className="z-[10000]"
-                    side="bottom"
-                    align="start"
-                    sideOffset={4}
-                    avoidCollisions={false}
-                  >
-                    {properties.map((p) => (
-                      <SelectItem key={p.name} value={p.name}>
-                        {p.label} ({p.name})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="text-xs text-slate-500">
-                  Tip: pick the HubSpot property your team uses for “LinkedIn campaign” or “UTM campaign”.
-                </div>
-              </div>
-
-              {/* If not connected, show a non-layout-shifting overlay CTA (no content jump). */}
-              {!statusLoading && !portalId && (
-                <div className="absolute inset-0 rounded-lg border bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
-                  <div className="max-w-md w-full">
-                    <div className="text-sm font-medium flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-blue-600" />
-                      Connect HubSpot to continue
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      HubSpot must be connected before we can load Deal properties.
-                    </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                        {isConnecting ? "Connecting…" : "Connect HubSpot"}
+            <div className="space-y-3">
+              {!statusLoading && !isConnected ? (
+                <div className="rounded-lg border bg-white dark:bg-slate-950 p-4">
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    Connect HubSpot to continue
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    HubSpot must be connected before we can load Deal properties.
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                      {isConnecting ? "Connecting…" : "Connect HubSpot"}
+                    </Button>
+                    {onBack && (
+                      <Button variant="outline" onClick={onBack} disabled={isConnecting}>
+                        Back
                       </Button>
-                      {onBack && (
-                        <Button variant="outline" onClick={onBack} disabled={isConnecting}>
-                          Back
-                        </Button>
-                      )}
-                    </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>HubSpot deal field used to attribute deals to this campaign</Label>
+                    <div className="w-4 h-4">{/* reserved space to avoid layout shift */}</div>
+                  </div>
+                  <Select
+                    value={campaignProperty}
+                    onValueChange={(v) => setCampaignProperty(v)}
+                    disabled={!isConnected || statusLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={statusLoading ? "Loading…" : "Select a HubSpot deal field…"} />
+                    </SelectTrigger>
+                    <SelectContent
+                      className="z-[10000]"
+                      side="bottom"
+                      align="start"
+                      sideOffset={4}
+                      avoidCollisions={false}
+                    >
+                      {properties.map((p) => (
+                        <SelectItem key={p.name} value={p.name}>
+                          {p.label} ({p.name})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-slate-500">
+                    Tip: pick the HubSpot property your team uses for “LinkedIn campaign” or “UTM campaign”.
                   </div>
                 </div>
               )}
@@ -624,7 +629,18 @@ export function HubSpotRevenueWizard(props: {
               <Button variant="outline" onClick={handleBackStep} disabled={valuesLoading || isSaving}>
                 Back
               </Button>
-              <Button onClick={() => void handleNext()} disabled={valuesLoading || isSaving}>
+              <Button
+                onClick={() => void handleNext()}
+                disabled={
+                  valuesLoading ||
+                  isSaving ||
+                  statusLoading ||
+                  (step === "campaign-field" ? (!isConnected || !campaignProperty) :
+                   step === "crosswalk" ? (selectedValues.length === 0) :
+                   step === "revenue" ? (!revenueProperty) :
+                   false)
+                }
+              >
                 {step === "review" ? (isSaving ? "Saving…" : "Save Mappings") : "Continue"}
               </Button>
             </div>

@@ -7,6 +7,7 @@ import { startReportScheduler } from "./report-scheduler";
 import { startLinkedInScheduler } from "./linkedin-scheduler";
 import { startGoogleSheetsTokenScheduler } from "./google-sheets-token-scheduler";
 import { startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
+import { startGA4DailyScheduler } from "./ga4-daily-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
@@ -147,6 +148,32 @@ process.on('uncaughtException', (error: Error) => {
           await db.execute(sql`
             ALTER TABLE campaigns
             ADD COLUMN IF NOT EXISTS ga4_campaign_filter TEXT;
+          `);
+
+          // GA4 daily metrics (persisted daily facts powering "daily values" GA4 UI)
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS ga4_daily_metrics (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              property_id TEXT NOT NULL,
+              date TEXT NOT NULL,
+              users INTEGER NOT NULL DEFAULT 0,
+              sessions INTEGER NOT NULL DEFAULT 0,
+              pageviews INTEGER NOT NULL DEFAULT 0,
+              conversions INTEGER NOT NULL DEFAULT 0,
+              revenue DECIMAL(15, 2) NOT NULL DEFAULT 0,
+              engagement_rate DECIMAL(7, 4) DEFAULT 0,
+              revenue_metric TEXT,
+              is_simulated BOOLEAN NOT NULL DEFAULT false,
+              updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE (campaign_id, property_id, date)
+            );
+          `);
+
+          await db.execute(sql`
+            CREATE INDEX IF NOT EXISTS idx_ga4_daily_metrics_campaign_date
+            ON ga4_daily_metrics(campaign_id, date);
           `);
 
           // Spend tables for GA4 financials (generic spend ingestion from any source)
@@ -439,6 +466,13 @@ process.on('uncaughtException', (error: Error) => {
           startDailyAutoRefreshScheduler();
         } catch (error) {
           console.error('Failed to start daily auto-refresh scheduler:', error);
+        }
+
+        // Start GA4 daily refresh scheduler (persisted daily facts)
+        try {
+          startGA4DailyScheduler();
+        } catch (error) {
+          console.error('Failed to start GA4 daily scheduler:', error);
         }
       }, 5000); // 5 second delay
     });

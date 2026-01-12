@@ -568,6 +568,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Daily spend total (strict daily values; avoids UI windowing)
+  app.get("/api/campaigns/:id/spend-daily", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const date = String(req.query.date || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
+      }
+      const totals = await storage.getSpendTotalForRange(campaignId, date, date);
+      res.json({ success: true, date, ...totals });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch daily spend" });
+    }
+  });
+
   // Revenue sources (manual/CSV/Sheets + connectors that materialize revenue rows)
   app.get("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {
@@ -602,6 +618,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, dateRange, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue totals" });
+    }
+  });
+
+  // Daily revenue total (strict daily values; used as fallback when GA4 revenue is 0)
+  app.get("/api/campaigns/:id/revenue-daily", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const date = String(req.query.date || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
+      }
+      const totals = await storage.getRevenueTotalForRange(campaignId, date, date);
+      res.json({ success: true, date, ...totals });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch daily revenue" });
     }
   });
 
@@ -1754,6 +1786,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: "Campaign deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete campaign" });
+    }
+  });
+
+  // GA4 daily metrics (persisted daily facts; client uses these for "daily values" UI)
+  app.get("/api/campaigns/:id/ga4-daily", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const days = Math.min(Math.max(parseInt(String(req.query.days || "30"), 10) || 30, 7), 365);
+      const propertyId = req.query.propertyId as string; // optional
+      const forceMock = String((req.query as any)?.mock || "").toLowerCase() === "1" || String((req.query as any)?.mock || "").toLowerCase() === "true";
+      const requestedPropertyId = propertyId ? String(propertyId) : "";
+      const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
+
+      // Compute UTC start/end window for stored rows
+      const now = new Date();
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      start.setUTCDate(start.getUTCDate() - (days - 1));
+      const startDate = formatISODateUTC(start);
+      const endDate = formatISODateUTC(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())));
+
+      if (shouldSimulate) {
+        const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
+        const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: `${days}days`, noRevenue });
+        const pid = requestedPropertyId || "yesop";
+        return res.json({
+          success: true,
+          propertyId: pid,
+          startDate,
+          endDate,
+          days,
+          data: sim.timeSeries,
+          isSimulated: true,
+          simulationReason: "Simulated GA4 daily metrics for demo/testing (propertyId yesop or ?mock=1).",
+          lastUpdated: new Date().toISOString(),
+        });
+      }
+
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+
+      // Resolve connection(s)
+      let connections: any[] = [];
+      if (propertyId) {
+        const conn = await storage.getGA4Connection(campaignId, propertyId);
+        connections = conn ? [conn] : [];
+      } else {
+        connections = await storage.getGA4Connections(campaignId);
+      }
+
+      if (!connections || connections.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "NO_GA4_CONNECTION",
+          message: "No GA4 connection found for this campaign. Please connect Google Analytics first.",
+        });
+      }
+
+      const primaryConnection = connections.find((c: any) => c?.isPrimary) || connections[0];
+      const selectedConnection = propertyId ? connections[0] : primaryConnection;
+
+      if (!selectedConnection || selectedConnection.method !== "access_token") {
+        return res.status(400).json({
+          success: false,
+          error: "GA4_CONNECTION_METHOD_UNSUPPORTED",
+          message: "GA4 connection method not supported for daily metrics fetch",
+          method: selectedConnection?.method,
+        });
+      }
+
+      // Read from persisted store first
+      let stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
+      if (!stored || stored.length === 0) {
+        // Best-effort backfill on demand
+        const series = await ga4Service.getTimeSeriesData(
+          campaignId,
+          storage,
+          startDate, // explicit YYYY-MM-DD
+          String(selectedConnection.propertyId),
+          campaignFilter
+        );
+        const rows = Array.isArray(series) ? series : [];
+        const upserts = rows
+          .map((r: any) => ({
+            campaignId,
+            propertyId: String(selectedConnection.propertyId),
+            date: String(r?.date || "").trim(),
+            users: Number(r?.users || 0) || 0,
+            sessions: Number(r?.sessions || 0) || 0,
+            pageviews: Number(r?.pageviews || 0) || 0,
+            conversions: Number(r?.conversions || 0) || 0,
+            revenue: String(Number(r?.revenue || 0).toFixed(2)),
+            isSimulated: false,
+          }))
+          .filter((x: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || "")));
+
+        if (upserts.length > 0) {
+          await storage.upsertGA4DailyMetrics(upserts as any);
+        }
+        stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
+      }
+
+      const lastUpdated =
+        stored.length > 0
+          ? (stored as any[]).reduce((latest: string | null, r: any) => {
+              const ts = r?.updatedAt ? new Date(r.updatedAt).toISOString() : null;
+              if (!ts) return latest;
+              return !latest || ts > latest ? ts : latest;
+            }, null)
+          : null;
+
+      res.json({
+        success: true,
+        propertyId: selectedConnection.propertyId,
+        propertyName: selectedConnection.propertyName,
+        displayName: selectedConnection.displayName,
+        startDate,
+        endDate,
+        days,
+        data: stored,
+        lastUpdated: lastUpdated || new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("[GA4 Daily] Error:", error);
+      if (error instanceof Error && (error.message === "AUTO_REFRESH_NEEDED" || (error as any).isAutoRefreshNeeded)) {
+        return res.status(401).json({
+          success: false,
+          error: "AUTO_REFRESH_NEEDED",
+          requiresReauthorization: true,
+          message: "GA4 token refresh is required. Please reconnect Google Analytics.",
+        });
+      }
+      if (error instanceof Error && (error.message === "TOKEN_EXPIRED" || (error as any).isTokenExpired)) {
+        return res.status(401).json({
+          success: false,
+          error: "TOKEN_EXPIRED",
+          requiresReauthorization: true,
+          message: "GA4 token expired. Please reconnect Google Analytics.",
+        });
+      }
+      res.status(500).json({ success: false, error: error?.message || "Failed to fetch GA4 daily metrics" });
     }
   });
 

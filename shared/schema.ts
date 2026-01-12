@@ -73,6 +73,24 @@ export const ga4Connections = pgTable("ga4_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// GA4 Daily Metrics (persisted daily facts; used to power "daily values" UI and schedulers)
+export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  propertyId: text("property_id").notNull(),
+  date: text("date").notNull(), // YYYY-MM-DD (UTC)
+  users: integer("users").notNull().default(0),
+  sessions: integer("sessions").notNull().default(0),
+  pageviews: integer("pageviews").notNull().default(0),
+  conversions: integer("conversions").notNull().default(0),
+  revenue: decimal("revenue", { precision: 15, scale: 2 }).notNull().default("0"),
+  engagementRate: decimal("engagement_rate", { precision: 7, scale: 4 }).default("0"),
+  revenueMetric: text("revenue_metric"), // 'totalRevenue' | 'purchaseRevenue' (best-effort)
+  isSimulated: boolean("is_simulated").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Spend sources (manual, csv, google_sheets, ad_platforms, etc.)
 export const spendSources = pgTable("spend_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -822,6 +840,20 @@ export const insertGA4ConnectionSchema = createInsertSchema(ga4Connections).pick
   expiresAt: true,
 });
 
+export const insertGA4DailyMetricSchema = createInsertSchema(ga4DailyMetrics).pick({
+  campaignId: true,
+  propertyId: true,
+  date: true,
+  users: true,
+  sessions: true,
+  pageviews: true,
+  conversions: true,
+  revenue: true,
+  engagementRate: true,
+  revenueMetric: true,
+  isSimulated: true,
+});
+
 export const insertSpendSourceSchema = createInsertSchema(spendSources).pick({
   campaignId: true,
   sourceType: true,
@@ -1285,6 +1317,8 @@ export type PerformanceData = typeof performanceData.$inferSelect;
 export type InsertPerformanceData = z.infer<typeof insertPerformanceDataSchema>;
 export type GA4Connection = typeof ga4Connections.$inferSelect;
 export type InsertGA4Connection = z.infer<typeof insertGA4ConnectionSchema>;
+export type GA4DailyMetric = typeof ga4DailyMetrics.$inferSelect;
+export type InsertGA4DailyMetric = z.infer<typeof insertGA4DailyMetricSchema>;
 export type SpendSource = typeof spendSources.$inferSelect;
 export type InsertSpendSource = z.infer<typeof insertSpendSourceSchema>;
 export type SpendRecord = typeof spendRecords.$inferSelect;

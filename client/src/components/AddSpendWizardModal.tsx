@@ -26,7 +26,7 @@ export function AddSpendWizardModal(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currency?: string;
-  dateRange?: string; // used when a dataset has no date column (we distribute spend across the selected period)
+  dateRange?: string; // spend is always distributed across this period (date-agnostic import)
   initialSource?: { id?: string; sourceType?: string; mappingConfig?: string | null; displayName?: string | null };
   onProcessed?: () => void;
 }) {
@@ -43,7 +43,6 @@ export function AddSpendWizardModal(props: {
   const [pasteText, setPasteText] = useState<string>("");
   const [showSheetsConnect, setShowSheetsConnect] = useState(false);
 
-  const [dateColumn, setDateColumn] = useState<string>("");
   const [spendColumn, setSpendColumn] = useState<string>("");
   const [showColumnMapping, setShowColumnMapping] = useState(false);
 
@@ -52,7 +51,6 @@ export function AddSpendWizardModal(props: {
   const [campaignKeySearch, setCampaignKeySearch] = useState<string>("");
 
   const CAMPAIGN_COL_NONE = "__none__";
-  const DATE_COL_NONE = "__none_date__";
 
   const [manualAmount, setManualAmount] = useState<string>("");
 
@@ -82,7 +80,6 @@ export function AddSpendWizardModal(props: {
       setCsvInputKey((k) => k + 1);
       setIsCsvPreviewing(false);
       setIsProcessing(false);
-      setDateColumn("");
       setSpendColumn("");
       setShowColumnMapping(false);
       setCampaignKeyColumn("");
@@ -119,7 +116,6 @@ export function AddSpendWizardModal(props: {
     }
 
     const sourceType = String(src?.sourceType || "").toLowerCase();
-    const mapDate = mapping?.dateColumn ? String(mapping.dateColumn) : "";
     const mapSpend = mapping?.spendColumn ? String(mapping.spendColumn) : "";
     const mapCampaignCol = mapping?.campaignColumn ? String(mapping.campaignColumn) : "";
     const mapCampaignVals = Array.isArray(mapping?.campaignValues)
@@ -129,7 +125,6 @@ export function AddSpendWizardModal(props: {
     if (sourceType === "google_sheets") {
       setMode("google_sheets");
       setStep("choose");
-      if (mapDate) setDateColumn(mapDate);
       if (mapSpend) setSpendColumn(mapSpend);
       if (mapCampaignCol) {
         // Prevent the "campaign column changed" effect from wiping prefilled values.
@@ -177,48 +172,6 @@ export function AddSpendWizardModal(props: {
         setCampaignKeyColumn(mapCampaignCol);
       }
       if (mapCampaignVals.length) setCampaignKeyValues(mapCampaignVals);
-      if (mapDate) {
-        // If the saved Date column doesn't overlap the currently selected GA4 date range,
-        // default to "None" so spend is distributed across the selected range (prevents “imported but showing $0”).
-        const parseDateMaybeLocal = (raw: any): Date | null => {
-          const s = String(raw ?? "").trim();
-          if (!s) return null;
-          const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-          if (m?.[1]) {
-            const d = new Date(m[1] + "T00:00:00Z");
-            return Number.isNaN(d.getTime()) ? null : d;
-          }
-          const d = new Date(s);
-          return Number.isNaN(d.getTime()) ? null : d;
-        };
-        const dateRangeToDaysLocal = (dr?: string): number => {
-          const v = String(dr || "").toLowerCase();
-          if (v.includes("7")) return 7;
-          if (v.includes("90")) return 90;
-          return 30;
-        };
-        const days = dateRangeToDaysLocal(props.dateRange);
-        const end = new Date();
-        const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
-        const anyInRange = (savedSampleRows || []).some((r: any) => {
-          const d = parseDateMaybeLocal(r?.[mapDate]);
-          if (!d) return false;
-          return d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
-        });
-        if (anyInRange) {
-          setDateColumn(mapDate);
-        } else {
-          setDateColumn("");
-          setCsvEditNotice((prev) =>
-            [
-              prev,
-              `Heads up: your saved Date column (“${mapDate}”) appears to be outside the current ${props.dateRange || "30days"} view, so Spend totals show as $0. Leave Date as “None” to distribute spend across the selected period (recommended for testing).`,
-            ]
-              .filter(Boolean)
-              .join(" ")
-          );
-        }
-      }
       if (mapSpend) setSpendColumn(mapSpend);
       return;
     }
@@ -258,12 +211,6 @@ export function AddSpendWizardModal(props: {
   const headers = csvPreview?.headers || [];
   const sampleRows = csvPreview?.sampleRows || [];
 
-  const inferredDateColumn = useMemo(() => {
-    if (!headers.length) return "";
-    const lc = headers.map((h) => ({ h, l: h.toLowerCase() }));
-    return lc.find((x) => x.l === "date" || x.l.includes("date"))?.h || "";
-  }, [headers]);
-
   const inferredSpendColumn = useMemo(() => {
     if (!headers.length) return "";
     const lc = headers.map((h) => ({ h, l: h.toLowerCase() }));
@@ -287,60 +234,15 @@ export function AddSpendWizardModal(props: {
     [campaignKeyColumn, inferredCampaignColumn]
   );
 
-  const dateRangeToDays = (dr?: string): number => {
-    const v = String(dr || "").toLowerCase();
-    if (v.includes("7")) return 7;
-    if (v.includes("90")) return 90;
-    return 30;
-  };
-
-  const parseDateMaybe = (raw: any): Date | null => {
-    const s = String(raw ?? "").trim();
-    if (!s) return null;
-    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (m?.[1]) {
-      const d = new Date(m[1] + "T00:00:00Z");
-      return Number.isNaN(d.getTime()) ? null : d;
-    }
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? null : d;
-  };
-
   useEffect(() => {
     if (!csvPreview?.success) return;
-    if (!dateColumn && inferredDateColumn) {
-      // Prevent the common “I imported spend but Overview still shows $0” confusion:
-      // if the dataset's Date values don't overlap the currently selected dateRange (7/30/90),
-      // default to no Date column so the server distributes spend across the selected period.
-      const decisionKey = `${String(csvPreview?.fileName || "")}|${String(props.dateRange || "30days")}`;
-      if (autoDateDecisionRef.current !== decisionKey) {
-        autoDateDecisionRef.current = decisionKey;
-        const days = dateRangeToDays(props.dateRange);
-        const end = new Date();
-        const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
-        const anyInRange = (sampleRows || []).some((r: any) => {
-          const d = parseDateMaybe(r?.[inferredDateColumn]);
-          if (!d) return false;
-          return d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
-        });
-        if (anyInRange) {
-          setDateColumn(inferredDateColumn);
-        } else {
-          setDateColumn("");
-          toast({
-            title: "Date column ignored",
-            description: `Dates in your dataset don't fall within ${props.dateRange || "30days"}. We'll distribute spend across the selected period so it appears in Overview. You can re-select the Date column if needed.`,
-          });
-        }
-      }
-    }
     if (!spendColumn && inferredSpendColumn) setSpendColumn(inferredSpendColumn);
     // If a campaign identifier column is present (e.g. "Campaign") and the user hasn't explicitly picked/cleared it,
     // auto-select it so the UI reflects the detected identifier.
     if (!campaignKeyColumn && inferredCampaignColumn && !campaignKeyTouchedRef.current) {
       setCampaignKeyColumn(inferredCampaignColumn);
     }
-  }, [csvPreview, inferredDateColumn, inferredSpendColumn, dateColumn, spendColumn, sampleRows, props.dateRange, toast]);
+  }, [csvPreview, inferredSpendColumn, spendColumn, campaignKeyColumn, inferredCampaignColumn]);
 
   const uniqueCampaignKeyValues = useMemo(() => {
     if (!effectiveCampaignColumn) return [];
@@ -367,10 +269,8 @@ export function AddSpendWizardModal(props: {
   useEffect(() => {
     if (!csvPreview?.success) return;
     if (!csvPrefillMapping) return;
-    const mapDate = csvPrefillMapping?.dateColumn ? String(csvPrefillMapping.dateColumn) : "";
     const mapSpend = csvPrefillMapping?.spendColumn ? String(csvPrefillMapping.spendColumn) : "";
     const mapCampaignCol = csvPrefillMapping?.campaignColumn ? String(csvPrefillMapping.campaignColumn) : "";
-    if (mapDate && headers.includes(mapDate)) setDateColumn(mapDate);
     if (mapSpend && headers.includes(mapSpend)) setSpendColumn(mapSpend);
     if (mapCampaignCol && headers.includes(mapCampaignCol)) setCampaignKeyColumn(mapCampaignCol);
   }, [csvPreview?.success, csvPrefillMapping, headers]);
@@ -561,7 +461,7 @@ export function AddSpendWizardModal(props: {
       const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;
       const mapping = {
         displayName: csvFile.name,
-        dateColumn: dateColumn || null,
+        dateColumn: null, // date-agnostic: always distribute spend across the selected period
         spendColumn,
         campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
@@ -609,7 +509,7 @@ export function AddSpendWizardModal(props: {
       const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;
       const mapping = {
         displayName: (sheetsPreview?.spreadsheetName ? `${sheetsPreview.spreadsheetName}${sheetsPreview.sheetName ? ` (${sheetsPreview.sheetName})` : ""}` : "Google Sheets spend"),
-        dateColumn: dateColumn || null,
+        dateColumn: null, // date-agnostic: always distribute spend across the selected period
         spendColumn,
         campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
@@ -927,11 +827,11 @@ export function AddSpendWizardModal(props: {
                     {csvEditNotice}
                   </div>
                 )}
-                {(dateColumn || spendColumn || campaignKeyColumn || campaignKeyValues.length > 0) && (
+                {(spendColumn || campaignKeyColumn || campaignKeyValues.length > 0) && (
                   <div className="rounded-md bg-slate-50 dark:bg-slate-900 border p-3">
                     <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Current mapping</div>
                     <div className="text-xs text-slate-600 dark:text-slate-400">
-                      Date: <span className="font-medium">{dateColumn || "—"}</span> · Spend: <span className="font-medium">{spendColumn || "—"}</span>
+                      Spend: <span className="font-medium">{spendColumn || "—"}</span>
                       {campaignKeyColumn ? (
                         <>
                           {" "}· Campaign: <span className="font-medium">{campaignKeyColumn}</span>
@@ -991,10 +891,10 @@ export function AddSpendWizardModal(props: {
                 <div className="space-y-1">
                   <div className="text-sm font-medium">Columns</div>
                   <div className="text-sm text-slate-700 dark:text-slate-300">
-                    Date: <span className="font-medium">{dateColumn || "—"}</span> · Spend: <span className="font-medium">{spendColumn || "—"}</span>
+                    Spend: <span className="font-medium">{spendColumn || "—"}</span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    We’ll automatically sum spend by day.
+                    We’ll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
                   </p>
                 </div>
                 <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
@@ -1004,19 +904,6 @@ export function AddSpendWizardModal(props: {
 
               {showColumnMapping && (
                 <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
-                  <div className="space-y-2">
-                    <Label>Date column</Label>
-                      <Select
-                        value={dateColumn || DATE_COL_NONE}
-                        onValueChange={(v) => setDateColumn(v === DATE_COL_NONE ? "" : v)}
-                      >
-                      <SelectTrigger><SelectValue placeholder="Select date column" /></SelectTrigger>
-                      <SelectContent className="z-[10000]">
-                          <SelectItem value={DATE_COL_NONE}>None (distribute across selected period)</SelectItem>
-                        {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <div className="space-y-2">
                     <Label>Spend column</Label>
                     <Select value={spendColumn} onValueChange={setSpendColumn}>

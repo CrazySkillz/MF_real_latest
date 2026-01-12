@@ -2682,11 +2682,13 @@ export default function GA4Metrics() {
                           <CardContent className="p-6">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Conversions</p>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions (to date)</p>
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0)}
+                                  {formatNumber(financialConversions || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  From GA4 to-date totals
+                                </p>
                               </div>
                               <Target className="w-8 h-8 text-emerald-500" />
                             </div>
@@ -2700,12 +2702,12 @@ export default function GA4Metrics() {
                                 <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Rate</p>
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                   {formatPercentage(
-                                    (breakdownTotals.sessions || ga4Metrics?.sessions || 0) > 0
-                                      ? ((breakdownTotals.conversions || ga4Metrics?.conversions || 0) / (breakdownTotals.sessions || ga4Metrics?.sessions || 1)) * 100
+                                    Number((ga4ToDateResp as any)?.totals?.sessions || 0) > 0
+                                      ? (Number(financialConversions || 0) / Number((ga4ToDateResp as any)?.totals?.sessions || 1)) * 100
                                       : 0
                                   )}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign overall</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
                               </div>
                               <Target className="w-8 h-8 text-indigo-600" />
                             </div>
@@ -2727,7 +2729,7 @@ export default function GA4Metrics() {
                                 </div>
                               </div>
                             </div>
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                               <Card>
                                 <CardContent className="p-6">
                                   <div className="flex items-center justify-between gap-4">
@@ -2765,23 +2767,6 @@ export default function GA4Metrics() {
                                       ) : null}
                                       <DollarSign className="w-8 h-8 text-slate-500" />
                                     </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions (to date)</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatNumber(financialConversions || 0)}
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                        From GA4 to-date totals
-                                      </p>
-                                    </div>
-                                    <Target className="w-8 h-8 text-emerald-600" />
                                   </div>
                                 </CardContent>
                               </Card>

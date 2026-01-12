@@ -564,6 +564,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!s) continue;
         await storage.deleteSpendSource(String((s as any).id));
       }
+      // If spend sources are removed, clear spend-to-date so ROAS/ROI/CPA don't keep using stale values.
+      try {
+        await storage.updateCampaign(campaignId, { spend: "0" as any } as any);
+      } catch {
+        // ignore
+      }
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to remove spend sources" });
@@ -579,6 +585,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, dateRange, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch spend totals" });
+    }
+  });
+
+  // Spend-to-date (campaign lifetime) — single source of truth for exec financials (ROI/ROAS/etc).
+  // This avoids forcing users to map dates for spend imports.
+  app.get("/api/campaigns/:id/spend-to-date", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
+
+      const sources = await storage.getSpendSources(campaignId);
+      const spendToDate = parseNum((campaign as any)?.spend);
+      const currency = String((campaign as any)?.currency || (sources as any[])?.[0]?.currency || "USD");
+
+      res.json({
+        success: true,
+        spendToDate: Number((Number.isFinite(spendToDate) ? spendToDate : 0).toFixed(2)),
+        currency,
+        sourceIds: Array.isArray(sources) ? sources.map((s: any) => String(s?.id)).filter(Boolean) : [],
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch spend-to-date" });
+    }
+  });
+
+  const toISODateUTC = (d: any): string | null => {
+    try {
+      const dt = d instanceof Date ? d : new Date(d);
+      if (Number.isNaN(dt.getTime())) return null;
+      return dt.toISOString().slice(0, 10);
+    } catch {
+      return null;
+    }
+  };
+
+  const yesterdayUTC = (): string => {
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    today.setUTCDate(today.getUTCDate() - 1);
+    return today.toISOString().slice(0, 10);
+  };
+
+  // GA4 revenue/conversions/users/sessions "to date" (campaign lifetime).
+  // Uses GA4 Data API directly (not the 90-day daily fact table) so lifetime totals remain accurate.
+  app.get("/api/campaigns/:id/ga4-to-date", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const requestedPropertyId = String((req.query as any)?.propertyId || "").trim();
+      if (!requestedPropertyId) return res.status(400).json({ success: false, error: "propertyId is required" });
+
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
+
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+
+      // Lifetime start date: prefer explicit campaign startDate, fall back to createdAt for dev/test.
+      const startDate =
+        toISODateUTC((campaign as any)?.startDate) ||
+        toISODateUTC((campaign as any)?.createdAt) ||
+        "2020-01-01";
+
+      const endDate = yesterdayUTC();
+
+      const series = await ga4Service.getTimeSeriesData(campaignId, storage, startDate, requestedPropertyId, campaignFilter);
+      const rows = Array.isArray(series) ? series : [];
+
+      let revenue = 0;
+      let conversions = 0;
+      let users = 0;
+      let sessions = 0;
+      let pageviews = 0;
+      let revenueMetric: string | null = null;
+
+      for (const r of rows) {
+        const date = String((r as any)?.date || "").trim();
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+        if (date > endDate) continue; // drop partial "today"
+        revenue += Number((r as any)?.revenue || 0) || 0;
+        conversions += Number((r as any)?.conversions || 0) || 0;
+        users += Number((r as any)?.users || 0) || 0;
+        sessions += Number((r as any)?.sessions || 0) || 0;
+        pageviews += Number((r as any)?.pageviews || 0) || 0;
+        if (!revenueMetric && (r as any)?.revenueMetric) revenueMetric = String((r as any)?.revenueMetric);
+      }
+
+      res.json({
+        success: true,
+        propertyId: requestedPropertyId,
+        startDate,
+        endDate,
+        totals: {
+          revenue: Number(revenue.toFixed(2)),
+          conversions: Math.round(conversions),
+          users: Math.round(users),
+          sessions: Math.round(sessions),
+          pageviews: Math.round(pageviews),
+          revenueMetric,
+        },
+      });
+    } catch (error: any) {
+      if (error instanceof Error && (error.message === "AUTO_REFRESH_NEEDED" || (error as any).isAutoRefreshNeeded)) {
+        return res.status(401).json({
+          success: false,
+          error: "AUTO_REFRESH_NEEDED",
+          requiresReauthorization: true,
+          message: "GA4 token refresh is required. Please reconnect Google Analytics.",
+        });
+      }
+      if (error instanceof Error && (error.message === "TOKEN_EXPIRED" || (error as any).isTokenExpired)) {
+        return res.status(401).json({
+          success: false,
+          error: "TOKEN_EXPIRED",
+          requiresReauthorization: true,
+          message: "GA4 token expired. Please reconnect Google Analytics.",
+        });
+      }
+      res.status(500).json({ success: false, error: error?.message || "Failed to fetch GA4 to-date totals" });
+    }
+  });
+
+  // Imported revenue "to date" (campaign lifetime). Used as fallback when GA4 has no revenue metric configured.
+  app.get("/api/campaigns/:id/revenue-to-date", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
+
+      const startDate =
+        toISODateUTC((campaign as any)?.startDate) ||
+        toISODateUTC((campaign as any)?.createdAt) ||
+        "2020-01-01";
+      const endDate = yesterdayUTC();
+
+      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate);
+      res.json({ success: true, startDate, endDate, ...totals });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue-to-date" });
     }
   });
 
@@ -632,6 +779,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, dateRange, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue totals" });
+    }
+  });
+
+  // Revenue-to-date (campaign lifetime) from imported revenue sources (CSV/Sheets/CRM/etc).
+  // This is used as the fallback revenue-to-date when GA4 revenue is not present/available.
+  app.get("/api/campaigns/:id/revenue-to-date", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      // Best-effort "all time" window for imported revenue. (Revenue records are normalized daily.)
+      const startDate = "2000-01-01";
+      const endDate = new Date().toISOString().slice(0, 10);
+      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate);
+      res.json({ success: true, startDate, endDate, ...totals });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue-to-date" });
     }
   });
 
@@ -1043,7 +1206,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const amount = parseNum((req.body as any)?.amount);
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
-      const dateRange = String((req.body as any)?.dateRange || (req.query as any)?.dateRange || "30days");
       if (!(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
@@ -1052,42 +1214,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await deactivateSpendSourcesForCampaign(campaignId);
 
+      // Store as campaign spend-to-date (lifetime).
+      await storage.updateCampaign(campaignId, { spend: Number(amount.toFixed(2)).toFixed(2) as any, currency: cur } as any);
+
       const source = await storage.createSpendSource({
         campaignId,
         sourceType: "manual",
-        displayName: "Manual spend",
+        displayName: "Manual spend (to date)",
         currency: cur,
         // Persist the last manual amount so the edit modal (pencil) can prefill the input.
-        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, dateRange }),
+        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "spend_to_date" }),
         isActive: true,
       } as any);
 
-      const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const days = enumerateDatesInclusive(startDate, endDate);
-      if (days.length === 0) {
-        return res.status(400).json({ success: false, error: "Invalid date range" });
-      }
-
-      // Distribute spend evenly across the selected range (no date column provided).
-      // Ensure cents add up exactly by putting the remainder on the final day.
-      const totalCents = Math.round(Number(amount.toFixed(2)) * 100);
-      const baseCents = Math.floor(totalCents / days.length);
-      const remainder = totalCents - baseCents * days.length;
-
-      const records = days.map((date, idx) => {
-        const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
-        return {
-          campaignId,
-          spendSourceId: source.id,
-          date,
-          spend: (cents / 100).toFixed(2) as any,
-          currency: cur,
-        } as any;
-      });
-
-      await storage.createSpendRecords(records);
-
-      res.json({ success: true, sourceId: source.id, startDate, endDate, days: days.length, amount: Number(amount.toFixed(2)), currency: cur });
+      res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process manual spend" });
     }
@@ -1107,26 +1247,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await deactivateSpendSourcesForCampaign(campaignId);
 
+      await storage.updateCampaign(campaignId, { spend: Number(amount.toFixed(2)).toFixed(2) as any, currency: cur } as any);
+
       const source = await storage.createSpendSource({
         campaignId,
         sourceType: "connector_derived",
-        displayName: "Connector-derived spend",
+        displayName: "Connector-derived spend (to date)",
         currency: cur,
         mappingConfig: breakdown ? JSON.stringify(breakdown) : null,
         isActive: true,
       } as any);
 
-      const now = new Date();
-      const date = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
-      await storage.createSpendRecords([{
-        campaignId,
-        spendSourceId: source.id,
-        date,
-        spend: amount.toFixed(2) as any,
-        currency: cur,
-      } as any]);
-
-      res.json({ success: true, sourceId: source.id, date, amount, currency: cur });
+      res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process connector-derived spend" });
     }
@@ -1175,15 +1307,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : null;
       const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
 
-      const grouped = new Map<string, number>();
       let kept = 0;
-      const hasDateColumn = !!mapping?.dateColumn;
       const spendCol = String(mapping.spendColumn);
-      const dateCol = hasDateColumn ? String(mapping.dateColumn) : null;
-      const dateRange = String(mapping?.dateRange || "30days");
-      const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const periodDays = enumerateDatesInclusive(startDate, endDate);
-      let totalWithoutDate = 0;
+      let totalSpend = 0;
 
       for (const row of parsed.rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -1197,66 +1323,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const spend = parseNum((row as any)[spendCol]);
         if (!(spend > 0)) continue;
         kept++;
-        if (dateCol) {
-          const d = normalizeDate((row as any)[dateCol]);
-          if (!d) continue;
-          grouped.set(d, (grouped.get(d) || 0) + spend);
-        } else {
-          totalWithoutDate += spend;
-        }
-      }
-
-      if (!dateCol) {
-        const days = periodDays.length || 1;
-        const totalCents = Math.round(totalWithoutDate * 100);
-        const base = Math.floor(totalCents / days);
-        const remainder = totalCents - base * days;
-        const targetDays = periodDays.length ? periodDays : [endDate];
-        for (let i = 0; i < targetDays.length; i++) {
-          const cents = base + (i === targetDays.length - 1 ? remainder : 0);
-          const v = cents / 100;
-          if (v <= 0) continue;
-          grouped.set(targetDays[i], (grouped.get(targetDays[i]) || 0) + v);
-        }
+        totalSpend += spend;
       }
 
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
       await deactivateSpendSourcesForCampaign(campaignId);
+      await storage.updateCampaign(campaignId, { spend: Number(totalSpend.toFixed(2)).toFixed(2) as any, currency } as any);
 
       const source = await storage.createSpendSource({
         campaignId,
         sourceType: "csv",
-        displayName: mapping.displayName || file.originalname,
+        displayName: (mapping.displayName || file.originalname) + " (to date)",
         currency,
-        mappingConfig: JSON.stringify(mapping),
+        mappingConfig: JSON.stringify({ ...mapping, mode: "spend_to_date" }),
         isActive: true,
       } as any);
-
-      await storage.deleteSpendRecordsBySource(source.id);
-
-      const records = Array.from(grouped.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([date, total]) => ({
-          campaignId,
-          spendSourceId: source.id,
-          date,
-          spend: total.toFixed(2) as any,
-          currency,
-        }));
-
-      await storage.createSpendRecords(records as any);
-
-      const totalSpend = records.reduce((sum, r: any) => sum + parseFloat(String(r.spend)), 0);
       res.json({
         success: true,
         sourceId: source.id,
         currency,
         rowCount: parsed.rows.length,
         keptRows: kept,
-        days: records.length,
-        totalSpend: Number(totalSpend.toFixed(2)),
+        spendToDate: Number(totalSpend.toFixed(2)),
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process CSV spend" });
@@ -1359,15 +1449,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : null;
       const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
 
-      const grouped = new Map<string, number>();
       let kept = 0;
-      const hasDateColumn = !!mapping?.dateColumn;
       const spendCol = String(mapping.spendColumn);
-      const dateCol = hasDateColumn ? String(mapping.dateColumn) : null;
-      const dateRange = String(mapping?.dateRange || "30days");
-      const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const periodDays = enumerateDatesInclusive(startDate, endDate);
-      let totalWithoutDate = 0;
+      let totalSpend = 0;
 
       for (const row of rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -1381,57 +1465,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const spend = parseNum((row as any)[spendCol]);
         if (!(spend > 0)) continue;
         kept++;
-        if (dateCol) {
-          const d = normalizeDate((row as any)[dateCol]);
-          if (!d) continue;
-          grouped.set(d, (grouped.get(d) || 0) + spend);
-        } else {
-          totalWithoutDate += spend;
-        }
-      }
-
-      if (!dateCol) {
-        const days = periodDays.length || 1;
-        const totalCents = Math.round(totalWithoutDate * 100);
-        const base = Math.floor(totalCents / days);
-        const remainder = totalCents - base * days;
-        const targetDays = periodDays.length ? periodDays : [endDate];
-        for (let i = 0; i < targetDays.length; i++) {
-          const cents = base + (i === targetDays.length - 1 ? remainder : 0);
-          const v = cents / 100;
-          if (v <= 0) continue;
-          grouped.set(targetDays[i], (grouped.get(targetDays[i]) || 0) + v);
-        }
+        totalSpend += spend;
       }
 
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
       await deactivateSpendSourcesForCampaign(campaignId);
+      await storage.updateCampaign(campaignId, { spend: Number(totalSpend.toFixed(2)).toFixed(2) as any, currency } as any);
 
       const source = await storage.createSpendSource({
         campaignId,
         sourceType: "google_sheets",
-        displayName: mapping.displayName || `${conn.spreadsheetName || "Google Sheet"}${conn.sheetName ? ` (${conn.sheetName})` : ""}`,
+        displayName: (mapping.displayName || `${conn.spreadsheetName || "Google Sheet"}${conn.sheetName ? ` (${conn.sheetName})` : ""}`) + " (to date)",
         currency,
-        mappingConfig: JSON.stringify({ ...mapping, connectionId, spreadsheetId: conn.spreadsheetId, sheetName: conn.sheetName || null }),
+        mappingConfig: JSON.stringify({ ...mapping, mode: "spend_to_date", connectionId, spreadsheetId: conn.spreadsheetId, sheetName: conn.sheetName || null }),
         isActive: true,
       } as any);
-
-      await storage.deleteSpendRecordsBySource(source.id);
-
-      const records = Array.from(grouped.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([date, total]) => ({
-          campaignId,
-          spendSourceId: source.id,
-          date,
-          spend: total.toFixed(2) as any,
-          currency,
-        }));
-
-      await storage.createSpendRecords(records as any);
-      const totalSpend = records.reduce((sum, r: any) => sum + parseFloat(String(r.spend)), 0);
 
       res.json({
         success: true,
@@ -1439,8 +1489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency,
         rowCount: rows.length,
         keptRows: kept,
-        days: records.length,
-        totalSpend: Number(totalSpend.toFixed(2)),
+        spendToDate: Number(totalSpend.toFixed(2)),
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process sheet spend" });
@@ -1945,6 +1994,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       res.status(500).json({ success: false, error: error?.message || "Failed to fetch GA4 daily metrics" });
+    }
+  });
+
+  // GA4 to-date totals (campaign lifetime) for executive financial metrics.
+  // Uses GA4 Data API directly (does not rely on the daily fact table retention window).
+  app.get("/api/campaigns/:id/ga4-to-date", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const requestedPropertyId = String(req.query.propertyId || "").trim();
+      if (!requestedPropertyId) return res.status(400).json({ success: false, error: "propertyId is required" });
+
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
+
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+
+      // Use explicit campaign startDate if set; otherwise default to campaign creation date (MetricMind campaign lifetime).
+      const startDateUsed = (() => {
+        const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
+        if (!raw) return "2000-01-01";
+        const d = new Date(raw);
+        if (Number.isNaN(d.getTime())) return "2000-01-01";
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+      })();
+
+      // Prefer the most recent COMPLETE UTC day to avoid partial "today" rows.
+      const now = new Date();
+      const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const endD = new Date(todayUtc.getTime() - 24 * 60 * 60 * 1000);
+      const endDateUsed = `${endD.getUTCFullYear()}-${String(endD.getUTCMonth() + 1).padStart(2, "0")}-${String(endD.getUTCDate()).padStart(2, "0")}`;
+
+      // Simulated mode: reuse mock generator when property is yesop/test.
+      const debug = String(req.query.debug || "").trim() === "1";
+      const mock = String(req.query.mock || "").trim() === "1";
+      const pidNormalized = normalizePropertyIdForMock(requestedPropertyId);
+      if (mock || isYesopMockProperty(pidNormalized)) {
+        // For to-date in mocks, we just sum the latest 90-day simulated daily series and label it as "to date".
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: "90days", noRevenue: false });
+        const totals = {
+          sessions: Number(sim?.totals?.sessions || 0),
+          users: Number(sim?.totals?.users || 0),
+          conversions: Number(sim?.totals?.conversions || 0),
+          revenue: Number(sim?.totals?.revenue || 0),
+        };
+        return res.json({
+          success: true,
+          propertyId: requestedPropertyId,
+          startDate: startDateUsed,
+          endDate: endDateUsed,
+          revenueMetric: "totalRevenue",
+          totals,
+          ...(debug ? { meta: { isSimulated: true } } : {}),
+        });
+      }
+
+      const connection = await storage.getGA4Connection(campaignId, requestedPropertyId);
+      if (!connection || connection.method !== "access_token" || !connection.accessToken) {
+        return res.status(404).json({ success: false, error: "No GA4 OAuth connection found for this property/campaign." });
+      }
+
+      const attempt = async (token: string) => {
+        return await ga4Service.getTotalsWithRevenue(String(connection.propertyId), token, startDateUsed, endDateUsed, campaignFilter);
+      };
+
+      try {
+        const result = await attempt(String(connection.accessToken));
+        return res.json({ success: true, propertyId: String(connection.propertyId), startDate: startDateUsed, endDate: endDateUsed, ...result });
+      } catch (e: any) {
+        const msg = String(e?.message || "");
+        const isAuth =
+          msg.includes('"code": 401') ||
+          msg.toLowerCase().includes("unauthenticated") ||
+          msg.toLowerCase().includes("invalid authentication credentials") ||
+          msg.toLowerCase().includes("request had invalid authentication credentials") ||
+          msg.toLowerCase().includes("invalid_grant") ||
+          msg.includes("401") ||
+          msg.includes("403");
+        if (isAuth && (connection as any).refreshToken) {
+          const refresh = await ga4Service.refreshAccessToken(
+            String((connection as any).refreshToken),
+            (connection as any).clientId || undefined,
+            (connection as any).clientSecret || undefined
+          );
+          await storage.updateGA4ConnectionTokens((connection as any).id, {
+            accessToken: refresh.access_token,
+            refreshToken: String((connection as any).refreshToken),
+            expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
+          });
+          const result = await attempt(String(refresh.access_token));
+          return res.json({ success: true, propertyId: String(connection.propertyId), startDate: startDateUsed, endDate: endDateUsed, ...result });
+        }
+        throw e;
+      }
+    } catch (e: any) {
+      if (e instanceof Error && (e.message === "AUTO_REFRESH_NEEDED" || (e as any).isAutoRefreshNeeded)) {
+        return res.status(401).json({
+          success: false,
+          error: "AUTO_REFRESH_NEEDED",
+          requiresReauthorization: true,
+          message: "GA4 token refresh is required. Please reconnect Google Analytics.",
+        });
+      }
+      if (e instanceof Error && (e.message === "TOKEN_EXPIRED" || (e as any).isTokenExpired)) {
+        return res.status(401).json({
+          success: false,
+          error: "TOKEN_EXPIRED",
+          requiresReauthorization: true,
+          message: "GA4 token expired. Please reconnect Google Analytics.",
+        });
+      }
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch GA4 to-date totals" });
     }
   });
 

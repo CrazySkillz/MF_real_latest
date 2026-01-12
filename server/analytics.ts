@@ -675,6 +675,67 @@ export class GoogleAnalytics4Service {
   }
 
   /**
+   * Fetch a single "to-date" totals row for a campaign filter:
+   * sessions, users, conversions, revenue (totalRevenue | purchaseRevenue).
+   *
+   * startDate: YYYY-MM-DD (inclusive)
+   * endDate: YYYY-MM-DD (inclusive) OR 'yesterday'/'today'
+   */
+  async getTotalsWithRevenue(
+    propertyId: string,
+    accessToken: string,
+    startDate: string,
+    endDate: string,
+    campaignFilter?: CampaignFilter
+  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; totals: { sessions: number; users: number; conversions: number; revenue: number } }> {
+    const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+    const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
+
+    const run = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateRanges: [{ startDate, endDate }],
+          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
+          metrics: [
+            { name: 'sessions' },
+            { name: 'totalUsers' },
+            { name: 'conversions' },
+            { name: revenueMetric },
+          ],
+        }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`GA4 API Error: ${txt}`);
+      }
+      const json = await resp.json().catch(() => ({} as any));
+      const row = (Array.isArray(json?.rows) && json.rows[0]) ? json.rows[0] : null;
+      const mv = Array.isArray(row?.metricValues) ? row.metricValues : [];
+      const sessions = parseInt(String(mv?.[0]?.value || '0'), 10) || 0;
+      const users = parseInt(String(mv?.[1]?.value || '0'), 10) || 0;
+      const conversions = parseInt(String(mv?.[2]?.value || '0'), 10) || 0;
+      const revenue = Number.parseFloat(String(mv?.[3]?.value || '0')) || 0;
+      return { revenueMetric, totals: { sessions, users, conversions, revenue: Number(revenue.toFixed(2)) } };
+    };
+
+    try {
+      return await run('totalRevenue');
+    } catch (e: any) {
+      const msg = String(e?.message || '').toLowerCase();
+      // Some properties don't allow totalRevenue; try purchaseRevenue.
+      if (msg.includes('totalrevenue') || msg.includes('metric') || msg.includes('invalid')) {
+        return await run('purchaseRevenue');
+      }
+      throw e;
+    }
+  }
+
+  /**
    * Fetches an acquisition-style breakdown matching common marketing tables:
    * Date, Channel, Source, Medium, Campaign, Device, Country, Sessions, Conversions, Revenue.
    *

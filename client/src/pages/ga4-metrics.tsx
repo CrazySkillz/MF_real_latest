@@ -1412,33 +1412,54 @@ export default function GA4Metrics() {
     users: Number(ga4Metrics?.users || 0),
   };
 
-  // Spend sources for Financial metrics (ROAS/ROI/CPA) — strict daily totals.
-  const { data: spendTotals } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/spend-daily`, ga4ReportDate],
-    enabled: !!campaignId && !!ga4ReportDate,
+  // Spend/Revenue to-date for executive financial metrics (lifetime).
+  const { data: spendToDateResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/spend-to-date`],
+    enabled: !!campaignId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 60 * 1000,
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/spend-daily?date=${encodeURIComponent(String(ga4ReportDate))}`);
-      if (!resp.ok) return { success: false, totalSpend: 0, sourceIds: [] };
-      return resp.json().catch(() => ({ success: false, totalSpend: 0, sourceIds: [] }));
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-to-date`);
+      if (!resp.ok) return { success: false, spendToDate: 0, sourceIds: [] };
+      return resp.json().catch(() => ({ success: false, spendToDate: 0, sourceIds: [] }));
     },
   });
 
-  // Revenue sources for the Revenue card when GA4 revenue is missing — strict daily totals.
-  const { data: revenueTotals } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/revenue-daily`, ga4ReportDate],
-    enabled: !!campaignId && !!ga4ReportDate,
+  const { data: ga4ToDateResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 60 * 1000,
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-daily?date=${encodeURIComponent(String(ga4ReportDate))}`);
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}`
+      );
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) {
+        // Maintain existing GA4 reconnect UX.
+        if (json?.requiresReauthorization) throw new Error(json?.message || "Google Analytics needs to be reconnected.");
+        throw new Error(json?.message || json?.error || "Failed to fetch GA4 to-date totals");
+      }
+      return json;
+    },
+  });
+
+  const { data: importedRevenueToDateResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000,
+    refetchIntervalInBackground: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-to-date`);
       if (!resp.ok) return { success: false, totalRevenue: 0, sourceIds: [] };
       return resp.json().catch(() => ({ success: false, totalRevenue: 0, sourceIds: [] }));
     },
@@ -1479,8 +1500,8 @@ export default function GA4Metrics() {
   });
 
   const spendSourceLabels = useMemo(() => {
-    const persistedSpend = Number(spendTotals?.totalSpend || 0);
-    const ids = Array.isArray(spendTotals?.sourceIds) ? spendTotals.sourceIds.map(String) : [];
+    const persistedSpend = Number(spendToDateResp?.spendToDate || 0);
+    const ids = Array.isArray(spendToDateResp?.sourceIds) ? spendToDateResp.sourceIds.map(String) : [];
     const sources = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
     const labels: string[] = [];
     for (const id of ids) {
@@ -1490,7 +1511,7 @@ export default function GA4Metrics() {
       if (label) labels.push(label);
     }
     return labels;
-  }, [spendTotals?.totalSpend, spendTotals?.sourceIds, spendSourcesResp]);
+  }, [spendToDateResp?.spendToDate, spendToDateResp?.sourceIds, spendSourcesResp]);
 
   const activeSpendSource = useMemo(() => {
     const sources = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
@@ -1501,13 +1522,13 @@ export default function GA4Metrics() {
     const sources = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
     return sources?.[0] || null;
   }, [revenueSourcesResp]);
-  const totalSpendForFinancials = Number(spendTotals?.totalSpend || 0);
+  const totalSpendForFinancials = Number(spendToDateResp?.spendToDate || 0);
   const usingAutoLinkedInSpend = false;
 
-  const importedRevenueForFinancials = Number((revenueTotals as any)?.totalRevenue || 0);
-  const ga4RevenueForFinancials = Number(breakdownTotals.revenue || ga4Metrics?.revenue || 0);
+  const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);
+  const ga4RevenueForFinancials = Number((ga4ToDateResp as any)?.totals?.revenue || 0);
   const financialRevenue = ga4RevenueForFinancials > 0 ? ga4RevenueForFinancials : importedRevenueForFinancials;
-  const financialConversions = Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0);
+  const financialConversions = Number((ga4ToDateResp as any)?.totals?.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
@@ -1527,7 +1548,7 @@ export default function GA4Metrics() {
     const name = String(kpi?.metric || kpi?.name || "").trim();
     // Use the same sources as the GA4 Overview:
     // - Revenue/Conversions/Sessions/Users from GA4 breakdown totals
-    // - Spend from spend-totals with LinkedIn fallback
+    // - Spend/Revenue for financial metrics from spend-to-date + revenue-to-date (no LinkedIn fallback)
     if (name === "Revenue") return Number(financialRevenue || 0).toFixed(2);
     if (name === "Total Conversions") return String(Math.round(Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0)));
     if (name === "Conversion Rate") {
@@ -1711,16 +1732,17 @@ export default function GA4Metrics() {
       const sessions = Number(breakdownTotals?.sessions || 0);
       const users = Number(breakdownTotals?.users || 0);
       const engagementRate = normalizeRateToPercent(Number(ga4m?.metrics?.engagementRate ?? 0));
-      const persistedSpend = Number(spendTotals?.totalSpend || 0);
-      const spend = persistedSpend;
+      const spend = Number(spendToDateResp?.spendToDate || 0);
+      const revenueToDate = Number(financialRevenue || 0);
+      const conversionsToDate = Number(financialConversions || 0);
 
-      const roas = spend > 0 ? (revenue / spend) * 100 : 0;
-      const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
-      const cpa = conversions > 0 ? spend / conversions : 0;
+      const roas = spend > 0 ? (revenueToDate / spend) * 100 : 0;
+      const roi = spend > 0 ? ((revenueToDate - spend) / spend) * 100 : 0;
+      const cpa = conversionsToDate > 0 ? spend / conversionsToDate : 0;
       const convRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
 
-      write(`Revenue: ${fmtCurrency(revenue)}`);
-      write(`Spend (for ROAS/ROI/CPA): ${fmtCurrency(spend)}`);
+      write(`Revenue (to date): ${fmtCurrency(revenueToDate)}`);
+      write(`Spend (to date): ${fmtCurrency(spend)}`);
       write(`ROAS: ${fmtPct(roas)}`);
       write(`ROI: ${fmtPct(roi)}`);
       write(`CPA: ${fmtCurrency(cpa)}`);
@@ -2609,9 +2631,9 @@ export default function GA4Metrics() {
                             <div className="mb-3">
                               <div className="flex items-start justify-between gap-3">
                                 <div>
-                                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial (Spend-based)</h4>
+                                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial (To date)</h4>
                                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                                    Spend source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} — {selectedPeriodLabel}
+                                    Spend source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} · Revenue range: {(ga4ToDateResp as any)?.startDate ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}` : "to date"}
                                   </p>
                                 </div>
                               </div>
@@ -2626,7 +2648,7 @@ export default function GA4Metrics() {
                                         ${financialSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                       </p>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                        From spend sources ({Array.isArray(spendTotals?.sourceIds) ? spendTotals.sourceIds.length : 0})
+                                        From spend sources ({Array.isArray(spendToDateResp?.sourceIds) ? spendToDateResp.sourceIds.length : 0})
                                       </p>
                                     </div>
                                     <div className="flex flex-col items-end gap-2 shrink-0">
@@ -2712,7 +2734,7 @@ export default function GA4Metrics() {
                             </p>
                             {Array.isArray(spendSourcesResp?.sources) && spendSourcesResp.sources.length > 0 && (
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                                Spend sources exist, but the spend total is <span className="font-medium">${Number(spendTotals?.totalSpend || 0).toFixed(2)}</span> for the report date (<span className="font-medium">{ga4ReportDate || "—"}</span>). This usually means your spend rows don’t include that date (or were imported for a different period).
+                                Spend sources exist, but <span className="font-medium">Spend to date</span> is <span className="font-medium">${Number(spendToDateResp?.spendToDate || 0).toFixed(2)}</span>. If this looks wrong, edit the spend source and re-import/update the total.
                               </p>
                             )}
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -2962,10 +2984,9 @@ export default function GA4Metrics() {
                       onProcessed={() => {
                         // Refresh spend immediately; invalidate broadly in case dateRange changed.
                         queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
+                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                         queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
-                        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
+                        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                       }}
                     />
 
@@ -2978,10 +2999,9 @@ export default function GA4Metrics() {
                       initialSource={activeRevenueSource || undefined}
                       onSuccess={() => {
                         queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
-                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
+                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                         queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
-                        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
-                        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
+                        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                       }}
                     />
 
@@ -3005,10 +3025,9 @@ export default function GA4Metrics() {
                                   throw new Error(json?.error || "Failed to remove spend");
                                 }
                                 queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                                 queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
-                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
+                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                               } catch (e) {
                                 // swallow; the page has other error toasts elsewhere
                                 console.error(e);
@@ -3044,7 +3063,7 @@ export default function GA4Metrics() {
                                 }
                                 queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
                                 queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
-                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                               } catch (e) {
                                 console.error(e);
                               } finally {

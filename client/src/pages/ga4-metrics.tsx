@@ -4898,6 +4898,27 @@ export default function GA4Metrics() {
                             </CardContent>
                           </Card>
                         </div>
+
+                        {/* Sources used (provenance) */}
+                        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
+                          <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Sources used</div>
+                          <div className="grid gap-1">
+                            <div>
+                              <span className="font-medium">Spend</span>: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Not connected"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Revenue</span>:{" "}
+                              {ga4HasRevenueMetric
+                                ? `GA4 revenue metric (${ga4RevenueMetricName || "totalRevenue"})`
+                                : activeRevenueSource
+                                  ? `Imported (${String((activeRevenueSource as any)?.displayName || (activeRevenueSource as any)?.sourceType || "revenue source")})`
+                                  : "Not connected"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Policy</span>: Use GA4 revenue when a GA4 revenue metric is available; otherwise fall back to imported revenue-to-date to avoid double counting.
+                            </div>
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
 
@@ -5352,13 +5373,14 @@ export default function GA4Metrics() {
                   name="targetValue"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Target Value</FormLabel>
+                      <FormLabel>Target Value *</FormLabel>
                       <FormControl>
                         <Input
                           type="text"
                           inputMode="decimal"
                           placeholder="Target goal"
                           value={field.value || ""}
+                          required
                           onChange={(e) =>
                             field.onChange(formatNumberAsYouType(e.target.value, String(kpiForm.getValues().unit || "%")))
                           }

@@ -403,8 +403,8 @@ export function HubSpotRevenueWizard(props: {
                 : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
-            {step === "revenue" && "Select the HubSpot field that represents revenue (usually Deal amount) and a lookback window."}
-            {step === "review" && ""}
+            {step === "revenue" && "Select the HubSpot field that represents revenue (usually Deal amount)."}
+            {step === "review" && "Review the settings below, then save mappings."}
             {step === "complete" && "Revenue is connected. It will be used when GA4 revenue is missing."}
           </CardDescription>
         </CardHeader>
@@ -577,7 +577,53 @@ export function HubSpotRevenueWizard(props: {
           )}
 
           {step === "review" && (
-            <div />
+            <div className="space-y-4">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4">
+                <div className="text-sm font-semibold text-slate-900 dark:text-white">Review HubSpot revenue settings</div>
+                <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  Confirm these details before saving. Revenue will be treated as <span className="font-medium">revenue-to-date</span> for this campaign.
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">HubSpot account</div>
+                    <div className="font-medium text-slate-900 dark:text-white">
+                      {portalName ? portalName : portalId ? `Portal ${portalId}` : "—"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">Revenue field</div>
+                    <div className="font-medium text-slate-900 dark:text-white">{revenuePropertyLabel}</div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">Campaign identifier field</div>
+                    <div className="font-medium text-slate-900 dark:text-white">{campaignPropertyLabel}</div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">Selected value(s)</div>
+                    <div className="font-medium text-slate-900 dark:text-white">
+                      {selectedValues.length.toLocaleString()}
+                    </div>
+                    {selectedValues.length > 0 ? (
+                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                        {selectedValues.slice(0, 6).join(", ")}
+                        {selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mt-4 text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-medium">Revenue classification</span>:{" "}
+                  {revenueClassification === "offsite_not_in_ga4"
+                    ? "Offsite (NOT tracked in GA4)"
+                    : "Onsite (also tracked in GA4)"}
+                </div>
+              </div>
+            </div>
           )}
 
           {step === "complete" && (

@@ -1036,9 +1036,6 @@ export function AddRevenueWizardModal(props: {
                           <div className="text-xs text-slate-600 dark:text-slate-400">
                             Rows detected: <span className="font-medium">{sheetsPreview.rowCount.toLocaleString()}</span>
                           </div>
-                          <Button variant="outline" size="sm" onClick={() => void handleSheetsPreview()} disabled={!sheetsConnectionId || sheetsProcessing}>
-                            {sheetsProcessing ? "Refreshing…" : "Refresh preview"}
-                          </Button>
                         </div>
 
                         {/* Preview table */}

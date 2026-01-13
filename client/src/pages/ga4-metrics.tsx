@@ -913,7 +913,28 @@ export default function GA4Metrics() {
     });
   };
 
+  const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
+    queryKey: ["/api/campaigns", campaignId],
+    enabled: !!campaignId,
+  });
+
   // Helper functions for KPI display
+  const campaignCurrency = String((campaign as any)?.currency || "USD");
+  const formatMoney = (n: number) => {
+    const num = Number(n || 0);
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: campaignCurrency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(num);
+    } catch {
+      // Fallback: show code + numeric value (never silently wrong symbol).
+      return `${campaignCurrency} ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+  };
+
   const formatValue = (value: string, unit: string) => {
     const numValue = parseFloat(value);
     switch (unit) {
@@ -921,12 +942,7 @@ export default function GA4Metrics() {
         return `${numValue.toFixed(2)}%`;
       case "$": {
         // Legacy stored KPIs may use "$" as the unit; render using the campaign's configured currency.
-        const currency = String((campaign as any)?.currency || "USD");
-        try {
-          return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numValue);
-        } catch {
-          return `$${numValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        }
+        return formatMoney(numValue);
       }
       case "ratio":
         return `${numValue.toFixed(2)}x`;
@@ -995,12 +1011,7 @@ export default function GA4Metrics() {
         return `${numValue.toFixed(1)}%`;
       case "$": {
         // Legacy stored Benchmarks may use "$" as the unit; render using the campaign's configured currency.
-        const currency = String((campaign as any)?.currency || "USD");
-        try {
-          return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numValue);
-        } catch {
-          return `$${numValue.toLocaleString()}`;
-        }
+        return formatMoney(numValue);
       }
       case "ratio":
         return `${numValue.toFixed(2)}:1`;
@@ -1019,11 +1030,6 @@ export default function GA4Metrics() {
         return numValue.toLocaleString();
     }
   };
-
-  const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
-    queryKey: ["/api/campaigns", campaignId],
-    enabled: !!campaignId,
-  });
 
   const selectedGa4CampaignFilterList = useMemo(() => {
     return parseStoredGa4CampaignFilter((campaign as any)?.ga4CampaignFilter);
@@ -2104,7 +2110,7 @@ export default function GA4Metrics() {
         id: "financial:spend_no_revenue",
         severity: "high",
         title: "Spend recorded, but revenue is $0 to date",
-        description: `Spend-to-date is $${Number(financialSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, but revenue-to-date is $0 (${toDateRangeLabel}).`,
+        description: `Spend-to-date is ${formatMoney(Number(financialSpend || 0))}, but revenue-to-date is ${formatMoney(0)} (${toDateRangeLabel}).`,
         recommendation: ga4RevenueForFinancials > 0
           ? "Verify GA4 revenue tracking and conversion configuration for this campaign filter."
           : "Connect a GA4 revenue metric if available, or import revenue from HubSpot/Salesforce/Shopify/Sheets/CSV for accurate ROI/ROAS.",
@@ -2116,7 +2122,7 @@ export default function GA4Metrics() {
         id: "financial:revenue_no_spend",
         severity: "medium",
         title: "Revenue exists, but spend is $0 to date",
-        description: `Revenue-to-date is $${Number(financialRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${toDateRangeLabel}), but spend-to-date is $0.`,
+        description: `Revenue-to-date is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}), but spend-to-date is ${formatMoney(0)}.`,
         recommendation: "Import spend-to-date for this campaign so ROI/ROAS/CPA reflect actual performance.",
       });
     }
@@ -2793,7 +2799,7 @@ export default function GA4Metrics() {
                               <div>
                                 <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue</p>
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  ${Number(financialRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  {formatMoney(Number(financialRevenue || 0))}
                                 </p>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                   {ga4HasRevenueMetric ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
@@ -2896,7 +2902,7 @@ export default function GA4Metrics() {
                                     <div>
                                       <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</p>
                                       <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        ${financialSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        {formatMoney(Number(financialSpend || 0))}
                                       </p>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                         From spend sources ({Array.isArray(spendToDateResp?.sourceIds) ? spendToDateResp.sourceIds.length : 0})
@@ -2967,7 +2973,7 @@ export default function GA4Metrics() {
                                     <div>
                                       <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
                                       <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {Number(financialConversions || 0) > 0 ? `$${financialCPA.toFixed(2)}` : "—"}
+                                        {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
                                       </p>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                         Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions-to-date > 0)" : ""}
@@ -2987,7 +2993,8 @@ export default function GA4Metrics() {
                             </p>
                             {Array.isArray(spendSourcesResp?.sources) && spendSourcesResp.sources.length > 0 && (
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                                Spend sources exist, but <span className="font-medium">Spend to date</span> is <span className="font-medium">${Number(spendToDateResp?.spendToDate || 0).toFixed(2)}</span>. If this looks wrong, edit the spend source and re-import/update the total.
+                                Spend sources exist, but <span className="font-medium">Spend to date</span> is{" "}
+                                <span className="font-medium">{formatMoney(Number(spendToDateResp?.spendToDate || 0))}</span>. If this looks wrong, edit the spend source and re-import/update the total.
                               </p>
                             )}
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -3049,7 +3056,7 @@ export default function GA4Metrics() {
                                           <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
                                           <td className="p-3 text-right">{formatPercentage(cr)}</td>
                                           <td className="p-3 text-right">
-                                            ${Number(r?.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                          {formatMoney(Number(r?.revenue || 0))}
                                           </td>
                                         </tr>
                                       );
@@ -3099,7 +3106,7 @@ export default function GA4Metrics() {
                                       <td className="p-3 text-right">{formatNumber(Number(r?.eventCount || 0))}</td>
                                       <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
                                       <td className="p-3 text-right">
-                                        ${Number(r?.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        {formatMoney(Number(r?.revenue || 0))}
                                       </td>
                                     </tr>
                                   ))}
@@ -3440,7 +3447,7 @@ export default function GA4Metrics() {
                                         <td className="px-3 py-2 text-right tabular-nums">{formatNumber(Number(r.users || 0))}</td>
                                         <td className="px-3 py-2 text-right tabular-nums">{formatNumber(Number(r.conversions || 0))}</td>
                                         <td className="px-3 py-2 text-right tabular-nums">
-                                          ${Number(r.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                          {formatMoney(Number(r.revenue || 0))}
                                         </td>
                                       </tr>
                                     ))}
@@ -4872,7 +4879,7 @@ export default function GA4Metrics() {
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend (to date)</div>
                               <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                                ${Number(financialSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {formatMoney(Number(financialSpend || 0))}
                               </div>
                               <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                 Source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
@@ -4883,7 +4890,7 @@ export default function GA4Metrics() {
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue (to date)</div>
                               <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                                ${Number(financialRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {formatMoney(Number(financialRevenue || 0))}
                               </div>
                               <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                 {ga4HasRevenueMetric ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
@@ -4995,7 +5002,7 @@ export default function GA4Metrics() {
                                       </td>
                                       <td className="p-3 text-right">
                                         <div className="font-medium text-slate-900 dark:text-white">
-                                          ${Number(row.cur.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                          {formatMoney(Number(row.cur.revenue || 0))}
                                         </div>
                                         <div className={`text-xs ${deltaColor(revDelta)}`}>{fmtDelta(revDelta)}</div>
                                       </td>
@@ -5997,3 +6004,4 @@ export default function GA4Metrics() {
     </div>
   );
 }
+ 

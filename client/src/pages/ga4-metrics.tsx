@@ -608,6 +608,10 @@ export default function GA4Metrics() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...benchmarkData,
+          // Enterprise-grade: benchmarks are campaign-scoped by default.
+          // Platform-level (campaignId=null) benchmarks are treated as "library/templates" and should not
+          // appear as active benchmarks inside a newly created campaign.
+          campaignId: String(campaignId || ""),
           platformType: "google_analytics",
           period: "monthly",
           status: "active"
@@ -617,7 +621,7 @@ export default function GA4Metrics() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
       setShowCreateBenchmark(false);
       setSelectedBenchmarkTemplate(null);
       setEditingBenchmark(null);
@@ -648,6 +652,7 @@ export default function GA4Metrics() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
+          campaignId: String(campaignId || ""),
           platformType: "google_analytics",
           period: "monthly",
           status: "active",
@@ -657,7 +662,7 @@ export default function GA4Metrics() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
       setShowCreateBenchmark(false);
       setSelectedBenchmarkTemplate(null);
       setEditingBenchmark(null);
@@ -690,7 +695,7 @@ export default function GA4Metrics() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
       toast({ title: "Benchmark deleted successfully" });
     },
     onError: (error) => {
@@ -1119,11 +1124,12 @@ export default function GA4Metrics() {
     },
   });
 
-  // Fetch platform benchmarks
+  // Fetch campaign-scoped benchmarks only (new campaigns should start empty).
   const { data: benchmarks = [], isLoading: benchmarksLoading } = useQuery<Benchmark[]>({
-    queryKey: [`/api/platforms/google_analytics/benchmarks`],
+    queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")],
+    enabled: !!campaignId,
     queryFn: async () => {
-      const response = await fetch(`/api/platforms/google_analytics/benchmarks`);
+      const response = await fetch(`/api/platforms/google_analytics/benchmarks?campaignId=${encodeURIComponent(String(campaignId || ""))}`);
       if (!response.ok) throw new Error("Failed to fetch benchmarks");
       return response.json();
     },

@@ -975,9 +975,6 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
               )}
 
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" className="flex-1" onClick={() => setShowGA4CampaignSelector(false)}>
-                  Skip
-                </Button>
                 <Button className="flex-1" onClick={saveGA4CampaignFilter} disabled={isGA4CampaignLoading}>
                   Save
                 </Button>

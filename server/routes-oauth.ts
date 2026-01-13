@@ -2104,6 +2104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
 
       // Use explicit campaign startDate if set; otherwise default to campaign creation date (MetricMind campaign lifetime).
       const startDateUsed = (() => {
@@ -2145,7 +2146,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const connection = await storage.getGA4Connection(campaignId, requestedPropertyId);
+      // Be liberal in what we accept: stored GA4 connections and UI may use either:
+      // - "498536418" OR "properties/498536418"
+      // Normalize + try both to avoid silent 0s / missing to-date totals.
+      const normalized = normalizePropertyIdForMock(requestedPropertyId);
+      const candidates = Array.from(new Set([
+        requestedPropertyId,
+        normalized,
+        normalized ? `properties/${normalized}` : "",
+      ].filter(Boolean)));
+      let connection: any = null;
+      for (const pid of candidates) {
+        connection = await storage.getGA4Connection(campaignId, pid).catch(() => null as any);
+        if (connection) break;
+      }
       if (!connection || connection.method !== "access_token" || !connection.accessToken) {
         return res.status(404).json({ success: false, error: "No GA4 OAuth connection found for this property/campaign." });
       }

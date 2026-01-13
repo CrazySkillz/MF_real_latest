@@ -1535,6 +1535,29 @@ export default function GA4Metrics() {
     const ga4RevenueMetric = String((ga4ToDateResp as any)?.totals?.revenueMetric || "").trim();
     return !!activeRevenueSource || !!ga4RevenueMetric;
   }, [activeRevenueSource, ga4ToDateResp]);
+
+  const getMissingDependenciesForMetric = (metricKey: string) => {
+    const key = String(metricKey || "").trim();
+    const lower = key.toLowerCase();
+    // KPI templates use display names ("ROAS"), while Benchmarks use metric keys ("roas").
+    const m =
+      lower === "roas" || key === "ROAS"
+        ? "roas"
+        : lower === "roi" || key === "ROI"
+          ? "roi"
+          : lower === "cpa" || key === "CPA"
+            ? "cpa"
+            : lower === "revenue" || key === "Revenue"
+              ? "revenue"
+              : lower;
+
+    const requiresSpend = m === "roas" || m === "roi" || m === "cpa";
+    const requiresRevenue = m === "roas" || m === "roi" || m === "revenue";
+    const missing: Array<"Spend" | "Revenue"> = [];
+    if (requiresSpend && !spendMetricAvailable) missing.push("Spend");
+    if (requiresRevenue && !revenueMetricAvailable) missing.push("Revenue");
+    return { requiresSpend, requiresRevenue, missing };
+  };
   const totalSpendForFinancials = Number(spendToDateResp?.spendToDate || 0);
   const usingAutoLinkedInSpend = false;
 
@@ -1806,6 +1829,11 @@ export default function GA4Metrics() {
       write("KPIs Snapshot", 13, true);
       const items = Array.isArray(platformKPIs) ? platformKPIs : [];
       for (const k of items) {
+        const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
+        if (deps.missing.length > 0) {
+          write(`${String(k?.name || "")} • Blocked (missing ${deps.missing.join(" + ")})`, 10);
+          continue;
+        }
         const p = computeKpiProgress(k);
         const t = getKpiEffectiveTarget(k);
         const statusLabel = p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
@@ -1825,6 +1853,11 @@ export default function GA4Metrics() {
       write("Benchmarks Snapshot", 13, true);
       const items = Array.isArray(benchmarks) ? benchmarks : [];
       for (const b of items) {
+        const deps = getMissingDependenciesForMetric(String((b as any)?.metric || ""));
+        if (deps.missing.length > 0) {
+          write(`${String((b as any)?.name || "")} • Blocked (missing ${deps.missing.join(" + ")})`, 10);
+          continue;
+        }
         const p = computeBenchmarkProgress(b);
         const statusLabel = p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
         const currentLive = getBenchmarkDisplayCurrentValue(b);
@@ -1893,9 +1926,16 @@ export default function GA4Metrics() {
     let onTrack = 0;
     let needsAttention = 0;
     let behind = 0;
+    let blocked = 0;
     let sumPct = 0;
 
     for (const kpi of items) {
+      const metricKey = String((kpi as any)?.metric || (kpi as any)?.name || "");
+      const deps = getMissingDependenciesForMetric(metricKey);
+      if (deps.missing.length > 0) {
+        blocked += 1;
+        continue; // do NOT score blocked KPIs (missing inputs ≠ poor performance)
+      }
       const target = parseFloat(String((kpi as any)?.targetValue || "0"));
       if (!Number.isFinite(target) || target <= 0) continue; // can't score without a target
       const p = computeKpiProgress(kpi);
@@ -1913,10 +1953,11 @@ export default function GA4Metrics() {
       onTrack,
       needsAttention,
       behind,
+      blocked,
       avgPct,
     };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
-  }, [platformKPIs, breakdownTotals, ga4Metrics, financialSpend]);
+  }, [platformKPIs, breakdownTotals, ga4Metrics, financialSpend, spendMetricAvailable, revenueMetricAvailable]);
 
   const benchmarkTracker = useMemo(() => {
     const items = Array.isArray(benchmarks) ? benchmarks : [];
@@ -1924,9 +1965,16 @@ export default function GA4Metrics() {
     let onTrack = 0;
     let needsAttention = 0;
     let behind = 0;
+    let blocked = 0;
     let sumPct = 0;
 
     for (const b of items) {
+      const metricKey = String((b as any)?.metric || "");
+      const deps = getMissingDependenciesForMetric(metricKey);
+      if (deps.missing.length > 0) {
+        blocked += 1;
+        continue; // do NOT score blocked benchmarks (missing inputs ≠ poor performance)
+      }
       const bench = parseFloat(stripNumberFormatting(String((b as any)?.benchmarkValue || "0")));
       if (!Number.isFinite(bench) || bench <= 0) continue;
       const p = computeBenchmarkProgress(b);
@@ -1938,8 +1986,8 @@ export default function GA4Metrics() {
     }
 
     const avgPct = scored > 0 ? sumPct / scored : 0;
-    return { total: items.length, scored, onTrack, needsAttention, behind, avgPct };
-  }, [benchmarks]);
+    return { total: items.length, scored, onTrack, needsAttention, behind, blocked, avgPct };
+  }, [benchmarks, spendMetricAvailable, revenueMetricAvailable]);
 
   type InsightItem = {
     id: string;
@@ -1959,7 +2007,80 @@ export default function GA4Metrics() {
         ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}`
         : "to date";
 
-    if (Number(financialSpend || 0) > 0 && Number(financialRevenue || 0) <= 0) {
+    // 0a) Data integrity alerts for blocked KPIs/Benchmarks (missing spend/revenue inputs)
+    const blockedKpis = (Array.isArray(platformKPIs) ? platformKPIs : [])
+      .map((k: any) => {
+        const metricKey = String((k as any)?.metric || (k as any)?.name || "");
+        const deps = getMissingDependenciesForMetric(metricKey);
+        return deps.missing.length > 0 ? { k, missing: deps.missing } : null;
+      })
+      .filter(Boolean) as Array<{ k: any; missing: Array<"Spend" | "Revenue"> }>;
+
+    const blockedBenchmarks = (Array.isArray(benchmarks) ? benchmarks : [])
+      .map((b: any) => {
+        const metricKey = String((b as any)?.metric || "");
+        const deps = getMissingDependenciesForMetric(metricKey);
+        return deps.missing.length > 0 ? { b, missing: deps.missing } : null;
+      })
+      .filter(Boolean) as Array<{ b: any; missing: Array<"Spend" | "Revenue"> }>;
+
+    for (const item of blockedKpis) {
+      const name = String(item.k?.name || item.k?.metric || "KPI");
+      const missingLabel = item.missing.join(" + ");
+      out.push({
+        id: `integrity:kpi_blocked:${String(item.k?.id || name)}`,
+        severity: "high",
+        title: `KPI paused: missing ${missingLabel}`,
+        description: `"${name}" cannot be evaluated because ${missingLabel} is not connected for this campaign. Showing 0 would be misleading, so this KPI is marked Blocked until inputs are restored.`,
+        recommendation:
+          item.missing.includes("Revenue") && item.missing.includes("Spend")
+            ? "Add both Spend and Revenue sources to resume KPI evaluation."
+            : item.missing.includes("Revenue")
+              ? "Add a GA4 revenue metric (if available) or import revenue (HubSpot/Sheets/CSV) to resume KPI evaluation."
+              : "Add spend-to-date to resume KPI evaluation.",
+      });
+    }
+
+    for (const item of blockedBenchmarks) {
+      const name = String(item.b?.name || item.b?.metric || "Benchmark");
+      const missingLabel = item.missing.join(" + ");
+      out.push({
+        id: `integrity:bench_blocked:${String(item.b?.id || name)}`,
+        severity: "high",
+        title: `Benchmark paused: missing ${missingLabel}`,
+        description: `"${name}" cannot be evaluated because ${missingLabel} is not connected for this campaign. Restore inputs to resume accurate benchmark tracking.`,
+        recommendation:
+          item.missing.includes("Revenue") && item.missing.includes("Spend")
+            ? "Add both Spend and Revenue sources to resume benchmark tracking."
+            : item.missing.includes("Revenue")
+              ? "Add a GA4 revenue metric (if available) or import revenue to resume benchmark tracking."
+              : "Add spend-to-date to resume benchmark tracking.",
+      });
+    }
+
+    // 0b) Executive financial integrity checks (to-date / lifetime)
+    // These should update immediately when a user imports Spend/Revenue, even if no KPIs/Benchmarks exist yet.
+    // IMPORTANT: distinguish "missing configuration" from true zeros (enterprise-grade reliability).
+    if (spendMetricAvailable && !revenueMetricAvailable) {
+      out.push({
+        id: "financial:revenue_missing",
+        severity: "high",
+        title: "Revenue is not connected",
+        description: "Revenue is not configured for this campaign, so ROI/ROAS and revenue-based KPIs/Benchmarks are blocked until a revenue source is added.",
+        recommendation: "Connect a GA4 revenue metric if available, or import revenue from HubSpot/Salesforce/Shopify/Sheets/CSV.",
+      });
+    }
+    if (revenueMetricAvailable && !spendMetricAvailable) {
+      out.push({
+        id: "financial:spend_missing",
+        severity: "high",
+        title: "Spend is not connected",
+        description: "Spend is not configured for this campaign, so ROI/ROAS/CPA and spend-based KPIs/Benchmarks are blocked until a spend source is added.",
+        recommendation: "Import spend-to-date (CSV/Sheets/manual) to enable spend-based executive metrics.",
+      });
+    }
+
+    if (spendMetricAvailable && revenueMetricAvailable && Number(financialSpend || 0) > 0 && Number(financialRevenue || 0) <= 0) {
       out.push({
         id: "financial:spend_no_revenue",
         severity: "high",
@@ -1971,7 +2092,7 @@ export default function GA4Metrics() {
       });
     }
 
-    if (Number(financialSpend || 0) <= 0 && Number(financialRevenue || 0) > 0) {
+    if (spendMetricAvailable && revenueMetricAvailable && Number(financialSpend || 0) <= 0 && Number(financialRevenue || 0) > 0) {
       out.push({
         id: "financial:revenue_no_spend",
         severity: "medium",
@@ -2025,6 +2146,8 @@ export default function GA4Metrics() {
 
     // 1) Actionable insights from KPI performance
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
+      const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
+      if (deps.missing.length > 0) continue; // blocked KPIs are handled in integrity checks above
       const p = computeKpiProgress(k);
       const status = String(p?.status || "");
       if (status !== "behind" && status !== "needs_attention") continue;
@@ -2081,6 +2204,8 @@ export default function GA4Metrics() {
 
     // 2) Actionable insights from Benchmark performance
     for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
+      const deps = getMissingDependenciesForMetric(String((b as any)?.metric || ""));
+      if (deps.missing.length > 0) continue; // blocked benchmarks are handled in integrity checks above
       const p = computeBenchmarkProgress(b);
       const status = String(p?.status || "");
       if (status !== "behind" && status !== "needs_attention") continue;
@@ -3726,6 +3851,28 @@ export default function GA4Metrics() {
                             </Card>
                           </div>
 
+                          {kpiTracker.blocked > 0 ? (
+                            <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-slate-900 dark:text-white">Some KPIs are Blocked</div>
+                                  <div className="text-sm text-slate-700 dark:text-slate-300 mt-1">
+                                    {kpiTracker.blocked} KPI{kpiTracker.blocked === 1 ? "" : "s"} can’t be evaluated because Spend and/or Revenue was removed.
+                                    Blocked KPIs are excluded from performance scoring to avoid misleading executives.
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
+                                    Add Spend
+                                  </Button>
+                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
+                                    Add Revenue
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+
                           {platformKPIs.length === 0 ? (
                             <div className="text-center text-slate-500 dark:text-slate-400 py-8">
                               <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
@@ -3737,18 +3884,26 @@ export default function GA4Metrics() {
                           ) : (
                             <div className="grid gap-4 md:grid-cols-2">
                               {platformKPIs.map((kpi: any) => {
-                              const p = computeKpiProgress(kpi);
+                              const deps = getMissingDependenciesForMetric(String(kpi?.metric || kpi?.name || ""));
+                              const isBlocked = deps.missing.length > 0;
+                              const p = isBlocked ? null : computeKpiProgress(kpi);
                               const t = getKpiEffectiveTarget(kpi);
                               const metricKey = String(kpi?.metric || kpi?.name || "");
                               const { Icon, color } = getKpiIcon(metricKey);
-                              const statusLabel =
-                                p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
-                              const statusColor =
-                                p.status === "on_track"
+                              const statusLabel = isBlocked
+                                ? "Blocked"
+                                : p!.status === "on_track"
+                                  ? "On Track"
+                                  : p!.status === "needs_attention"
+                                    ? "Needs Attention"
+                                    : "Behind";
+                              const statusColor = isBlocked
+                                ? "text-slate-700 dark:text-slate-300"
+                                : p!.status === "on_track"
                                   ? "text-emerald-700 dark:text-emerald-300"
-                                  : p.status === "needs_attention"
-                                  ? "text-amber-700 dark:text-amber-300"
-                                  : "text-red-700 dark:text-red-300";
+                                  : p!.status === "needs_attention"
+                                    ? "text-amber-700 dark:text-amber-300"
+                                    : "text-red-700 dark:text-red-300";
 
                               return (
                                 <Card key={kpi.id} className="border-slate-200 dark:border-slate-700">
@@ -3822,7 +3977,7 @@ export default function GA4Metrics() {
                                       <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
                                         <div className="text-xs text-slate-500 dark:text-slate-400">Current</div>
                                         <div className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
-                                          {formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
+                                          {isBlocked ? "—" : formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
                                         </div>
                                       </div>
                                       <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
@@ -3836,14 +3991,34 @@ export default function GA4Metrics() {
                                     <div className="mt-4">
                                       <div className="flex items-center justify-between text-sm">
                                         <span className="text-slate-700 dark:text-slate-300">Progress</span>
-                                        <span className="text-slate-700 dark:text-slate-300">{p.labelPct}%</span>
+                                        <span className="text-slate-700 dark:text-slate-300">{isBlocked ? "—" : `${p!.labelPct}%`}</span>
                                       </div>
                                       <div className="mt-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
-                                        <div className={`h-2.5 rounded-full ${p.color}`} style={{ width: `${p.pct}%` }} />
+                                        <div
+                                          className={`h-2.5 rounded-full ${isBlocked ? "bg-slate-400" : p!.color}`}
+                                          style={{ width: `${isBlocked ? 0 : p!.pct}%` }}
+                                        />
                                       </div>
                                       <div className={`mt-3 text-sm font-medium ${statusColor}`}>
                                         {statusLabel}
                                       </div>
+                                      {isBlocked ? (
+                                        <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                                          Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This KPI is paused until inputs are restored.
+                                          <div className="mt-2 flex items-center gap-2">
+                                            {deps.missing.includes("Spend") ? (
+                                              <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
+                                                Add Spend
+                                              </Button>
+                                            ) : null}
+                                            {deps.missing.includes("Revenue") ? (
+                                              <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
+                                                Add Revenue
+                                              </Button>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                      ) : null}
                                     </div>
                                   </CardContent>
                                 </Card>
@@ -4331,6 +4506,28 @@ export default function GA4Metrics() {
                             </Card>
                           </div>
 
+                          {benchmarkTracker.blocked > 0 ? (
+                            <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-slate-900 dark:text-white">Some Benchmarks are Blocked</div>
+                                  <div className="text-sm text-slate-700 dark:text-slate-300 mt-1">
+                                    {benchmarkTracker.blocked} benchmark{benchmarkTracker.blocked === 1 ? "" : "s"} can’t be evaluated because Spend and/or Revenue was removed.
+                                    Blocked benchmarks are excluded from performance scoring to avoid misleading executives.
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
+                                    Add Spend
+                                  </Button>
+                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
+                                    Add Revenue
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+
                           {benchmarks && benchmarks.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {benchmarks.map((benchmark) => (
@@ -4383,11 +4580,39 @@ export default function GA4Metrics() {
                                   <div className="flex justify-between items-center">
                                     <span className="text-sm text-slate-600 dark:text-slate-400">Current</span>
                                     <span className="font-medium text-slate-900 dark:text-white">
-                                      {formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}
+                                      {(() => {
+                                        const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
+                                        const isBlocked = deps.missing.length > 0;
+                                        return isBlocked ? "—" : formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit);
+                                      })()}
                                     </span>
                                   </div>
 
                                   {(() => {
+                                    const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
+                                    const isBlocked = deps.missing.length > 0;
+                                    if (isBlocked) {
+                                      return (
+                                        <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-3">
+                                          <div className="text-sm font-medium text-slate-900 dark:text-white">Blocked</div>
+                                          <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                            Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. Restore inputs to resume accurate tracking.
+                                          </div>
+                                          <div className="mt-2 flex items-center gap-2">
+                                            {deps.missing.includes("Spend") ? (
+                                              <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
+                                                Add Spend
+                                              </Button>
+                                            ) : null}
+                                            {deps.missing.includes("Revenue") ? (
+                                              <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
+                                                Add Revenue
+                                              </Button>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                      );
+                                    }
                                     const bench = parseFloat(stripNumberFormatting(String((benchmark as any)?.benchmarkValue || "0")));
                                     if (!Number.isFinite(bench) || bench <= 0) return null;
                                     const p = computeBenchmarkProgress(benchmark);

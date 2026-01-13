@@ -642,6 +642,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const forceMock = String((req.query as any)?.mock || "").trim() === "1";
+      const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
+      const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
 
       // Lifetime start date: prefer explicit campaign startDate, fall back to createdAt for dev/test.
       const startDate =
@@ -650,6 +653,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "2020-01-01";
 
       const endDate = yesterdayUTC();
+
+      // Demo/testing properties (e.g., yesop) should behave consistently across daily rollups and lifetime totals.
+      if (shouldSimulate) {
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: "90days", noRevenue });
+        const series = Array.isArray((sim as any)?.timeSeries) ? (sim as any).timeSeries : [];
+        const first = series[0]?.date ? String(series[0].date) : startDate;
+        const last = series[series.length - 1]?.date ? String(series[series.length - 1].date) : endDate;
+        const totals = (sim as any)?.totals || {};
+        return res.json({
+          success: true,
+          propertyId: requestedPropertyId,
+          startDate: first,
+          endDate: last,
+          isSimulated: true,
+          totals: {
+            revenue: Number(parseFloat(String(totals.revenue || 0)).toFixed(2)),
+            conversions: Math.round(Number(totals.conversions || 0)),
+            users: Math.round(Number(totals.users || 0)),
+            sessions: Math.round(Number(totals.sessions || 0)),
+            pageviews: Math.round(Number(totals.pageviews || 0)),
+            revenueMetric: "totalRevenue",
+          },
+        });
+      }
 
       const series = await ga4Service.getTimeSeriesData(campaignId, storage, startDate, requestedPropertyId, campaignFilter);
       const rows = Array.isArray(series) ? series : [];

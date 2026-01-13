@@ -1430,7 +1430,7 @@ export default function GA4Metrics() {
     },
   });
 
-  const { data: ga4ToDateResp } = useQuery<any>({
+  const { data: ga4ToDateResp, error: ga4ToDateError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
@@ -1563,7 +1563,11 @@ export default function GA4Metrics() {
 
   const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);
   const ga4RevenueForFinancials = Number((ga4ToDateResp as any)?.totals?.revenue || 0);
-  const financialRevenue = ga4RevenueForFinancials > 0 ? ga4RevenueForFinancials : importedRevenueForFinancials;
+  const ga4RevenueMetricName = String((ga4ToDateResp as any)?.totals?.revenueMetric || "").trim();
+  const ga4HasRevenueMetric = !!ga4RevenueMetricName;
+  // Enterprise policy: prefer GA4 revenue when a GA4 revenue metric is configured (even if it's 0).
+  // Only fall back to imported revenue when GA4 revenue metric is not configured/available.
+  const financialRevenue = ga4HasRevenueMetric ? ga4RevenueForFinancials : importedRevenueForFinancials;
   const financialConversions = Number((ga4ToDateResp as any)?.totals?.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
@@ -2061,6 +2065,15 @@ export default function GA4Metrics() {
     // 0b) Executive financial integrity checks (to-date / lifetime)
     // These should update immediately when a user imports Spend/Revenue, even if no KPIs/Benchmarks exist yet.
     // IMPORTANT: distinguish "missing configuration" from true zeros (enterprise-grade reliability).
+    if (ga4ToDateError) {
+      out.push({
+        id: "financial:ga4_to_date_unavailable",
+        severity: "high",
+        title: "GA4 lifetime totals are unavailable",
+        description: "We couldn’t fetch GA4 to-date totals for this campaign/property, so revenue/conversion-based executive metrics may be incomplete.",
+        recommendation: "Reconnect GA4 for this campaign, then refresh. If the issue persists, verify OAuth scopes and property access.",
+      });
+    }
     if (spendMetricAvailable && !revenueMetricAvailable) {
       out.push({
         id: "financial:revenue_missing",
@@ -2125,17 +2138,17 @@ export default function GA4Metrics() {
       }
     }
 
-    if (Number(ga4RevenueForFinancials || 0) <= 0 && Number(importedRevenueForFinancials || 0) > 0) {
+    if (!ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0) {
       out.push({
         id: "financial:using_imported_revenue",
         severity: "low",
         title: "Using imported revenue for financials",
-        description: `GA4 revenue is 0, so financials use imported revenue-to-date (${toDateRangeLabel}) to avoid showing misleading $0 revenue.`,
+        description: `GA4 revenue metric is not available for this property, so financials use imported revenue-to-date (${toDateRangeLabel}) to avoid showing misleading $0 revenue.`,
         recommendation: "If GA4 has a valid revenue metric for this property, connect it to reduce manual upkeep; otherwise keep your CRM/ecommerce import current.",
       });
     }
 
-    if (Number(ga4RevenueForFinancials || 0) > 0 && Number(importedRevenueForFinancials || 0) > 0) {
+    if (ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0) {
       out.push({
         id: "financial:ga4_revenue_present_import_ignored",
         severity: "low",
@@ -2777,16 +2790,16 @@ export default function GA4Metrics() {
                                   ${Number(financialRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  {ga4RevenueForFinancials > 0 ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
+                                  {ga4HasRevenueMetric ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
                                 </p>
-                                {ga4RevenueForFinancials <= 0 && !activeRevenueSource && (
+                                {!ga4HasRevenueMetric && !activeRevenueSource && (
                                   <Button variant="outline" size="sm" className="mt-3" onClick={() => setShowRevenueDialog(true)}>
                                     Add revenue source
                                   </Button>
                                 )}
                               </div>
                               <div className="flex flex-col items-end gap-2 shrink-0">
-                                {ga4RevenueForFinancials <= 0 && activeRevenueSource ? (
+                                {!ga4HasRevenueMetric && activeRevenueSource ? (
                                   <div className="flex items-center gap-1">
                                     <Button
                                       variant="ghost"
@@ -4862,7 +4875,7 @@ export default function GA4Metrics() {
                                 ${Number(financialRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </div>
                               <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                {ga4RevenueForFinancials > 0 ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
+                                {ga4HasRevenueMetric ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
                               </div>
                             </CardContent>
                           </Card>

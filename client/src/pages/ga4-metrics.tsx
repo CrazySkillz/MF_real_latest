@@ -2792,6 +2792,11 @@ export default function GA4Metrics() {
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                   {ga4HasRevenueMetric ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
                                 </p>
+                                {ga4HasRevenueMetric && activeRevenueSource ? (
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Imported revenue source is connected but <span className="font-medium">ignored</span> for platform financials (GA4 revenue metric is active).
+                                  </p>
+                                ) : null}
                                 {!ga4HasRevenueMetric && !activeRevenueSource && (
                                   <Button variant="outline" size="sm" className="mt-3" onClick={() => setShowRevenueDialog(true)}>
                                     Add revenue source
@@ -2799,7 +2804,7 @@ export default function GA4Metrics() {
                                 )}
                               </div>
                               <div className="flex flex-col items-end gap-2 shrink-0">
-                                {!ga4HasRevenueMetric && activeRevenueSource ? (
+                                {activeRevenueSource ? (
                                   <div className="flex items-center gap-1">
                                     <Button
                                       variant="ghost"

@@ -195,7 +195,8 @@ export function AddSpendWizardModal(props: {
     let mounted = true;
     (async () => {
       try {
-        const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections`);
+        // Only load Spend-purpose connections for this modal (avoid pre-filling from Revenue connections).
+        const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections?purpose=spend`);
         if (!resp.ok) return;
         const json = await resp.json().catch(() => null);
         const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
@@ -380,7 +381,12 @@ export function AddSpendWizardModal(props: {
         body: JSON.stringify({ connectionId: selectedSheetConnectionId }),
       });
       const json = await resp.json().catch(() => null);
-      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to preview sheet");
+      if (!resp.ok || !json?.success) {
+        if (json?.requiresReauthorization || String(json?.error || "").includes("UNAUTHENTICATED")) {
+          throw new Error("Google Sheets needs to be reconnected. Click “Change sheet/tab” to reconnect.");
+        }
+        throw new Error(json?.error || "Failed to preview sheet");
+      }
       setSheetsPreview(json);
       setCsvPreview({ success: true, fileName: `${json.spreadsheetName || "Google Sheet"}`, headers: json.headers, sampleRows: json.sampleRows, rowCount: json.rowCount });
       setStep("sheets_map");
@@ -589,7 +595,26 @@ export function AddSpendWizardModal(props: {
                 <Button type="button" variant={mode === "paste" ? "default" : "outline"} onClick={() => setMode("paste")}>
                   Paste table (Excel / Sheets)
                 </Button>
-                <Button type="button" variant={mode === "google_sheets" ? "default" : "outline"} onClick={() => setMode("google_sheets")}>
+                <Button
+                  type="button"
+                  variant={mode === "google_sheets" ? "default" : "outline"}
+                  onClick={() => {
+                    // UX: if the current spend source is NOT a sheets-based source, don't preselect a sheet
+                    // just because a Sheets connection exists (connections can be reused across flows).
+                    const sourceType = String((props.initialSource as any)?.sourceType || "").toLowerCase();
+                    if (sourceType !== "google_sheets") {
+                      setSelectedSheetConnectionId("");
+                      setSheetsPreview(null);
+                      // Keep the connections list (so user can choose), but clear any stale preview/mapping state.
+                      setCsvPreview(null);
+                      setSpendColumn("");
+                      setCampaignKeyColumn("");
+                      setCampaignKeyValues([]);
+                      setCampaignKeySearch("");
+                    }
+                    setMode("google_sheets");
+                  }}
+                >
                   Google Sheets
                 </Button>
                 <Button type="button" variant={mode === "upload" ? "default" : "outline"} onClick={() => setMode("upload")}>

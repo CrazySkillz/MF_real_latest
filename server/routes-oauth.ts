@@ -1321,19 +1321,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionId = String((req.body as any)?.connectionId || "").trim();
       if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
 
-      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
       const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
-      if (!conn.accessToken) return res.status(400).json({ success: false, error: "Google Sheets access token missing; reconnect Google Sheets." });
+
+      // Proactively refresh near-expiry tokens.
+      let accessToken = conn.accessToken;
+      try {
+        const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+        if (shouldRefresh && conn.refreshToken) {
+          accessToken = await refreshGoogleSheetsToken(conn);
+        }
+      } catch {
+        // ignore and try existing token
+      }
+      if (!accessToken && conn.refreshToken) {
+        try {
+          accessToken = await refreshGoogleSheetsToken(conn);
+        } catch {
+          // fall through
+        }
+      }
+      if (!accessToken) {
+        return res.status(401).json({
+          success: false,
+          error: "GOOGLE_SHEETS_REAUTH_NEEDED",
+          requiresReauthorization: true,
+          message: "Google Sheets needs to be reconnected. Please reconnect and try again.",
+        });
+      }
 
       const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
-      const resp = await fetch(
+      let resp = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
-        { headers: { "Authorization": `Bearer ${conn.accessToken}` } }
+        { headers: { "Authorization": `Bearer ${accessToken}` } }
       );
+      // If token is invalid/expired, refresh once and retry.
+      if (!resp.ok && resp.status === 401 && conn.refreshToken) {
+        try {
+          accessToken = await refreshGoogleSheetsToken(conn);
+          resp = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            { headers: { "Authorization": `Bearer ${accessToken}` } }
+          );
+        } catch {
+          // fall through to error response below
+        }
+      }
       if (!resp.ok) {
         const txt = await resp.text();
-        return res.status(400).json({ success: false, error: `Failed to fetch sheet: ${txt}` });
+        return res.status(resp.status === 401 ? 401 : 400).json({
+          success: false,
+          error: `Failed to fetch sheet: ${txt}`,
+          requiresReauthorization: resp.status === 401,
+        });
       }
 
       const json = await resp.json().catch(() => ({} as any));
@@ -1375,19 +1416,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
 
-      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
       const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
-      if (!conn.accessToken) return res.status(400).json({ success: false, error: "Google Sheets access token missing; reconnect Google Sheets." });
+
+      let accessToken = conn.accessToken;
+      try {
+        const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+        if (shouldRefresh && conn.refreshToken) {
+          accessToken = await refreshGoogleSheetsToken(conn);
+        }
+      } catch {
+        // ignore and try existing token
+      }
+      if (!accessToken && conn.refreshToken) {
+        try {
+          accessToken = await refreshGoogleSheetsToken(conn);
+        } catch {
+          // fall through
+        }
+      }
+      if (!accessToken) {
+        return res.status(401).json({
+          success: false,
+          error: "GOOGLE_SHEETS_REAUTH_NEEDED",
+          requiresReauthorization: true,
+          message: "Google Sheets needs to be reconnected. Please reconnect and try again.",
+        });
+      }
 
       const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
-      const resp = await fetch(
+      let resp = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
-        { headers: { "Authorization": `Bearer ${conn.accessToken}` } }
+        { headers: { "Authorization": `Bearer ${accessToken}` } }
       );
+      if (!resp.ok && resp.status === 401 && conn.refreshToken) {
+        try {
+          accessToken = await refreshGoogleSheetsToken(conn);
+          resp = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            { headers: { "Authorization": `Bearer ${accessToken}` } }
+          );
+        } catch {
+          // fall through
+        }
+      }
       if (!resp.ok) {
         const txt = await resp.text();
-        return res.status(400).json({ success: false, error: `Failed to fetch sheet: ${txt}` });
+        return res.status(resp.status === 401 ? 401 : 400).json({
+          success: false,
+          error: `Failed to fetch sheet: ${txt}`,
+          requiresReauthorization: resp.status === 401,
+        });
       }
 
       const json = await resp.json().catch(() => ({} as any));
@@ -8157,7 +8237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       updateData.refreshToken = tokens.refresh_token;
     }
     
-    await storage.updateGoogleSheetsConnection(connection.campaignId, updateData);
+    // IMPORTANT: update by connection id (not campaign id)
+    await storage.updateGoogleSheetsConnection(String(connection.id), updateData);
 
     console.log('✅ Google Sheets token refreshed successfully for campaign:', connection.campaignId);
     return tokens.access_token;

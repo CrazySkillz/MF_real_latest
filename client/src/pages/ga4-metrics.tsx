@@ -2151,12 +2151,16 @@ export default function GA4Metrics() {
     }
 
     if (!ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0) {
+      const importedLabel = String((activeRevenueSource as any)?.displayName || (activeRevenueSource as any)?.sourceType || "imported source");
       out.push({
         id: "financial:using_imported_revenue",
         severity: "low",
-        title: "Using imported revenue for financials",
-        description: `GA4 revenue metric is not available for this property, so financials use imported revenue-to-date (${toDateRangeLabel}) to avoid showing misleading $0 revenue.`,
-        recommendation: "If GA4 has a valid revenue metric for this property, connect it to reduce manual upkeep; otherwise keep your CRM/ecommerce import current.",
+        title: `Using imported revenue (${importedLabel}) for financials`,
+        description: `This GA4 property does not provide a GA4 revenue metric, so platform financials use your imported revenue-to-date (${toDateRangeLabel}) to avoid showing misleading ${formatMoney(0)} revenue.`,
+        recommendation:
+          String((activeRevenueSource as any)?.sourceType || "") === "hubspot"
+            ? "Keep HubSpot mappings current so revenue stays accurate. If GA4 revenue becomes available later, you can switch to GA4 revenue to reduce maintenance."
+            : "Keep your imported revenue source current so revenue stays accurate. If GA4 revenue becomes available later, you can switch to GA4 revenue to reduce maintenance.",
       });
     }
 

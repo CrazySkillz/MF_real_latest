@@ -2150,19 +2150,8 @@ export default function GA4Metrics() {
       }
     }
 
-    if (!ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0) {
-      const importedLabel = String((activeRevenueSource as any)?.displayName || (activeRevenueSource as any)?.sourceType || "imported source");
-      out.push({
-        id: "financial:using_imported_revenue",
-        severity: "low",
-        title: `Using imported revenue (${importedLabel}) for financials`,
-        description: `This GA4 property does not provide a GA4 revenue metric, so platform financials use your imported revenue-to-date (${toDateRangeLabel}) to avoid showing misleading ${formatMoney(0)} revenue.`,
-        recommendation:
-          String((activeRevenueSource as any)?.sourceType || "") === "hubspot"
-            ? "Keep HubSpot mappings current so revenue stays accurate. If GA4 revenue becomes available later, you can switch to GA4 revenue to reduce maintenance."
-            : "Keep your imported revenue source current so revenue stays accurate. If GA4 revenue becomes available later, you can switch to GA4 revenue to reduce maintenance.",
-      });
-    }
+    // NOTE: We intentionally do NOT count "revenue source policy/provenance" as an Insight.
+    // Execs can audit provenance in the "Sources used" footer; Insights should remain actionable.
 
     if (ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0) {
       out.push({

@@ -687,7 +687,7 @@ export class GoogleAnalytics4Service {
     startDate: string,
     endDate: string,
     campaignFilter?: CampaignFilter
-  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; totals: { sessions: number; users: number; conversions: number; revenue: number } }> {
+  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number } }> {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
 
@@ -705,6 +705,7 @@ export class GoogleAnalytics4Service {
             { name: 'sessions' },
             { name: 'totalUsers' },
             { name: 'conversions' },
+            { name: 'screenPageViews' },
             { name: revenueMetric },
           ],
         }),
@@ -719,8 +720,9 @@ export class GoogleAnalytics4Service {
       const sessions = parseInt(String(mv?.[0]?.value || '0'), 10) || 0;
       const users = parseInt(String(mv?.[1]?.value || '0'), 10) || 0;
       const conversions = parseInt(String(mv?.[2]?.value || '0'), 10) || 0;
-      const revenue = Number.parseFloat(String(mv?.[3]?.value || '0')) || 0;
-      return { revenueMetric, totals: { sessions, users, conversions, revenue: Number(revenue.toFixed(2)) } };
+      const pageviews = parseInt(String(mv?.[3]?.value || '0'), 10) || 0;
+      const revenue = Number.parseFloat(String(mv?.[4]?.value || '0')) || 0;
+      return { revenueMetric, totals: { sessions, users, conversions, pageviews, revenue: Number(revenue.toFixed(2)) } };
     };
 
     try {

@@ -100,6 +100,37 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord): P
   return true;
 }
 
+async function reprocessGoogleSheetsSpend(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
+  const connectionId = String(mappingConfig?.connectionId || "").trim();
+  if (!connectionId) return false;
+  const body = {
+    connectionId,
+    // The process endpoint tolerates extra keys; we keep the exact mapping that the user configured.
+    mapping: { ...(mappingConfig || {}) },
+  };
+  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/spend/sheets/process`, body);
+  if (!result.ok) {
+    console.error(`[Auto Refresh] Google Sheets spend reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
+    return false;
+  }
+  return true;
+}
+
+async function reprocessGoogleSheetsRevenue(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
+  const connectionId = String(mappingConfig?.connectionId || "").trim();
+  if (!connectionId) return false;
+  const body = {
+    connectionId,
+    mapping: { ...(mappingConfig || {}) },
+  };
+  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/revenue/sheets/process`, body);
+  if (!result.ok) {
+    console.error(`[Auto Refresh] Google Sheets revenue reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
+    return false;
+  }
+  return true;
+}
+
 export async function runDailyAutoRefreshOnce(): Promise<void> {
   // Prevent overlapping runs (e.g. slow API + interval overlap).
   if ((global as any).__autoRefreshInProgress) {
@@ -133,12 +164,13 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
     for (const campaign of campaigns) {
       const campaignId = campaign.id;
       try {
+        let anyUpdated = false;
         // HubSpot
         const hub = await storage.getHubspotConnection(campaignId);
         const hubCfg = safeJsonParse(hub?.mappingConfig);
         if (hub && (hub as any).isActive !== false && hubCfg?.selectedValues?.length) {
           attempted++;
-          if (await reprocessHubSpot(campaignId, hubCfg)) succeeded++;
+          if (await reprocessHubSpot(campaignId, hubCfg)) { succeeded++; anyUpdated = true; }
         } else {
           skipped++;
         }
@@ -148,7 +180,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
         const sfCfg = safeJsonParse(sf?.mappingConfig);
         if (sf && (sf as any).isActive !== false && sfCfg?.selectedValues?.length) {
           attempted++;
-          if (await reprocessSalesforce(campaignId, sfCfg)) succeeded++;
+          if (await reprocessSalesforce(campaignId, sfCfg)) { succeeded++; anyUpdated = true; }
         } else {
           skipped++;
         }
@@ -158,9 +190,51 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
         const shopCfg = safeJsonParse(shop?.mappingConfig);
         if (shop && (shop as any).isActive !== false && shopCfg?.selectedValues?.length) {
           attempted++;
-          if (await reprocessShopify(campaignId, shopCfg)) succeeded++;
+          if (await reprocessShopify(campaignId, shopCfg)) { succeeded++; anyUpdated = true; }
         } else {
           skipped++;
+        }
+
+        // Google Sheets (Spend)
+        try {
+          const spendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+          const sheetSpend = (Array.isArray(spendSources) ? spendSources : []).find((s: any) => {
+            return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "google_sheets";
+          });
+          const spendCfg = safeJsonParse(sheetSpend?.mappingConfig);
+          if (sheetSpend && spendCfg?.connectionId && spendCfg?.spendColumn) {
+            attempted++;
+            if (await reprocessGoogleSheetsSpend(campaignId, spendCfg)) { succeeded++; anyUpdated = true; }
+          } else {
+            skipped++;
+          }
+        } catch {
+          // ignore
+        }
+
+        // Google Sheets (Revenue)
+        try {
+          const revenueSources = await storage.getRevenueSources(campaignId).catch(() => [] as any[]);
+          const sheetRevenue = (Array.isArray(revenueSources) ? revenueSources : []).find((s: any) => {
+            return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "google_sheets";
+          });
+          const revCfg = safeJsonParse(sheetRevenue?.mappingConfig);
+          if (sheetRevenue && revCfg?.connectionId && revCfg?.revenueColumn) {
+            attempted++;
+            if (await reprocessGoogleSheetsRevenue(campaignId, revCfg)) { succeeded++; anyUpdated = true; }
+          } else {
+            skipped++;
+          }
+        } catch {
+          // ignore
+        }
+
+        // If any upstream sources changed for this campaign, immediately recompute GA4 KPI/Benchmark series for Insights.
+        if (anyUpdated) {
+          const r = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4/run-insights-jobs`, {});
+          if (!r.ok) {
+            console.warn(`[Auto Refresh] KPI/Benchmark recompute failed for campaign ${campaignId}:`, r.status, r.json?.error || r.text);
+          }
         }
       } catch (e: any) {
         console.error(`[Auto Refresh] Error processing campaign ${campaignId}:`, e?.message || e);

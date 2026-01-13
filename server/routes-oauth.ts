@@ -629,111 +629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return today.toISOString().slice(0, 10);
   };
 
-  // GA4 revenue/conversions/users/sessions "to date" (campaign lifetime).
-  // Uses GA4 Data API directly (not the 90-day daily fact table) so lifetime totals remain accurate.
-  app.get("/api/campaigns/:id/ga4-to-date", async (req, res) => {
-    try {
-      res.setHeader("Cache-Control", "no-store");
-      const campaignId = req.params.id;
-      const requestedPropertyId = String((req.query as any)?.propertyId || "").trim();
-      if (!requestedPropertyId) return res.status(400).json({ success: false, error: "propertyId is required" });
-
-      const campaign = await storage.getCampaign(campaignId);
-      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
-
-      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-      const forceMock = String((req.query as any)?.mock || "").trim() === "1";
-      const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
-      const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-
-      // Lifetime start date: prefer explicit campaign startDate, fall back to createdAt for dev/test.
-      const startDate =
-        toISODateUTC((campaign as any)?.startDate) ||
-        toISODateUTC((campaign as any)?.createdAt) ||
-        "2020-01-01";
-
-      const endDate = yesterdayUTC();
-
-      // Demo/testing properties (e.g., yesop) should behave consistently across daily rollups and lifetime totals.
-      if (shouldSimulate) {
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: "90days", noRevenue });
-        const series = Array.isArray((sim as any)?.timeSeries) ? (sim as any).timeSeries : [];
-        const first = series[0]?.date ? String(series[0].date) : startDate;
-        const last = series[series.length - 1]?.date ? String(series[series.length - 1].date) : endDate;
-        const totals = (sim as any)?.totals || {};
-        return res.json({
-          success: true,
-          propertyId: requestedPropertyId,
-          startDate: first,
-          endDate: last,
-          isSimulated: true,
-          totals: {
-            revenue: Number(parseFloat(String(totals.revenue || 0)).toFixed(2)),
-            conversions: Math.round(Number(totals.conversions || 0)),
-            users: Math.round(Number(totals.users || 0)),
-            sessions: Math.round(Number(totals.sessions || 0)),
-            pageviews: Math.round(Number(totals.pageviews || 0)),
-            revenueMetric: "totalRevenue",
-          },
-        });
-      }
-
-      const series = await ga4Service.getTimeSeriesData(campaignId, storage, startDate, requestedPropertyId, campaignFilter);
-      const rows = Array.isArray(series) ? series : [];
-
-      let revenue = 0;
-      let conversions = 0;
-      let users = 0;
-      let sessions = 0;
-      let pageviews = 0;
-      let revenueMetric: string | null = null;
-
-      for (const r of rows) {
-        const date = String((r as any)?.date || "").trim();
-        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-        if (date > endDate) continue; // drop partial "today"
-        revenue += Number((r as any)?.revenue || 0) || 0;
-        conversions += Number((r as any)?.conversions || 0) || 0;
-        users += Number((r as any)?.users || 0) || 0;
-        sessions += Number((r as any)?.sessions || 0) || 0;
-        pageviews += Number((r as any)?.pageviews || 0) || 0;
-        if (!revenueMetric && (r as any)?.revenueMetric) revenueMetric = String((r as any)?.revenueMetric);
-      }
-
-      res.json({
-        success: true,
-        propertyId: requestedPropertyId,
-        startDate,
-        endDate,
-        totals: {
-          revenue: Number(revenue.toFixed(2)),
-          conversions: Math.round(conversions),
-          users: Math.round(users),
-          sessions: Math.round(sessions),
-          pageviews: Math.round(pageviews),
-          revenueMetric,
-        },
-      });
-    } catch (error: any) {
-      if (error instanceof Error && (error.message === "AUTO_REFRESH_NEEDED" || (error as any).isAutoRefreshNeeded)) {
-        return res.status(401).json({
-          success: false,
-          error: "AUTO_REFRESH_NEEDED",
-          requiresReauthorization: true,
-          message: "GA4 token refresh is required. Please reconnect Google Analytics.",
-        });
-      }
-      if (error instanceof Error && (error.message === "TOKEN_EXPIRED" || (error as any).isTokenExpired)) {
-        return res.status(401).json({
-          success: false,
-          error: "TOKEN_EXPIRED",
-          requiresReauthorization: true,
-          message: "GA4 token expired. Please reconnect Google Analytics.",
-        });
-      }
-      res.status(500).json({ success: false, error: error?.message || "Failed to fetch GA4 to-date totals" });
-    }
-  });
+  // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).
 
   // Imported revenue "to date" (campaign lifetime). Used as fallback when GA4 has no revenue metric configured.
   app.get("/api/campaigns/:id/revenue-to-date", async (req, res) => {
@@ -832,12 +728,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const deactivateRevenueSourcesForCampaign = async (campaignId: string) => {
+  const deactivateRevenueSourcesForCampaign = async (campaignId: string, opts?: { keepSourceId?: string }) => {
     try {
+      const keep = opts?.keepSourceId ? String(opts.keepSourceId) : "";
       const existing = await storage.getRevenueSources(campaignId);
       for (const s of existing || []) {
         if (!s) continue;
         const sid = String((s as any).id);
+        if (keep && sid === keep) continue;
         await storage.deleteRevenueSource(sid);
         await storage.deleteRevenueRecordsBySource(sid);
       }
@@ -998,16 +896,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connections = await storage.getGoogleSheetsConnections(campaignId, "revenue");
       const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
-      if (!conn.accessToken) return res.status(400).json({ success: false, error: "Google Sheets access token missing; reconnect Google Sheets." });
+      // Proactively refresh near-expiry tokens.
+      let accessToken = conn.accessToken;
+      try {
+        const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+        if (shouldRefresh && conn.refreshToken) {
+          accessToken = await refreshGoogleSheetsToken(conn);
+        }
+      } catch {
+        // ignore and try existing token
+      }
+      if (!accessToken && conn.refreshToken) {
+        try {
+          accessToken = await refreshGoogleSheetsToken(conn);
+        } catch {
+          // fall through
+        }
+      }
+      if (!accessToken) {
+        return res.status(401).json({
+          success: false,
+          error: "GOOGLE_SHEETS_REAUTH_NEEDED",
+          requiresReauthorization: true,
+          message: "Google Sheets needs to be reconnected. Please reconnect and try again.",
+        });
+      }
 
       const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
-      const resp = await fetch(
+      let resp = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
-        { headers: { "Authorization": `Bearer ${conn.accessToken}` } }
+        { headers: { "Authorization": `Bearer ${accessToken}` } }
       );
+      // If token is invalid/expired, refresh once and retry.
+      if (!resp.ok && resp.status === 401 && conn.refreshToken) {
+        try {
+          accessToken = await refreshGoogleSheetsToken(conn);
+          resp = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            { headers: { "Authorization": `Bearer ${accessToken}` } }
+          );
+        } catch {
+          // fall through to error response below
+        }
+      }
       if (!resp.ok) {
         const txt = await resp.text();
-        return res.status(400).json({ success: false, error: `Failed to fetch sheet: ${txt}` });
+        return res.status(resp.status === 401 ? 401 : 400).json({
+          success: false,
+          error: `Failed to fetch sheet: ${txt}`,
+          requiresReauthorization: resp.status === 401,
+        });
       }
 
       const json = await resp.json().catch(() => ({} as any));
@@ -1052,16 +990,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connections = await storage.getGoogleSheetsConnections(campaignId, "revenue");
       const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
-      if (!conn.accessToken) return res.status(400).json({ success: false, error: "Google Sheets access token missing; reconnect Google Sheets." });
+      // Proactively refresh near-expiry tokens.
+      let accessToken = conn.accessToken;
+      try {
+        const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+        if (shouldRefresh && conn.refreshToken) {
+          accessToken = await refreshGoogleSheetsToken(conn);
+        }
+      } catch {
+        // ignore and try existing token
+      }
+      if (!accessToken && conn.refreshToken) {
+        try {
+          accessToken = await refreshGoogleSheetsToken(conn);
+        } catch {
+          // fall through
+        }
+      }
+      if (!accessToken) {
+        return res.status(401).json({
+          success: false,
+          error: "GOOGLE_SHEETS_REAUTH_NEEDED",
+          requiresReauthorization: true,
+          message: "Google Sheets needs to be reconnected. Please reconnect and try again.",
+        });
+      }
 
       const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
-      const resp = await fetch(
+      let resp = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
-        { headers: { "Authorization": `Bearer ${conn.accessToken}` } }
+        { headers: { "Authorization": `Bearer ${accessToken}` } }
       );
+      // If token is invalid/expired, refresh once and retry.
+      if (!resp.ok && resp.status === 401 && conn.refreshToken) {
+        try {
+          accessToken = await refreshGoogleSheetsToken(conn);
+          resp = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            { headers: { "Authorization": `Bearer ${accessToken}` } }
+          );
+        } catch {
+          // fall through to error response below
+        }
+      }
       if (!resp.ok) {
         const txt = await resp.text();
-        return res.status(400).json({ success: false, error: `Failed to fetch sheet: ${txt}` });
+        return res.status(resp.status === 401 ? 401 : 400).json({
+          success: false,
+          error: `Failed to fetch sheet: ${txt}`,
+          requiresReauthorization: resp.status === 401,
+        });
       }
 
       const json = await resp.json().catch(() => ({} as any));
@@ -1109,19 +1087,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
-      await deactivateRevenueSourcesForCampaign(campaignId);
-
       const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: "revenue_to_date" };
-      const source = await storage.createRevenueSource({
-        campaignId,
-        sourceType: "google_sheets",
-        displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),
-        currency,
-        mappingConfig: JSON.stringify({ ...normalizedMapping, connectionId, spreadsheetId: conn.spreadsheetId, sheetName: conn.sheetName }),
-        isActive: true,
-      } as any);
+      const nextMappingConfig = JSON.stringify({
+        ...normalizedMapping,
+        connectionId,
+        spreadsheetId: conn.spreadsheetId,
+        sheetName: conn.sheetName,
+        lastSyncedAt: new Date().toISOString(),
+      });
 
-      await storage.deleteRevenueRecordsBySource(source.id);
+      // Idempotent upsert: if the active revenue source is already this same Google Sheets connection,
+      // keep the same sourceId (stable provenance) and just update values.
+      const existingSources = await storage.getRevenueSources(campaignId).catch(() => [] as any[]);
+      const existingSheetsSource = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
+        if (!s || (s as any).isActive === false) return false;
+        if (String((s as any).sourceType || "") !== "google_sheets") return false;
+        try {
+          const cfg = (s as any).mappingConfig ? JSON.parse(String((s as any).mappingConfig)) : null;
+          return String(cfg?.connectionId || "") === String(connectionId);
+        } catch {
+          return false;
+        }
+      });
+
+      let source: any = existingSheetsSource || null;
+      if (!source) {
+        await deactivateRevenueSourcesForCampaign(campaignId);
+        source = await storage.createRevenueSource({
+          campaignId,
+          sourceType: "google_sheets",
+          displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),
+          currency,
+          mappingConfig: nextMappingConfig,
+          isActive: true,
+        } as any);
+      } else {
+        // Deactivate any other revenue sources (avoid silent double-counting), while keeping this sourceId stable.
+        await deactivateRevenueSourcesForCampaign(campaignId, { keepSourceId: String((source as any).id) });
+        // Keep as the active source and refresh metadata.
+        await storage.updateRevenueSource(String((source as any).id), {
+          displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),
+          currency,
+          mappingConfig: nextMappingConfig,
+          isActive: true,
+        } as any);
+      }
+
+      await storage.deleteRevenueRecordsBySource(String((source as any).id));
 
       const totalRevenue = Number(totalRevenueToDate.toFixed(2));
       if (totalRevenue > 0) {
@@ -1137,7 +1149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({
         success: true,
-        sourceId: source.id,
+        sourceId: String((source as any).id),
         currency,
         rowCount: rows.length,
         keptRows: kept,
@@ -1151,12 +1163,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Keep spend totals predictable: whenever a user "processes spend" for a campaign,
   // we deactivate prior spend sources so totals don't silently double-count across imports.
-  const deactivateSpendSourcesForCampaign = async (campaignId: string) => {
+  const deactivateSpendSourcesForCampaign = async (campaignId: string, opts?: { keepSourceId?: string }) => {
     try {
+      const keep = opts?.keepSourceId ? String(opts.keepSourceId) : "";
       const existing = await storage.getSpendSources(campaignId);
       for (const s of existing || []) {
         if (!s) continue;
-        await storage.deleteSpendSource(String((s as any).id));
+        const sid = String((s as any).id);
+        if (keep && sid === keep) continue;
+        await storage.deleteSpendSource(sid);
       }
     } catch {
       // ignore
@@ -1513,21 +1528,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
-      await deactivateSpendSourcesForCampaign(campaignId);
+      const nextSpendMappingConfig = JSON.stringify({
+        ...mapping,
+        mode: "spend_to_date",
+        connectionId,
+        spreadsheetId: conn.spreadsheetId,
+        sheetName: conn.sheetName || null,
+        lastSyncedAt: new Date().toISOString(),
+      });
+
+      const existingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+      const existingSheetsSpendSource = (Array.isArray(existingSpendSources) ? existingSpendSources : []).find((s: any) => {
+        if (!s || (s as any).isActive === false) return false;
+        if (String((s as any).sourceType || "") !== "google_sheets") return false;
+        try {
+          const cfg = (s as any).mappingConfig ? JSON.parse(String((s as any).mappingConfig)) : null;
+          return String(cfg?.connectionId || "") === String(connectionId);
+        } catch {
+          return false;
+        }
+      });
+
+      if (!existingSheetsSpendSource) {
+        await deactivateSpendSourcesForCampaign(campaignId);
+      } else {
+        // Deactivate any other spend sources (avoid silent double-counting), while keeping this sourceId stable.
+        await deactivateSpendSourcesForCampaign(campaignId, { keepSourceId: String((existingSheetsSpendSource as any).id) });
+      }
       await storage.updateCampaign(campaignId, { spend: Number(totalSpend.toFixed(2)).toFixed(2) as any, currency } as any);
 
-      const source = await storage.createSpendSource({
-        campaignId,
-        sourceType: "google_sheets",
-        displayName: (mapping.displayName || `${conn.spreadsheetName || "Google Sheet"}${conn.sheetName ? ` (${conn.sheetName})` : ""}`) + " (to date)",
-        currency,
-        mappingConfig: JSON.stringify({ ...mapping, mode: "spend_to_date", connectionId, spreadsheetId: conn.spreadsheetId, sheetName: conn.sheetName || null }),
-        isActive: true,
-      } as any);
+      let source: any = existingSheetsSpendSource || null;
+      if (!source) {
+        source = await storage.createSpendSource({
+          campaignId,
+          sourceType: "google_sheets",
+          displayName: (mapping.displayName || `${conn.spreadsheetName || "Google Sheet"}${conn.sheetName ? ` (${conn.sheetName})` : ""}`) + " (to date)",
+          currency,
+          mappingConfig: nextSpendMappingConfig,
+          isActive: true,
+        } as any);
+      } else {
+        await storage.updateSpendSource(String((source as any).id), {
+          displayName: (mapping.displayName || `${conn.spreadsheetName || "Google Sheet"}${conn.sheetName ? ` (${conn.sheetName})` : ""}`) + " (to date)",
+          currency,
+          mappingConfig: nextSpendMappingConfig,
+          isActive: true,
+        } as any);
+      }
 
       res.json({
         success: true,
-        sourceId: source.id,
+        sourceId: String((source as any).id),
         currency,
         rowCount: rows.length,
         keptRows: kept,
@@ -1933,6 +1984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaign = await storage.getCampaign(campaignId);
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
 
       // Resolve connection(s)
       let connections: any[] = [];
@@ -2074,12 +2126,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pidNormalized = normalizePropertyIdForMock(requestedPropertyId);
       if (mock || isYesopMockProperty(pidNormalized)) {
         // For to-date in mocks, we just sum the latest 90-day simulated daily series and label it as "to date".
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: "90days", noRevenue: false });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: "90days", noRevenue });
         const totals = {
           sessions: Number(sim?.totals?.sessions || 0),
           users: Number(sim?.totals?.users || 0),
           conversions: Number(sim?.totals?.conversions || 0),
           revenue: Number(sim?.totals?.revenue || 0),
+          pageviews: Number(sim?.totals?.pageviews || 0),
         };
         return res.json({
           success: true,
@@ -8092,51 +8145,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it when GA4 revenue is missing.
       try {
-        await deactivateRevenueSourcesForCampaign(campaignId);
         const camp = await storage.getCampaign(campaignId);
         const cur = (camp as any)?.currency || "USD";
 
-        const source = await storage.createRevenueSource({
-          campaignId,
-          sourceType: "hubspot",
-          displayName: `HubSpot (Deals)`,
-          currency: cur,
-          mappingConfig: JSON.stringify({
-            provider: "hubspot",
-            campaignProperty: campaignProp,
-            selectedValues: selected,
-            revenueProperty: revenueProp,
-            days: rangeDays,
-            stageIds: effectiveStageIds,
-            revenueClassification,
-            lastTotalRevenue: Number(totalRevenue.toFixed(2)),
-          }),
-          isActive: true,
-        } as any);
-
-        await storage.deleteRevenueRecordsBySource(source.id);
-
-        const endDate = new Date().toISOString().slice(0, 10);
-        const startObj = new Date();
-        startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
-        const startDate = startObj.toISOString().slice(0, 10);
-        const days = enumerateDatesInclusive(startDate, endDate);
-
-        const totalCents = Math.round(Number(totalRevenue.toFixed(2)) * 100);
-        const baseCents = Math.floor(totalCents / Math.max(1, days.length));
-        const remainder = totalCents - baseCents * Math.max(1, days.length);
-
-        const records = days.map((d, idx) => {
-          const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
-          return {
-            campaignId,
-            revenueSourceId: source.id,
-            date: d,
-            revenue: (cents / 100).toFixed(2) as any,
-            currency: cur,
-          } as any;
+        // Idempotent: reuse the same HubSpot revenue source id (stable provenance) across daily refreshes.
+        const existingSources = await storage.getRevenueSources(campaignId).catch(() => [] as any[]);
+        const existingHubspot = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
+          return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "hubspot";
         });
-        await storage.createRevenueRecords(records);
+
+        if (!existingHubspot) {
+          await deactivateRevenueSourcesForCampaign(campaignId);
+        } else {
+          await deactivateRevenueSourcesForCampaign(campaignId, { keepSourceId: String((existingHubspot as any).id) });
+        }
+
+        const mappingConfig = JSON.stringify({
+          provider: "hubspot",
+          mode: "revenue_to_date",
+          campaignProperty: campaignProp,
+          selectedValues: selected,
+          revenueProperty: revenueProp,
+          days: rangeDays,
+          stageIds: effectiveStageIds,
+          revenueClassification,
+          lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+          lastSyncedAt: new Date().toISOString(),
+        });
+
+        const source =
+          existingHubspot
+            ? await storage.updateRevenueSource(String((existingHubspot as any).id), {
+                displayName: `HubSpot (Deals)`,
+                currency: cur,
+                mappingConfig,
+                isActive: true,
+                connectedAt: new Date(),
+              } as any)
+            : await storage.createRevenueSource({
+                campaignId,
+                sourceType: "hubspot",
+                displayName: `HubSpot (Deals)`,
+                currency: cur,
+                mappingConfig,
+                isActive: true,
+              } as any);
+
+        await storage.deleteRevenueRecordsBySource(String((source as any).id));
+
+        // Store as a single revenue-to-date snapshot on "yesterday (UTC)".
+        const endDate = yesterdayUTC();
+        const totalRevenueToDate = Number(Number(totalRevenue || 0).toFixed(2));
+        if (totalRevenueToDate > 0) {
+          await storage.createRevenueRecords([
+            {
+              campaignId,
+              revenueSourceId: String((source as any).id),
+              date: endDate,
+              revenue: totalRevenueToDate.toFixed(2) as any,
+              currency: cur,
+            } as any,
+          ]);
+        }
       } catch (e) {
         console.warn("[HubSpot Save Mappings] Failed to materialize revenue records:", e);
       }

@@ -1524,6 +1524,17 @@ export default function GA4Metrics() {
     const sources = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
     return sources?.[0] || null;
   }, [revenueSourcesResp]);
+  // Availability flags for UI gating (KPI/Benchmark templates):
+  // - Spend is "available" if a spend source exists (even if value is 0).
+  // - Revenue is "available" if GA4 has a revenue metric configured OR an imported revenue source exists.
+  const spendMetricAvailable = useMemo(() => {
+    const ids = Array.isArray(spendToDateResp?.sourceIds) ? spendToDateResp.sourceIds : [];
+    return !!activeSpendSource || ids.length > 0;
+  }, [activeSpendSource, spendToDateResp?.sourceIds]);
+  const revenueMetricAvailable = useMemo(() => {
+    const ga4RevenueMetric = String((ga4ToDateResp as any)?.totals?.revenueMetric || "").trim();
+    return !!activeRevenueSource || !!ga4RevenueMetric;
+  }, [activeRevenueSource, ga4ToDateResp]);
   const totalSpendForFinancials = Number(spendToDateResp?.spendToDate || 0);
   const usingAutoLinkedInSpend = false;
 
@@ -3955,8 +3966,10 @@ export default function GA4Metrics() {
                                 ].map((template) => {
                                   const isCustom = (template as any)?._isCustom === true;
                                   const requiresSpend = template.metric === "roas" || template.metric === "roi" || template.metric === "cpa";
-                                  const spendAvailable = Number(financialSpend || 0) > 0;
-                                  const disabled = requiresSpend && !spendAvailable;
+                                  const requiresRevenue = template.metric === "roas" || template.metric === "roi" || template.metric === "revenue";
+                                  const disabled =
+                                    (requiresSpend && !spendMetricAvailable) ||
+                                    (requiresRevenue && !revenueMetricAvailable);
                                   return (
                                     <div
                                       key={template.metric}
@@ -4040,7 +4053,13 @@ export default function GA4Metrics() {
                                       </div>
                                       {disabled ? (
                                         <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                                          Spend required (add spend to unlock)
+                                          {requiresSpend && !spendMetricAvailable && requiresRevenue && !revenueMetricAvailable
+                                            ? "Spend + Revenue required (add both to unlock)"
+                                            : requiresSpend && !spendMetricAvailable
+                                              ? "Spend required (add spend to unlock)"
+                                              : requiresRevenue && !revenueMetricAvailable
+                                                ? "Revenue required (add GA4 revenue metric or import revenue)"
+                                                : "Unavailable"}
                                         </div>
                                       ) : null}
                                     </div>
@@ -4925,8 +4944,10 @@ export default function GA4Metrics() {
                   ].map((template) => {
                     const isCustom = (template as any)?._isCustom === true;
                     const requiresSpend = template.name === "ROAS" || template.name === "ROI" || template.name === "CPA";
-                    const spendAvailable = Number(financialSpend || 0) > 0;
-                    const disabled = requiresSpend && !spendAvailable;
+                    const requiresRevenue = template.name === "ROAS" || template.name === "ROI" || template.name === "Revenue";
+                    const disabled =
+                      (requiresSpend && !spendMetricAvailable) ||
+                      (requiresRevenue && !revenueMetricAvailable);
                     return (
                     <div
                       key={template.name}
@@ -4989,7 +5010,13 @@ export default function GA4Metrics() {
                       )}
                       {!isCustom && disabled && (
                         <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                          Spend required (add spend to unlock)
+                          {requiresSpend && !spendMetricAvailable && requiresRevenue && !revenueMetricAvailable
+                            ? "Spend + Revenue required (add both to unlock)"
+                            : requiresSpend && !spendMetricAvailable
+                              ? "Spend required (add spend to unlock)"
+                              : requiresRevenue && !revenueMetricAvailable
+                                ? "Revenue required (add GA4 revenue metric or import revenue)"
+                                : "Unavailable"}
                         </div>
                       )}
                     </div>

@@ -4231,6 +4231,7 @@ export default function LinkedInAnalytics() {
                     ) : (
                       <SalesforceRevenueWizard
                         campaignId={campaignId!}
+                        platformContext="linkedin"
                         mode="edit"
                         initialMappingConfig={salesforceEditConnectionData?.connection?.mappingConfig || null}
                         onClose={() => {
@@ -9085,6 +9086,7 @@ export default function LinkedInAnalytics() {
             </DialogHeader>
             <SalesforceRevenueWizard
               campaignId={campaignId}
+              platformContext="linkedin"
               onBack={() => setIsSalesforceRevenueWizardOpen(false)}
               onClose={() => {
                 setIsSalesforceRevenueWizardOpen(false);
@@ -9112,6 +9114,7 @@ export default function LinkedInAnalytics() {
             </DialogHeader>
             <HubSpotRevenueWizard
               campaignId={campaignId}
+              platformContext="linkedin"
               onBack={() => setIsHubspotRevenueWizardOpen(false)}
               onClose={() => {
                 setIsHubspotRevenueWizardOpen(false);

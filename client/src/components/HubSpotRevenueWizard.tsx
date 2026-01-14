@@ -25,8 +25,13 @@ export function HubSpotRevenueWizard(props: {
   onBack?: () => void;
   onSuccess?: (result: any) => void;
   onClose?: () => void;
+  /**
+   * Used to prevent cross-platform leakage of revenue metrics.
+   * Example: GA4 revenue sources must not unlock LinkedIn revenue metrics.
+   */
+  platformContext?: "ga4" | "linkedin";
 }) {
-  const { campaignId, onBack, onSuccess, onClose } = props;
+  const { campaignId, onBack, onSuccess, onClose, platformContext = "ga4" } = props;
   const { toast } = useToast();
 
   type Step = "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
@@ -235,6 +240,7 @@ export function HubSpotRevenueWizard(props: {
           revenueProperty,
           revenueClassification,
           days,
+          platformContext,
         }),
       });
       const json = await resp.json().catch(() => ({}));

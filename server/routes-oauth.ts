@@ -7670,7 +7670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/salesforce/save-mappings", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { campaignField, selectedValues, revenueField, days, revenueClassification } = req.body || {};
+      const { campaignField, selectedValues, revenueField, days, revenueClassification, platformContext } = req.body || {};
 
       const attribField = String(campaignField || '').trim();
       const revenue = String(revenueField || 'Amount').trim();
@@ -7783,10 +7783,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const calculatedConversionValue = Number((totalRevenue / totalConversions).toFixed(2));
+      const platformCtx = String(platformContext || "linkedin").trim().toLowerCase() === "ga4" ? "ga4" : "linkedin";
 
-      await storage.updateCampaign(campaignId, { conversionValue: calculatedConversionValue } as any);
-      await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
-      await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
+      // STRICT PLATFORM ISOLATION:
+      // Never write campaign-level conversionValue from LinkedIn revenue mappings.
+      // Store conversionValue on the LinkedIn connection/session only.
+      if (platformCtx === "linkedin") {
+        await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
+        await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
+      }
 
       const sfConn: any = await storage.getSalesforceConnection(campaignId);
       if (sfConn) {
@@ -7795,6 +7800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rcRaw === 'offsite_not_in_ga4' || rcRaw === 'onsite_in_ga4' ? rcRaw : 'onsite_in_ga4';
         const mappingConfig = {
           objectType: 'opportunity',
+          platformContext: platformCtx,
           campaignField: attribField,
           selectedValues: selected,
           revenueField: revenue,
@@ -7819,6 +7825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: cur,
           mappingConfig: JSON.stringify({
             provider: "salesforce",
+            platformContext: platformCtx,
             campaignField: attribField,
             selectedValues: selected,
             revenueField: revenue,
@@ -8056,6 +8063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         revenueClassification,
         days,
         stageIds,
+        platformContext,
       } = req.body || {};
 
       const campaignProp = String(campaignProperty || '').trim();
@@ -8137,6 +8145,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // NOTE: No LinkedIn coupling here. This endpoint only saves HubSpot mappings + materializes revenue.
 
+      const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
+
       // Persist mapping config on the active HubSpot connection
       const hubspotConn: any = await storage.getHubspotConnection(campaignId);
       if (hubspotConn) {
@@ -8145,6 +8155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rcRaw === 'offsite_not_in_ga4' || rcRaw === 'onsite_in_ga4' ? rcRaw : 'offsite_not_in_ga4';
         const mappingConfig = {
           objectType: 'deals',
+          platformContext: platformCtx,
           campaignProperty: campaignProp,
           selectedValues: selected,
           revenueProperty: revenueProp,
@@ -8176,6 +8187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const mappingConfig = JSON.stringify({
           provider: "hubspot",
+          platformContext: platformCtx,
           mode: "revenue_to_date",
           campaignProperty: campaignProp,
           selectedValues: selected,
@@ -13235,14 +13247,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clicks = aggregated.clicks || 0;
       const spend = aggregated.spend || 0;
       const conversions = aggregated.conversions || 0;
-      
-      // Calculate revenue from conversion value
-      if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0 && conversions > 0) {
-        const conversionValue = parseFloat(latestSession.conversionValue);
+
+      // STRICT PLATFORM ISOLATION:
+      // LinkedIn revenue metrics must NOT be enabled by GA4 revenue sources or campaign-level conversionValue.
+      // We only enable LinkedIn revenue metrics when the LinkedIn platform itself has an active revenue-tracking source
+      // (e.g. Google Sheets "general" purpose with mappings, or CRM mappings explicitly tagged for LinkedIn).
+      const isLinkedInRevenueTrackingSheetsConnection = (conn: any): boolean => {
+        const purpose = String((conn as any)?.purpose || '').trim().toLowerCase();
+        if (purpose !== 'general') return false;
+        const mappingsRaw = (conn as any)?.columnMappings || (conn as any)?.column_mappings;
+        if (!mappingsRaw) return false;
+        try {
+          const mappings = typeof mappingsRaw === 'string' ? JSON.parse(mappingsRaw) : mappingsRaw;
+          if (!Array.isArray(mappings) || mappings.length === 0) return false;
+          const hasIdentifier =
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
+          const hasValueSource =
+            mappings.some((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value') ||
+            mappings.some((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
+          return hasIdentifier && hasValueSource;
+        } catch {
+          return false;
+        }
+      };
+
+      const isLinkedInTaggedMapping = (raw: any): boolean => {
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          const platform = String(cfg?.platformContext || cfg?.platform || '').trim().toLowerCase();
+          return platform === 'linkedin';
+        } catch {
+          return false;
+        }
+      };
+
+      const sheetsConns = await storage.getGoogleSheetsConnections(campaignId);
+      const hubspotConns = await storage.getHubspotConnections(campaignId);
+      const salesforceConns = await storage.getSalesforceConnections(campaignId);
+
+      const hasLinkedInRevenueTrackingSource =
+        (Array.isArray(sheetsConns) ? sheetsConns : []).some((c: any) => (c as any)?.isActive !== false && isLinkedInRevenueTrackingSheetsConnection(c)) ||
+        (Array.isArray(hubspotConns) ? hubspotConns : []).some((c: any) => (c as any)?.isActive !== false && isLinkedInTaggedMapping((c as any)?.mappingConfig)) ||
+        (Array.isArray(salesforceConns) ? salesforceConns : []).some((c: any) => (c as any)?.isActive !== false && isLinkedInTaggedMapping((c as any)?.mappingConfig));
+
+      // Prefer LinkedIn-specific conversionValue (connection/session), never campaign-level
+      const linkedInConn = await storage.getLinkedInConnection(campaignId);
+      const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
+      const sessionCv = latestSession.conversionValue ? parseFloat(String(latestSession.conversionValue)) : 0;
+      const conversionValue = connCv > 0 ? connCv : sessionCv;
+
+      if (hasLinkedInRevenueTrackingSource && conversionValue > 0 && conversions > 0) {
         aggregated.revenue = parseFloat((conversions * conversionValue).toFixed(2));
         aggregated.conversionValue = conversionValue;
-        
-        // Calculate ROI and ROAS if revenue is available
         if (spend > 0) {
           aggregated.roas = parseFloat((aggregated.revenue / spend).toFixed(2));
           aggregated.roi = parseFloat((((aggregated.revenue - spend) / spend) * 100).toFixed(2));
@@ -13676,42 +13734,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Determine conversion value (campaign → session → linkedin connection).
-      let conversionValue = 0;
-      if (hasAnyActiveSourceConnection) {
-        const campaignConversionValue = latestCampaign?.conversionValue
-        ? parseFloat(latestCampaign.conversionValue.toString()) 
-          : 0;
-        const sessionConversionValue = parseFloat(session.conversionValue || '0');
-        
-        conversionValue = campaignConversionValue > 0 ? campaignConversionValue : sessionConversionValue;
+      // STRICT PLATFORM ISOLATION:
+      // LinkedIn revenue metrics must NOT be enabled by GA4 revenue sources or campaign-level conversionValue.
+      // Only LinkedIn-scoped revenue sources can unlock revenue metrics.
+      const isLinkedInRevenueTrackingSheetsConnection = (conn: any): boolean => {
+        const purpose = String((conn as any)?.purpose || '').trim().toLowerCase();
+        if (purpose !== 'general') return false;
+        const mappingsRaw = (conn as any)?.columnMappings || (conn as any)?.column_mappings;
+        if (!mappingsRaw) return false;
+        try {
+          const mappings = typeof mappingsRaw === 'string' ? JSON.parse(mappingsRaw) : mappingsRaw;
+          if (!Array.isArray(mappings) || mappings.length === 0) return false;
+          const hasIdentifier =
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
+            mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
+          const hasValueSource =
+            mappings.some((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value') ||
+            mappings.some((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
+          return hasIdentifier && hasValueSource;
+        } catch {
+          return false;
+        }
+      };
 
-        if (conversionValue === 0) {
-          const linkedInConn = await storage.getLinkedInConnection(session.campaignId);
-          if (linkedInConn?.conversionValue) {
-            conversionValue = parseFloat(linkedInConn.conversionValue.toString());
-          }
+      const isLinkedInTaggedMapping = (raw: any): boolean => {
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          const platform = String(cfg?.platformContext || cfg?.platform || '').trim().toLowerCase();
+          return platform === 'linkedin';
+        } catch {
+          return false;
         }
+      };
+
+      const linkedInSheetsConns = (googleSheetsConnections || []).filter((c: any) => (c as any)?.isActive !== false && isLinkedInRevenueTrackingSheetsConnection(c));
+      const linkedInHubspotConns = (hubspotConnections || []).filter((c: any) => (c as any)?.isActive !== false && isLinkedInTaggedMapping((c as any)?.mappingConfig));
+      const linkedInSalesforceConns = (salesforceConnections || []).filter((c: any) => (c as any)?.isActive !== false && isLinkedInTaggedMapping((c as any)?.mappingConfig));
+
+      const hasAnyLinkedInRevenueTrackingSourceConnection =
+        linkedInSheetsConns.length > 0 || linkedInHubspotConns.length > 0 || linkedInSalesforceConns.length > 0;
+
+      // Determine conversion value (LinkedIn connection → session). Never use campaign-level conversionValue.
+      let conversionValue = 0;
+      if (hasAnyLinkedInRevenueTrackingSourceConnection) {
+        const linkedInConn = await storage.getLinkedInConnection(session.campaignId);
+        const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
+        const sessionCv = parseFloat(session.conversionValue || '0');
+        conversionValue = connCv > 0 ? connCv : sessionCv;
       } else {
-        // No active Google Sheets connections at all: clear stale conversion values
-        console.log('[LinkedIn Analytics OAuth] ❌ NO active revenue source connections - clearing stale conversion values');
-        
-        // Clear stale values
-        if (latestCampaign?.conversionValue) {
-          await storage.updateCampaign(session.campaignId, { conversionValue: null });
-        }
+        // No LinkedIn-scoped revenue sources: clear stale LinkedIn conversion values (but do NOT touch campaign-level values).
+        console.log('[LinkedIn Analytics OAuth] ❌ NO LinkedIn-scoped revenue source connections - clearing stale LinkedIn conversion values');
+
         if (session.conversionValue) {
           await storage.updateLinkedInImportSession(session.id, { conversionValue: null });
         }
-        
-        // Clear LinkedIn connection conversion value
+
         const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
         if (linkedInConnection?.conversionValue) {
           console.log('[LinkedIn Analytics OAuth] Clearing LinkedIn connection conversion value:', linkedInConnection.conversionValue);
           await storage.updateLinkedInConnection(session.campaignId, { conversionValue: null });
         }
-        
-        console.log('[LinkedIn Analytics OAuth] ✅ All conversion values cleared - revenue tracking DISABLED');
+
+        console.log('[LinkedIn Analytics OAuth] ✅ LinkedIn conversion values cleared - revenue tracking DISABLED');
         conversionValue = 0;
       }
       
@@ -13722,7 +13807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calculate revenue metrics only if conversion value is set AND there is at least one ACTIVE revenue-tracking connection.
       // View-only connections must not keep revenue metrics enabled after a revenue source is deleted.
-      const shouldEnableRevenueTracking = conversionValue > 0 && hasAnyActiveRevenueTrackingSourceConnection;
+      const shouldEnableRevenueTracking = conversionValue > 0 && hasAnyLinkedInRevenueTrackingSourceConnection;
       if (shouldEnableRevenueTracking) {
         console.log('✅ Revenue tracking ENABLED');
         

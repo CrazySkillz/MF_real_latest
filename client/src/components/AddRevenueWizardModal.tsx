@@ -1095,6 +1095,7 @@ export function AddRevenueWizardModal(props: {
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <HubSpotRevenueWizard
                   campaignId={campaignId}
+                  platformContext="ga4"
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {
@@ -1109,6 +1110,7 @@ export function AddRevenueWizardModal(props: {
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
+                  platformContext="ga4"
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {

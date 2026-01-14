@@ -10,6 +10,39 @@ import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { db } from "./db";
 import { linkedinConnections } from "../shared/schema";
 
+const isLinkedInCountMetric = (metricKey: string): boolean => {
+  const k = String(metricKey || "").toLowerCase();
+  return [
+    "impressions",
+    "clicks",
+    "conversions",
+    "externalwebsiteconversions",
+    "leads",
+    "engagements",
+    "reach",
+    "videoviews",
+    "viralImpressions".toLowerCase(),
+    "likes",
+    "comments",
+    "shares",
+  ].includes(k);
+};
+
+const normalizeLinkedInMetricValue = (metricKey: string, value: any): string => {
+  const k = String(metricKey || "").toLowerCase();
+  if (k === "spend") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+  }
+  if (isLinkedInCountMetric(k)) {
+    const n = Number(value);
+    return Number.isFinite(n) ? String(Math.round(n)) : "0";
+  }
+  // default: numeric metric (rare for import keys); keep 2 decimals for stability
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(2) : "0";
+};
+
 /**
  * Generate mock LinkedIn data for test mode
  * Reuses the same logic as the import endpoint
@@ -50,7 +83,8 @@ async function generateMockLinkedInData(
     // Generate slightly varied values to simulate real data changes
     const baseValue = Math.random() * 10000 + 1000;
     const variation = 0.8 + (Math.random() * 0.4); // ±20% variation
-    const metricValue = (baseValue * variation).toFixed(2);
+    const raw = baseValue * variation;
+    const metricValue = normalizeLinkedInMetricValue(metricKey, raw);
 
     await storage.createLinkedInImportMetric({
       sessionId: newSession.id,
@@ -252,50 +286,52 @@ async function fetchRealLinkedInData(
       );
 
       for (const metricKey of coreMetrics) {
-        let metricValue = '0';
+        let rawValue: any = 0;
         
         switch (metricKey.toLowerCase()) {
           case 'impressions':
-            metricValue = String(campAnalytics.impressions || 0);
+            rawValue = campAnalytics.impressions || 0;
             break;
           case 'clicks':
-            metricValue = String(campAnalytics.clicks || 0);
+            rawValue = campAnalytics.clicks || 0;
             break;
           case 'spend':
-            metricValue = String(campAnalytics.costInLocalCurrency || 0);
+            rawValue = campAnalytics.costInLocalCurrency || 0;
             break;
           case 'conversions':
-            metricValue = String(campAnalytics.externalWebsiteConversions || 0);
+            rawValue = campAnalytics.externalWebsiteConversions || 0;
             break;
           case 'leads':
-            metricValue = String(campAnalytics.leadGenerationMailContactInfoShares || campAnalytics.leadGenerationMailInterestedClicks || 0);
+            rawValue = campAnalytics.leadGenerationMailContactInfoShares || campAnalytics.leadGenerationMailInterestedClicks || 0;
             break;
           case 'likes':
-            metricValue = String(campAnalytics.likes || campAnalytics.reactions || 0);
+            rawValue = campAnalytics.likes || campAnalytics.reactions || 0;
             break;
           case 'comments':
-            metricValue = String(campAnalytics.comments || 0);
+            rawValue = campAnalytics.comments || 0;
             break;
           case 'shares':
-            metricValue = String(campAnalytics.shares || 0);
+            rawValue = campAnalytics.shares || 0;
             break;
           case 'totalengagements':
           case 'engagements':
             const engagements = (campAnalytics.likes || 0) + (campAnalytics.comments || 0) + (campAnalytics.shares || 0) + (campAnalytics.clicks || 0);
-            metricValue = String(engagements);
+            rawValue = engagements;
             break;
           case 'reach':
-            metricValue = String(campAnalytics.approximateUniqueImpressions || campAnalytics.impressions || 0);
+            rawValue = campAnalytics.approximateUniqueImpressions || campAnalytics.impressions || 0;
             break;
           case 'videoviews':
           case 'videoViews':
-            metricValue = String(campAnalytics.videoViews || campAnalytics.videoStarts || 0);
+            rawValue = campAnalytics.videoViews || campAnalytics.videoStarts || 0;
             break;
           case 'viralimpressions':
           case 'viralImpressions':
-            metricValue = String(campAnalytics.viralImpressions || 0);
+            rawValue = campAnalytics.viralImpressions || 0;
             break;
         }
+
+        const metricValue = normalizeLinkedInMetricValue(metricKey, rawValue);
         
         await storage.createLinkedInImportMetric({
           sessionId: session.id,

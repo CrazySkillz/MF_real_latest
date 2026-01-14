@@ -3123,7 +3123,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             
             for (const metricKey of coreMetrics) {
-              const metricValue = (Math.random() * 10000 + 1000).toFixed(2);
+              const k = String(metricKey || "").toLowerCase();
+              const isCount = [
+                "impressions",
+                "clicks",
+                "conversions",
+                "externalwebsiteconversions",
+                "leads",
+                "engagements",
+                "reach",
+                "videoviews",
+                "viralimpressions",
+                "likes",
+                "comments",
+                "shares",
+              ].includes(k);
+              let metricValue = "0";
+              if (k === "spend") {
+                metricValue = (Math.random() * 5000 + 1000).toFixed(2);
+              } else if (isCount) {
+                metricValue = String(Math.floor(Math.random() * 50000) + 100);
+              } else {
+                metricValue = (Math.random() * 100 + 1).toFixed(2);
+              }
               await storage.createLinkedInImportMetric({
                 sessionId: session.id,
                 campaignUrn: campaign.id,
@@ -3259,6 +3281,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 case 'viralimpressions':
                   metricValue = String(campAnalytics.viralImpressions || 0);
                   break;
+              }
+
+              // Enforce exec-grade numeric correctness:
+              // - count metrics must be integers
+              // - spend must be currency-like (2 decimals)
+              {
+                const k = String(metricKey || "").toLowerCase();
+                const isCount = [
+                  "impressions",
+                  "clicks",
+                  "conversions",
+                  "externalwebsiteconversions",
+                  "leads",
+                  "engagements",
+                  "reach",
+                  "videoviews",
+                  "viralimpressions",
+                  "likes",
+                  "comments",
+                  "shares",
+                  "totalengagements",
+                ].includes(k);
+                if (k === "spend") {
+                  const n = Number(metricValue);
+                  metricValue = Number.isFinite(n) ? n.toFixed(2) : "0.00";
+                } else if (isCount) {
+                  const n = Number(metricValue);
+                  metricValue = Number.isFinite(n) ? String(Math.round(n)) : "0";
+                }
               }
               
               await storage.createLinkedInImportMetric({

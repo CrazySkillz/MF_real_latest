@@ -13239,7 +13239,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const total = metrics
           .filter((m: any) => m.metricKey === metricKey)
           .reduce((sum: number, m: any) => sum + parseFloat(m.metricValue || '0'), 0);
-        aggregated[metricKey] = parseFloat(total.toFixed(2));
+        const k = String(metricKey || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const isCount = [
+          "impressions",
+          "clicks",
+          "conversions",
+          "externalwebsiteconversions",
+          "leads",
+          "engagements",
+          "reach",
+          "videoviews",
+          "viralimpressions",
+          "likes",
+          "comments",
+          "shares",
+        ].includes(k);
+        aggregated[metricKey] = isCount ? Math.round(total) : parseFloat(total.toFixed(2));
       });
       
       // Calculate derived metrics
@@ -13540,7 +13555,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Use consistent naming: total{MetricName}
         const aggregateKey = `total${metricKey.charAt(0).toUpperCase() + metricKey.slice(1)}`;
-        aggregated[aggregateKey] = parseFloat(total.toFixed(2));
+        const k = String(metricKey || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const isCount = [
+          "impressions",
+          "clicks",
+          "conversions",
+          "externalwebsiteconversions",
+          "leads",
+          "engagements",
+          "reach",
+          "videoviews",
+          "viralimpressions",
+          "likes",
+          "comments",
+          "shares",
+          "totalengagements",
+        ].includes(k);
+        aggregated[aggregateKey] = isCount ? Math.round(total) : parseFloat(total.toFixed(2));
       });
       
       const normalizeMetricKey = (key: any) =>

@@ -95,7 +95,9 @@ export default function LinkedInAnalytics() {
   const sessionId = new URLSearchParams(window.location.search).get('session');
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
-  const [activeTab, setActiveTab] = useState<string>(tabParam || 'overview');
+  const validTabs = useMemo(() => new Set(['overview', 'kpis', 'benchmarks', 'ads', 'reports']), []);
+  const normalizeTab = (t: string | null | undefined) => (t && validTabs.has(t) ? t : 'overview');
+  const [activeTab, setActiveTab] = useState<string>(normalizeTab(tabParam));
   const [selectedMetric, setSelectedMetric] = useState<string>('impressions');
   const [sortBy, setSortBy] = useState<string>('name');
   const [filterBy, setFilterBy] = useState<string>('all');
@@ -105,8 +107,9 @@ export default function LinkedInAnalytics() {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
     if (tab) {
-      console.log('[Tab Navigation] Setting active tab to:', tab);
-      setActiveTab(tab);
+      const next = normalizeTab(tab);
+      console.log('[Tab Navigation] Setting active tab to:', next);
+      setActiveTab(next);
     }
   }, [location]);
 
@@ -121,18 +124,10 @@ export default function LinkedInAnalytics() {
   const [isHubspotRevenueWizardOpen, setIsHubspotRevenueWizardOpen] = useState(false);
   const [isShopifyViewerOpen, setIsShopifyViewerOpen] = useState(false);
   const [isShopifyRevenueWizardOpen, setIsShopifyRevenueWizardOpen] = useState(false);
-  const [uploadModalDefaultGoogleSheetsUseCase, setUploadModalDefaultGoogleSheetsUseCase] = useState<'view' | 'enhance'>('view');
-  const openConnectAdditionalDataModal = (defaultUseCase: 'view' | 'enhance' = 'view') => {
-    setUploadModalDefaultGoogleSheetsUseCase(defaultUseCase);
-    setIsUploadDataModalOpen(true);
-  };
+  // LinkedIn revenue metrics are unlocked by connecting a revenue/conversion-value source.
+  // Use the same user intent language as GA4: "Add revenue".
+  const openAddRevenueModal = () => setIsUploadDataModalOpen(true);
 
-  const [isConnectedDataModalOpen, setIsConnectedDataModalOpen] = useState(false);
-  const [isEditMappingModalOpen, setIsEditMappingModalOpen] = useState(false);
-  const [isEditSalesforceWizardOpen, setIsEditSalesforceWizardOpen] = useState(false);
-  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
-  const [salesforceEditConnectionId, setSalesforceEditConnectionId] = useState<string | null>(null);
-  const [salesforcePreviewColumns, setSalesforcePreviewColumns] = useState<string[]>([]);
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
@@ -144,125 +139,9 @@ export default function LinkedInAnalytics() {
   const KPI_DESC_MAX = 200;
   const BENCHMARK_DESC_MAX = 200;
 
-  // Connected Data Sources (Google Sheets now; CRMs later)
-  const { data: connectedDataSourcesData, refetch: refetchConnectedDataSources } = useQuery<{
-    success: boolean;
-    sources: Array<any>;
-  }>({
-    queryKey: ["/api/campaigns", campaignId, "connected-data-sources"],
-    enabled: !!campaignId,
-    queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/connected-data-sources`);
-      if (!resp.ok) throw new Error('Failed to load connected data sources');
-      return resp.json();
-    },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-  });
+  // Connected Data Sources tab removed (revenue connections are handled via the "Add revenue" flow).
 
-  const connectedSources = connectedDataSourcesData?.sources || [];
-
-  const selectedSourceForPreview = useMemo(() => {
-    if (!selectedSourceId) return null;
-    return connectedSources.find((s: any) => s.id === selectedSourceId) || null;
-  }, [connectedSources, selectedSourceId]);
-
-  const isSalesforcePreview = !!selectedSourceForPreview && selectedSourceForPreview.type === 'salesforce';
-
-  // Default columns for Salesforce raw preview (view-only workflow)
-  useEffect(() => {
-    if (!isConnectedDataModalOpen || !isSalesforcePreview) return;
-    if (salesforcePreviewColumns.length > 0) return;
-    setSalesforcePreviewColumns(["Name", "StageName", "CloseDate", "Amount"]);
-  }, [isConnectedDataModalOpen, isSalesforcePreview, salesforcePreviewColumns.length]);
-
-  const deleteSourceMutation = useMutation({
-    mutationFn: async (args: { sourceId: string; sourceType: string }) => {
-      const { sourceId, sourceType } = args;
-      const endpoint =
-        sourceType === 'hubspot'
-          ? `/api/hubspot/${campaignId}/connection?connectionId=${encodeURIComponent(sourceId)}`
-          : sourceType === 'salesforce'
-          ? `/api/salesforce/${campaignId}/connection?connectionId=${encodeURIComponent(sourceId)}`
-          : `/api/google-sheets/${campaignId}/connection?connectionId=${encodeURIComponent(sourceId)}`;
-      const resp = await fetch(endpoint, { method: 'DELETE' });
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        throw new Error(json?.error || 'Failed to delete source');
-      }
-      return { ...json, sourceId };
-    },
-    onSuccess: async (data: any, variables: { sourceId: string; sourceType: string }) => {
-      if (selectedSourceId && selectedSourceId === variables.sourceId) {
-        setSelectedSourceId(null);
-      }
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-data-sources"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] }),
-      ]);
-      toast({
-        title: "Source Removed",
-        description: data?.conversionValueCleared
-          ? "Source removed. Conversion value was cleared, so revenue metrics are now disabled."
-          : "Source removed.",
-      });
-    },
-    onError: (err: any) => {
-      toast({
-        title: "Failed to Remove Source",
-        description: err?.message || "Please try again.",
-        variant: "destructive",
-      });
-    }
-  });
-
-  const { data: selectedSourcePreview, isLoading: previewLoading, error: previewError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "connected-data-sources", selectedSourceId, "preview", isSalesforcePreview ? salesforcePreviewColumns.join(",") : ""],
-    enabled: !!campaignId && !!selectedSourceId && isConnectedDataModalOpen,
-    queryFn: async () => {
-      const columnsParam = isSalesforcePreview && salesforcePreviewColumns.length > 0
-        ? `&columns=${encodeURIComponent(salesforcePreviewColumns.join(","))}`
-        : "";
-      const resp = await fetch(`/api/campaigns/${campaignId}/connected-data-sources/${selectedSourceId}/preview?limit=50${columnsParam}`);
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        throw new Error(json?.error || json?.details || 'Failed to load preview');
-      }
-      return json;
-    },
-    staleTime: 0,
-  });
-
-  const { data: salesforceFieldsData } = useQuery<any>({
-    queryKey: ["/api/salesforce", campaignId, "opportunities", "fields"],
-    enabled: !!campaignId && isConnectedDataModalOpen && isSalesforcePreview,
-    queryFn: async () => {
-      const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/fields`);
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.error || "Failed to load Salesforce fields");
-      return json;
-    },
-    staleTime: 0,
-  });
-
-  const { data: salesforceEditConnectionData, isLoading: salesforceEditLoading, error: salesforceEditError } = useQuery<any>({
-    queryKey: ["/api/salesforce", campaignId, "connection", salesforceEditConnectionId],
-    enabled: !!campaignId && !!salesforceEditConnectionId && isEditSalesforceWizardOpen,
-    queryFn: async () => {
-      const resp = await fetch(
-        `/api/salesforce/${campaignId}/connection?connectionId=${encodeURIComponent(String(salesforceEditConnectionId))}`
-      );
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        throw new Error(json?.error || "Failed to load Salesforce connection");
-      }
-      return json;
-    },
-    staleTime: 0,
-  });
+  // Removed: Connected Data Sources tab + its preview/edit/remove flows.
   
   // KPI Form State
   const [kpiForm, setKpiForm] = useState({
@@ -2847,9 +2726,8 @@ export default function LinkedInAnalytics() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-6" data-testid="tabs-list">
+              <TabsList className="grid w-full grid-cols-5" data-testid="tabs-list">
                 <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
-                <TabsTrigger value="connected-data" data-testid="tab-connected-data">Connected Data Sources</TabsTrigger>
                 <TabsTrigger value="kpis" data-testid="tab-kpis">KPIs</TabsTrigger>
                 <TabsTrigger value="benchmarks" data-testid="tab-benchmarks">Benchmarks</TabsTrigger>
                 <TabsTrigger value="ads" data-testid="tab-ads">Ad Comparison</TabsTrigger>
@@ -2907,13 +2785,13 @@ export default function LinkedInAnalytics() {
                               LinkedIn doesn’t include revenue data. Connect a revenue source (Google Sheets, CRM, custom integration) to calculate conversion value and unlock ROI/ROAS, revenue, and profit — or connect general datasets to view.
                             </p>
                             <button
-                              onClick={() => openConnectAdditionalDataModal('enhance')}
+                              onClick={openAddRevenueModal}
                               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
-                              Connect Additional Data
+                              Add revenue
                             </button>
                           </div>
                         </div>
@@ -3873,426 +3751,7 @@ export default function LinkedInAnalytics() {
                 )}
               </TabsContent>
 
-              {/* Connected Data Sources Tab */}
-              <TabsContent value="connected-data" className="space-y-6" data-testid="content-connected-data">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Connected Data Sources</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                      Manage external datasets used to unlock revenue metrics (Google Sheets now; CRMs like HubSpot/Salesforce later).
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        void refetchConnectedDataSources();
-                        void refetchGoogleSheetsConnections();
-                      }}
-                    >
-                      Refresh
-                    </Button>
-                    <Button onClick={() => openConnectAdditionalDataModal('view')}>
-                      Connect Additional Data
-                    </Button>
-                  </div>
-                </div>
-
-                {connectedSources.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <p className="text-slate-500">No data sources connected yet.</p>
-                      <div className="mt-4">
-                        <Button onClick={() => openConnectAdditionalDataModal('view')}>Connect Additional Data</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {connectedSources.map((source: any) => {
-                      const isSheets = source.type === 'google_sheets';
-                      const isSalesforce = source.type === 'salesforce';
-                      const otherRevenueSourcesCount = connectedSources.filter(
-                        (s: any) => s.id !== source.id && s.usedForRevenueTracking && s.isActive !== false
-                      ).length;
-                      const isRevenueRelated = !!source.usedForRevenueTracking && source.isActive !== false;
-                      const willClearConversionValue = isRevenueRelated && otherRevenueSourcesCount === 0;
-                      return (
-                        <Card key={source.id}>
-                          <CardHeader>
-                            <CardTitle className="text-base flex items-center justify-between gap-2">
-                              <span className="truncate">{source.sheetName || source.spreadsheetName || source.displayName}</span>
-                              <Badge variant={source.isActive === false ? "outline" : (source.usedForRevenueTracking ? "default" : "secondary")}>
-                                {source.isActive === false ? "Inactive" : (source.usedForRevenueTracking ? "Used for revenue" : "Connected")}
-                              </Badge>
-                            </CardTitle>
-                            <CardDescription>
-                              {source.provider}
-                              {source.hasMappings ? " • Mapped" : " • Not mapped"}
-                              {source.isActive === false ? " • Inactive" : ""}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            {isSheets && (
-                              <div className="text-xs text-slate-500 space-y-1">
-                                <div>
-                                  Spreadsheet: <span className="font-medium">{source.spreadsheetName || 'Google Sheet'}</span>
-                                </div>
-                                <div>
-                                  Tab: <span className="font-medium">{source.sheetName || '—'}</span>
-                                </div>
-                                {source.spreadsheetId && (
-                                  <div>
-                                    <a
-                                      href={`https://docs.google.com/spreadsheets/d/${source.spreadsheetId}/edit`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="underline text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                                    >
-                                      Open in Google Sheets
-                                    </a>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {source.type === 'salesforce' && source.mappingSummary && (
-                              <div className="text-xs text-slate-500 space-y-1">
-                                <div>
-                                  Match: <span className="font-medium">{source.mappingSummary.campaignField}</span>
-                                </div>
-                                <div>
-                                  Revenue: <span className="font-medium">{source.mappingSummary.revenueField}</span>
-                                </div>
-                                <div>
-                                  Values:{" "}
-                                  <span className="font-medium">
-                                    {Number(source.mappingSummary.selectedValuesCount || 0)}
-                                  </span>
-                                  {Array.isArray(source.mappingSummary.selectedValuesSample) &&
-                                    source.mappingSummary.selectedValuesSample.length > 0 && (
-                                      <>
-                                        {" "}
-                                        <span className="text-slate-400">
-                                          (e.g. {String(source.mappingSummary.selectedValuesSample[0] || '')})
-                                        </span>
-                                      </>
-                                    )}
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedSourceId(source.id);
-                                  setIsConnectedDataModalOpen(true);
-                                }}
-                              >
-                                View Raw Data
-                              </Button>
-                              {isSheets && (
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  title="Edit mappings"
-                                  aria-label="Edit mappings"
-                                  onClick={() => {
-                                    setSelectedSourceId(source.id);
-                                    setIsEditMappingModalOpen(true);
-                                  }}
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </Button>
-                              )}
-                              {isSalesforce && (
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  title="Edit revenue mapping"
-                                  aria-label="Edit revenue mapping"
-                                  onClick={() => {
-                                    setSalesforceEditConnectionId(source.id);
-                                    setIsEditSalesforceWizardOpen(true);
-                                  }}
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </Button>
-                              )}
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    title="Delete source"
-                                    aria-label="Delete source"
-                                    disabled={deleteSourceMutation.isPending}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete connected source?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will remove the connection to "{source.displayName}".
-                                      {isRevenueRelated && (
-                                        willClearConversionValue ? (
-                                          <>
-                                            {" "}Because this source is used to calculate conversion value, deleting it will
-                                            <strong> delete the conversion value</strong> and revenue metrics will disappear from the Overview tab.
-                                          </>
-                                        ) : (
-                                          <>
-                                            {" "}This source is marked as <strong>Used for revenue</strong>. Deleting it may change how conversion value is calculated.
-                                            If revenue metrics disappear, you can reconnect the source or re-run mappings with your remaining sources.
-                                          </>
-                                        )
-                                      )}
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteSourceMutation.mutate({ sourceId: source.id, sourceType: source.type })}
-                                      className="bg-red-600 hover:bg-red-700"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Raw Data Preview Modal */}
-                <Dialog open={isConnectedDataModalOpen} onOpenChange={setIsConnectedDataModalOpen}>
-                  <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Raw Data Preview</DialogTitle>
-                      <DialogDescription>
-                        Preview of the connected dataset (first 50 rows).
-                      </DialogDescription>
-                    </DialogHeader>
-                    {previewLoading ? (
-                      <div className="py-10 text-center text-slate-500">Loading preview…</div>
-                    ) : previewError ? (
-                      <div className="py-10 text-center text-red-600">
-                        {(previewError as any)?.message || 'Failed to load preview.'}
-                      </div>
-                    ) : selectedSourcePreview ? (
-                      <div className="space-y-4">
-                        <div className="text-xs text-slate-500">
-                          {selectedSourcePreview.spreadsheetName || selectedSourcePreview.spreadsheetId}
-                          {selectedSourcePreview.sheetName ? ` • ${selectedSourcePreview.sheetName}` : ''}
-                        </div>
-
-                        {isSalesforcePreview && (
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="text-xs text-slate-500">
-                              Columns: <span className="font-medium">{salesforcePreviewColumns.length}</span>
-                            </div>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                  Choose columns
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[340px] p-3">
-                                <div className="text-sm font-medium mb-2">Select columns to display</div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      const all = Array.isArray(salesforceFieldsData?.fields) ? salesforceFieldsData.fields : [];
-                                      const names = all.map((f: any) => String(f.name)).filter(Boolean).slice(0, 30);
-                                      setSalesforcePreviewColumns(names);
-                                    }}
-                                  >
-                                    Select all
-                                  </Button>
-                                  <Button type="button" variant="outline" size="sm" onClick={() => setSalesforcePreviewColumns([])}>
-                                    Clear
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setSalesforcePreviewColumns(["Name", "StageName", "CloseDate", "Amount"])}
-                                  >
-                                    Reset
-                                  </Button>
-                                </div>
-                                <ScrollArea className="h-[280px] border rounded p-2">
-                                  {Array.isArray(salesforceFieldsData?.fields) && salesforceFieldsData.fields.length > 0 ? (
-                                    <div className="space-y-2">
-                                      {salesforceFieldsData.fields
-                                        .slice()
-                                        .sort((a: any, b: any) => String(a.label || '').localeCompare(String(b.label || '')))
-                                        .map((f: any) => {
-                                          const name = String(f.name || '');
-                                          const label = String(f.label || name);
-                                          const checked = salesforcePreviewColumns.includes(name);
-                                          return (
-                                            <label key={name} className="flex items-start gap-2 text-sm cursor-pointer">
-                                              <Checkbox
-                                                checked={checked}
-                                                onCheckedChange={(next) => {
-                                                  setSalesforcePreviewColumns((prev) => {
-                                                    const set = new Set(prev);
-                                                    if (next) set.add(name);
-                                                    else set.delete(name);
-                                                    return Array.from(set);
-                                                  });
-                                                }}
-                                              />
-                                              <span className="flex-1">
-                                                <span className="font-medium">{label}</span>
-                                                <span className="text-slate-400"> ({name})</span>
-                                              </span>
-                                            </label>
-                                          );
-                                        })}
-                                    </div>
-                                  ) : (
-                                    <div className="text-sm text-slate-500">Loading fields…</div>
-                                  )}
-                                </ScrollArea>
-                                <div className="text-xs text-slate-500 mt-2">
-                                  Note: row filtering (Closed Won + date window) is unchanged; this only controls displayed columns.
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                        )}
-
-                        <div className="overflow-x-auto border rounded">
-                          <table className="w-full text-sm">
-                            <thead className="bg-slate-50 dark:bg-slate-800">
-                              <tr>
-                                {(selectedSourcePreview.headers || []).map((h: any, i: number) => (
-                                  <th key={i} className="text-left px-3 py-2 font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                                    {String(h || `Col ${i + 1}`)}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {(selectedSourcePreview.rows || []).map((row: any[], rIdx: number) => (
-                                <tr key={rIdx} className="border-t">
-                                  {(selectedSourcePreview.headers || []).map((_h: any, cIdx: number) => (
-                                    <td key={cIdx} className="px-3 py-2 whitespace-nowrap">
-                                      {String((row || [])[cIdx] ?? '')}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="py-10 text-center text-slate-500">No preview available.</div>
-                    )}
-                  </DialogContent>
-                </Dialog>
-
-                {/* Edit Mappings Modal */}
-                <Dialog open={isEditMappingModalOpen} onOpenChange={setIsEditMappingModalOpen}>
-                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Edit Mappings</DialogTitle>
-                      <DialogDescription>
-                        Update campaign identifier, linked value, value source, and optional platform filter.
-                      </DialogDescription>
-                    </DialogHeader>
-                    {(() => {
-                      const source = connectedSources.find((s: any) => s.id === selectedSourceId);
-                      if (!source || source.type !== 'google_sheets') {
-                        return <div className="py-10 text-center text-slate-500">Select a Google Sheets source to edit mappings.</div>;
-                      }
-                      const spreadsheetId = source.spreadsheetId;
-                      const sheetNames = connectedSources
-                        .filter((s: any) => s.type === 'google_sheets' && s.spreadsheetId === spreadsheetId)
-                        .map((s: any) => s.sheetName)
-                        .filter(Boolean);
-                      return (
-                        <GuidedColumnMapping
-                          campaignId={campaignId!}
-                          connectionId={source.id}
-                          spreadsheetId={spreadsheetId}
-                          sheetNames={sheetNames.length > 0 ? sheetNames : undefined}
-                          platform="linkedin"
-                          onMappingComplete={() => {
-                            setIsEditMappingModalOpen(false);
-                            setSelectedSourceId(null);
-                            void refetchConnectedDataSources();
-                            void refetchGoogleSheetsConnections();
-                          }}
-                          onCancel={() => {
-                            setIsEditMappingModalOpen(false);
-                            setSelectedSourceId(null);
-                          }}
-                        />
-                      );
-                    })()}
-                  </DialogContent>
-                </Dialog>
-
-                {/* Edit Salesforce Revenue Mapping */}
-                <Dialog
-                  open={isEditSalesforceWizardOpen}
-                  onOpenChange={(open) => {
-                    setIsEditSalesforceWizardOpen(open);
-                    if (!open) setSalesforceEditConnectionId(null);
-                  }}
-                >
-                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Edit Salesforce Revenue Mapping</DialogTitle>
-                      <DialogDescription>
-                        Update the mapping fields and re-process revenue metrics. Changes won’t apply until you click “Process Revenue Metrics”.
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    {salesforceEditLoading ? (
-                      <div className="py-10 text-center text-slate-500">Loading mapping…</div>
-                    ) : salesforceEditError ? (
-                      <div className="py-10 text-center text-red-600">
-                        {(salesforceEditError as any)?.message || "Failed to load Salesforce mapping."}
-                      </div>
-                    ) : (
-                      <SalesforceRevenueWizard
-                        campaignId={campaignId!}
-                        platformContext="linkedin"
-                        mode="edit"
-                        initialMappingConfig={salesforceEditConnectionData?.connection?.mappingConfig || null}
-                        onClose={() => {
-                          setIsEditSalesforceWizardOpen(false);
-                          setSalesforceEditConnectionId(null);
-                          void refetchConnectedDataSources();
-                        }}
-                        onSuccess={() => {
-                          setIsEditSalesforceWizardOpen(false);
-                          setSalesforceEditConnectionId(null);
-                          void refetchConnectedDataSources();
-                          void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                          void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-                        }}
-                      />
-                    )}
-                  </DialogContent>
-                </Dialog>
-              </TabsContent>
+              {/* Connected Data Sources tab removed */}
 
               {/* KPIs Tab */}
               <TabsContent value="kpis" className="space-y-6" data-testid="content-kpis">
@@ -5880,14 +5339,14 @@ export default function LinkedInAnalytics() {
                     <button
                       onClick={() => {
                         setIsKPIModalOpen(false);
-                        openConnectAdditionalDataModal('enhance');
+                        openAddRevenueModal();
                       }}
                       className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
-                      Connect Additional Data
+                      Add revenue
                     </button>
                   </div>
                 </div>
@@ -6661,14 +6120,14 @@ export default function LinkedInAnalytics() {
                     <button
                       onClick={() => {
                         setIsBenchmarkModalOpen(false);
-                        openConnectAdditionalDataModal('enhance');
+                        openAddRevenueModal();
                       }}
                       className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
-                      Connect Additional Data
+                      Add revenue
                     </button>
                   </div>
                 </div>
@@ -9079,7 +8538,7 @@ export default function LinkedInAnalytics() {
         </DialogContent>
       </Dialog>
 
-      {/* Connect Additional Data Modal */}
+      {/* Add revenue modal */}
       {campaignId && (
         <UploadAdditionalDataModal
           isOpen={isUploadDataModalOpen}
@@ -9106,9 +8565,10 @@ export default function LinkedInAnalytics() {
           }}
           onOpenShopifyViewer={() => setIsShopifyViewerOpen(true)}
           onOpenShopifyRevenueWizard={() => setIsShopifyRevenueWizardOpen(true)}
-          autoStartMappingOnGoogleSheetsConnect={false}
-          showGoogleSheetsUseCaseStep={true}
-          defaultGoogleSheetsUseCase={uploadModalDefaultGoogleSheetsUseCase}
+          // Revenue flow: no "view" mode; connect + map immediately (mirrors GA4's "Add revenue" intent).
+          autoStartMappingOnGoogleSheetsConnect={true}
+          showGoogleSheetsUseCaseStep={false}
+          defaultGoogleSheetsUseCase="enhance"
         />
       )}
 
@@ -9137,12 +8597,13 @@ export default function LinkedInAnalytics() {
               onBack={() => setIsSalesforceRevenueWizardOpen(false)}
               onClose={() => {
                 setIsSalesforceRevenueWizardOpen(false);
-                void refetchConnectedDataSources();
+                void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
               }}
               onSuccess={() => {
                 setIsSalesforceRevenueWizardOpen(false);
-                void refetchConnectedDataSources();
                 void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
               }}
             />
           </DialogContent>
@@ -9165,12 +8626,13 @@ export default function LinkedInAnalytics() {
               onBack={() => setIsHubspotRevenueWizardOpen(false)}
               onClose={() => {
                 setIsHubspotRevenueWizardOpen(false);
-                void refetchConnectedDataSources();
+                void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
               }}
               onSuccess={() => {
                 setIsHubspotRevenueWizardOpen(false);
-                void refetchConnectedDataSources();
                 void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
               }}
             />
           </DialogContent>
@@ -9201,12 +8663,13 @@ export default function LinkedInAnalytics() {
               onBack={() => setIsShopifyRevenueWizardOpen(false)}
               onClose={() => {
                 setIsShopifyRevenueWizardOpen(false);
-                void refetchConnectedDataSources();
+                void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
               }}
               onSuccess={() => {
                 setIsShopifyRevenueWizardOpen(false);
-                void refetchConnectedDataSources();
                 void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
               }}
             />
           </DialogContent>

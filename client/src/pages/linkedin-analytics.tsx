@@ -3330,6 +3330,18 @@ export default function LinkedInAnalytics() {
                           <p className="text-sm text-slate-500 dark:text-slate-400">
                             Comprehensive metrics by individual campaigns
                           </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            <span className="font-medium">Note:</span> Overview derived metrics (CPC/CTR/CPA/CVR/CPM/ER) are <span className="font-medium">blended</span> across all imported campaigns
+                            (weighted by the underlying denominators), so they will not equal the simple average of per-campaign rates.
+                          </p>
+                          {typeof aggregated?.totalSpend === "number" && typeof aggregated?.totalClicks === "number" && aggregated.totalClicks > 0 && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              <span className="font-medium">Reconciliation:</span> Blended CPC (matches Overview) = Total Spend ÷ Total Clicks ={" "}
+                              <span className="font-medium">{formatCurrency(aggregated.totalSpend)}</span> ÷{" "}
+                              <span className="font-medium">{formatNumber(aggregated.totalClicks)}</span>{" "}
+                              = <span className="font-medium">{formatCurrency(aggregated.totalSpend / aggregated.totalClicks)}</span>
+                            </p>
+                          )}
                         </div>
                       </div>
 

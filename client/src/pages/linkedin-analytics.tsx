@@ -141,6 +141,9 @@ export default function LinkedInAnalytics() {
   const { toast } = useToast();
   const campaignId = params?.id;
 
+  const KPI_DESC_MAX = 200;
+  const BENCHMARK_DESC_MAX = 200;
+
   // Connected Data Sources (Google Sheets now; CRMs later)
   const { data: connectedDataSourcesData, refetch: refetchConnectedDataSources } = useQuery<{
     success: boolean;
@@ -793,7 +796,7 @@ export default function LinkedInAnalytics() {
       unit: template.unit,
       description: template.description,
       metric: '',
-      targetValue: template.targetValue,
+      targetValue: formatNumberAsYouType(String(template.targetValue || ''), { maxDecimals: getMaxDecimalsForMetric(template.metric || '') }),
       currentValue: '',
       priority: 'high',
       status: 'active',
@@ -821,8 +824,8 @@ export default function LinkedInAnalytics() {
       campaignId: campaignId, // Include campaignId for data isolation
       name: kpiForm.name,
       metric: kpiForm.metric, // Include metric field
-      targetValue: kpiForm.targetValue,
-      currentValue: kpiForm.currentValue || '0',
+      targetValue: stripNumeric(kpiForm.targetValue || ''),
+      currentValue: stripNumeric(kpiForm.currentValue || '0'),
       unit: kpiForm.unit,
       description: kpiForm.description,
       priority: kpiForm.priority,
@@ -1048,8 +1051,8 @@ export default function LinkedInAnalytics() {
       metric: benchmarkForm.metric, // ← CRITICAL: Include metric field!
       category: derivedCategory,
       unit: benchmarkForm.unit,
-      benchmarkValue: benchmarkForm.benchmarkValue,
-      currentValue: benchmarkForm.currentValue || '0',
+      benchmarkValue: stripNumeric(benchmarkForm.benchmarkValue || ''),
+      currentValue: stripNumeric(benchmarkForm.currentValue || '0'),
       industry: benchmarkForm.industry,
       description: benchmarkForm.description,
       applyTo: benchmarkForm.applyTo, // 'all' or 'specific'
@@ -2678,22 +2681,57 @@ export default function LinkedInAnalytics() {
     });
   };
   
+  // Currency configurations (used for formatting + consistent unit symbols in KPI/Benchmark modals)
+  const currencyConfig: Record<string, { symbol: string; locale: string; decimals: number }> = {
+    USD: { symbol: '$', locale: 'en-US', decimals: 2 },
+    GBP: { symbol: '£', locale: 'en-GB', decimals: 2 },
+    EUR: { symbol: '€', locale: 'de-DE', decimals: 2 },
+    JPY: { symbol: '¥', locale: 'ja-JP', decimals: 0 },
+    CAD: { symbol: 'C$', locale: 'en-CA', decimals: 2 },
+    AUD: { symbol: 'A$', locale: 'en-AU', decimals: 2 },
+    INR: { symbol: '₹', locale: 'en-IN', decimals: 2 },
+  };
+
+  const campaignCurrencyCode = campaignData?.currency || 'USD';
+  const campaignCurrencySymbol = (currencyConfig[campaignCurrencyCode] || currencyConfig.USD).symbol;
+
+  const stripNumeric = (raw: string) => {
+    const s = String(raw ?? '');
+    // keep digits, decimal point, and leading minus (for completeness)
+    return s.replace(/,/g, '').replace(/[^\d.-]/g, '');
+  };
+
+  const formatNumberAsYouType = (raw: string, opts?: { maxDecimals?: number }) => {
+    const maxDecimals = typeof opts?.maxDecimals === 'number' ? opts.maxDecimals : 2;
+    const cleaned = stripNumeric(raw);
+    const negative = cleaned.startsWith('-');
+    const body = negative ? cleaned.slice(1) : cleaned;
+    const parts = body.split('.');
+    const intRaw = parts[0] ?? '';
+    const decRaw = parts.slice(1).join(''); // collapse extra dots
+    const intDigits = intRaw.replace(/^0+(?=\d)/, '') || (intRaw ? '0' : '');
+    const intWithCommas = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const dec = maxDecimals <= 0 ? '' : decRaw.slice(0, maxDecimals);
+    const hasDot = body.includes('.');
+    const sign = negative ? '-' : '';
+    if (maxDecimals <= 0) return `${sign}${intWithCommas}`;
+    return hasDot ? `${sign}${intWithCommas}.${dec}` : `${sign}${intWithCommas}`;
+  };
+
+  const getMaxDecimalsForMetric = (metricKey: string) => {
+    const k = String(metricKey || '').toLowerCase();
+    if (isCountMetric(k)) return 0;
+    if (['ctr', 'cvr', 'er', 'roi', 'profitmargin'].includes(k)) return 2;
+    if (['roas'].includes(k)) return 2;
+    // currency-like (spend, cpc, cpm, cpa, cpl, revenue/profit)
+    if (['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'totalrevenue', 'profit', 'revenueperlead'].includes(k)) return 2;
+    return 2;
+  };
+
   const formatCurrency = (num: number | string, currencyCode?: string) => {
     const n = typeof num === 'string' ? parseFloat(num) : num;
-    const currency = currencyCode || campaignData?.currency || 'USD';
-    
-    // Currency configurations
-    const currencyConfig: Record<string, { symbol: string; locale: string; decimals: number }> = {
-      USD: { symbol: '$', locale: 'en-US', decimals: 2 },
-      GBP: { symbol: '£', locale: 'en-GB', decimals: 2 },
-      EUR: { symbol: '€', locale: 'de-DE', decimals: 2 },
-      JPY: { symbol: '¥', locale: 'ja-JP', decimals: 0 },
-      CAD: { symbol: 'C$', locale: 'en-CA', decimals: 2 },
-      AUD: { symbol: 'A$', locale: 'en-AU', decimals: 2 },
-      INR: { symbol: '₹', locale: 'en-IN', decimals: 2 },
-    };
-    
-    const config = currencyConfig[currency] || currencyConfig['USD'];
+    const currency = currencyCode || campaignCurrencyCode;
+    const config = currencyConfig[currency] || currencyConfig.USD;
     
     return `${config.symbol}${(isNaN(n) ? 0 : n).toLocaleString(config.locale, { 
       minimumFractionDigits: config.decimals, 
@@ -5949,7 +5987,7 @@ export default function LinkedInAnalytics() {
                               break;
                             case 'spend':
                               currentValue = String(spend);
-                              unit = '$';
+                              unit = campaignCurrencySymbol;
                               break;
                             case 'conversions':
                               currentValue = String(conversions);
@@ -5969,11 +6007,11 @@ export default function LinkedInAnalytics() {
                               break;
                             case 'cpc':
                               currentValue = String(campaignData.cpc || 0);
-                              unit = '$';
+                              unit = campaignCurrencySymbol;
                               break;
                             case 'cpm':
                               currentValue = String(campaignData.cpm || 0);
-                              unit = '$';
+                              unit = campaignCurrencySymbol;
                               break;
                             case 'cvr':
                               currentValue = String(campaignData.cvr || 0);
@@ -5981,11 +6019,11 @@ export default function LinkedInAnalytics() {
                               break;
                             case 'cpa':
                               currentValue = String(campaignData.cpa || 0);
-                              unit = '$';
+                              unit = campaignCurrencySymbol;
                               break;
                             case 'cpl':
                               currentValue = String(campaignData.cpl || 0);
-                              unit = '$';
+                              unit = campaignCurrencySymbol;
                               break;
                             case 'er':
                               currentValue = String(campaignData.er || 0);
@@ -6009,14 +6047,14 @@ export default function LinkedInAnalytics() {
                             case 'totalRevenue':
                               if (aggregated?.hasRevenueTracking) {
                                 currentValue = String(conversions * (aggregated.conversionValue || 0));
-                                unit = '$';
+                                unit = campaignCurrencySymbol;
                               }
                               break;
                             case 'profit':
                               if (aggregated?.hasRevenueTracking) {
                                 const revenue = conversions * (aggregated.conversionValue || 0);
                                 currentValue = String(revenue - spend);
-                                unit = '$';
+                                unit = campaignCurrencySymbol;
                               }
                               break;
                             case 'profitMargin':
@@ -6031,7 +6069,7 @@ export default function LinkedInAnalytics() {
                               if (aggregated?.hasRevenueTracking) {
                                 const revenue = conversions * (aggregated.conversionValue || 0);
                                 currentValue = leads > 0 ? String(revenue / leads) : '0';
-                                unit = '$';
+                                unit = campaignCurrencySymbol;
                               }
                               break;
                           }
@@ -6053,7 +6091,7 @@ export default function LinkedInAnalytics() {
                             break;
                           case 'spend':
                             currentValue = String(aggregated.totalSpend || 0);
-                            unit = '$';
+                            unit = campaignCurrencySymbol;
                             break;
                           case 'conversions':
                             currentValue = String(aggregated.totalConversions || 0);
@@ -6073,11 +6111,11 @@ export default function LinkedInAnalytics() {
                             break;
                           case 'cpc':
                             currentValue = String(aggregated.cpc || 0);
-                            unit = '$';
+                            unit = campaignCurrencySymbol;
                             break;
                           case 'cpm':
                             currentValue = String(aggregated.cpm || 0);
-                            unit = '$';
+                            unit = campaignCurrencySymbol;
                             break;
                           case 'cvr':
                             currentValue = String(aggregated.cvr || 0);
@@ -6085,11 +6123,11 @@ export default function LinkedInAnalytics() {
                             break;
                           case 'cpa':
                             currentValue = String(aggregated.cpa || 0);
-                            unit = '$';
+                            unit = campaignCurrencySymbol;
                             break;
                           case 'cpl':
                             currentValue = String(aggregated.cpl || 0);
-                            unit = '$';
+                            unit = campaignCurrencySymbol;
                             break;
                           case 'er':
                             currentValue = String(aggregated.er || 0);
@@ -6105,11 +6143,11 @@ export default function LinkedInAnalytics() {
                             break;
                           case 'totalRevenue':
                             currentValue = String(aggregated.totalRevenue || 0);
-                            unit = '$';
+                            unit = campaignCurrencySymbol;
                             break;
                           case 'profit':
                             currentValue = String(aggregated.profit || 0);
-                            unit = '$';
+                            unit = campaignCurrencySymbol;
                             break;
                           case 'profitMargin':
                             currentValue = String(aggregated.profitMargin || 0);
@@ -6117,7 +6155,7 @@ export default function LinkedInAnalytics() {
                             break;
                           case 'revenuePerLead':
                             currentValue = String(aggregated.revenuePerLead || 0);
-                            unit = '$';
+                            unit = campaignCurrencySymbol;
                             break;
                         }
                       }
@@ -6178,10 +6216,14 @@ export default function LinkedInAnalytics() {
                 id="kpi-description"
                 placeholder="Describe what this KPI measures and why it's important"
                 value={kpiForm.description}
-                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
+                maxLength={KPI_DESC_MAX}
+                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value.slice(0, KPI_DESC_MAX) })}
                 rows={3}
                 data-testid="input-kpi-description"
               />
+              <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                {kpiForm.description.length}/{KPI_DESC_MAX}
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
@@ -6207,13 +6249,11 @@ export default function LinkedInAnalytics() {
                   id="kpi-target"
                   type="text"
                   placeholder="0"
+                  inputMode="decimal"
                   value={kpiForm.targetValue}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/,/g, '');
-                    // Allow decimal values (e.g., 75.5, 0.5, etc.)
-                    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                      setKpiForm({ ...kpiForm, targetValue: value });
-                    }
+                    const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(kpiForm.metric) });
+                    setKpiForm({ ...kpiForm, targetValue: formatted });
                   }}
                   data-testid="input-kpi-target"
                 />
@@ -6285,7 +6325,7 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'spend':
                           currentValue = String(aggregated.totalSpend || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'conversions':
                           currentValue = String(aggregated.totalConversions || 0);
@@ -6305,11 +6345,11 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'cpc':
                           currentValue = String(aggregated.cpc || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'cpm':
                           currentValue = String(aggregated.cpm || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'cvr':
                           currentValue = String(aggregated.cvr || 0);
@@ -6317,11 +6357,11 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'cpa':
                           currentValue = String(aggregated.cpa || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'cpl':
                           currentValue = String(aggregated.cpl || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'er':
                           currentValue = String(aggregated.er || 0);
@@ -6337,11 +6377,11 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'totalRevenue':
                           currentValue = String(aggregated.totalRevenue || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'profit':
                           currentValue = String(aggregated.profit || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'profitMargin':
                           currentValue = String(aggregated.profitMargin || 0);
@@ -6349,7 +6389,7 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'revenuePerLead':
                           currentValue = String(aggregated.revenuePerLead || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                       }
                       
@@ -6430,17 +6470,17 @@ export default function LinkedInAnalytics() {
                             case 'reach': currentValue = String(campaignData.reach || 0); break;
                             case 'clicks': currentValue = String(campaignData.clicks || 0); break;
                             case 'engagements': currentValue = String(campaignData.engagements || 0); break;
-                            case 'spend': currentValue = String(spend); unit = '$'; break;
+                            case 'spend': currentValue = String(spend); unit = campaignCurrencySymbol; break;
                             case 'conversions': currentValue = String(conversions); break;
                             case 'leads': currentValue = String(leads); break;
                             case 'videoViews': currentValue = String(campaignData.videoViews || 0); break;
                             case 'viralImpressions': currentValue = String(campaignData.viralImpressions || 0); break;
                             case 'ctr': currentValue = String(campaignData.ctr || 0); unit = '%'; break;
-                            case 'cpc': currentValue = String(campaignData.cpc || 0); unit = '$'; break;
-                            case 'cpm': currentValue = String(campaignData.cpm || 0); unit = '$'; break;
+                            case 'cpc': currentValue = String(campaignData.cpc || 0); unit = campaignCurrencySymbol; break;
+                            case 'cpm': currentValue = String(campaignData.cpm || 0); unit = campaignCurrencySymbol; break;
                             case 'cvr': currentValue = String(campaignData.cvr || 0); unit = '%'; break;
-                            case 'cpa': currentValue = String(campaignData.cpa || 0); unit = '$'; break;
-                            case 'cpl': currentValue = String(campaignData.cpl || 0); unit = '$'; break;
+                            case 'cpa': currentValue = String(campaignData.cpa || 0); unit = campaignCurrencySymbol; break;
+                            case 'cpl': currentValue = String(campaignData.cpl || 0); unit = campaignCurrencySymbol; break;
                             case 'er': currentValue = String(campaignData.er || 0); unit = '%'; break;
                             case 'roi':
                               if (aggregated?.hasRevenueTracking) {
@@ -6459,14 +6499,14 @@ export default function LinkedInAnalytics() {
                             case 'totalRevenue':
                               if (aggregated?.hasRevenueTracking) {
                                 currentValue = String(conversions * (aggregated.conversionValue || 0));
-                                unit = '$';
+                                unit = campaignCurrencySymbol;
                               }
                               break;
                             case 'profit':
                               if (aggregated?.hasRevenueTracking) {
                                 const revenue = conversions * (aggregated.conversionValue || 0);
                                 currentValue = String(revenue - spend);
-                                unit = '$';
+                                unit = campaignCurrencySymbol;
                               }
                               break;
                             case 'profitMargin':
@@ -6480,7 +6520,7 @@ export default function LinkedInAnalytics() {
                               if (aggregated?.hasRevenueTracking) {
                                 const revenue = conversions * (aggregated.conversionValue || 0);
                                 currentValue = leads > 0 ? String(revenue / leads) : '0';
-                                unit = '$';
+                                unit = campaignCurrencySymbol;
                               }
                               break;
                           }
@@ -6694,7 +6734,7 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'spend':
                           currentValue = String(metricsSource.spend || metricsSource.totalSpend || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'conversions':
                           currentValue = String(metricsSource.conversions || metricsSource.totalConversions || 0);
@@ -6714,11 +6754,11 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'cpc':
                           currentValue = String(metricsSource.cpc || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'cpm':
                           currentValue = String(metricsSource.cpm || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'cvr':
                           currentValue = String(metricsSource.cvr || 0);
@@ -6726,11 +6766,11 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'cpa':
                           currentValue = String(metricsSource.cpa || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'cpl':
                           currentValue = String(metricsSource.cpl || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'er':
                           currentValue = String(metricsSource.er || 0);
@@ -6746,11 +6786,11 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'totalRevenue':
                           currentValue = String(metricsSource.totalRevenue || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'profit':
                           currentValue = String(metricsSource.profit || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                         case 'profitMargin':
                           currentValue = String(metricsSource.profitMargin || 0);
@@ -6758,7 +6798,7 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'revenuePerLead':
                           currentValue = String(metricsSource.revenuePerLead || 0);
-                          unit = '$';
+                          unit = campaignCurrencySymbol;
                           break;
                       }
                     }
@@ -6779,7 +6819,7 @@ export default function LinkedInAnalytics() {
                             console.log('[Metric Selection] Benchmark data from API:', data);
                             setBenchmarkForm(prev => ({
                               ...prev,
-                              benchmarkValue: String(data.value),
+                              benchmarkValue: formatNumberAsYouType(String(data.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
                               unit: data.unit || prev.unit
                             }));
                           } else {
@@ -6789,7 +6829,7 @@ export default function LinkedInAnalytics() {
                               console.log('[Metric Selection] Using fallback benchmark data:', fallbackData);
                               setBenchmarkForm(prev => ({
                                 ...prev,
-                                benchmarkValue: String(fallbackData.value),
+                                benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
                                 unit: fallbackData.unit || prev.unit
                               }));
                             }
@@ -6801,7 +6841,7 @@ export default function LinkedInAnalytics() {
                             console.log('[Metric Selection] Using fallback benchmark data after error:', fallbackData);
                             setBenchmarkForm(prev => ({
                               ...prev,
-                              benchmarkValue: String(fallbackData.value),
+                              benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
                               unit: fallbackData.unit || prev.unit
                             }));
                           }
@@ -6859,10 +6899,14 @@ export default function LinkedInAnalytics() {
                 id="benchmark-description"
                 placeholder="Describe this benchmark and why it's important"
                 value={benchmarkForm.description}
-                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, description: e.target.value })}
+                maxLength={BENCHMARK_DESC_MAX}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, description: e.target.value.slice(0, BENCHMARK_DESC_MAX) })}
                 rows={3}
                 data-testid="input-benchmark-description"
               />
+              <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                {benchmarkForm.description.length}/{BENCHMARK_DESC_MAX}
+              </div>
             </div>
 
             {/* Apply To Section */}
@@ -6981,12 +7025,11 @@ export default function LinkedInAnalytics() {
                   id="benchmark-value"
                   type="text"
                   placeholder="0"
-                  value={benchmarkForm.benchmarkValue ? parseFloat(benchmarkForm.benchmarkValue).toLocaleString('en-US') : ''}
+                  inputMode="decimal"
+                  value={benchmarkForm.benchmarkValue}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/,/g, '');
-                    if (value === '' || !isNaN(parseFloat(value))) {
-                      setBenchmarkForm({ ...benchmarkForm, benchmarkValue: value });
-                    }
+                    const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) });
+                    setBenchmarkForm({ ...benchmarkForm, benchmarkValue: formatted });
                   }}
                   data-testid="input-benchmark-value"
                 />
@@ -7046,7 +7089,7 @@ export default function LinkedInAnalytics() {
                           const data = await response.json();
                           setBenchmarkForm(prev => ({
                             ...prev,
-                            benchmarkValue: String(data.value),
+                            benchmarkValue: formatNumberAsYouType(String(data.value), { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) }),
                             unit: data.unit
                           }));
                         } else {
@@ -7055,7 +7098,7 @@ export default function LinkedInAnalytics() {
                           if (fallbackData) {
                             setBenchmarkForm(prev => ({
                               ...prev,
-                              benchmarkValue: String(fallbackData.value),
+                              benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) }),
                               unit: fallbackData.unit
                             }));
                           }
@@ -7067,7 +7110,7 @@ export default function LinkedInAnalytics() {
                         if (fallbackData) {
                           setBenchmarkForm(prev => ({
                             ...prev,
-                            benchmarkValue: String(fallbackData.value),
+                            benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) }),
                             unit: fallbackData.unit
                           }));
                         }

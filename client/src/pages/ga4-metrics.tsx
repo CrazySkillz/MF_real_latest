@@ -58,6 +58,7 @@ interface GA4Metrics {
 
 const SELECT_UNIT = "__select_unit__";
 const BENCHMARK_DESC_MAX = 200;
+const KPI_DESC_MAX = 200;
 
 const kpiFormSchema = z.object({
   name: z.string().min(1, "KPI name is required"),
@@ -577,6 +578,14 @@ export default function GA4Metrics() {
 
     // If Description is blank, use the template default (exec-friendly).
     const desc = String(cleaned.description || "").trim();
+    if (desc.length > KPI_DESC_MAX) {
+      toast({
+        title: "Description is too long",
+        description: `Please keep the description under ${KPI_DESC_MAX} characters.`,
+        variant: "destructive",
+      });
+      return;
+    }
     if (!desc) {
       const defaultDesc = getDefaultKpiDescription(cleaned.name);
       if (defaultDesc) cleaned.description = defaultDesc;
@@ -1070,7 +1079,7 @@ export default function GA4Metrics() {
   };
 
   // Check GA4 connection status - Updated for multiple connections
-  const { data: ga4Connection } = useQuery({
+  const { data: ga4Connection, isLoading: ga4ConnLoading } = useQuery({
     queryKey: ["/api/ga4/check-connection", campaignId],
     enabled: !!campaignId,
     // Make the page frictionless: keep connection state fresh without requiring manual refresh.
@@ -2458,6 +2467,28 @@ export default function GA4Metrics() {
     );
   }
 
+  // Prevent a "flash" of the GA4 connection flow before the connection check finishes.
+  if (ga4ConnLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Navigation />
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1 p-8">
+            <div className="space-y-6">
+              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   if (!campaign) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -2797,6 +2828,14 @@ export default function GA4Metrics() {
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                   {ga4HasRevenueMetric ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
                                 </p>
+                                {(ga4HasRevenueMetric || activeRevenueSource) && (
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Source:{" "}
+                                    {ga4HasRevenueMetric
+                                      ? `GA4 (${ga4RevenueMetricName || "revenue"})`
+                                      : String((activeRevenueSource as any)?.displayName || (activeRevenueSource as any)?.sourceType || "Imported revenue")}
+                                  </p>
+                                )}
                                 {ga4HasRevenueMetric && activeRevenueSource ? (
                                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                     Imported revenue source is connected but <span className="font-medium">ignored</span> for platform financials (GA4 revenue metric is active).
@@ -2898,7 +2937,7 @@ export default function GA4Metrics() {
                                         {formatMoney(Number(financialSpend || 0))}
                                       </p>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                        From spend sources ({Array.isArray(spendToDateResp?.sourceIds) ? spendToDateResp.sourceIds.length : 0})
+                                        Source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
                                       </p>
                                     </div>
                                     <div className="flex flex-col items-end gap-2 shrink-0">
@@ -3789,19 +3828,22 @@ export default function GA4Metrics() {
                 </TabsContent>
 
                 <TabsContent value="kpis">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle>Key Performance Indicators</CardTitle>
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Key Performance Indicators</h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Track daily GA4 KPIs and progress toward targets (blocked items are excluded from scoring).
+                        </p>
                       </div>
-                      <div>
-                        <Button size="sm" onClick={openCreateKPI}>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Create KPI
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
+                      <Button size="sm" onClick={openCreateKPI}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create KPI
+                      </Button>
+                    </div>
+
+                    <Card>
+                      <CardContent>
                       {kpisLoading ? (
                         <div className="space-y-4">
                           {[...Array(3)].map((_, i) => (
@@ -4052,8 +4094,9 @@ export default function GA4Metrics() {
                           )}
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="benchmarks">
@@ -4704,13 +4747,6 @@ export default function GA4Metrics() {
                                 <p className="text-slate-600 dark:text-slate-400 mb-4">
                                   Create your first benchmark to start tracking performance against industry standards
                                 </p>
-                                <Button 
-                                  onClick={() => setShowCreateBenchmark(true)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                                >
-                                  <Plus className="w-4 h-4 mr-2" />
-                                  Create First Benchmark
-                                </Button>
                               </CardContent>
                             </Card>
                           )}
@@ -5347,10 +5383,14 @@ export default function GA4Metrics() {
                       <Textarea
                         placeholder="Describe what this KPI measures and why it's important"
                         value={field.value || ""}
-                        onChange={field.onChange}
+                        maxLength={KPI_DESC_MAX}
+                        onChange={(e) => field.onChange(String(e.target.value || "").slice(0, KPI_DESC_MAX))}
                         onBlur={field.onBlur}
                       />
                     </FormControl>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                      {(String(field.value || "")).length}/{KPI_DESC_MAX}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

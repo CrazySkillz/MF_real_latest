@@ -774,7 +774,7 @@ export function AddSpendWizardModal(props: {
                     id="csv-file"
                     type="file"
                     accept=".csv,text/csv"
-                    className="cursor-pointer"
+                    className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700"
                     onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
                   />
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -893,7 +893,7 @@ export function AddSpendWizardModal(props: {
                     id="csv-file-remap"
                     type="file"
                     accept=".csv,text/csv"
-                    className="cursor-pointer"
+                    className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700"
                     onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
                   />
                   <p className="text-xs text-slate-500 dark:text-slate-400">

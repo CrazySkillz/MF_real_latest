@@ -2734,6 +2734,9 @@ export default function LinkedInAnalytics() {
     if (linkedInCampaignName) {
       const campaignMetrics = getCampaignSpecificMetrics(linkedInCampaignName);
       if (!campaignMetrics) return 0;
+      // First try the exact key (handles camelCase like "videoViews", "totalRevenue", "profitMargin", etc.)
+      const direct = (campaignMetrics as any)[metricKey as any];
+      if (typeof direct === 'number') return direct;
       const base = (campaignMetrics as any)[k];
       if (typeof base === 'number') return base;
 
@@ -2785,11 +2788,12 @@ export default function LinkedInAnalytics() {
   };
 
   const computeBenchmarkProgress = (benchmark: any) => {
-    const metricKey = String((benchmark as any)?.metric || '').toLowerCase();
+    const metricRaw = String((benchmark as any)?.metric || '');
+    const metricKey = metricRaw.toLowerCase();
     const isBlocked = isRevenueDependentBenchmarkMetric(metricKey) && !aggregated?.hasRevenueTracking;
     if (isBlocked) return { status: 'blocked' as const, ratio: 0, pct: 0, color: 'bg-slate-300', deltaPct: 0 };
 
-    const current = getLiveLinkedInMetricValue(metricKey, (benchmark as any)?.linkedInCampaignName || undefined);
+    const current = getLiveLinkedInMetricValue(metricRaw, (benchmark as any)?.linkedInCampaignName || undefined);
     const bench = parseFloat(stripNumeric(String((benchmark as any)?.benchmarkValue ?? (benchmark as any)?.targetValue ?? '0'))) || 0;
     const safeCurrent = Number.isFinite(current) ? current : 0;
     const safeBench = Number.isFinite(bench) ? bench : 0;

@@ -29,6 +29,7 @@ interface UploadAdditionalDataModalProps {
   showGoogleSheetsUseCaseStep?: boolean; // If true, show "How will you use this Google Sheet?"
   defaultGoogleSheetsUseCase?: 'view' | 'enhance'; // Default selection when the use-case step is shown
   prefillGoogleSheetsEditMode?: boolean; // If true, open Google Sheets mapping prefilled (for "Update" / edit flows)
+  titleOverride?: string; // Override modal title (e.g. "Edit revenue source")
 }
 
 type DataSourceType = 'google-sheets' | 'crm' | 'ecommerce' | 'custom-integration' | 'upload-file' | null;
@@ -49,7 +50,8 @@ export function UploadAdditionalDataModal({
   autoStartMappingOnGoogleSheetsConnect = false,
   showGoogleSheetsUseCaseStep = false,
   defaultGoogleSheetsUseCase = 'view',
-  prefillGoogleSheetsEditMode = false
+  prefillGoogleSheetsEditMode = false,
+  titleOverride
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [selectedCrmProvider, setSelectedCrmProvider] = useState<'hubspot' | 'salesforce' | null>(null);
@@ -92,16 +94,6 @@ export function UploadAdditionalDataModal({
     },
   });
 
-  // Single source of truth for edit-mode prefill: ask the server which connection is the active LinkedIn revenue source.
-  const { data: linkedInRevenueSourceData } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "linkedin", "revenue-source"],
-    enabled: isOpen && !!campaignId && prefillGoogleSheetsEditMode,
-    queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/linkedin/revenue-source`);
-      if (!resp.ok) return null;
-      return resp.json();
-    },
-  });
 
   const isConnectionMapped = (conn: any): boolean => {
     const cm = conn?.columnMappings ?? conn?.column_mappings;
@@ -114,55 +106,8 @@ export function UploadAdditionalDataModal({
     }
   };
 
-  // Edit mode prefill for Google Sheets: jump straight to mapping for the existing mapped connection.
-  // This is the expected default behavior for "Update" UX.
-  useEffect(() => {
-    if (!isOpen) return;
-    if (!prefillGoogleSheetsEditMode) return;
-    if (showGuidedMapping || newConnectionInfo) return;
-
-    const serverPick = (linkedInRevenueSourceData as any)?.revenueSource;
-    const serverHas = (linkedInRevenueSourceData as any)?.hasRevenueSource === true && serverPick?.connectionId;
-    if (serverHas) {
-      setSelectedSource('google-sheets');
-      setShowDatasetsView(false);
-      setJustConnected(false);
-      setMappingLaunchedFromConnect(false);
-      setShowGuidedMapping(true);
-      setNewConnectionInfo({
-        connectionId: String(serverPick.connectionId),
-        spreadsheetId: String(serverPick.spreadsheetId || ''),
-      });
-      return;
-    }
-
-    if (!Array.isArray(googleSheetsConnections) || googleSheetsConnections.length === 0) return;
-
-    const mapped = (googleSheetsConnections as any[])
-      .filter((c) => c && c.isActive !== false)
-      .filter((c) => {
-        const purpose = String(c?.purpose || '').toLowerCase();
-        // Never auto-edit GA4 spend/revenue sheet purposes
-        if (purpose === 'spend' || purpose === 'revenue') return false;
-        return isConnectionMapped(c);
-      });
-
-    if (mapped.length === 0) return;
-
-    const pick =
-      mapped.find((c) => c.isPrimary) ||
-      mapped[0];
-
-    setSelectedSource('google-sheets');
-    setShowDatasetsView(false);
-    setJustConnected(false);
-    setMappingLaunchedFromConnect(false);
-    setShowGuidedMapping(true);
-    setNewConnectionInfo({
-      connectionId: String(pick.id),
-      spreadsheetId: String(pick.spreadsheetId || ''),
-    });
-  }, [isOpen, prefillGoogleSheetsEditMode, linkedInRevenueSourceData, googleSheetsConnections, showGuidedMapping, newConnectionInfo]);
+  // Note: Edit mode should NOT force-navigate users into mapping.
+  // The Update link should open the general revenue modal, with connection details available in the UI.
 
   // Reset states when modal closes or source changes
   useEffect(() => {
@@ -578,6 +523,7 @@ export function UploadAdditionalDataModal({
   };
 
   const dialogTitle = (() => {
+    if (titleOverride) return titleOverride;
     if (googleSheetsOnly) return "Add Google Sheets Dataset";
     if (selectedSource === "crm" && selectedCrmProvider === "salesforce") return "Connect Salesforce";
     if (selectedSource === "crm" && selectedCrmProvider === "hubspot") return "Connect HubSpot";

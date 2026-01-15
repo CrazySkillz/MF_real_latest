@@ -8981,7 +8981,7 @@ export default function LinkedInAnalytics() {
           onClose={() => setIsUploadDataModalOpen(false)}
           campaignId={campaignId}
           returnUrl={window.location.pathname + window.location.search}
-          prefillGoogleSheetsEditMode={revenueModalIntent === 'edit'}
+          titleOverride={revenueModalIntent === 'edit' ? 'Edit revenue source' : undefined}
           onDataConnected={() => {
             // Refresh all data after connection to show updated conversion values
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });

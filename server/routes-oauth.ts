@@ -679,61 +679,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // LinkedIn Revenue Source (Conversion Value mappings)
-  // Removes ONLY Google Sheets connections used for "general/LinkedIn revenue" (purpose null or 'general')
-  // and clears conversionValue so ROI/ROAS recompute immediately.
-  app.get("/api/campaigns/:id/linkedin/revenue-source", async (req, res) => {
-    try {
-      res.setHeader("Cache-Control", "no-store");
-      const campaignId = String(req.params.id);
-      const conns = await storage.getGoogleSheetsConnections(campaignId);
-
-      const isMapped = (c: any): boolean => {
-        const cm = c?.columnMappings || c?.column_mappings;
-        if (!cm || (typeof cm === 'string' && cm.trim() === '')) return false;
-        try {
-          const parsed = typeof cm === 'string' ? JSON.parse(cm) : cm;
-          return Array.isArray(parsed) && parsed.length > 0;
-        } catch {
-          return false;
-        }
-      };
-
-      const candidates = (conns as any[])
-        .filter((c: any) => c && (c.isActive !== false))
-        .filter((c: any) => {
-          const purpose = String(c?.purpose || '').toLowerCase();
-          // Never treat GA4 sheet purposes as LinkedIn revenue
-          if (purpose === 'spend' || purpose === 'revenue') return false;
-          return isMapped(c);
-        });
-
-      const pick =
-        candidates.find((c: any) => c.isPrimary) ||
-        candidates[0] ||
-        null;
-
-      if (!pick) {
-        return res.json({ success: true, hasRevenueSource: false });
-      }
-
-      res.json({
-        success: true,
-        hasRevenueSource: true,
-        revenueSource: {
-          connectionId: String(pick.id),
-          spreadsheetId: String(pick.spreadsheetId || ''),
-          spreadsheetName: pick.spreadsheetName || null,
-          sheetName: pick.sheetName || null,
-          purpose: pick.purpose || null,
-          isPrimary: !!pick.isPrimary,
-        },
-      });
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to fetch LinkedIn revenue source" });
-    }
-  });
-
   app.delete("/api/campaigns/:id/linkedin/revenue-source", async (req, res) => {
     try {
       const campaignId = String(req.params.id);

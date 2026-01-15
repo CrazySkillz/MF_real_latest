@@ -6607,6 +6607,13 @@ export default function LinkedInAnalytics() {
                             case 'cpa': currentValue = String(campaignMetrics.cpa || 0); break;
                             case 'cpl': currentValue = String(campaignMetrics.cpl || 0); break;
                             case 'er': currentValue = String(campaignMetrics.er || 0); break;
+                            // Revenue-derived metrics (campaign-scoped)
+                            case 'roi': currentValue = String(campaignMetrics.roi || 0); break;
+                            case 'roas': currentValue = String(campaignMetrics.roas || 0); break;
+                            case 'totalRevenue': currentValue = String(campaignMetrics.totalRevenue || 0); break;
+                            case 'profit': currentValue = String(campaignMetrics.profit || 0); break;
+                            case 'profitMargin': currentValue = String(campaignMetrics.profitMargin || 0); break;
+                            case 'revenuePerLead': currentValue = String(campaignMetrics.revenuePerLead || 0); break;
                           }
                           
                           if (currentValue) {

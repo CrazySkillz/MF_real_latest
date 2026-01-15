@@ -3594,10 +3594,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const derivedConversionValue = canDeriveConvValue ? (importedRevenueToDate / totalConversions) : 0;
 
       const hasMappedConversionValue = conversionValue > 0 && hasActiveGoogleSheetsWithMappings;
-      const shouldEnableRevenueTracking = hasMappedConversionValue || canDeriveConvValue;
+      // IMPORTANT: If imported revenue exists, we should show revenue metrics even when conversions are 0.
+      // (ROAS/ROI/Profit are valid with Spend+Revenue; Conversion Value simply can't be derived without conversions.)
+      const shouldEnableRevenueTracking = hasMappedConversionValue || hasImportedRevenue;
 
       if (shouldEnableRevenueTracking) {
-        const effectiveConversionValue = hasMappedConversionValue ? conversionValue : derivedConversionValue;
+        const effectiveConversionValue = hasMappedConversionValue
+          ? conversionValue
+          : (totalConversions > 0 ? derivedConversionValue : 0);
         const effectiveTotalRevenue = hasMappedConversionValue ? (totalConversions * effectiveConversionValue) : importedRevenueToDate;
         const effectiveProfit = effectiveTotalRevenue - totalSpend;
 

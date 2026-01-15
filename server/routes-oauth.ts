@@ -13481,7 +13481,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const derivedConversionValue = (hasLinkedInRevenueSources && conversions > 0) ? (importedRevenueToDate / conversions) : 0;
       const conversionValue = mappedConversionValue > 0 ? mappedConversionValue : derivedConversionValue;
 
-      const shouldEnableRevenue = (hasLinkedInRevenueTrackingSource || hasLinkedInRevenueSources) && conversionValue > 0 && conversions > 0;
+      // If imported revenue exists, show revenue metrics even when conversions are 0.
+      // (Conversion value cannot be derived without conversions; that's OK.)
+      const shouldEnableRevenue = (hasLinkedInRevenueTrackingSource || hasLinkedInRevenueSources) && (conversionValue > 0 || hasLinkedInRevenueSources);
       if (shouldEnableRevenue) {
         const revenueTotal = hasLinkedInRevenueSources && mappedConversionValue <= 0
           ? importedRevenueToDate

@@ -1016,12 +1016,15 @@ export function AddRevenueWizardModal(props: {
 
                           <div className="space-y-1">
                             <Label>{platformContext === 'linkedin' ? 'Revenue column (optional)' : 'Revenue column'}</Label>
-                            <Select value={sheetsRevenueCol} onValueChange={setSheetsRevenueCol}>
+                            <Select
+                              value={(sheetsRevenueCol || (platformContext === 'linkedin' ? SELECT_NONE : '')) as any}
+                              onValueChange={(v) => setSheetsRevenueCol(v === SELECT_NONE ? "" : v)}
+                            >
                               <SelectTrigger>
                                 <SelectValue placeholder={platformContext === 'linkedin' ? 'None' : 'Select revenue column'} />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                {platformContext === 'linkedin' && <SelectItem value="">None</SelectItem>}
+                                {platformContext === 'linkedin' && <SelectItem value={SELECT_NONE}>None</SelectItem>}
                                 {sheetsHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>
                                     {h}
@@ -1036,12 +1039,15 @@ export function AddRevenueWizardModal(props: {
                           {platformContext === 'linkedin' && (
                             <div className="space-y-1">
                               <Label>Conversion value column (optional)</Label>
-                              <Select value={sheetsConversionValueCol} onValueChange={setSheetsConversionValueCol}>
+                              <Select
+                                value={(sheetsConversionValueCol || SELECT_NONE) as any}
+                                onValueChange={(v) => setSheetsConversionValueCol(v === SELECT_NONE ? "" : v)}
+                              >
                                 <SelectTrigger>
                                   <SelectValue placeholder="None" />
                                 </SelectTrigger>
                                 <SelectContent className="z-[10000]">
-                                  <SelectItem value="">None</SelectItem>
+                                  <SelectItem value={SELECT_NONE}>None</SelectItem>
                                   {sheetsHeaders.map((h) => (
                                     <SelectItem key={h} value={h}>
                                       {h}

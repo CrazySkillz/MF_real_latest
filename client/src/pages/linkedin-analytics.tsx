@@ -2817,6 +2817,26 @@ export default function LinkedInAnalytics() {
     return 'custom';
   };
 
+  const getBenchmarkUnitForMetric = (metricKey: string) => {
+    const k = String(metricKey || '').toLowerCase();
+    if (!k) return '';
+    if (k === 'roas') return '×';
+    if (isCurrencyLikeMetric(k)) return campaignCurrencySymbol;
+    if (['ctr', 'cvr', 'er', 'roi', 'profitmargin'].includes(k)) return '%';
+    return '';
+  };
+
+  const getBenchmarkModalCurrentValue = (metricKey: string, applyTo: 'all' | 'specific', linkedInCampaignName?: string) => {
+    const k = String(metricKey || '');
+    if (!k) return { currentValue: '', unit: '' };
+    const unit = getBenchmarkUnitForMetric(k);
+    const current = getLiveLinkedInMetricValue(k, applyTo === 'specific' ? linkedInCampaignName : undefined);
+    return {
+      currentValue: formatMetricValueForInput(k, String(current)),
+      unit,
+    };
+  };
+
   const formatMetricValueForDisplay = (metricKey: string, raw: number | string) => {
     const k = String(metricKey || '').toLowerCase();
     const decimals = getMaxDecimalsForMetric(k);
@@ -6700,7 +6720,41 @@ export default function LinkedInAnalytics() {
               </Label>
               <Select
                 value={benchmarkForm.applyTo}
-                onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, applyTo: value, specificCampaignId: value === 'all' ? '' : benchmarkForm.specificCampaignId })}
+                onValueChange={(value) => {
+                  const nextApplyTo = value as 'all' | 'specific';
+                  // When switching scope, recompute Current Value from the same source-of-truth used elsewhere.
+                  if (!benchmarkForm.metric) {
+                    setBenchmarkForm({
+                      ...benchmarkForm,
+                      applyTo: nextApplyTo,
+                      specificCampaignId: nextApplyTo === 'all' ? '' : '',
+                      // Clear currentValue when switching to specific until a campaign is selected.
+                      currentValue: nextApplyTo === 'specific' ? '' : benchmarkForm.currentValue,
+                    });
+                    return;
+                  }
+
+                  if (nextApplyTo === 'all') {
+                    const next = getBenchmarkModalCurrentValue(benchmarkForm.metric, 'all');
+                    setBenchmarkForm({
+                      ...benchmarkForm,
+                      applyTo: 'all',
+                      specificCampaignId: '',
+                      currentValue: next.currentValue,
+                      unit: next.unit,
+                    });
+                    return;
+                  }
+
+                  // specific
+                  setBenchmarkForm({
+                    ...benchmarkForm,
+                    applyTo: 'specific',
+                    specificCampaignId: '',
+                    currentValue: '',
+                    unit: getBenchmarkUnitForMetric(benchmarkForm.metric),
+                  });
+                }}
               >
                 <SelectTrigger id="benchmark-apply-to" data-testid="select-benchmark-apply-to">
                   <SelectValue />
@@ -6724,50 +6778,18 @@ export default function LinkedInAnalytics() {
                     onValueChange={(value) => {
                       console.log('[Dropdown] Selected campaign:', value);
                       
-                      // Update the form with the selected campaign
-                      const updatedForm = { ...benchmarkForm, specificCampaignId: value };
-                      
-                      // If a metric is already selected, recalculate currentValue for this campaign
-                      if (benchmarkForm.metric && value) {
-                        const campaignMetrics = getCampaignSpecificMetrics(value);
-                        if (campaignMetrics) {
-                          let currentValue = '';
-                          const metric = benchmarkForm.metric;
-                          
-                          switch(metric) {
-                            case 'impressions': currentValue = String(campaignMetrics.impressions || 0); break;
-                            case 'reach': currentValue = String(campaignMetrics.reach || 0); break;
-                            case 'clicks': currentValue = String(campaignMetrics.clicks || 0); break;
-                            case 'engagements': currentValue = String(campaignMetrics.engagements || 0); break;
-                            case 'spend': currentValue = String(campaignMetrics.spend || 0); break;
-                            case 'conversions': currentValue = String(campaignMetrics.conversions || 0); break;
-                            case 'leads': currentValue = String(campaignMetrics.leads || 0); break;
-                            case 'videoViews': currentValue = String(campaignMetrics.videoViews || 0); break;
-                            case 'viralImpressions': currentValue = String(campaignMetrics.viralImpressions || 0); break;
-                            case 'ctr': currentValue = String(campaignMetrics.ctr || 0); break;
-                            case 'cpc': currentValue = String(campaignMetrics.cpc || 0); break;
-                            case 'cpm': currentValue = String(campaignMetrics.cpm || 0); break;
-                            case 'cvr': currentValue = String(campaignMetrics.cvr || 0); break;
-                            case 'cpa': currentValue = String(campaignMetrics.cpa || 0); break;
-                            case 'cpl': currentValue = String(campaignMetrics.cpl || 0); break;
-                            case 'er': currentValue = String(campaignMetrics.er || 0); break;
-                            // Revenue-derived metrics (campaign-scoped)
-                            case 'roi': currentValue = String(campaignMetrics.roi || 0); break;
-                            case 'roas': currentValue = String(campaignMetrics.roas || 0); break;
-                            case 'totalRevenue': currentValue = String(campaignMetrics.totalRevenue || 0); break;
-                            case 'profit': currentValue = String(campaignMetrics.profit || 0); break;
-                            case 'profitMargin': currentValue = String(campaignMetrics.profitMargin || 0); break;
-                            case 'revenuePerLead': currentValue = String(campaignMetrics.revenuePerLead || 0); break;
-                          }
-                          
-                          if (currentValue) {
-                            updatedForm.currentValue = formatMetricValueForInput(metric, currentValue);
-                            console.log('[Campaign Selection] Updated currentValue to:', currentValue);
-                          }
-                        }
+                      if (!benchmarkForm.metric) {
+                        setBenchmarkForm({ ...benchmarkForm, specificCampaignId: value });
+                        return;
                       }
-                      
-                      setBenchmarkForm(updatedForm);
+
+                      const next = getBenchmarkModalCurrentValue(benchmarkForm.metric, 'specific', value);
+                      setBenchmarkForm({
+                        ...benchmarkForm,
+                        specificCampaignId: value,
+                        currentValue: next.currentValue,
+                        unit: next.unit,
+                      });
                     }}
                   >
                     <SelectTrigger id="benchmark-campaign" data-testid="select-benchmark-campaign">

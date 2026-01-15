@@ -125,8 +125,13 @@ export default function LinkedInAnalytics() {
   const [isShopifyViewerOpen, setIsShopifyViewerOpen] = useState(false);
   const [isShopifyRevenueWizardOpen, setIsShopifyRevenueWizardOpen] = useState(false);
   // LinkedIn revenue metrics are unlocked by connecting a revenue/conversion-value source.
+  const [revenueModalIntent, setRevenueModalIntent] = useState<'add' | 'edit'>('add');
+
   // Use the same user intent language as GA4: "Add revenue".
-  const openAddRevenueModal = () => setIsUploadDataModalOpen(true);
+  const openAddRevenueModal = (intent: 'add' | 'edit' = 'add') => {
+    setRevenueModalIntent(intent);
+    setIsUploadDataModalOpen(true);
+  };
 
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
@@ -3149,7 +3154,7 @@ export default function LinkedInAnalytics() {
                               LinkedIn doesn’t include revenue data. Connect a revenue source (Google Sheets, CRM, custom integration) to calculate conversion value and unlock ROI/ROAS, revenue, and profit — or connect general datasets to view.
                             </p>
                             <button
-                              onClick={openAddRevenueModal}
+                              onClick={() => openAddRevenueModal('add')}
                               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3463,7 +3468,7 @@ export default function LinkedInAnalytics() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8 text-slate-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
-                                    onClick={openAddRevenueModal}
+                                    onClick={() => openAddRevenueModal('edit')}
                                     data-testid="button-edit-linkedin-revenue-source"
                                   >
                                     <Pencil className="h-4 w-4" />
@@ -5737,7 +5742,7 @@ export default function LinkedInAnalytics() {
                     <button
                       onClick={() => {
                         setIsKPIModalOpen(false);
-                        openAddRevenueModal();
+                        openAddRevenueModal('add');
                       }}
                       className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                     >
@@ -6518,7 +6523,7 @@ export default function LinkedInAnalytics() {
                     <button
                       onClick={() => {
                         setIsBenchmarkModalOpen(false);
-                        openAddRevenueModal();
+                        openAddRevenueModal('add');
                       }}
                       className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
                     >
@@ -8976,6 +8981,7 @@ export default function LinkedInAnalytics() {
           onClose={() => setIsUploadDataModalOpen(false)}
           campaignId={campaignId}
           returnUrl={window.location.pathname + window.location.search}
+          prefillGoogleSheetsEditMode={revenueModalIntent === 'edit'}
           onDataConnected={() => {
             // Refresh all data after connection to show updated conversion values
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });

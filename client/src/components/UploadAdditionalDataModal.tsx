@@ -28,6 +28,7 @@ interface UploadAdditionalDataModalProps {
   autoStartMappingOnGoogleSheetsConnect?: boolean; // If true, immediately launch mapping after connecting sheets
   showGoogleSheetsUseCaseStep?: boolean; // If true, show "How will you use this Google Sheet?"
   defaultGoogleSheetsUseCase?: 'view' | 'enhance'; // Default selection when the use-case step is shown
+  prefillGoogleSheetsEditMode?: boolean; // If true, open Google Sheets mapping prefilled (for "Update" / edit flows)
 }
 
 type DataSourceType = 'google-sheets' | 'crm' | 'ecommerce' | 'custom-integration' | 'upload-file' | null;
@@ -47,7 +48,8 @@ export function UploadAdditionalDataModal({
   googleSheetsOnly = false,
   autoStartMappingOnGoogleSheetsConnect = false,
   showGoogleSheetsUseCaseStep = false,
-  defaultGoogleSheetsUseCase = 'view'
+  defaultGoogleSheetsUseCase = 'view',
+  prefillGoogleSheetsEditMode = false
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [selectedCrmProvider, setSelectedCrmProvider] = useState<'hubspot' | 'salesforce' | null>(null);
@@ -89,6 +91,51 @@ export function UploadAdditionalDataModal({
       return data.connections || [];
     },
   });
+
+  const isConnectionMapped = (conn: any): boolean => {
+    const cm = conn?.columnMappings ?? conn?.column_mappings;
+    if (!cm || (typeof cm === 'string' && cm.trim() === '')) return false;
+    try {
+      const parsed = typeof cm === 'string' ? JSON.parse(cm) : cm;
+      return Array.isArray(parsed) && parsed.length > 0;
+    } catch {
+      return false;
+    }
+  };
+
+  // Edit mode prefill for Google Sheets: jump straight to mapping for the existing mapped connection.
+  // This is the expected default behavior for "Update" UX.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!prefillGoogleSheetsEditMode) return;
+    if (!Array.isArray(googleSheetsConnections) || googleSheetsConnections.length === 0) return;
+    if (showGuidedMapping || newConnectionInfo) return;
+
+    const mapped = (googleSheetsConnections as any[])
+      .filter((c) => c && c.isActive !== false)
+      .filter((c) => {
+        const purpose = String(c?.purpose || '').toLowerCase();
+        // Never auto-edit GA4 spend/revenue sheet purposes
+        if (purpose === 'spend' || purpose === 'revenue') return false;
+        return isConnectionMapped(c);
+      });
+
+    if (mapped.length === 0) return;
+
+    const pick =
+      mapped.find((c) => c.isPrimary) ||
+      mapped[0];
+
+    setSelectedSource('google-sheets');
+    setShowDatasetsView(false);
+    setJustConnected(false);
+    setMappingLaunchedFromConnect(false);
+    setShowGuidedMapping(true);
+    setNewConnectionInfo({
+      connectionId: String(pick.id),
+      spreadsheetId: String(pick.spreadsheetId || ''),
+    });
+  }, [isOpen, prefillGoogleSheetsEditMode, googleSheetsConnections, showGuidedMapping, newConnectionInfo]);
 
   // Reset states when modal closes or source changes
   useEffect(() => {

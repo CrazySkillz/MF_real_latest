@@ -378,6 +378,50 @@ export default function LinkedInAnalytics() {
     enabled: !!campaignId,
   });
 
+  // Fetch LinkedIn-scoped revenue sources so the Overview shows the correct provenance (manual vs CSV vs Sheets, etc.)
+  const { data: linkedInRevenueSourcesData } = useQuery<{ success: boolean; sources: any[] }>({
+    queryKey: ["/api/campaigns", campaignId, "revenue-sources", "linkedin"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=linkedin`);
+      if (!resp.ok) return { success: false, sources: [] };
+      const json = await resp.json().catch(() => ({}));
+      return { success: !!json?.success, sources: Array.isArray(json?.sources) ? json.sources : [] };
+    },
+  });
+
+  const getLinkedInRevenueSourceLabel = (src: any): string => {
+    if (!src) return '';
+    const type = String(src?.sourceType || '').toLowerCase();
+    const base =
+      type === 'manual' ? 'Manual' :
+      type === 'csv' ? 'CSV' :
+      type === 'sheets' ? 'Google Sheets' :
+      type === 'hubspot' ? 'HubSpot' :
+      type === 'salesforce' ? 'Salesforce' :
+      type === 'shopify' ? 'Shopify' :
+      'Imported';
+    try {
+      const cfg = src?.mappingConfig ? (typeof src.mappingConfig === 'string' ? JSON.parse(src.mappingConfig) : src.mappingConfig) : null;
+      const vs = String(cfg?.valueSource || '').trim().toLowerCase();
+      const mode = String(cfg?.mode || '').trim().toLowerCase();
+      const isCv = vs === 'conversion_value' || mode === 'conversion_value';
+      return isCv ? `${base} (Conversion Value)` : base;
+    } catch {
+      return base;
+    }
+  };
+
+  const activeLinkedInRevenueSource = (() => {
+    const sources = Array.isArray((linkedInRevenueSourcesData as any)?.sources) ? (linkedInRevenueSourcesData as any).sources : [];
+    const active = sources.find((s: any) => (s as any)?.isActive !== false) || sources[0];
+    return active || null;
+  })();
+  const linkedInRevenueSourceLabel = getLinkedInRevenueSourceLabel(activeLinkedInRevenueSource);
+
   // Fetch Google Sheets connections to check if mappings exist
   const { data: googleSheetsConnections, refetch: refetchGoogleSheetsConnections } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"],
@@ -3472,15 +3516,12 @@ export default function LinkedInAnalytics() {
                                         <p>Revenue = Conversions × Conversion Value</p>
                                         {aggregated.conversions && aggregated.conversionValue && (
                                           <p className="text-xs text-slate-400">
-                                            {aggregated.conversions.toLocaleString()} conversions × ${parseFloat(aggregated.conversionValue).toFixed(2)} = {formatCurrency(aggregated.totalRevenue || 0)}
+                                            {aggregated.conversions.toLocaleString()} conversions × {formatCurrency(parseFloat(aggregated.conversionValue))} = {formatCurrency(aggregated.totalRevenue || 0)}
                                           </p>
                                         )}
-                                        {connectedPlatformsData?.statuses?.find(p => p.id === 'linkedin' && p.conversionValue) && (
+                                        {linkedInRevenueSourceLabel && (
                                           <p className="text-xs text-slate-400 mt-2">
-                                            Conversion value from: {(() => {
-                                              const hasGoogleSheets = connectedPlatformsData.statuses.find(p => p.id === 'google-sheets' && p.connected);
-                                              return hasGoogleSheets ? 'Google Sheets' : 'LinkedIn Connection';
-                                            })()}
+                                            Source: {linkedInRevenueSourceLabel}
                                           </p>
                                         )}
                                       </div>
@@ -3535,15 +3576,15 @@ export default function LinkedInAnalytics() {
                                 <p className="text-2xl font-bold text-green-700 dark:text-green-400">
                                   {formatCurrency(aggregated.totalRevenue || 0)}
                                 </p>
-                                {connectedPlatformsData?.statuses?.find(p => p.id === 'google-sheets' && p.connected) && (
+                                {!!linkedInRevenueSourceLabel && (
                                   <Badge variant="outline" className="text-xs">
-                                    Google Sheets
+                                    {linkedInRevenueSourceLabel}
                                   </Badge>
                                 )}
                               </div>
                               {aggregated.conversions && aggregated.conversionValue && (
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  {aggregated.conversions.toLocaleString()} conversions × ${parseFloat(aggregated.conversionValue).toFixed(2)}
+                                  {aggregated.conversions.toLocaleString()} conversions × {formatCurrency(parseFloat(aggregated.conversionValue))}
                                 </p>
                               )}
                             </CardContent>
@@ -3568,7 +3609,7 @@ export default function LinkedInAnalytics() {
                                         <p className="font-medium">Calculation</p>
                                         <p>Conversion Value = Revenue ÷ Conversions</p>
                                         <p className="text-xs text-slate-400">
-                                          ${parseFloat(aggregated.conversionValue || 0).toFixed(2)} per conversion
+                                          {formatCurrency(parseFloat(aggregated.conversionValue || 0))} per conversion
                                         </p>
                                       </div>
                                     </TooltipContent>

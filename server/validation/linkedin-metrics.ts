@@ -133,9 +133,11 @@ export const DerivedMetricConstraints: Record<string, { min: number; max: number
     description: "ROAS cannot exceed 1000x (extremely high but theoretically possible)" 
   },
   profitMargin: {
-    min: -100,
+    // Profit margin can be less than -100% when spend/costs exceed revenue.
+    // We cap at a very low floor to avoid infinite blow-ups when revenue is tiny, but keep values mathematically correct for executives.
+    min: -100000,
     max: 100,
-    description: "Profit margin ranges from -100% (total loss) to 100% (pure profit)"
+    description: "Profit margin can be negative (including below -100% when costs exceed revenue) and is capped at 100% on the upside"
   },
 };
 

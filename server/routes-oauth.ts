@@ -13984,71 +13984,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAnyLinkedInRevenueTrackingSourceConnection =
         linkedInSheetsConns.length > 0 || linkedInHubspotConns.length > 0 || linkedInSalesforceConns.length > 0;
 
-      // Determine conversion value (LinkedIn connection → session). Never use campaign-level conversionValue.
-      let conversionValue = 0;
-      if (hasAnyLinkedInRevenueTrackingSourceConnection) {
-        const linkedInConn = await storage.getLinkedInConnection(session.campaignId);
-        const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
-        const sessionCv = parseFloat(session.conversionValue || '0');
-        conversionValue = connCv > 0 ? connCv : sessionCv;
-      } else {
-        // No LinkedIn-scoped revenue sources: clear stale LinkedIn conversion values (but do NOT touch campaign-level values).
-        console.log('[LinkedIn Analytics OAuth] ❌ NO LinkedIn-scoped revenue source connections - clearing stale LinkedIn conversion values');
+      // Also allow LinkedIn-scoped imported revenue sources (CSV/manual/Sheets/CRM) to enable revenue metrics.
+      const isoDateUTC = (d: any) => {
+        try {
+          const dt = d instanceof Date ? d : new Date(d);
+          if (Number.isNaN(dt.getTime())) return null;
+          return dt.toISOString().slice(0, 10);
+        } catch {
+          return null;
+        }
+      };
+      const yesterdayUTC = () => {
+        const now = new Date();
+        const y = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+        return y.toISOString().slice(0, 10);
+      };
 
+      let importedRevenueToDate = 0;
+      try {
+        let startDate =
+          isoDateUTC((campaign as any)?.startDate) ||
+          isoDateUTC((campaign as any)?.createdAt) ||
+          "2020-01-01";
+        const endDate = yesterdayUTC();
+        if (String(startDate) > String(endDate)) startDate = endDate;
+        const totals = await storage.getRevenueTotalForRange(session.campaignId, startDate, endDate, 'linkedin');
+        importedRevenueToDate = Number(totals?.totalRevenue || 0);
+      } catch {
+        importedRevenueToDate = 0;
+      }
+      const hasImportedRevenue = importedRevenueToDate > 0;
+
+      // Determine conversion value (LinkedIn connection → session). Never use campaign-level conversionValue.
+      const linkedInConn = await storage.getLinkedInConnection(session.campaignId);
+      const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
+      const sessionCv = parseFloat(session.conversionValue || '0');
+      const mappedConversionValue = hasAnyLinkedInRevenueTrackingSourceConnection ? (connCv > 0 ? connCv : sessionCv) : connCv;
+      const derivedConversionValue = (hasImportedRevenue && totalConversions > 0) ? (importedRevenueToDate / totalConversions) : 0;
+      const conversionValue = mappedConversionValue > 0 ? mappedConversionValue : derivedConversionValue;
+
+      // Only clear stale conversion values if there is neither a mapped revenue-tracking connection nor imported revenue sources.
+      if (!hasAnyLinkedInRevenueTrackingSourceConnection && !hasImportedRevenue) {
         if (session.conversionValue) {
           await storage.updateLinkedInImportSession(session.id, { conversionValue: null });
         }
-
-        const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
-        if (linkedInConnection?.conversionValue) {
-          console.log('[LinkedIn Analytics OAuth] Clearing LinkedIn connection conversion value:', linkedInConnection.conversionValue);
+        if (linkedInConn?.conversionValue) {
           await storage.updateLinkedInConnection(session.campaignId, { conversionValue: null });
         }
-
-        console.log('[LinkedIn Analytics OAuth] ✅ LinkedIn conversion values cleared - revenue tracking DISABLED');
-        conversionValue = 0;
       }
-      
-      console.log('Final conversion value used:', conversionValue);
-        
-        const totalRevenue = totalConversions * conversionValue;
-        const profit = totalRevenue - totalSpend;
-      
-      // Calculate revenue metrics only if conversion value is set AND there is at least one ACTIVE revenue-tracking connection.
-      // View-only connections must not keep revenue metrics enabled after a revenue source is deleted.
-      const shouldEnableRevenueTracking = conversionValue > 0 && hasAnyLinkedInRevenueTrackingSourceConnection;
+
+      // Enable revenue tracking if either:
+      // - mapped conversion value exists, or
+      // - imported revenue exists (even if conversions=0).
+      const shouldEnableRevenueTracking = (hasAnyLinkedInRevenueTrackingSourceConnection && conversionValue > 0) || hasImportedRevenue;
       if (shouldEnableRevenueTracking) {
-        console.log('✅ Revenue tracking ENABLED');
-        
         aggregated.hasRevenueTracking = 1;
-        aggregated.conversionValue = conversionValue;
-        aggregated.totalRevenue = parseFloat(totalRevenue.toFixed(2));
-        aggregated.profit = parseFloat(profit.toFixed(2));
+        aggregated.conversionValue = parseFloat(Number(conversionValue || 0).toFixed(2));
+        const effectiveTotalRevenue =
+          hasImportedRevenue && (!hasAnyLinkedInRevenueTrackingSourceConnection || mappedConversionValue <= 0)
+            ? importedRevenueToDate
+            : (totalConversions * conversionValue);
+        const profit = effectiveTotalRevenue - totalSpend;
+        aggregated.totalRevenue = parseFloat(Number(effectiveTotalRevenue).toFixed(2));
+        aggregated.profit = parseFloat(Number(profit).toFixed(2));
         
         // ROI - Return on Investment: ((Revenue - Spend) / Spend) × 100
         if (totalSpend > 0) {
-          const roi = ((totalRevenue - totalSpend) / totalSpend) * 100;
+          const roi = ((effectiveTotalRevenue - totalSpend) / totalSpend) * 100;
           aggregated.roi = sanitizeCalculatedMetric('roi', parseFloat(roi.toFixed(2)));
         }
         
         // ROAS - Return on Ad Spend: Revenue / Spend
         if (totalSpend > 0) {
-          const roas = totalRevenue / totalSpend;
+          const roas = effectiveTotalRevenue / totalSpend;
           aggregated.roas = sanitizeCalculatedMetric('roas', parseFloat(roas.toFixed(2)));
         }
         
         // Profit Margin: (Profit / Revenue) × 100
-        if (totalRevenue > 0) {
-          const profitMargin = (profit / totalRevenue) * 100;
+        if (effectiveTotalRevenue > 0) {
+          const profitMargin = (profit / effectiveTotalRevenue) * 100;
           aggregated.profitMargin = sanitizeCalculatedMetric('profitMargin', parseFloat(profitMargin.toFixed(2)));
         }
         
         // Revenue Per Lead: Revenue / Leads
         if (totalLeads > 0) {
-          aggregated.revenuePerLead = parseFloat((totalRevenue / totalLeads).toFixed(2));
+          aggregated.revenuePerLead = parseFloat((effectiveTotalRevenue / totalLeads).toFixed(2));
         }
       } else {
-        console.log('❌ Revenue tracking DISABLED - conversion value is 0 or missing');
         aggregated.hasRevenueTracking = 0;
         aggregated.conversionValue = 0;
         aggregated.totalRevenue = 0;

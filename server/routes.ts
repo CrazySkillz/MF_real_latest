@@ -3578,11 +3578,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let importedRevenueToDate = 0;
       try {
-        const startDate =
+        let startDate =
           isoDateUTC((campaign as any)?.startDate) ||
           isoDateUTC((campaign as any)?.createdAt) ||
           "2020-01-01";
         const endDate = yesterdayUTC();
+        // If campaign was created today, startDate can be > endDate (yesterday). Clamp to keep totals deterministic.
+        if (String(startDate) > String(endDate)) startDate = endDate;
         const totals = await storage.getRevenueTotalForRange(session.campaignId, startDate, endDate, 'linkedin');
         importedRevenueToDate = Number(totals?.totalRevenue || 0);
       } catch {

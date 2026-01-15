@@ -13461,11 +13461,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let importedRevenueToDate = 0;
       try {
         const camp = await storage.getCampaign(campaignId);
-        const startDate =
+        let startDate =
           isoDateUTC((camp as any)?.startDate) ||
           isoDateUTC((camp as any)?.createdAt) ||
           "2020-01-01";
         const endDate = yesterdayUTC();
+        if (String(startDate) > String(endDate)) startDate = endDate;
         const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, 'linkedin');
         importedRevenueToDate = Number(totals?.totalRevenue || 0);
       } catch {

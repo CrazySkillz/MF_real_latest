@@ -937,7 +937,8 @@ export default function LinkedInAnalytics() {
       name: benchmarkForm.name,
       metric: benchmarkForm.metric, // ← CRITICAL: Include metric field!
       category: derivedCategory,
-      unit: benchmarkForm.unit,
+      // Ensure benchmark currency always matches the campaign currency (no stale "$" values).
+      unit: isCurrencyLikeMetric(benchmarkForm.metric) ? campaignCurrencySymbol : benchmarkForm.unit,
       benchmarkValue: stripNumeric(benchmarkForm.benchmarkValue || ''),
       currentValue: stripNumeric(benchmarkForm.currentValue || '0'),
       industry: benchmarkForm.industry,
@@ -2662,6 +2663,29 @@ export default function LinkedInAnalytics() {
     };
 
     return metricConfig[metricKey] || { icon: BarChart3, format: formatNumber, label: metricKey };
+  };
+
+  const isCurrencyLikeMetric = (metricKey: string) => {
+    const k = String(metricKey || '').toLowerCase();
+    return ['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'totalrevenue', 'profit', 'revenueperlead'].includes(k);
+  };
+
+  const formatMetricValueForDisplay = (metricKey: string, raw: number | string) => {
+    const k = String(metricKey || '').toLowerCase();
+    const decimals = getMaxDecimalsForMetric(k);
+    const n = typeof raw === 'string' ? parseFloat(stripNumeric(raw)) : raw;
+    const safe = Number.isFinite(n) ? Number(n) : 0;
+
+    const formatted =
+      decimals <= 0
+        ? Math.round(safe).toLocaleString('en-US')
+        : safe.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+    // Currency must always match campaign currency and be prefixed (e.g., £1,234.56)
+    if (isCurrencyLikeMetric(k)) return `${campaignCurrencySymbol}${formatted}`;
+    if (['ctr', 'cvr', 'er', 'roi', 'profitmargin'].includes(k)) return `${formatted}%`;
+    if (['roas'].includes(k)) return `${formatted}x`;
+    return formatted;
   };
 
   const formatMetricValueForInput = (metricKey: string, raw: number | string) => {
@@ -4603,51 +4627,6 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : benchmarksData && Array.isArray(benchmarksData) && (benchmarksData as any[]).length > 0 ? (
                   <>
-                    {/* Benchmark Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {(benchmarksData as any[]).length}
-                              </p>
-                            </div>
-                            <Award className="w-8 h-8 text-blue-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Active</p>
-                              <p className="text-2xl font-bold text-green-600">
-                                {(benchmarksData as any[]).filter((b: any) => b.status === 'active').length}
-                              </p>
-                            </div>
-                            <CheckCircle2 className="w-8 h-8 text-green-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Industries</p>
-                              <p className="text-2xl font-bold text-blue-600">
-                                {new Set((benchmarksData as any[]).map((b: any) => b.industry)).size}
-                              </p>
-                            </div>
-                            <Trophy className="w-8 h-8 text-blue-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
                     {/* Benchmark Cards */}
                     <div className="space-y-4">
                       {console.log('[MAPPING] About to map benchmarks:', benchmarksData.length)}
@@ -4782,24 +4761,12 @@ export default function LinkedInAnalytics() {
                                       const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
                                       if (campaignMetrics && campaignMetrics[benchmark.metric] !== undefined) {
                                         const value = campaignMetrics[benchmark.metric];
-                                        if (typeof value === 'number') {
-                                          // Round count-based metrics to whole numbers
-                                          const decimals = getMaxDecimalsForMetric(benchmark.metric);
-                                          const formattedValue = decimals <= 0
-                                            ? Math.round(value).toLocaleString('en-US')
-                                            : Number(value).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-                                          return `${formattedValue}${benchmark.unit || ''}`;
-                                        }
-                                        return `${value}${benchmark.unit || ''}`;
+                                        return formatMetricValueForDisplay(benchmark.metric, value);
                                       }
                                     }
                                     // Otherwise use stored currentValue, round if count metric
                                     const currentVal = parseFloat(benchmark.currentValue || '0');
-                                    const decimals = getMaxDecimalsForMetric(benchmark.metric);
-                                    const formattedCurrentVal = decimals <= 0
-                                      ? Math.round(currentVal).toLocaleString('en-US')
-                                      : Number(currentVal).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-                                    return `${formattedCurrentVal}${benchmark.unit || ''}`;
+                                    return formatMetricValueForDisplay(benchmark.metric, currentVal);
                                   })()}
                                 </div>
                               </div>
@@ -4811,11 +4778,7 @@ export default function LinkedInAnalytics() {
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
                                   {(() => {
                                     const benchVal = parseFloat(benchmark.benchmarkValue || benchmark.targetValue || '0');
-                                    const decimals = getMaxDecimalsForMetric(benchmark.metric);
-                                    const formattedBenchVal = decimals <= 0
-                                      ? Math.round(benchVal).toLocaleString('en-US')
-                                      : Number(benchVal).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-                                    return `${formattedBenchVal}${benchmark.unit || ''}`;
+                                    return formatMetricValueForDisplay(benchmark.metric, benchVal);
                                   })()}
                                 </div>
                               </div>
@@ -6475,7 +6438,7 @@ export default function LinkedInAnalytics() {
                             setBenchmarkForm(prev => ({
                               ...prev,
                               benchmarkValue: formatNumberAsYouType(String(data.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
-                              unit: data.unit || prev.unit
+                              unit: isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (data.unit || prev.unit)
                             }));
                           } else {
                             // Fallback to hardcoded values
@@ -6485,7 +6448,7 @@ export default function LinkedInAnalytics() {
                               setBenchmarkForm(prev => ({
                                 ...prev,
                                 benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
-                                unit: fallbackData.unit || prev.unit
+                                unit: isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (fallbackData.unit || prev.unit)
                               }));
                             }
                           }
@@ -6497,7 +6460,7 @@ export default function LinkedInAnalytics() {
                             setBenchmarkForm(prev => ({
                               ...prev,
                               benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
-                              unit: fallbackData.unit || prev.unit
+                              unit: isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (fallbackData.unit || prev.unit)
                             }));
                           }
                         }
@@ -6746,7 +6709,7 @@ export default function LinkedInAnalytics() {
                           setBenchmarkForm(prev => ({
                             ...prev,
                             benchmarkValue: formatNumberAsYouType(String(data.value), { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) }),
-                            unit: data.unit
+                            unit: isCurrencyLikeMetric(benchmarkForm.metric) ? campaignCurrencySymbol : data.unit
                           }));
                         } else {
                           // Fallback to hardcoded values
@@ -6755,7 +6718,7 @@ export default function LinkedInAnalytics() {
                             setBenchmarkForm(prev => ({
                               ...prev,
                               benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) }),
-                              unit: fallbackData.unit
+                              unit: isCurrencyLikeMetric(benchmarkForm.metric) ? campaignCurrencySymbol : fallbackData.unit
                             }));
                           }
                         }
@@ -6767,7 +6730,7 @@ export default function LinkedInAnalytics() {
                           setBenchmarkForm(prev => ({
                             ...prev,
                             benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) }),
-                            unit: fallbackData.unit
+                            unit: isCurrencyLikeMetric(benchmarkForm.metric) ? campaignCurrencySymbol : fallbackData.unit
                           }));
                         }
                       }

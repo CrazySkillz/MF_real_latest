@@ -4345,6 +4345,33 @@ export default function LinkedInAnalytics() {
                       Compare your performance against industry benchmarks
                     </p>
                   </div>
+                  <Button 
+                    onClick={() => {
+                      setEditingBenchmark(null);
+                      setBenchmarkForm({
+                        metric: '',
+                        name: '',
+                        unit: '',
+                        benchmarkValue: '',
+                        currentValue: '',
+                        benchmarkType: 'custom',
+                        industry: '',
+                        description: '',
+                        applyTo: 'all',
+                        specificCampaignId: '',
+                        alertsEnabled: false,
+                        alertThreshold: '',
+                        alertCondition: 'below',
+                        emailRecipients: ''
+                      });
+                      setIsBenchmarkModalOpen(true);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    data-testid="button-create-benchmark"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Benchmark
+                  </Button>
                 </div>
 
                 {/* DEBUG: Force show condition check */}
@@ -4676,33 +4703,6 @@ export default function LinkedInAnalytics() {
                         <p className="text-slate-600 dark:text-slate-400 mb-4">
                           No benchmarks have been created for this campaign yet.
                         </p>
-                        <Button 
-                          onClick={() => {
-                            setEditingBenchmark(null);
-                            setBenchmarkForm({
-                              metric: '',
-                              name: '',
-                              unit: '',
-                              benchmarkValue: '',
-                              currentValue: '',
-                              benchmarkType: 'custom',
-                              industry: '',
-                              description: '',
-                              applyTo: 'all',
-                              specificCampaignId: '',
-                              alertsEnabled: false,
-                              alertThreshold: '',
-                              alertCondition: 'below',
-                              emailRecipients: ''
-                            });
-                            setIsBenchmarkModalOpen(true);
-                          }}
-                          data-testid="button-create-benchmark"
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Create Benchmark
-                        </Button>
                       </div>
                     </CardContent>
                   </Card>

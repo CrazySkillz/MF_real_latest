@@ -138,7 +138,43 @@ export default function LinkedInAnalytics() {
 
   const KPI_DESC_MAX = 200;
   const BENCHMARK_DESC_MAX = 200;
-  const DEFAULT_BENCHMARK_DESCRIPTION = "Tracks this metric against your benchmark for executive review.";
+  const getDefaultBenchmarkDescription = (metricKey: string) => {
+    const k = String(metricKey || '').toLowerCase();
+    const labelMap: Record<string, string> = {
+      impressions: 'Impressions',
+      reach: 'Reach',
+      clicks: 'Clicks',
+      engagements: 'Engagements',
+      spend: 'Spend',
+      conversions: 'Conversions',
+      leads: 'Leads',
+      videoviews: 'Video Views',
+      viralimpressions: 'Viral Impressions',
+      ctr: 'CTR',
+      cpc: 'CPC',
+      cpm: 'CPM',
+      cvr: 'Conversion Rate',
+      cpa: 'CPA',
+      cpl: 'CPL',
+      er: 'Engagement Rate',
+      roi: 'ROI',
+      roas: 'ROAS',
+      totalrevenue: 'Total Revenue',
+      profit: 'Profit',
+      profitmargin: 'Profit Margin',
+      revenueperlead: 'Revenue Per Lead',
+    };
+    const label = labelMap[k] || 'this metric';
+
+    if (!k) return 'Compare your performance against a benchmark for executive review.';
+    if (['cpc', 'cpm', 'cpa', 'cpl'].includes(k)) return `Tracks ${label} against your benchmark to manage cost efficiency.`;
+    if (['ctr', 'cvr', 'er'].includes(k)) return `Tracks ${label} against your benchmark to monitor engagement and conversion efficiency.`;
+    if (['spend'].includes(k)) return `Tracks ${label} against your benchmark to keep budget efficiency on target.`;
+    if (['roi', 'roas', 'profit', 'profitmargin', 'totalrevenue', 'revenueperlead'].includes(k)) return `Tracks ${label} against your benchmark to validate financial performance.`;
+    return `Tracks ${label} against your benchmark for executive review.`;
+  };
+
+  const DEFAULT_BENCHMARK_DESCRIPTION = getDefaultBenchmarkDescription('');
 
   // Connected Data Sources tab removed (revenue connections are handled via the "Add revenue" flow).
 
@@ -999,9 +1035,11 @@ export default function LinkedInAnalytics() {
     const existingBenchmarks = (benchmarksData as any[]) || [];
     const existingBenchmark = existingBenchmarks.find((b: any) => {
       const metricMatch = b.metric?.toLowerCase() === benchmarkForm.metric?.toLowerCase();
-      const scopeMatch = benchmarkForm.applyTo === 'specific' 
-        ? b.specificCampaignId === finalSpecificCampaignId
-        : b.applyTo === 'all' || !b.specificCampaignId;
+      // IMPORTANT: Uniqueness for "specific campaign" benchmarks must be scoped by LinkedIn campaign name,
+      // not the DB campaignId (which is the same for all LinkedIn campaigns under this parent campaign).
+      const scopeMatch = benchmarkForm.applyTo === 'specific'
+        ? String(b.linkedInCampaignName || '') === String(benchmarkForm.specificCampaignId || '')
+        : (!b.linkedInCampaignName && (b.applyTo === 'all' || !b.specificCampaignId));
       
       console.log('Checking duplicate:', {
         benchmark: b,
@@ -2780,8 +2818,8 @@ export default function LinkedInAnalytics() {
     // Currency must always match campaign currency and be prefixed (e.g., £1,234.56)
     if (isCurrencyLikeMetric(k)) return `${campaignCurrencySymbol}${formatted}`;
     if (['ctr', 'cvr', 'er', 'roi', 'profitmargin'].includes(k)) return `${formatted}%`;
-    // ROAS: keep the value clean; the metric label already indicates ROAS (avoid "x" unit in UI).
-    if (['roas'].includes(k)) return `${formatted}`;
+    // ROAS: use a proper multiplication sign (×), not the letter "x".
+    if (['roas'].includes(k)) return `${formatted}×`;
     return formatted;
   };
 
@@ -4790,7 +4828,7 @@ export default function LinkedInAnalytics() {
                                     const inferUnitForBenchmarkMetric = (metricKey: string) => {
                                       const k = String(metricKey || '').toLowerCase();
                                       if (['ctr', 'cvr', 'er', 'roi', 'profitmargin'].includes(k)) return '%';
-                                      if (['roas'].includes(k)) return '';
+                                      if (['roas'].includes(k)) return '×';
                                       if (['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'totalrevenue', 'profit', 'revenueperlead'].includes(k)) return campaignCurrencySymbol;
                                       return '';
                                     };
@@ -4801,9 +4839,9 @@ export default function LinkedInAnalytics() {
                                       unit: benchmark.unit || inferUnitForBenchmarkMetric(benchmark.metric),
                                       benchmarkValue: formatMetricValueForInput(benchmark.metric, benchmark.benchmarkValue || ''),
                                       currentValue: formatMetricValueForInput(benchmark.metric, benchmark.currentValue || ''),
-                                      benchmarkType: (benchmark as any).benchmarkType || (benchmark.industry ? 'industry' : 'custom'),
+                                      benchmarkType: (benchmark as any).benchmarkType ?? (benchmark.industry ? 'industry' : 'custom'),
                                       industry: benchmark.industry || '',
-                                      description: (benchmark.description || '').trim() || DEFAULT_BENCHMARK_DESCRIPTION,
+                                      description: (String(benchmark.description || '').trim() || getDefaultBenchmarkDescription(benchmark.metric)),
                                       // Some older rows may not have applyTo persisted correctly; infer from linkedInCampaignName.
                                       applyTo: benchmark.linkedInCampaignName ? 'specific' : (benchmark.applyTo || 'all'),
                                       // For "specific", the selector expects LinkedIn campaign NAME, not the DB campaignId.
@@ -6498,7 +6536,7 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'roas':
                           currentValue = String(metricsSource.roas || 0);
-                          unit = '';
+                          unit = '×';
                           break;
                         case 'totalRevenue':
                           currentValue = String(metricsSource.totalRevenue || 0);
@@ -6521,11 +6559,17 @@ export default function LinkedInAnalytics() {
                     console.log('[Metric Selection] Auto-filled currentValue:', currentValue, unit);
                     
                     // Update form with metric, currentValue, and unit (format for correct decimals/integers)
+                    const prevDefaultDesc = getDefaultBenchmarkDescription(benchmarkForm.metric);
+                    const nextDefaultDesc = getDefaultBenchmarkDescription(value);
+                    const shouldAutoUpdateDesc =
+                      !String(benchmarkForm.description || '').trim() || String(benchmarkForm.description || '') === prevDefaultDesc;
+
                     const updatedForm = { 
                       ...benchmarkForm, 
                       metric: value, 
                       currentValue: formatMetricValueForInput(value, currentValue),
-                      unit 
+                      unit: String(value || '').toLowerCase() === 'roas' ? '×' : unit,
+                      description: shouldAutoUpdateDesc ? nextDefaultDesc : benchmarkForm.description,
                     };
                     setBenchmarkForm(updatedForm);
                     
@@ -6542,7 +6586,7 @@ export default function LinkedInAnalytics() {
                               ...prev,
                               benchmarkValue: formatNumberAsYouType(String(data.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
                               unit: String(value || '').toLowerCase() === 'roas'
-                                ? ''
+                                ? '×'
                                 : (isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (data.unit || prev.unit))
                             }));
                           } else {
@@ -6554,7 +6598,7 @@ export default function LinkedInAnalytics() {
                                 ...prev,
                                 benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
                                 unit: String(value || '').toLowerCase() === 'roas'
-                                  ? ''
+                                  ? '×'
                                   : (isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (fallbackData.unit || prev.unit))
                               }));
                             }
@@ -6568,7 +6612,7 @@ export default function LinkedInAnalytics() {
                               ...prev,
                               benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
                               unit: String(value || '').toLowerCase() === 'roas'
-                                ? ''
+                                ? '×'
                                 : (isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (fallbackData.unit || prev.unit))
                             }));
                           }

@@ -43,6 +43,7 @@ export function AddRevenueWizardModal(props: {
 
   // Manual
   const [manualAmount, setManualAmount] = useState<string>("");
+  const [manualConversionValue, setManualConversionValue] = useState<string>("");
   const [savingManual, setSavingManual] = useState(false);
   const formatCurrencyWhileTyping = (raw: string) => {
     const s = String(raw ?? "");
@@ -64,6 +65,7 @@ export function AddRevenueWizardModal(props: {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvPreview, setCsvPreview] = useState<Preview | null>(null);
   const [csvRevenueCol, setCsvRevenueCol] = useState<string>("");
+  const [csvConversionValueCol, setCsvConversionValueCol] = useState<string>("");
   const [csvCampaignCol, setCsvCampaignCol] = useState<string>("");
   const [csvCampaignQuery, setCsvCampaignQuery] = useState<string>("");
   const [csvCampaignValues, setCsvCampaignValues] = useState<string[]>([]);
@@ -74,6 +76,7 @@ export function AddRevenueWizardModal(props: {
     campaignColumn?: string;
     campaignValues?: string[];
   }>(null);
+  const [csvValueSource, setCsvValueSource] = useState<'revenue' | 'conversion_value'>('revenue');
 
   // Sheets
   const [sheetsConnections, setSheetsConnections] = useState<any[]>([]);
@@ -93,16 +96,19 @@ export function AddRevenueWizardModal(props: {
   const resetAll = () => {
     setStep(initialStep || "select");
     setManualAmount("");
+    setManualConversionValue("");
     setSavingManual(false);
     setCsvFile(null);
     setCsvPreview(null);
     setCsvRevenueCol("");
+    setCsvConversionValueCol("");
     setCsvCampaignCol("");
     setCsvCampaignQuery("");
     setCsvCampaignValues([]);
     setCsvProcessing(false);
     setCsvPreviewing(false);
     setCsvPrefill(null);
+    setCsvValueSource('revenue');
     setSheetsConnectionId("");
     setSheetsConnectionsLoading(false);
     setShowSheetsConnect(false);
@@ -288,20 +294,46 @@ export function AddRevenueWizardModal(props: {
   const handleManualSave = async () => {
     const clean = String(manualAmount || "").replace(/,/g, "").trim();
     const amt = Number(clean);
-    if (!Number.isFinite(amt) || !(amt > 0)) {
-      toast({ title: "Enter a valid amount", description: "Revenue must be > 0.", variant: "destructive" });
-      return;
+    const cvClean = String(manualConversionValue || "").replace(/,/g, "").trim();
+    const cv = Number(cvClean);
+
+    if (platformContext !== 'linkedin') {
+      if (!Number.isFinite(amt) || !(amt > 0)) {
+        toast({ title: "Enter a valid amount", description: "Revenue must be > 0.", variant: "destructive" });
+        return;
+      }
+    } else {
+      const hasAmt = Number.isFinite(amt) && amt > 0;
+      const hasCv = Number.isFinite(cv) && cv > 0;
+      if (!hasAmt && !hasCv) {
+        toast({ title: "Enter Revenue or Conversion Value", description: "Provide at least one value.", variant: "destructive" });
+        return;
+      }
     }
     setSavingManual(true);
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/process/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amt, currency, dateRange, platformContext }),
+        body: JSON.stringify({
+          amount: Number.isFinite(amt) ? amt : null,
+          conversionValue: platformContext === 'linkedin' && Number.isFinite(cv) ? cv : null,
+          // If both are present for LinkedIn, default to revenue unless user only entered conversion value.
+          valueSource: platformContext === 'linkedin'
+            ? ((Number.isFinite(amt) && amt > 0) && (Number.isFinite(cv) && cv > 0) ? 'revenue' : ((Number.isFinite(cv) && cv > 0) ? 'conversion_value' : 'revenue'))
+            : 'revenue',
+          currency,
+          dateRange,
+          platformContext
+        }),
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save revenue");
-      toast({ title: isEditing ? "Revenue updated" : "Revenue saved", description: "Revenue will now be used when GA4 revenue is missing." });
+      if (platformContext === 'linkedin' && json?.mode === 'conversion_value') {
+        toast({ title: isEditing ? "Conversion value updated" : "Conversion value saved", description: "Conversion value will be used to calculate revenue metrics for LinkedIn." });
+      } else {
+        toast({ title: isEditing ? "Revenue updated" : "Revenue saved", description: platformContext === 'linkedin' ? "Revenue will be used to calculate LinkedIn financial metrics." : "Revenue will now be used when GA4 revenue is missing." });
+      }
       onSuccess?.();
       onOpenChange(false);
     } catch (e: any) {
@@ -351,10 +383,6 @@ export function AddRevenueWizardModal(props: {
 
   const handleCsvProcess = async () => {
     if (!csvFile) return;
-    if (!csvRevenueCol) {
-      toast({ title: "Select a revenue column", variant: "destructive" });
-      return;
-    }
     if (!csvCampaignCol) {
       toast({ title: "Select a campaign column", description: "Campaign is required for revenue imports.", variant: "destructive" });
       return;
@@ -363,10 +391,27 @@ export function AddRevenueWizardModal(props: {
       toast({ title: "Select at least 1 campaign value", description: "Choose which campaign rows to import.", variant: "destructive" });
       return;
     }
+    if (platformContext !== 'linkedin') {
+      if (!csvRevenueCol) {
+        toast({ title: "Select a revenue column", variant: "destructive" });
+        return;
+      }
+    } else {
+      if (!csvRevenueCol && !csvConversionValueCol) {
+        toast({ title: "Select Revenue or Conversion Value", description: "For LinkedIn, choose at least one value column.", variant: "destructive" });
+        return;
+      }
+    }
     setCsvProcessing(true);
     try {
+      const valueSource: 'revenue' | 'conversion_value' =
+        platformContext === 'linkedin'
+          ? (csvRevenueCol && csvConversionValueCol ? csvValueSource : (csvConversionValueCol ? 'conversion_value' : 'revenue'))
+          : 'revenue';
       const mapping = {
-        revenueColumn: csvRevenueCol,
+        revenueColumn: csvRevenueCol || null,
+        conversionValueColumn: platformContext === 'linkedin' ? (csvConversionValueCol || null) : null,
+        valueSource,
         campaignColumn: csvCampaignCol,
         campaignValue: csvCampaignValues.length === 1 ? csvCampaignValues[0] : null,
         campaignValues: csvCampaignValues,
@@ -608,15 +653,33 @@ export function AddRevenueWizardModal(props: {
                     <CardDescription>Revenue to date for this campaign (lifetime). You can update it any time.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="space-y-1">
-                      <Label>Amount ({currency})</Label>
-                      <Input
-                        value={manualAmount}
-                        onChange={(e) => setManualAmount(formatCurrencyWhileTyping(e.target.value))}
-                        onBlur={(e) => setManualAmount(formatCurrencyOnBlur(e.target.value))}
-                        placeholder="0.00"
-                        inputMode="decimal"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label>Revenue to date ({currency}){platformContext === 'linkedin' ? ' (optional)' : ''}</Label>
+                        <Input
+                          value={manualAmount}
+                          onChange={(e) => setManualAmount(formatCurrencyWhileTyping(e.target.value))}
+                          onBlur={(e) => setManualAmount(formatCurrencyOnBlur(e.target.value))}
+                          placeholder="0.00"
+                          inputMode="decimal"
+                        />
+                      </div>
+
+                      {platformContext === 'linkedin' && (
+                        <div className="space-y-1">
+                          <Label>Conversion value ({currency}) (optional)</Label>
+                          <Input
+                            value={manualConversionValue}
+                            onChange={(e) => setManualConversionValue(formatCurrencyWhileTyping(e.target.value))}
+                            onBlur={(e) => setManualConversionValue(formatCurrencyOnBlur(e.target.value))}
+                            placeholder="0.00"
+                            inputMode="decimal"
+                          />
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                            If provided, LinkedIn revenue can be calculated as Conversions × Conversion Value.
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setStep("select")}>
@@ -653,10 +716,12 @@ export function AddRevenueWizardModal(props: {
                               setCsvFile(null);
                               setCsvPreview(null);
                               setCsvRevenueCol("");
+                              setCsvConversionValueCol("");
                               setCsvDateCol("");
                               setCsvCampaignCol("");
                               setCsvCampaignValues([]);
                               setCsvCampaignQuery("");
+                              setCsvValueSource('revenue');
                             }}
                           >
                             Remove file
@@ -672,10 +737,12 @@ export function AddRevenueWizardModal(props: {
                           setCsvFile(f);
                           setCsvPreview(null);
                           setCsvRevenueCol("");
+                          setCsvConversionValueCol("");
                           setCsvDateCol("");
                           setCsvCampaignCol("");
                           setCsvCampaignValues([]);
                           setCsvCampaignQuery("");
+                          setCsvValueSource('revenue');
                         }}
                       />
                     </div>
@@ -712,7 +779,7 @@ export function AddRevenueWizardModal(props: {
                       </div>
                     ) : (
                       <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div className="space-y-1">
                             <Label>Campaign column</Label>
                             <Select
@@ -737,12 +804,16 @@ export function AddRevenueWizardModal(props: {
                           </div>
 
                           <div className="space-y-1">
-                            <Label>Revenue column</Label>
-                            <Select value={csvRevenueCol} onValueChange={setCsvRevenueCol}>
+                            <Label>{platformContext === 'linkedin' ? 'Revenue column (optional)' : 'Revenue column'}</Label>
+                            <Select
+                              value={(csvRevenueCol || (platformContext === 'linkedin' ? SELECT_NONE : '')) as any}
+                              onValueChange={(v) => setCsvRevenueCol(v === SELECT_NONE ? "" : v)}
+                            >
                               <SelectTrigger>
-                                <SelectValue placeholder="Select revenue column" />
+                                <SelectValue placeholder={platformContext === 'linkedin' ? 'None' : 'Select revenue column'} />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
+                                {platformContext === 'linkedin' && <SelectItem value={SELECT_NONE}>None</SelectItem>}
                                 {csvHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>
                                     {h}
@@ -753,7 +824,58 @@ export function AddRevenueWizardModal(props: {
                           </div>
 
                           {/* Date column removed: revenue imports are treated as revenue-to-date (lifetime). */}
+
+                          {platformContext === 'linkedin' && (
+                            <div className="space-y-1">
+                              <Label>Conversion value column (optional)</Label>
+                              <Select
+                                value={(csvConversionValueCol || SELECT_NONE) as any}
+                                onValueChange={(v) => setCsvConversionValueCol(v === SELECT_NONE ? "" : v)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="None" />
+                                </SelectTrigger>
+                                <SelectContent className="z-[10000]">
+                                  <SelectItem value={SELECT_NONE}>None</SelectItem>
+                                  {csvHeaders.map((h) => (
+                                    <SelectItem key={h} value={h}>
+                                      {h}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                         </div>
+
+                        {platformContext === 'linkedin' && csvRevenueCol && csvConversionValueCol && (
+                          <div className="rounded-md border p-3 space-y-2">
+                            <div className="text-sm font-medium">Source of truth</div>
+                            <div className="text-xs text-slate-600 dark:text-slate-400">
+                              You selected both Revenue and Conversion Value. Choose which one MetricMind should use.
+                            </div>
+                            <div className="flex items-center gap-4 pt-1">
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="radio"
+                                  name="li-csv-value-source"
+                                  checked={csvValueSource === 'revenue'}
+                                  onChange={() => setCsvValueSource('revenue')}
+                                />
+                                Use Revenue (derive Conversion Value)
+                              </label>
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="radio"
+                                  name="li-csv-value-source"
+                                  checked={csvValueSource === 'conversion_value'}
+                                  onChange={() => setCsvValueSource('conversion_value')}
+                                />
+                                Use Conversion Value (ignore Revenue)
+                              </label>
+                            </div>
+                          </div>
+                        )}
 
                         {csvCampaignCol ? (
                           <div className="rounded-md border p-3 space-y-2">

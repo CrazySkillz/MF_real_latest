@@ -812,41 +812,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const amount = parseNum((req.body as any)?.amount);
+      const conversionValueRaw = parseNum((req.body as any)?.conversionValue);
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
       const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
       const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
-      if (!(amount > 0)) {
-        return res.status(400).json({ success: false, error: "Amount must be > 0" });
+      const valueSourceRaw = String((req.body as any)?.valueSource || 'revenue').trim().toLowerCase();
+      const valueSource: 'revenue' | 'conversion_value' = valueSourceRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
+
+      const amountIsValid = amount > 0;
+      const cvIsValid = conversionValueRaw > 0;
+      if (platformContext !== 'linkedin') {
+        if (!amountIsValid) return res.status(400).json({ success: false, error: "Amount must be > 0" });
+      } else {
+        if (!amountIsValid && !cvIsValid) {
+          return res.status(400).json({ success: false, error: "amount or conversionValue must be > 0" });
+        }
       }
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
 
       await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
 
+      // For LinkedIn we support either:
+      // - revenue_to_date (materialized revenue record), or
+      // - conversion_value (persisted on LinkedIn connection; revenue metrics are derived from conversions)
+      const mode = (platformContext === 'linkedin' && valueSource === 'conversion_value') ? 'conversion_value' : 'revenue_to_date';
       const source = await storage.createRevenueSource({
         campaignId,
         sourceType: "manual",
         platformContext,
-        displayName: "Manual revenue (to date)",
+        displayName: platformContext === 'linkedin' && valueSource === 'conversion_value'
+          ? "Manual conversion value"
+          : "Manual revenue (to date)",
         currency: cur,
-        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "revenue_to_date" }),
+        mappingConfig: JSON.stringify({
+          amount: amountIsValid ? Number(amount.toFixed(2)) : null,
+          conversionValue: cvIsValid ? Number(conversionValueRaw.toFixed(2)) : null,
+          currency: cur,
+          mode,
+          valueSource: platformContext === 'linkedin' ? valueSource : 'revenue',
+        }),
         isActive: true,
       } as any);
 
       // Store as a single revenue-to-date snapshot on "yesterday (UTC)"
       const endDate = yesterdayUTC();
       await storage.deleteRevenueRecordsBySource(source.id);
-      await storage.createRevenueRecords([
-        {
-          campaignId,
-          revenueSourceId: source.id,
-          date: endDate,
-          revenue: Number(amount.toFixed(2)).toFixed(2) as any,
-          currency: cur,
-        } as any,
-      ]);
 
-      res.json({ success: true, sourceId: source.id, date: endDate, revenueToDate: Number(amount.toFixed(2)), currency: cur });
+      if (platformContext === 'linkedin') {
+        if (valueSource === 'conversion_value' && cvIsValid) {
+          // Persist conversion value on the LinkedIn connection (platform-isolated).
+          try {
+            await storage.updateLinkedInConnection(campaignId, { conversionValue: Number(conversionValueRaw.toFixed(2)).toFixed(2) as any } as any);
+          } catch {
+            // ignore
+          }
+          // If conversion value is the source of truth, do not create revenue records.
+        } else {
+          // Revenue is source of truth: clear any previously set conversion value so derived revenue uses imported revenue.
+          try {
+            await storage.updateLinkedInConnection(campaignId, { conversionValue: null as any } as any);
+          } catch {
+            // ignore
+          }
+          if (amountIsValid) {
+            await storage.createRevenueRecords([
+              {
+                campaignId,
+                revenueSourceId: source.id,
+                date: endDate,
+                revenue: Number(amount.toFixed(2)).toFixed(2) as any,
+                currency: cur,
+              } as any,
+            ]);
+          }
+        }
+      } else {
+        // GA4 path: always revenue_to_date.
+        await storage.createRevenueRecords([
+          {
+            campaignId,
+            revenueSourceId: source.id,
+            date: endDate,
+            revenue: Number(amount.toFixed(2)).toFixed(2) as any,
+            currency: cur,
+          } as any,
+        ]);
+      }
+
+      res.json({
+        success: true,
+        sourceId: source.id,
+        date: endDate,
+        currency: cur,
+        mode,
+        valueSource: platformContext === 'linkedin' ? valueSource : 'revenue',
+        revenueToDate: amountIsValid ? Number(amount.toFixed(2)) : 0,
+        conversionValue: cvIsValid ? Number(conversionValueRaw.toFixed(2)) : 0,
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process manual revenue" });
     }
@@ -878,8 +941,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mapping = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
       const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
       const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
-      if (!mapping?.revenueColumn) {
-        return res.status(400).json({ success: false, error: "revenueColumn is required" });
+      const revenueColumn = mapping?.revenueColumn ? String(mapping.revenueColumn) : "";
+      const conversionValueColumn = mapping?.conversionValueColumn ? String(mapping.conversionValueColumn) : "";
+      const valueSourceRaw = String(mapping?.valueSource || 'revenue').trim().toLowerCase();
+      const valueSource: 'revenue' | 'conversion_value' = valueSourceRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
+      if (platformContext !== 'linkedin') {
+        if (!revenueColumn) return res.status(400).json({ success: false, error: "revenueColumn is required" });
+      } else {
+        if (!revenueColumn && !conversionValueColumn) {
+          return res.status(400).json({ success: false, error: "revenueColumn or conversionValueColumn is required" });
+        }
       }
 
       const csvText = Buffer.from(file.buffer).toString("utf-8");
@@ -893,8 +964,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
 
       let kept = 0;
-      const revenueCol = String(mapping.revenueColumn);
       let totalRevenueToDate = 0;
+      const conversionValues: number[] = [];
 
       for (const row of parsed.rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -905,10 +976,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
         }
-        const revenue = parseNum((row as any)[revenueCol]);
-        if (!(revenue > 0)) continue;
-        kept++;
-        totalRevenueToDate += revenue;
+        if (platformContext === 'linkedin' && valueSource === 'conversion_value') {
+          const cv = parseNum((row as any)[conversionValueColumn]);
+          if (!(cv > 0)) continue;
+          kept++;
+          conversionValues.push(cv);
+        } else {
+          const revenue = parseNum((row as any)[revenueColumn]);
+          if (!(revenue > 0)) continue;
+          kept++;
+          totalRevenueToDate += revenue;
+          // If a conversion value column was also provided (but not selected as source of truth), we can optionally collect it
+          // for diagnostics; we do not persist it as the active conversion value when revenue is source of truth.
+        }
       }
 
       const endDate = yesterdayUTC();
@@ -918,7 +998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
 
-      const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: "revenue_to_date" };
+      const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: (platformContext === 'linkedin' && valueSource === 'conversion_value') ? 'conversion_value' : "revenue_to_date" };
       const source = await storage.createRevenueSource({
         campaignId,
         sourceType: "csv",
@@ -931,27 +1011,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.deleteRevenueRecordsBySource(source.id);
 
-      const totalRevenue = Number(totalRevenueToDate.toFixed(2));
-      if (totalRevenue > 0) {
-        await storage.createRevenueRecords([
-          {
-            campaignId,
-            revenueSourceId: source.id,
-            date: endDate,
-            revenue: totalRevenue.toFixed(2) as any,
-            currency,
-          } as any,
-        ]);
+      if (platformContext === 'linkedin' && valueSource === 'conversion_value') {
+        const sorted = conversionValues.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+        if (sorted.length === 0) return res.status(400).json({ success: false, error: "No valid conversion values found in selected rows" });
+        const mid = Math.floor(sorted.length / 2);
+        const convValue = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+        try {
+          await storage.updateLinkedInConnection(campaignId, { conversionValue: Number(convValue.toFixed(2)).toFixed(2) as any } as any);
+        } catch {
+          // ignore
+        }
+        res.json({
+          success: true,
+          sourceId: source.id,
+          currency,
+          rowCount: parsed.rows.length,
+          keptRows: kept,
+          date: endDate,
+          mode: "conversion_value",
+          conversionValue: Number(convValue.toFixed(2)),
+          totalRevenue: 0,
+        });
+      } else {
+        // Revenue is source of truth.
+        try {
+          if (platformContext === 'linkedin') {
+            await storage.updateLinkedInConnection(campaignId, { conversionValue: null as any } as any);
+          }
+        } catch {
+          // ignore
+        }
+        const totalRevenue = Number(totalRevenueToDate.toFixed(2));
+        if (totalRevenue > 0) {
+          await storage.createRevenueRecords([
+            {
+              campaignId,
+              revenueSourceId: source.id,
+              date: endDate,
+              revenue: totalRevenue.toFixed(2) as any,
+              currency,
+            } as any,
+          ]);
+        }
+        res.json({
+          success: true,
+          sourceId: source.id,
+          currency,
+          rowCount: parsed.rows.length,
+          keptRows: kept,
+          date: endDate,
+          mode: "revenue_to_date",
+          totalRevenue,
+        });
       }
-      res.json({
-        success: true,
-        sourceId: source.id,
-        currency,
-        rowCount: parsed.rows.length,
-        keptRows: kept,
-        date: endDate,
-        totalRevenue,
-      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
     }
@@ -13483,6 +13595,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const hasLinkedInRevenueSources = importedRevenueToDate > 0;
 
+      // LinkedIn conversion-value-only sources should also enable revenue metrics.
+      let hasLinkedInConversionValueSource = false;
+      try {
+        const sources = await storage.getRevenueSources(campaignId, 'linkedin');
+        hasLinkedInConversionValueSource = (Array.isArray(sources) ? sources : []).some((s: any) => {
+          if (!s || (s as any)?.isActive === false) return false;
+          const raw = (s as any)?.mappingConfig;
+          if (!raw) return false;
+          try {
+            const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            const vs = String(cfg?.valueSource || '').trim().toLowerCase();
+            const mode = String(cfg?.mode || '').trim().toLowerCase();
+            return vs === 'conversion_value' || mode === 'conversion_value';
+          } catch {
+            return false;
+          }
+        });
+      } catch {
+        hasLinkedInConversionValueSource = false;
+      }
+
       // Prefer LinkedIn-specific conversionValue (connection/session), never campaign-level
       const linkedInConn = await storage.getLinkedInConnection(campaignId);
       const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
@@ -13493,7 +13626,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If imported revenue exists, show revenue metrics even when conversions are 0.
       // (Conversion value cannot be derived without conversions; that's OK.)
-      const shouldEnableRevenue = (hasLinkedInRevenueTrackingSource || hasLinkedInRevenueSources) && (conversionValue > 0 || hasLinkedInRevenueSources);
+      const shouldEnableRevenue =
+        (hasLinkedInRevenueTrackingSource || hasLinkedInRevenueSources || hasLinkedInConversionValueSource) &&
+        (conversionValue > 0 || hasLinkedInRevenueSources);
       if (shouldEnableRevenue) {
         const revenueTotal = hasLinkedInRevenueSources && mappedConversionValue <= 0
           ? importedRevenueToDate
@@ -14024,6 +14159,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const hasImportedRevenue = importedRevenueToDate > 0;
 
+      // LinkedIn conversion-value-only sources should also enable revenue metrics.
+      let hasLinkedInConversionValueSource = false;
+      try {
+        const sources = await storage.getRevenueSources(session.campaignId, 'linkedin');
+        hasLinkedInConversionValueSource = (Array.isArray(sources) ? sources : []).some((s: any) => {
+          if (!s || (s as any)?.isActive === false) return false;
+          const raw = (s as any)?.mappingConfig;
+          if (!raw) return false;
+          try {
+            const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            const vs = String(cfg?.valueSource || '').trim().toLowerCase();
+            const mode = String(cfg?.mode || '').trim().toLowerCase();
+            return vs === 'conversion_value' || mode === 'conversion_value';
+          } catch {
+            return false;
+          }
+        });
+      } catch {
+        hasLinkedInConversionValueSource = false;
+      }
+
       // Determine conversion value (LinkedIn connection → session). Never use campaign-level conversionValue.
       const linkedInConn = await storage.getLinkedInConnection(session.campaignId);
       const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
@@ -14033,7 +14189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversionValue = mappedConversionValue > 0 ? mappedConversionValue : derivedConversionValue;
 
       // Only clear stale conversion values if there is neither a mapped revenue-tracking connection nor imported revenue sources.
-      if (!hasAnyLinkedInRevenueTrackingSourceConnection && !hasImportedRevenue) {
+      if (!hasAnyLinkedInRevenueTrackingSourceConnection && !hasImportedRevenue && !hasLinkedInConversionValueSource) {
         if (session.conversionValue) {
           await storage.updateLinkedInImportSession(session.id, { conversionValue: null });
         }
@@ -14045,7 +14201,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Enable revenue tracking if either:
       // - mapped conversion value exists, or
       // - imported revenue exists (even if conversions=0).
-      const shouldEnableRevenueTracking = (hasAnyLinkedInRevenueTrackingSourceConnection && conversionValue > 0) || hasImportedRevenue;
+      const shouldEnableRevenueTracking =
+        ((hasAnyLinkedInRevenueTrackingSourceConnection || hasLinkedInConversionValueSource) && conversionValue > 0) ||
+        hasImportedRevenue;
       if (shouldEnableRevenueTracking) {
         aggregated.hasRevenueTracking = 1;
         aggregated.conversionValue = parseFloat(Number(conversionValue || 0).toFixed(2));

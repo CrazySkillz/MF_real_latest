@@ -2682,7 +2682,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/google-sheets/connect", oauthRateLimiter, async (req, res) => {
     try {
       const { campaignId, purpose } = req.body;
-      const sheetsPurpose = (purpose === "spend" || purpose === "revenue" || purpose === "general") ? purpose : undefined;
+      const sheetsPurpose =
+        (purpose === "spend" || purpose === "revenue" || purpose === "general" || purpose === "linkedin_revenue")
+          ? purpose
+          : undefined;
 
       if (!campaignId) {
         return res.status(400).json({ message: "Campaign ID is required" });
@@ -2766,7 +2769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const rawState = String(state || '');
       const [campaignId, sheetsPurpose] = rawState.includes(':') ? rawState.split(':') : [rawState, undefined];
       const purpose =
-        sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general'
+        sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue'
           ? sheetsPurpose
           : null;
       console.log(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
@@ -6502,7 +6505,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, spreadsheetId, sheetNames, selectionMode, purpose } = req.body;
       const mode: 'replace' | 'append' = (selectionMode === 'append' || selectionMode === 'replace') ? selectionMode : 'replace';
-      const sheetsPurpose = (purpose === 'spend' || purpose === 'revenue' || purpose === 'general') ? purpose : undefined;
+      const sheetsPurpose =
+        (purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue')
+          ? purpose
+          : undefined;
       
       console.log('Multiple spreadsheet selection request:', { campaignId, spreadsheetId, sheetNames, selectionMode: mode, purpose: sheetsPurpose });
       

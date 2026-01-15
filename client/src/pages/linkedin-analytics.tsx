@@ -3513,11 +3513,22 @@ export default function LinkedInAnalytics() {
                                     <TooltipContent className="max-w-sm">
                                       <div className="space-y-2 text-sm">
                                         <p className="font-medium">Calculation</p>
-                                        <p>Revenue = Conversions × Conversion Value</p>
-                                        {aggregated.conversions && aggregated.conversionValue && (
-                                          <p className="text-xs text-slate-400">
-                                            {aggregated.conversions.toLocaleString()} conversions × {formatCurrency(parseFloat(aggregated.conversionValue))} = {formatCurrency(aggregated.totalRevenue || 0)}
-                                          </p>
+                                        {Number(aggregated.conversionValue || 0) > 0 ? (
+                                          <>
+                                            <p>Revenue = Conversions × Conversion Value</p>
+                                            {aggregated.conversions && aggregated.conversionValue && (
+                                              <p className="text-xs text-slate-400">
+                                                {aggregated.conversions.toLocaleString()} conversions × {formatCurrency(parseFloat(aggregated.conversionValue))} = {formatCurrency(aggregated.totalRevenue || 0)}
+                                              </p>
+                                            )}
+                                          </>
+                                        ) : (
+                                          <>
+                                            <p>Revenue = imported revenue-to-date</p>
+                                            <p className="text-xs text-slate-400">
+                                              {formatCurrency(aggregated.totalRevenue || 0)} from the connected revenue source
+                                            </p>
+                                          </>
                                         )}
                                         {linkedInRevenueSourceLabel && (
                                           <p className="text-xs text-slate-400 mt-2">
@@ -3582,7 +3593,7 @@ export default function LinkedInAnalytics() {
                                   </Badge>
                                 )}
                               </div>
-                              {aggregated.conversions && aggregated.conversionValue && (
+                              {Number(aggregated.conversionValue || 0) > 0 && aggregated.conversions && aggregated.conversionValue && (
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                   {aggregated.conversions.toLocaleString()} conversions × {formatCurrency(parseFloat(aggregated.conversionValue))}
                                 </p>
@@ -3606,11 +3617,16 @@ export default function LinkedInAnalytics() {
                                     </TooltipTrigger>
                                     <TooltipContent className="max-w-sm">
                                       <div className="space-y-2 text-sm">
-                                        <p className="font-medium">Calculation</p>
-                                        <p>Conversion Value = Revenue ÷ Conversions</p>
-                                        <p className="text-xs text-slate-400">
-                                          {formatCurrency(parseFloat(aggregated.conversionValue || 0))} per conversion
-                                        </p>
+                                        <p className="font-medium">Conversion Value</p>
+                                        {Number(aggregated.conversionValue || 0) > 0 ? (
+                                          <p className="text-xs text-slate-400">
+                                            {formatCurrency(parseFloat(aggregated.conversionValue || 0))} per conversion
+                                          </p>
+                                        ) : (
+                                          <p className="text-xs text-slate-400">
+                                            Not provided (only shown when explicitly set)
+                                          </p>
+                                        )}
                                       </div>
                                     </TooltipContent>
                                   </UITooltip>
@@ -3618,7 +3634,7 @@ export default function LinkedInAnalytics() {
                                 <Calculator className="w-4 h-4 text-green-600" />
                               </div>
                               <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                                {formatCurrency(aggregated.conversionValue || 0)}
+                                {Number(aggregated.conversionValue || 0) > 0 ? formatCurrency(aggregated.conversionValue || 0) : '—'}
                               </p>
                             </CardContent>
                           </Card>

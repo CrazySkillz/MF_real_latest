@@ -13621,8 +13621,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
       const sessionCv = latestSession.conversionValue ? parseFloat(String(latestSession.conversionValue)) : 0;
       const mappedConversionValue = connCv > 0 ? connCv : sessionCv;
-      const derivedConversionValue = (hasLinkedInRevenueSources && conversions > 0) ? (importedRevenueToDate / conversions) : 0;
-      const conversionValue = mappedConversionValue > 0 ? mappedConversionValue : derivedConversionValue;
+      // IMPORTANT: Do NOT auto-derive conversion value from imported revenue.
+      // Conversion Value should only be shown/used when explicitly provided for LinkedIn.
+      const conversionValue = mappedConversionValue > 0 ? mappedConversionValue : 0;
 
       // If imported revenue exists, show revenue metrics even when conversions are 0.
       // (Conversion value cannot be derived without conversions; that's OK.)
@@ -13630,6 +13631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (hasLinkedInRevenueTrackingSource || hasLinkedInRevenueSources || hasLinkedInConversionValueSource) &&
         (conversionValue > 0 || hasLinkedInRevenueSources);
       if (shouldEnableRevenue) {
+        // If we have imported revenue-to-date and no explicit conversion value, use imported revenue directly.
         const revenueTotal = hasLinkedInRevenueSources && mappedConversionValue <= 0
           ? importedRevenueToDate
           : (conversions * conversionValue);
@@ -14185,8 +14187,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
       const sessionCv = parseFloat(session.conversionValue || '0');
       const mappedConversionValue = hasAnyLinkedInRevenueTrackingSourceConnection ? (connCv > 0 ? connCv : sessionCv) : connCv;
-      const derivedConversionValue = (hasImportedRevenue && totalConversions > 0) ? (importedRevenueToDate / totalConversions) : 0;
-      const conversionValue = mappedConversionValue > 0 ? mappedConversionValue : derivedConversionValue;
+      // IMPORTANT: Do NOT auto-derive conversion value from imported revenue.
+      // Conversion Value should only be shown/used when explicitly provided for LinkedIn.
+      const conversionValue = mappedConversionValue > 0 ? mappedConversionValue : 0;
 
       // Only clear stale conversion values if there is neither a mapped revenue-tracking connection nor imported revenue sources.
       if (!hasAnyLinkedInRevenueTrackingSourceConnection && !hasImportedRevenue && !hasLinkedInConversionValueSource) {

@@ -474,6 +474,13 @@ export default function LinkedInAnalytics() {
     },
   });
 
+  // Extract session payload early (used by helpers/hooks below).
+  // Important: this must appear before any useMemo/helpers that reference `aggregated`
+  // to avoid temporal-dead-zone runtime crashes ("Cannot access ... before initialization").
+  const session = (sessionData as any)?.session;
+  const metrics = (sessionData as any)?.metrics;
+  const aggregated = (sessionData as any)?.aggregated;
+
   // Fetch ad performance data
   const { data: adsData, isLoading: adsLoading } = useQuery({
     queryKey: ['/api/linkedin/imports', sessionId, 'ads'],
@@ -2817,7 +2824,6 @@ export default function LinkedInAnalytics() {
 
   // Extract campaign and session data
   const campaign = campaignData as any;
-  const { session, metrics, aggregated } = (sessionData as any) || {};
 
   return (
     <TooltipProvider>

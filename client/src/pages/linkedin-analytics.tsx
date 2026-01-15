@@ -1062,6 +1062,10 @@ export default function LinkedInAnalytics() {
       await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
       await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
       await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
+      // Force immediate recompute for the active page (no waiting for intervals)
+      await queryClient.refetchQueries({ queryKey: ["/api/linkedin/metrics", campaignId], exact: true });
+      await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId], exact: true });
+      await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'], exact: true });
     },
     onError: (error: any) => {
       toast({
@@ -9011,6 +9015,10 @@ export default function LinkedInAnalytics() {
             queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
             queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
             queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
+            // Force immediate recompute (no waiting)
+            queryClient.refetchQueries({ queryKey: ["/api/linkedin/metrics", campaignId], exact: true });
+            queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId], exact: true });
+            queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'], exact: true });
           }}
         />
       )}

@@ -684,24 +684,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/campaigns/:id/linkedin/revenue-source", async (req, res) => {
     try {
       const campaignId = String(req.params.id);
-      const conns = await storage.getGoogleSheetsConnections(campaignId);
-      const toDeactivate = (conns as any[]).filter((c: any) => {
-        const purpose = String(c?.purpose || '').toLowerCase();
-        // never touch GA4-specific sheet purposes
-        if (purpose === 'spend' || purpose === 'revenue') return false;
-        const cm = c?.columnMappings || c?.column_mappings;
-        if (!cm || (typeof cm === 'string' && cm.trim() === '')) return false;
-        try {
-          const parsed = typeof cm === 'string' ? JSON.parse(cm) : cm;
-          return Array.isArray(parsed) && parsed.length > 0;
-        } catch {
-          return false;
+      // 1) Remove LinkedIn-scoped imported revenue sources (CSV/manual/Sheets/CRM) + their revenue rows
+      try {
+        const existing = await storage.getRevenueSources(campaignId, 'linkedin');
+        for (const s of existing || []) {
+          if (!s) continue;
+          const sid = String((s as any).id);
+          await storage.deleteRevenueSource(sid);
+          await storage.deleteRevenueRecordsBySource(sid);
         }
-      });
+      } catch {
+        // ignore
+      }
 
-      for (const c of toDeactivate) {
+      // 2) Deactivate LinkedIn revenue Google Sheets connections (purpose=linkedin_revenue) to avoid stale tab selections
+      const conns = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);
+      const linkedInRevenueConns = (Array.isArray(conns) ? conns : []).filter((c: any) => {
+        const purpose = String(c?.purpose || '').toLowerCase();
+        return purpose === 'linkedin_revenue';
+      });
+      for (const c of linkedInRevenueConns) {
         try {
-          await storage.updateGoogleSheetsConnection(String(c.id), {
+          await storage.updateGoogleSheetsConnection(String((c as any).id), {
             isActive: false as any,
             columnMappings: null as any,
           } as any);
@@ -710,19 +714,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Clear conversion values so LinkedIn revenue metrics are disabled immediately
-      try {
-        await storage.updateCampaign(campaignId, { conversionValue: null } as any);
-      } catch {
-        // ignore
-      }
+      // 3) Clear LinkedIn conversion value so revenue metrics are disabled immediately
       try {
         await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);
       } catch {
         // ignore
       }
+      try {
+        // Clear any cached per-session conversion value
+        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId).catch(() => [] as any[]);
+        for (const sess of (Array.isArray(sessions) ? sessions : []) as any[]) {
+          if (!sess?.id) continue;
+          await storage.updateLinkedInImportSession(String(sess.id), { conversionValue: null } as any);
+        }
+      } catch {
+        // ignore
+      }
 
-      res.json({ success: true, deactivatedConnections: toDeactivate.map((c: any) => c.id) });
+      res.json({ success: true, removedRevenueSources: true, deactivatedConnections: linkedInRevenueConns.map((c: any) => c.id) });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to remove LinkedIn revenue source" });
     }

@@ -1077,6 +1077,8 @@ export default function LinkedInAnalytics() {
       currentValue: stripNumeric(benchmarkForm.currentValue || '0'),
       industry: benchmarkForm.industry,
       description: (String(benchmarkForm.description || '').trim() || DEFAULT_BENCHMARK_DESCRIPTION),
+      // Persist benchmarkType so edit mode round-trips correctly (DB default is 'industry')
+      benchmarkType: benchmarkForm.benchmarkType === 'industry' ? 'industry' : 'custom',
       applyTo: benchmarkForm.applyTo, // 'all' or 'specific'
       specificCampaignId: finalSpecificCampaignId, // Use the converted campaign ID
       linkedInCampaignName: benchmarkForm.applyTo === 'specific' ? benchmarkForm.specificCampaignId : null, // Store LinkedIn campaign name for display
@@ -2802,6 +2804,17 @@ export default function LinkedInAnalytics() {
   const isCurrencyLikeMetric = (metricKey: string) => {
     const k = String(metricKey || '').toLowerCase();
     return ['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'totalrevenue', 'profit', 'revenueperlead'].includes(k);
+  };
+
+  const normalizeBenchmarkTypeForUI = (b: any): 'industry' | 'custom' => {
+    const btRaw = String((b as any)?.benchmarkType ?? '').toLowerCase();
+    const hasIndustry = !!String((b as any)?.industry || '').trim();
+    // If an industry is present, it's definitely "Industry Standard".
+    if (hasIndustry) return 'industry';
+    // If the DB default "industry" is present but no industry was selected, treat as custom.
+    if (btRaw === 'industry') return 'custom';
+    // Any other stored type maps to custom for this MVP UI.
+    return 'custom';
   };
 
   const formatMetricValueForDisplay = (metricKey: string, raw: number | string) => {
@@ -4839,7 +4852,7 @@ export default function LinkedInAnalytics() {
                                       unit: benchmark.unit || inferUnitForBenchmarkMetric(benchmark.metric),
                                       benchmarkValue: formatMetricValueForInput(benchmark.metric, benchmark.benchmarkValue || ''),
                                       currentValue: formatMetricValueForInput(benchmark.metric, benchmark.currentValue || ''),
-                                      benchmarkType: (benchmark as any).benchmarkType ?? (benchmark.industry ? 'industry' : 'custom'),
+                                      benchmarkType: normalizeBenchmarkTypeForUI(benchmark),
                                       industry: benchmark.industry || '',
                                       description: (String(benchmark.description || '').trim() || getDefaultBenchmarkDescription(benchmark.metric)),
                                       // Some older rows may not have applyTo persisted correctly; infer from linkedInCampaignName.

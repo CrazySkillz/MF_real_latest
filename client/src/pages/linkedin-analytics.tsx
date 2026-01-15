@@ -1018,6 +1018,34 @@ export default function LinkedInAnalytics() {
     }
   });
 
+  // LinkedIn revenue source removal (clears conversion value mappings so ROI/ROAS/etc recompute immediately)
+  const deleteLinkedInRevenueSourceMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('DELETE', `/api/campaigns/${campaignId}/linkedin/revenue-source`);
+      return res.json();
+    },
+    onSuccess: async () => {
+      toast({
+        title: "Revenue source removed",
+        description: "Revenue tracking has been disabled. ROI/ROAS and other revenue metrics will update immediately.",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove revenue source",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Handle create Benchmark
   const handleCreateBenchmark = () => {
     // For campaign-specific benchmarks, convert LinkedIn campaign name to database campaign ID
@@ -3419,10 +3447,52 @@ export default function LinkedInAnalytics() {
                                     </TooltipContent>
                                   </UITooltip>
                                 </div>
-                                <Calculator className="w-4 h-4 text-green-600" />
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-slate-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                    onClick={openAddRevenueModal}
+                                    data-testid="button-edit-linkedin-revenue-source"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        data-testid="button-delete-linkedin-revenue-source"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Remove revenue source?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          This will disable revenue tracking for LinkedIn (Conversion Value, Revenue, ROI, ROAS, Profit, etc.) and immediately recalculate dependent metrics.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => deleteLinkedInRevenueSourceMutation.mutate()}
+                                          className="bg-red-600 hover:bg-red-700"
+                                        >
+                                          Remove
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                  <Calculator className="w-4 h-4 text-green-600" />
+                                </div>
                               </div>
                               <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                                ${parseFloat(aggregated.conversionValue || 0).toFixed(2)}
+                                {formatCurrency(aggregated.conversionValue || 0)}
                               </p>
                             </CardContent>
                           </Card>
@@ -8854,7 +8924,7 @@ export default function LinkedInAnalytics() {
                           <CardContent className="p-4">
                             <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROAS</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {roas.toFixed(2)}x
+                              {roas.toFixed(2)}×
                             </p>
                             {Array.isArray(benchmarks) && (() => {
                               const roasBenchmark = benchmarks.find((b: any) => 
@@ -8910,9 +8980,11 @@ export default function LinkedInAnalytics() {
             // Refresh all data after connection to show updated conversion values
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
             queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-data-sources"] });
             queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
+            queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
           }}
           onOpenSalesforceViewer={({ sourceId }) => {
             setSalesforceViewerSourceId(sourceId);

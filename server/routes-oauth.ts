@@ -679,6 +679,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // LinkedIn Revenue Source (Conversion Value mappings)
+  // Removes ONLY Google Sheets connections used for "general/LinkedIn revenue" (purpose null or 'general')
+  // and clears conversionValue so ROI/ROAS recompute immediately.
+  app.delete("/api/campaigns/:id/linkedin/revenue-source", async (req, res) => {
+    try {
+      const campaignId = String(req.params.id);
+      const conns = await storage.getGoogleSheetsConnections(campaignId);
+      const toDeactivate = (conns as any[]).filter((c: any) => {
+        const purpose = String(c?.purpose || '').toLowerCase();
+        // never touch GA4-specific sheet purposes
+        if (purpose === 'spend' || purpose === 'revenue') return false;
+        const cm = c?.columnMappings || c?.column_mappings;
+        if (!cm || (typeof cm === 'string' && cm.trim() === '')) return false;
+        try {
+          const parsed = typeof cm === 'string' ? JSON.parse(cm) : cm;
+          return Array.isArray(parsed) && parsed.length > 0;
+        } catch {
+          return false;
+        }
+      });
+
+      for (const c of toDeactivate) {
+        try {
+          await storage.updateGoogleSheetsConnection(String(c.id), {
+            isActive: false as any,
+            columnMappings: null as any,
+          } as any);
+        } catch {
+          // ignore
+        }
+      }
+
+      // Clear conversion values so LinkedIn revenue metrics are disabled immediately
+      try {
+        await storage.updateCampaign(campaignId, { conversionValue: null } as any);
+      } catch {
+        // ignore
+      }
+      try {
+        await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);
+      } catch {
+        // ignore
+      }
+
+      res.json({ success: true, deactivatedConnections: toDeactivate.map((c: any) => c.id) });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to remove LinkedIn revenue source" });
+    }
+  });
+
   app.delete("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {
       const campaignId = req.params.id;

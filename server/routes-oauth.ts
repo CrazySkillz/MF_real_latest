@@ -954,7 +954,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionId = String((req.body as any)?.connectionId || "").trim();
       if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
 
-      const connections = await storage.getGoogleSheetsConnections(campaignId, "revenue");
+      const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
+      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
+      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : 'revenue';
+
+      const connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
       const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
       // Proactively refresh near-expiry tokens.
@@ -1046,11 +1050,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
       const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
       if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
-      if (!mapping?.revenueColumn) {
-        return res.status(400).json({ success: false, error: "revenueColumn is required" });
+      const revenueColumn = mapping?.revenueColumn ? String(mapping.revenueColumn) : "";
+      const conversionValueColumn = mapping?.conversionValueColumn ? String(mapping.conversionValueColumn) : "";
+      const valueSourceRaw = String(mapping?.valueSource || "").trim().toLowerCase();
+      const valueSource = valueSourceRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
+      if (platformContext === 'ga4') {
+        if (!revenueColumn) return res.status(400).json({ success: false, error: "revenueColumn is required" });
+      } else {
+        if (!revenueColumn && !conversionValueColumn) {
+          return res.status(400).json({ success: false, error: "revenueColumn or conversionValueColumn is required" });
+        }
       }
 
-      const connections = await storage.getGoogleSheetsConnections(campaignId, "revenue");
+      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : 'revenue';
+      const connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
       const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
       // Proactively refresh near-expiry tokens.
@@ -1127,8 +1140,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
 
       let kept = 0;
-      const revenueCol = String(mapping.revenueColumn);
+      const revenueCol = revenueColumn ? String(revenueColumn) : "";
+      const convCol = conversionValueColumn ? String(conversionValueColumn) : "";
       let totalRevenueToDate = 0;
+      const conversionValues: number[] = [];
 
       for (const row of rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -1139,10 +1154,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
         }
-        const revenue = parseNum((row as any)[revenueCol]);
-        if (!(revenue > 0)) continue;
-        kept++;
-        totalRevenueToDate += revenue;
+        let rowKept = false;
+        if (revenueCol) {
+          const revenue = parseNum((row as any)[revenueCol]);
+          if (revenue > 0) {
+            totalRevenueToDate += revenue;
+            rowKept = true;
+          }
+        }
+        if (platformContext === 'linkedin' && convCol) {
+          const cv = parseNum((row as any)[convCol]);
+          if (Number.isFinite(cv) && cv > 0) {
+            conversionValues.push(cv);
+            rowKept = true;
+          }
+        }
+        if (rowKept) kept++;
       }
 
       const endDate = yesterdayUTC();
@@ -1150,7 +1177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
-      const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: "revenue_to_date" };
+      const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: valueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date" };
       const nextMappingConfig = JSON.stringify({
         ...normalizedMapping,
         connectionId,
@@ -1200,6 +1227,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteRevenueRecordsBySource(String((source as any).id));
 
       const totalRevenue = Number(totalRevenueToDate.toFixed(2));
+      if (platformContext === 'linkedin' && valueSource === 'conversion_value') {
+        const sorted = conversionValues.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+        if (sorted.length === 0) {
+          return res.status(400).json({ success: false, error: "No valid conversion value rows found for the selected filter." });
+        }
+        const mid = Math.floor(sorted.length / 2);
+        const median = sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        const convValue = Number(Number(median).toFixed(2));
+
+        try {
+          await storage.updateLinkedInConnection(campaignId, { conversionValue: convValue.toFixed(2) as any } as any);
+        } catch {
+          // ignore
+        }
+
+        return res.json({
+          success: true,
+          mode: "conversion_value",
+          sourceId: String((source as any).id),
+          currency,
+          rowCount: rows.length,
+          keptRows: kept,
+          date: endDate,
+          conversionValue: convValue,
+        });
+      }
+
       if (totalRevenue > 0) {
         await storage.createRevenueRecords([
           {
@@ -1211,8 +1265,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } as any,
         ]);
       }
+
+      if (platformContext === 'linkedin') {
+        try {
+          await storage.updateLinkedInConnection(campaignId, { conversionValue: null as any } as any);
+        } catch {
+          // ignore
+        }
+      }
+
       res.json({
         success: true,
+        mode: "revenue_to_date",
         sourceId: String((source as any).id),
         currency,
         rowCount: rows.length,

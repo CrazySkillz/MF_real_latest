@@ -39,6 +39,7 @@ export function AddRevenueWizardModal(props: {
 
   const [step, setStep] = useState<Step>("select");
   const isEditing = !!initialSource;
+  const sheetsPurpose = platformContext === 'linkedin' ? 'linkedin_revenue' : 'revenue';
 
   // Manual
   const [manualAmount, setManualAmount] = useState<string>("");
@@ -82,10 +83,12 @@ export function AddRevenueWizardModal(props: {
   const [sheetsRemoving, setSheetsRemoving] = useState(false);
   const [sheetsPreview, setSheetsPreview] = useState<Preview | null>(null);
   const [sheetsRevenueCol, setSheetsRevenueCol] = useState<string>("");
+  const [sheetsConversionValueCol, setSheetsConversionValueCol] = useState<string>("");
   const [sheetsCampaignCol, setSheetsCampaignCol] = useState<string>("");
   const [sheetsCampaignQuery, setSheetsCampaignQuery] = useState<string>("");
   const [sheetsCampaignValues, setSheetsCampaignValues] = useState<string[]>([]);
   const [sheetsProcessing, setSheetsProcessing] = useState(false);
+  const [sheetsValueSource, setSheetsValueSource] = useState<'revenue' | 'conversion_value'>('revenue');
 
   const resetAll = () => {
     setStep(initialStep || "select");
@@ -106,10 +109,12 @@ export function AddRevenueWizardModal(props: {
     setSheetsRemoving(false);
     setSheetsPreview(null);
     setSheetsRevenueCol("");
+    setSheetsConversionValueCol("");
     setSheetsCampaignCol("");
     setSheetsCampaignQuery("");
     setSheetsCampaignValues([]);
     setSheetsProcessing(false);
+    setSheetsValueSource('revenue');
   };
 
   useEffect(() => {
@@ -178,7 +183,7 @@ export function AddRevenueWizardModal(props: {
     (async () => {
       setSheetsConnectionsLoading(true);
       try {
-        const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=revenue`);
+        const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=${encodeURIComponent(sheetsPurpose)}`);
         const json = await resp.json().catch(() => ({}));
         const conns = Array.isArray(json?.connections) ? json.connections : [];
         if (!mounted) return;
@@ -195,11 +200,11 @@ export function AddRevenueWizardModal(props: {
     return () => {
       mounted = false;
     };
-  }, [open, step, campaignId]);
+  }, [open, step, campaignId, sheetsPurpose]);
 
   const refreshSheetsConnections = async () => {
     try {
-      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=revenue`);
+      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=${encodeURIComponent(sheetsPurpose)}`);
       const json = await resp.json().catch(() => ({}));
       const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
       const filtered = conns.filter((c: any) => c && c.isActive !== false);
@@ -376,7 +381,17 @@ export function AddRevenueWizardModal(props: {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/process`, { method: "POST", body: fd });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process CSV");
-      toast({ title: "Revenue imported", description: `Imported ${Number(json.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.` });
+      if (platformContext === 'linkedin' && json?.mode === 'conversion_value') {
+        toast({
+          title: "Conversion value imported",
+          description: `Conversion Value set to ${Number(json.conversionValue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency} per conversion.`,
+        });
+      } else {
+        toast({
+          title: "Revenue imported",
+          description: `Imported ${Number(json.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.`,
+        });
+      }
       onSuccess?.();
       onOpenChange(false);
     } catch (e: any) {
@@ -394,7 +409,7 @@ export function AddRevenueWizardModal(props: {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connectionId: cid }),
+        body: JSON.stringify({ connectionId: cid, platformContext }),
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to preview sheet");
@@ -435,15 +450,28 @@ export function AddRevenueWizardModal(props: {
 
   const handleSheetsProcess = async () => {
     if (!sheetsConnectionId) return;
-    if (!sheetsRevenueCol) {
-      toast({ title: "Select a revenue column", variant: "destructive" });
-      return;
+    if (platformContext !== 'linkedin') {
+      if (!sheetsRevenueCol) {
+        toast({ title: "Select a revenue column", variant: "destructive" });
+        return;
+      }
+    } else {
+      if (!sheetsRevenueCol && !sheetsConversionValueCol) {
+        toast({ title: "Select Revenue or Conversion Value", description: "For LinkedIn, choose at least one value column.", variant: "destructive" });
+        return;
+      }
     }
     setSheetsProcessing(true);
     try {
       const hasCampaignScope = !!sheetsCampaignCol && sheetsCampaignValues.length > 0;
+      const valueSource: 'revenue' | 'conversion_value' =
+        platformContext === 'linkedin'
+          ? (sheetsRevenueCol && sheetsConversionValueCol ? sheetsValueSource : (sheetsConversionValueCol ? 'conversion_value' : 'revenue'))
+          : 'revenue';
       const mapping = {
-        revenueColumn: sheetsRevenueCol,
+        revenueColumn: sheetsRevenueCol || null,
+        conversionValueColumn: platformContext === 'linkedin' ? (sheetsConversionValueCol || null) : null,
+        valueSource,
         campaignColumn: hasCampaignScope ? sheetsCampaignCol : null,
         campaignValue: hasCampaignScope && sheetsCampaignValues.length === 1 ? sheetsCampaignValues[0] : null,
         campaignValues: hasCampaignScope ? sheetsCampaignValues : null,
@@ -841,7 +869,7 @@ export function AddRevenueWizardModal(props: {
                         <SimpleGoogleSheetsAuth
                           campaignId={campaignId}
                           selectionMode="append"
-                          purpose="revenue"
+                          purpose={sheetsPurpose}
                           onSuccess={async (info) => {
                             setShowSheetsConnect(false);
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
@@ -866,7 +894,7 @@ export function AddRevenueWizardModal(props: {
                         <SimpleGoogleSheetsAuth
                           campaignId={campaignId}
                           selectionMode="append"
-                          purpose="revenue"
+                          purpose={sheetsPurpose}
                           onSuccess={async (info) => {
                             setShowSheetsConnect(false);
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
@@ -907,7 +935,7 @@ export function AddRevenueWizardModal(props: {
                             setSheetsConnectionId(v);
                             setSheetsPreview(null);
                             setSheetsRevenueCol("");
-                            setSheetsDateCol("");
+                            setSheetsConversionValueCol("");
                             setSheetsCampaignCol("");
                             setSheetsCampaignQuery("");
                             setSheetsCampaignValues([]);
@@ -958,7 +986,7 @@ export function AddRevenueWizardModal(props: {
                       </div>
                     ) : (
                       <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div className="space-y-1">
                             <Label>Campaign column (optional)</Label>
                             <Select
@@ -987,12 +1015,13 @@ export function AddRevenueWizardModal(props: {
                           </div>
 
                           <div className="space-y-1">
-                            <Label>Revenue column</Label>
+                            <Label>{platformContext === 'linkedin' ? 'Revenue column (optional)' : 'Revenue column'}</Label>
                             <Select value={sheetsRevenueCol} onValueChange={setSheetsRevenueCol}>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select revenue column" />
+                                <SelectValue placeholder={platformContext === 'linkedin' ? 'None' : 'Select revenue column'} />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
+                                {platformContext === 'linkedin' && <SelectItem value="">None</SelectItem>}
                                 {sheetsHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>
                                     {h}
@@ -1003,7 +1032,58 @@ export function AddRevenueWizardModal(props: {
                           </div>
 
                           {/* Date column removed: revenue imports are treated as revenue-to-date (lifetime). */}
+
+                          {platformContext === 'linkedin' && (
+                            <div className="space-y-1">
+                              <Label>Conversion value column (optional)</Label>
+                              <Select value={sheetsConversionValueCol} onValueChange={setSheetsConversionValueCol}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="None" />
+                                </SelectTrigger>
+                                <SelectContent className="z-[10000]">
+                                  <SelectItem value="">None</SelectItem>
+                                  {sheetsHeaders.map((h) => (
+                                    <SelectItem key={h} value={h}>
+                                      {h}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                Optional: import value per conversion directly (used for ROI/ROAS when revenue is not available).
+                              </p>
+                            </div>
+                          )}
                         </div>
+
+                        {platformContext === 'linkedin' && sheetsRevenueCol && sheetsConversionValueCol && (
+                          <div className="rounded-md border p-3 space-y-2">
+                            <div className="text-sm font-medium">Source of truth</div>
+                            <div className="text-xs text-slate-600 dark:text-slate-400">
+                              You selected both Revenue and Conversion Value. Choose which one MetricMind should use.
+                            </div>
+                            <div className="flex items-center gap-4 pt-1">
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="radio"
+                                  name="li-value-source"
+                                  checked={sheetsValueSource === 'revenue'}
+                                  onChange={() => setSheetsValueSource('revenue')}
+                                />
+                                Use Revenue (derive Conversion Value)
+                              </label>
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="radio"
+                                  name="li-value-source"
+                                  checked={sheetsValueSource === 'conversion_value'}
+                                  onChange={() => setSheetsValueSource('conversion_value')}
+                                />
+                                Use Conversion Value (ignore Revenue)
+                              </label>
+                            </div>
+                          </div>
+                        )}
 
                         {sheetsCampaignCol && (
                           <div className="rounded-md border p-3 space-y-2">
@@ -1093,7 +1173,15 @@ export function AddRevenueWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
                       </Button>
-                      <Button onClick={handleSheetsProcess} disabled={!sheetsPreview || sheetsProcessing || !sheetsRevenueCol}>
+                      <Button
+                        onClick={handleSheetsProcess}
+                        disabled={
+                          !sheetsPreview ||
+                          sheetsProcessing ||
+                          (platformContext !== 'linkedin' && !sheetsRevenueCol) ||
+                          (platformContext === 'linkedin' && !sheetsRevenueCol && !sheetsConversionValueCol)
+                        }
+                      >
                         {sheetsProcessing ? "Processing…" : isEditing ? "Update revenue" : "Import revenue"}
                       </Button>
                     </div>

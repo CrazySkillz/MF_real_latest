@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
-import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { SalesforceDataViewerModal } from "@/components/SalesforceDataViewerModal";
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
@@ -118,7 +117,6 @@ export default function LinkedInAnalytics() {
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [isUploadDataModalOpen, setIsUploadDataModalOpen] = useState(false);
   const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
   const [revenueWizardInitialStep, setRevenueWizardInitialStep] = useState<any>("select");
   const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
@@ -131,10 +129,23 @@ export default function LinkedInAnalytics() {
   // LinkedIn revenue metrics are unlocked by connecting a revenue/conversion-value source.
   const [revenueModalIntent, setRevenueModalIntent] = useState<'add' | 'edit'>('add');
 
-  // Use the same user intent language as GA4: "Add revenue".
-  const openAddRevenueModal = (intent: 'add' | 'edit' = 'add') => {
+  // LinkedIn Add revenue now uses GA4-parity wizard flow (select source -> Google Sheets -> choose tab -> map columns)
+  const openAddRevenueModal = async (intent: 'add' | 'edit' = 'add') => {
     setRevenueModalIntent(intent);
-    setIsUploadDataModalOpen(true);
+    setRevenueWizardInitialStep("select");
+    if (intent === 'edit') {
+      try {
+        const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=linkedin`);
+        const json = await resp.json().catch(() => ({}));
+        const sources = Array.isArray(json?.sources) ? json.sources : [];
+        setRevenueWizardInitialSource(sources?.[0] || null);
+      } catch {
+        setRevenueWizardInitialSource(null);
+      }
+    } else {
+      setRevenueWizardInitialSource(null);
+    }
+    setIsRevenueWizardOpen(true);
   };
 
   const openRevenueCsvWizard = () => {
@@ -8983,44 +8994,6 @@ export default function LinkedInAnalytics() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Add revenue modal */}
-      {campaignId && (
-        <UploadAdditionalDataModal
-          isOpen={isUploadDataModalOpen}
-          onClose={() => setIsUploadDataModalOpen(false)}
-          campaignId={campaignId}
-          returnUrl={window.location.pathname + window.location.search}
-          titleOverride={revenueModalIntent === 'edit' ? 'Edit revenue source' : undefined}
-          onOpenRevenueCsvWizard={openRevenueCsvWizard}
-          onDataConnected={() => {
-            // Refresh all data after connection to show updated conversion values
-            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
-            queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
-            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-data-sources"] });
-            queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
-            queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
-          }}
-          onOpenSalesforceViewer={({ sourceId }) => {
-            setSalesforceViewerSourceId(sourceId);
-            setIsSalesforceViewerOpen(true);
-          }}
-          onOpenSalesforceRevenueWizard={() => {
-            setIsSalesforceRevenueWizardOpen(true);
-          }}
-          onOpenHubspotRevenueWizard={() => {
-            setIsHubspotRevenueWizardOpen(true);
-          }}
-          onOpenShopifyViewer={() => setIsShopifyViewerOpen(true)}
-          onOpenShopifyRevenueWizard={() => setIsShopifyRevenueWizardOpen(true)}
-          // Revenue flow: no "view" mode; connect + map immediately (mirrors GA4's "Add revenue" intent).
-          autoStartMappingOnGoogleSheetsConnect={true}
-          showGoogleSheetsUseCaseStep={false}
-          defaultGoogleSheetsUseCase="enhance"
-        />
-      )}
 
       {/* LinkedIn revenue CSV wizard (GA4-parity flow) */}
       {campaignId && (

@@ -3483,23 +3483,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } else {
-        // No active Google Sheets with mappings - FORCE CLEAR stale conversion values
-        // Clear stale campaign conversion value
-        if (campaign?.conversionValue) {
-          await storage.updateCampaign(session.campaignId, { conversionValue: null });
+        // No active Google Sheets mappings. Only clear conversion values if there is no LinkedIn-scoped revenue source.
+        // This avoids wiping conversionValue that may come from LinkedIn revenue imports (CSV/Sheets/CRM) which are platform-scoped.
+        let hasLinkedInRevenueSource = false;
+        try {
+          const sources = await storage.getRevenueSources(session.campaignId, 'linkedin');
+          hasLinkedInRevenueSource = Array.isArray(sources) && sources.length > 0;
+        } catch {
+          hasLinkedInRevenueSource = false;
         }
-        
-        // Clear stale session conversion value
-        if (session.conversionValue) {
-          await storage.updateLinkedInImportSession(session.id, { conversionValue: null });
+
+        if (!hasLinkedInRevenueSource) {
+          // Clear stale campaign conversion value
+          if (campaign?.conversionValue) {
+            await storage.updateCampaign(session.campaignId, { conversionValue: null });
+          }
+          
+          // Clear stale session conversion value
+          if (session.conversionValue) {
+            await storage.updateLinkedInImportSession(session.id, { conversionValue: null });
+          }
+          
+          // Clear LinkedIn connection conversion value (it was likely from the old mapping-based flow)
+          const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
+          if (linkedInConnection?.conversionValue) {
+            await storage.updateLinkedInConnection(session.campaignId, { conversionValue: null });
+          }
+          conversionValue = 0;
+        } else {
+          // Preserve conversionValue; it may be set via LinkedIn revenue imports or other linked sources.
+          const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
+          conversionValue = linkedInConnection?.conversionValue ? parseFloat(String(linkedInConnection.conversionValue)) : 0;
         }
-        
-        // Clear LinkedIn connection conversion value (it was likely from Google Sheets, not manual entry)
-        const linkedInConnection = await storage.getLinkedInConnection(session.campaignId);
-        if (linkedInConnection?.conversionValue) {
-          await storage.updateLinkedInConnection(session.campaignId, { conversionValue: null });
-        }
-        conversionValue = 0;
       }
       
       

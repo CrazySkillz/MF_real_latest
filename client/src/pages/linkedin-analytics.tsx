@@ -512,15 +512,92 @@ export default function LinkedInAnalytics() {
     return campaign?.name || campaignId;
   };
 
-  // Helper to get campaign-specific metrics from adsData
+  // Helper to get campaign-specific metrics.
+  // IMPORTANT: For consistency (exec-grade accuracy), prefer `sessionData.metrics` (the same source used by the Overview
+  // campaign breakdown) and only fall back to `adsData` when needed.
   const getCampaignSpecificMetrics = (linkedInCampaignName: string) => {
+    // 1) Prefer session campaign metrics (matches Overview tab math exactly)
+    if (Array.isArray(metrics) && metrics.length > 0) {
+      const campaignRows = (metrics as any[]).filter((m: any) => m?.campaignName === linkedInCampaignName);
+      if (campaignRows.length > 0) {
+        // Build a totals object from the metricKey/value pairs
+        const baseTotals = campaignRows.reduce((acc: any, row: any) => {
+          const key = String(row?.metricKey || '').trim();
+          const value = Number(parseFloat(String(row?.metricValue ?? '0')));
+          if (!key) return acc;
+          // Many keys are unique per campaign; sum defensively.
+          acc[key] = Number(acc[key] || 0) + (Number.isFinite(value) ? value : 0);
+          return acc;
+        }, {});
+
+        // Normalize expected keys (case variations)
+        const impressions = Number(baseTotals.impressions || 0);
+        const clicks = Number(baseTotals.clicks || 0);
+        const spend = Number(baseTotals.spend || 0);
+        const conversions = Number(baseTotals.conversions || 0);
+        const leads = Number(baseTotals.leads || 0);
+        const engagements = Number(baseTotals.engagements || 0);
+        const reach = Number(baseTotals.reach || 0);
+        const videoViews = Number(baseTotals.videoViews || baseTotals.videoviews || 0);
+        const viralImpressions = Number(baseTotals.viralImpressions || baseTotals.viralimpressions || 0);
+
+        // Derived metrics
+        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+        const cpc = clicks > 0 ? spend / clicks : 0;
+        const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+        const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+        const cpa = conversions > 0 ? spend / conversions : 0;
+        const cpl = leads > 0 ? spend / leads : 0;
+        const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
+
+        // Revenue-derived metrics (only when revenue tracking is enabled for LinkedIn)
+        const hasRevenueTracking = !!aggregated?.hasRevenueTracking;
+        const conversionValue = Number(aggregated?.conversionValue || 0);
+        const totalRevenue = hasRevenueTracking && conversionValue > 0 ? conversions * conversionValue : 0;
+        const profit = totalRevenue - spend;
+        const roi = spend > 0 ? (profit / spend) * 100 : 0; // percent
+        const roas = spend > 0 ? totalRevenue / spend : 0; // x
+        const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0; // percent
+        const revenuePerLead = leads > 0 ? totalRevenue / leads : 0;
+
+        return {
+          // Keep both the original baseTotals (for any niche keys) and normalized common ones
+          ...baseTotals,
+
+          impressions,
+          clicks,
+          spend,
+          conversions,
+          leads,
+          engagements,
+          reach,
+          videoViews,
+          viralImpressions,
+
+          ctr,
+          cpc,
+          cpm,
+          cvr,
+          cpa,
+          cpl,
+          er,
+
+          totalRevenue,
+          profit,
+          roi,
+          roas,
+          profitMargin,
+          revenuePerLead,
+        };
+      }
+    }
+
+    // 2) Fallback to ad-level aggregation (used by Ad Comparison)
     if (!adsData || !Array.isArray(adsData)) return null;
-    
-    // Filter ads for this specific LinkedIn campaign
+
     const campaignAds = adsData.filter((ad: any) => ad.campaignName === linkedInCampaignName);
     if (campaignAds.length === 0) return null;
-    
-    // Aggregate metrics for this campaign
+
     const totals = campaignAds.reduce((acc: any, ad: any) => ({
       impressions: (acc.impressions || 0) + (ad.impressions || 0),
       clicks: (acc.clicks || 0) + (ad.clicks || 0),
